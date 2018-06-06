@@ -1,0 +1,16 @@
+\documentclass{article}
+
+\usepackage{xcolor}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\class}[1]{\colorbox{blue!30}{\code{#1}}}
+
+\begin{document}
+\section{Implemented Likelihood Models}
+This section describes the implemented likelihood models.
+
+\subsection{Time Dependent Point-Source Flare}
+
+The \class{TimeDepPSFlareLHModel} class 
+
+\end{document}
