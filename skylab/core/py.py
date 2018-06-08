@@ -23,7 +23,7 @@ def issequence(obj):
     return True
 
 def issequenceof(obj, T):
-    """Checks if the given object ``obj`` is a sequence of type ``T``.
+    """Checks if the given object ``obj`` is a sequence with items of type ``T``.
     """
     if(not issequence(obj)):
         return False
