@@ -47,7 +47,13 @@ class LiveTime(object):
         if(self._uptime_mjd_intervals_arr.dtype != np.float64):
             raise TypeError('The type of the internal MJD interval array is not float64!')
 
-        bins = np.reshape(self._uptime_mjd_intervals_arr, (self._uptime_mjd_intervals_arr.size,))
+        # Check the shape of the array.
+        if(self._uptime_mjd_intervals_arr.ndim != 2):
+            raise ValueError('The dimensionality of the internel MJD interval array must be 2!')
+        if(self._uptime_mjd_intervals_arr.shape[1] != 2):
+            raise ValueError('The length of the second axis of the internal MJD interval array must be 2!')
+
+        bins = self._onoff_intervals
         # Check if the bin edges are monotonically increasing.
         if(not np.all(np.diff(bins) > 0)):
             raise ValueError('The interval edges of the internal MJD interval array are not monotonically increasing!')
@@ -86,6 +92,14 @@ class LiveTime(object):
         return (self._uptime_mjd_intervals_arr[0,0],
                 self._uptime_mjd_intervals_arr[-1,1])
 
+    @property
+    def _onoff_intervals(self):
+        """A view on the mjd intervals where each time is a lower bin edge.
+        Hence, odd array elements (bins) are on-time intervals, and even array
+        elements are off-time intervals.
+        """
+        return np.reshape(self._uptime_mjd_intervals_arr, (self._uptime_mjd_intervals_arr.size,))
+
     def _get_onoff_interval_indices(self, mjds):
         """Retrieves the indices of the on-time and off-time intervals, which
         correspond to the given MJD values.
@@ -109,18 +123,25 @@ class LiveTime(object):
             The array of the on-off-time interval indices that correspond to the
             given MJD values.
         """
-        # Get a view on the mjd intervals where each time is a lower bin edge.
-        # Odd bins are on-time intervals, and even bins are off-time intervals.
-        on_off_intervals = np.reshape(self._uptime_mjd_intervals_arr, (self._uptime_mjd_intervals_arr.size,))
-
         # Get the interval indices.
         # Note: For MJD values outside the total interval range, the np.digitize
         # function will return either 0, or len(bins). Since, there is always
         # an even amount of intervals edges, and 0 is also an 'even' number,
         # those MJDs will correspond to off-time automatically.
-        idxs = np.digitize(mjds, on_off_intervals)
+        idxs = np.digitize(mjds, self._onoff_intervals)
 
         return idxs
+
+    def load_from_ontime_mjd_intervals(self, intervals):
+        """Loads the internal MJD uptime intervals from the given interval
+        array.
+
+        Parameters
+        ----------
+        intervals : Nx2 ndarray holding the MJD edges of the on-time intervals.
+
+        """
+        self._uptime_mjd_intervals = intervals
 
     def get_ontime_upto(self, mjd):
         """Calculates the cumulative detector on-time up to the given time.
@@ -138,8 +159,6 @@ class LiveTime(object):
             to the the given MJD times.
         """
         mjds = np.atleast_1d(mjd)
-
-        on_off_intervals = np.reshape(self._uptime_mjd_intervals_arr, (self._uptime_mjd_intervals_arr.size,))
 
         onoff_idxs = self._get_onoff_interval_indices(mjds)
 
@@ -164,7 +183,7 @@ class LiveTime(object):
 
         # For odd (on-time) mjds, use the cumulative value of the previous bin
         # and add the part of the interval bin up to the mjd value.
-        ontimes = np.where(odd_idxs_mask, cum_ontime_bins[idxs-1] + mjds - on_off_intervals[onoff_idxs-1], cum_ontime_bins[idxs])
+        ontimes = np.where(odd_idxs_mask, cum_ontime_bins[idxs-1] + mjds - self._onoff_intervals[onoff_idxs-1], cum_ontime_bins[idxs])
 
         if(not issequence(mjd)):
             return np.asscalar(ontimes)
@@ -197,4 +216,46 @@ class LiveTime(object):
             return np.asscalar(is_live)
         return is_live
 
+    def draw_ontimes(self, random, size):
+        """Draws random MJD times based on the detector on-time intervals.
 
+        Parameters
+        ----------
+        random : numpy.random.RandomState
+            The numpy.random.RandomState instance from which random numbers
+            should get drawn from.
+        size : int
+            The number of random MJD times to generate.
+
+        Returns
+        -------
+        ontimes : ndarray
+            The 1d array holding the generated MJD times.
+        """
+        # Create bin array with only on-time bins. We have to mask out the
+        # off-time bins.
+        ontime_bins = np.diff(self._onoff_intervals)
+        mask = np.invert(np.array(np.linspace(0,ontime_bins.size-1,ontime_bins.size)%2, dtype=np.bool))
+        ontime_bins = ontime_bins[mask]
+
+        # Create the cumulative array of the on-time bins.
+        cum_ontime_bins = np.array([0], dtype=np.float64)
+        cum_ontime_bins = np.append(cum_ontime_bins, np.cumsum(ontime_bins))
+
+        #         |<--y->|
+        # |----|  |-----------|  |-------|
+        # l1   u1 l2     |xL  u2 ul3     u3
+        #
+        # x \el [0,1]
+        # L = \sum (u_i - l_i)
+
+        x = random.uniform(0, 1, size)
+        # Get the sum L of all the on-time intervals.
+        L = cum_ontime_bins[-1]
+        w = x*L
+        idxs = np.digitize(w, cum_ontime_bins)
+        l = self._uptime_mjd_intervals_arr[:,0]
+        y = w - cum_ontime_bins[idxs-1]
+        ontimes = l[idxs-1] + y
+
+        return ontimes
