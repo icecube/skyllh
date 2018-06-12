@@ -1,20 +1,19 @@
 """The livetime module provides general functionality for detector up-time.
 """
-import abc
 import numpy as np
 
+from skylab.core.random import RandomStateService
 from skylab.core.py import issequence
 
-class LiveTime(object):
-    """The abstract base class ``LiveTime`` defines an interface to query the
-    up-time of the dector.
+class Livetime(object):
+    """The ``Livetime`` class defines an interface to query the up-time of the
+    dector.
 
     The class holds an internal Nx2 float64 ndarray
-    ``_uptime_mjd_intervals_arr``, where
-    the first and second elements of the second axis is the start and end time
-    of the up-time interval, respectively. This data array needs to be set by
-    the derived class by setting the ``_uptime_mjd_intervals`` property with
-    the appropriate data array.
+    ``_uptime_mjd_intervals_arr``, where the first and second elements of the
+    second axis is the start and end time of the up-time interval, respectively.
+    This data array needs to be set by the derived class by setting the
+    ``_uptime_mjd_intervals`` property with the appropriate data array.
 
         Note 1: The intervals must be sorted ascedent in time.
 
@@ -27,7 +26,6 @@ class LiveTime(object):
     property setter method by calling the ``assert_mjd_intervals_integrity``
     method.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         # The internal Nx2 numpy ndarray holding the MJD intervals when the
@@ -216,14 +214,14 @@ class LiveTime(object):
             return np.asscalar(is_live)
         return is_live
 
-    def draw_ontimes(self, random, size):
+    def draw_ontimes(self, rss, size):
         """Draws random MJD times based on the detector on-time intervals.
 
         Parameters
         ----------
-        random : numpy.random.RandomState
-            The numpy.random.RandomState instance from which random numbers
-            should get drawn from.
+        rss : RandomStateService
+            The skylab RandomStateService instance to use for drawing random
+            numbers from.
         size : int
             The number of random MJD times to generate.
 
@@ -249,7 +247,7 @@ class LiveTime(object):
         # x \el [0,1]
         # L = \sum (u_i - l_i)
 
-        x = random.uniform(0, 1, size)
+        x = rss.random.uniform(0, 1, size)
         # Get the sum L of all the on-time intervals.
         L = cum_ontime_bins[-1]
         w = x*L
