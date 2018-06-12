@@ -4,6 +4,8 @@ import abc
 
 import numpy as np
 
+from skylab.core.random import RandomStateService
+
 class DataScramblingMethod(object):
     """Base class (type) for implementing a data scrambling method.
     """
@@ -13,23 +15,19 @@ class DataScramblingMethod(object):
         pass
 
     @abc.abstractmethod
-    def scramble(self, random, data):
+    def scramble(self, rss, data):
         """The scramble method implements the actual scrambling of the given
         data, which is method dependent. The scrambling must be performed
         in-place, i.e. it alters the data inside the given data array.
 
         Parameters
         ----------
-        random : numpy.random.RandomState
-            The numpy.random.RandomState instance, which must be used to get
+        rss : RandomStateService
+            The skylab RandomStateService instance, which must be used to get
             random numbers from.
         data : numpy.ndarray
             The ndarray containing the to be scrambled data.
 
-        Returns
-        -------
-        scrambled_data : numpy.ndarray
-            The ndarray with scrambled data.
         """
         pass
 
@@ -66,12 +64,12 @@ class RAScrambling(DataScramblingMethod):
             raise ValueError('The ra_range tuple must contain 2 elements!')
         self._ra_range = ra_range
 
-    def scramble(self, random, data):
-        data["ra"] = random.uniform(*self.ra_range, size=data.size)
+    def scramble(self, rss, data):
+        data["ra"] = rss.random.uniform(*self.ra_range, size=data.size)
 
 
 class DataScrambler(object):
-    def __init__(self, method, seed=None):
+    def __init__(self, method, rss=None):
         """Creates a data scrambler instance with a given defined scrambling
         method.
 
@@ -80,11 +78,11 @@ class DataScrambler(object):
         method : DataScramblingMethod
             The instance of DataScramblingMethod that defines the method of
             the data scrambling.
-        seed : int | None
-            The seed for the random number generator (RNG).
+        rss : RandomStateService | None
+            The random state service providing the random number generator (RNG).
         """
         self.method = method
-        self.seed = seed
+        self.rss = rss
 
     @property
     def method(self):
@@ -99,21 +97,18 @@ class DataScrambler(object):
         self._method = method
 
     @property
-    def seed(self):
-        """The seed (int) of the random number generator. None, if not set.
+    def rss(self):
+        """The RandomStateService object providing the random number generator.
         """
-        return self._seed
-    @seed.setter
-    def seed(self, seed):
-        if(seed is not None):
-            if(not isinstance(seed, int)):
-                raise TypeError('The seed for the random number generator must be of type int!')
-        self._seed = seed
+        return self._rss
+    @rss.setter
+    def rss(self, rss):
+        if(not isinstance(rss, RandomStateService)):
+            raise TypeError('The random state service (rss) must be an instance of RandomStateService!')
+        self._rss = rss
 
     def scramble(self, data):
-        """Sets the seed of the RNG and scrambles the given data by calling the
-        scramble method of the scrambling method class, that was configured for
-        the data scrambler.
+        """Scrambles the given data by calling the scramble method of the
+        scrambling method class, that was configured for the data scrambler.
         """
-        random = np.random.RandomState(self.seed)
-        self._method.scramble(random, data)
+        self._method.scramble(self.rss, data)
