@@ -69,7 +69,7 @@ class RAScrambling(DataScramblingMethod):
 
 
 class DataScrambler(object):
-    def __init__(self, method, rss=None):
+    def __init__(self, method, rss):
         """Creates a data scrambler instance with a given defined scrambling
         method.
 
