@@ -2,27 +2,26 @@
 
 import numpy as np
 
+from skylab.core.random import RandomStateService
 from skylab.core.scrambling import DataScrambler, RAScrambling
 
-def gen_data(N=100, seed=1, window=(0,365)):
+def gen_data(rss, N=100, window=(0,365)):
     """Create uniformly distributed data on sphere. """
-    np.random.seed(seed)
-
     arr = np.empty((N,), dtype=[("ra", np.float), ("dec", np.float)])
 
-    arr["ra"] = np.random.uniform(0., 2.*np.pi, N)
-    arr["dec"] = np.random.uniform(-np.pi, np.pi, N)
+    arr["ra"] = rss.random.uniform(0., 2.*np.pi, N)
+    arr["dec"] = rss.random.uniform(-np.pi, np.pi, N)
 
     return arr
 
-seed = 1
+rss = RandomStateService(seed=1)
 
 # Generate some psydo data.
-data = gen_data(N=10, seed=seed)
+data = gen_data(rss, N=10)
 print data['ra']
 
 # Create DataScrambler instance with RA scrambling.
-scr = DataScrambler(RAScrambling(), seed=seed+1)
+scr = DataScrambler(method=RAScrambling(), rss=rss)
 
 # Scramble the data.
 scr.scramble(data)
