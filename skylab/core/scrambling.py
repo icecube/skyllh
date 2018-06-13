@@ -15,38 +15,49 @@ class DataScramblingMethod(object):
         pass
 
     @abc.abstractmethod
-    def scramble(self, rss, data):
+    def scramble(self, data):
         """The scramble method implements the actual scrambling of the given
         data, which is method dependent. The scrambling must be performed
         in-place, i.e. it alters the data inside the given data array.
 
         Parameters
         ----------
-        rss : RandomStateService
-            The skylab RandomStateService instance, which must be used to get
-            random numbers from.
         data : numpy.ndarray
             The ndarray containing the to be scrambled data.
 
         """
         pass
 
-class RAScrambling(DataScramblingMethod):
-    """The RAScrambling method performs right-ascention scrambling within a
-    given RA range. By default it's (0, 2\pi).
+class RAScramblingMethod(DataScramblingMethod):
+    """The RAScramblingMethod method performs right-ascention scrambling within
+    a given RA range. By default it's (0, 2\pi).
     """
-    def __init__(self, ra_range=None):
+    def __init__(self, rss, ra_range=None):
         """Initializes a new RAScrambling instance.
 
         Parameters
         ----------
+        rss : RandomStateService | None
+            The random state service providing the random number generator (RNG).
         ra_range : tuple | None
             The two-element tuple holding the range in radians within the RA
             values should get drawn from. If set to None, the default (0, 2\pi)
             will be used.
         """
-        super(RAScrambling, self).__init__()
+        super(RAScramblingMethod, self).__init__()
+        self.rss = rss
         self.ra_range = ra_range
+
+    @property
+    def rss(self):
+        """The RandomStateService object providing the random number generator.
+        """
+        return self._rss
+    @rss.setter
+    def rss(self, rss):
+        if(not isinstance(rss, RandomStateService)):
+            raise TypeError('The random state service (rss) must be an instance of RandomStateService!')
+        self._rss = rss
 
     @property
     def ra_range(self):
@@ -64,12 +75,12 @@ class RAScrambling(DataScramblingMethod):
             raise ValueError('The ra_range tuple must contain 2 elements!')
         self._ra_range = ra_range
 
-    def scramble(self, rss, data):
-        data["ra"] = rss.random.uniform(*self.ra_range, size=data.size)
+    def scramble(self, data):
+        data["ra"] = self.rss.random.uniform(*self.ra_range, size=data.size)
 
 
 class DataScrambler(object):
-    def __init__(self, method, rss):
+    def __init__(self, method):
         """Creates a data scrambler instance with a given defined scrambling
         method.
 
@@ -78,11 +89,8 @@ class DataScrambler(object):
         method : DataScramblingMethod
             The instance of DataScramblingMethod that defines the method of
             the data scrambling.
-        rss : RandomStateService | None
-            The random state service providing the random number generator (RNG).
         """
         self.method = method
-        self.rss = rss
 
     @property
     def method(self):
@@ -96,19 +104,8 @@ class DataScrambler(object):
             raise TypeError('The data scrambling method must be an instance of DataScramblingMethod!')
         self._method = method
 
-    @property
-    def rss(self):
-        """The RandomStateService object providing the random number generator.
-        """
-        return self._rss
-    @rss.setter
-    def rss(self, rss):
-        if(not isinstance(rss, RandomStateService)):
-            raise TypeError('The random state service (rss) must be an instance of RandomStateService!')
-        self._rss = rss
-
-    def scramble(self, data):
+    def scramble_data(self, data):
         """Scrambles the given data by calling the scramble method of the
         scrambling method class, that was configured for the data scrambler.
         """
-        self._method.scramble(self.rss, data)
+        self._method.scramble(data)
