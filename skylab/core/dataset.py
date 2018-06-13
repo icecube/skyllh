@@ -61,6 +61,9 @@ class Dataset(object):
     Independet dataset of the same kind, e.g. event selection, can be joined
     through a DatasetCollection object.
     """
+    _EXP_FIELD_NAMES = ('ra', 'dec', 'azi', 'zen', 'sigma', 'time', 'log_energy')
+    _MC_FIELD_NAMES = ('true_ra', 'true_dec', 'true_energy', 'mcweight')
+
     def __init__(self, name, exp_pathfilenames, mc_pathfilenames, livetime, version, verqualifiers=None):
         """Creates a new dataset object that describes a self-consistent set of
         data.
@@ -304,6 +307,40 @@ class Dataset(object):
 
         return s
 
+    def assert_data_format(self):
+        """Checks the format of the loaded experimental and monte-carlo data.
+
+        Errors
+        ------
+        TypeError
+            If the data has the wrong type.
+
+        KeyError
+            If a required data field is missing.
+
+        """
+        if(not isinstance(self._data_exp, np.ndarray)):
+            raise TypeError('The experimental data must be an instance of numpy.ndarray!')
+        if(not isinstance(self._data_mc, np.ndarray)):
+            raise TypeError('The monte-carlo data must be an instance of numpy.ndarray!')
+
+        def _get_missing_keys(keys, required_keys):
+            missing_keys = []
+            for reqkey in required_keys:
+                if(reqkey not in keys):
+                    missing_keys.append(reqkey)
+            return missing_keys
+
+        # Check experimental data keys.
+        missing_exp_keys = _get_missing_keys(self._data_exp.dtype.names, Dataset._EXP_FIELD_NAMES)
+        if(len(missing_exp_keys) != 0):
+            raise KeyError('The following data fields are missing for the experimental data: '+', '.join(missing_exp_keys))
+
+        # Check monte-carlo data keys.
+        missing_mc_keys = _get_missing_keys(self._data_mc.dtype.names, Dataset._EXP_FIELD_NAMES + Dataset._MC_FIELD_NAMES)
+        if(len(missing_mc_keys) != 0):
+            raise KeyError('The following data fields are missing for the monte-carlo data: '+', '.join(missing_mc_keys))
+
     def load_data(self):
         """Loads the data of the dataset. Afterwards, the data can be accessed
         through the properties ``data_exp`` and ``data_mc``.
@@ -343,9 +380,12 @@ class Dataset(object):
     def load_and_prepare_data(self):
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
+        It also asserts the data format of the experimental and monte-carlo
+        data.
         """
         self.load_data()
         self.prepare_data()
+        self.assert_data_format()
 
     def add_binning_definition(self, binning):
         """Adds a binning setting to this dataset.
