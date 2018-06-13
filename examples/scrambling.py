@@ -3,7 +3,7 @@
 import numpy as np
 
 from skylab.core.random import RandomStateService
-from skylab.core.scrambling import DataScrambler, RAScrambling
+from skylab.core.scrambling import DataScrambler, RAScramblingMethod
 
 def gen_data(rss, N=100, window=(0,365)):
     """Create uniformly distributed data on sphere. """
@@ -21,8 +21,8 @@ data = gen_data(rss, N=10)
 print data['ra']
 
 # Create DataScrambler instance with RA scrambling.
-scr = DataScrambler(method=RAScrambling(), rss=rss)
+scr = DataScrambler(method=RAScramblingMethod(rss=rss))
 
 # Scramble the data.
-scr.scramble(data)
+scr.scramble_data(data)
 print data['ra']
