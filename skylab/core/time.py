@@ -75,7 +75,7 @@ class LivetimeTimeGenerationMethod(TimeGenerationMethod):
         return self.livetime.draw_ontimes(self.rss, size)
 
 class TimeGenerator(object):
-    def __init__(self, method, rss):
+    def __init__(self, method):
         """Creates a time generator instance with a given defined time
         generation method.
 
