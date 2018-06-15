@@ -2,15 +2,219 @@
 
 \usepackage{xcolor}
 
+\newcommand{\eq}[1]{(\ref{#1})}
+
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\class}[1]{\colorbox{blue!30}{\code{#1}}}
 
+\newcommand{\ns}{n_{\mathrm{s}}}
+\newcommand{\ps}{\vec{p}_{\mathrm{s}}}
+\newcommand{\xs}{\vec{x}_{\mathrm{s}}}
+\newcommand{\xsk}{\vec{x}_{\mathrm{s},k}}
+
+\newcommand{\dPhisdE}{\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}}
+
+
 \begin{document}
+
+\section{The Likelihood Formalism}
+
+This section describes the mathematical likelihood formalism used in Skylab.
+First it introduces the log-likelihood approach, second the likelihood ratio
+test and the used test statistic and then describes the used optimizations.
+
+\subsection{The Log-Likelihood Approach}
+
+Skylab implements the two-component likelihood approach with a likelihood
+function $\mathcal{L}(n_{\mathrm{s}},\vec{p}_{\mathrm{s}}~|D)$ of the form
+\begin{equation}
+ \mathcal{L}(\ns,\ps~|D) = \prod_{i=1}^{N}\left[ \frac{\ns}{N} \mathcal{S}_{i}(\vec{x_{\mathrm{s}}},\ps) + (1 - \frac{\ns}{N}) \mathcal{B}_{i} \right],
+\label{eq:L}
+\end{equation}
+where $\ns$ is the number of signal events, hence, $(N-\ns)$ the number of
+background events in the dataset $D$ of $N$ total events.
+The set of signal model parameters is denoted as $\ps$. Signal model parameters
+are for instance the spectral index $\gamma$ of the source.
+$\mathcal{S}_i(\vec{x}_{\mathrm{s}},\ps)$ is the value of the signal PDF
+assuming a signal source at location $\vec{x}_{\mathrm{s}}$ for the $i$th data
+event, whereas $\mathcal{B}_i$ is the value of background PDF of the $i$th data
+event.
+
+The signal and background PDFs must incorperate the detector efficiency (yield)
+$\mathcal{Y}_i$, which usually is dependent on the data event's sky location,
+energy, and time.
+
+For computational stability reasons the logarithm of the likelihood function of
+equation \ref{eq:L} is used in Skylab:
+\begin{equation}
+ \log \mathcal{L}(\ns,\ps~|D) = \sum_{i=1}^{N} \log (...)
+\end{equation}
+
+\subsection{Likelihood Ratio Test and Test Statistic}
+
+For estimating the significance of an observation, the likelihood ratio
+$\Lambda$ with respect to a null hypothesis of no observation, i.e.
+equation \ref{eq:L} at $\ns=0$ is tested:
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \log \frac{L(\ns,\ps)}{L(\ns=0)} = \sum_{i=1}^{N} \log \left[ 1 + \frac{\ns}{N}\left( \frac{\mathcal{S}_i(\xs,\ps)}{\mathcal{B}_i} - 1 \right) \right]
+\end{equation}
+By defining
+\begin{equation}
+\mathcal{X}_i(\ps) \equiv \frac{1}{N}\left( \frac{\mathcal{S}_i(\xs,\ps)}{\mathcal{B}_i} - 1 \right),
+\label{eq:Xi}
+\end{equation}
+this reads as:
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{i=1}^{N} \log (1 + \ns\mathcal{X}_i(\ps))
+ \label{eq:logLambda}
+\end{equation}
+This leads to the test statistic TS
+\begin{equation}
+ \mathrm{TS} = 2\mathrm{sgn}(\ns) \log \Lambda(\ns,\ps)
+ \label{eq:TS}
+\end{equation}
+with separation of over- ($\ns > 0$) and under-fluctuations ($\ns < 0$).
+
+\subsection{Multiple Datasets}
+
+With Skylab a set of $J$ different data samples (datasets) $\mathrm{D}_j$ can be
+analyzed at once. Each data sample has its own detector signal efficiency
+$\mathcal{Y}_{\mathrm{s},j}$.
+
+The composite likelihood function is the product of the individual dataset
+likelihood functions:
+\begin{equation}
+ \log \Lambda = \sum_{j=1}^{J} \log \Lambda_j
+ \label{eq:logLambdaComposite}
+\end{equation}
+
+The total number of signal events $\ns$ needs to get split-up into
+$n_{\mathrm{s},j}$ for the individual data samples. The distribution of $\ns$
+along the different data samples is based on the detector signal efficiency
+$\mathcal{Y}_{\mathrm{s},j}$ of each sample:
+\begin{equation}
+ n_{s,j}(\ps~|\vec{x}_{\mathrm{s}}) = \ns \frac{\mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s}},\ps)}{\sum_j \mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s}},\ps)},
+ \label{eq:nsjy}
+\end{equation}
+where the parameter $\vec{x}_{\mathrm{s}}$ denotes the location(s) of the source(s).
+The parameter vector $\ps$ contains additional source hypothesis parameters,
+for instance the spectral index $\gamma$.
+
+By defining the sample weight factor
+\begin{equation}
+ f_j(\ps~|\vec{x}_{\mathrm{s}}) \equiv \frac{\mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s}},\ps)}{\sum_j \mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s}},\ps)}
+\end{equation}
+with the property
+\begin{equation}
+ \sum_{j=1}^{J} f_j = 1
+\end{equation}
+equation \ref{eq:nsjy} reads
+\begin{equation}
+ n_{s,j}(\ps~|\vec{x}_{\mathrm{s}}) = \ns f_{j}(\ps~|\vec{x}_{\mathrm{s}})
+ \label{eq:ns-sample-weight-factor}
+\end{equation}
+
+The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\ps,\xs)$
+depends on the signal model parameters $\ps$ and the source location(s) $\xs$
+and can be calculated via the detector effective area and the source flux.
+
+For a single point source the sample weight factor can be calculated via the effective area
+$A_{\mathrm{eff},j}|_{\xs}$ at the source location of each data sample, and the
+differential flux $\dPhisdE$ of the source.
+\begin{equation}
+ f_{j}(\ps~|\xs) = \frac{\int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}|_{\xs}(E) \dPhisdE(E,\ps)}
+		        {\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}|_{\xs}(E) \dPhisdE(E,\ps)}
+ \label{eq:fj}
+\end{equation}
+
+Using the sample weight factor $f_{j}(\ps~|\xs)$ the likelihood ratio of
+equation \eq{eq:logLambdaComposite} with equation \eq{eq:logLambda} can now
+be written as
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \sum_{i=1}^{N} \log (1 + \ns f_{j}(\ps~|\xs)\mathcal{X}_i(\ps))
+\end{equation}
+
+
+For multiple point sources, i.e. a stacking of $K$ point sources with positions
+$\vec{x}_{\mathrm{s},k}$, the sample weight factor of each single source needs
+to be taking into account. Thus, $f_{j}$ can be written as the sum of the
+products of the sample weight factor $f_{j}(\ps~|\vec{x}_{\mathrm{s},k})$ for
+source $k$ and the relative strength $f_{k}(\ps~|\vec{x}_{\mathrm{s},k})$ of the
+$k$th source in all data samples compared to all the other sources in all data
+samples.
+\begin{equation}
+ f_{j}(\ps~|\xs) = \sum_{k=1}^{K} f_{j}(\ps~|\vec{x}_{\mathrm{s},k}) f_{k}(\ps~|\vec{x}_{\mathrm{s},k})
+\end{equation}
+The relative strength of source $k$ can be written as
+\begin{equation}
+ f_{k}(\ps~|\vec{x}_{\mathrm{s},k}) =
+    \frac{\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}|_{\vec{x}_{\mathrm{s},k}}(E) \dPhisdE(E,\ps)}
+         {\sum_{\kappa=1}^{K} \sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}|_{\vec{x}_{\mathrm{s},\kappa}}(E) \dPhisdE(E,\ps) }
+ \label{eq:fk}
+\end{equation}
+Combining equation \ref{eq:fj} with $\xs \equiv \vec{x}_{\mathrm{s},k}$ and
+\ref{eq:fk} leads to the final expression for $f_{j}$ for multiple sources:
+\begin{equation}
+ f_{j}(\ps~|\xs) = \frac{\sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}|_{\vec{x}_{\mathrm{s},k}}(E) \dPhisdE(E,\ps) }
+                        {\sum_{i=1}^{J} \sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}|_{\vec{x}_{\mathrm{s},k}}(E) \dPhisdE(E,\ps) }
+ \label{eq:fjmultips}
+\end{equation}
+One should note that the numerator of equation \eq{eq:fjmultips} is one of the
+summands of the sum in the denumerator, i.e. for $i=j$.
+
+\subsection{Optimizations}
+
+For point-source like signal hypothesis most of the events in the data sample
+will be far away from the hypothesised source, hence, the value of the
+signal PDF $\mathcal{S}_i$ will be zero or very close to zero. By selecting only
+the signal-contributing $N'$ events from the sample, the likelihood ratio
+$\log \Lambda$ reads
+\begin{equation}
+ \log \Lambda = \log \Lambda_{N'} + (N - N')\log(1 - \frac{\ns}{N})
+\end{equation}
+
+The used minimizer (L-BFG-S) operates most stable and fast when provided with
+gradients of the likelihood function.
+
+TODO: Derive the gradients of the LH function.
+
+\section{Detector Signal Efficiency}
+
+The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s},k},\ps)$
+of a data sample $j$ for a source $k$ is defined as the integral over the energy
+of the product of the detector effective area and the differential flux
+$\frac{\mathrm{d}\Phi}{\mathrm{d}E}$ of the source
+\begin{equation}
+ \mathcal{Y}_{\mathrm{s},j}(\xs,\ps) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xsk} \frac{\mathrm{d}\Phi}{\mathrm{d}E}(E,\ps)
+\end{equation}
+
+\subsection{Effective Area}
+
+In Skylab the effective area $A_{\mathrm{eff},j}$ of a data sample is not
+calculated separately in order to avoid binning effect. The effective area is
+calculated using the monte-carlo weights \code{mcweight} of the simulation events.
+The monte-carlo weights\footnote{In IceCube known as ``OneWeight''.} have the
+unit GeV~cm$^2$~sr. Using the monte-carlo weights of the events the effective
+area is given by
+\begin{equation}
+ 
+\end{equation}
+
+
+
+
+
 \section{Implemented Likelihood Models}
 This section describes the implemented likelihood models.
 
 \subsection{Time Dependent Point-Source Flare}
 
-The \class{TimeDepPSFlareLHModel} class 
+The \class{TimeDepPSFlareLHModel} class provides the likelihood model for searching for a point source with unknown time-dependence.
+The search is based on the formulism described in \cite{TimeDepPSSearchMethods2010}.
+
+The model utilizes a two-component likelihood function with signal and background events.
+
+\bibliographystyle{unsrt}
+\bibliography{biblio}
 
 \end{document}
