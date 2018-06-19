@@ -4,54 +4,10 @@ import os
 import numpy as np
 from copy import deepcopy
 
-from skylab.core import display
+from skylab.core.analysis import BinningDefinition
 from skylab.core.py import issequence, issequenceof
+from skylab.core import display
 from skylab.core import storage
-
-class BinningDefinition(object):
-    """The BinningDefinition class provides a structure to hold histogram
-    binning definitions for a dataset.
-    """
-    def __init__(self, key, binedges):
-        """Creates a new binning definition object.
-
-        Parameters
-        ----------
-        key : str
-            The key (name) of the binning definition.
-        binedges : sequence
-            The sequence of the bin edges, which should be used for the binning.
-        """
-        self.key = key
-        self.binedges = binedges
-
-    @property
-    def key(self):
-        """The key (name) of the binning setting. This must be an unique name
-        for all the different binning settings used within a season.
-        """
-        return self._key
-    @key.setter
-    def key(self, key):
-        if(not isinstance(key, str)):
-            raise TypeError("The key must be of type 'str'!")
-        self._key = key
-
-    @property
-    def binedges(self):
-        """The numpy.ndarray holding the bin edges.
-        """
-        return self._binedges
-    @binedges.setter
-    def binedges(self, arr):
-        arr = np.atleast_1d(arr)
-        self._binedges = np.array(arr, dtype=np.float64)
-
-    @property
-    def nbins(self):
-        """The number of bins, based on the number of bin edges (minus 1).
-        """
-        return self._binedges.size - 1
 
 class Dataset(object):
     """The Dataset class describes a set of self-consistent experimental and
