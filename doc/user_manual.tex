@@ -183,25 +183,69 @@ TODO: Derive the gradients of the LH function.
 The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s},k},\ps)$
 of a data sample $j$ for a source $k$ is defined as the integral over the energy
 of the product of the detector effective area and the differential flux
-$\frac{\mathrm{d}\Phi}{\mathrm{d}E}$ of the source
+$\frac{\mathrm{d}\Phi}{\mathrm{d}E}$ of the source:
 \begin{equation}
  \mathcal{Y}_{\mathrm{s},j}(\xs,\ps) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xsk} \frac{\mathrm{d}\Phi}{\mathrm{d}E}(E,\ps) T_{\mathrm{live},j}
+\label{eq:Ysj}
 \end{equation}
+It is the mean number of signal events expected from a source with source
+parameters $\ps$ at position $\xs$. In the most-general case, the source position $\xs$
+consists of three quantities: right-ascention, declination, and observation time,
+i.e. $\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}},t_{\mathrm{obs}})$.
 
 \subsection{Effective Area}
 
-In Skylab the effective area $A_{\mathrm{eff},j}$ of a data sample is not
-calculated separately in order to avoid binning effect. The effective area is
-calculated using the monte-carlo weights \code{mcweight}\footnote{In IceCube
-known as ``OneWeight''.} of the simulation events.
+In Skylab the effective area $A_{\mathrm{eff},j}$ of a data sample $j$ is not
+calculated separately in order to avoid binning effects. However, the effective
+area can be calculated using the monte-carlo weights \code{mcweight}\footnote{In IceCube
+known as ``OneWeight'', but which already includes the number of used MC files.}
+of the simulation events.
 The monte-carlo weights have the unit GeV~cm$^2$~sr.
-Using the monte-carlo weight, $w_m$, of the $m$th event the effective
-area is given by
-%\begin{equation}
-% A_{\mathrm{eff},j}(E) = \frac{\sum_{m}^{M} w_m}{\Delt E \Omega}
-%\end{equation}
+Using the monte-carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$
+the effective area is given by the sum over the event weights divided by the
+solid angle and the energy range $\Delta E$ of the summed selected events:
+\begin{equation}
+ A_{\mathrm{eff},j}(E) = \frac{\sum_{m=1}^{M} w_{m,j}}{\Omega \Delta E}
+\end{equation}
 
 
+\subsection{The DetSigEff Class}
+
+\class{DetSigEff} provides a detector signal efficiency class to
+compute the integral given in equation \eq{eq:Ysj}. The detector signal
+efficiency depends on the flux model and its source parameters, which might
+change during the likelihood maximization process. It is also dependent on the
+detector effective area, hence detector dependent. Thus, \class{DetSigEff} must
+be provided with a detector signal efficiency implementation method derived from
+the \class{DetSigEffImplMethod} class.
+
+\subsubsection{The DetSigEffImplMethod Class}
+
+\class{DetSigEffImplMethod} defines the interface between the detector signal
+efficiency implementation method and the \class{DetSigEff} class.
+
+% List of detector signal efficiency implementation methods.
+Table \ref{tbl:I3DetSigEffImplMethod} lists all available IceCube specific
+detector signal efficiency implementation methods and their description.
+\begin{table}
+\caption{IceCube specific detector signal efficiency implementation methods.}
+\label{tbl:I3DetSigEffImplMethod}
+
+\begin{tabular}{l | p{10cm}}
+\hline
+I3FixedFluxDetSigEff & Detector signal efficiency implementation method for a
+    fixed flux model, which might contain flux parameters, but which
+    are not fit in the likelihood maximization process.
+    This implementation assumes that the detector effective
+    area depends solely on the declination of the source. This method creates
+    a spline function of given order for the logarithmic values of the
+    $\sin(\delta)$-dependent detector signal efficiency.
+
+    The constructor of this implementation method requires a $\sin(\delta)$
+    binning definition for the monte-carlo events and the order of the spline
+    function.
+\end{tabular}
+\end{table}
 
 
 
