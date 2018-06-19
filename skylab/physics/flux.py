@@ -4,13 +4,15 @@
 The abstract class ``FluxModel`` serves as a base class for all flux model
 classes.
 The unit of the resulting flux value must be [energy]^-1 [length]^-2 [time]^-1.
-It is up to the user what unit to use. Units are not enforced and no unit
-conversions are made by the code. It is used only for pretty printing purpose.
+The units are defined using the astropy.units module and can be set through
+the properties ``energy_unit``, ``length_unit``, and ``time_unit``.
 The default units are [energy] = GeV, [length] = cm, [time] = s.
 """
 
 import abc
 import numpy as np
+
+from astropy import units
 
 class BaseFluxModel(object):
     """Abstract base class for all flux models.
@@ -21,9 +23,9 @@ class BaseFluxModel(object):
 
     def __init__(self):
         # Define the default units.
-        self.energy_unit = 'GeV'
-        self.length_unit = 'cm'
-        self.time_unit = 's'
+        self.energy_unit = units.GeV
+        self.length_unit = units.cm
+        self.time_unit = units.s
 
     @property
     def energy_unit(self):
@@ -32,8 +34,8 @@ class BaseFluxModel(object):
         return self._energy_unit
     @energy_unit.setter
     def energy_unit(self, unit):
-        if(not isinstance(unit, str)):
-            raise TypeError('The property energy_unit must be of type str!')
+        if(not isinstance(unit, units.Unit)):
+            raise TypeError('The property energy_unit must be of type astropy.units.Unit!')
         self._energy_unit = unit
 
     @property
@@ -43,8 +45,8 @@ class BaseFluxModel(object):
         return self._length_unit
     @length_unit.setter
     def length_unit(self, unit):
-        if(not isinstance(unit, str)):
-            raise TypeError('The property length_unit must be of type str!')
+        if(not isinstance(unit, units.Unit)):
+            raise TypeError('The property length_unit must be of type astropy.units.Unit!')
         self._length_unit = unit
 
     @property
@@ -54,13 +56,13 @@ class BaseFluxModel(object):
         return self._time_unit
     @time_unit.setter
     def time_unit(self, unit):
-        if(not isinstance(unit, str)):
-            raise TypeError('The property time_unit must be of type str!')
+        if(not isinstance(unit, units.Unit)):
+            raise TypeError('The property time_unit must be of type astropy.units.Unit!')
         self._time_unit = unit
 
     @property
     def unit_str(self):
-        return ' '.join((self.energy_unit+'^-1', self.length_unit+'^-2', self.time_unit+'^-1'))
+        return ' '.join((self.energy_unit.to_string()+'^-1', self.length_unit.to_string()+'^-2', self.time_unit.to_string()+'^-1'))
 
     @property
     @abc.abstractmethod
