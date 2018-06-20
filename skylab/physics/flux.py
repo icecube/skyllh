@@ -96,19 +96,20 @@ class BaseFluxModel(object):
 class FluxModel(BaseFluxModel):
     """Abstract base class for all flux models of the form
 
-        dN/dE = A * f(E/E0),
+        dN/(dEdAdt) = Phi0 * f(E/E0),
 
-    where A is the flux normalization at E=E0 in the flux unit
+    where Phi0 is the flux normalization at E=E0 in the flux unit
     [energy]^-1 [length]^-2 [time]^-1, and f(E/E0) is the unit-less energy
     dependence of the flux.
 
-    The unit of dN/dE is [energy]^-1 [length]^-2 [time]^-1.
+    The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
 
     Attributes
     ----------
-    A : float
-        Flux value (dN/dE) at E0 in unit [energy]^-1 [length]^-2 [time]^-1.
+    Phi0 : float
+        Flux value (dN/(dEdAdt)) at E0 in unit
+        [energy]^-1 [length]^-2 [time]^-1.
     E0 : float
         Normalization energy in unit of energy.
     energy_unit : str
@@ -121,22 +122,22 @@ class FluxModel(BaseFluxModel):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, A, E0):
+    def __init__(self, Phi0, E0):
         super(FluxModel, self).__init__()
-        self.A = A
+        self.Phi0 = A
         self.E0 = E0
 
     @property
-    def A(self):
-        """The flux value of dN/dE at energy E0 in unit
+    def Phi0(self):
+        """The flux value (dN/(dEdAdt)) at energy E0 in unit
         [energy]^-1 [length]^-2 [time]^-1.
         """
-        return self._A
+        return self._Phi0
     @A.setter
-    def A(self, val):
+    def Phi0(self, val):
         if(not isinstance(val, float)):
-            raise TypeError('Property A must be of type float!')
-        self._A = val
+            raise TypeError('Property Phi0 must be of type float!')
+        self._Phi0 = val
 
     @property
     def E0(self):
@@ -152,25 +153,26 @@ class FluxModel(BaseFluxModel):
 class PowerLawFlux(FluxModel):
     """Power law flux of the form
 
-        dN/dE = A * (E / E0)^(-gamma)
+        dN/(dEdAdt) = Phi0 * (E / E0)^(-gamma)
 
-    The unit of dN/dE is [energy]^-1 [length]^-2 [time]^-1.
+    The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
     """
-    def __init__(self, A, E0, gamma):
+    def __init__(self, Phi0, E0, gamma):
         """Creates a new power law flux object.
 
         Parameters
         ----------
-        A : float
-            Flux value (dN/dE) at E0 in unit [energy]^-1 [length]^-2 [time]^-1.
+        Phi0 : float
+            Flux value (dN/(dEdAdt)) at E0 in unit
+            [energy]^-1 [length]^-2 [time]^-1.
             By default that is GeV^-1 cm^-2 s^-1.
         E0 : float
             Normalization energy.
         gamma : float
             Spectral index
         """
-        super(PowerLawFlux, self).__init__(A, E0)
+        super(PowerLawFlux, self).__init__(Phi0, E0)
         self.gamma = gamma
 
     @property
@@ -185,7 +187,7 @@ class PowerLawFlux(FluxModel):
     @property
     def math_function_str(self):
         return "dN/dE = %.2e * (E / %.2e %s)^-%.2f" \
-            % (self.A, self.E0, self.energy_unit, self.gamma)
+            % (self.Phi0, self.E0, self.energy_unit, self.gamma)
 
     def __call__(self, E):
         """The flux value dN/dE at energy E.
@@ -198,26 +200,29 @@ class PowerLawFlux(FluxModel):
         Returns
         -------
         flux : float | 1d ndarray of float
-            Flux at energy E in unit GeV^-1 cm^-2 s^-1.
+            Flux at energy E in unit [energy]^-1 [length]^-2 [time]^-1.
+            By default in GeV^-1 cm^-2 s^-1.
         """
-        flux = self.A * np.power(E / self.E0, -self.gamma)
+        flux = self.Phi0 * np.power(E / self.E0, -self.gamma)
         return flux
 
 class CutoffPowerLawFlux(PowerLawFlux):
     """Cut-off power law flux of the form
 
-        dN/dE = A * (E / E0)^(-gamma) * exp(-E/Ecut)
+        dN/(dEdAdt) = Phi0 * (E / E0)^(-gamma) * exp(-E/Ecut)
 
-    The unit of dN/dE is [energy]^-1 [length]^-2 [time]^-1.
+    The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
     """
-    def __init__(self, A, E0, gamma, Ecut):
+    def __init__(self, Phi0, E0, gamma, Ecut):
         """Creates a new cut-off power law flux object.
 
         Parameters
         ----------
-        A : float
-            Flux value (dN/dE) at E0 [GeV^-1 cm^-2 s^-1]
+        Phi0 : float
+            Flux value (dN/(dEdAdt)) at E0 in unit
+            [energy]^-1 [length]^-2 [time]^-1. By default the unit is
+            GeV^-1 cm^-2 s^-1.
         E0 : float
             Normalization energy [GeV]
         gamma : float
@@ -225,7 +230,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
         Ecut : float
             Cut-off energy [GeV]
         """
-        super(CutoffPowerLawFlux, self).__init__(A, E0, gamma)
+        super(CutoffPowerLawFlux, self).__init__(Phi0, E0, gamma)
         self.Ecut = Ecut
 
     @property
@@ -242,7 +247,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
         return super(CutoffPowerLawFlux, self).math_function_str + ' * exp(-E / %.2e %s)'%(self.Ecut, self.energy_unit)
 
     def __call__(self, E):
-        """The flux value dN/dE at energy E.
+        """The flux value dN/(dEdAdt) at energy E.
 
         Parameters
         ----------
@@ -262,13 +267,13 @@ class LogParabolaPowerLawFlux(FluxModel):
     """Power law flux with an index which varies as a log parabola in energy of
     the form
 
-        dN/dE = A * (E / E0)^(-alpha - beta*log(E / E0))
+        dN/(dEdAdt) = Phi0 * (E / E0)^(-(alpha + beta*log(E / E0)))
 
-    The unit of dN/dE is [energy]^-1 [length]^-2 [time]^-1.
+    The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
     """
-    def __init__(self, A, E0, alpha, beta):
-        super(LogParabolaPowerLawFlux, self).__init__(A, E0)
+    def __init__(self, Phi0, E0, alpha, beta):
+        super(LogParabolaPowerLawFlux, self).__init__(Phi0, E0)
         self.alpha = alpha
         self.beta = beta
 
@@ -292,10 +297,10 @@ class LogParabolaPowerLawFlux(FluxModel):
 
     @property
     def math_function_str(self):
-        return 'dN/dE = %.2e * (E / %.2e %s)^(-%.2e - %.2e * log(E / %.2e %s))'%(self.A, self.E0, self.energy_unit, self.alpha, self.beta, self.E0, self.energy_unit)
+        return 'dN/dE = %.2e * (E / %.2e %s)^(-(%.2e + %.2e * log(E / %.2e %s)))'%(self.Phi0, self.E0, self.energy_unit, self.alpha, self.beta, self.E0, self.energy_unit)
 
     def __call__(self, E):
-        """The flux value dN/dE at energy E.
+        """The flux value dN/(dEdAdt) at energy E.
 
         Parameters
         ----------
@@ -308,5 +313,5 @@ class LogParabolaPowerLawFlux(FluxModel):
             Flux at energy E in unit [energy]^-1 [length]^-2 [time]^-1.
             By default that is GeV^-1 cm^-2 s^-1.
         """
-        flux = self.A * np.power(E / self.E0, -self.alpha - self.beta * np.log(E / self.E0))
+        flux = self.Phi0 * np.power(E / self.E0, -self.alpha - self.beta * np.log(E / self.E0))
         return flux
