@@ -149,7 +149,27 @@ class DetSigEff(object):
             raise TypeError('The implmethod property must be an instance of DetSigEffImplMethod!')
         self._implmethod = method
 
-    def __call__(self, src_pos, src_params):
+    def __call__(self, src_pos, src_flux_params):
         """Retrieves the detector signal efficiency for the given source
-        position and source parameters.
+        position and source flux parameters.
+
+        Parameters
+        ----------
+        src_pos : numpy record ndarray
+            The numpy record array containing the position of the signal
+            sources. The required fields of this record array are implementation
+            method dependent. But in the most generic case, it must contain the
+            following three fields: ra, dec, time.
+
+        src_flux_params : dict
+            The dictionary with the flux parameters of the sources. It is
+            assumed that the flux parameters are the same for all requested
+            sources.
+
+        Returns
+        -------
+        detsigeff : 1d ndarray
+            The array with the detector signal efficiency value for each given
+            source.
         """
+        return self._implmethod.get(src_pos, src_flux_params)
