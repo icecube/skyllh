@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import abc
 import numpy as np
 import multiprocessing as mp
 
@@ -139,13 +140,15 @@ class Parallelizable(object):
 
     @property
     def ncpu(self):
-        """The number (int) of CPUs to utilize.
+        """The number (int) of CPUs to utilize. If set to None, the global NCPU
+        setting should take precidence.
         """
         return self._ncpu
     @ncpu.setter
     def ncpu(self, n):
-        if(not isinstance(n, int)):
-            raise TypeError('The ncpu property must be of type int!')
-        if(n < 1):
-            raise ValueError('The ncpu property must be >= 1!')
+        if(n is not None):
+            if(not isinstance(n, int)):
+                raise TypeError('The ncpu property must be of type int!')
+            if(n < 1):
+                raise ValueError('The ncpu property must be >= 1!')
         self._ncpu = n
