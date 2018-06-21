@@ -1,6 +1,40 @@
 # -*- coding: utf-8 -*-
+
 import numpy as np
 import multiprocessing as mp
+
+# Global setting for the number of CPUs to use for functions that allow
+# multi-processing. If this setting is set to an int value in the range [1, N]
+# this setting will be used if a function's local ncpu setting is not specified.
+NCPU = None
+
+def get_ncpu(local_ncpu):
+    """Determines the number of CPUs to use for functions that support
+    multi-processing.
+
+    Parameters
+    ----------
+    local_ncpu : int | None
+        The local setting of the number of CPUs to use.
+
+    Returns
+    -------
+    ncpu : int
+        The number of CPUs to use by functions that allow multi-processing.
+        If ``local_ncpu`` is set to None, the global NCPU setting is returned.
+        If the global NCPU setting is None as well, the default value 1 is
+        returned.
+    """
+    ncpu = local_ncpu
+    if(ncpu is None):
+        ncpu = NCPU
+    if(ncpu is None):
+        ncpu = 1
+    if(not isinstance(ncpu, int)):
+        raise TypeError('The ncpu setting must be of type int!')
+    if(ncpu < 1):
+        raise ValueError('The ncpu setting must be >= 1!')
+    return ncpu
 
 def parallelize(func, args_list, ncpu):
     """Parallelizes the execution of the given function for different arguments.
@@ -92,3 +126,26 @@ def parallelize(func, args_list, ncpu):
         result_list += pid_result_list_map[pid]
 
     return result_list
+
+class Parallelizable(object):
+    """Abstract base class defining the ncpu property. Classes that derive from
+    this class indicate, that they can make use of multi-processing on several
+    CPUs at the same time.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self):
+        pass
+
+    @property
+    def ncpu(self):
+        """The number (int) of CPUs to utilize.
+        """
+        return self._ncpu
+    @ncpu.setter
+    def ncpu(self, n):
+        if(not isinstance(n, int)):
+            raise TypeError('The ncpu property must be of type int!')
+        if(n < 1):
+            raise ValueError('The ncpu property must be >= 1!')
+        self._ncpu = n
