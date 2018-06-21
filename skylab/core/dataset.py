@@ -303,11 +303,17 @@ class Dataset(object):
 
         Note: This does not call the ``prepare_data`` method! It only loads
               the data as the method names says.
+
+        Returns
+        -------
+        self : Dataset
+            The dataset itself.
         """
         fileloader_exp = storage.create_FileLoader(self.exp_pathfilename_list)
         fileloader_mc  = storage.create_FileLoader(self.mc_pathfilename_list)
         self._data_exp = fileloader_exp.load_data()
         self._data_mc  = fileloader_mc.load_data()
+        return self
 
     def add_data_preparation(self, func):
         """Adds the given data preparation function to the dataset.
@@ -329,19 +335,31 @@ class Dataset(object):
     def prepare_data(self):
         """Prepares the data by calling the assigned data preparation callback
         functions of this dataset.
+
+        Returns
+        -------
+        self : Dataset
+            The dataset instance itself.
         """
         for func in self._data_preparation_functions:
             (self._data_exp, self._data_mc) = func(self._data_exp, self._data_mc)
+        return self
 
     def load_and_prepare_data(self):
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
         It also asserts the data format of the experimental and monte-carlo
         data.
+
+        Returns
+        -------
+        self : Dataset
+            The dataset instance itself.
         """
         self.load_data()
         self.prepare_data()
         self.assert_data_format()
+        return self
 
     def add_binning_definition(self, binning):
         """Adds a binning setting to this dataset.
