@@ -12,9 +12,13 @@ The default units are [energy] = GeV, [length] = cm, [time] = s.
 import abc
 import numpy as np
 
+from copy import deepcopy
+
 from astropy import units
 
-class BaseFluxModel(object):
+from skylab.core.py import classname, isproperty
+
+class FluxModel(object):
     """Abstract base class for all flux models.
     This base class defines the units used for the flux calculation. At this
     point the function form of the flux model is not yet defined.
@@ -34,8 +38,8 @@ class BaseFluxModel(object):
         return self._energy_unit
     @energy_unit.setter
     def energy_unit(self, unit):
-        if(not isinstance(unit, units.Unit)):
-            raise TypeError('The property energy_unit must be of type astropy.units.Unit!')
+        if(not isinstance(unit, units.UnitBase)):
+            raise TypeError('The property energy_unit must be of type astropy.units.UnitBase!')
         self._energy_unit = unit
 
     @property
@@ -45,8 +49,8 @@ class BaseFluxModel(object):
         return self._length_unit
     @length_unit.setter
     def length_unit(self, unit):
-        if(not isinstance(unit, units.Unit)):
-            raise TypeError('The property length_unit must be of type astropy.units.Unit!')
+        if(not isinstance(unit, units.UnitBase)):
+            raise TypeError('The property length_unit must be of type astropy.units.UnitBase!')
         self._length_unit = unit
 
     @property
@@ -56,8 +60,8 @@ class BaseFluxModel(object):
         return self._time_unit
     @time_unit.setter
     def time_unit(self, unit):
-        if(not isinstance(unit, units.Unit)):
-            raise TypeError('The property time_unit must be of type astropy.units.Unit!')
+        if(not isinstance(unit, units.UnitBase)):
+            raise TypeError('The property time_unit must be of type astropy.units.UnitBase!')
         self._time_unit = unit
 
     @property
@@ -93,8 +97,34 @@ class BaseFluxModel(object):
         """
         return self.math_function_str + ' ' + self.unit_str
 
-class FluxModel(BaseFluxModel):
-    """Abstract base class for all flux models of the form
+    def copy(self, newprop=None):
+        """Copies this flux model object by calling the copy.deepcopy function,
+        and sets new properties if requested.
+
+        Parameters
+        ----------
+        newprop : dict | None
+            The dictionary with the new property values to set, where the
+            dictionary key is the property name and the dictionary value is the
+            new value of the property.
+        """
+        fluxmodel = deepcopy(self)
+
+        # Set the new property values.
+        if(newprop is not None):
+            if(not isinstance(newprop, dict)):
+                raise TypeError('The newprop argument must be of type dict!')
+            for (prop, val) in newprop.iteritems():
+                if(not hasattr(fluxmodel, prop)):
+                    raise KeyError('The flux model "%s" does not have a property named "%s"!'%(classname(self), prop))
+                if(not isproperty(fluxmodel, prop)):
+                    raise TypeError('The attribute "%s" of flux model "%s" is no property!'%(classname(self), prop))
+                setattr(fluxmodel, prop, val)
+
+        return fluxmodel
+
+class NormedFluxModel(FluxModel):
+    """Abstract base class for all normalized flux models of the form
 
         dN/(dEdAdt) = Phi0 * f(E/E0),
 
@@ -123,8 +153,8 @@ class FluxModel(BaseFluxModel):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, Phi0, E0):
-        super(FluxModel, self).__init__()
-        self.Phi0 = A
+        super(NormedFluxModel, self).__init__()
+        self.Phi0 = Phi0
         self.E0 = E0
 
     @property
@@ -133,7 +163,7 @@ class FluxModel(BaseFluxModel):
         [energy]^-1 [length]^-2 [time]^-1.
         """
         return self._Phi0
-    @A.setter
+    @Phi0.setter
     def Phi0(self, val):
         if(not isinstance(val, float)):
             raise TypeError('Property Phi0 must be of type float!')
@@ -150,7 +180,7 @@ class FluxModel(BaseFluxModel):
             raise TypeError('Property E0 must be of type float!')
         self._E0 = val
 
-class PowerLawFlux(FluxModel):
+class PowerLawFlux(NormedFluxModel):
     """Power law flux of the form
 
         dN/(dEdAdt) = Phi0 * (E / E0)^(-gamma)
@@ -263,7 +293,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
         flux = super(CutoffPowerLawFlux, self).__call__(E) * np.exp(-E / self.Ecut)
         return flux
 
-class LogParabolaPowerLawFlux(FluxModel):
+class LogParabolaPowerLawFlux(NormedFluxModel):
     """Power law flux with an index which varies as a log parabola in energy of
     the form
 
