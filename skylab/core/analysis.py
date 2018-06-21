@@ -49,6 +49,12 @@ class BinningDefinition(object):
         return self._binedges.size - 1
 
     @property
+    def bincenters(self):
+        """The center values of the bins.
+        """
+        return 0.5*(self._binedges[:-1] + self._binedges[1:])
+
+    @property
     def lower_edge(self):
         """The lowest bin edge of the binning.
         """
