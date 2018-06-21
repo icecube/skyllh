@@ -209,20 +209,26 @@ solid angle and the energy range $\Delta E$ of the summed selected events:
 \end{equation}
 
 
-\subsection{The DetSigEff Class}
+\subsection{The DetectorSignalEfficiency Class}
 
-\class{DetSigEff} provides a detector signal efficiency class to
+\class{DetectorSignalEfficiency} provides a detector signal efficiency class to
 compute the integral given in equation \eq{eq:Ysj}. The detector signal
 efficiency depends on the flux model and its source parameters, which might
 change during the likelihood maximization process. It is also dependent on the
-detector effective area, hence detector dependent. Thus, \class{DetSigEff} must
-be provided with a detector signal efficiency implementation method derived from
-the \class{DetSigEffImplMethod} class.
+detector effective area, hence detector dependent. Thus,
+\class{DetectorSignalEfficiency} must be provided with a detector signal
+efficiency implementation method derived from the \class{DetSigEffImplMethod}
+class.
+
+Detector signal efficiency values can be retrieved via the call operator
+\code{\_\_call\_\_(src\_pos src\_flux\_params)} , which takes the celestrial position of the
+source and the flux parameters of the source as arguments.
 
 \subsubsection{The DetSigEffImplMethod Class}
 
-\class{DetSigEffImplMethod} defines the interface between the detector signal
-efficiency implementation method and the \class{DetSigEff} class.
+\class{DetSigEffImplMethod} is an abstract base class and defines the interface
+between the detector signal efficiency implementation method and the
+\class{DetectorSignalEfficiency} class.
 
 % List of detector signal efficiency implementation methods.
 Table \ref{tbl:I3DetSigEffImplMethod} lists all available IceCube specific
@@ -232,6 +238,8 @@ detector signal efficiency implementation methods and their description.
 \label{tbl:I3DetSigEffImplMethod}
 
 \begin{tabular}{l | p{10cm}}
+\hline
+Name of Class & Description \\
 \hline
 I3FixedFluxDetSigEff & Detector signal efficiency implementation method for a
     fixed flux model, which might contain flux parameters, but which
@@ -243,7 +251,13 @@ I3FixedFluxDetSigEff & Detector signal efficiency implementation method for a
 
     The constructor of this implementation method requires a $\sin(\delta)$
     binning definition for the monte-carlo events and the order of the spline
-    function.
+    function.\\
+I3PowerLawFluxDetSigEff & Detector signal efficiency implementation method for a
+    power law flux model, implemented by the \class{PowerLawFlux} class.
+    This method creates a 2D spline function of given orders for the logarithmic
+    values of the $\sin(\delta)$-dependent detector signal efficiency for a
+    range of $\gamma$ values. This implementation method supports
+    multi-processing.
 \end{tabular}
 \end{table}
 

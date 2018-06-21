@@ -4,7 +4,30 @@ import abc
 
 import numpy as np
 
-from skylab.physics.flux import BaseFluxModel
+from astropy import units
+
+from skylab.physics.flux import FluxModel
+
+
+def get_conversion_factor_to_internal_flux_unit(fluxmodel):
+    """Calculates the unit conversion factor for converting the used flux
+    unit of the given flux model into the skylab internally used flux unit
+    1/(GeV cm2 s).
+
+    Parameters
+    ----------
+    fluxmodel : FluxModel
+        The flux model instance for which to calculate the unit conversion
+        factor.
+
+    Returns
+    -------
+    unit_conversion_factor : float
+        The unit conversion factor.
+    """
+    unit_conversion_factor = (1./fluxmodel.energy_unit * 1./fluxmodel.length_unit**2 * 1./fluxmodel.time_unit).to(1./units.GeV * 1./units.cm**2 * 1./units.s).value
+    return unit_conversion_factor
+
 
 class DetSigEffImplMethod(object):
     """Abstract base class for an implementation method of a detector signal
@@ -46,12 +69,12 @@ class DetSigEffImplMethod(object):
         ----------
         data_mc : ndarray
             The numpy record ndarray holding the monte-carlo event data.
-        fluxmodel : BaseFluxModel
-            The flux model instance. Must be an instance of BaseFluxModel.
+        fluxmodel : FluxModel
+            The flux model instance. Must be an instance of FluxModel.
         livetime : float
             The live-time in days to use for the detector signal efficiency.
         """
-        if(not supports_fluxmodel(fluxmodel)):
+        if(not self.supports_fluxmodel(fluxmodel)):
             raise TypeError('The DetSigEffImplMethod "%s" does not support the flux model "%s"!'%(self.__class__.__name__, fluxmodel.__class__.__name__))
 
     @abc.abstractmethod
@@ -75,7 +98,7 @@ class DetSigEffImplMethod(object):
         pass
 
 
-class DetSigEff(object):
+class DetectorSignalEfficiency(object):
     """This is the detector signal efficiency class.
 
     To construct a detector signal efficiency object, four ingredients are
@@ -95,8 +118,8 @@ class DetSigEff(object):
         ----------
         data_mc : ndarray
             The numpy record ndarray holding the monte-carlo event data.
-        fluxmodel : BaseFluxModel
-            The flux model instance. Must be an instance of BaseFluxModel.
+        fluxmodel : FluxModel
+            The flux model instance. Must be an instance of FluxModel.
         livetime : float
             The live-time to use for the detector signal efficiency. Must be
             given in the time unit of the flux model.
@@ -109,6 +132,9 @@ class DetSigEff(object):
         self.fluxmodel = fluxmodel
         self.livetime = livetime
         self.implmethod = implmethod
+
+        # Construct the detector signal efficiency.
+        self._implmethod.construct(self._data_mc, self._fluxmodel, self._livetime)
 
     @property
     def data_mc(self):
@@ -130,15 +156,20 @@ class DetSigEff(object):
         return self._fluxmodel
     @fluxmodel.setter
     def fluxmodel(self, model):
-        if(not isinstance(model, BaseFluxModel)):
-           raise TypeError('The fluxmodel property must be an instance of BaseFluxModel!')
+        if(not isinstance(model, FluxModel)):
+           raise TypeError('The fluxmodel property must be an instance of FluxModel!')
         self._fluxmodel = model
 
     @property
     def livetime(self):
-        """The live-time in the time unit of the flux model, by default seconds.
+        """The live-time in days.
         """
         return self._livetime
+    @livetime.setter
+    def livetime(self, lt):
+        if(not isinstance(lt, float)):
+            raise TypeError('The livetime property must be of type float!')
+        self._livetime = lt
 
     @property
     def implmethod(self):
