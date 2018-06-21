@@ -3,6 +3,8 @@
 """The analyis module of skylab contains analyis related utility classes.
 """
 
+import numpy as np
+
 class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
