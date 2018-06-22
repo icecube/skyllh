@@ -101,6 +101,10 @@ class DetSigEffImplMethod(object):
 class DetectorSignalEfficiency(object):
     """This is the detector signal efficiency class.
 
+    The detector signal efficiency, Y_s(x_s,p_s), is defined as the mean number
+    of signal events per steradian detected from a given source at position x_s
+    with flux parameters p_s.
+
     To construct a detector signal efficiency object, four ingredients are
     needed: the monte-carlo data events, a signal flux model, the live time, and
     an implementation method that knows howto contruct the actual detector
@@ -182,7 +186,8 @@ class DetectorSignalEfficiency(object):
 
     def __call__(self, src_pos, src_flux_params):
         """Retrieves the detector signal efficiency for the given source
-        position and source flux parameters.
+        position and source flux parameters. The unit is mean number of signal
+        events per steradian, i.e. sr^-1.
 
         Parameters
         ----------
@@ -201,6 +206,7 @@ class DetectorSignalEfficiency(object):
         -------
         detsigeff : 1d ndarray
             The array with the detector signal efficiency value for each given
-            source.
+            source in unit mean number of signal events per steradian,
+            i.e. sr^-1.
         """
         return self._implmethod.get(src_pos, src_flux_params)
