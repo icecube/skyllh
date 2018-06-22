@@ -271,7 +271,7 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
         # Define a function that creates a detector signal efficiency histogram
         # along sin(dec) for a given flux model, i.e. for given spectral index,
         # gamma.
-        def hist(data_sin_true_dec, sinDec_binning, weights, fluxmodel):
+        def hist(data_sin_true_dec, data_true_energy, sinDec_binning, weights, fluxmodel):
             """Creates a histogram of the detector signal efficiency with the
             given sin(dec) binning.
 
@@ -279,6 +279,8 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
             ----------
             data_sin_true_dec : 1d ndarray
                 The sin(true_dec) values of the monte-carlo events.
+            data_true_energy : 1d ndarray
+                The true energy of the monte-carlo events.
             sinDec_binning : BinningDefinition
                 The sin(dec) binning definition to use for the histogram.
             weights : 1d ndarray
@@ -295,7 +297,7 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
             """
             (h, edges) = np.histogram(data_sin_true_dec,
                                       bins = sinDec_binning.binedges,
-                                      weights = weights,
+                                      weights = weights * fluxmodel(data_true_energy),
                                       density = False)
             return h
 
@@ -304,7 +306,7 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
 
         # Construct the arguments for the hist function to be used in the
         # multiproc.parallelize function.
-        args_list = [ ((data_sin_true_dec, self.sinDec_binning, weights, fluxmodel.copy({'gamma':gamma})),{})
+        args_list = [ ((data_sin_true_dec, data_mc['true_energy'], self.sinDec_binning, weights, fluxmodel.copy({'gamma':gamma})),{})
                      for gamma in self.gamma_binning.binedges ]
         h = np.vstack(multiproc.parallelize(hist, args_list, multiproc.get_ncpu(self.ncpu))).T
 
