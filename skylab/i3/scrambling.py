@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from skylab.core.scrambling import TimeScramblingMethod
-
-from i3skylab.coord import hor_to_equ_transform, azi_to_ra_transform
+from skylab.i3.coords import hor_to_equ_transform, azi_to_ra_transform
 
 class I3TimeScramblingMethod(TimeScramblingMethod):
     """The I3TimeScramblingMethod class provides a data scrambling method to
