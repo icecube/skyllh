@@ -140,10 +140,11 @@ class Parallelizable(object):
 
     @property
     def ncpu(self):
-        """The number (int) of CPUs to utilize. If set to None, the global NCPU
-        setting should take precidence.
+        """The number (int) of CPUs to utilize. It calls the ``get_ncpu``
+        utility function with this property as argument. Hence, if this property
+        is set to None, the global NCPU setting will take precidence.
         """
-        return self._ncpu
+        return get_ncpu(self._ncpu)
     @ncpu.setter
     def ncpu(self, n):
         if(n is not None):

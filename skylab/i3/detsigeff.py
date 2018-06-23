@@ -308,7 +308,7 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
         # multiproc.parallelize function.
         args_list = [ ((data_sin_true_dec, data_mc['true_energy'], self.sinDec_binning, weights, fluxmodel.copy({'gamma':gamma})),{})
                      for gamma in self.gamma_binning.binedges ]
-        h = np.vstack(multiproc.parallelize(hist, args_list, multiproc.get_ncpu(self.ncpu))).T
+        h = np.vstack(multiproc.parallelize(hist, args_list, self.ncpu)).T
 
         # Normalize by solid angle of each bin along the sin(dec) axis.
         # The solid angle is given by 2*\pi*(\Delta sin(\delta))
