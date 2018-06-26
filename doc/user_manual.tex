@@ -57,6 +57,7 @@ $\Lambda$ with respect to a null hypothesis of no observation, i.e.
 equation \ref{eq:L} at $\ns=0$ is tested:
 \begin{equation}
  \log \Lambda(\ns,\ps) = \log \frac{L(\ns,\ps)}{L(\ns=0)} = \sum_{i=1}^{N} \log \left[ 1 + \frac{\ns}{N}\left( \frac{\mathcal{S}_i(\xs,\ps)}{\mathcal{B}_i} - 1 \right) \right]
+\label{eq:logLambda}
 \end{equation}
 By defining
 \begin{equation}
@@ -66,7 +67,7 @@ By defining
 this reads as:
 \begin{equation}
  \log \Lambda(\ns,\ps) = \sum_{i=1}^{N} \log (1 + \ns\mathcal{X}_i(\ps))
- \label{eq:logLambda}
+ \label{eq:logLambdaOfX}
 \end{equation}
 This leads to the test statistic TS
 \begin{equation}
@@ -74,6 +75,48 @@ This leads to the test statistic TS
  \label{eq:TS}
 \end{equation}
 with separation of over- ($\ns > 0$) and under-fluctuations ($\ns < 0$).
+
+\subsection{Signal \& Background PDFs}
+
+The likelihood ratio function as given in equation \eq{eq:logLambda}
+incorperates signal, $\mathcal{S}_i$, and background, $\mathcal{B}_i$,
+probability density functions (PDFs). Both PDFs can be factorized into a
+spatial ($S_i$), an energy ($\mathcal{E}_i$), and a time ($\mathcal{T}_i$)
+component.
+
+The signal PDF can be written as
+\begin{equation}
+ \mathcal{S}_i(\xs,\ps) = S_{\mathcal{S},i}(\vec{x}_i|\xs,\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathcal{S},i}(E_i|\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathcal{S},i}(t_i|\vec{p}_{\mathrm{s,time}}),
+\end{equation}
+where the signal model parameters $\xs$ can be divided into spatial, energy, and
+time parameters, i.e. $\vec{p}_{\mathrm{s}} = (\vec{p}_{\mathrm{s,spatial}},
+\vec{p}_{\mathrm{s,energy}}, \vec{p}_{\mathrm{s,time}})$. The spatial component,
+$S_i$, can be identified as the point-spread-function (PSF) of the detector.
+For a point-like source model a convinient and widely used PSF is the gaussian:
+\begin{equation}
+ S_{\mathcal{S},i}(\vec{x}_i|\xs,\vec{p}_{\mathrm{s,spatial}}) = S_i(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
+\end{equation}
+where $r_i$ is the space angle between the source position and the recorded
+reconstructed event direction. In equatorial coordinates,
+$\vec{x} = (\alpha,\delta)$, the cosine of $r_i$ is given by
+\begin{equation}
+ \cos(r_i) = \cos(\alpha_{\mathrm{s}} - \alpha_i) \cos(\delta_{\mathrm{s}})\cos{\delta_i} + \sin(\delta_{\mathrm{s}})\sin(\delta_i).
+\end{equation}
+The data quantity $\sigma_i$ describes the angular reconstruction uncertainty of
+the event, hence the PSF is narrower for well-reconstructed events, and wider
+for events which have a large reconstruction uncertainty.
+
+When considering a power law as source flux model, the energy source parameters,
+$\vec{p}_{\mathrm{s,energy}}$, consists of the spectral index $\gamma$ and possibly
+an energy cut-off parameter $E_{\mathrm{cut}}$.
+
+In analog to the signal PDF, the background PDF can be formulated as
+\begin{equation}
+ \mathcal{B}_i = S_{\mathcal{B},i}(\vec{x}_i) \mathcal{E}_{\mathcal{B},i}(E_i) \mathcal{T}_{\mathcal{B},i}(t_i).
+\end{equation}
+All the background PDF components can either be determined from the data itself
+or by using monte-carlo simulation.
+
 
 \subsection{Multiple Datasets}
 
@@ -128,7 +171,7 @@ differential flux $\dPhisdE$ of the source.
 \end{equation}
 
 Using the sample weight factor $f_{j}(\ps~|\xs)$ the likelihood ratio of
-equation \eq{eq:logLambdaComposite} with equation \eq{eq:logLambda} can now
+equation \eq{eq:logLambdaComposite} with equation \eq{eq:logLambdaOfX} can now
 be written as
 \begin{equation}
  \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \sum_{i=1}^{N} \log (1 + \ns f_{j}(\ps~|\xs)\mathcal{X}_i(\ps))
