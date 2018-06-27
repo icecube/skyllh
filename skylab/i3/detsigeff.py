@@ -132,7 +132,7 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
         self._log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
             self.sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
 
-    def get(self, src_pos, src_flux_params):
+    def get(self, src_pos, src_params):
         """Retrieves the detector signal efficiency for the list of given
         sources.
 
@@ -141,8 +141,9 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
         src_pos : numpy record ndarray
             The numpy record ndarray with the field ``dec`` holding the
             declination of the source.
-        src_flux_params : dict
-            The dictionary containing the flux parameters of the sources.
+        src_params : dict
+            The dictionary containing the parameters of the sources. For this
+            implementation method it is empty.
 
         Returns
         -------
@@ -318,7 +319,7 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
             self.sinDec_binning.bincenters, self.gamma_binning.binedges, np.log(h),
             kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
 
-    def get(self, src_pos, src_flux_params):
+    def get(self, src_pos, src_params):
         """Retrieves the detector signal efficiency for the given list of
         sources and their flux parameters.
 
@@ -328,9 +329,8 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
             The numpy record ndarray with the field ``dec`` holding the
             declination of the source.
 
-        src_flux_params : dict
-            The dictionary containing the flux parameter ``gamma`` of the
-            sources.
+        src_params : dict
+            The dictionary containing the source parameter ``gamma``.
 
         Returns
         -------
@@ -338,7 +338,7 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
             The array with the detector signal efficiency for each source.
         """
         src_dec = np.atleast_1d(src_pos['dec'])
-        gamma = src_flux_params['gamma']
+        gamma = src_params['gamma']
 
         # Create results array.
         values = np.zeros_like(src_dec, dtype=np.float64)

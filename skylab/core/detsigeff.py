@@ -78,7 +78,7 @@ class DetSigEffImplMethod(object):
             raise TypeError('The DetSigEffImplMethod "%s" does not support the flux model "%s"!'%(self.__class__.__name__, fluxmodel.__class__.__name__))
 
     @abc.abstractmethod
-    def get(self, src_pos, src_flux_params):
+    def get(self, src_pos, src_params):
         """Abstract method to receive the detector signal efficiency values for
         an array of given sources, given by their source position and source
         flux parameters.
@@ -90,9 +90,9 @@ class DetSigEffImplMethod(object):
             sources. The required fields of this record array are implementation
             method dependent. But in the most generic case, it must contain the
             following three fields: ra, dec, time.
-        src_flux_params : dict
-            The dictionary with the flux parameters of the sources. It is
-            assumed that the flux parameters are the same for all requested
+        src_params : dict
+            The dictionary with the parameters of the sources. It is
+            assumed that the source parameters are the same for all requested
             sources.
         """
         pass

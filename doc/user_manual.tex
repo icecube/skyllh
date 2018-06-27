@@ -9,6 +9,7 @@
 
 \newcommand{\ns}{n_{\mathrm{s}}}
 \newcommand{\ps}{\vec{p}_{\mathrm{s}}}
+\newcommand{\psk}{\vec{p}_{\mathrm{s},k}}
 \newcommand{\xs}{\vec{x}_{\mathrm{s}}}
 \newcommand{\xsk}{\vec{x}_{\mathrm{s},k}}
 
@@ -28,21 +29,20 @@ test and the used test statistic and then describes the used optimizations.
 Skylab implements the two-component likelihood approach with a likelihood
 function $\mathcal{L}(n_{\mathrm{s}},\vec{p}_{\mathrm{s}}~|D)$ of the form
 \begin{equation}
- \mathcal{L}(\ns,\ps~|D) = \prod_{i=1}^{N}\left[ \frac{\ns}{N} \mathcal{S}_{i}(\vec{x_{\mathrm{s}}},\ps) + (1 - \frac{\ns}{N}) \mathcal{B}_{i} \right],
+ \mathcal{L}(\ns,\ps~|D) = \prod_{i=1}^{N}\left[ \frac{\ns}{N} \mathcal{S}_{i}(\ps) + (1 - \frac{\ns}{N}) \mathcal{B}_{i} \right],
 \label{eq:L}
 \end{equation}
 where $\ns$ is the number of signal events, hence, $(N-\ns)$ the number of
 background events in the dataset $D$ of $N$ total events.
-The set of signal model parameters is denoted as $\ps$. Signal model parameters
-are for instance the spectral index $\gamma$ of the source.
-$\mathcal{S}_i(\vec{x}_{\mathrm{s}},\ps)$ is the value of the signal PDF
-assuming a signal source at location $\vec{x}_{\mathrm{s}}$ for the $i$th data
-event, whereas $\mathcal{B}_i$ is the value of background PDF of the $i$th data
-event.
+The set of signal model parameters is denoted as $\ps$. For a point-like source
+model, the signal model parameters include the source position $\xs$ and the
+spectral index $\gamma$ of the source flux.
+$\mathcal{S}_i(\ps)$ and $\mathcal{B}_i$ is the value of the signal and background PDF for the $i$th data
+event, respectively.
 
-The signal and background PDFs must incorperate the detector efficiency (yield)
-$\mathcal{Y}_i$, which usually is dependent on the data event's sky location,
-energy, and time.
+The signal and background PDFs must incorperate the detector efficiency (yield),
+$\mathcal{Y}_i$, which, in general, depends on the celestrial direction, the
+energy, and the observation time of the data event.
 
 For computational stability reasons the logarithm of the likelihood function of
 equation \ref{eq:L} is used in Skylab:
@@ -56,12 +56,12 @@ For estimating the significance of an observation, the likelihood ratio
 $\Lambda$ with respect to a null hypothesis of no observation, i.e.
 equation \ref{eq:L} at $\ns=0$ is tested:
 \begin{equation}
- \log \Lambda(\ns,\ps) = \log \frac{L(\ns,\ps)}{L(\ns=0)} = \sum_{i=1}^{N} \log \left[ 1 + \frac{\ns}{N}\left( \frac{\mathcal{S}_i(\xs,\ps)}{\mathcal{B}_i} - 1 \right) \right]
+ \log \Lambda(\ns,\ps) = \log \frac{L(\ns,\ps)}{L(\ns=0)} = \sum_{i=1}^{N} \log \left[ 1 + \frac{\ns}{N}\left( \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} - 1 \right) \right]
 \label{eq:logLambda}
 \end{equation}
 By defining
 \begin{equation}
-\mathcal{X}_i(\ps) \equiv \frac{1}{N}\left( \frac{\mathcal{S}_i(\xs,\ps)}{\mathcal{B}_i} - 1 \right),
+\mathcal{X}_i(\ps) \equiv \frac{1}{N}\left( \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} - 1 \right),
 \label{eq:Xi}
 \end{equation}
 this reads as:
@@ -86,15 +86,16 @@ component.
 
 The signal PDF can be written as
 \begin{equation}
- \mathcal{S}_i(\xs,\ps) = S_{\mathcal{S},i}(\vec{x}_i|\xs,\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathcal{S},i}(E_i|\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathcal{S},i}(t_i|\vec{p}_{\mathrm{s,time}}),
+ \mathcal{S}_i(\ps) = S_{\mathcal{S},i}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathcal{S},i}(E_i|\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathcal{S},i}(t_i|\vec{p}_{\mathrm{s,time}}),
 \end{equation}
-where the signal model parameters $\xs$ can be divided into spatial, energy, and
+where the signal model parameters $\ps$ can be divided into spatial, energy, and
 time parameters, i.e. $\vec{p}_{\mathrm{s}} = (\vec{p}_{\mathrm{s,spatial}},
 \vec{p}_{\mathrm{s,energy}}, \vec{p}_{\mathrm{s,time}})$. The spatial component,
 $S_i$, can be identified as the point-spread-function (PSF) of the detector.
-For a point-like source model a convinient and widely used PSF is the gaussian:
+For a point-like source model a convinient and widely used PSF is the gaussian
+function:
 \begin{equation}
- S_{\mathcal{S},i}(\vec{x}_i|\xs,\vec{p}_{\mathrm{s,spatial}}) = S_i(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
+ S_{\mathcal{S},i}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \equiv S_i(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
 \end{equation}
 where $r_i$ is the space angle between the source position and the recorded
 reconstructed event direction. In equatorial coordinates,
@@ -136,16 +137,16 @@ $n_{\mathrm{s},j}$ for the individual data samples. The distribution of $\ns$
 along the different data samples is based on the detector signal efficiency
 $\mathcal{Y}_{\mathrm{s},j}$ of each sample:
 \begin{equation}
- n_{s,j}(\ps~|\vec{x}_{\mathrm{s}}) = \ns \frac{\mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s}},\ps)}{\sum_j \mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s}},\ps)},
+ n_{s,j}(\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s},j}(\ps)},
  \label{eq:nsjy}
 \end{equation}
-where the parameter $\vec{x}_{\mathrm{s}}$ denotes the location(s) of the source(s).
-The parameter vector $\ps$ contains additional source hypothesis parameters,
+where $\ps$ denotes the source parameters as above and contains the source
+position(s) $\xs$ and possible additional source parameters like
 for instance the spectral index $\gamma$.
 
 By defining the sample weight factor
 \begin{equation}
- f_j(\ps~|\vec{x}_{\mathrm{s}}) \equiv \frac{\mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s}},\ps)}{\sum_j \mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s}},\ps)}
+ f_j(\ps) \equiv \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s},j}(\ps)}
 \end{equation}
 with the property
 \begin{equation}
@@ -153,57 +154,60 @@ with the property
 \end{equation}
 equation \ref{eq:nsjy} reads
 \begin{equation}
- n_{s,j}(\ps~|\vec{x}_{\mathrm{s}}) = \ns f_{j}(\ps~|\vec{x}_{\mathrm{s}})
+ n_{s,j}(\ps) = \ns f_{j}(\ps)
  \label{eq:ns-sample-weight-factor}
 \end{equation}
 
-The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\ps,\xs)$
-depends on the signal model parameters $\ps$ and the source location(s) $\xs$
-and can be calculated via the detector effective area and the source flux.
+The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\ps)$
+depends on the signal model parameters $\ps$, hence, on the source location(s) $\xs$
+and the spectral index $\gamma$. It can be calculated via the detector effective
+area and the source flux.
 
 For a single point source the sample weight factor can be calculated via the effective area
 $A_{\mathrm{eff},j}(E)|_{\xs}$ at the source location of each data sample, and the
 differential flux $\dPhisdE$ of the source.
 \begin{equation}
- f_{j}(\ps~|\xs) = \frac{\int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xs} \dPhisdE(E,\ps)}
-		        {\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\xs} \dPhisdE(E,\ps)}
+ f_{j}(\ps) = \frac{\int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xs} \dPhisdE(E,\ps)}
+	           {\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\xs} \dPhisdE(E,\ps)}
  \label{eq:fj}
 \end{equation}
 
-Using the sample weight factor $f_{j}(\ps~|\xs)$ the likelihood ratio of
+Using the sample weight factor $f_{j}(\ps)$ the likelihood ratio of
 equation \eq{eq:logLambdaComposite} with equation \eq{eq:logLambdaOfX} can now
 be written as
 \begin{equation}
- \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \sum_{i=1}^{N} \log (1 + \ns f_{j}(\ps~|\xs)\mathcal{X}_i(\ps))
+ \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \sum_{i=1}^{N} \log (1 + \ns f_{j}(\ps)\mathcal{X}_i(\ps))
 \end{equation}
 
 
 For multiple point sources, i.e. a stacking of $K$ point sources with positions
 $\vec{x}_{\mathrm{s},k}$, the sample weight factor of each single source needs
 to be taking into account. Thus, $f_{j}$ can be written as the sum of the
-products of the sample weight factor $f_{j}(\ps~|\vec{x}_{\mathrm{s},k})$ for
-source $k$ and the relative strength $f_{k}(\ps~|\vec{x}_{\mathrm{s},k})$ of the
+products of the sample weight factor $f_{j}(\vec{p}_{\mathrm{s},k})$ for
+source $k$ and the relative strength $f_{k}(\vec{p}_{\mathrm{s},k})$ of the
 $k$th source in all data samples compared to all the other sources in all data
 samples.
 \begin{equation}
- f_{j}(\ps~|\xs) = \sum_{k=1}^{K} f_{j}(\ps~|\vec{x}_{\mathrm{s},k}) f_{k}(\ps~|\vec{x}_{\mathrm{s},k})
+ f_{j}(\ps) = \sum_{k=1}^{K} f_{j}(\vec{p}_{\mathrm{s},k}) f_{k}(\vec{p}_{\mathrm{s},k})
 \end{equation}
 The relative strength of source $k$ can be written as
 \begin{equation}
- f_{k}(\ps~|\vec{x}_{\mathrm{s},k}) =
-    \frac{\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\ps)}
-         {\sum_{\kappa=1}^{K} \sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},\kappa}} \dPhisdE(E,\ps) }
+ f_{k}(\vec{p}_{\mathrm{s},k}) =
+    \frac{\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\vec{p}_{\mathrm{s},k})}
+         {\sum_{\kappa=1}^{K} \sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},\kappa}} \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
  \label{eq:fk}
 \end{equation}
-Combining equation \ref{eq:fj} with $\xs \equiv \vec{x}_{\mathrm{s},k}$ and
-\ref{eq:fk} leads to the final expression for $f_{j}$ for multiple sources:
+The combination of equation \ref{eq:fj} with $\ps \equiv \vec{p}_{\mathrm{s},k}$, hence,
+$\xs \equiv \vec{x}_{\mathrm{s},k}$ and equation
+\ref{eq:fk}, leads to the final expression for $f_{j}$ for multiple sources:
 \begin{equation}
- f_{j}(\ps~|\xs) = \frac{\sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\ps) }
-                        {\sum_{i=1}^{J} \sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\ps) }
+ f_{j}(\ps) =
+    \frac{\sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
+         {\sum_{i=1}^{J} \sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
  \label{eq:fjmultips}
 \end{equation}
-One should note that the numerator of equation \eq{eq:fjmultips} is one of the
-summands of the sum in the denumerator, i.e. for $i=j$.
+One should note that by definition the numerator of equation \eq{eq:fjmultips}
+is one of the summands of the sum in the denumerator, i.e. for $i=j$.
 
 \subsection{Optimizations}
 
@@ -223,16 +227,16 @@ TODO: Derive the gradients of the LH function.
 
 \section{Detector Signal Efficiency}
 
-The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\vec{x}_{\mathrm{s},k},\ps)$
+The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\psk)$
 of a data sample $j$ for a source $k$ is defined as the integral over the energy
 of the product of the detector effective area and the differential flux
 $\frac{\mathrm{d}\Phi}{\mathrm{d}E}$ of the source:
 \begin{equation}
- \mathcal{Y}_{\mathrm{s},j}(\xs,\ps) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xsk} \frac{\mathrm{d}\Phi}{\mathrm{d}E}(E,\ps) T_{\mathrm{live},j}
+ \mathcal{Y}_{\mathrm{s},j}(\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xsk} \frac{\mathrm{d}\Phi}{\mathrm{d}E}(E,\psk) T_{\mathrm{live},j}
 \label{eq:Ysj}
 \end{equation}
 It is the mean number of signal events per steradian expected from a source at
-position $\xs$ with source flux parameters $\ps$. In the most-general case,
+position $\xs$ with source parameters $\ps$. In the most-general case,
 the source position $\xs$ consists of three quantities: right-ascention,
 declination, and observation time, i.e.
 $\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}},t_{\mathrm{obs}})$.
@@ -259,14 +263,14 @@ solid angle and the energy range $\Delta E$ of the summed selected events:
 compute the integral given in equation \eq{eq:Ysj}. The detector signal
 efficiency depends on the flux model and its source parameters, which might
 change during the likelihood maximization process. It is also dependent on the
-detector effective area, hence detector dependent. Thus,
+detector effective area, hence is detector dependent. Thus,
 \class{DetectorSignalEfficiency} must be provided with a detector signal
 efficiency implementation method derived from the \class{DetSigEffImplMethod}
 class.
 
 Detector signal efficiency values can be retrieved via the call operator
-\code{\_\_call\_\_(src\_pos src\_flux\_params)} , which takes the celestrial position of the
-source and the flux parameters of the source as arguments.
+\code{\_\_call\_\_(src\_pos src\_params)}, which takes the celestrial position
+of the source and the additional source parameters as arguments.
 
 \subsubsection{The DetSigEffImplMethod Class}
 
@@ -285,7 +289,7 @@ detector signal efficiency implementation methods and their description.
 \hline
 Name of Class & Description \\
 \hline
-I3FixedFluxDetSigEff & Detector signal efficiency implementation method for a
+I3FixedFluxDetSigEff & IceCube detector signal efficiency implementation method for a
     fixed flux model, which might contain flux parameters, but which
     are not fit in the likelihood maximization process.
     This implementation assumes that the detector effective
@@ -296,7 +300,7 @@ I3FixedFluxDetSigEff & Detector signal efficiency implementation method for a
     The constructor of this implementation method requires a $\sin(\delta)$
     binning definition for the monte-carlo events and the order of the spline
     function.\\
-I3PowerLawFluxDetSigEff & Detector signal efficiency implementation method for a
+I3PowerLawFluxDetSigEff & IceCube detector signal efficiency implementation method for a
     power law flux model, implemented by the \class{PowerLawFlux} class.
     This method creates a 2D spline function of given orders for the logarithmic
     values of the $\sin(\delta)$-dependent detector signal efficiency for a
@@ -307,15 +311,15 @@ I3PowerLawFluxDetSigEff & Detector signal efficiency implementation method for a
 
 
 
-\section{Implemented Likelihood Models}
-This section describes the implemented likelihood models.
+\section{Implemented Log-Likelihood Models}
+This section describes the implemented log-likelihood models. \cite{TimeDepPSSearchMethods2010}
 
-\subsection{Time Dependent Point-Source Flare}
-
-The \class{TimeDepPSFlareLHModel} class provides the likelihood model for searching for a point source with unknown time-dependence.
-The search is based on the formulism described in \cite{TimeDepPSSearchMethods2010}.
-
-The model utilizes a two-component likelihood function with signal and background events.
+% \subsection{Time Dependent Point-Source Flare}
+%
+% The \class{TimeDepPSFlareLHModel} class provides the likelihood model for searching for a point source with unknown time-dependence.
+% The search is based on the formulism described in \cite{TimeDepPSSearchMethods2010}.
+%
+% The model utilizes a two-component likelihood function with signal and background events.
 
 \bibliographystyle{unsrt}
 \bibliography{biblio}
