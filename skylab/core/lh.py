@@ -13,7 +13,7 @@ Examples
 --------
 def signal_fraction(events, params):
     return params['nsignal'] / len(events)
-    
+
 def background_fraction(events, params):
     return 1 - signal_fraction(events, params)
 
@@ -28,12 +28,12 @@ from py import is_sequence
 def log(lhcomponent):
     """Convinient function to add the numpy.log operation to the likelihood
     function.
-    
+
     Parameters
     ----------
     lhcomponent : LHComponent
         The LHComponent object the logarithm operation should be added to.
-        
+
     Returns
     -------
     lhcomponent : LHComponent
@@ -45,12 +45,12 @@ def log(lhcomponent):
 def sum(lhcomponent):
     """Convinient function to add the numpy.sum operation to the likelihood
     function.
-    
+
     Parameters
     ----------
     lhcomponent : LHComponent
         The LHComponent object the sum operation should be added to.
-        
+
     Returns
     -------
     lhcomponent : LHComponent
@@ -71,17 +71,17 @@ class LHComponent(object):
         """Constructs a LHComponent object for a given source object, so that
         the source object can be used as component in the final likelihood
         function.
-        
+
         Parameters
         ----------
         source : callable
             The callable source of the LH component. The __call__ function must
             have the following call signature:
-                __call__(self, events, params),
+                __call__(self, params, events),
             where events is a one-dimensional numpy.recarray where each entry
             represents an event, and params is a dictionary with the current
             set of parameters of the likelihood function.
-        
+
         lhcomponent : LHComponent | None
             If specified a copy of that given object will be made.
         """
@@ -96,7 +96,7 @@ class LHComponent(object):
         #-----------------------------------------------------------------------
         self.source = source
         self.operation_list = list()
-    
+
     ###
     # Operator methods.
     #___________________________________________________________________________
@@ -125,7 +125,7 @@ class LHComponent(object):
         lhc = self.copy()
         lhc.add(x)
         return lhc
-    
+
     #___________________________________________________________________________
     def __mul__(self, x):
         """Implementation to support the operation ``b = a * x``, where
@@ -152,7 +152,7 @@ class LHComponent(object):
         lhc = self.copy()
         lhc.multiply(x)
         return lhc
-    
+
     ###
     # Public class methods.
     #___________________________________________________________________________
@@ -168,7 +168,7 @@ class LHComponent(object):
 
             In this case a :py:class:`CombinedLHComponent` object with operator
             ``numpy.add`` of ``a`` and ``x`` is created replacing ``a``.
-        
+
         Returns
         -------
         self : LHComponent
@@ -193,7 +193,7 @@ class LHComponent(object):
         return self
     #---------------------------------------------------------------------------
     __iadd__ = add
-    
+
     #___________________________________________________________________________
     def multiply(self, x):
         """Implements the in-place operation ``a *= x``, where ``a`` is this
@@ -234,7 +234,7 @@ class LHComponent(object):
         return self
     #---------------------------------------------------------------------------
     __imul__ = multiply
-    
+
     #___________________________________________________________________________
     def add_operation(self, operator, *operator_args, **operator_kwargs):
         """Adds the operation with the given operator with its given arguments
@@ -263,7 +263,7 @@ class LHComponent(object):
     #___________________________________________________________________________
     def evaluate(self, params, events):
         """Evaluates the LHComponent for the given events and set of parameters.
-        
+
         Parameters
         ----------
         params : dict
@@ -272,7 +272,7 @@ class LHComponent(object):
         events : numpy.recarray
             Each entry in this array represents an event for which the LH
             component should be evaluated.
-            
+
         Returns
         -------
         data : numpy.ndarray
@@ -281,17 +281,17 @@ class LHComponent(object):
         """
         # Get the data from the source.
         data = self.source(params, events)
-        
+
         # Apply the operations on the data.
         for operator in self.operation_list:
             data = operator(data)
-        
+
         return data
 
     #___________________________________________________________________________
     def as_function(self):
         """Creates a LHFunction object for this likelihood component.
-        
+
         Returns:
         lhf : LHFunction
             The LHFunction object for this likelihood component.
@@ -528,7 +528,7 @@ class LHComponentOperator(object):
         self.operator = operator
         self.operator_args = operator_args
         self.operator_kwargs = operator_kwargs
-    
+
     #___________________________________________________________________________
     @property
     def operator(self):
@@ -612,31 +612,31 @@ class LHFunctionParams(object):
         # Check if the number of parameters are equal.
         if(self.N != other.N):
             return False
-        
+
         # Check if all the names are equal.
         self_names = self.names
         other_names = other.names
         for i in xrange(self.N):
             if(self_names[i] != other_names[i]):
                 return False
-        
+
         # Check if all the initials are equal.
         if(not np.all(np.array(self.initials) == np.array(other.initials))):
             return False
-        
+
         # Check if all the isconst flags are equal.
         if(not np.all(np.array(self.isconst_list) == np.array(other.isconst_list))):
             return False
-        
+
         # Check if all the bounds are equal.
         if(not np.all(np.array(self.bounds) == np.array(other.bounds))):
             return False
-        
+
         return True
 
     def __ne__(self, other):
         """Implements the `self != other` comparison.
-        It's defined as `not (self == other)`. 
+        It's defined as `not (self == other)`.
         """
         return not (self == other)
 
@@ -651,34 +651,34 @@ class LHFunctionParams(object):
             else:
                 s += '%s: initial %e, bounds (%e,%e)\n'%(self.names[i], self.initials[i], self.bounds[i][0], self.bounds[i][1])
         return s
-    
+
     def def_param(self, name, initial=0, isconst=False, valmin=None, valmax=None):
         """Defines a parameter of the likelihood function. The order of the
         definition is important and is conserved.
-        
+
         Parameters
         ----------
         name : str | LHFunctionParams
             The parameter's name.
             If name is an instance of LHFunctionParams, the parameters will be
             a copy of the parameters defined in that instance.
-            
+
         initial : float
             The (initial) value (guess) of the parameter, which will be used as
-            start point for the minimizer. 
-        
+            start point for the minimizer.
+
         isconst : bool
             Flag if the new parameter has a constant (True) or a
             variable (False).
-        
+
         valmin : float
             The minimal bound value of the parameter.
             A finite number must be specified for variable parameters.
-        
+
         valmax : float
             The maximal bound value of the parameter.
             A finite number must be specified for variable parameters.
-            
+
         Returns
         -------
         self : LHFunction
@@ -691,7 +691,7 @@ class LHFunctionParams(object):
             for i in xrange(name.N):
                 self.def_param(name.names[i], name.initials[i], name.isconst_list[i], name.bounds[i][0], name.bounds[i][1])
             return self
-        
+
         if(not isinstance(name, str)):
             raise TypeError('The `name` argument must be of type str!')
         if(not isinstance(initial, float)):
@@ -712,18 +712,18 @@ class LHFunctionParams(object):
                 valmax = +np.inf
         if(not isinstance(valmax, float)):
             raise TypeError('The `valmax` argument must be of type float!')
-        
+
         if(not isconst):
             if(np.abs(valmin) == np.inf or np.abs(valmax) == np.inf):
                 raise ValueError('The variable parameter "%s" must have finite value bounds!'%(name))
             if(valmin >= valmax):
                 raise ValueError('The lower bound must be smaller than the upper bound for parameter "%s"!'%(name))
-        
+
         self._param_name_list.append(name)
         self._param_value_list.append(initial)
         self._param_isconst_list.append(isconst)
         self._param_bounds_list.append((valmin, valmax))
-        
+
         return self
 
     def clear(self):
@@ -737,17 +737,17 @@ class LHFunctionParams(object):
     def generate_random_initials(self):
         """Generates a set of random initials for all variable parameters.
         A new random initial is defined as
-        
+
             lower_bound + RAND * (upper_bound - lower_bound),
-        
+
         where RAND is a uniform random variable between 0 and 1.
         """
         vb = self.variable_bounds
-        # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound) 
+        # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound)
         ri = vb[:,0] + np.random.uniform(size=vb.shape[0]) * (vb[:,1] - vb[:,0])
         print 'random initials:', ri
         return ri
-        
+
     def get_param_idx(self, name):
         """Returns the parameter index for the given parameter name.
         It raises a KeyError if the given parameter does not exist.
@@ -774,38 +774,38 @@ class LHFunctionParams(object):
         """The list of names of all the defined parameters.
         """
         return self._param_name_list
-    
+
     @property
     def initials(self):
         """The 1d numpy.ndarray holding the initial values (guess) of all the
         parameters.
         """
         return np.array(self._param_value_list)
-    
+
     @property
     def isconst_list(self):
         """The list of bools specifying which parameter is a constant.
         """
         return self._param_isconst_list
-    
+
     @property
     def variable_initials(self):
-        """The ndarray with the initial values of the variable parameters. 
+        """The ndarray with the initial values of the variable parameters.
         """
         initials = np.array(self.initials, dtype=np.float64)
         isconst = np.array(self.isconst_list, dtype=np.bool)
         return initials[~isconst]
-    
+
     @property
     def bounds(self):
         """The list of tuple holding the boundaries for all the parameters.
         """
         return self._param_bounds_list
-    
+
     @property
     def variable_bounds(self):
         """The 2-dimensional numpy.ndarray holding the boundaries for all the
-        variable parameters. 
+        variable parameters.
         """
         bounds = np.array(self._param_bounds_list, dtype=np.float64)
         isconst = np.array(self.isconst_list, dtype=np.bool)
@@ -819,7 +819,7 @@ class LHFunction(object):
     def __init__(self, lhcomponent):
         """Constructs the likelihood function based on the given LHComponent
         object, which can also be a CombinedLHComponent object.
-        
+
         Parameters
         ----------
         lhcomponent : LHComponent | callable
@@ -833,11 +833,11 @@ class LHFunction(object):
             lhcomponent = LHComponent(lhcomponent)
         self._lh = lhcomponent
         self._params = LHFunctionParams()
-        
+
     def evaluate(self, params, events):
         """Evaluates the LH function for the given set of parameters given the
         array of events.
-        
+
         Parameters
         ----------
         params : dict
@@ -846,13 +846,13 @@ class LHFunction(object):
             The data, i.e. the events, for the likelihood function.
         """
         return self._lh.evaluate(params, events)
-    
+
     def __call__(self, params, events):
         """Implements the call operator which is just a shortcut for the
         evaluate method.
         """
         return self.evaluate(params, events)
-    
+
     @property
     def params(self):
         """The LHFunctionParams object holding the parameters for this
@@ -864,20 +864,20 @@ class LHFunction(object):
         if(not isinstance(params, LHFunctionParams)):
             raise TypeError('The parameter object for the likelihood function must be of type LHFunctionParams!')
         self._params = params
-        
+
     @property
     def ndim(self):
         """The dimensionality of the likelihood function. It's the number of
         parameters defined for this function.
         """
         return self._params.N
-    
+
     @property
     def n_var_dim(self):
         """The number of variable parameters of this likelihood function.
         """
         return self._params.N_var
-    
+
 class LHModel(object):
     """The LHModel class is the base class for all likelihood models.
     """
