@@ -67,3 +67,74 @@ class BinningDefinition(object):
         """The upper most edge of the binning.
         """
         return self._binedges[-1]
+
+    @property
+    def range(self):
+        """The tuple (lower_edge, upper_edge) of the binning.
+        """
+        return (self.lower_edge, self.upper_edge)
+
+class UsesBinning(object):
+    """This is a classifier class that can be used to define, that a class uses
+    binning information for one or more dimensions.
+
+    This class defines the property ``binnings``, which is a list of
+    BinningDefinition objects.
+
+    This class provides the method ``has_same_binning(obj)`` to determine if
+    a given object (that also uses binning) has the same binning.
+    """
+    def __init__(self):
+        print('Entering UsesBinning.__init__')
+        # Make sure that multiple inheritance can be used.
+        super(UsesBinning, self).__init__()
+
+        # Define the list of binning definition objects and a name->list_index
+        # mapping for faster access.
+        self._binnings = []
+        self._binning_key2idx = {}
+        print('Leaving UsesBinning.__init__')
+
+    @property
+    def binnings(self):
+        """(read-only) The list of BinningDefinition objects, one for each
+        dimension.
+        """
+        return self._binnings
+
+    @property
+    def binning_ndim(self):
+        """(read-only)
+        """
+        return len(self._binnings)
+
+    def add_binning(self, binning):
+        if(not isinstance(binning, BinningDefinition)):
+            raise TypeError('The binning argument must be an instance of BinningDefinition!')
+        self._binnings.append(binning)
+        self._binning_key2idx[binning.key] = len(self._binnings)-1
+
+    def get_binning(self, key):
+        """Retrieves the binning definition of the given key.
+
+        Parameters
+        ----------
+        key : str | int
+            The key of the binning definition. A string specifies the name and
+            an integer the dimension index.
+
+        Returns
+        -------
+        binning : BinningDefinition
+            The binning definition of the given key.
+        """
+        if(isinstance(key, str)):
+            if(key not in self._binning_key2idx):
+                raise KeyError('The binning definition "%s" is not defined!'%(key))
+            binning = self._binnings[self._binning_key2idx[key]]
+        elif(isinstance(key, int)):
+            binning = self._binnings[key]
+        else:
+            raise TypeError('The key argument must be of type str or int!')
+
+        return binning
