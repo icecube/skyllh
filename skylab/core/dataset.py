@@ -20,6 +20,42 @@ class Dataset(object):
     _EXP_FIELD_NAMES = ('ra', 'dec', 'azi', 'zen', 'sigma', 'time', 'log_energy')
     _MC_FIELD_NAMES = ('true_ra', 'true_dec', 'true_energy', 'mcweight')
 
+    @staticmethod
+    def add_required_exp_field_names(fieldnames):
+        """Static method to add required experimental data field names to the
+        list of already required field names for experimental data.
+        This method is useful for derived dataset classes.
+
+        Parameters
+        ----------
+        fieldnames : str | list of str
+            The field name or the list of field names to add.
+        """
+        if(not issequence(fieldnames)):
+            fieldnames = [fieldnames]
+        if(not issequenceof(fieldnames, str)):
+            raise TypeError('The fieldnames argument must be a sequence of str objects!')
+
+        Dataset._EXP_FIELD_NAMES = tuple(list(Dataset._EXP_FIELD_NAMES) + fieldnames)
+
+    @staticmethod
+    def add_required_mc_field_names(fieldnames):
+        """Static method to add required monte-carlo field names to the list of
+        already required field names for the monte-carlo.
+        This method is useful for derived dataset classes.
+
+        Parameters
+        ----------
+        fieldnames : str | list of str
+            The field name or the list of field names to add.
+        """
+        if(not issequence(fieldnames)):
+            fieldnames = [fieldnames]
+        if(not issequenceof(fieldnames, str)):
+            raise TypeError('The fieldnames argument must be a sequence of str objects!')
+
+        Dataset._MC_FIELD_NAMES = tuple(list(Dataset._MC_FIELD_NAMES) + fieldnames)
+
     def __init__(self, name, exp_pathfilenames, mc_pathfilenames, livetime, version, verqualifiers=None):
         """Creates a new dataset object that describes a self-consistent set of
         data.
