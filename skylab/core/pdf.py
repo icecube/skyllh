@@ -52,4 +52,26 @@ class PDF(object):
         """
         pass
 
+class SpatialPDF(PDF):
+    """This is the abstract base class for a spatial PDF model.
+    """
+    __metaclass__ = abc.ABCMeta
 
+    def __init__(self):
+        super(SpatialPDF, self).__init__()
+
+class EnergyPDF(PDF):
+    """This is the abstract base class for an energy PDF model.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self):
+        super(EnergyPDF, self).__init__()
+
+class TimePDF(PDF):
+    """This is the abstract base class for a time PDF model.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self):
+        super(TimePDF, self).__init__()
