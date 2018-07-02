@@ -104,13 +104,32 @@ class UsesBinning(object):
 
     @property
     def binning_ndim(self):
-        """(read-only)
+        """(read-only) The number of dimensions that uses binning.
         """
         return len(self._binnings)
 
-    def add_binning(self, binning):
+    def add_binning(self, binning, key=None):
+        """Adds the given binning definition to the list of binnings.
+
+        Parameters
+        ----------
+        binning : BinningDefinition
+            The binning definition to add.
+        key : str | (default) None
+            The key (name) of the binning. If not None and it's different to the
+            key of the given binning definition, a copy of the BinningDefinition
+            object is made and the new name is set.
+        """
         if(not isinstance(binning, BinningDefinition)):
             raise TypeError('The binning argument must be an instance of BinningDefinition!')
+
+        # Create a copy of the BinningDefinition object if the key differs.
+        if(key is not None):
+            if(not isinstance(key, str)):
+                raise TypeError('The key argument must be of type str!')
+            if(key != binning.key):
+                binning = BinningDefinition(key, binning.binedges)
+
         self._binnings.append(binning)
         self._binning_key2idx[binning.key] = len(self._binnings)-1
 
@@ -138,3 +157,21 @@ class UsesBinning(object):
             raise TypeError('The key argument must be of type str or int!')
 
         return binning
+
+    def any_data_out_of_binning_range(self, data):
+        """Checks if any of the given data is outside of the binning range.
+
+        Parameters
+        ----------
+        data : 1d ndarray
+            The array with the data values to check.
+
+        Returns
+        -------
+        outofrange : bool
+            True if any data value is outside the binning range.
+            False otherwise.
+        """
+        outofrange = np.any((data < self.lower_edge) |
+                            (data > self.upper_edge))
+        return outofrange
