@@ -7,15 +7,9 @@ The base class of all signal pdf models is ``SignalPDF``.
 
 import numpy as np
 
-from skylab.core.pdf import SpatialPDF
+from skylab.core.pdf import SpatialPDF, IsSignalPDF
 
-class SpatialSignalPDF(SpatialPDF):
-    """This is the base class for all spatial signal PDF models.
-    """
-    def __init__(self):
-        super(SpatialSignalPDF, self).__init__()
-
-class GaussianSpatialSignalPDF(SpatialSignalPDF):
+class GaussianSpatialSignalPDF(SpatialPDF, IsSignalPDF):
     """The gaussian spatial signal PDF models the spatial signal contribution of
     an event as a gaussian distribution of the form
 
