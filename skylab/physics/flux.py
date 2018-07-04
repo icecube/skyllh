@@ -112,16 +112,27 @@ class FluxModel(object):
 
         # Set the new property values.
         if(newprop is not None):
-            if(not isinstance(newprop, dict)):
-                raise TypeError('The newprop argument must be of type dict!')
-            for (prop, val) in newprop.iteritems():
-                if(not hasattr(fluxmodel, prop)):
-                    raise KeyError('The flux model "%s" does not have a property named "%s"!'%(classname(self), prop))
-                if(not isproperty(fluxmodel, prop)):
-                    raise TypeError('The attribute "%s" of flux model "%s" is no property!'%(classname(self), prop))
-                setattr(fluxmodel, prop, val)
+            fluxmodel.set_properties(newprop)
 
         return fluxmodel
+
+    def set_properties(self, propdict):
+        """Sets the properties of the flux model to the given property values.
+
+        Parameters
+        ----------
+        propdict : dict (name: value)
+            The dictionary holding the names of the properties and their new
+            values.
+        """
+        if(not isinstance(propdict, dict)):
+            raise TypeError('The propdict argument must be of type dict!')
+        for (prop, val) in propdict.iteritems():
+            if(not hasattr(self, prop)):
+                raise KeyError('The flux model "%s" does not have a property named "%s"!'%(classname(self), prop))
+            if(not isproperty(self, prop)):
+                raise TypeError('The attribute "%s" of flux model "%s" is no property!'%(classname(self), prop))
+            setattr(self, prop, val)
 
 class NormedFluxModel(FluxModel):
     """Abstract base class for all normalized flux models of the form
