@@ -2,6 +2,8 @@
 
 import abc
 
+from skylab.core.parameters import ParameterGridSet
+
 class PDF(object):
     """The abstract base class for all probability distribution functions (PDF)
     models.
@@ -75,3 +77,31 @@ class TimePDF(PDF):
 
     def __init__(self):
         super(TimePDF, self).__init__()
+
+class IsBackgroundPDF(object):
+    """This is a classifier class that can be used by other classes to indicate
+    that the class describes a background PDF. This is useful for type checking.
+    """
+    def __init__(self):
+        super(IsBackgroundPDF, self).__init__()
+
+class IsSignalPDF(object):
+    """This is a classifier class that can be used by other classes to indicate
+    that the class describes a signal PDF. This is useful for type checking.
+    """
+    def __init__(self):
+        super(IsSignalPDF, self).__init__()
+
+        self.signal_parameter_grid_set = ParameterGridSet()
+
+    @property
+    def signal_parameter_grid_set(self):
+        """The ParameterGridSet object defining the value grids of the different
+        signal parameters.
+        """
+        return self._signal_parameter_grid_set
+    @signal_parameter_grid_set.setter
+    def signal_parameter_grid_set(self, obj):
+        if(not isinstance(obj, ParameterGridSet)):
+            raise TypeError('The signal_parameter_grid_set property must be an object of type ParameterGridSet!')
+        self._signal_parameter_grid_set = obj
