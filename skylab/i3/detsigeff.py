@@ -7,9 +7,9 @@ import scipy.interpolate
 
 from skylab.core import multiproc
 from skylab.core.analysis import BinningDefinition
-from skylab.core.detsigeff import get_conversion_factor_to_internal_flux_unit
 from skylab.core.detsigeff import DetSigEffImplMethod
 from skylab.physics.flux import FluxModel, PowerLawFlux
+from skylab.physics.flux import get_conversion_factor_to_internal_flux_unit
 
 class I3DetSigEffImplMethod(DetSigEffImplMethod):
     """Abstract base class for all IceCube specific detector signal efficiency
@@ -103,6 +103,14 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
         ----------
         data_mc : ndarray
             The numpy record ndarray holding the monte-carlo event data.
+            The following data fields must exist:
+            'true_dec' : float
+                The true declination of the data event.
+            'true_energy' : float
+                The true energy value of the data event.
+            'mcweight' : float
+                The monte-carlo weight of the data event in the unit
+                GeV cm^2 sr.
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float
@@ -164,7 +172,7 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
 
         return values
 
-class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
+class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable):
     """This detector signal efficiency implementation method constructs a
     detector signal efficiency for a variable power law flux model.
     It constructs a two-dimensional spline function in sin(dec) and gamma, using a
@@ -258,6 +266,14 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Parallelizable):
         ----------
         data_mc : ndarray
             The numpy record ndarray holding the monte-carlo event data.
+            The following data fields must exist:
+            'true_dec' : float
+                The true declination of the data event.
+            'mcweight' : float
+                The monte-carlo weight of the data event in the unit
+                GeV cm^2 sr.
+            'true_energy' : float
+                The true energy value of the data event.
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float
