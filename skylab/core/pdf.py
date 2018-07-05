@@ -11,10 +11,10 @@ class PDF(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Make sure that multiple inheritance can be used. This super call will
         # invoke the __init__ method of a possible second inheritance.
-        super(PDF, self).__init__()
+        super(PDF, self).__init__(*args, **kwargs)
 
     @abc.abstractmethod
     def assert_is_valid_for_exp_data(self, data_exp):
@@ -37,7 +37,7 @@ class PDF(object):
         pass
 
     @abc.abstractmethod
-    def get_prob(self, events, params, *args, **kwargs):
+    def get_prob(self, events, params):
         """This abstract method is supposed to calculate the probability for
         the specified events given the specified parameters.
 
@@ -59,38 +59,38 @@ class SpatialPDF(PDF):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        super(SpatialPDF, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(SpatialPDF, self).__init__(*args, **kwargs)
 
 class EnergyPDF(PDF):
     """This is the abstract base class for an energy PDF model.
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        super(EnergyPDF, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(EnergyPDF, self).__init__(*args, **kwargs)
 
 class TimePDF(PDF):
     """This is the abstract base class for a time PDF model.
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        super(TimePDF, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(TimePDF, self).__init__(*args, **kwargs)
 
 class IsBackgroundPDF(object):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a background PDF. This is useful for type checking.
     """
-    def __init__(self):
-        super(IsBackgroundPDF, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(IsBackgroundPDF, self).__init__(*args, **kwargs)
 
 class IsSignalPDF(object):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a signal PDF. This is useful for type checking.
     """
-    def __init__(self):
-        super(IsSignalPDF, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(IsSignalPDF, self).__init__(*args, **kwargs)
 
         self.signal_parameter_grid_set = ParameterGridSet()
 
