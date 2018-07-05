@@ -6,7 +6,8 @@ import numpy as np
 from skylab.core.py import ObjectCollection
 
 def make_linear_parameter_grid_1d(name, low, high, delta):
-    """Creates a ParameterGrid object for a 1-dimensional linear parameter grid.
+    """Utility function to create a ParameterGrid object for a 1-dimensional
+    linear parameter grid.
 
     Parameters
     ----------
@@ -27,6 +28,23 @@ def make_linear_parameter_grid_1d(name, low, high, delta):
     """
     grid = np.linspace(low, high, np.round((high-low)/delta)+1)
     return ParameterGrid(name, grid, delta)
+
+def make_params_hash(params):
+    """Utility function to create a hash value for a given parameter dictionary.
+
+    Parameters
+    ----------
+    params : dict
+        The dictionary holding the parameter (name: value) pairs.
+
+    Returns
+    -------
+    hash : int
+        The hash of the parameter dictionary.
+    """
+    if(not isinstance(params, dict)):
+        raise TypeError('The params argument must be of type dict!')
+    return hash(tuple(params.items()))
 
 class ParameterGrid(object):
     """This class provides a data holder for a parameter that has a set of
