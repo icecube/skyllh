@@ -1,33 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import abc
-
 import numpy as np
 
 from astropy import units
 
 from skylab.physics.flux import FluxModel
-
-
-def get_conversion_factor_to_internal_flux_unit(fluxmodel):
-    """Calculates the unit conversion factor for converting the used flux
-    unit of the given flux model into the skylab internally used flux unit
-    1/(GeV cm2 s).
-
-    Parameters
-    ----------
-    fluxmodel : FluxModel
-        The flux model instance for which to calculate the unit conversion
-        factor.
-
-    Returns
-    -------
-    unit_conversion_factor : float
-        The unit conversion factor.
-    """
-    unit_conversion_factor = (1./fluxmodel.energy_unit * 1./fluxmodel.length_unit**2 * 1./fluxmodel.time_unit).to(1./units.GeV * 1./units.cm**2 * 1./units.s).value
-    return unit_conversion_factor
-
 
 class DetSigEffImplMethod(object):
     """Abstract base class for an implementation method of a detector signal
