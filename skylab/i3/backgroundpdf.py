@@ -209,7 +209,8 @@ class I3DataBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             The array holding the experimental data. The following data fields
             must exist:
             'log_energy' : float
-                The logarithm of the energy value of the data event.
+                The logarithm of the reconstructed energy value of the data
+                event.
             'dec' : float
                 The declination of the data event.
         logE_binning : BinningDefinition
@@ -244,7 +245,8 @@ class I3MCBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             The array holding the monte-carlo data. The following data fields
             must exist:
             'log_energy' : float
-                The logarithm of the energy value of the data event.
+                The logarithm of the reconstructed energy value of the data
+                event.
             'dec' : float
                 The declination of the data event.
         mc_weight_field_names : str | list of str
