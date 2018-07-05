@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import abc
 import numpy as np
 import multiprocessing as mp
 
@@ -128,15 +127,14 @@ def parallelize(func, args_list, ncpu):
 
     return result_list
 
-class Parallelizable(object):
-    """Abstract base class defining the ncpu property. Classes that derive from
+class IsParallelizable(object):
+    """Classifier class defining the ncpu property. Classes that derive from
     this class indicate, that they can make use of multi-processing on several
     CPUs at the same time.
     """
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self):
-        pass
+    def __init__(self, ncpu=None, *args, **kwargs):
+        super(IsParallelizable, self).__init__(*args, **kwargs)
+        self.ncpu = ncpu
 
     @property
     def ncpu(self):
