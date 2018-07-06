@@ -106,9 +106,9 @@ class I3SignalEnergyPDF(EnergyPDF, UsesBinning, IsSignalPDF, multiproc.IsParalle
             # because we create a normalized PDF, we can ignore all constants.
             # So we don't have to convert the flux unit into the internally used
             # flux unit.
-            data_weights = data_mcweight * myfluxmodel(data_true_energy)
+            data_physicsweight = myfluxmodel(data_true_energy)
 
-            i3energypdf = I3EnergyPDF(data_logE, data_sinDec, data_weights,
+            i3energypdf = I3EnergyPDF(data_logE, data_sinDec, data_mcweight, data_physicsweight,
                                       logE_binning, sinDec_binning)
 
             return i3energypdf

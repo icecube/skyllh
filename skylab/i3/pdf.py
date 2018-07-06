@@ -13,7 +13,8 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
     The IceCube energy PDF is modeled as a 1d histogram in energy,
     but for different sin(declination) bins, hence, stored as a 2d histogram.
     """
-    def __init__(self, data_logE, data_sinDec, data_weights, logE_binning, sinDec_binning):
+    def __init__(self, data_logE, data_sinDec, data_mcweight, data_physicsweight,
+                 logE_binning, sinDec_binning):
         """Creates a new IceCube energy PDF object.
 
         Parameters
@@ -22,8 +23,14 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             The array holding the log10(E) values of the events.
         data_sinDec : 1d ndarray
             The array holding the sin(dec) values of the events.
-        data_weights : 1d ndarray
-            The array holding the weight of each event used for histogramming.
+        data_mcweight : 1d ndarray
+            The array holding the monte-carlo weights of the events.
+            The final data weight will be the product of data_mcweight and
+            data_physicsweight.
+        data_physicsweight : 1d ndarray
+            The array holding the physics weights of the events.
+            The final data weight will be the product of data_mcweight and
+            data_physicsweight.
         logE_binning : BinningDefinition
             The binning definition for the log(E) axis.
         sinDec_binning : BinningDefinition
@@ -34,9 +41,34 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         self.add_binning(logE_binning, 'log_energy')
         self.add_binning(sinDec_binning, 'sin_dec')
 
-        # Create a 2D histogram. We will do the normalization along the logE
-        # axis manually.
+        # We have to figure out, which histogram bins are zero due to no
+        # monte-carlo coverage which due to zero physics model contribution.
+
+        # Create a 2D histogram with only the MC events to determine the MC
+        # coverage.
         (h, bins) = np.histogram2d(data_logE, data_sinDec,
+            bins = [logE_binning.binedges, sinDec_binning.binedges],
+            range = [logE_binning.range, sinDec_binning.range],
+            normed = False)
+        self._hist_mask_mc_covered = h > 0
+
+        # Select the events which have MC coverage but zero physics
+        # contribution, i.e. the physics model predicts zero contribution.
+        mask = data_physicsweight == 0.
+        # Create a 2D histogram with only the MC events that have zero physics
+        # contribution. Note: By construction the zero physics contribution bins
+        # are a subset of the MC covered bins.
+        (h, bins) = np.histogram2d(data_logE[mask], data_sinDec[mask],
+            bins = [logE_binning.binedges, sinDec_binning.binedges],
+            range = [logE_binning.range, sinDec_binning.range],
+            normed = False)
+        self._hist_mask_mc_covered_zero_physics = h > 0
+
+        # Create a 2D histogram which only the data which as physics
+        # contribution. We will do the normalization along the logE
+        # axis manually.
+        data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
+        (h, bins) = np.histogram2d(data_logE[~mask], data_sinDec[~mask],
             bins = [logE_binning.binedges, sinDec_binning.binedges],
             weights = data_weights,
             range = [logE_binning.range, sinDec_binning.range],
@@ -48,6 +80,29 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         h /= norms
 
         self._hist_logE_sinDec = h
+
+    @property
+    def hist_mask_mc_covered(self):
+        """(read-only) The boolean ndarray holding the mask of the 2D histogram
+        bins for which there is monte-carlo coverage.
+        """
+        return self._hist_mask_mc_covered
+
+    @property
+    def _hist_mask_mc_covered_zero_physics(self):
+        """(read-only) The boolean ndarray holding the mask of the 2D histogram
+        bins for which there is monte-carlo coverage but zero physics
+        contribution.
+        """
+        return self._hist_mask_mc_covered_zero_physics
+
+    @property
+    def hist_mask_mc_covered_with_physics(self):
+        """(read-only) The boolean ndarray holding the mask of the 2D histogram
+        bins for which there is monte-carlo coverage and has physics
+        contribution.
+        """
+        return self._hist_mask_mc_covered & ~self._hist_mask_mc_covered_zero_physics
 
     def assert_is_valid_for_exp_data(self, data_exp):
         """Checks if this energy PDF is valid for all the given experimental

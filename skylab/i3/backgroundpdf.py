@@ -223,11 +223,13 @@ class I3DataBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         data_logE = data_exp['log_energy']
         data_sinDec = np.sin(data_exp['dec'])
-        data_weights = np.ones((data_exp.size,))
+        # For experimental data, the MC and physics weight are unity.
+        data_mcweight = np.ones((data_exp.size,))
+        data_physicsweight = data_mcweight
 
         # Create the PDF using the base class.
         super(I3DataBackgroundEnergyPDF, self).__init__(
-            data_logE, data_sinDec, data_weights,
+            data_logE, data_sinDec, data_mcweight, data_physicsweight,
             logE_binning, sinDec_binning
         )
 
@@ -235,7 +237,7 @@ class I3MCBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     monte-carlo data.
     """
-    def __init__(self, data_mc, mc_weight_field_names, logE_binning, sinDec_binning):
+    def __init__(self, data_mc, physics_weight_field_names, logE_binning, sinDec_binning):
         """Constructs a new IceCube energy background PDF from monte-carlo
         data.
 
@@ -249,11 +251,13 @@ class I3MCBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
                 event.
             'dec' : float
                 The declination of the data event.
-        mc_weight_field_names : str | list of str
+            'mcweight': float
+                The monte-carlo weight of the event.
+        physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
-            should be used as event weights. If a list is given, the weight
-            values of all the fields will be summed to construct the final event
-            weight.
+            should be used as physics event weights. If a list is given, the
+            weight values of all the fields will be summed to construct the
+            final event physics weight.
         logE_binning : BinningDefinition
             The binning definition for the binning in log10(E).
         sinDec_binning : BinningDefinition
@@ -269,17 +273,18 @@ class I3MCBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         data_logE = data_mc['log_energy']
         data_sinDec = np.sin(data_mc['dec'])
+        data_mcweight = data_mc['mcweight']
 
         # Calculate the event weights as the sum of all the given data fields
         # for each event.
-        data_weights = np.zeros(data_mc.size, dtype=np.float64)
-        for name in mc_weight_field_names:
+        data_physicsweight = np.zeros(data_mc.size, dtype=np.float64)
+        for name in physics_weight_field_names:
             if(name not in data_mc.dtype.names):
                 raise KeyError('The field "%s" does not exist in the MC data!'%(name))
-            data_weights += data_mc[name]
+            data_physicsweight += data_mc[name]
 
         # Create the PDF using the base class.
         super(I3MCBackgroundEnergyPDF, self).__init__(
-            data_logE, data_sinDec, data_weights,
+            data_logE, data_sinDec, data_mcweight, data_physicsweight,
             logE_binning, sinDec_binning
         )
