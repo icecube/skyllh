@@ -22,6 +22,17 @@ class BinningDefinition(object):
         self.key = key
         self.binedges = binedges
 
+    def __eq__(self, other):
+        """Checks if object ``other`` is equal to this BinningDefinition object.
+        """
+        if(not isinstance(other, BinningDefinition)):
+            raise TypeError('The other object in the equal comparison must be an instance of BinningDefinition!')
+        if(self.key != other.key):
+            return False
+        if(np.any(self.binedges != other.binedges)):
+            return False
+        return True
+
     @property
     def key(self):
         """The key (name) of the binning setting. This must be an unique name
@@ -81,19 +92,17 @@ class UsesBinning(object):
     This class defines the property ``binnings``, which is a list of
     BinningDefinition objects.
 
-    This class provides the method ``has_same_binning(obj)`` to determine if
+    This class provides the method ``has_same_binning_as(obj)`` to determine if
     a given object (that also uses binning) has the same binning.
     """
-    def __init__(self):
-        print('Entering UsesBinning.__init__')
+    def __init__(self, *args, **kwargs):
         # Make sure that multiple inheritance can be used.
-        super(UsesBinning, self).__init__()
+        super(UsesBinning, self).__init__(*args, **kwargs)
 
         # Define the list of binning definition objects and a name->list_index
         # mapping for faster access.
         self._binnings = []
         self._binning_key2idx = {}
-        print('Leaving UsesBinning.__init__')
 
     @property
     def binnings(self):
@@ -107,6 +116,27 @@ class UsesBinning(object):
         """(read-only) The number of dimensions that uses binning.
         """
         return len(self._binnings)
+
+    def has_same_binning_as(self, obj):
+        """Checks if this object has the same binning as the given object.
+
+        Parameters
+        ----------
+        obj : class instance derived from UsesBinning
+            The object that should be checked for same binning.
+
+        Returns
+        -------
+        check : bool
+            True if ``obj`` uses the same binning, False otherwise.
+        """
+        if(not isinstance(obj, UsesBinning)):
+            raise TypeError('The obj argument must be an instance of UsesBinning!')
+
+        for (self_binning, obj_binning) in zip(self.binnings, obj.binnings):
+            if(not (self_binning == obj_binning)):
+                return False
+        return True
 
     def add_binning(self, binning, key=None):
         """Adds the given binning definition to the list of binnings.
