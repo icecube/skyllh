@@ -3,20 +3,15 @@
 from skylab.core import multiproc
 from skylab.core.analysis import UsesBinning
 from skylab.core.parameters import make_params_hash
-from skylab.core.pdf import EnergyPDF, IsSignalPDF
+from skylab.core.pdf import PDFSet, IsSignalPDF
 from skylab.physics.flux import FluxModel
 from skylab.i3.pdf import I3EnergyPDF
 
-class I3SignalEnergyPDF(EnergyPDF, UsesBinning, IsSignalPDF, multiproc.IsParallelizable):
+class SignalI3EnergyPDF(PDFSet, IsSignalPDF, UsesBinning, multiproc.IsParallelizable):
     """This is the signal energy PDF for IceCube. It creates a set of
     I3EnergyPDF objects for a discrete set of energy signal parameters. Energy
     signal parameters are the parameters that influence the source flux model.
-
-    In order to get the PDF value for an arbitrary energy signal parameter set,
-    the PDF values for the discrete energy signal parameters need to get
-    interpolated. This interpolation function
     """
-
     def __init__(self, data_mc, logE_binning, sinDec_binning, fluxmodel,
                  params_grid_set, ncpu=None):
         """Creates a new IceCube energy signal PDF for a given flux model and
@@ -51,7 +46,7 @@ class I3SignalEnergyPDF(EnergyPDF, UsesBinning, IsSignalPDF, multiproc.IsParalle
             energy signal parameter, for which an I3EnergyPDF object needs to be
             created.
         """
-        super(I3SignalEnergyPDF, self).__init__(ncpu=ncpu)
+        super(I3SignalEnergyPDF, self).__init__(pdf_type=I3EnergyPDF, ncpu=ncpu)
 
         if(not isinstance(logE_binning, BinningDefinition)):
             raise TypeError('The logE_binning argument must be an instance of BinningDefinition!')
@@ -65,7 +60,7 @@ class I3SignalEnergyPDF(EnergyPDF, UsesBinning, IsSignalPDF, multiproc.IsParalle
         self.add_binning(logE_binning, 'log_energy')
         self.add_binning(sinDec_binning, 'sin_dec')
 
-        self.signal_parameter_grid_set = signal_parameter_grid_set
+        self.parameter_grid_set = params_grid_set
 
         # Create I3EnergyPDF objects for
         def create_I3EnergyPDF(data_logE, data_sinDec, data_mcweight, data_true_energy,
@@ -118,19 +113,16 @@ class I3SignalEnergyPDF(EnergyPDF, UsesBinning, IsSignalPDF, multiproc.IsParalle
         data_mcweight = data_mc['mcweight']
         data_true_energy = data_mc['true_energy']
 
-        params_list = self.signal_parameter_grid_set.parameter_permutation_dict_list
-
         args_list = [ ((data_logE, data_sinDec, data_mcweight, data_true_energy,
                         logE_binning, sinDec_binning, fluxmodel, params), {})
-                     for params in params_list ]
+                     for params in self.params_list ]
 
         i3energypdf_list = multiproc.parallelize(create_I3EnergyPDF, args_list, self.ncpu)
 
-        # Save the I3EnergyPDF object in a dictionary with the hash of the
-        # individual parameters as key.
-        self._params_hash_I3EnergyPDF_dict = dict()
+        # Save all the I3EnergyPDF objects in the IsSignalPDF PDF registry with
+        # the hash of the individual parameters as key.
         for (params, i3energypdf) in zip(params_list, i3energypdf_list):
-            self._params_hash_I3EnergyPDF_dict[make_params_hash(params)] = i3energypdf
+            self.add_pdf(i3energypdf, params)
 
     def assert_is_valid_for_exp_data(self, data_exp):
         """Checks if this signal energy PDF is valid for all the given
@@ -154,7 +146,7 @@ class I3SignalEnergyPDF(EnergyPDF, UsesBinning, IsSignalPDF, multiproc.IsParalle
         """
         # Since we use the same binning for all the I3EnergyPDF objects, we
         # can just use an arbitrary object to verify the data.
-        self._params_hash_I3EnergyPDF_dict[self._params_hash_I3EnergyPDF_dict.keys()[0]].assert_is_valid_for_exp_data(data_exp)
+        self.get_pdf(self.pdf_keys[0]).assert_is_valid_for_exp_data(data_exp)
 
     def get_prob(self, events, params):
         """Calculates the signal energy probability (in logE) of each event for
@@ -187,11 +179,7 @@ class I3SignalEnergyPDF(EnergyPDF, UsesBinning, IsSignalPDF, multiproc.IsParalle
         KeyError
             If no energy PDF can be found for the given signal parameter values.
         """
-        params_hash = make_params_hash(params)
-        if(params_hash not in self._params_hash_I3EnergyPDF_dict):
-            raise KeyError('No energy PDF was created for the parameter set "%s"!'%(str(params)))
-
-        i3energypdf = self._params_hash_I3EnergyPDF_dict[params_hash]
+        i3energypdf = self.get_pdf(params)
 
         prob = i3energypdf.get_prob(events)
         return prob
