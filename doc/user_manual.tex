@@ -76,6 +76,36 @@ This leads to the test statistic TS
 \end{equation}
 with separation of over- ($\ns > 0$) and under-fluctuations ($\ns < 0$).
 
+\subsection{Optimizations for Point-Like Sources}
+
+For point-source like signal hypotheses most of the events in the data sample
+will be far away from the hypothesised source, hence, the value of the
+signal PDF $\mathcal{S}_i$ will be zero or very close to zero. By selecting only
+the signal-contributing $N'$ events from the sample, the likelihood ratio
+$\log \Lambda$ reads
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{i=1}^{N'} \log(1 + \ns\mathcal{X}_i(\ps)) + (N - N')\log(1 - \frac{\ns}{N})
+ \label{eq:logLambdaOfXOptimized}
+\end{equation}
+
+\subsection{Gradients of the Log-Likelihood Ratio}
+
+For maximizing the log-likelihood ratio function (equation \ref{eq:logLambdaOfX}),
+or minimizing the negative of it, the minimizer algorithm requires its partial
+derivatives. Hence, here we provide the expressions of the partial derivatives
+for equation \ref{eq:logLambdaOfXOptimized}. The partial
+derivative for $\ns$ is given by
+\begin{equation}
+\frac{\partial \log \Lambda(\ns,\ps)}{\partial \ns} = \sum_{i=1}^{N'} \frac{\mathcal{X}_i(\ps)}{1+\ns \mathcal{X}_i(\ps)} - \frac{N - N'}{N - \ns}.
+\end{equation}
+The partial derivative for an individual signal parameter, $p_{\mathrm{s}}$,
+is given by
+\begin{equation}
+ \frac{\partial \log \Lambda(\ns,\ps)}{\partial p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\ns}{1+\ns\mathcal{X}_i(\ps)} \frac{\partial \mathcal{X}_i(\ps)}{\partial p_{\mathrm{s}}}
+\end{equation}
+
+
+
 \subsection{Signal \& Background PDFs}
 
 The likelihood ratio function as given in equation \eq{eq:logLambda}
@@ -209,21 +239,6 @@ $\xs \equiv \vec{x}_{\mathrm{s},k}$ and equation
 One should note that by definition the numerator of equation \eq{eq:fjmultips}
 is one of the summands of the sum in the denumerator, i.e. for $i=j$.
 
-\subsection{Optimizations}
-
-For point-source like signal hypothesis most of the events in the data sample
-will be far away from the hypothesised source, hence, the value of the
-signal PDF $\mathcal{S}_i$ will be zero or very close to zero. By selecting only
-the signal-contributing $N'$ events from the sample, the likelihood ratio
-$\log \Lambda$ reads
-\begin{equation}
- \log \Lambda = \log \Lambda_{N'} + (N - N')\log(1 - \frac{\ns}{N})
-\end{equation}
-
-The used minimizer (L-BFG-S) operates most stable and fast when provided with
-gradients of the likelihood function.
-
-TODO: Derive the gradients of the LH function.
 
 \section{Detector Signal Efficiency}
 
