@@ -88,23 +88,6 @@ $\log \Lambda$ reads
  \label{eq:logLambdaOfXOptimized}
 \end{equation}
 
-\subsection{Gradients of the Log-Likelihood Ratio}
-
-For maximizing the log-likelihood ratio function (equation \ref{eq:logLambdaOfX}),
-or minimizing the negative of it, the minimizer algorithm requires its partial
-derivatives. Hence, here we provide the expressions of the partial derivatives
-for equation \ref{eq:logLambdaOfXOptimized}. The partial
-derivative for $\ns$ is given by
-\begin{equation}
-\frac{\partial \log \Lambda(\ns,\ps)}{\partial \ns} = \sum_{i=1}^{N'} \frac{\mathcal{X}_i(\ps)}{1+\ns \mathcal{X}_i(\ps)} - \frac{N - N'}{N - \ns}.
-\end{equation}
-The partial derivative for an individual signal parameter, $p_{\mathrm{s}}$,
-is given by
-\begin{equation}
- \frac{\partial \log \Lambda(\ns,\ps)}{\partial p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\ns}{1+\ns\mathcal{X}_i(\ps)} \frac{\partial \mathcal{X}_i(\ps)}{\partial p_{\mathrm{s}}}
-\end{equation}
-
-
 
 \subsection{Signal \& Background PDFs}
 
@@ -117,6 +100,7 @@ component.
 The signal PDF can be written as
 \begin{equation}
  \mathcal{S}_i(\ps) = S_{\mathcal{S},i}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathcal{S},i}(E_i|\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathcal{S},i}(t_i|\vec{p}_{\mathrm{s,time}}),
+ \label{eq:Si}
 \end{equation}
 where the signal model parameters $\ps$ can be divided into spatial, energy, and
 time parameters, i.e. $\vec{p}_{\mathrm{s}} = (\vec{p}_{\mathrm{s,spatial}},
@@ -144,9 +128,52 @@ an energy cut-off parameter $E_{\mathrm{cut}}$.
 In analog to the signal PDF, the background PDF can be formulated as
 \begin{equation}
  \mathcal{B}_i = S_{\mathcal{B},i}(\vec{x}_i) \mathcal{E}_{\mathcal{B},i}(E_i) \mathcal{T}_{\mathcal{B},i}(t_i).
+ \label{eq:Bi}
 \end{equation}
 All the background PDF components can either be determined from the data itself
 or by using monte-carlo simulation.
+
+\subsection{Gradients of the Log-Likelihood Ratio}
+
+For maximizing the log-likelihood ratio function (equation \ref{eq:logLambdaOfX}),
+or minimizing the negative of it, the minimizer algorithm requires its partial
+derivatives of the fit parameters, $\ps$\footnote{In this formalism we assume that $\ps$
+consists solely of fit parameters for the signal, but in practice it can also consist of fixed
+signal parameters.}. Hence, here we provide the expressions of the partial derivatives
+for equation \ref{eq:logLambdaOfXOptimized}.
+The partial derivative for $\ns$ is given by
+\begin{equation}
+\frac{\partial \log \Lambda(\ns,\ps)}{\partial \ns} = \sum_{i=1}^{N'} \frac{\mathcal{X}_i(\ps)}{1+\ns \mathcal{X}_i(\ps)} - \frac{N - N'}{N - \ns}.
+\end{equation}
+The partial derivative for an individual signal parameter, $p_{\mathrm{s}}$,
+is given by
+\begin{equation}
+ \frac{\partial \log \Lambda(\ns,\ps)}{\partial p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\ns}{1+\ns\mathcal{X}_i(\ps)} \frac{\partial \mathcal{X}_i(\ps)}{\partial p_{\mathrm{s}}}.
+\end{equation}
+The partial derivative of $\mathcal{X}_i$ can be calculated using
+equation \ref{eq:Xi} and the expressions for the signal and background PDFs as given
+in equation \ref{eq:Si} and \ref{eq:Bi}, respectively. Depending on the type of
+fit parameter, i.e. spatial, energy, or time, the derivative of the PDF ratio,
+$\mathcal{R}_i(\ps) = \mathcal{S}_i(\ps) / \mathcal{B}_i$, simplifies to the
+derivative of the respective type of PDF ratio:
+\begin{equation}
+ \frac{\partial \mathcal{X}_i(\ps)}{\partial p_{\mathrm{s}}} = \frac{1}{N}\frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s}}},
+\end{equation}
+with
+\begin{equation}
+ \mathcal{R}_i(\ps) = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+\end{equation}
+and
+\begin{equation}
+ \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,spatial}}} = \frac{\partial \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}})}{\partial p_{\mathrm{s,spatial}}} \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+\end{equation}
+\begin{equation}
+ \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,energy}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \frac{\mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}})}{\partial p_{\mathrm{s,energy}}} \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+\end{equation}
+\begin{equation}
+ \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,time}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \frac{\mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}})}{\partial p_{\mathrm{s,time}}}.
+\end{equation}
+
 
 
 \subsection{Multiple Datasets}
