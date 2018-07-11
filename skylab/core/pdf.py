@@ -56,97 +56,6 @@ class PDF(object):
         pass
 
 
-class PDFRatioFillMethod(object):
-    """Abstract base class to implement a PDF ratio fill method. It can happen,
-    that there are empty background bins but where signal could possibly be.
-    A PDFRatioFillMethod implements what happens in such cases.
-    """
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, *args, **kwargs):
-        super(PDFRatioFillMethod, self).__init__(*args, **kwargs)
-
-    @abc.abstractmethod
-    def fill_ratios(self, ratios, sig_prob_h, bkg_prob_h,
-                    sig_mask_mc_covered, sig_mask_mc_covered_zero_physics,
-                    bkg_mask_mc_covered, bkg_mask_mc_covered_zero_physics):
-        """The fill_ratios method is supposed to fill the ratio bins (array)
-        with the signal / background division values. For bins (array elements),
-        where the division is undefined, e.g. due to zero background, the fill
-        method decides how to fill those bins.
-
-        Note: Bins which have neither signal monte-carlo nor background
-              monte-carlo coverage, are undefined about their signal-ness or
-              background-ness by construction.
-
-        Parameters
-        ----------
-        ratios : ndarray of float
-            The multi-dimensional array for the final ratio bins. The shape is
-            the same as the sig_h and bkg_h ndarrays.
-        sig_prob_h : ndarray of float
-            The multi-dimensional array (histogram) holding the signal
-            probabilities.
-        bkg_prob_h : ndarray of float
-            The multi-dimensional array (histogram) holding the background
-            probabilities.
-        sig_mask_mc_covered : ndarray of bool
-            The mask array indicating which array elements of sig_prob_h have
-            monte-carlo coverage.
-        sig_mask_mc_covered_zero_physics : ndarray of bool
-            The mask array indicating which array elements of sig_prob_h have
-            monte-carlo coverage but don't have physics contribution.
-        bkg_mask_mc_covered : ndarray of bool
-            The mask array indicating which array elements of bkg_prob_h have
-            monte-carlo coverage.
-            In case of experimental data as background, this mask indicate where
-            (experimental data) background is available.
-        bkg_mask_mc_covered_zero_physics : ndarray of bool
-            The mask array ndicating which array elements of bkg_prob_h have
-            monte-carlo coverage but don't have physics contribution.
-            In case of experimental data as background, this mask contains only
-            False entries.
-
-        Returns
-        -------
-        ratios : ndarray
-            The array holding the final ratio values.
-        """
-        return ratios
-
-
-class PDFRatio(object):
-    """Abstract base class for a PDF ratio class.
-    """
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, fillmethod, *args, **kwargs):
-        """Constructor called by creating an instance of a class which is
-        derived from this PDFRatio class.
-
-        Parameters
-        ----------
-        fillmethod : PDFRatioFillMethod
-            The PDFRatioFillMethod object, which should be used for filling the
-            PDF ratio bins.
-        """
-        super(PDFRatio, self).__init__(self, *args, **kwargs)
-
-        self.fillmethod = fillmethod
-
-    @property
-    def fillmethod(self):
-        """The PDFRatioFillMethod object, which should be used for filling the
-        PDF ratio bins.
-        """
-        return self._fillmethod
-    @fillmethod.setter
-    def fillmethod(self, obj):
-        if(not isinstance(obj, PDFRatioFillMethod)):
-            raise TypeError('The fillmethod property must be an instance of PDFRatioFillMethod!')
-        self._fillmethod = obj
-
-
 class SpatialPDF(PDF):
     """This is the abstract base class for a spatial PDF model.
     """
@@ -176,15 +85,15 @@ class TimePDF(PDF):
 
 class PDFSet(object):
     """This class describes a set of PDF objects which are related to each other
-    via different values of a set of parameters. A signal PDF usually consists
-    of multiple some-kind PDFs for different signal parameters. In general
-    background PDFs could have parameters, too.
+    via different values of a set of fit parameters. A signal PDF usually
+    consists of multiple same-kind PDFs for different signal fit parameters.
+    In general background PDFs could have fit parameters, too.
 
-    This class has the ``parameter_gid_set`` property holding the parameter grid
-    set. Also it holds a dictionary with the PDFs for the different sets of
-    parameter values. The type of the PDF objects is defined through the
-    ``pdf_type`` property. PDF objects of type ``pdf_type`` can be added via the
-    ``add_pdf`` method and retrieved via the ``get_pdf`` method.
+    This class has the ``fitparams_gid_set`` property holding the set of fit
+    parameter grids. Also it holds a dictionary with the PDFs for the different
+    sets of fit parameter values. The type of the PDF objects is defined through
+    the ``pdf_type`` property. PDF objects of type ``pdf_type`` can be added
+    via the ``add_pdf`` method and retrieved via the ``get_pdf`` method.
     """
     def __init__(self, pdf_type, *args, **kwargs):
         """Constructor method. Gets called when the an instance of a class is
@@ -198,7 +107,7 @@ class PDFSet(object):
         if(not issubclass(pdf_type, PDF)):
             raise TypeError('The pdf_type argument must be a subclass of PDF!')
         self._pdf_type = pdf_type
-        self.parameter_grid_set = ParameterGridSet()
+        self.fitparams_grid_set = ParameterGridSet()
         self._params_hash_pdf_dict = dict()
 
     @property
@@ -208,29 +117,35 @@ class PDFSet(object):
         return self._pdf_type
 
     @property
-    def parameter_grid_set(self):
+    def fitparams_grid_set(self):
         """The ParameterGridSet object defining the value grids of the different
-        PDF parameters.
+        fit parameters.
         """
-        return self._parameter_grid_set
-    @parameter_grid_set.setter
-    def parameter_grid_set(self, obj):
+        return self._fitparams_grid_set
+    @fitparams_grid_set.setter
+    def fitparams_grid_set(self, obj):
         if(not isinstance(obj, ParameterGridSet)):
-            raise TypeError('The parameter_grid_set property must be an object of type ParameterGridSet!')
-        self._parameter_grid_set = obj
+            raise TypeError('The fitparams_gid_set property must be an object of type ParameterGridSet!')
+        self._fitparams_grid_set = obj
 
     @property
-    def params_list(self):
-        """(read-only) The list of dictionaries of all the parameter
-        permutations.
+    def gridfitparams_list(self):
+        """(read-only) The list of dictionaries of all the fit parameter
+        permutations on the grid.
         """
-        return self.parameter_grid_set.parameter_permutation_dict_list
+        return self.fitparams_grid_set.parameter_permutation_dict_list
 
     @property
     def pdf_keys(self):
         """(read-only) The list of stored PDF object keys.
         """
         return self._params_hash_pdf_dict.keys()
+
+    def items(self):
+        """Returns the list of 2-element tuples for the PDF stored in this
+        PDFSet object.
+        """
+        return self._params_hash_pdf_dict.items()
 
     def add_pdf(self, pdf, params):
         """Adds the given PDF object for the given parameters to the internal
