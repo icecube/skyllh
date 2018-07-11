@@ -3,130 +3,41 @@
 import abc
 
 from skylab.core.multiproc import IsParallelizable, parallelize
-from skylab.core.pdf import PDFRatio, PDFRatioFillMethod, PDFSet, IsSignalPDF, IsBackgroundPDF
+from skylab.core.pdfratio import SigOverBkgPDFRatio
+
 from skylab.i3.pdf import I3EnergyPDF
 
 
-class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
-    """PDF ratio fill method to set the PDF ratio to the most signal like PDF
-    ratio for bins, where there is signal MC coverage but no background (MC)
-    coverage.
-    """
-    def __init__(self, signallike_percentile=99.):
-        """Creates the PDF ratio fill method object for filling PDF ratio bins,
-        where there is signal MC coverage but no background (MC) coverage
-        with the most signal-like ratio value.
-
-        Parameters
-        ----------
-        signallike_percentile : float in range [0., 100.], default 99.
-            The percentile of signal-like ratios, which should be taken as the
-            ratio value for ratios with no background probability.
-        """
-        super(MostSignalLikePDFRatioFillMethod, self).__init__()
-
-        self.signallike_percentile = signallike_percentile
-
-    @property
-    def signallike_percentile(self):
-        """The percentile of signal-like ratios, which should be taken as the
-        ratio value for ratios with no background probability. This percentile
-        must be given as a float value in the range [0, 100] inclusively.
-        """
-        return self._signallike_percentile
-    @signallike_percentile.setter
-    def signallike_percentile(self, value):
-        if(not isinstance(value, float)):
-            raise TypeError('The signallike_percentile property must be of type float!')
-        if(value < 0. or value > 100.):
-            raise ValueError('The value of the signallike_percentile property must be in the range [0, 100]!')
-        self._signallike_percentile = value
-
-    def fill_ratios(self, ratio, sig_prob_h, bkg_prob_h,
-                    sig_mask_mc_covered, sig_mask_mc_covered_zero_physics,
-                    bkg_mask_mc_covered, bkg_mask_mc_covered_zero_physics):
-        """Fills the ratio array.
-        """
-        # Check if we have predicted background for the entire background MC
-        # range.
-        if(np.any(bkg_mask_mc_covered_zero_physics)):
-            raise ValueError('Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
-
-        # Fill the bins where we have signal and background MC coverage.
-        mask_sig_and_bkg_mc_covered = sig_mask_mc_covered & bkg_mask_mc_covered
-        ratio[mask_sig_and_bkg_mc_covered] = sig_prob_h[mask_sig_and_bkg_mc_covered] / bkg_prob_h[mask_sig_and_bkg_mc_covered]
-
-        # Calculate the ratio value, which should be used for ratio bins, where
-        # we have signal MC coverage but no background MC coverage.
-        ratio_value = np.percentile(ratio[ratio > 1.], self.signallike_percentile)
-        mask_sig_but_notbkg_mc_covered = sig_mask_mc_covered & ~bkg_mask_mc_covered
-        np.copyto(ratio, ratio_value, where=mask_sig_but_notbkg_mc_covered)
-
-        return ratio
-
-
-class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
-    """PDF ratio fill method to set the PDF ratio to the minimal background like
-    value for bins, where there is signal MC coverage but no background (MC)
-    coverage.
-    """
-    def __init__(self):
-        """Creates the PDF ratio fill method object for filling PDF ratio bins,
-        where there is signal MC coverage but no background (MC) coverage
-        with the minimal background-like ratio value.
-        """
-        super(MinBackgroundLikePDFRatioFillMethod, self).__init__()
-
-    def fill_ratios(self, ratio, sig_prob_h, bkg_prob_h,
-                    sig_mask_mc_covered, sig_mask_mc_covered_zero_physics,
-                    bkg_mask_mc_covered, bkg_mask_mc_covered_zero_physics):
-        """Fills the ratio array.
-        """
-        # Check if we have predicted background for the entire background MC
-        # range.
-        if(np.any(bkg_mask_mc_covered_zero_physics)):
-            raise ValueError('Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
-
-        # Fill the bins where we have signal and background MC coverage.
-        mask_sig_and_bkg_mc_covered = sig_mask_mc_covered & bkg_mask_mc_covered
-        ratio[mask_sig_and_bkg_mc_covered] = sig_prob_h[mask_sig_and_bkg_mc_covered] / bkg_prob_h[mask_sig_and_bkg_mc_covered]
-
-        # Calculate the minimal background-like value.
-        min_bkg_prob = np.min(bkg_prob_h[bkg_mask_mc_covered])
-
-        # Set the ratio using the minimal background probability where we
-        # have signal MC coverage but no background (MC) coverage.
-        mask_sig_but_notbkg_mc_covered = sig_mask_mc_covered & ~bkg_mask_mc_covered
-        ratio[mask_sig_but_notbkg_mc_covered] = sig_prob_h[mask_sig_but_notbkg_mc_covered] / min_bkg_prob
-
-        return ratio
-
-
-class SignalOverBackgroundI3EnergyPDFRatio(PDFRatio, IsParallelizable):
-    """This class implements the signal over background PDF ratio for
+class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
+    """This class implements a signal over background PDF ratio spline for
     I3EnergyPDF enegry PDFs. It takes an object, which is derived from PDFSet
     for I3EnergyPDF PDF types, and which is derived from IsSignalPDF, as signal
     PDF. Furthermore, it takes an object, which is derived from I3EnergyPDF and
     IsBackgroundPDF, as background PDF, and creates a spline for the ratio of
     the signal and background PDFs for a grid of different discrete energy
-    signal parameters, which are defined by the signal PDF set.
+    signal fit parameters, which are defined by the signal PDF set.
     """
-    def __init__(self, signalpdfset, backgroundpdf, fillmethod, ncpu=None):
+    def __init__(self, signalpdfset, backgroundpdf,
+                 fillmethod=None, interpolmethod=None, ncpu=None):
         """Creates a new IceCube signal-over-background energy PDF ratio object.
 
         Parameters
         ----------
-        signalpdfset : class derived from PDFSet (for PDF type I3EnergyPDF),
-                                          IsSignalPDF,
-                                          UsesBinning
+        signalpdfset : class instance derived from PDFSet (for PDF type
+                       I3EnergyPDF), IsSignalPDF, and UsesBinning
             The PDF set, which provides signal energy PDFs for a set of
             discrete signal parameters.
-        backgroundpdf : class derived from I3EnergyPDF,
-                                           IsBackgroundPDF
+        backgroundpdf : class instance derived from I3EnergyPDF, and
+                        IsBackgroundPDF
             The background energy PDF object.
-        fillmethod : PDFRatioFillMethod
+        fillmethod : instance of PDFRatioFillMethod | None
             An instance of class derived from PDFRatioFillMethod that implements
             the desired ratio fill method.
+            If set to None (default), the default ratio fill method
+            (MostSignalLikePDFRatioFillMethod) will be used.
+        interpolmethod : class of FitParameterManifoldGridInterpolationMethod
+            The class implementing the fit parameter interpolation method for
+            the PDF ratio manifold grid.
         ncpu : int | None
             The number of CPUs to use to create the ratio splines for the
             different sets of signal parameters.
@@ -136,13 +47,16 @@ class SignalOverBackgroundI3EnergyPDFRatio(PDFRatio, IsParallelizable):
         ValueError
             If the signal and background PDFs use different binning.
         """
-        super(SignalOverBackgroundI3EnergyPDFRatio, self).__init__(fillmethod=fillmethod, ncpu=ncpu)
-        self.signalpdfset = signalpdfset
-        self.backgroundpdf = backgroundpdf
+        super(I3EnergySigOverBkgPDFRatio, self).__init__(
+            pdf_type=I3EnergyPDF,
+            signalpdfset=signalpdfset, backgroundpdf=backgroundpdf,
+            fillmethod=fillmethod, interpolmethod=interpolmethod,
+            ncpu=ncpu)
 
         # Ensure same binning of signal and background PDFs.
-        if(not signalpdfset.has_same_binning_as(backgroundpdf)):
-            raise ValueError('The signal PDF has not the same binning as the background PDF!')
+        for (sigpdf_hash, sigpdf) in self.signalpdfset.items():
+            if(not sigpdf.has_same_binning_as(self.backgroundpdf)):
+                raise ValueError('At least one signal PDF does not have the same binning as the background PDF!')
 
         def create_log_ratio_spline(sigpdfset, bkgpdf, fillmethod, params):
             """Creates the signal/background ratio spline for the given signal
@@ -185,41 +99,131 @@ class SignalOverBackgroundI3EnergyPDFRatio(PDFRatio, IsParallelizable):
 
             return log_ratio_spline
 
-        # Get the list of parameter permutations for which we need to create
-        # PDF ratio arrays.
-        params_list = self.signalpdfset.params_list
+        # Get the list of fit parameter permutations on the grid for which we
+        # need to create PDF ratio arrays.
+        gridfitparams_list = self.signalpdfset.gridfitparams_list
 
         args_list = [ ((signalpdfset, backgroundpdf, fillmethod, params),{})
-                     for params in params_list ]
+                     for params in gridfitparams_list ]
 
         log_ratio_spline_list = parallelize(create_log_ratio_spline, args_list, self.ncpu)
 
         # Save all the log_ratio splines in a dictionary.
-        self._params_hash_log_ratio_spline_dict = dict()
-        for (params, log_ratio_spline) in zip(params_list, log_ratio_spline_list):
-            params_hash = make_params_hash(params)
-            self._params_hash_log_ratio_spline_dict[params_hash] = log_ratio_spline
+        self._gridfitparams_hash_log_ratio_spline_dict = dict()
+        for (gridfitparams, log_ratio_spline) in zip(gridfitparams_list, log_ratio_spline_list):
+            gridfitparams_hash = make_params_hash(gridfitparams)
+            self._gridfitparams_hash_log_ratio_spline_dict[gridfitparams_hash] = log_ratio_spline
 
-    @property
-    def backgroundpdf(self):
-        """The background PDF object, derived from I3EnergyPDF and
-        IsBackgroundPDF.
+        # Save the list of data field names.
+        self._data_field_names = [ binning.name
+                                  for binning in self.backgroundpdf.binnings ]
+
+        # Construct the instance for the fit parameter interpolation method.
+        self._interpolmethod_instance = self.interpolmethod(self._get_spline_value, signalpdfset.fitparams_grid_set)
+
+        # Create cache variables for the last ratio value and gradients in order
+        # to avoid the recalculation of the ratio value when the
+        # ``get_gradient`` method is called (usually after the ``get_ratio``
+        # method was called).
+        self._cache_fitparams_hash = None
+        self._cache_ratio = None
+        self._cache_gradients = None
+
+    def _get_spline_value(self, gridfitparams, eventdata):
+        """Selects the spline object for the given fit parameter grid point and
+        evaluates the spline for all the given events.
         """
-        return self._bkgpdf
-    @backgroundpdf.setter
-    def backgroundpdf(self, pdf):
-        if(not (isinstance(pdf, I3EnergyPDF) and isinstance(pdf, IsBackgroundPDF))):
-            raise TypeError('The backgroundpdf property must be an object which is derived from I3EnergyPDF and IsBackgroundPDF!')
-        self._bkgpdf = pdf
+        # Get the spline object for the given fit parameter grid values.
+        gridfitparams_hash = make_params_hash(gridfitparams)
+        spline = self._gridfitparams_hash_log_ratio_spline_dict[gridfitparams_hash]
 
-    @property
-    def signalpdfset(self):
-        """The signal PDFSet object for I3EnergyPDF.
+        # Evaluate the spline.
+        value = spline(eventdata)
+
+        return value
+
+    def _is_cached(self, events, fitparams_hash):
+        """Checks if the ratio and gradients for the given set of fit parameters
+        are already cached.
         """
-        return self._sigpdfset
-    @signalpdfset.setter
-    def signalpdfset(self, pdfset):
-        if(not (isinstance(pdfset, PDFSet) and isinstance(pdfset, IsSignalPDF) and issubclass(pdfset.pdf_type, I3EnergyPDF))):
-            raise TypeError('The signalpdfset property must be an object which is derived from PDFSet and IsSignalPDF and whose pdf_type property is a subclass of I3EnergyPDF!')
-        self._sigpdfset = pdfset
+        if((self._cache_fitparams_hash == fitparams_hash) and
+           (len(self._cache_ratio) == len(events))
+          ):
+            return True
+        return False
 
+    def _calculate_ratio_and_gradients(self, events, fitparams, fitparams_hash):
+        """Calculates the ratio values and ratio gradients for all the events
+        given the fit parameters. It caches the results.
+        """
+        # Create a 2D event data array holding only the needed event data fields
+        # for the PDF ratio spline evaluation.
+        eventdata = np.vstack([events[fn] for fn in self._data_field_names]).T
+
+        (ratio, gradients) = self._interpolmethod_instance.get_value_and_gradients(
+            eventdata, fitparams)
+        # The interpolation works on the logarithm of the ratio spline, hence
+        # we need to transform it using the exp function, and we need to account
+        # for the exp function in the gradients.
+        ratio = np.exp(ratio)
+        gradients = ratio * gradients
+
+        # Cache the value and the gradients.
+        self._cache_fitparams_hash = fitparams_hash
+        self._cache_ratio = ratio
+        self._cache_gradients = gradients
+
+    def get_ratio(self, events, fitparams):
+        """Retrieves the PDF ratio value for each given event, given the given
+        set of fit parameters. This method is called during the likelihood
+        maximization process.
+        For computational efficiency reasons, the gradients are calculated as
+        well and will be cached.
+
+        Parameters
+        ----------
+        events : numpy record ndarray
+            The numpy record ndarray holding the data events for which the PDF
+            ratio values should get calculated.
+        fitparams : dict
+            The dictionary with the fit parameter values.
+
+        Returns
+        -------
+        ratio : 1d ndarray of float
+            The PDF ratio value for each given event.
+        """
+        fitparams_hash = make_params_hash(fitparams)
+
+        # Check if the ratio value is already cached.
+        if(self._is_cached(events, fitparams_hash)):
+            return self._cache_ratio
+
+        self._calculate_ratio_and_gradients(events, fitparams, fitparams_hash)
+
+        return self._cache_ratio
+
+    def get_gradient(self, events, fitparams, pidx=0):
+        """Retrieves the PDF ratio gradient for the pidx'th fit parameter.
+
+        Parameters
+        ----------
+        events : numpy record ndarray
+            The numpy record ndarray holding the data events for which the PDF
+            ratio values should get calculated.
+        fitparams : dict
+            The dictionary with the fit parameter values.
+        pidx : int
+            The index of the fit parameter for which the gradient should get
+            calculated.
+        """
+        fitparams_hash = make_params_hash(fitparams)
+
+        # Check if the gradients have been calculated already.
+        if(self._is_cached(events, fitparams_hash)):
+            return self._cache_gradients[:,pidx]
+
+        # The gradients have not been calculated yet.
+        self._calculate_ratio_and_gradients(events, fitparams, fitparams_hash)
+
+        return self._cache_gradients[:,pidx]
