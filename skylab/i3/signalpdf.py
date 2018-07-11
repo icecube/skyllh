@@ -1,24 +1,23 @@
 # -*- coding: utf-8 -*-
 
 from skylab.core import multiproc
-from skylab.core.analysis import UsesBinning
-from skylab.core.parameters import make_params_hash
 from skylab.core.pdf import PDFSet, IsSignalPDF
 from skylab.physics.flux import FluxModel
+
 from skylab.i3.pdf import I3EnergyPDF
 
-class SignalI3EnergyPDF(PDFSet, IsSignalPDF, UsesBinning, multiproc.IsParallelizable):
+class SignalI3EnergyPDF(PDFSet, IsSignalPDF, multiproc.IsParallelizable):
     """This is the signal energy PDF for IceCube. It creates a set of
     I3EnergyPDF objects for a discrete set of energy signal parameters. Energy
     signal parameters are the parameters that influence the source flux model.
     """
     def __init__(self, data_mc, logE_binning, sinDec_binning, fluxmodel,
-                 params_grid_set, ncpu=None):
+                 fitparams_grid_set, ncpu=None):
         """Creates a new IceCube energy signal PDF for a given flux model and
-        a set of parameter grids for the flux model.
+        a set of fit parameter grids for the flux model.
         It creates a set of I3EnergyPDF objects for each signal parameter value
         permutation and stores it inside the ``_params_hash_I3EnergyPDF_dict``
-        dictionary, where the hash of the parameters is the key.
+        dictionary, where the hash of the fit parameters dictionary is the key.
 
         Parameters
         ----------
@@ -41,10 +40,13 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, UsesBinning, multiproc.IsParalleliz
             The binning definition for the sin(declination).
         fluxmodel : FluxModel
             The flux model to use to create the signal energy PDF.
-        params_grid_set : ParameterGridSet
-            The set of signal parameter grids. A ParameterGrid object for each
-            energy signal parameter, for which an I3EnergyPDF object needs to be
+        fitparams_grid_set : ParameterGridSet
+            The set of fit parameter grids. A ParameterGrid object for each
+            energy fit parameter, for which an I3EnergyPDF object needs to be
             created.
+        ncpu : int | None (default)
+            The number of CPUs to use to create the different I3EnergyPDF
+            objects for the different fit parameter grid values.
         """
         super(I3SignalEnergyPDF, self).__init__(pdf_type=I3EnergyPDF, ncpu=ncpu)
 
@@ -55,12 +57,7 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, UsesBinning, multiproc.IsParalleliz
         if(not isinstance(fluxmodel, FluxModel)):
             raise TypeError('The fluxmodel argument must be an instance of FluxModel!')
 
-        # Save the binning definition which will be used for all I3EnergyPDF
-        # objects.
-        self.add_binning(logE_binning, 'log_energy')
-        self.add_binning(sinDec_binning, 'sin_dec')
-
-        self.parameter_grid_set = params_grid_set
+        self.fitparams_grid_set = fitparams_grid_set
 
         # Create I3EnergyPDF objects for
         def create_I3EnergyPDF(data_logE, data_sinDec, data_mcweight, data_true_energy,
