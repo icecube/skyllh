@@ -12,6 +12,8 @@ class PDF(object):
     """
     __metaclass__ = abc.ABCMeta
 
+    #TODO: Add axes property to define the axis for each dimension of the PDF.
+    #      It can be used later for plotting all kinds of PDFs and PDF ratios.
     def __init__(self, *args, **kwargs):
         # Make sure that multiple inheritance can be used. This super call will
         # invoke the __init__ method of a possible second inheritance.

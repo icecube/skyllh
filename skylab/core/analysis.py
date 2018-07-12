@@ -9,17 +9,17 @@ class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
     """
-    def __init__(self, key, binedges):
+    def __init__(self, name, binedges):
         """Creates a new binning definition object.
 
         Parameters
         ----------
-        key : str
-            The key (name) of the binning definition.
+        name : str
+            The name of the binning definition.
         binedges : sequence
             The sequence of the bin edges, which should be used for the binning.
         """
-        self.key = key
+        self.name = name
         self.binedges = binedges
 
     def __eq__(self, other):
@@ -27,23 +27,23 @@ class BinningDefinition(object):
         """
         if(not isinstance(other, BinningDefinition)):
             raise TypeError('The other object in the equal comparison must be an instance of BinningDefinition!')
-        if(self.key != other.key):
+        if(self.name != other.name):
             return False
         if(np.any(self.binedges != other.binedges)):
             return False
         return True
 
     @property
-    def key(self):
-        """The key (name) of the binning setting. This must be an unique name
+    def name(self):
+        """The name of the binning setting. This must be an unique name
         for all the different binning settings used within a season.
         """
-        return self._key
-    @key.setter
-    def key(self, key):
-        if(not isinstance(key, str)):
-            raise TypeError("The key must be of type 'str'!")
-        self._key = key
+        return self._name
+    @name.setter
+    def name(self, name):
+        if(not isinstance(name, str)):
+            raise TypeError("The name must be of type 'str'!")
+        self._name = name
 
     @property
     def binedges(self):
@@ -102,7 +102,7 @@ class UsesBinning(object):
         # Define the list of binning definition objects and a name->list_index
         # mapping for faster access.
         self._binnings = []
-        self._binning_key2idx = {}
+        self._binning_name2idx = {}
 
     @property
     def binnings(self):
@@ -138,53 +138,53 @@ class UsesBinning(object):
                 return False
         return True
 
-    def add_binning(self, binning, key=None):
+    def add_binning(self, binning, name=None):
         """Adds the given binning definition to the list of binnings.
 
         Parameters
         ----------
         binning : BinningDefinition
             The binning definition to add.
-        key : str | (default) None
-            The key (name) of the binning. If not None and it's different to the
-            key of the given binning definition, a copy of the BinningDefinition
-            object is made and the new name is set.
+        name : str | (default) None
+            The name of the binning. If not None and it's different to the
+            name of the given binning definition, a copy of the
+            BinningDefinition object is made and the new name is set.
         """
         if(not isinstance(binning, BinningDefinition)):
             raise TypeError('The binning argument must be an instance of BinningDefinition!')
 
-        # Create a copy of the BinningDefinition object if the key differs.
-        if(key is not None):
-            if(not isinstance(key, str)):
-                raise TypeError('The key argument must be of type str!')
-            if(key != binning.key):
-                binning = BinningDefinition(key, binning.binedges)
+        # Create a copy of the BinningDefinition object if the name differs.
+        if(name is not None):
+            if(not isinstance(name, str)):
+                raise TypeError('The name argument must be of type str!')
+            if(name != binning.name):
+                binning = BinningDefinition(name, binning.binedges)
 
         self._binnings.append(binning)
-        self._binning_key2idx[binning.key] = len(self._binnings)-1
+        self._binning_name2idx[binning.name] = len(self._binnings)-1
 
-    def get_binning(self, key):
-        """Retrieves the binning definition of the given key.
+    def get_binning(self, name):
+        """Retrieves the binning definition of the given name.
 
         Parameters
         ----------
-        key : str | int
-            The key of the binning definition. A string specifies the name and
+        name : str | int
+            The name of the binning definition. A string specifies the name and
             an integer the dimension index.
 
         Returns
         -------
         binning : BinningDefinition
-            The binning definition of the given key.
+            The binning definition of the given name.
         """
-        if(isinstance(key, str)):
-            if(key not in self._binning_key2idx):
-                raise KeyError('The binning definition "%s" is not defined!'%(key))
-            binning = self._binnings[self._binning_key2idx[key]]
-        elif(isinstance(key, int)):
-            binning = self._binnings[key]
+        if(isinstance(name, str)):
+            if(name not in self._binning_name2idx):
+                raise KeyError('The binning definition "%s" is not defined!'%(name))
+            binning = self._binnings[self._binning_name2idx[name]]
+        elif(isinstance(name, int)):
+            binning = self._binnings[name]
         else:
-            raise TypeError('The key argument must be of type str or int!')
+            raise TypeError('The name argument must be of type str or int!')
 
         return binning
 

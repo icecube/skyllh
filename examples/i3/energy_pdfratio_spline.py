@@ -8,7 +8,16 @@ from skylab.i3.pdfratio import I3EnergySigOverBkgPDFRatioSpline
 from skylab.i3.signalpdf import SignalI3EnergyPDF
 from skylab.i3.backgroundpdf import DataBackgroundI3EnergyPDF
 
+from skylab.plotting.i3.pdfratio import I3EnergySigOverBkgPDFRatioSplinePlotter
+
+from matplotlib import pyplot as plt
+
+ncpu = 6
 season_name = 'IC86, 2015-2017'
+
+# Enable multi-core processing globally.
+from skylab.core import multiproc
+multiproc.NCPU = ncpu
 
 # Define the GFU dataset collection.
 from i3skylab.datasets import GFU_v002p01 as datasample
@@ -41,3 +50,14 @@ backgroundpdf = DataBackgroundI3EnergyPDF(ds.data_exp,
 
 # Create the object for the signal over background energy PDF ratio.
 energy_pdf_ratio = I3EnergySigOverBkgPDFRatioSpline(signalpdfset, backgroundpdf)
+
+plotter = I3EnergySigOverBkgPDFRatioSplinePlotter(energy_pdf_ratio)
+
+# Create a matplotlib figure and Axes object.
+fig = plt.figure()
+
+plotter.plot(fig.add_subplot(311), fitparams={'gamma':1.9})
+plotter.plot(fig.add_subplot(312), fitparams={'gamma':2.9})
+plotter.plot(fig.add_subplot(313), fitparams={'gamma':3.9})
+
+plt.show()

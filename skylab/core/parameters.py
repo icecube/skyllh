@@ -70,10 +70,11 @@ class ParameterGrid(object):
             The precision of the parameter values.
         """
         self.name = name
-        self.grid = grid
         self.precision = precision
-
-        #self.grid = self.round_to_precision(self.grid)
+        # Setting the grid, will automatically round the grid values to the
+        # precision of the grid. Hence, we need to set the grid property after
+        # setting the precision property.
+        self.grid = grid
 
     @property
     def name(self):
@@ -95,7 +96,7 @@ class ParameterGrid(object):
     def grid(self, arr):
         if(not isinstance(arr, np.ndarray)):
             raise TypeError('The values property must be of type numpy.ndarray!')
-        self._grid = arr
+        self._grid = self.round_to_precision(arr)
 
     @property
     def precision(self):
@@ -302,8 +303,8 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
             b = self._cache_parabola['b']
         else:
             # Calculate the neighboring gridponts to x1: x0 and x2.
-            x0 = self.p_grid.round_to_precision(x1 - dp)
-            x2 = self.p_grid.round_to_precision(x1 + dp)
+            x0 = self.p_grid.round_to_precision(x1 - dx)
+            x2 = self.p_grid.round_to_precision(x1 + dx)
 
             # Parameterize the parabola with parameters a, b, and M1.
             M0 = self.f({xname:x0}, eventdata)

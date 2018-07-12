@@ -118,7 +118,7 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
             self._gridfitparams_hash_log_ratio_spline_dict[gridfitparams_hash] = log_ratio_spline
 
         # Save the list of data field names.
-        self._data_field_names = [ binning.key
+        self._data_field_names = [ binning.name
                                   for binning in self.backgroundpdf.binnings ]
 
         # Construct the instance for the fit parameter interpolation method.

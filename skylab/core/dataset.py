@@ -407,24 +407,24 @@ class Dataset(object):
         """
         if(not isinstance(binning, BinningDefinition)):
             raise TypeError('The "binning" argument must be of type BinningDefinition!')
-        if(binning.key in self._binning_definitions):
-            raise KeyError('The binning definition "%s" is already defined for season "%s"!'%(binning.key, self._name))
+        if(binning.name in self._binning_definitions):
+            raise KeyError('The binning definition "%s" is already defined for season "%s"!'%(binning.name, self._name))
 
-        self._binning_definitions[binning.key] = binning
+        self._binning_definitions[binning.name] = binning
 
-    def get_binning_definition(self, key):
-        """Gets the BinningDefinition object for the given binning key.
+    def get_binning_definition(self, name):
+        """Gets the BinningDefinition object for the given binning name.
         """
-        if(key not in self._binning_definitions):
-            raise KeyError('The given binning key "%s" has not been added yet!'%(key))
-        return self._binning_definitions[key]
+        if(name not in self._binning_definitions):
+            raise KeyError('The given binning name "%s" has not been added yet!'%(name))
+        return self._binning_definitions[name]
 
-    def define_binning(self, key, binedges):
-        """Defines a binning for ``key``, and adds it as binning definition.
+    def define_binning(self, name, binedges):
+        """Defines a binning for ``name``, and adds it as binning definition.
 
         Parameters
         ----------
-        key : str
+        name : str
             The name of the binning setting.
         binedges : sequence
             The sequence of the bin edges, which should be used for this binning
@@ -436,7 +436,7 @@ class Dataset(object):
             The BinningDefinition object which was created and added to this
             season.
         """
-        binning = BinningDefinition(key, binedges)
+        binning = BinningDefinition(name, binedges)
         self.add_binning_definition(binning)
         return binning
 
@@ -575,19 +575,19 @@ class DatasetCollection(object):
             raise KeyError('The dataset "%s" is not part of the dataset collection "%s"!'%(name, self.name))
         return self._datasets[name]
 
-    def define_binning(self, key, binedges):
+    def define_binning(self, name, binedges):
         """Defines a binning definition and adds it to all the datasets of this
         dataset collection.
 
         Parameters
         ----------
-        key : str
+        name : str
             The name of the binning definition.
         binedges : sequence
             The sequence of the bin edges, that should be used for the binning.
         """
-        for (name, dataset) in self._datasets.iteritems():
-            dataset.define_binning(key, binedges)
+        for (dsname, dataset) in self._datasets.iteritems():
+            dataset.define_binning(name, binedges)
 
     def add_data_preparation(self, func):
         """Adds the data preparation function to all the datasets of this
@@ -602,5 +602,5 @@ class DatasetCollection(object):
             respectively. The return value must be a two-element tuple of the
             form (exp, mc) with the modified experimental and monto-carlo data.
         """
-        for (name, dataset) in self._datasets.iteritems():
+        for (dsname, dataset) in self._datasets.iteritems():
             dataset.add_data_preparation(func)
