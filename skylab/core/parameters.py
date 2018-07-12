@@ -129,8 +129,16 @@ class ParameterGrid(object):
 class ParameterGridSet(ObjectCollection):
     """Describes a set of parameter grids.
     """
-    def __init__(self):
-        super(ParameterGridSet, self).__init__(obj_t=ParameterGrid)
+    def __init__(self, param_grid_list=None):
+        """Constructs a new ParameterGridSet object.
+
+        Parameters
+        ----------
+        param_grid_list : list of ParameterGrid | ParameterGrid | None
+            The list of ParameterGrid objects with which this set should get
+            initialized with.
+        """
+        super(ParameterGridSet, self).__init__(obj_t=ParameterGrid, obj_list=param_grid_list)
 
     @property
     def ndim(self):
