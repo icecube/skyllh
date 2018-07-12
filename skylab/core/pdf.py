@@ -3,7 +3,7 @@
 import abc
 
 from skylab.core.py import typename
-from skylab.core.parameters import ParameterGridSet, make_params_hash
+from skylab.core.parameters import ParameterGrid, ParameterGridSet, make_params_hash
 
 class PDF(object):
     """The abstract base class for all probability distribution functions (PDF)
@@ -95,7 +95,7 @@ class PDFSet(object):
     the ``pdf_type`` property. PDF objects of type ``pdf_type`` can be added
     via the ``add_pdf`` method and retrieved via the ``get_pdf`` method.
     """
-    def __init__(self, pdf_type, *args, **kwargs):
+    def __init__(self, pdf_type, fitparams_grid_set, *args, **kwargs):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this PDFSet class.
 
@@ -103,12 +103,19 @@ class PDFSet(object):
         ----------
         pdf_type : type
             The PDF class that can be added to the set.
+        fitparams_gid_set : ParameterGridSet | ParameterGrid
+            The ParameterGridSet with the fit parameter grids defining the
+            descrete fit parameter values for which the PDFs of this PDF set
+            are made for.
         """
+        # Call super to support multiple class inheritance.
+        super(PDFSet, self).__init__(*args, **kwargs)
+
         if(not issubclass(pdf_type, PDF)):
             raise TypeError('The pdf_type argument must be a subclass of PDF!')
         self._pdf_type = pdf_type
-        self.fitparams_grid_set = ParameterGridSet()
-        self._params_hash_pdf_dict = dict()
+        self.fitparams_grid_set = fitparams_grid_set
+        self._gridfitparams_hash_pdf_dict = dict()
 
     @property
     def pdf_type(self):
@@ -124,6 +131,8 @@ class PDFSet(object):
         return self._fitparams_grid_set
     @fitparams_grid_set.setter
     def fitparams_grid_set(self, obj):
+        if(isinstance(obj, ParameterGrid)):
+            obj = ParameterGridSet([obj])
         if(not isinstance(obj, ParameterGridSet)):
             raise TypeError('The fitparams_gid_set property must be an object of type ParameterGridSet!')
         self._fitparams_grid_set = obj
@@ -139,15 +148,15 @@ class PDFSet(object):
     def pdf_keys(self):
         """(read-only) The list of stored PDF object keys.
         """
-        return self._params_hash_pdf_dict.keys()
+        return self._gridfitparams_hash_pdf_dict.keys()
 
     def items(self):
         """Returns the list of 2-element tuples for the PDF stored in this
         PDFSet object.
         """
-        return self._params_hash_pdf_dict.items()
+        return self._gridfitparams_hash_pdf_dict.items()
 
-    def add_pdf(self, pdf, params):
+    def add_pdf(self, pdf, gridfitparams):
         """Adds the given PDF object for the given parameters to the internal
         registry.
 
@@ -155,9 +164,9 @@ class PDFSet(object):
         ----------
         pdf : pdf_type
             The object derived from ``pdf_type`` that should be added.
-        params : dict
-            The dictionary with the PDF parameters, which identify the PDF
-            object.
+        gridfitparams : dict
+            The dictionary with the grid fit parameter values, which identify
+            the PDF object.
 
         Errors
         ------
@@ -166,24 +175,23 @@ class PDFSet(object):
         """
         if(not isinstance(pdf, self.pdf_type)):
             raise TypeError('The pdf argument must be an instance of %s!'%(typename(self.pdf_type)))
-        if(not isinstance(params, dict)):
-            raise TypeError('The params argument must be of type dict!')
+        if(not isinstance(gridfitparams, dict)):
+            raise TypeError('The fitparams argument must be of type dict!')
 
-        params_hash = make_params_hash(params)
-        if(params_hash in self._params_hash_pdf_dict):
-            raise KeyError('The signal PDF with parameters %s was already added!'%(str(params)))
-        self._params_hash_pdf_dict[params_hash] = signalpdf
+        gridfitparams_hash = make_params_hash(gridfitparams)
+        if(gridfitparams_hash in self._gridfitparams_hash_pdf_dict):
+            raise KeyError('The PDF with grid fit parameters %s was already added!'%(str(gridfitparams)))
+        self._gridfitparams_hash_pdf_dict[gridfitparams_hash] = pdf
 
-    def get_pdf(self, params):
-        """Retrieves the PDF object for the given set of signal
-        parameters.
+    def get_pdf(self, gridfitparams):
+        """Retrieves the PDF object for the given set of fit parameters.
 
         Parameters
         ----------
-        params : dict | int
-            The dictionary with the parameters for which the PDF object should
-            get retrieved. If an integer is given, it is assumed to be the PDF
-            key.
+        gridfitparams : dict | int
+            The dictionary with the grid fit parameters for which the PDF object
+            should get retrieved. If an integer is given, it is assumed to be
+            the PDF key.
 
         Returns
         -------
@@ -195,17 +203,17 @@ class PDFSet(object):
         KeyError
             If no PDF object was created for the given set of parameters.
         """
-        if(isinstance(params, int)):
-            params_hash = params
-        elif(isinstance(params, dict)):
-            params_hash = make_params_hash(params)
+        if(isinstance(gridfitparams, int)):
+            gridfitparams_hash = gridfitparams
+        elif(isinstance(gridfitparams, dict)):
+            gridfitparams_hash = make_params_hash(gridfitparams)
         else:
-            raise TypeError('The params argument must be of type dict or int!')
+            raise TypeError('The gridfitparams argument must be of type dict or int!')
 
-        if(params_hash not in self._params_hash_pdf_dict):
-            raise KeyError('No PDF was created for the parameter set "%s"!'%(str(params)))
+        if(gridfitparams_hash not in self._gridfitparams_hash_pdf_dict):
+            raise KeyError('No PDF was created for the parameter set "%s"!'%(str(gridfitparams)))
 
-        pdf = self._params_hash_pdf_dict[params_hash]
+        pdf = self._gridfitparams_hash_pdf_dict[gridfitparams_hash]
         return pdf
 
 

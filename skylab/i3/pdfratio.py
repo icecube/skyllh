@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import abc
+import numpy as np
+import scipy.interpolate
 
+from skylab.core.parameters import make_params_hash
 from skylab.core.multiproc import IsParallelizable, parallelize
 from skylab.core.pdfratio import SigOverBkgPDFRatio
 
@@ -47,7 +50,7 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
         ValueError
             If the signal and background PDFs use different binning.
         """
-        super(I3EnergySigOverBkgPDFRatio, self).__init__(
+        super(I3EnergySigOverBkgPDFRatioSpline, self).__init__(
             pdf_type=I3EnergyPDF,
             signalpdfset=signalpdfset, backgroundpdf=backgroundpdf,
             fillmethod=fillmethod, interpolmethod=interpolmethod,
@@ -58,7 +61,7 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
             if(not sigpdf.has_same_binning_as(self.backgroundpdf)):
                 raise ValueError('At least one signal PDF does not have the same binning as the background PDF!')
 
-        def create_log_ratio_spline(sigpdfset, bkgpdf, fillmethod, params):
+        def create_log_ratio_spline(sigpdfset, bkgpdf, fillmethod, gridfitparams):
             """Creates the signal/background ratio spline for the given signal
             parameters.
 
@@ -68,7 +71,7 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
                 The spline of the logarithmic PDF ratio values.
             """
             # Get the signal PDF for the given signal parameters.
-            sigpdf = sigpdfset.get_pdf(params)
+            sigpdf = sigpdfset.get_pdf(gridfitparams)
 
             # Create the ratio array with the same shape than the background pdf
             # histogram.
@@ -103,8 +106,8 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
         # need to create PDF ratio arrays.
         gridfitparams_list = self.signalpdfset.gridfitparams_list
 
-        args_list = [ ((signalpdfset, backgroundpdf, fillmethod, params),{})
-                     for params in gridfitparams_list ]
+        args_list = [ ((signalpdfset, backgroundpdf, self.fillmethod, gridfitparams),{})
+                     for gridfitparams in gridfitparams_list ]
 
         log_ratio_spline_list = parallelize(create_log_ratio_spline, args_list, self.ncpu)
 
@@ -115,7 +118,7 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
             self._gridfitparams_hash_log_ratio_spline_dict[gridfitparams_hash] = log_ratio_spline
 
         # Save the list of data field names.
-        self._data_field_names = [ binning.name
+        self._data_field_names = [ binning.key
                                   for binning in self.backgroundpdf.binnings ]
 
         # Construct the instance for the fit parameter interpolation method.

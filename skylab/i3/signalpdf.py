@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from skylab.core import multiproc
+import numpy as np
+
+from skylab.core.analysis import BinningDefinition
+from skylab.core.multiproc import IsParallelizable, parallelize
 from skylab.core.pdf import PDFSet, IsSignalPDF
 from skylab.physics.flux import FluxModel
 
 from skylab.i3.pdf import I3EnergyPDF
 
-class SignalI3EnergyPDF(PDFSet, IsSignalPDF, multiproc.IsParallelizable):
+class SignalI3EnergyPDF(PDFSet, IsSignalPDF, IsParallelizable):
     """This is the signal energy PDF for IceCube. It creates a set of
     I3EnergyPDF objects for a discrete set of energy signal parameters. Energy
     signal parameters are the parameters that influence the source flux model.
@@ -48,7 +51,8 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, multiproc.IsParallelizable):
             The number of CPUs to use to create the different I3EnergyPDF
             objects for the different fit parameter grid values.
         """
-        super(I3SignalEnergyPDF, self).__init__(pdf_type=I3EnergyPDF, ncpu=ncpu)
+        super(SignalI3EnergyPDF, self).__init__(pdf_type=I3EnergyPDF,
+            fitparams_grid_set=fitparams_grid_set, ncpu=ncpu)
 
         if(not isinstance(logE_binning, BinningDefinition)):
             raise TypeError('The logE_binning argument must be an instance of BinningDefinition!')
@@ -57,11 +61,10 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, multiproc.IsParallelizable):
         if(not isinstance(fluxmodel, FluxModel)):
             raise TypeError('The fluxmodel argument must be an instance of FluxModel!')
 
-        self.fitparams_grid_set = fitparams_grid_set
-
-        # Create I3EnergyPDF objects for
+        # Create I3EnergyPDF objects for all permutations of the fit parameter
+        # grid values.
         def create_I3EnergyPDF(data_logE, data_sinDec, data_mcweight, data_true_energy,
-                               logE_binning, sinDec_binning, fluxmodel, params):
+                               logE_binning, sinDec_binning, fluxmodel, gridfitparams):
             """Creates an I3EnergyPDF object for the given flux model and flux
             parameters.
 
@@ -82,7 +85,7 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, multiproc.IsParallelizable):
                 The binning definition for the sin(declination).
             fluxmodel : FluxModel
                 The flux model to use to create the signal event weights.
-            params : dict
+            gridfitparams : dict
                 The dictionary holding the specific signal flux parameters.
 
             Returns
@@ -92,7 +95,8 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, multiproc.IsParallelizable):
                 parameters.
             """
             # Create a copy of the FluxModel with the given flux parameters.
-            myfluxmodel = fluxmodel.copy(newprop=params)
+            # The copy is needed to not interfer with other CPU processes.
+            myfluxmodel = fluxmodel.copy(newprop=gridfitparams)
 
             # Calculate the signal energy weight of the event. Note, that
             # because we create a normalized PDF, we can ignore all constants.
@@ -111,15 +115,15 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, multiproc.IsParallelizable):
         data_true_energy = data_mc['true_energy']
 
         args_list = [ ((data_logE, data_sinDec, data_mcweight, data_true_energy,
-                        logE_binning, sinDec_binning, fluxmodel, params), {})
-                     for params in self.params_list ]
+                        logE_binning, sinDec_binning, fluxmodel, gridfitparams), {})
+                     for gridfitparams in self.gridfitparams_list ]
 
-        i3energypdf_list = multiproc.parallelize(create_I3EnergyPDF, args_list, self.ncpu)
+        i3energypdf_list = parallelize(create_I3EnergyPDF, args_list, self.ncpu)
 
         # Save all the I3EnergyPDF objects in the IsSignalPDF PDF registry with
         # the hash of the individual parameters as key.
-        for (params, i3energypdf) in zip(params_list, i3energypdf_list):
-            self.add_pdf(i3energypdf, params)
+        for (gridfitparams, i3energypdf) in zip(self.gridfitparams_list, i3energypdf_list):
+            self.add_pdf(i3energypdf, gridfitparams)
 
     def assert_is_valid_for_exp_data(self, data_exp):
         """Checks if this signal energy PDF is valid for all the given

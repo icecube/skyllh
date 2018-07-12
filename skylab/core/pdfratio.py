@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import abc
+import numpy as np
 
 from skylab.core.py import typename
-from skylab.core.parameters import ParabolaFitParameterInterpolationMethod
+from skylab.core.parameters import FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
 from skylab.core.pdf import PDFSet, IsSignalPDF, IsBackgroundPDF
 
 class PDFRatioFillMethod(object):
@@ -190,7 +191,8 @@ class SigOverBkgPDFRatio(object):
             If set to None (default), the ParabolaFitParameterInterpolationMethod
             will be used for 1-dimensional fit parameter manifolds.
         """
-        super(PDFRatio, self).__init__(self, *args, **kwargs)
+        # Call super to allow for multiple class inheritance.
+        super(SigOverBkgPDFRatio, self).__init__(*args, **kwargs)
 
         self._pdf_type = pdf_type
 

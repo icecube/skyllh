@@ -36,7 +36,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         sinDec_binning : BinningDefinition
             The binning definition for the sin(declination) axis.
         """
-        super(I3EnergyBackgroundPDF, self).__init__()
+        super(I3EnergyPDF, self).__init__()
 
         self.add_binning(logE_binning, 'log_energy')
         self.add_binning(sinDec_binning, 'sin_dec')
@@ -74,9 +74,11 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             range = [logE_binning.range, sinDec_binning.range],
             normed = False)
 
-        # Calculate the normalization for each sin(dec) bin, i.e. along the
-        # logE-axis (axis 0).
-        norms = np.sum(h, axis=(0,)) * np.diff(logE_binning.binedges)
+        # Calculate the normalization for each logE bin. Hence we need to sum
+        # over the logE bins (axis 0) for each sin(dec) bin and need to divide
+        # by the logE bin widths along the sin(dec) bins. The result array norm
+        # is a 2D array of the same shape as h.
+        norms = np.sum(h, axis=(0,))[np.newaxis,...] * np.diff(logE_binning.binedges)[...,np.newaxis]
         h /= norms
 
         self._hist_logE_sinDec = h

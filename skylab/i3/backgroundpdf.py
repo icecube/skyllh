@@ -6,6 +6,7 @@ import scipy.interpolate
 
 from skylab.core.analysis import BinningDefinition, UsesBinning
 from skylab.core.pdf import SpatialPDF, EnergyPDF, IsBackgroundPDF
+from skylab.i3.pdf import I3EnergyPDF
 
 class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     """This is the base class for all IceCube specific spatial background PDF
@@ -195,9 +196,9 @@ class I3MCBackgroundSpatialPDF(I3BackgroundSpatialPDF):
             data_sinDec, data_weights, sinDec_binning, spline_order_sinDec
         )
 
-class I3DataBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
+class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
-    experimental data.
+    experimental data. This class is derived from I3EnergyPDF.
     """
     def __init__(self, data_exp, logE_binning, sinDec_binning):
         """Constructs a new IceCube energy background PDF from experimental
@@ -228,14 +229,14 @@ class I3DataBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         data_physicsweight = data_mcweight
 
         # Create the PDF using the base class.
-        super(I3DataBackgroundEnergyPDF, self).__init__(
+        super(DataBackgroundI3EnergyPDF, self).__init__(
             data_logE, data_sinDec, data_mcweight, data_physicsweight,
             logE_binning, sinDec_binning
         )
 
-class I3MCBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
+class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
-    monte-carlo data.
+    monte-carlo data. This class is derived from I3EnergyPDF.
     """
     def __init__(self, data_mc, physics_weight_field_names, logE_binning, sinDec_binning):
         """Constructs a new IceCube energy background PDF from monte-carlo
@@ -284,7 +285,7 @@ class I3MCBackgroundEnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             data_physicsweight += data_mc[name]
 
         # Create the PDF using the base class.
-        super(I3MCBackgroundEnergyPDF, self).__init__(
+        super(MCBackgroundI3EnergyPDF, self).__init__(
             data_logE, data_sinDec, data_mcweight, data_physicsweight,
             logE_binning, sinDec_binning
         )
