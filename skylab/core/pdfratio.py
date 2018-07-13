@@ -65,6 +65,36 @@ class PDFRatioFillMethod(object):
         """
         return ratios
 
+class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
+    """This PDF ratio fill method implements the exact same fill method as in
+    the skylab2 software named "skylab". It exists just for comparsion and
+    backward compatibility reasons. In general, it should not be used, because
+    it does not distinguish between bins with MC converage and physics model
+    contribution, and those with MC coverage and no physics model contribution!
+    """
+    def __init__(self):
+        super(Skylab2SkylabPDFRatioFillMethod, self).__init__()
+        self.signallike_percentile = 99.
+
+    def fill_ratios(self, ratio, sig_prob_h, bkg_prob_h,
+                    sig_mask_mc_covered, sig_mask_mc_covered_zero_physics,
+                    bkg_mask_mc_covered, bkg_mask_mc_covered_zero_physics):
+        """Fills the ratio array.
+        """
+        # Check if we have predicted background for the entire background MC
+        # range.
+        if(np.any(bkg_mask_mc_covered_zero_physics)):
+            raise ValueError('Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
+
+        sig_domain = sig_prob_h > 0
+        bkg_domain = bkg_prob_h > 0
+
+        ratio[sig_domain & bkg_domain] = sig_prob_h[sig_domain & bkg_domain] / bkg_prob_h[sig_domain & bkg_domain]
+
+        ratio_value = np.percentile(ratio[ratio > 1.], self.signallike_percentile)
+        np.copyto(ratio, ratio_value, where=sig_domain & ~bkg_domain)
+
+        return ratio
 
 class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
     """PDF ratio fill method to set the PDF ratio to the most signal like PDF
