@@ -55,6 +55,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         # Select the events which have MC coverage but zero physics
         # contribution, i.e. the physics model predicts zero contribution.
         mask = data_physicsweight == 0.
+
         # Create a 2D histogram with only the MC events that have zero physics
         # contribution. Note: By construction the zero physics contribution bins
         # are a subset of the MC covered bins.

@@ -51,6 +51,13 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, IsParallelizable):
             The number of CPUs to use to create the different I3EnergyPDF
             objects for the different fit parameter grid values.
         """
+        # We need to extend the fit parameter grids on the lower and upper end
+        # by one bin to allow for the calculation of the interpolation. But we
+        # will do this on a copy of the object.
+        fitparams_grid_set = fitparams_grid_set.copy()
+        fitparams_grid_set.add_extra_lower_and_upper_bin()
+        print fitparams_grid_set.grid
+
         super(SignalI3EnergyPDF, self).__init__(pdf_type=I3EnergyPDF,
             fitparams_grid_set=fitparams_grid_set, ncpu=ncpu)
 

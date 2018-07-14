@@ -3,6 +3,7 @@
 import abc
 import itertools
 import numpy as np
+from copy import deepcopy
 
 from skylab.core.py import ObjectCollection
 
@@ -95,7 +96,9 @@ class ParameterGrid(object):
     @grid.setter
     def grid(self, arr):
         if(not isinstance(arr, np.ndarray)):
-            raise TypeError('The values property must be of type numpy.ndarray!')
+            raise TypeError('The grid property must be of type numpy.ndarray!')
+        if(arr.ndim != 1):
+            raise ValueError('The grid property must be a 1D numpy.ndarray!')
         self._grid = self.round_to_precision(arr)
 
     @property
@@ -116,6 +119,23 @@ class ParameterGrid(object):
         """The dimensionality of the parameter grid.
         """
         return self._grid.ndim
+
+    def add_extra_lower_and_upper_bin(self):
+        """Adds an extra lower and upper bin to this parameter grid. This is
+        usefull when interpolation or gradient methods require an extra bin on
+        each side of the grid.
+        """
+        newgrid = np.empty((self._grid.size+2,))
+        newgrid[1:-1] = self._grid
+        newgrid[0] = newgrid[1] - self._precision
+        newgrid[-1] = newgrid[-2] + self._precision
+        self.grid = newgrid
+
+    def copy(self):
+        """Copies this ParameterGrid object and returns the copy.
+        """
+        copy = deepcopy(self)
+        return copy
 
     def round_to_precision(self, value):
         """Rounds the given value to the precision of the parameter.
@@ -163,6 +183,20 @@ class ParameterGridSet(ObjectCollection):
                             for (p_i, t_i) in zip(param_names, tup) ])
                      for tup in itertools.product(*param_grids) ]
         return dict_list
+
+    def add_extra_lower_and_upper_bin(self):
+        """Adds an extra lower and upper bin to all the parameter grids. This is
+        usefull when interpolation or gradient methods require an extra bin on
+        each side of the grid.
+        """
+        for paramgrid in self.objects:
+            paramgrid.add_extra_lower_and_upper_bin()
+
+    def copy(self):
+        """Copies this ParameterGridSet object and returns the copy.
+        """
+        copy = deepcopy(self)
+        return copy
 
 class FitParameterManifoldGridInterpolationMethod(object):
     """This is an abstract base class for implementing a method to interpolate
