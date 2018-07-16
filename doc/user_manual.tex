@@ -133,6 +133,28 @@ In analog to the signal PDF, the background PDF can be formulated as
 All the background PDF components can either be determined from the data itself
 or by using monte-carlo simulation.
 
+\subsubsection{Notes on the energy PDFs}
+
+In general, the energy PDFs are detector response dependent. That means they
+depend on the local direction of the detected events. Hence, the spatial and
+energy PDFs cannot be factorized entirely in space and energy.
+
+For IceCube the energy resolution mostly depends on the zenith angle, and hence
+on the declination, of the event. Thus, several energy PDFs are created for a
+set of (reconstructed) declination bands, both, for signal and background. At
+the data evaluation, the signal and background PDFs are selected corresponding
+to the declination band the event's declination is part of. Hence, for IceCube,
+the signal and background energy PDFs can be formulated as
+$\mathcal{E}_{\mathcal{S}}(E|\vec{p}_{\mathrm{s,energy}},\delta)$ and
+$\mathcal{E}_{\mathcal{B}}(E|\delta)$, respectively.
+
+A lengthly discussion has been conducted in the past to clarify whether the true or
+reconstructed direction of the monte-carlo events should be used to generate
+the several signal energy PDFs. Since, we mainly use experimental data as
+background estimation it as been concluded to use the reconstructed event
+direction in order to be consistent in the data evaluation for signal and
+background PDFs.
+
 \subsection{Gradients of the Log-Likelihood Ratio}
 
 For maximizing the log-likelihood ratio function (equation \ref{eq:logLambdaOfX}),
