@@ -8,21 +8,39 @@ The base class of all signal pdf models is ``SignalPDF``.
 import numpy as np
 
 from skylab.core.pdf import SpatialPDF, IsSignalPDF
+from skylab.physics.source import PointLikeSourceCollection
 
-class GaussianSpatialSignalPDF(SpatialPDF, IsSignalPDF):
-    """The gaussian spatial signal PDF models the spatial signal contribution of
-    an event as a gaussian distribution of the form
+class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
+    """This spatial signal PDF model describes the spatial PDF for a point
+    source smeared with a 2D gaussian point-spread-function (PSF).
+    Mathematically, it's the convolution of a point in the sky, i.e. the source
+    location, with the PSF. The result of this convolution has the gaussian form
 
         1/(2*\pi*\sigma^2) * exp(-1/2*(r / \sigma)**2),
 
     where \sigma is the spatial uncertainty of the event and r the distance on
     the sphere between the source and the data event.
-
-    This spatial signal PDF model is only meaning full for a point-like source
-    model, i.e. a point-source.
     """
-    def __init__(self):
-        super(GaussianSpatialSignalPDF, self).__init__()
+    def __init__(self, sources):
+        """Creates a new spatial signal PDF for point-like sources with a
+        gaussian PSF.
+
+        Parameters
+        ----------
+        sources : PointLikeSourceCollection
+            The instance of PointLikeSourceCollection containing the
+            PointLikeSource objects for which the spatial PDF values should get
+            calculated for.
+        """
+        super(GaussianPSFPointLikeSourceSpatialSignalPDF, self).__init__()
+
+        if(not isinstance(sources, PointLikeSourceCollection)):
+            raise TypeError('The sources argument must be an instance of PointLikeSourceCollection!')
+
+        # For the calculation ndarrays for the right-ascention and declination
+        # of the different point-like sources is more efficient.
+        self.src_ra = np.array([ src.ra for src in sources ])
+        self.src_dec = np.array([ src.dec for src in sources ])
 
     def assert_is_valid_for_exp_data(self, data_exp):
         """Checks if this PDF is valid for all the given experimental data.
@@ -31,7 +49,7 @@ class GaussianSpatialSignalPDF(SpatialPDF, IsSignalPDF):
         """
         return True
 
-    def get_prob(self, events, params):
+    def get_prob(self, events, params=None):
         """Calculates the spatial signal probability of each event for all given
         sources.
 
@@ -47,14 +65,8 @@ class GaussianSpatialSignalPDF(SpatialPDF, IsSignalPDF):
                 The declination in radian of the data event.
             'sigma': float
                 The reconstruction uncertainty in radian of the data event.
-        params : dict
-            The dictionary holding the spatial source parameters, i.e. the
-            source position(s). It must contain the following keys:
-
-            'src_ra' : 1d ndarray
-                The right-ascention values in radian of the source positions.
-            'src_dec': 1d ndarray
-                The declination values in radian of the source positions.
+        params : None
+            Unused interface argument.
 
         Returns
         -------
@@ -62,8 +74,6 @@ class GaussianSpatialSignalPDF(SpatialPDF, IsSignalPDF):
             The ndarray holding the spatial signal probability on the sphere for
             each event and source.
         """
-        src_ra = params['src_ra']
-        src_dec = params['src_dec']
         ra = events['ra']
         dec = events['dec']
         sigma = events['sigma']
@@ -71,8 +81,8 @@ class GaussianSpatialSignalPDF(SpatialPDF, IsSignalPDF):
         # Make the source position angles two-dimensional so the PDF value can
         # be calculated via numpy broadcasting automatically for several
         # sources. This is useful for stacking analyses.
-        src_ra = src_ra[:,np.newaxis]
-        src_dec = src_dec[:,np.newaxis]
+        src_ra = self.src_ra[:,np.newaxis]
+        src_dec = self.src_dec[:,np.newaxis]
 
         # Calculate the cosine of the distance of the source and the event on
         # the sphere.
