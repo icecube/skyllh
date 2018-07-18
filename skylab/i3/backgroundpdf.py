@@ -10,7 +10,7 @@ from skylab.i3.pdf import I3EnergyPDF
 
 class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     """This is the base class for all IceCube specific spatial background PDF
-    models. IceCube spatial background PDFs depend soley on the zenith angle,
+    models. IceCube spatial background PDFs depend solely on the zenith angle,
     and hence, on the declination of the event.
 
     The IceCube spatial background PDF is modeled as a 1d spline function in
