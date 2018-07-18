@@ -68,21 +68,21 @@ class ObjectCollection(object):
     collection can be added to this object collection via the ``add`` method as
     well.
     """
-    def __init__(self, obj_t, obj_list=None):
+    def __init__(self, obj_type, obj_list=None):
         """Constructor of the ObjectCollection class. Must be called by the
         derived class.
 
         Parameters
         ----------
-        obj_t : type
+        obj_type : type
             The type of the objects, which can be added to the collection.
         obj_list : list of obj_t | None
             The list of objects of type ``obj_t`` with which this collection
             should get initialized with.
         """
-        if(not issubclass(obj_t, object)):
+        if(not issubclass(obj_type, object)):
             raise TypeError('The obj_t argument must be a subclass of object!')
-        self._obj_type = obj_t
+        self._obj_type = obj_type
         self._objects = []
 
         # Add given list of objects.
