@@ -99,17 +99,26 @@ component.
 
 The signal PDF can be written as
 \begin{equation}
- \mathcal{S}_i(\ps) = S_{\mathcal{S},i}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathcal{S},i}(E_i|\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathcal{S},i}(t_i|\vec{p}_{\mathrm{s,time}}),
+ \mathcal{S}_i(\ps) \equiv S_{\mathcal{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathcal{S}}(E_i|\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathcal{S}}(t_i|\vec{p}_{\mathrm{s,time}}),
  \label{eq:Si}
 \end{equation}
 where the signal model parameters $\ps$ can be divided into spatial, energy, and
 time parameters, i.e. $\vec{p}_{\mathrm{s}} = (\vec{p}_{\mathrm{s,spatial}},
 \vec{p}_{\mathrm{s,energy}}, \vec{p}_{\mathrm{s,time}})$. The spatial component,
-$S_i$, can be identified as the point-spread-function (PSF) of the detector.
-For a point-like source model a convinient and widely used PSF is the gaussian
-function:
+$S_{\mathcal{S}}$, can be identified as the convolution,
+$(\Psi \ast \mathrm{PSF})(\alpha,\delta)$\footnote{The 2D convolution on the sky
+is defined as
+$(f \ast g)(\alpha,\delta) = \int_{0}^{2\pi} \mathrm{d}\alpha' \int_{-\pi}^{\pi} \mathrm{d}\delta' f(\alpha',\delta')g(\alpha-\alpha',\delta-\delta')$.},
+of the spatial source extension, $\Psi(\alpha,\delta)$, and the point-spread-function,
+$\mathrm{PSF}(\alpha,\delta)$, of the detector.
+For a point-like spatial source extension at position
+$\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}})$, that is
+$\Psi(\alpha,\delta) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}})$,
+where $\delta(\cdot)$ is the delta-distribution, this convolution collapses to
+a single point in the sky. With a 2D gaussian PSF
+$S_{\mathcal{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}})$ is given as
 \begin{equation}
- S_{\mathcal{S},i}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \equiv S_i(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
+ S_{\mathcal{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \equiv S_{\mathcal{S}}(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
 \end{equation}
 where $r_i$ is the space angle between the source position and the recorded
 reconstructed event direction. In equatorial coordinates,
@@ -127,7 +136,7 @@ an energy cut-off parameter $E_{\mathrm{cut}}$.
 
 In analog to the signal PDF, the background PDF can be formulated as
 \begin{equation}
- \mathcal{B}_i = S_{\mathcal{B},i}(\vec{x}_i) \mathcal{E}_{\mathcal{B},i}(E_i) \mathcal{T}_{\mathcal{B},i}(t_i).
+ \mathcal{B}_i \equiv S_{\mathcal{B}}(\vec{x}_i) \mathcal{E}_{\mathcal{B}}(E_i) \mathcal{T}_{\mathcal{B}}(t_i).
  \label{eq:Bi}
 \end{equation}
 All the background PDF components can either be determined from the data itself
@@ -154,6 +163,23 @@ the several signal energy PDFs. Since, we mainly use experimental data as
 background estimation it as been concluded to use the reconstructed event
 direction in order to be consistent in the data evaluation for signal and
 background PDFs.
+
+\subsection{Stacking of Sources}
+
+In general a likelihood value can be calculated for a set of $K$ stacked
+sources in a weighted fassion. In this case the signal PDF expression of
+equation (\ref{eq:Si}) becames a bit more complicated due to the relative
+source weighting. The sources must be weighted according to their signal detection
+efficiency, $\mathcal{Y}_{\mathrm{s},k}$, and a relative strength weight of the
+sources, $W_k$, with $\sum_{k=1}^{K} W_k = 1$. Hence, the combined signal PDF is
+given as
+\begin{equation}
+ \mathcal{S}_i(\ps) \equiv \frac{\sum_{k=1}^{K} W_k \mathcal{Y}_{\mathrm{s}}(\xsk,\psk) \mathcal{S}_{i}(\psk)}{\sum_{k=1}^{K}W_k\mathcal{Y}_{\mathrm{s}}(\xsk,\psk)}.
+ \label{eq:SiStacking}
+\end{equation}
+One should note that this formalism allows for different source properties, e.g.
+energy spectra, for the various sources.
+
 
 \subsection{Gradients of the Log-Likelihood Ratio}
 
@@ -184,6 +210,7 @@ derivative of the respective type of PDF ratio:
 with
 \begin{equation}
  \mathcal{R}_i(\ps) = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+ \label{eq:Ri}
 \end{equation}
 and
 \begin{equation}
@@ -196,6 +223,44 @@ and
  \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,time}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \frac{\mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}})}{\partial p_{\mathrm{s,time}}}.
 \end{equation}
 
+For stacked sources the expression for $\mathcal{R}_i(\ps)$ in equation (\ref{eq:Ri})
+becomes slightly more complicated due to the source strength weighting.
+With equation (\ref{eq:SiStacking}) and the definitions
+\begin{equation}
+ a_k(\xsk,\psk) = W_k\mathcal{Y}_{\mathrm{s}}(\xsk,\psk),
+\end{equation}
+and
+\begin{equation}
+ A(\ps) = \sum_{k=1}^{K} a_k(\xsk,\psk),
+\end{equation}
+it is given by
+\begin{equation}
+\mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\xsk,\psk) \frac{\mathcal{S}_{i}(\psk)}{\mathcal{B}_{i}}.
+\label{eq:RiStacking}
+\end{equation}
+The signal over background ratio $\mathcal{S}_{i}(\psk) / \mathcal{B}_{i} \equiv \mathcal{R}_{i}(\psk)$
+for the single source $k$ is then given by equation (\ref{eq:Ri}).
+
+Using the same set of source fit parameters $\ps$ for all sources, i.e. called
+global source fit parameters, the partial derivative of $\mathcal{R}_i(\ps)$ for
+all stacked sources w.r.t. the single global source fit parameter
+$p_{\mathrm{s}}$ is then given by
+\begin{equation}
+ \frac{\partial R_i(\ps)}{\partial p_{\mathrm{s}}} = - \frac{1}{A^2(\ps)}\sum_{k=1}^{K} a_{k} \mathcal{R}_i(\psk) + \frac{1}{A(\ps)}\sum_{k=1}^{K}\frac{\partial a_{k}}{\partial p_{\mathrm{s}}}\mathcal{R}_i(\psk) + a_{k}\frac{\partial \mathcal{R}_i(\psk)}{\partial p_{\mathrm{s}}}.
+\end{equation}
+Using $\mathcal{R}_i(\ps)$ from equation (\ref{eq:RiStacking}) it simplifies to
+\begin{equation}
+ \frac{\partial R_i(\ps)}{\partial p_{\mathrm{s}}} = \frac{1}{A(\ps)}\left[ -\mathcal{R}_i(\ps) + \sum_{k=1}^{K} \frac{\partial a_{k}}{\partial p_{\mathrm{s}}}\mathcal{R}_i(\psk) + a_{k}\frac{\partial \mathcal{R}_i(\psk)}{\partial p_{\mathrm{s}}} \right]
+ \label{eq:gradRi}
+\end{equation}
+
+In case one would fit each source individually with its own set of signal fit
+parameters, $\vec{p}_{\mathrm{s},k}$, $\ps$ would be a set of $K$ sets
+of source fit parameters $\vec{p}_{\mathrm{s},k}$, and a derivative for each
+individual source fit parameter $p_{\mathrm{s},k}$ would have to be calculated.
+The expression for such a derivative would be similar to equation (\ref{eq:gradRi}),
+but only the summand for the particular source the fit parameter is for, would
+contribute.
 
 
 \subsection{Multiple Datasets}
@@ -296,7 +361,7 @@ of a data sample $j$ for a source $k$ is defined as the integral over the energy
 of the product of the detector effective area and the differential flux
 $\frac{\mathrm{d}\Phi}{\mathrm{d}E}$ of the source:
 \begin{equation}
- \mathcal{Y}_{\mathrm{s},j}(\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xsk} \frac{\mathrm{d}\Phi}{\mathrm{d}E}(E,\psk) T_{\mathrm{live},j}
+ \mathcal{Y}_{\mathrm{s},j}(\xsk,\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xsk} \frac{\mathrm{d}\Phi}{\mathrm{d}E}(E,\psk) T_{\mathrm{live},j}
 \label{eq:Ysj}
 \end{equation}
 It is the mean number of signal events per steradian expected from a source at
