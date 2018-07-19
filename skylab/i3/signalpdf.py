@@ -156,9 +156,9 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, IsParallelizable):
         # can just use an arbitrary object to verify the data.
         self.get_pdf(self.pdf_keys[0]).assert_is_valid_for_exp_data(data_exp)
 
-    def get_prob(self, events, params):
+    def get_prob(self, events, gridfitparams):
         """Calculates the signal energy probability (in logE) of each event for
-        a given set of signal parameters.
+        a given set of signal fit parameters on a grid.
 
         Parameters
         ----------
@@ -169,13 +169,13 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, IsParallelizable):
                 The logarithm of the energy value of the event.
             'sinDec' : float
                 The sin(declination) value of the event.
-        params : dict
+        gridfitparams : dict
             The dictionary holding the signal parameter values for which the
             signal energy probability should be calculated. Note, that the
             parameter values must match a set of parameter grid values for which
             an I3EnergyPDF object has been created at construction time of this
             I3SignalEnergyPDF object. There is no interpolation method defined
-            at this point to allow arbitrary parameter values!
+            at this point to allow for arbitrary parameter values!
 
         Returns
         -------
@@ -187,7 +187,7 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, IsParallelizable):
         KeyError
             If no energy PDF can be found for the given signal parameter values.
         """
-        i3energypdf = self.get_pdf(params)
+        i3energypdf = self.get_pdf(gridfitparams)
 
         prob = i3energypdf.get_prob(events)
         return prob
