@@ -63,6 +63,17 @@ class PDFAxis(object):
         """
         return (self._vmin, self._vmax)
 
+    def __eq__(self, other):
+        """Checks if this PDFAxis object has the same properties than the given
+        other PDFAxis object.
+        """
+        if((self.name == other.name) and
+           (self.vmin == other.vmin) and
+           (self.vmax == other.vmax)
+          ):
+            return True
+        return False
+
 
 class PDFAxes(ObjectCollection):
     """This class describes the set of PDFAxis objects defining the
@@ -70,6 +81,24 @@ class PDFAxes(ObjectCollection):
     """
     def __init__(self, axes=None):
         super(PDFAxes, self).__init__(obj_type=PDFAxis, obj_list=axes)
+
+    def is_same_as(self, axes):
+        """Checks if this PDFAxes object has the same axes and range then the
+        given PDFAxes object.
+
+        Returns
+        -------
+        check : bool
+            True, if this PDFAxes and the given PDFAxes have the same axes and
+            ranges. False otherwise.
+        """
+        if(len(self) != len(axes)):
+            return False
+        for i in range(len(self)):
+            if(not self[i] == axes[i]):
+                return False
+
+        return True
 
 
 class PDF(object):
@@ -87,9 +116,17 @@ class PDF(object):
         self._axes = PDFAxes()
 
     @property
+    def axes(self):
+        """(read-only) The PDFAxes object holding the PDFAxis objects for the
+        dimensions of the PDF.
+        """
+        return self._axes
+
+    @property
     def ndim(self):
         """The dimensionality of the PDF. It's defined as the number of PDFAxis
-        objects this PDF object has.
+        objects this PDF object has. Note, that the internal dimensionality
+        might be smaller than this.
         """
         return len(self._axes)
 
