@@ -3,7 +3,7 @@
 import numpy as np
 
 from skylab.core.analysis import UsesBinning
-from skylab.core.pdf import EnergyPDF
+from skylab.core.pdf import PDFAxis, EnergyPDF
 
 class I3EnergyPDF(EnergyPDF, UsesBinning):
     """This is the base class for all IceCube specific energy PDF models.
@@ -37,6 +37,14 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             The binning definition for the sin(declination) axis.
         """
         super(I3EnergyPDF, self).__init__()
+
+        # Define the PDF axes.
+        self.add_axis(PDFAxis(name='log_energy',
+                              vmin=logE_binning.lower_edge,
+                              vmax=logE_binning.upper_edge))
+        self.add_axis(PDFAxis(name='sin_dec',
+                              vmin=sinDec_binning.lower_edge,
+                              vmax=sinDec_binning.upper_edge))
 
         self.add_binning(logE_binning, 'log_energy')
         self.add_binning(sinDec_binning, 'sin_dec')
@@ -145,7 +153,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         if(sinDec_binning.any_data_out_of_binning_range(exp_sinDec)):
             raise ValueError('Some data is outside the sin(dec) range (%.3f, %.3f)!'%(sinDec_binning.lower_edge, sinDec_binning.upper_edge))
 
-    def get_prob(self, events, params=None):
+    def get_prob(self, events, fitparams=None):
         """Calculates the energy probability (in logE) of each event.
 
         Parameters
@@ -157,12 +165,12 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
                 The logarithm of the energy value of the event.
             'sinDec' : float
                 The sin(declination) value of the event.
-        params : None
+        fitparams : None
             Unused interface parameter.
 
         Returns
         -------
-        prob : 1d ndarray
+        prob : 1D (N_events,) shaped ndarray
             The array with the energy probability for each event.
         """
         logE_binning = self.get_binning('log_energy')

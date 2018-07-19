@@ -5,6 +5,73 @@ import abc
 from skylab.core.py import typename
 from skylab.core.parameters import ParameterGrid, ParameterGridSet, make_params_hash
 
+class PDFAxis(object):
+    """This class describes an axis of a PDF. It's main purpose is to define
+    the allowed variable space of the PDF. So this information can be used to
+    plot a PDF or a PDF ratio.
+    """
+    def __init__(self, name, vmin, vmax):
+        """Creates a new axis for a PDF.
+
+        Parameters
+        ----------
+        name : str
+            The name of the axis.
+        vmin : float
+            The minimal value of the axis.
+        vmax : float
+            The maximal value of the axis.
+        """
+        super(PDFAxis, self).__init__()
+
+        self.name = name
+        self.vmin = vmin
+        self.vmax = vmax
+
+    @property
+    def name(self):
+        """The name of the axis.
+        """
+        return self._name
+    @name.setter
+    def name(self, name):
+        if(not isinstance(name, str)):
+            raise TypeError('The name property must be of type str!')
+        self._name = name
+
+    @property
+    def vmin(self):
+        """The minimal value of the axis.
+        """
+        return self._vmin
+    @vmin.setter
+    def vmin(self, v):
+        self._vmin = float(v)
+
+    @property
+    def vmax(self):
+        """The maximal value of the axis.
+        """
+        return self._vmax
+    @vmax.setter
+    def vmax(self, v):
+        self._vmax = float(v)
+
+    @property
+    def range(self):
+        """(read-only) The 2-element tuple (vmin,vmax) of the axis.
+        """
+        return (self._vmin, self._vmax)
+
+
+class PDFAxes(ObjectCollection):
+    """This class describes the set of PDFAxis objects defining the
+    dimensionality of a PDF.
+    """
+    def __init__(self, axes=None):
+        super(PDFAxes, self).__init__(obj_type=PDFAxis, obj_list=axes)
+
+
 class PDF(object):
     """The abstract base class for all probability distribution functions (PDF)
     models.
@@ -12,12 +79,26 @@ class PDF(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    #TODO: Add axes property to define the axis for each dimension of the PDF.
-    #      It can be used later for plotting all kinds of PDFs and PDF ratios.
     def __init__(self, *args, **kwargs):
         # Make sure that multiple inheritance can be used. This super call will
         # invoke the __init__ method of a possible second inheritance.
         super(PDF, self).__init__(*args, **kwargs)
+
+        self._axes = PDFAxes()
+
+    @property
+    def ndim(self):
+        """The dimensionality of the PDF. It's defined as the number of PDFAxis
+        objects this PDF object has.
+        """
+        return len(self._axes)
+
+    def add_axis(self, axis):
+        """Adds the given PDFAxis object to this PDF.
+        """
+        if(not isinstance(axis, PDFAxis)):
+            raise TypeError('The axis argument must be an instance of PDFAxis!')
+        self._axes += axis
 
     @abc.abstractmethod
     def assert_is_valid_for_exp_data(self, data_exp):

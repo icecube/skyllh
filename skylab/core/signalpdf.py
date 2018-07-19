@@ -7,7 +7,7 @@ The base class of all signal pdf models is ``SignalPDF``.
 
 import numpy as np
 
-from skylab.core.pdf import SpatialPDF, IsSignalPDF
+from skylab.core.pdf import PDFAxis, SpatialPDF, IsSignalPDF
 from skylab.physics.source import PointLikeSourceCollection
 
 class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
@@ -33,6 +33,10 @@ class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
             calculated for.
         """
         super(GaussianPSFPointLikeSourceSpatialSignalPDF, self).__init__()
+
+        # Define the PDF axes.
+        self.add_axis(PDFAxis(name='right-ascention', vmin=0, vmax=2*np.pi))
+        self.add_axis(PDFAxis(name='declination', vmin=-np.pi, vmax=np.pi))
 
         if(not isinstance(sources, PointLikeSourceCollection)):
             raise TypeError('The sources argument must be an instance of PointLikeSourceCollection!')
@@ -70,7 +74,7 @@ class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
 
         Returns
         -------
-        prob : (N_events,N_sources) shaped 2d ndarray
+        prob : (N_events,N_sources) shaped 2D ndarray
             The ndarray holding the spatial signal probability on the sphere for
             each event and source.
         """
