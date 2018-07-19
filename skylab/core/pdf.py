@@ -82,6 +82,34 @@ class PDFAxes(ObjectCollection):
     def __init__(self, axes=None):
         super(PDFAxes, self).__init__(obj_type=PDFAxis, obj_list=axes)
 
+    def get_axis(self, name):
+        """Retrieves the PDFAxis object with the given name.
+
+        Parameters
+        ----------
+        name : str | int
+            The name of the axis to retrieve. If an integer is given, it
+            specifies the index of the axis.
+
+        Returns
+        -------
+        axis : PDFAxis
+            The PDFAxis object.
+
+        Errors
+        ------
+        KeyError
+            If the axis could not be found.
+        """
+        if(isinstance(name, int)):
+            return self[name]
+
+        for axis in self:
+            if(axis.name == name):
+                return axis
+
+        raise KeyError('The PDFAxis with name "%s" could not be found!'%(name))
+
     def is_same_as(self, axes):
         """Checks if this PDFAxes object has the same axes and range then the
         given PDFAxes object.
