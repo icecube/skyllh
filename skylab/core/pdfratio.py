@@ -380,6 +380,15 @@ class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
         self.signalpdf = signalpdf
         self.backgroundpdf = backgroundpdf
 
+        # Check that the PDF axes ranges are the same for the signal and
+        # background PDFs.
+        if(not signalpdf.axes.is_same_as(backgroundpdf.axes)):
+            raise ValueError('The signal and background PDFs do not have the same axes.')
+        # Check if the signal (and hence also the background) PDF has two
+        # dimensions.
+        if(signalpdf.ndim != 2):
+            raise ValueError('The signal and background PDFs have to be 2-dimensional!')
+
     @property
     def signalpdf(self):
         """The signal spatial PDF object used to create the PDF ratio.
