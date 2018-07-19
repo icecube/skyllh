@@ -5,7 +5,63 @@ import numpy as np
 
 from skylab.core.py import typename
 from skylab.core.parameters import FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
-from skylab.core.pdf import PDFSet, IsSignalPDF, IsBackgroundPDF
+from skylab.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
+
+class IsPDFRatio(object):
+    """Abstract classifier class for a PDF ratio class. It defines the interface
+    of a PDF ratio class.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, *args, **kwargs):
+        super(IsPDFRatio, self).__init__(*args, **kwargs)
+
+    @abc.abstractmethod
+    def get_ratio(self, events, fitparams):
+        """Retrieves the PDF ratio value for each given event, given the given
+        set of fit parameters. This method is called during the likelihood
+        maximization process.
+
+        Parameters
+        ----------
+        events : numpy record ndarray
+            The numpy record ndarray holding the data events for which the PDF
+            ratio values should get calculated.
+        fitparams : dict
+            The dictionary with the fit parameter values.
+
+        Returns
+        -------
+        ratios : (N_events,) or (N_events,N_sources) shaped ndarray
+            The PDF ratio value for each given event. If the signal PDF depends
+            on the source, a 2D ndarray is returned with the PDF ratio values
+            for each event and source.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_gradient(self, events, fitparams, pidx):
+        """Retrieves the PDF ratio gradient for the parameter ``pidx`` for each
+        given event, given the given set of fit parameters. This method is
+        called during the likelihood maximization process.
+
+        Parameters
+        ----------
+        events : numpy record ndarray
+            The numpy record ndarray holding the data events for which the PDF
+            ratio gradients should get calculated.
+        fitparams : dict
+            The dictionary with the fit parameter values.
+        pidx : int
+            The index of the fit parameter for which the gradient should
+            get calculated.
+
+        Returns
+        -------
+        gradient : 1d ndarray of float
+            The PDF ratio gradient value for each given event.
+        """
+        pass
 
 class PDFRatioFillMethod(object):
     """Abstract base class to implement a PDF ratio fill method. It can happen,
@@ -191,7 +247,7 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
         return ratio
 
 
-class SigOverBkgPDFRatio(object):
+class SigOverBkgPDFRatio(IsPDFRatio):
     """Abstract base class for a PDF ratio class.
     """
     __metaclass__ = abc.ABCMeta
@@ -243,7 +299,6 @@ class SigOverBkgPDFRatio(object):
             else:
                 raise ValueError('There is no default fit parameter manifold grid interpolation method available for %d dimensions!'%(ndim))
         self.interpolmethod = interpolmethod
-
 
     @property
     def pdf_type(self):
@@ -298,47 +353,104 @@ class SigOverBkgPDFRatio(object):
             raise TypeError('The interpolmethod property must be a sub-class of FitParameterManifoldGridInterpolationMethod!')
         self._interpolmethod = cls
 
-    @abc.abstractmethod
-    def get_ratio(self, events, fitparams):
-        """Retrieves the PDF ratio value for each given event, given the given
-        set of fit parameters. This method is called during the likelihood
-        maximization process.
+
+class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
+    """This class implements a basic signal-over-background PDF ratio for
+    spatial PDFs without any fit parameter dependence.
+    It takes a spatial signal PDF and a spatial background PDF and calculates
+    the PDF ratio.
+
+    One instance of this class can be used to calculate the spatial PDF ratio
+    for several sources. By definition this PDF ratio does not depend on any
+    fit parameters. Hence, calling the ``get_gradient`` method will result in
+    throwing a RuntimeError exception.
+    """
+    def __init__(self, signalpdf, backgroundpdf):
+        """Creates a new signal-over-background spatial PDF ratio instance.
+
+        Parameters
+        ----------
+        signalpdf : class instance derived from SpatialPDF, IsSignalPDF
+            The instance of the spatial signal PDF.
+        backgroundpdf : class instance derived from SpatialPDF, IsBackgroundPDF
+            The instance of the spatial background PDF.
+        """
+        super(SpatialSigOverBkgPDFRatio, self).__init__()
+
+        self.signalpdf = signalpdf
+        self.backgroundpdf = backgroundpdf
+
+    @property
+    def signalpdf(self):
+        """The signal spatial PDF object used to create the PDF ratio.
+        """
+        return self._signalpdf
+    @signalpdf.setter
+    def signalpdf(self, pdf):
+        if(not isinstance(pdf, SpatialPDF)):
+            raise TypeError('The signalpdf property must be an instance of SpatialPDF!')
+        if(not isinstance(pdf, IsSignalPDF)):
+            raise TypeError('The signalpdf property must be an instance of IsSignalPDF!')
+        self._signalpdf = pdf
+
+    @property
+    def backgroundpdf(self):
+        """The background spatial PDF object used to create the PDF ratio.
+        """
+        return self._backgroundpdf
+    @backgroundpdf.setter
+    def backgroundpdf(self, pdf):
+        if(not isinstance(pdf, SpatialPDF)):
+            raise TypeError('The backgroundpdf property must be an instance of SpatialPDF!')
+        if(not isinstance(pdf, IsBackgroundPDF)):
+            raise TypeError('The backgroundpdf property must be an instance of IsBackgroundPDF!')
+        self._backgroundpdf = pdf
+
+    def get_ratio(self, events, fitparams=None):
+        """Calculates the PDF ratio for the given events.
 
         Parameters
         ----------
         events : numpy record ndarray
             The numpy record ndarray holding the data events for which the PDF
             ratio values should get calculated.
-        fitparams : dict
-            The dictionary with the fit parameter values.
+
+        fitparams : None
+            Unused interface argument.
 
         Returns
         -------
-        ratio : 1d ndarray of float
-            The PDF ratio value for each given event.
+        ratios : (N_events) or (N_events,N_sources) shaped ndarray
+            The ndarray holding the probability ratio for each event (and each
+            source). The dimensionality of the returned ndarray depends on the
+            dimensionality of the probability ndarray returned by the
+            ``get_prob`` method of signal PDF object.
         """
-        pass
+        sigprob = self._signalpdf.get_prob(events)
+        bkgprob = self._backgroundpdf.get_prob(events)
 
-    @abc.abstractmethod
+        # Check if the signal probability is source dependent for each event.
+        if(sigprob.ndim == 1):
+            # The signal probability is not source dependent for each event, so
+            # it is a 1D array.
+            # Calculate the spatial PDF ratio for each event.
+            # The ratios ndarray is a (N_events,) shaped 1D array.
+            ratios = sigprob / bkgprob
+        elif(sigprob.ndim == 2):
+            # The signal probability is source dependent for each event.
+            # Calculate the spatial PDF ratio for each event and each source.
+            # The ratios ndarray is a (N_events,N_sources) shaped 2D array.
+            # So we need to reshape the (N_events,) background array into a
+            # (N_events,1) array.
+            ratios = sigprob / bkgprob[:,np.newaxis]
+        else:
+            raise ValueError('The return ndarray of the get_prob method of the signal PDF must be one- or two-dimensional! Currently it\'s %d-dimensional!'%(sigprob.ndim))
+
+        return ratios
+
     def get_gradient(self, events, fitparams, pidx):
-        """Retrieves the PDF ratio gradient for the parameter ``pname`` for each
-        given event, given the given set of fit parameters. This method is
-        called during the likelihood maximization process.
-
-        Parameters
-        ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the PDF
-            ratio gradients should get calculated.
-        fitparams : dict
-            The dictionary with the fit parameter values.
-        pidx : int
-            The index of the fit parameter for which the gradient should
-            get calculated.
-
-        Returns
-        -------
-        gradient : 1d ndarray of float
-            The PDF ratio gradient value for each given event.
+        """Calling this method results in throwing a RuntimeError exception,
+        because this PDF ratio class handles only spatial PDFs without any fit
+        parameters.
         """
-        pass
+        raise RuntimeError('The BasicSpatialSigOverBkgPDFRatio handles only PDFs with no fit parameters! So calling get_gradient is meaningless!')
