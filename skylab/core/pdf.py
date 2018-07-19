@@ -40,9 +40,9 @@ class PDF(object):
         pass
 
     @abc.abstractmethod
-    def get_prob(self, events, params):
+    def get_prob(self, events, fitparams):
         """This abstract method is supposed to calculate the probability for
-        the specified events given the specified parameters.
+        the specified events given the specified fit parameters.
 
         Parameters
         ----------
@@ -50,10 +50,20 @@ class PDF(object):
             The numpy record ndarray holding the data events for which the
             probability should be calculated for. What data fields are required
             is defined by the derived PDF class and depends on the application.
-        params : dict
-            The dictionary containing the parameters needed for the calculation.
-            What parameters these are is defined by derived PDF class and
+        fitparams : dict
+            The dictionary containing the fit parameters for which the
+            probability should get calculated.
+            What fit parameters these are is defined by derived PDF class and
             depends on the application.
+
+        Returns
+        -------
+        prob : (N_events,) or (N_events,N_sources) shaped numpy ndarray
+            The 1D numpy ndarray with the probability for each event. If the PDF
+            is dependent on the source, it returns a 2D numpy ndarray with the
+            probability for each of the N_events events and each of the
+            N_sources sources. By definition the 2D case is applicable only for
+            signal PDFs.
         """
         pass
 
