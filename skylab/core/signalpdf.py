@@ -36,7 +36,7 @@ class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
 
         # Define the PDF axes.
         self.add_axis(PDFAxis(name='right-ascention', vmin=0, vmax=2*np.pi))
-        self.add_axis(PDFAxis(name='declination', vmin=-np.pi, vmax=np.pi))
+        self.add_axis(PDFAxis(name='declination', vmin=-np.pi/2, vmax=np.pi/2))
 
         if(not isinstance(sources, PointLikeSourceCollection)):
             raise TypeError('The sources argument must be an instance of PointLikeSourceCollection!')
