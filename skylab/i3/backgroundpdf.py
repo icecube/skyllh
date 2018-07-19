@@ -34,9 +34,12 @@ class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         super(I3BackgroundSpatialPDF, self).__init__()
 
         # Define the PDF axes.
-        self.add_axis(PDFAxis(name='sin_dec',
-            vmin=sinDec_binning.lower_edge,
-            vmax=sinDec_binning.upper_edge))
+        self.add_axis(PDFAxis(name='right-ascention',
+            vmin=0,
+            vmax=2*np.pi))
+        self.add_axis(PDFAxis(name='declination',
+            vmin=np.arcsin(sinDec_binning.lower_edge),
+            vmax=np.arcsin(sinDec_binning.upper_edge)))
 
         self.add_binning(sinDec_binning, 'sin_dec')
         self.spline_order_sinDec = spline_order_sinDec
