@@ -2,7 +2,7 @@
 
 import abc
 
-from skylab.core.py import typename
+from skylab.core.py import typename, ObjectCollection
 from skylab.core.parameters import ParameterGrid, ParameterGridSet, make_params_hash
 
 class PDFAxis(object):
