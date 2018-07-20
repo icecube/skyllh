@@ -159,7 +159,7 @@ class ParameterGridSet(ObjectCollection):
             The list of ParameterGrid objects with which this set should get
             initialized with.
         """
-        super(ParameterGridSet, self).__init__(obj_t=ParameterGrid, obj_list=param_grid_list)
+        super(ParameterGridSet, self).__init__(obj_type=ParameterGrid, obj_list=param_grid_list)
 
     @property
     def ndim(self):
