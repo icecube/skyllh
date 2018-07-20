@@ -215,13 +215,66 @@ class PDF(object):
 
 
 class SpatialPDF(PDF):
-    """This is the abstract base class for a spatial PDF model.
+    """This is the abstract base class for a spatial PDF model. A spatial PDF
+    has two axes, right-ascention (ra) and declination (dec).
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ra_range, dec_range, *args, **kwargs):
+        """Constructor of a spatial PDF. It adds the PDF axes "ra" and "dec"
+        with the specified ranges of coverage.
+
+        Parameters
+        ----------
+        ra_range : 2-element tuple
+            The tuple specifying the right-ascention range this PDF covers.
+        dec_range : 2-element tuple
+            The tuple specifying the declination range this PDF covers.
+        """
         super(SpatialPDF, self).__init__(*args, **kwargs)
 
+        self.add_axis(PDFAxis(name='ra',
+            vmin=ra_range[0], vmax=ra_range[1]))
+        self.add_axis(PDFAxis(name='dec',
+            vmin=dec_range[0], vmax=dec_range[1]))
+
+    def assert_is_valid_for_exp_data(self, data_exp):
+        """Checks if this spatial PDF is valid for all the given experimental
+        data.
+        It checks if all the data is within the right-ascention and declination
+        range.
+
+        Parameters
+        ----------
+        data_exp : numpy record ndarray
+            The array holding the experimental data. The following data fields
+            must exist:
+            'ra' : float
+                The right-ascention of the data event.
+            'dec' : float
+                The declination of the data event.
+
+        Errors
+        ------
+        ValueError
+            If some of the data is outside the right-ascention or declination
+            range.
+        """
+        ra_axis = self.get_axis('ra')
+        dec_axis = self.get_axis('dec')
+
+        sinDec_binning = self.get_binning('sin_dec')
+        exp_sinDec = np.sin(data_exp['dec'])
+
+        # Check if all the data is within the right-ascention range.
+        if(np.any((data_exp['ra'] < ra_axis.vmin) |
+                  (data_exp['ra'] > ra_axis.vmax))):
+            raise ValueError('Some data is outside the right-ascention range (%.3f, %.3f)!'%(ra_axis.vmin, ra_axis.vmax))
+
+        # Check if all the data is within the declination range.
+        if(np.any((data_exp['dec'] < dec_axis.vmin) |
+                  (data_exp['dec'] > dec_axis.vmax))):
+            raise ValueError('Some data is outside the declination range (%.3f, %.3f)!'%(dec_axis.vmin, dec_axis.vmax))
 
 class EnergyPDF(PDF):
     """This is the abstract base class for an energy PDF model.
