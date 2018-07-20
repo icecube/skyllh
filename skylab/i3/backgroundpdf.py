@@ -31,15 +31,10 @@ class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             The order of the spline function for the logarithmic values of the
             spatial background PDF along the sin(dec) axis.
         """
-        super(I3BackgroundSpatialPDF, self).__init__()
-
-        # Define the PDF axes.
-        self.add_axis(PDFAxis(name='ra',
-            vmin=0,
-            vmax=2*np.pi))
-        self.add_axis(PDFAxis(name='dec',
-            vmin=np.arcsin(sinDec_binning.lower_edge),
-            vmax=np.arcsin(sinDec_binning.upper_edge)))
+        super(I3BackgroundSpatialPDF, self).__init__(
+            ra_range=(0, 2*np.pi),
+            dec_range=(np.arcsin(sinDec_binning.lower_edge),
+                       np.arcsin(sinDec_binning.upper_edge)))
 
         self.add_binning(sinDec_binning, 'sin_dec')
         self.spline_order_sinDec = spline_order_sinDec
@@ -73,32 +68,6 @@ class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             raise TypeError('The spline_order_sinDec property must be of type int!')
         self._spline_order_sinDec = order
 
-    def assert_is_valid_for_exp_data(self, data_exp):
-        """Checks if this spatial background PDF is valid for all the given
-        experimental data.
-        It checks if all the data is within the sin(dec) binning range.
-
-        Parameters
-        ----------
-        data_exp : numpy record ndarray
-            The array holding the experimental data. The following data fields
-            need to exist:
-            'dec' : float
-                The declination of the data event.
-
-        Errors
-        ------
-        ValueError
-            If some of the data is outside the sin(dec) binning range.
-        """
-        sinDec_binning = self.get_binning('sin_dec')
-        exp_sinDec = np.sin(data_exp['dec'])
-
-        # Check if all the data is within the binning range.
-        if(np.any((exp_sinDec < sinDec_binning.lower_edge) |
-                  (exp_sinDec > sinDec_binning.upper_edge))):
-            raise ValueError('Some data is outside the sin(dec) range (%.3f, %.3f)!'%(sinDec_binning.lower_edge, sinDec_binning.upper_edge))
-
     def get_prob(self, events, params=None):
         """Calculates the spatial background probability on the sphere of each
         event.
@@ -120,6 +89,7 @@ class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         """
         prob = 0.5 / np.pi * np.exp(self._log_spline(events['sin_dec']))
         return prob
+
 
 class I3DataBackgroundSpatialPDF(I3BackgroundSpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from

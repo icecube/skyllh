@@ -7,7 +7,7 @@ The base class of all signal pdf models is ``SignalPDF``.
 
 import numpy as np
 
-from skylab.core.pdf import PDFAxis, SpatialPDF, IsSignalPDF
+from skylab.core.pdf import SpatialPDF, IsSignalPDF
 from skylab.physics.source import PointLikeSourceCollection
 
 class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
@@ -32,11 +32,9 @@ class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
             PointLikeSource objects for which the spatial PDF values should get
             calculated for.
         """
-        super(GaussianPSFPointLikeSourceSpatialSignalPDF, self).__init__()
-
-        # Define the PDF axes.
-        self.add_axis(PDFAxis(name='ra', vmin=0, vmax=2*np.pi))
-        self.add_axis(PDFAxis(name='dec', vmin=-np.pi/2, vmax=np.pi/2))
+        super(GaussianPSFPointLikeSourceSpatialSignalPDF, self).__init__(
+            ra_range=(0, 2*np.pi),
+            dec_range=(-np.pi/2, np.pi/2))
 
         if(not isinstance(sources, PointLikeSourceCollection)):
             raise TypeError('The sources argument must be an instance of PointLikeSourceCollection!')
@@ -45,13 +43,6 @@ class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
         # of the different point-like sources is more efficient.
         self.src_ra = np.array([ src.ra for src in sources ])
         self.src_dec = np.array([ src.dec for src in sources ])
-
-    def assert_is_valid_for_exp_data(self, data_exp):
-        """Checks if this PDF is valid for all the given experimental data.
-        Since this PDF is a function which is defined everywhere, it just
-        returns True.
-        """
-        return True
 
     def get_prob(self, events, params=None):
         """Calculates the spatial signal probability of each event for all given
