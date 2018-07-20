@@ -76,7 +76,7 @@ class I3EnergySigOverBkgPDFRatioSplinePlotter(object):
 
         (left, right, bottom, top) = (xbinning.lower_edge, xbinning.upper_edge,
                                       ybinning.lower_edge, ybinning.upper_edge)
-        axes.imshow(ratios, extent=(left, right, bottom, top), origin='lower',
+        axes.imshow(ratios.T, extent=(left, right, bottom, top), origin='lower',
                     norm=LogNorm(), interpolation='none')
         axes.set_xlabel(xbinning.name)
         axes.set_ylabel(ybinning.name)
