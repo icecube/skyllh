@@ -63,6 +63,13 @@ class PDFAxis(object):
         """
         return (self._vmin, self._vmax)
 
+    @property
+    def length(self):
+        """(read-only) The length of the axis as float. It's defined as
+        length = vmax - vmin.
+        """
+        return self._vmax - self._vmin
+
     def __eq__(self, other):
         """Checks if this PDFAxis object has the same properties than the given
         other PDFAxis object.
