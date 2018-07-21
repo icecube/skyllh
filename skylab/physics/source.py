@@ -39,12 +39,12 @@ class SourceCollection(ObjectCollection):
         source_type : type | None
             The type of the source. If set to None (default), SourceModel will
             be used.
-        sources : sequence of source_t instances | None
+        sources : sequence of source_type instances | None
             The sequence of sources this collection should be initalized with.
         """
-        if(source_t is None):
-            source_t = SourceModel
-        super(SourceCollection, self).__init__(obj_type=source_t, obj_list=sources)
+        if(source_type is None):
+            source_type = SourceModel
+        super(SourceCollection, self).__init__(obj_type=source_type, obj_list=sources)
 
     @property
     def source_type(self):
@@ -54,7 +54,7 @@ class SourceCollection(ObjectCollection):
 
     @property
     def sources(self):
-        """(read-only) The list of sources of type ``source_t``.
+        """(read-only) The list of sources of type ``source_type``.
         """
         return self.objects
 
@@ -72,7 +72,7 @@ class Catalog(SourceCollection):
         source_type : type | None
             The type of the source. If set to None (default), the default type
             defined by SourceCollection will be used.
-        sources : sequence of source_t | None
+        sources : sequence of source_type | None
             The sequence of sources this catalog should be initalized with.
         """
         super(Catalog, self).__init__(source_type=source_type, sources=sources)
@@ -92,7 +92,7 @@ class Catalog(SourceCollection):
     def as_source_collection(self):
         """Creates a SourceCollection object for this catalog and returns it.
         """
-        source_collection = SourceCollection(source_t=self.source_t, sources=self.sources)
+        source_collection = SourceCollection(source_type=self.source_type, sources=self.sources)
 
 class PointLikeSource(SourceModel):
     """The PointLikeSource class is a source model for a point-like source
