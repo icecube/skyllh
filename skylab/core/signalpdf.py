@@ -2,15 +2,14 @@
 
 """The ``signalpdf`` module contains possible signal PDF models for the
 likelihood function.
-The base class of all signal pdf models is ``SignalPDF``.
 """
 
 import numpy as np
 
 from skylab.core.pdf import SpatialPDF, IsSignalPDF
-from skylab.physics.source import PointLikeSourceCollection
+from skylab.physics.source import PointLikeSource, PointLikeSourceCollection
 
-class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
+class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     """This spatial signal PDF model describes the spatial PDF for a point
     source smeared with a 2D gaussian point-spread-function (PSF).
     Mathematically, it's the convolution of a point in the sky, i.e. the source
@@ -27,15 +26,17 @@ class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
 
         Parameters
         ----------
-        sources : PointLikeSourceCollection
+        sources : PointLikeSource | PointLikeSourceCollection
             The instance of PointLikeSourceCollection containing the
             PointLikeSource objects for which the spatial PDF values should get
             calculated for.
         """
-        super(GaussianPSFPointLikeSourceSpatialSignalPDF, self).__init__(
+        super(GaussianPSFPointLikeSourceSignalSpatialPDF, self).__init__(
             ra_range=(0, 2*np.pi),
             dec_range=(-np.pi/2, np.pi/2))
 
+        if(isinstance(sources, PointLikeSource)):
+            sources = PointLikeSourceCollection([sources])
         if(not isinstance(sources, PointLikeSourceCollection)):
             raise TypeError('The sources argument must be an instance of PointLikeSourceCollection!')
 
@@ -65,9 +66,9 @@ class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
 
         Returns
         -------
-        prob : (N_events,N_sources) shaped 2D ndarray
+        prob : (N_sources,N_events) shaped 2D ndarray
             The ndarray holding the spatial signal probability on the sphere for
-            each event and source.
+            each source and event.
         """
         ra = events['ra']
         dec = events['dec']
@@ -88,6 +89,6 @@ class GaussianPSFPointLikeSourceSpatialSignalPDF(SpatialPDF, IsSignalPDF):
         cos_r[cos_r > 1.] = 1.
         r = np.arccos(cos_r)
 
-        prob = 0.5/(np.pi*sigma**2) * np.exp(-0.5*(dist / sigma)**2)
+        prob = 0.5/(np.pi*sigma**2) * np.exp(-0.5*(r / sigma)**2)
 
         return prob
