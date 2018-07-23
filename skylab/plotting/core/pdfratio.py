@@ -3,6 +3,8 @@
 """Plotting module for core PDF ratio objects.
 """
 
+import numpy as np
+
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
@@ -57,8 +59,6 @@ class BasicSpatialSigOverBkgPDFRatioPlotter(object):
 
         raaxis = self.pdfratio.signalpdf.axes.get_axis('ra')
         decaxis = self.pdfratio.signalpdf.axes.get_axis('dec')
-        (ramin, ramax) = raaxis.range
-        (decmin, decmax) = decaxis.range
 
         # Create a grid of ratio in right-ascention and declination and fill it
         # with PDF ratio values from events that fall into these bins.
@@ -98,7 +98,7 @@ class BasicSpatialSigOverBkgPDFRatioPlotter(object):
 
         (left, right, bottom, top) = (raaxis.vmin, raaxis.vmax,
                                       decaxis.vmin, decaxis.vmax)
-        axes.imshow(ratios, extent=(left, right, bottom, top), origin='lower',
+        axes.imshow(ratios.T, extent=(left, right, bottom, top), origin='lower',
                     norm=LogNorm(), interpolation='none')
         axes.set_xlabel(raaxis.name)
         axes.set_ylabel(decaxis.name)
