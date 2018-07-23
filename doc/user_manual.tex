@@ -217,10 +217,10 @@ and
  \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,spatial}}} = \frac{\partial \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}})}{\partial p_{\mathrm{s,spatial}}} \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
 \end{equation}
 \begin{equation}
- \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,energy}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \frac{\mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}})}{\partial p_{\mathrm{s,energy}}} \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+ \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,energy}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \frac{\partial \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}})}{\partial p_{\mathrm{s,energy}}} \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
 \end{equation}
 \begin{equation}
- \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,time}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \frac{\mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}})}{\partial p_{\mathrm{s,time}}}.
+ \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,time}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \frac{\partial \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}})}{\partial p_{\mathrm{s,time}}}.
 \end{equation}
 
 For stacked sources the expression for $\mathcal{R}_i(\ps)$ in equation (\ref{eq:Ri})
@@ -246,20 +246,25 @@ global source fit parameters, the partial derivative of $\mathcal{R}_i(\ps)$ for
 all stacked sources w.r.t. the single global source fit parameter
 $p_{\mathrm{s}}$ is then given by
 \begin{equation}
- \frac{\partial R_i(\ps)}{\partial p_{\mathrm{s}}} = - \frac{1}{A^2(\ps)}\sum_{k=1}^{K} a_{k} \mathcal{R}_i(\psk) + \frac{1}{A(\ps)}\sum_{k=1}^{K}\frac{\partial a_{k}}{\partial p_{\mathrm{s}}}\mathcal{R}_i(\psk) + a_{k}\frac{\partial \mathcal{R}_i(\psk)}{\partial p_{\mathrm{s}}}.
+ \frac{\partial \mathcal{R}_{i}(\ps)}{\partial p_{\mathrm{s}}} = - \frac{1}{A^2} \frac{\partial A}{\partial p_{\mathrm{s}}} \sum_{k=1}^{K} a_{k} \mathcal{R}_i(\psk) + \frac{1}{A}\sum_{k=1}^{K} \left( \frac{\partial a_{k}}{\partial p_{\mathrm{s}}}\mathcal{R}_i(\psk) + a_{k}\frac{\partial \mathcal{R}_i(\psk)}{\partial p_{\mathrm{s}}} \right).
 \end{equation}
 Using $\mathcal{R}_i(\ps)$ from equation (\ref{eq:RiStacking}) it simplifies to
 \begin{equation}
- \frac{\partial R_i(\ps)}{\partial p_{\mathrm{s}}} = \frac{1}{A(\ps)}\left[ -\mathcal{R}_i(\ps) + \sum_{k=1}^{K} \frac{\partial a_{k}}{\partial p_{\mathrm{s}}}\mathcal{R}_i(\psk) + a_{k}\frac{\partial \mathcal{R}_i(\psk)}{\partial p_{\mathrm{s}}} \right]
+ \frac{\partial \mathcal{R}_{i}(\ps)}{\partial p_{\mathrm{s}}} = \frac{1}{A(\ps)}\left[ -\mathcal{R}_i(\ps)\frac{\partial A}{\partial p_{\mathrm{s}}} + \sum_{k=1}^{K} \left( \frac{\partial a_{k}}{\partial p_{\mathrm{s}}}\mathcal{R}_i(\psk) + a_{k}\frac{\partial \mathcal{R}_i(\psk)}{\partial p_{\mathrm{s}}} \right) \right],
  \label{eq:gradRi}
 \end{equation}
+with the derivative of $A(\ps)$ given by
+\begin{equation}
+ \frac{\partial A}{\partial p_{\mathrm{s}}} = \sum_{k=1}^{K} \frac{\partial a_k}{\partial p_{\mathrm{s}}}.
+\end{equation}
+
 
 In case one would fit each source individually with its own set of signal fit
 parameters, $\vec{p}_{\mathrm{s},k}$, $\ps$ would be a set of $K$ sets
 of source fit parameters $\vec{p}_{\mathrm{s},k}$, and a derivative for each
 individual source fit parameter $p_{\mathrm{s},k}$ would have to be calculated.
 The expression for such a derivative would be similar to equation (\ref{eq:gradRi}),
-but only the summand for the particular source the fit parameter is for, would
+but only the summand for the particular source, for which the fit parameter is for, would
 contribute.
 
 
