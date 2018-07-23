@@ -429,7 +429,7 @@ class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
 
         Returns
         -------
-        ratios : (N_events) or (N_events,N_sources) shaped ndarray
+        ratios : (N_events) or (N_sources,N_events) shaped ndarray
             The ndarray holding the probability ratio for each event (and each
             source). The dimensionality of the returned ndarray depends on the
             dimensionality of the probability ndarray returned by the
@@ -438,22 +438,7 @@ class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
         sigprob = self._signalpdf.get_prob(events)
         bkgprob = self._backgroundpdf.get_prob(events)
 
-        # Check if the signal probability is source dependent for each event.
-        if(sigprob.ndim == 1):
-            # The signal probability is not source dependent for each event, so
-            # it is a 1D array.
-            # Calculate the spatial PDF ratio for each event.
-            # The ratios ndarray is a (N_events,) shaped 1D array.
-            ratios = sigprob / bkgprob
-        elif(sigprob.ndim == 2):
-            # The signal probability is source dependent for each event.
-            # Calculate the spatial PDF ratio for each event and each source.
-            # The ratios ndarray is a (N_events,N_sources) shaped 2D array.
-            # So we need to reshape the (N_events,) background array into a
-            # (N_events,1) array.
-            ratios = sigprob / bkgprob[:,np.newaxis]
-        else:
-            raise ValueError('The return ndarray of the get_prob method of the signal PDF must be one- or two-dimensional! Currently it\'s %d-dimensional!'%(sigprob.ndim))
+        ratios = sigprob / bkgprob
 
         return ratios
 
