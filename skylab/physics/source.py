@@ -27,6 +27,13 @@ class SourceModel(object):
             raise TypeError('The fluxmodel property must be an instance of FluxModel!')
         self._fluxmodel = obj
 
+    @property
+    def id(self):
+        """(read-only) The ID of the source. It's an integer generated with the
+        id() function. Hence, it's related to the memory address of the object.
+        """
+        return id(self)
+
 class SourceCollection(ObjectCollection):
     """This class describes a collection of sources. It can be used to group
     sources into a single object, for instance for a stacking analysis.
