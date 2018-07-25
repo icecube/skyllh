@@ -16,7 +16,7 @@ from copy import deepcopy
 
 from astropy import units
 
-from skylab.core.py import classname, isproperty
+from skylab.core.py import classname, isproperty, float_cast
 
 def get_conversion_factor_to_internal_flux_unit(fluxmodel):
     """Calculates the unit conversion factor for converting the used flux
