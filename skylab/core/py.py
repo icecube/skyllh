@@ -61,6 +61,21 @@ def isproperty(obj, name):
     """
     return isinstance(type(obj).__dict__[name], property)
 
+def float_cast(v, errmsg):
+    """Casts the given value to a float. If the cast is impossible, a TypeError
+    is raised with the given error message.
+    """
+    if(isinstance(v, int)):
+        v = float(v)
+    elif(isinstance(v, str)):
+        try:
+            v = float(v)
+        except:
+            raise TypeError(errmsg)
+    if(not isinstance(v, float)):
+        raise TypeError(errmsg)
+    return v
+
 class ObjectCollection(object):
     """This class provides a collection of objects of a specific type. Objects
     can be added to the collection via the ``add`` method or can be removed
