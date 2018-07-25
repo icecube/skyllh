@@ -5,7 +5,7 @@ source in the sky. What kind of properties this source has is modeled by a
 derived class. The most common one is the PointSource source model for a point
 source at a given position in the sky with a given flux model.
 """
-from skylab.core.py import ObjectCollection
+from skylab.core.py import ObjectCollection, issequence
 from skylab.physics.flux import FluxModel
 
 
@@ -34,10 +34,37 @@ class SourceModel(object):
         """
         return id(self)
 
+
 class SourceCollection(ObjectCollection):
     """This class describes a collection of sources. It can be used to group
     sources into a single object, for instance for a stacking analysis.
     """
+    @staticmethod
+    def cast(obj, errmsg):
+        """Casts the given object to a SourceCollection object. If the cast
+        fails, a TypeError with the given error message is raised.
+
+        Parameters
+        ----------
+        obj : SourceModel | sequence of SourceModel | SourceCollection
+            The object that should be casted to SourceCollection.
+        errmsg : str
+            The error message if the cast fails.
+
+        Errors
+        ------
+        TypeError
+            If the cast fails.
+        """
+        if(isinstance(obj, SourceModel)):
+            obj = SourceCollection(SourceModel, [obj])
+        if(not isinstance(obj, SourceCollection)):
+            if(issequence(obj)):
+                obj = SourceCollection(SourceModel, obj)
+            else:
+                raise TypeError(errmsg)
+        return obj
+
     def __init__(self, source_type=None, sources=None):
         """Creates a new source collection.
 
@@ -64,6 +91,7 @@ class SourceCollection(ObjectCollection):
         """(read-only) The list of sources of type ``source_type``.
         """
         return self.objects
+
 
 class Catalog(SourceCollection):
     """This class describes a catalog of sources. It is derived from
