@@ -42,6 +42,17 @@ class FluxModel(object):
     """Abstract base class for all flux models.
     This base class defines the units used for the flux calculation. At this
     point the function form of the flux model is not yet defined.
+
+    Attributes
+    ----------
+    energy_unit : str
+        The used unit of energy.
+    length_unit : str
+        The used unit of length.
+    time_unit : str
+        The used unit of time.
+    math_function_str : str
+        The string showing the mathematical function of the flux calculation.
     """
     __metaclass__ = abc.ABCMeta
 
@@ -173,12 +184,6 @@ class NormedFluxModel(FluxModel):
         [energy]^-1 [length]^-2 [time]^-1.
     E0 : float
         Normalization energy in unit of energy.
-    energy_unit : str
-        The used unit of energy.
-    length_unit : str
-        The used unit of length.
-    time_unit : str
-        The used unit of time.
 
     """
     __metaclass__ = abc.ABCMeta
@@ -195,10 +200,9 @@ class NormedFluxModel(FluxModel):
         """
         return self._Phi0
     @Phi0.setter
-    def Phi0(self, val):
-        if(not isinstance(val, float)):
-            raise TypeError('Property Phi0 must be of type float!')
-        self._Phi0 = val
+    def Phi0(self, v):
+        v = float_cast(v, 'Property Phi0 must be castable to type float!')
+        self._Phi0 = v
 
     @property
     def E0(self):
@@ -206,10 +210,9 @@ class NormedFluxModel(FluxModel):
         """
         return self._E0
     @E0.setter
-    def E0(self, val):
-        if(not isinstance(val, float)):
-            raise TypeError('Property E0 must be of type float!')
-        self._E0 = val
+    def E0(self, v):
+        v = float_cast(v, 'Property E0 must be castable to type float!')
+        self._E0 = v
 
 class PowerLawFlux(NormedFluxModel):
     """Power law flux of the form
@@ -240,10 +243,9 @@ class PowerLawFlux(NormedFluxModel):
     def gamma(self):
         return self._gamma
     @gamma.setter
-    def gamma(self, val):
-        if(not isinstance(val, float)):
-            raise TypeError('Property gamma must be of type float!')
-        self._gamma = val
+    def gamma(self, v):
+        v = float_cast(v, 'Property gamma must be castable to type float!')
+        self._gamma = v
 
     @property
     def math_function_str(self):
@@ -342,19 +344,17 @@ class LogParabolaPowerLawFlux(NormedFluxModel):
     def alpha(self):
         return self._alpha
     @alpha.setter
-    def alpha(self, val):
-        if(not isinstance(val, float)):
-            raise TypeError('Property alpha must be of type float!')
-        self._alpha = val
+    def alpha(self, v):
+        v = float_cast(v, 'Property alpha must be castable to type float!')
+        self._alpha = v
 
     @property
     def beta(self):
         return self._beta
     @beta.setter
-    def beta(self, val):
-        if(not isinstance(val, float)):
-            raise TypeError('Property beta must be of type float!')
-        self._beta = val
+    def beta(self, v):
+        v = float_cast(v, 'Property beta must be castable to type float!')
+        self._beta = v
 
     @property
     def math_function_str(self):
