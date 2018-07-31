@@ -8,8 +8,8 @@ from skylab.core.parameters import FitParameterManifoldGridInterpolationMethod, 
 from skylab.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
 
 
-class IsPDFRatio(object):
-    """Abstract classifier class for a PDF ratio class. It defines the interface
+class PDFRatio(object):
+    """Abstract base class for a PDF ratio class. It defines the interface
     of a PDF ratio class.
     """
     __metaclass__ = abc.ABCMeta
@@ -22,7 +22,7 @@ class IsPDFRatio(object):
         pdf_type : type
             The Python type of the PDF object the PDF ratio is made for.
         """
-        super(IsPDFRatio, self).__init__(*args, **kwargs)
+        super(PDFRatio, self).__init__(*args, **kwargs)
 
         self._pdf_type = pdf_type
 
@@ -264,7 +264,7 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
         return ratio
 
 
-class SigOverBkgPDFRatio(IsPDFRatio):
+class SigOverBkgPDFRatio(PDFRatio):
     """This class implements a signal-over-background PDF ratio for
     PDFs without any fit parameter dependence.
     It takes a signal PDF of type *pdf_type* and a background PDF of type
@@ -358,7 +358,7 @@ class SigOverBkgPDFRatio(IsPDFRatio):
         raise RuntimeError('The BasicSpatialSigOverBkgPDFRatio handles only PDFs with no fit parameters! So calling get_gradient is meaningless!')
 
 
-class SigSetOverBkgPDFRatio(IsPDFRatio):
+class SigSetOverBkgPDFRatio(PDFRatio):
     """Class for a PDF ratio class that takes a PDFSet of PDF type
     *pdf_type* as signal PDF and a PDF of type *pdf_type* as background PDF.
     The signal PDF depends on signal fit parameters and a interpolation method
