@@ -6,12 +6,12 @@ import scipy.interpolate
 
 from skylab.core.parameters import make_params_hash
 from skylab.core.multiproc import IsParallelizable, parallelize
-from skylab.core.pdfratio import SigOverBkgPDFRatio
+from skylab.core.pdfratio import SigSetOverBkgPDFRatio, PDFRatioFillMethod
 
 from skylab.i3.pdf import I3EnergyPDF
 
 
-class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
+class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizable):
     """This class implements a signal over background PDF ratio spline for
     I3EnergyPDF enegry PDFs. It takes an object, which is derived from PDFSet
     for I3EnergyPDF PDF types, and which is derived from IsSignalPDF, as signal
@@ -37,7 +37,7 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
             An instance of class derived from PDFRatioFillMethod that implements
             the desired ratio fill method.
             If set to None (default), the default ratio fill method
-            (MostSignalLikePDFRatioFillMethod) will be used.
+            MostSignalLikePDFRatioFillMethod will be used.
         interpolmethod : class of FitParameterManifoldGridInterpolationMethod
             The class implementing the fit parameter interpolation method for
             the PDF ratio manifold grid.
@@ -50,11 +50,16 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
         ValueError
             If the signal and background PDFs use different binning.
         """
-        super(I3EnergySigOverBkgPDFRatioSpline, self).__init__(
+        super(I3EnergySigSetOverBkgPDFRatioSpline, self).__init__(
             pdf_type=I3EnergyPDF,
             signalpdfset=signalpdfset, backgroundpdf=backgroundpdf,
-            fillmethod=fillmethod, interpolmethod=interpolmethod,
+            interpolmethod=interpolmethod,
             ncpu=ncpu)
+
+        # Define the default ratio fill method.
+        if(fillmethod is None):
+            fillmethod = MostSignalLikePDFRatioFillMethod()
+        self.fillmethod = fillmethod
 
         # Ensure same binning of signal and background PDFs.
         for (sigpdf_hash, sigpdf) in self.signalpdfset.items():
@@ -131,6 +136,18 @@ class I3EnergySigOverBkgPDFRatioSpline(SigOverBkgPDFRatio, IsParallelizable):
         self._cache_fitparams_hash = None
         self._cache_ratio = None
         self._cache_gradients = None
+
+    @property
+    def fillmethod(self):
+        """The PDFRatioFillMethod object, which should be used for filling the
+        PDF ratio bins.
+        """
+        return self._fillmethod
+    @fillmethod.setter
+    def fillmethod(self, obj):
+        if(not isinstance(obj, PDFRatioFillMethod)):
+            raise TypeError('The fillmethod property must be an instance of PDFRatioFillMethod!')
+        self._fillmethod = obj
 
     def _get_spline_value(self, gridfitparams, eventdata):
         """Selects the spline object for the given fit parameter grid point and
