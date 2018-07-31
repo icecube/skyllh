@@ -9,18 +9,18 @@ from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
 from skylab.core.py import classname
-from skylab.core.pdfratio import BasicSpatialSigOverBkgPDFRatio
+from skylab.core.pdfratio import SpatialSigOverBkgPDFRatio
 
-class BasicSpatialSigOverBkgPDFRatioPlotter(object):
-    """Plotter class to plot a BasicSpatialSigOverBkgPDFRatio object.
+class SpatialSigOverBkgPDFRatioPlotter(object):
+    """Plotter class to plot a SpatialSigOverBkgPDFRatio object.
     """
     def __init__(self, pdfratio):
         """Creates a new plotter object for plotting a
-        BasicSpatialSigOverBkgPDFRatio object.
+        SpatialSigOverBkgPDFRatio object.
 
         Parameters
         ----------
-        pdfratio : BasicSpatialSigOverBkgPDFRatio
+        pdfratio : SpatialSigOverBkgPDFRatio
             The PDF ratio object to plot.
         """
         self.pdfratio = pdfratio
@@ -32,8 +32,8 @@ class BasicSpatialSigOverBkgPDFRatioPlotter(object):
         return self._pdfratio
     @pdfratio.setter
     def pdfratio(self, pdfratio):
-        if(not isinstance(pdfratio, BasicSpatialSigOverBkgPDFRatio)):
-            raise TypeError('The pdfratio property must be an object of instance I3EnergySigOverBkgPDFRatioSpline!')
+        if(not isinstance(pdfratio, SpatialSigOverBkgPDFRatio)):
+            raise TypeError('The pdfratio property must be an object of instance SpatialSigOverBkgPDFRatio!')
         self._pdfratio = pdfratio
 
     def plot(self, axes, source_idx=None):

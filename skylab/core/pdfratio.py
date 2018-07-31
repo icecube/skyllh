@@ -259,14 +259,16 @@ class SigOverBkgPDFRatio(IsPDFRatio):
     throwing a RuntimeError exception.
     """
     def __init__(self, pdf_type, signalpdf, backgroundpdf, *args, **kwargs):
-        """Creates a new signal-over-background spatial PDF ratio instance.
+        """Creates a new signal-over-background PDF ratio instance.
 
         Parameters
         ----------
-        signalpdf : class instance derived from SpatialPDF, IsSignalPDF
-            The instance of the spatial signal PDF.
-        backgroundpdf : class instance derived from SpatialPDF, IsBackgroundPDF
-            The instance of the spatial background PDF.
+        pdf_type : type
+            The python type of the PDF object for which the PDF ratio is for.
+        signalpdf : class instance derived from `pdf_type`, IsSignalPDF
+            The instance of the signal PDF.
+        backgroundpdf : class instance derived from `pdf_type`, IsBackgroundPDF
+            The instance of the background PDF.
         """
         super(SigOverBkgPDFRatio, self).__init__(*args, **kwargs)
 
@@ -435,3 +437,28 @@ class SigSetOverBkgPDFRatio(IsPDFRatio):
         if(not issubclass(cls, FitParameterManifoldGridInterpolationMethod)):
             raise TypeError('The interpolmethod property must be a sub-class of FitParameterManifoldGridInterpolationMethod!')
         self._interpolmethod = cls
+
+
+class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
+    """This class implements a spatial signal-over-background PDF ratio for
+    PDFs without any fit parameter dependence.
+    It takes a signal PDF of type SpatialPDF and a background PDF of type
+    SpatialPDF and calculates the PDF ratio.
+    """
+    def __init__(self, signalpdf, backgroundpdf, *args, **kwargs):
+        """Creates a new signal-over-background PDF ratio instance for spatial
+        PDFs.
+
+        Parameters
+        ----------
+        signalpdf : class instance derived from SpatialPDF, IsSignalPDF
+            The instance of the spatial signal PDF.
+        backgroundpdf : class instance derived from SpatialPDF, IsBackgroundPDF
+            The instance of the spatial background PDF.
+        """
+        super(SpatialSigOverBkgPDFRatio, self).__init__(pdf_type=SpatialPDF,
+            signalpdf=signalpdf, backgroundpdf=backgroundpdf, *args, **kwargs)
+
+        # Make sure that the PDFs have two dimensions, i.e. RA and Dec.
+        if(not signalpdf.ndim == 2):
+            raise ValueError('The spatial signal PDF must have two dimensions! Currently it has %d!'%(signalpdf.ndim))
