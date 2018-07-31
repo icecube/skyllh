@@ -7,14 +7,31 @@ from skylab.core.py import typename
 from skylab.core.parameters import FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
 from skylab.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
 
+
 class IsPDFRatio(object):
     """Abstract classifier class for a PDF ratio class. It defines the interface
     of a PDF ratio class.
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, pdf_type, *args, **kwargs):
+        """Constructor for a PDF ratio class.
+
+        Parameters
+        ----------
+        pdf_type : type
+            The Python type of the PDF object the PDF ratio is made for.
+        """
         super(IsPDFRatio, self).__init__(*args, **kwargs)
+
+        self._pdf_type = pdf_type
+
+    @property
+    def pdf_type(self):
+        """(read-only) The Python type of the PDF object for which the PDF
+        ratio is made for.
+        """
+        return self._pdf_type
 
     @abc.abstractmethod
     def get_ratio(self, events, fitparams):
@@ -270,9 +287,7 @@ class SigOverBkgPDFRatio(IsPDFRatio):
         backgroundpdf : class instance derived from `pdf_type`, IsBackgroundPDF
             The instance of the background PDF.
         """
-        super(SigOverBkgPDFRatio, self).__init__(*args, **kwargs)
-
-        self._pdf_type = pdf_type
+        super(SigOverBkgPDFRatio, self).__init__(pdf_type, *args, **kwargs)
 
         self.signalpdf = signalpdf
         self.backgroundpdf = backgroundpdf
@@ -281,13 +296,6 @@ class SigOverBkgPDFRatio(IsPDFRatio):
         # background PDFs.
         if(not signalpdf.axes.is_same_as(backgroundpdf.axes)):
             raise ValueError('The signal and background PDFs do not have the same axes.')
-
-    @property
-    def pdf_type(self):
-        """(read-only) The python type of the PDF object for which the PDF
-        ratio is for.
-        """
-        return self._pdf_type
 
     @property
     def signalpdf(self):
@@ -365,7 +373,7 @@ class SigSetOverBkgPDFRatio(IsPDFRatio):
         Parameters
         ----------
         pdf_type : type
-            The python type of the PDF object for which the PDF ratio is for.
+            The Python type of the PDF object for which the PDF ratio is for.
         signalpdfset : class instance derived from PDFSet (for PDF type
                        ``pdf_type``), and IsSignalPDF
             The PDF set, which provides signal PDFs for a set of
@@ -379,9 +387,7 @@ class SigSetOverBkgPDFRatio(IsPDFRatio):
             will be used for 1-dimensional fit parameter manifolds.
         """
         # Call super to allow for multiple class inheritance.
-        super(SigSetOverBkgPDFRatio, self).__init__(*args, **kwargs)
-
-        self._pdf_type = pdf_type
+        super(SigSetOverBkgPDFRatio, self).__init__(pdf_type, *args, **kwargs)
 
         self.signalpdfset = signalpdfset
         self.backgroundpdf = backgroundpdf
@@ -395,13 +401,6 @@ class SigSetOverBkgPDFRatio(IsPDFRatio):
             else:
                 raise ValueError('There is no default fit parameter manifold grid interpolation method available for %d dimensions!'%(ndim))
         self.interpolmethod = interpolmethod
-
-    @property
-    def pdf_type(self):
-        """(read-only) The python type of the PDF object for which the PDF
-        ratio is for.
-        """
-        return self._pdf_type
 
     @property
     def backgroundpdf(self):
