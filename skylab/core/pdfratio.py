@@ -248,124 +248,17 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
 
 
 class SigOverBkgPDFRatio(IsPDFRatio):
-    """Abstract base class for a PDF ratio class.
-    """
-    __metaclass__ = abc.ABCMeta
+    """This class implements a signal-over-background PDF ratio for
+    PDFs without any fit parameter dependence.
+    It takes a signal PDF of type *pdf_type* and a background PDF of type
+    *pdf_type* and calculates the PDF ratio.
 
-    def __init__(self, pdf_type, signalpdfset, backgroundpdf,
-                 fillmethod=None, interpolmethod=None, *args, **kwargs):
-        """Constructor called by creating an instance of a class which is
-        derived from this PDFRatio class.
-
-        Parameters
-        ----------
-        pdf_type : type
-            The python type of the PDF object for which the PDF ratio is for.
-        signalpdfset : class instance derived from PDFSet (for PDF type
-                       ``pdf_type``), and IsSignalPDF
-            The PDF set, which provides signal PDFs for a set of
-            discrete signal fit parameters.
-        backgroundpdf : class instance derived from ``pdf_type``, and
-                        IsBackgroundPDF
-        fillmethod : instance of PDFRatioFillMethod | None
-            The PDFRatioFillMethod object, which should be used for filling the
-            PDF ratio bins. If set to None (default) an instance of
-            MostSignalLikePDFRatioFillMethod will be used.
-        interpolmethod : class of FitParameterManifoldGridInterpolationMethod | None
-            The class implementing the fit parameter interpolation method for
-            the PDF ratio manifold grid.
-            If set to None (default), the ParabolaFitParameterInterpolationMethod
-            will be used for 1-dimensional fit parameter manifolds.
-        """
-        # Call super to allow for multiple class inheritance.
-        super(SigOverBkgPDFRatio, self).__init__(*args, **kwargs)
-
-        self._pdf_type = pdf_type
-
-        self.signalpdfset = signalpdfset
-        self.backgroundpdf = backgroundpdf
-
-        # Define the default ratio fill method.
-        if(fillmethod is None):
-            fillmethod = MostSignalLikePDFRatioFillMethod()
-        self.fillmethod = fillmethod
-
-        # Define the default fit parameter interpolation method. The default
-        # depends on the dimensionality of the fit parameter manifold.
-        if(interpolmethod is None):
-            ndim = signalpdfset.fitparams_grid_set.ndim
-            if(ndim == 1):
-                interpolmethod = ParabolaFitParameterInterpolationMethod
-            else:
-                raise ValueError('There is no default fit parameter manifold grid interpolation method available for %d dimensions!'%(ndim))
-        self.interpolmethod = interpolmethod
-
-    @property
-    def pdf_type(self):
-        """The python type of the PDF object for which the PDF ratio is for.
-        """
-        return self._pdf_type
-
-    @property
-    def backgroundpdf(self):
-        """The background PDF object, derived from ``pdf_type`` and
-        IsBackgroundPDF.
-        """
-        return self._bkgpdf
-    @backgroundpdf.setter
-    def backgroundpdf(self, pdf):
-        if(not (isinstance(pdf, self.pdf_type) and isinstance(pdf, IsBackgroundPDF))):
-            raise TypeError('The backgroundpdf property must be an object which is derived from %s and IsBackgroundPDF!'%(typename(self.pdf_type)))
-        self._bkgpdf = pdf
-
-    @property
-    def signalpdfset(self):
-        """The signal PDFSet object for ``pdf_type`` PDF objects.
-        """
-        return self._sigpdfset
-    @signalpdfset.setter
-    def signalpdfset(self, pdfset):
-        if(not (isinstance(pdfset, PDFSet) and isinstance(pdfset, IsSignalPDF) and issubclass(pdfset.pdf_type, self.pdf_type))):
-            raise TypeError('The signalpdfset property must be an object which is derived from PDFSet and IsSignalPDF and whose pdf_type property is a subclass of %s!'%(typename(self.pdf_type)))
-        self._sigpdfset = pdfset
-
-    @property
-    def fillmethod(self):
-        """The PDFRatioFillMethod object, which should be used for filling the
-        PDF ratio bins.
-        """
-        return self._fillmethod
-    @fillmethod.setter
-    def fillmethod(self, obj):
-        if(not isinstance(obj, PDFRatioFillMethod)):
-            raise TypeError('The fillmethod property must be an instance of PDFRatioFillMethod!')
-        self._fillmethod = obj
-
-    @property
-    def interpolmethod(self):
-        """The class derived from FitParameterManifoldGridInterpolationMethod
-        implementing the interpolation of the fit parameter manifold.
-        """
-        return self._interpolmethod
-    @interpolmethod.setter
-    def interpolmethod(self, cls):
-        if(not issubclass(cls, FitParameterManifoldGridInterpolationMethod)):
-            raise TypeError('The interpolmethod property must be a sub-class of FitParameterManifoldGridInterpolationMethod!')
-        self._interpolmethod = cls
-
-
-class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
-    """This class implements a basic signal-over-background PDF ratio for
-    spatial PDFs without any fit parameter dependence.
-    It takes a spatial signal PDF and a spatial background PDF and calculates
-    the PDF ratio.
-
-    One instance of this class can be used to calculate the spatial PDF ratio
+    One instance of this class can be used to calculate the PDF ratio
     for several sources. By definition this PDF ratio does not depend on any
     fit parameters. Hence, calling the ``get_gradient`` method will result in
     throwing a RuntimeError exception.
     """
-    def __init__(self, signalpdf, backgroundpdf):
+    def __init__(self, pdf_type, signalpdf, backgroundpdf, *args, **kwargs):
         """Creates a new signal-over-background spatial PDF ratio instance.
 
         Parameters
@@ -375,7 +268,9 @@ class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
         backgroundpdf : class instance derived from SpatialPDF, IsBackgroundPDF
             The instance of the spatial background PDF.
         """
-        super(SpatialSigOverBkgPDFRatio, self).__init__()
+        super(SigOverBkgPDFRatio, self).__init__(*args, **kwargs)
+
+        self._pdf_type = pdf_type
 
         self.signalpdf = signalpdf
         self.backgroundpdf = backgroundpdf
@@ -384,10 +279,13 @@ class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
         # background PDFs.
         if(not signalpdf.axes.is_same_as(backgroundpdf.axes)):
             raise ValueError('The signal and background PDFs do not have the same axes.')
-        # Check if the signal (and hence also the background) PDF has two
-        # dimensions.
-        if(signalpdf.ndim != 2):
-            raise ValueError('The signal and background PDFs have to be 2-dimensional!')
+
+    @property
+    def pdf_type(self):
+        """(read-only) The python type of the PDF object for which the PDF
+        ratio is for.
+        """
+        return self._pdf_type
 
     @property
     def signalpdf(self):
@@ -396,8 +294,8 @@ class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
         return self._signalpdf
     @signalpdf.setter
     def signalpdf(self, pdf):
-        if(not isinstance(pdf, SpatialPDF)):
-            raise TypeError('The signalpdf property must be an instance of SpatialPDF!')
+        if(not isinstance(pdf, self.pdf_type)):
+            raise TypeError('The signalpdf property must be an instance of %s!'%(typename(self.pdf_type)))
         if(not isinstance(pdf, IsSignalPDF)):
             raise TypeError('The signalpdf property must be an instance of IsSignalPDF!')
         self._signalpdf = pdf
@@ -409,8 +307,8 @@ class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
         return self._backgroundpdf
     @backgroundpdf.setter
     def backgroundpdf(self, pdf):
-        if(not isinstance(pdf, SpatialPDF)):
-            raise TypeError('The backgroundpdf property must be an instance of SpatialPDF!')
+        if(not isinstance(pdf, self.pdf_type)):
+            raise TypeError('The backgroundpdf property must be an instance of %s!'%(typename(self.pdf_type)))
         if(not isinstance(pdf, IsBackgroundPDF)):
             raise TypeError('The backgroundpdf property must be an instance of IsBackgroundPDF!')
         self._backgroundpdf = pdf
@@ -448,3 +346,92 @@ class BasicSpatialSigOverBkgPDFRatio(IsPDFRatio):
         parameters.
         """
         raise RuntimeError('The BasicSpatialSigOverBkgPDFRatio handles only PDFs with no fit parameters! So calling get_gradient is meaningless!')
+
+
+class SigSetOverBkgPDFRatio(IsPDFRatio):
+    """Class for a PDF ratio class that takes a PDFSet of PDF type
+    *pdf_type* as signal PDF and a PDF of type *pdf_type* as background PDF.
+    The signal PDF depends on signal fit parameters and a interpolation method
+    defines how the PDF ratio gets interpolated between the fit parameter
+    values.
+    """
+    def __init__(self, pdf_type, signalpdfset, backgroundpdf,
+                 interpolmethod=None, *args, **kwargs):
+        """Constructor called by creating an instance of a class which is
+        derived from this PDFRatio class.
+
+        Parameters
+        ----------
+        pdf_type : type
+            The python type of the PDF object for which the PDF ratio is for.
+        signalpdfset : class instance derived from PDFSet (for PDF type
+                       ``pdf_type``), and IsSignalPDF
+            The PDF set, which provides signal PDFs for a set of
+            discrete signal fit parameters.
+        backgroundpdf : class instance derived from ``pdf_type``, and
+                        IsBackgroundPDF
+        interpolmethod : class of FitParameterManifoldGridInterpolationMethod | None
+            The class implementing the fit parameter interpolation method for
+            the PDF ratio manifold grid.
+            If set to None (default), the ParabolaFitParameterInterpolationMethod
+            will be used for 1-dimensional fit parameter manifolds.
+        """
+        # Call super to allow for multiple class inheritance.
+        super(SigSetOverBkgPDFRatio, self).__init__(*args, **kwargs)
+
+        self._pdf_type = pdf_type
+
+        self.signalpdfset = signalpdfset
+        self.backgroundpdf = backgroundpdf
+
+        # Define the default fit parameter interpolation method. The default
+        # depends on the dimensionality of the fit parameter manifold.
+        if(interpolmethod is None):
+            ndim = signalpdfset.fitparams_grid_set.ndim
+            if(ndim == 1):
+                interpolmethod = ParabolaFitParameterInterpolationMethod
+            else:
+                raise ValueError('There is no default fit parameter manifold grid interpolation method available for %d dimensions!'%(ndim))
+        self.interpolmethod = interpolmethod
+
+    @property
+    def pdf_type(self):
+        """(read-only) The python type of the PDF object for which the PDF
+        ratio is for.
+        """
+        return self._pdf_type
+
+    @property
+    def backgroundpdf(self):
+        """The background PDF object, derived from ``pdf_type`` and
+        IsBackgroundPDF.
+        """
+        return self._bkgpdf
+    @backgroundpdf.setter
+    def backgroundpdf(self, pdf):
+        if(not (isinstance(pdf, self.pdf_type) and isinstance(pdf, IsBackgroundPDF))):
+            raise TypeError('The backgroundpdf property must be an object which is derived from %s and IsBackgroundPDF!'%(typename(self.pdf_type)))
+        self._bkgpdf = pdf
+
+    @property
+    def signalpdfset(self):
+        """The signal PDFSet object for ``pdf_type`` PDF objects.
+        """
+        return self._sigpdfset
+    @signalpdfset.setter
+    def signalpdfset(self, pdfset):
+        if(not (isinstance(pdfset, PDFSet) and isinstance(pdfset, IsSignalPDF) and issubclass(pdfset.pdf_type, self.pdf_type))):
+            raise TypeError('The signalpdfset property must be an object which is derived from PDFSet and IsSignalPDF and whose pdf_type property is a subclass of %s!'%(typename(self.pdf_type)))
+        self._sigpdfset = pdfset
+
+    @property
+    def interpolmethod(self):
+        """The class derived from FitParameterManifoldGridInterpolationMethod
+        implementing the interpolation of the fit parameter manifold.
+        """
+        return self._interpolmethod
+    @interpolmethod.setter
+    def interpolmethod(self, cls):
+        if(not issubclass(cls, FitParameterManifoldGridInterpolationMethod)):
+            raise TypeError('The interpolmethod property must be a sub-class of FitParameterManifoldGridInterpolationMethod!')
+        self._interpolmethod = cls
