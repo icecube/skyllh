@@ -177,6 +177,17 @@ class PointLikeSourceCollection(SourceCollection):
         super(PointLikeSourceCollection, self).__init__(
             source_type=PointLikeSource, sources=sources)
 
+    @property
+    def ra(self):
+        """(read-only) The ndarray with the right-ascention of all the sources.
+        """
+        return np.array([ src.ra for src in self ])
+
+    @property
+    def dec(self):
+        """(read-only) The ndarray with the declination of all the sources.
+        """
+        return np.array([ src.dec for src in self ])
 
 class PointLikeSourceCatalog(Catalog):
     """Describes a catalog of point-like sources. The difference to a
