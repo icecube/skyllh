@@ -223,7 +223,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
 
         return self._cache_ratio
 
-    def get_gradient(self, events, fitparams, pidx=0):
+    def get_gradient(self, events, fitparams, fitparam_name):
         """Retrieves the PDF ratio gradient for the pidx'th fit parameter.
 
         Parameters
@@ -233,17 +233,20 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
             ratio values should get calculated.
         fitparams : dict
             The dictionary with the fit parameter values.
-        pidx : int
-            The index of the fit parameter for which the gradient should get
+        fitparam_name : str
+            The name of the fit parameter for which the gradient should get
             calculated.
         """
         fitparams_hash = make_params_hash(fitparams)
 
+        # Convert the fit parameter name into the local fit parameter index.
+        pidx = self.convert_signal_fitparam_name_into_index(fitparam_name)
+
         # Check if the gradients have been calculated already.
         if(self._is_cached(events, fitparams_hash)):
-            return self._cache_gradients[:,pidx]
+            return self._cache_gradients[pidx]
 
         # The gradients have not been calculated yet.
         self._calculate_ratio_and_gradients(events, fitparams, fitparams_hash)
 
-        return self._cache_gradients[:,pidx]
+        return self._cache_gradients[pidx]

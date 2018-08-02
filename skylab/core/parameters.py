@@ -170,6 +170,12 @@ class ParameterGridSet(ObjectCollection):
         return len(self)
 
     @property
+    def parameter_names(self):
+        """(read-only) The list of the parameter names.
+        """
+        return [ paramgrid.name for paramgrid in self.objects ]
+
+    @property
     def parameter_permutation_dict_list(self):
         """(read-only) The list of parameter dictionaries constructed from all
         permutations of all the parameter values.
@@ -263,7 +269,7 @@ class FitParameterManifoldGridInterpolationMethod(object):
         return len(self.fitparams_grid_set)
 
     @abc.abstractmethod
-    def get_value_and_gradients(self, eventdata, fitparams):
+    def get_value_and_gradients(self, events, fitparams):
         """Retrieves the interpolated value of the manifold at the d-dimensional
         point ``fitparams`` for all given events, along with the d gradients,
         i.e. partial derivatives.
@@ -281,9 +287,11 @@ class FitParameterManifoldGridInterpolationMethod(object):
         -------
         value : (N,) ndarray of float
             The interpolated manifold value for the N given events.
-        gradients : (N,D) ndarray of float
+        gradients : (D,N) ndarray of float
             The D manifold gradients for the N given events, where D is the
-            number of fit parameters.
+            number of fit parameters. The order of the D parameters is defined
+            by the ParameterGridSet that has been provided at construction time
+            of this interpolation method object.
         """
         pass
 
@@ -319,9 +327,26 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
             'b': b
         }
 
-    def get_value_and_gradients(self, eventdata, fitparams):
+    def get_value_and_gradients(self, events, fitparams):
         """Calculates the interpolted manifold value and its gradient for each
         given event at the point ``fitparams``.
+
+        Parameters
+        ----------
+        events : numpy record ndarray
+            The numpy record ndarray holding the data events for which the
+            manifold value should get calculated.
+        fitparams : dict
+            The dictionary with the fit parameter values, defining the point
+            on the manifold for which the value should get calculated.
+
+        Returns
+        -------
+        value : (N,) ndarray of float
+            The interpolated manifold value for the N given events.
+        gradients : (D,N) ndarray of float
+            The D manifold gradients for the N given events, where D is the
+            number of fit parameters.
         """
         (xname, x) = fitparams.items()[0]
 

@@ -3,7 +3,7 @@
 import abc
 import numpy as np
 
-from skylab.core.py import typename
+from skylab.core.py import typename, classname
 from skylab.core.parameters import FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
 from skylab.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
 
@@ -27,11 +27,32 @@ class PDFRatio(object):
         self._pdf_type = pdf_type
 
     @property
+    def signal_fitparam_names(self):
+        """(read-only) The list of signal parameter names this PDF ratio is a
+        function of.
+        """
+        return self._get_signal_fitparam_names()
+
+    @property
     def pdf_type(self):
         """(read-only) The Python type of the PDF object for which the PDF
         ratio is made for.
         """
         return self._pdf_type
+
+    def _get_signal_fitparam_names(self):
+        """This method must be re-implemented by the derived class and needs to
+        return the list of signal fit parameter names, this PDF ratio is a
+        function of. If it returns None, the PDF ratio is independent of any
+        signal fit parameters.
+
+        Returns
+        -------
+        None | list of str
+            The list of the signal fit parameter names, this PDF ratio is a
+            function of. By default this method returns ``None``.
+        """
+        return None
 
     @abc.abstractmethod
     def get_ratio(self, events, fitparams):
@@ -57,7 +78,7 @@ class PDFRatio(object):
         pass
 
     @abc.abstractmethod
-    def get_gradient(self, events, fitparams, pidx):
+    def get_gradient(self, events, fitparams, fitparam_name):
         """Retrieves the PDF ratio gradient for the parameter ``pidx`` for each
         given event, given the given set of fit parameters. This method is
         called during the likelihood maximization process.
@@ -69,8 +90,8 @@ class PDFRatio(object):
             ratio gradients should get calculated.
         fitparams : dict
             The dictionary with the fit parameter values.
-        pidx : int
-            The index of the fit parameter for which the gradient should
+        fitparam_name : str
+            The name of the fit parameter for which the gradient should
             get calculated.
 
         Returns
@@ -350,12 +371,12 @@ class SigOverBkgPDFRatio(PDFRatio):
 
         return ratios
 
-    def get_gradient(self, events, fitparams, pidx):
+    def get_gradient(self, events, fitparams, fitparam_name):
         """Calling this method results in throwing a RuntimeError exception,
         because this PDF ratio class handles only spatial PDFs without any fit
         parameters.
         """
-        raise RuntimeError('The BasicSpatialSigOverBkgPDFRatio handles only PDFs with no fit parameters! So calling get_gradient is meaningless!')
+        raise RuntimeError('The SigOverBkgPDFRatio handles only PDFs with no fit parameters! So calling get_gradient is meaningless!')
 
 
 class SigSetOverBkgPDFRatio(PDFRatio):
@@ -402,6 +423,9 @@ class SigSetOverBkgPDFRatio(PDFRatio):
                 raise ValueError('There is no default fit parameter manifold grid interpolation method available for %d dimensions!'%(ndim))
         self.interpolmethod = interpolmethod
 
+        # Generate the list of signal fit parameter names once here.
+        self._cache_signal_fitparam_name_list = self.signal_fitparam_names
+
     @property
     def backgroundpdf(self):
         """The background PDF object, derived from ``pdf_type`` and
@@ -436,6 +460,41 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         if(not issubclass(cls, FitParameterManifoldGridInterpolationMethod)):
             raise TypeError('The interpolmethod property must be a sub-class of FitParameterManifoldGridInterpolationMethod!')
         self._interpolmethod = cls
+
+    def _get_signal_fitparam_names(self):
+        """Returns the list of signal fit parameter names this PDF ratio is a
+        function of. The list is taken from the fit parameter grid set of the
+        signal PDFSet object. By construction this parameter grid set defines
+        the signal fit parameters.
+        """
+        return self._sigpdfset.fitparams_grid_set.parameter_names
+
+    def convert_signal_fitparam_name_into_index(self, signal_fitparam_name):
+        """Converts the given signal fit parameter name into the parameter
+        index, i.e. the position of parameter in the signal parameter grid set.
+
+        Parameters
+        ----------
+        signal_fitparam_name : str
+            The name of the signal fit parameter.
+
+        Returns
+        -------
+        index : int
+            The index of the signal fit parameter.
+        """
+        # If there is only one signal fit parameter, we just return index 0.
+        if(len(self._cache_signal_fitparam_name_list) == 1):
+            return 0
+
+        # At this point we have to loop through the list and do name
+        # comparisons.
+        for (index, name) in enumerate(self._cache_signal_fitparam_name_list):
+            if(name == signal_fitparam_name):
+                return index
+
+        # At this point there is no parameter defined.
+        raise KeyError('The PDF ratio "%s" has no signal fit parameter named "%s"!'%(classname(self), signal_fitparam_name))
 
 
 class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
