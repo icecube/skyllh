@@ -61,20 +61,31 @@ equation \ref{eq:L} at $\ns=0$ is tested:
 \end{equation}
 By defining
 \begin{equation}
-\mathcal{X}_i(\ps) \equiv \frac{1}{N}\left( \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} - 1 \right),
+\mathcal{X}_i(\ps) \equiv \frac{1}{N}\left( \mathcal{R}_i(\ps) - 1 \right),
 \label{eq:Xi}
+\end{equation}
+with
+\begin{equation}
+ \mathcal{R}_i(\ps) \equiv \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i},
 \end{equation}
 this reads as:
 \begin{equation}
- \log \Lambda(\ns,\ps) = \sum_{i=1}^{N} \log (1 + \ns\mathcal{X}_i(\ps))
+ \log \Lambda(\ns,\ps) = \sum_{i=1}^{N} \log (1 + \ns\mathcal{X}_i(\ps)).
  \label{eq:logLambdaOfX}
 \end{equation}
-This leads to the test statistic TS
+The $\mathcal{R}_{i}(\ps)$ is the signal over background PDF ratio value of the
+$i$th event.
+
+Using Wilks theorem a test statistic, TS, can be formulated using the
+log-$\Lambda$ function:
 \begin{equation}
  \mathrm{TS} = 2\mathrm{sgn}(\ns) \log \Lambda(\ns,\ps)
  \label{eq:TS}
 \end{equation}
 with separation of over- ($\ns > 0$) and under-fluctuations ($\ns < 0$).
+In case the assumptions of Wilks theorem are met within the analysis, the test
+statistic value distribution will follow a $\chi^2$-distribution with
+a degree-of-freedom equal to the number of fit parameters.
 
 \subsection{Optimizations for Point-Like Sources}
 
