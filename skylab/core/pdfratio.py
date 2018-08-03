@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import abc
+import itertools
 import numpy as np
 
-from skylab.core.py import typename, classname
-from skylab.core.parameters import FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
+from skylab.core.py import typename, classname, issequenceof
+from skylab.core.parameters import FitParameter, FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
 from skylab.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
 
 
@@ -27,9 +28,36 @@ class PDFRatio(object):
         self._pdf_type = pdf_type
 
     @property
-    def signal_fitparam_names(self):
-        """(read-only) The list of signal parameter names this PDF ratio is a
+    def n_fitparams(self):
+        """(read-only) The number of fit parameters the PDF ratio depends on.
+        This is the sum of signal and background fit parameters. At the moment
+        only signal fit parameters are supported, so this property is equivalent
+        to the n_signal_fitparams property. But this might change in the future.
+        """
+        return self.n_signal_fitparams
+
+    @property
+    def fitparam_names(self):
+        """(read-only) The list of fit parameter names this PDF ratio is a
         function of.
+        This is the superset of signal and background fit parameter names.
+        At the moment only signal fit parameters are supported, so this property
+        is equivalent to the signal_fitparam_names property. But this might
+        change in the future.
+        """
+        return self.signal_fitparam_names
+
+    @property
+    def n_signal_fitparams(self):
+        """(read-only) The number of signal fit parameters the PDF ratio depends
+        on.
+        """
+        return len(self._get_signal_fitparam_names())
+
+    @property
+    def signal_fitparam_names(self):
+        """(read-only) The list of signal fit parameter names this PDF ratio is
+        a function of.
         """
         return self._get_signal_fitparam_names()
 
@@ -48,14 +76,15 @@ class PDFRatio(object):
 
         Returns
         -------
-        None | list of str
+        list of str
             The list of the signal fit parameter names, this PDF ratio is a
-            function of. By default this method returns ``None``.
+            function of. By default this method returns an empty list indicating
+            that the PDF ratio depends on no signal parameter.
         """
-        return None
+        return []
 
     @abc.abstractmethod
-    def get_ratio(self, events, fitparams):
+    def get_ratio(self, events, fitparams=None):
         """Retrieves the PDF ratio value for each given event, given the given
         set of fit parameters. This method is called during the likelihood
         maximization process.
@@ -65,8 +94,10 @@ class PDFRatio(object):
         events : numpy record ndarray
             The numpy record ndarray holding the data events for which the PDF
             ratio values should get calculated.
-        fitparams : dict
-            The dictionary with the fit parameter values.
+        fitparams : dict | None
+            The dictionary with the fit parameter name-value pairs.
+            It's supposed to be set to None, if the PDF ratio does not depend
+            on any fit parameters.
 
         Returns
         -------
@@ -100,6 +131,164 @@ class PDFRatio(object):
             The PDF ratio gradient value for each given event.
         """
         pass
+
+
+class SingleSourcePDFRatioArrayArithmetic(object):
+    """This class provides arithmetic methods for arrays of PDFRatio instances.
+    It has methods to calculate the product of the ratio values for a given set
+    of PDFRatio objects. This class assumes a single source.
+
+    The rational is that in the calculation of the derivates of the
+    log-likelihood-ratio function for a given fit parameter, the product of the
+    PDF ratio values of the PDF ratio objects which do not depend on that fit
+    parameter is needed.
+    """
+    def __init__(self, pdfratios, fitparams, events):
+        """Constructs a PDFRatio array arithmetic object assuming a single
+        source.
+
+        Parameters
+        ----------
+        pdfratios : list of PDFRatio
+            The list of PDFRatio instances.
+        fitparams : list of FitParameter
+            The list of fit parameters. The order must match the fit parameter
+            order of the minimizer.
+        events : numpy record array
+            The numpy record array holding the data events.
+        """
+        self.pdfratio_list = pdfratios
+        self.fitparam_list = fitparams
+        self.events = events
+
+        # Create a mapping of fit parameter index to pdfratio index. We
+        # initialize the mapping with -1 first in order to be able to check in
+        # the end if all fit parameters found a PDF ratio object.
+        self._fitparam_idx_2_pdfratio_idx = np.repeat(np.array([-1], dtype=np.int),
+                                                      len(self._fitparam_list))
+        for ((fpidx, fitparam), (pridx, pdfratio)) in itertools.product(
+                enumerate(self._fitparam_list), enumerate(self.pdfratio_list)):
+            if(fitparam.name in pdfratio.fitparam_names):
+                self._fitparam_idx_2_pdfratio_idx[fpidx] = pridx
+        check_mask = (self._fitparam_idx_2_pdfratio_idx == -1)
+        if(np.any(check_mask)):
+            raise KeyError('%d fit parameters are not defined in any of the PDF ratio instances!'%(np.sum(check_mask)))
+
+        # Create a (N_pdfratios,N_events)-shaped array to hold the PDF ratio
+        # values of each PDF ratio object for each event.
+        self._ratio_values = np.empty((len(self._pdfratio_list),len(self._events)), dtype=np.float)
+
+        # Pre-calculate the PDF ratio values for the PDF ratios that do not
+        # depend on any fit parameters.
+        for (i, pdfratio) in enumerate(self._pdfratio_list):
+            if(pdfratio.n_fitparams == 0):
+                # The PDFRatio does not depend on any fit parameters. So we
+                # pre-calculate the PDF ratio values for all the events. Since
+                # the get_ratio method of the PDFRatio class might return a 2D
+                # (N_sources, N_events)-shaped array, and we assume a single
+                # source, we need to reshape the array, which does not involve
+                # any data copying.
+                self._ratio_values[i] = np.reshape(pdfratio.get_ratio(self._events), (len(self._events),))
+
+        # Create the list of indices of the PDFRatio instances, which depend on
+        # at least one fit parameter.
+        self._var_pdfratio_indices = np.unique(self._fitparam_idx_2_pdfratio_idx)
+
+    @property
+    def pdfratio_list(self):
+        """The list of PDFRatio objects.
+        """
+        return self._pdfratio_list
+    @pdfratio_list.setter
+    def pdfratio_list(self, seq):
+        if(not issequenceof(seq, PDFRatio)):
+            raise TypeError('The pdfratio_list property must be a sequence of PDFRatio instances!')
+        self._pdfratio_list = list(seq)
+
+    @property
+    def fitparam_list(self):
+        """The list of FitParameter instances.
+        """
+        return self._fitparam_list
+    @fitparam_list.setter
+    def fitparam_list(self, seq):
+        if(not issequenceof(seq, FitParameter)):
+            raise TypeError('The fitparam_list property must be a sequence of FitParameter instances!')
+        self._fitparam_list = list(seq)
+
+    @property
+    def events(self):
+        """The numpy record array holding the event data.
+        """
+        return self._events
+    @events.setter
+    def events(self, arr):
+        if(not isinstance(arr, np.ndarray)):
+            raise TypeError('The events property must be an instance of numpy.ndarray!')
+        self._events = arr
+
+    def get_pdfratio(self, fitparam_idx):
+        """Returns the PDFRatio instance that corresponds to the given fit
+        parameter index.
+
+        Parameters
+        ----------
+        fitparam_idx : int
+            The index of the fit parameter.
+
+        Returns
+        -------
+        pdfratio : PDFRatio
+            The PDFRatio instance which corresponds to the given fit parameter
+            index.
+        """
+        pdfratio_idx = self._fitparam_idx_2_pdfratio_idx[fitparam_idx]
+        return self._pdfratio_list[pdfratio_idx]
+
+    def calculate_pdfratio_values(self, fitparams):
+        """Calculates the PDF ratio values for the PDF ratio objects which
+        depend on fit parameters.
+
+        Parameters
+        ----------
+        fitparams : dict
+            The dictionary with the fit parameter name-value pairs.
+        """
+        for i in self._var_pdfratio_indices:
+            # Since the get_ratio method of the PDFRatio class might return a 2D
+            # (N_sources, N_events)-shaped array, and we assume a single source,
+            # we need to reshape the array, which does not involve any data
+            # copying.
+            self._ratio_values[i] = np.reshape(self._pdfratio_list[i].get_ratio(self._events, fitparams), (len(self._events),))
+
+    def get_ratio_product(self, excluded_fitparam_idx=None):
+        """Calculates the product of the of the PDF ratio values of each event,
+        but excludes the PDF ratio values that correspond to the given excluded
+        fit parameter index. This is useful for calculating the derivates of
+        the log-likelihood ratio function.
+
+        Parameters
+        ----------
+        excluded_fitparam_idx : int | None
+            The index of the fit parameter whose PDF ratio values should get
+            excluded from the product. If None, the product over all PDF ratio
+            values will be computed.
+
+        Returns
+        -------
+        product : 1D (N_events,)-shaped ndarray
+            The product of the PDF ratio values for each event.
+        """
+        if(excluded_fitparam_idx is None):
+            return np.prod(self._ratio_values, axis=0)
+
+        # Get the index of the PDF ratio object that corresponds to the excluded
+        # fit parameter.
+        excluded_pdfratio_idx = self._fitparam_idx_2_pdfratio_idx[excluded_fitparam_idx]
+        pdfratio_indices = range(self._ratio_values.shape[0])
+        pdfratio_indices.pop(excluded_pdfratio_idx)
+        return np.prod(self._ratio_values[pdfratio_indices], axis=0)
+
 
 class PDFRatioFillMethod(object):
     """Abstract base class to implement a PDF ratio fill method. It can happen,
