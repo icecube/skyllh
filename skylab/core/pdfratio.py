@@ -178,8 +178,18 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         # values of each PDF ratio object for each event.
         self._ratio_values = np.empty((len(self._pdfratio_list),len(self._events)), dtype=np.float)
 
-        # Pre-calculate the PDF ratio values for the PDF ratios that do not
+        # Pre-compute the PDF ratio values for the PDF ratios that do not
         # depend on any fit parameters.
+        self._precompute_static_pdfratio_values()
+
+        # Create the list of indices of the PDFRatio instances, which depend on
+        # at least one fit parameter.
+        self._var_pdfratio_indices = np.unique(self._fitparam_idx_2_pdfratio_idx)
+
+    def _precompute_static_pdfratio_values(self):
+        """Pre-compute the PDF ratio values for the PDF ratios that do not
+        depend on any fit parameters.
+        """
         for (i, pdfratio) in enumerate(self._pdfratio_list):
             if(pdfratio.n_fitparams == 0):
                 # The PDFRatio does not depend on any fit parameters. So we
@@ -189,10 +199,6 @@ class SingleSourcePDFRatioArrayArithmetic(object):
                 # source, we need to reshape the array, which does not involve
                 # any data copying.
                 self._ratio_values[i] = np.reshape(pdfratio.get_ratio(self._events), (len(self._events),))
-
-        # Create the list of indices of the PDFRatio instances, which depend on
-        # at least one fit parameter.
-        self._var_pdfratio_indices = np.unique(self._fitparam_idx_2_pdfratio_idx)
 
     @property
     def pdfratio_list(self):
@@ -226,6 +232,30 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         if(not isinstance(arr, np.ndarray)):
             raise TypeError('The events property must be an instance of numpy.ndarray!')
         self._events = arr
+
+    def initialize_for_new_trial(self, events):
+        """Initializes the PDFRatio array arithmetic for a new trial. For a new
+        trial the data events change, hence we need to recompute the PDF ratio
+        values of the fit parameter independent PDFRatio instances.
+
+        Parameters
+        ----------
+        events : numpy record array
+            The numpy record array holding the new data events of the new trial.
+        """
+        n_events_old = len(self._events)
+
+        # Set the new events.
+        self.events = events
+
+        # If the amount of events have changed, we need a new array holding the
+        # ratio values.
+        if(n_events_old != len(self._events)):
+            # Create a (N_pdfratios,N_events)-shaped array to hold the PDF ratio
+            # values of each PDF ratio object for each event.
+            self._ratio_values = np.empty((len(self._pdfratio_list),len(self._events)), dtype=np.float)
+
+        self._precompute_static_pdfratio_values()
 
     def get_pdfratio(self, fitparam_idx):
         """Returns the PDFRatio instance that corresponds to the given fit
