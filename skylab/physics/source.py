@@ -2,18 +2,61 @@
 
 """The ``source`` module contains the base class ``SourceModel`` for modelling a
 source in the sky. What kind of properties this source has is modeled by a
-derived class. The most common one is the PointSource source model for a point
-source at a given position in the sky with a given flux model.
+derived class. The most common one is the PointLikeSource source model for a
+point-like source at a given location in the sky with a given flux model.
 """
-from skylab.core.py import ObjectCollection, issequence
+
+from skylab.core.py import ObjectCollection, issequence, float_cast
 from skylab.physics.flux import FluxModel
 
 
-class SourceModel(object):
-    """The base class for all source models in Skylab.
+class SourceLocation(object):
+    """Stores the location of a source, i.e. right-ascention and declination.
     """
-    def __init__(self, fluxmodel):
+    def __init__(self, ra, dec):
+        self.ra = ra
+        self.dec = dec
+
+    @property
+    def ra(self):
+        """The right-ascention angle in radian of the source position.
+        """
+        return self._ra
+    @ra.setter
+    def ra(self, v):
+        v = float_cast(v, 'The ra property must be castable to type float!')
+        self._ra = v
+
+    @property
+    def dec(self):
+        """The declination angle in radian of the source position.
+        """
+        return self._dec
+    @dec.setter
+    def dec(self, v):
+        v = float_cast(v, 'The dec property must be castable to type float!')
+        self._dec = v
+
+
+class SourceModel(object):
+    """The base class for all source models in Skylab. Each source has a central
+    location given by a right-ascention and declination location, and a flux
+    model.
+    """
+    def __init__(self, ra, dec, fluxmodel):
+        self.loc = SourceLocation(ra, dec)
         self.fluxmodel = fluxmodel
+
+    @property
+    def loc(self):
+        """The location of the source.
+        """
+        return self._loc
+    @loc.setter
+    def loc(self, srcloc):
+        if(not isinstance(srcloc, SourceLocation)):
+            raise TypeError('The loc property must be an instance of SourceLocation!')
+        self._loc = srcloc
 
     @property
     def fluxmodel(self):
@@ -129,37 +172,29 @@ class Catalog(SourceCollection):
         """
         source_collection = SourceCollection(source_type=self.source_type, sources=self.sources)
 
+
 class PointLikeSource(SourceModel):
     """The PointLikeSource class is a source model for a point-like source
     object in the sky at a given location (right-ascention and declination) with
     a given flux model.
     """
     def __init__(self, ra, dec, fluxmodel):
-        super(PointLikeSource, self).__init__(fluxmodel)
-        self.ra = ra
-        self.dec = dec
+        super(PointLikeSource, self).__init__(ra, dec, fluxmodel)
 
     @property
     def ra(self):
-        """The right-ascention angle in radian of the source position.
+        """(read-only) The right-ascention angle in radian of the source
+        position.
+        This is a short-cut for `self.loc.ra`.
         """
-        return self._ra
-    @ra.setter
-    def ra(self, v):
-        if(not isinstance(v, float)):
-            raise TypeError('The ra property must be of type float!')
-        self._ra = v
+        return self._loc._ra
 
     @property
     def dec(self):
-        """The declination angle in radian of the source position.
+        """(read-only) The declination angle in radian of the source position.
+        This is a short-cut for `self.loc.dec`.
         """
-        return self._dec
-    @dec.setter
-    def dec(self, v):
-        if(not isinstance(v, float)):
-            raise TypeError('The dec property must be of type float!')
-        self._dec = v
+        return self._loc._dec
 
 
 class PointLikeSourceCollection(SourceCollection):
@@ -188,6 +223,7 @@ class PointLikeSourceCollection(SourceCollection):
         """(read-only) The ndarray with the declination of all the sources.
         """
         return np.array([ src.dec for src in self ])
+
 
 class PointLikeSourceCatalog(Catalog):
     """Describes a catalog of point-like sources. The difference to a
