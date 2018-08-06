@@ -8,6 +8,7 @@
 \newcommand{\class}[1]{\colorbox{blue!30}{\code{#1}}}
 
 \newcommand{\ns}{n_{\mathrm{s}}}
+\newcommand{\nsj}{n_{\mathrm{s},j}}
 \newcommand{\ps}{\vec{p}_{\mathrm{s}}}
 \newcommand{\psk}{\vec{p}_{\mathrm{s},k}}
 \newcommand{\xs}{\vec{x}_{\mathrm{s}}}
@@ -195,28 +196,28 @@ energy spectra, for the various sources.
 \subsection{Gradients of the Log-Likelihood Ratio}
 
 For maximizing the log-likelihood ratio function (equation \ref{eq:logLambdaOfX}),
-or minimizing the negative of it, the minimizer algorithm requires its partial
-derivatives of the fit parameters, $\ps$\footnote{In this formalism we assume that $\ps$
+or minimizing the negative of it, the minimizer algorithm requires the
+derivatives of the log-likelihood ratio function w.r.t. the fit parameters, $\ps$\footnote{In this formalism we assume that $\ps$
 consists solely of fit parameters for the signal, but in practice it can also consist of fixed
-signal parameters.}. Hence, here we provide the expressions of the partial derivatives
+signal parameters.}. Hence, here we provide the expressions of the derivatives
 for equation \ref{eq:logLambdaOfXOptimized}.
-The partial derivative for $\ns$ is given by
+The derivative w.r.t. $\ns$ is given by
 \begin{equation}
-\frac{\partial \log \Lambda(\ns,\ps)}{\partial \ns} = \sum_{i=1}^{N'} \frac{\mathcal{X}_i(\ps)}{1+\ns \mathcal{X}_i(\ps)} - \frac{N - N'}{N - \ns}.
+\frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{i=1}^{N'} \frac{\mathcal{X}_i(\ps)}{1+\ns \mathcal{X}_i(\ps)} - \frac{N - N'}{N - \ns}.
 \end{equation}
-The partial derivative for an individual signal parameter, $p_{\mathrm{s}}$,
+The derivative w.r.t. an individual signal parameter, $p_{\mathrm{s}}$,
 is given by
 \begin{equation}
- \frac{\partial \log \Lambda(\ns,\ps)}{\partial p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\ns}{1+\ns\mathcal{X}_i(\ps)} \frac{\partial \mathcal{X}_i(\ps)}{\partial p_{\mathrm{s}}}.
+ \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\ns}{1+\ns\mathcal{X}_i(\ps)} \frac{\mathrm{d} \mathcal{X}_i(\ps)}{\mathrm{d} p_{\mathrm{s}}}.
 \end{equation}
-The partial derivative of $\mathcal{X}_i$ can be calculated using
+The derivative of $\mathcal{X}_i$ can be calculated using
 equation \ref{eq:Xi} and the expressions for the signal and background PDFs as given
 in equation \ref{eq:Si} and \ref{eq:Bi}, respectively. Depending on the type of
 fit parameter, i.e. spatial, energy, or time, the derivative of the PDF ratio,
 $\mathcal{R}_i(\ps) = \mathcal{S}_i(\ps) / \mathcal{B}_i$, simplifies to the
 derivative of the respective type of PDF ratio:
 \begin{equation}
- \frac{\partial \mathcal{X}_i(\ps)}{\partial p_{\mathrm{s}}} = \frac{1}{N}\frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s}}},
+ \frac{\mathrm{d} \mathcal{X}_i(\ps)}{\mathrm{d} p_{\mathrm{s}}} = \frac{1}{N}\frac{\mathrm{d} \mathcal{R}_i(\ps)}{\mathrm{d} p_{\mathrm{s}}},
 \end{equation}
 with
 \begin{equation}
@@ -225,13 +226,13 @@ with
 \end{equation}
 and
 \begin{equation}
- \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,spatial}}} = \frac{\partial \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}})}{\partial p_{\mathrm{s,spatial}}} \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+ \frac{\mathrm{d} \mathcal{R}_i(\ps)}{\mathrm{d} p_{\mathrm{s,spatial}}} = \frac{\mathrm{d} \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}})}{\mathrm{d} p_{\mathrm{s,spatial}}} \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
 \end{equation}
 \begin{equation}
- \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,energy}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \frac{\partial \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}})}{\partial p_{\mathrm{s,energy}}} \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+ \frac{\mathrm{d} \mathcal{R}_i(\ps)}{\mathrm{d} p_{\mathrm{s,energy}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \frac{\mathrm{d} \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}})}{\mathrm{d} p_{\mathrm{s,energy}}} \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
 \end{equation}
 \begin{equation}
- \frac{\partial \mathcal{R}_i(\ps)}{\partial p_{\mathrm{s,time}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \frac{\partial \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}})}{\partial p_{\mathrm{s,time}}}.
+ \frac{\mathrm{d} \mathcal{R}_i(\ps)}{\mathrm{d} p_{\mathrm{s,time}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \frac{\mathrm{d} \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}})}{\mathrm{d} p_{\mathrm{s,time}}}.
 \end{equation}
 
 For stacked sources the expression for $\mathcal{R}_i(\ps)$ in equation (\ref{eq:Ri})
@@ -249,26 +250,25 @@ it is given by
 \mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\xsk,\psk) \frac{\mathcal{S}_{i}(\psk)}{\mathcal{B}_{i}}.
 \label{eq:RiStacking}
 \end{equation}
-The signal over background ratio $\mathcal{S}_{i}(\psk) / \mathcal{B}_{i} \equiv \mathcal{R}_{i}(\psk)$
+The signal over background ratio $\mathcal{S}_{i}(\psk) / \mathcal{B}_{i} \equiv \mathcal{R}_{k,i}(\psk)$
 for the single source $k$ is then given by equation (\ref{eq:Ri}).
 
 Using the same set of source fit parameters $\ps$ for all sources, i.e. called
-global source fit parameters, the partial derivative of $\mathcal{R}_i(\ps)$ for
-all stacked sources w.r.t. the single global source fit parameter
-$p_{\mathrm{s}}$ is then given by
+global source fit parameters, the derivative of $\mathcal{R}_i(\ps)$ for
+all stacked sources w.r.t. the single global source fit parameter,
+$p_{\mathrm{s}}$, is then given by
 \begin{equation}
- \frac{\partial \mathcal{R}_{i}(\ps)}{\partial p_{\mathrm{s}}} = - \frac{1}{A^2} \frac{\partial A}{\partial p_{\mathrm{s}}} \sum_{k=1}^{K} a_{k} \mathcal{R}_i(\psk) + \frac{1}{A}\sum_{k=1}^{K} \left( \frac{\partial a_{k}}{\partial p_{\mathrm{s}}}\mathcal{R}_i(\psk) + a_{k}\frac{\partial \mathcal{R}_i(\psk)}{\partial p_{\mathrm{s}}} \right).
+ \frac{\mathrm{d} \mathcal{R}_{i}(\ps)}{\mathrm{d} p_{\mathrm{s}}} = - \frac{1}{A^2} \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} \sum_{k=1}^{K} a_{k} \mathcal{R}_{k,i}(\psk) + \frac{1}{A}\sum_{k=1}^{K} \left( \frac{\mathrm{d} a_{k}}{\mathrm{d} p_{\mathrm{s}}}\mathcal{R}_{k,i}(\psk) + a_{k}\frac{\mathrm{d} \mathcal{R}_{k,i}(\psk)}{\mathrm{d} p_{\mathrm{s}}} \right).
 \end{equation}
 Using $\mathcal{R}_i(\ps)$ from equation (\ref{eq:RiStacking}) it simplifies to
 \begin{equation}
- \frac{\partial \mathcal{R}_{i}(\ps)}{\partial p_{\mathrm{s}}} = \frac{1}{A(\ps)}\left[ -\mathcal{R}_i(\ps)\frac{\partial A}{\partial p_{\mathrm{s}}} + \sum_{k=1}^{K} \left( \frac{\partial a_{k}}{\partial p_{\mathrm{s}}}\mathcal{R}_i(\psk) + a_{k}\frac{\partial \mathcal{R}_i(\psk)}{\partial p_{\mathrm{s}}} \right) \right],
+ \frac{\mathrm{d} \mathcal{R}_{i}(\ps)}{\mathrm{d} p_{\mathrm{s}}} = \frac{1}{A(\ps)}\left[ -\mathcal{R}_i(\ps)\frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} + \sum_{k=1}^{K} \left( \frac{\mathrm{d} a_{k}}{\mathrm{d} p_{\mathrm{s}}}\mathcal{R}_{k,i}(\psk) + a_{k}\frac{\mathrm{d} \mathcal{R}_{k,i}(\psk)}{\mathrm{d} p_{\mathrm{s}}} \right) \right],
  \label{eq:gradRi}
 \end{equation}
 with the derivative of $A(\ps)$ given by
 \begin{equation}
- \frac{\partial A}{\partial p_{\mathrm{s}}} = \sum_{k=1}^{K} \frac{\partial a_k}{\partial p_{\mathrm{s}}}.
+ \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} = \sum_{k=1}^{K} \frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}}.
 \end{equation}
-
 
 In case one would fit each source individually with its own set of signal fit
 parameters, $\vec{p}_{\mathrm{s},k}$, $\ps$ would be a set of $K$ sets
@@ -297,7 +297,7 @@ $n_{\mathrm{s},j}$ for the individual data samples. The distribution of $\ns$
 along the different data samples is based on the detector signal efficiency
 $\mathcal{Y}_{\mathrm{s},j}$ of each sample:
 \begin{equation}
- n_{s,j}(\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s},j}(\ps)},
+ n_{\mathrm{s},j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s},j}(\ps)},
  \label{eq:nsjy}
 \end{equation}
 where $\ps$ denotes the source parameters as above and contains the source
@@ -314,7 +314,7 @@ with the property
 \end{equation}
 equation \ref{eq:nsjy} reads
 \begin{equation}
- n_{s,j}(\ps) = \ns f_{j}(\ps)
+ n_{\mathrm{s},j}(\ns,\ps) = \ns f_{j}(\ps)
  \label{eq:ns-sample-weight-factor}
 \end{equation}
 
@@ -327,8 +327,8 @@ For a single point source the sample weight factor can be calculated via the eff
 $A_{\mathrm{eff},j}(E)|_{\xs}$ at the source location of each data sample, and the
 differential flux $\dPhisdE$ of the source.
 \begin{equation}
- f_{j}(\ps) = \frac{\int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xs} \dPhisdE(E,\ps)}
-	           {\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\xs} \dPhisdE(E,\ps)}
+ f_{j}(\ps) = \frac{\int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E|{\xs}) \dPhisdE(E,\ps)}
+	           {\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E|{\xs}) \dPhisdE(E,\ps)}
  \label{eq:fj}
 \end{equation}
 
@@ -336,9 +336,17 @@ Using the sample weight factor $f_{j}(\ps)$ the likelihood ratio of
 equation \eq{eq:logLambdaComposite} with equation \eq{eq:logLambdaOfX} can now
 be written as
 \begin{equation}
- \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \sum_{i=1}^{N} \log (1 + \ns f_{j}(\ps)\mathcal{X}_i(\ps))
+ \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \sum_{i=1}^{N} \log (1 + \ns f_{j}(\ps)\mathcal{X}_i(\ps)).
 \end{equation}
-
+From a reuseability-of-software point of view it is advisable to be able to use
+the mathematical form of $\log \Lambda$ for the single dataset to calculate the
+combined $\log \Lambda$ value of the multiple dataset. This can be achieved by
+using the substitution of $\ns$ as given by equation (\ref{eq:ns-sample-weight-factor}).
+Hence,
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \log \Lambda_j(n_{\mathrm{s},j}(\ns,\ps),\ps).
+ \label{eq:logLambdaOfLogLambdaj}
+\end{equation}
 
 For multiple point sources, i.e. a stacking of $K$ point sources with positions
 $\vec{x}_{\mathrm{s},k}$, the sample weight factor of each single source needs
@@ -353,8 +361,8 @@ samples.
 The relative strength of source $k$ can be written as
 \begin{equation}
  f_{k}(\vec{p}_{\mathrm{s},k}) =
-    \frac{\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\vec{p}_{\mathrm{s},k})}
-         {\sum_{\kappa=1}^{K} \sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},\kappa}} \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
+    \frac{\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E|\vec{x}_{\mathrm{s},k}) \dPhisdE(E,\vec{p}_{\mathrm{s},k})}
+         {\sum_{\kappa=1}^{K} \sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E|\vec{x}_{\mathrm{s},\kappa}) \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
  \label{eq:fk}
 \end{equation}
 The combination of equation \ref{eq:fj} with $\ps \equiv \vec{p}_{\mathrm{s},k}$, hence,
@@ -362,12 +370,34 @@ $\xs \equiv \vec{x}_{\mathrm{s},k}$ and equation
 \ref{eq:fk}, leads to the final expression for $f_{j}$ for multiple sources:
 \begin{equation}
  f_{j}(\ps) =
-    \frac{\sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
-         {\sum_{i=1}^{J} \sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E)|_{\vec{x}_{\mathrm{s},k}} \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
+    \frac{\sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E|\vec{x}_{\mathrm{s},k}) \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
+         {\sum_{i=1}^{J} \sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E|\vec{x}_{\mathrm{s},k}) \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
  \label{eq:fjmultips}
 \end{equation}
 One should note that by definition the numerator of equation \eq{eq:fjmultips}
 is one of the summands of the sum in the denumerator, i.e. for $i=j$.
+
+\subsection{Gradients of the Multi-Dataset Log-Likelihood Ratio}
+
+By using equation (\ref{eq:logLambdaOfLogLambdaj}) for the combined log-likelihood
+ratio, its derivative w.r.t. $\ns$ is given by
+\begin{equation}
+ \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{j=1}^{J} \frac{\mathrm{d} \log \Lambda_j(n_{\mathrm{s},j},\ps)}{\mathrm{d} n_{\mathrm{s},j}} \frac{\mathrm{d} n_{\mathrm{s},j}}{\mathrm{d} \ns},
+\end{equation}
+with
+\begin{equation}
+\frac{\mathrm{d} n_{\mathrm{s},j}}{\mathrm{d} \ns} = f_j(\ps).
+\end{equation}
+The derivative w.r.t. the single source fit parameter, $p_{\mathrm{s}}$, consists
+of the partial derivatives of $\log \Lambda_j$ w.r.t. $n_{\mathrm{s},j}$ and
+$p_{\mathrm{s}}$:
+\begin{equation}
+ \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{j=1}^{J} \frac{\partial \log \Lambda_j(\nsj,\ps)}{\partial \nsj} \frac{\mathrm{d} \nsj}{\mathrm{d} p_{\mathrm{s}}} + \frac{\partial \log \Lambda_j(\nsj,\ps)}{\partial p_{\mathrm{s}}},
+\end{equation}
+with
+\begin{equation}
+ \frac{\mathrm{d} \nsj}{\mathrm{d} p_{\mathrm{s}}} = \ns \frac{\mathrm{d} f_j(\ps)}{\mathrm{d} p_{\mathrm{s}}}.
+\end{equation}
 
 
 \section{Detector Signal Efficiency}
@@ -375,9 +405,9 @@ is one of the summands of the sum in the denumerator, i.e. for $i=j$.
 The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\psk)$
 of a data sample $j$ for a source $k$ is defined as the integral over the energy
 of the product of the detector effective area and the differential flux
-$\frac{\mathrm{d}\Phi}{\mathrm{d}E}$ of the source:
+$\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}$ of the source:
 \begin{equation}
- \mathcal{Y}_{\mathrm{s},j}(\xsk,\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E)|_{\xsk} \frac{\mathrm{d}\Phi}{\mathrm{d}E}(E,\psk) T_{\mathrm{live},j}
+ \mathcal{Y}_{\mathrm{s},j}(\xsk,\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E|\xsk) \frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}(E|\psk) T_{\mathrm{live},j}
 \label{eq:Ysj}
 \end{equation}
 It is the mean number of signal events per steradian expected from a source at
