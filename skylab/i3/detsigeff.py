@@ -6,7 +6,7 @@ import numpy as np
 import scipy.interpolate
 
 from skylab.core import multiproc
-from skylab.core.analysis import BinningDefinition
+from skylab.core.binning import BinningDefinition
 from skylab.core.detsigeff import DetSigEffImplMethod
 from skylab.physics.flux import FluxModel, PowerLawFlux
 from skylab.physics.flux import get_conversion_factor_to_internal_flux_unit
@@ -157,6 +157,10 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
         -------
         values : numpy 1d ndarray
             The array with the detector signal efficiency for each source.
+        grads : None
+            Because with this implementation the detector signal efficiency
+            does not depend on any fit parameters. So there are no gradients
+            and None is returned.
         """
         src_dec = np.atleast_1d(src_pos['dec'])
 
@@ -170,11 +174,12 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
 
         values[mask] = np.exp(self._log_spl_sinDec(np.sin(src_dec[mask])))
 
-        return values
+        return (values, None)
 
 class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable):
     """This detector signal efficiency implementation method constructs a
-    detector signal efficiency for a variable power law flux model.
+    detector signal efficiency for a variable power law flux model, which as the
+    spectral index gamma as fit parameter.
     It constructs a two-dimensional spline function in sin(dec) and gamma, using a
     scipy.interpolate.RectBivariateSpline. Hence, the detector signal efficiency
     can vary with the declination and the spectral index, gamma, of the source.
@@ -257,6 +262,12 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable)
         if(not isinstance(order, int)):
             raise TypeError('The spline_order_gamma property must be of type int!')
         self._spline_order_gamma = order
+
+    def _get_fitparam_names(self):
+        """The list of fit parameter names the detector signal efficiency
+        depends on.
+        """
+        return ['gamma']
 
     def construct(self, data_mc, fluxmodel, livetime):
         """Constructs a detector signal efficiency 2-dimensional log spline
@@ -350,20 +361,27 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable)
 
         Returns
         -------
-        values : numpy 1d ndarray
+        values : numpy (N_sources,)-shaped 1D ndarray
             The array with the detector signal efficiency for each source.
+        grads : numpy (N_sources,N_fitparams)-shaped 2D ndarray
+            The array containing the gradient values for each source and fit
+            parameter. Since, this implementation depends on only one fit
+            parameter, i.e. gamma, the array is (N_sources,1)-shaped.
         """
         src_dec = np.atleast_1d(src_pos['dec'])
         gamma = src_params['gamma']
 
         # Create results array.
-        values = np.zeros_like(src_dec, dtype=np.float64)
+        values = np.zeros_like(src_dec, dtype=np.float)
+        grads = np.zeros_like(src_dec, dtype=np.float)
 
+        # Calculate the detector signal efficiency only for the sources for
+        # which we actually have efficiency. For the other sources, the detector
+        # signal efficiency is zero.
         mask = (np.sin(src_dec) >= self.sinDec_binning.lower_edge)\
               &(np.sin(src_dec) <= self.sinDec_binning.upper_edge)
 
         values[mask] = np.exp(self._log_spl_sinDec_gamma(np.sin(src_dec[mask]), gamma, grid=False))
+        grads[mask] = values[mask] * self._log_spl_sinDec_gamma(np.sin(src_dec[mask]), gamma, grid=False, dy=1)
 
-        return values
-
-
+        return (values, np.atleast_2d(grads))

@@ -27,6 +27,37 @@ class DetSigEffImplMethod(object):
             raise TypeError('The supported_fluxmodels property must be of type tuple!')
         self._supported_fluxmodels = models
 
+    @property
+    def n_fitparams(self):
+        """(read-only) The number of fit parameters the detector signal
+        efficiency depends on.
+        """
+        return len(self._get_fitparam_names())
+
+    @property
+    def fitparam_names(self):
+        """(read-only) The list of fit parameter names the detector signal
+        efficiency depends on. An empty list indicates that it does not depend
+        on any fit parameter.
+        """
+        return self._get_fitparam_names()
+
+    def _get_fitparam_names(self):
+        """This method must be re-implemented by the derived class and needs to
+        return the list of fit parameter names, this detector signal efficiency
+        is a function of. If it returns an empty list, the detector signal
+        efficiency is independent of any fit parameters.
+
+        Returns
+        -------
+        list of str
+            The list of the fit parameter names, this detector signal efficiency
+            is a function of. By default this method returns an empty list
+            indicating that the detector signal efficiency depends on no fit
+            parameter.
+        """
+        return []
+
     def supports_fluxmodel(self, fluxmodel):
         """Checks if the given flux model is supported by this detector signal
         efficiency implementation method.
@@ -72,6 +103,17 @@ class DetSigEffImplMethod(object):
             The dictionary with the parameters of the sources. It is
             assumed that the source parameters are the same for all requested
             sources.
+
+        Returns
+        -------
+        detsigeff : (N_sources,)-shaped 1D ndarray
+            The array with the detector signal efficiency value for each given
+            source in unit mean number of signal events per steradian,
+            i.e. sr^-1.
+        grads : None | (N_sources,N_fitparams)-shaped 2D ndarray
+            The gradient of the detector signal efficiency w.r.t. each fit
+            parameter for each source. If the detector signal efficiency depends
+            on no fit parameter, None is returned.
         """
         pass
 
@@ -81,7 +123,7 @@ class DetectorSignalEfficiency(object):
 
     The detector signal efficiency, Y_s(x_s,p_s), is defined as the mean number
     of signal events per steradian detected from a given source at position x_s
-    with flux parameters p_s.
+    with flux fit parameters p_s.
 
     To construct a detector signal efficiency object, four ingredients are
     needed: the monte-carlo data events, a signal flux model, the live time, and
@@ -162,6 +204,18 @@ class DetectorSignalEfficiency(object):
             raise TypeError('The implmethod property must be an instance of DetSigEffImplMethod!')
         self._implmethod = method
 
+    def n_fitparams(self):
+        """(read-only) The number of fit parameters this detector signal
+        efficiency depends on.
+        """
+        return self._implmethod.n_fitparams
+
+    def fitparam_names(self):
+        """(read-only) The list of fit parameter names this detector signal
+        efficiency depends on.
+        """
+        return self._implmethod.fitparam_names
+
     def __call__(self, src_pos, src_flux_params):
         """Retrieves the detector signal efficiency for the given source
         position and source flux parameters. The unit is mean number of signal
@@ -182,9 +236,13 @@ class DetectorSignalEfficiency(object):
 
         Returns
         -------
-        detsigeff : 1d ndarray
+        detsigeff : (N_sources,)-shaped 1D ndarray
             The array with the detector signal efficiency value for each given
             source in unit mean number of signal events per steradian,
             i.e. sr^-1.
+        grads : None | (N_sources,N_fitparams)-shaped 2D ndarray
+            The gradient of the detector signal efficiency w.r.t. each fit
+            parameter for each source. If the detector signal efficiency depends
+            on no fit parameter, None is returned.
         """
         return self._implmethod.get(src_pos, src_flux_params)

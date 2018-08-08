@@ -71,8 +71,8 @@ class PDFRatio(object):
     def _get_signal_fitparam_names(self):
         """This method must be re-implemented by the derived class and needs to
         return the list of signal fit parameter names, this PDF ratio is a
-        function of. If it returns None, the PDF ratio is independent of any
-        signal fit parameters.
+        function of. If it returns an empty list, the PDF ratio is independent
+        of any signal fit parameters.
 
         Returns
         -------

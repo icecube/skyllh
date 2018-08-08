@@ -4,7 +4,7 @@ import numpy as np
 
 import scipy.interpolate
 
-from skylab.core.analysis import BinningDefinition, UsesBinning
+from skylab.core.binning import BinningDefinition, UsesBinning
 from skylab.core.pdf import SpatialPDF, EnergyPDF, IsBackgroundPDF
 from skylab.i3.pdf import I3EnergyPDF
 

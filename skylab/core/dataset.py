@@ -4,10 +4,11 @@ import os
 import numpy as np
 from copy import deepcopy
 
-from skylab.core.analysis import BinningDefinition
+from skylab.core.binning import BinningDefinition
 from skylab.core.py import issequence, issequenceof
 from skylab.core import display
 from skylab.core import storage
+
 
 class Dataset(object):
     """The Dataset class describes a set of self-consistent experimental and

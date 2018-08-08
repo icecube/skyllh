@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skylab.core.analysis import BinningDefinition
+from skylab.core.binning import BinningDefinition
 from skylab.core.multiproc import IsParallelizable, parallelize
 from skylab.core.pdf import PDFSet, IsSignalPDF
 from skylab.physics.flux import FluxModel
