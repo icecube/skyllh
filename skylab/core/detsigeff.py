@@ -28,21 +28,21 @@ class DetSigEffImplMethod(object):
         self._supported_fluxmodels = models
 
     @property
-    def n_fitparams(self):
-        """(read-only) The number of fit parameters the detector signal
+    def n_signal_fitparams(self):
+        """(read-only) The number of signal fit parameters the detector signal
         efficiency depends on.
         """
-        return len(self._get_fitparam_names())
+        return len(self._get_signal_fitparam_names())
 
     @property
-    def fitparam_names(self):
+    def signal_fitparam_names(self):
         """(read-only) The list of fit parameter names the detector signal
         efficiency depends on. An empty list indicates that it does not depend
         on any fit parameter.
         """
-        return self._get_fitparam_names()
+        return self._get_signal_fitparam_names()
 
-    def _get_fitparam_names(self):
+    def _get_signal_fitparam_names(self):
         """This method must be re-implemented by the derived class and needs to
         return the list of fit parameter names, this detector signal efficiency
         is a function of. If it returns an empty list, the detector signal

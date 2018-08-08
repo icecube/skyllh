@@ -263,8 +263,8 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable)
             raise TypeError('The spline_order_gamma property must be of type int!')
         self._spline_order_gamma = order
 
-    def _get_fitparam_names(self):
-        """The list of fit parameter names the detector signal efficiency
+    def _get_signal_fitparam_names(self):
+        """The list of signal fit parameter names the detector signal efficiency
         depends on.
         """
         return ['gamma']
