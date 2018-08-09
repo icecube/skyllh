@@ -45,11 +45,12 @@ class I3DetSigEffImplMethod(DetSigEffImplMethod):
             raise TypeError('The sinDec_binning property must be an instance of BinningDefinition!')
         self._sinDec_binning = binning
 
-class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
+class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
     """This detector signal efficiency implementation method constructs a
-    detector signal efficiency for a fixed flux model. This means that the
-    detector signal efficiency does not vary with any source flux parameters,
-    hence it is only dependent on the detector effective area.
+    detector signal efficiency for a fixed flux model, assuming a point-like
+    source. This means that the detector signal efficiency does not depend on
+    any source flux parameters, hence it is only dependent on the detector
+    effective area.
     It constructs a one-dimensional spline function in sin(dec), using a
     scipy.interpolate.InterpolatedUnivariateSpline.
 
@@ -140,13 +141,13 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
         self._log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
             self.sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
 
-    def get(self, src_pos, src_params):
+    def get(self, src, src_flux_params):
         """Retrieves the detector signal efficiency for the list of given
         sources.
 
         Parameters
         ----------
-        src_pos : numpy record ndarray
+        src : numpy record ndarray
             The numpy record ndarray with the field ``dec`` holding the
             declination of the source.
         src_params : dict
@@ -162,7 +163,7 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
             does not depend on any fit parameters. So there are no gradients
             and None is returned.
         """
-        src_dec = np.atleast_1d(src_pos['dec'])
+        src_dec = np.atleast_1d(src['dec'])
 
         # Create results array.
         values = np.zeros_like(src_dec, dtype=np.float64)
@@ -176,13 +177,14 @@ class I3FixedFluxDetSigEff(I3DetSigEffImplMethod):
 
         return (values, None)
 
-class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable):
+class I3PointLikeSourcePowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable):
     """This detector signal efficiency implementation method constructs a
-    detector signal efficiency for a variable power law flux model, which as the
-    spectral index gamma as fit parameter.
-    It constructs a two-dimensional spline function in sin(dec) and gamma, using a
-    scipy.interpolate.RectBivariateSpline. Hence, the detector signal efficiency
-    can vary with the declination and the spectral index, gamma, of the source.
+    detector signal efficiency for a variable power law flux model, which has
+    the spectral index gamma as fit parameter, assuming a point-like source.
+    It constructs a two-dimensional spline function in sin(dec) and gamma, using
+    a scipy.interpolate.RectBivariateSpline. Hence, the detector signal
+    efficiency can vary with the declination and the spectral index, gamma, of
+    the source.
 
     This detector signal efficiency implementation method works with a
     PowerLawFlux flux model.
@@ -346,18 +348,18 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable)
             self.sinDec_binning.bincenters, self.gamma_binning.binedges, np.log(h),
             kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
 
-    def get(self, src_pos, src_params):
+    def get(self, src, src_flux_params):
         """Retrieves the detector signal efficiency for the given list of
         sources and their flux parameters.
 
         Parameters
         ----------
-        src_pos : numpy record ndarray
+        src : numpy record ndarray
             The numpy record ndarray with the field ``dec`` holding the
             declination of the source.
 
-        src_params : dict
-            The dictionary containing the source parameter ``gamma``.
+        src_flux_params : dict
+            The dictionary containing the source flux parameter ``gamma``.
 
         Returns
         -------
@@ -368,8 +370,8 @@ class I3PowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable)
             parameter. Since, this implementation depends on only one fit
             parameter, i.e. gamma, the array is (N_sources,1)-shaped.
         """
-        src_dec = np.atleast_1d(src_pos['dec'])
-        gamma = src_params['gamma']
+        src_dec = np.atleast_1d(src['dec'])
+        gamma = src_flux_params['gamma']
 
         # Create results array.
         values = np.zeros_like(src_dec, dtype=np.float)

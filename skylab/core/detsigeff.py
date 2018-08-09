@@ -87,20 +87,20 @@ class DetSigEffImplMethod(object):
             raise TypeError('The DetSigEffImplMethod "%s" does not support the flux model "%s"!'%(self.__class__.__name__, fluxmodel.__class__.__name__))
 
     @abc.abstractmethod
-    def get(self, src_pos, src_params):
+    def get(self, src, src_flux_params):
         """Abstract method to receive the detector signal efficiency values for
-        an array of given sources, given by their source position and source
-        flux parameters.
+        an array of given sources, given by their spatial source properties and
+        source flux parameters.
 
         Parameters
         ----------
-        src_pos : numpy record ndarray
-            The numpy record array containing the position of the signal
-            sources. The required fields of this record array are implementation
-            method dependent. But in the most generic case, it must contain the
-            following three fields: ra, dec, time.
-        src_params : dict
-            The dictionary with the parameters of the sources. It is
+        src : numpy record ndarray
+            The numpy record array containing the spatial information of the
+            signal sources. The required fields of this record array are implementation
+            method dependent. In the most generic case for a point-like source,
+            it must contain the following three fields: ra, dec, time.
+        src_flux_params : dict
+            The dictionary with the flux parameters of the sources. It is
             assumed that the source parameters are the same for all requested
             sources.
 
@@ -216,18 +216,19 @@ class DetectorSignalEfficiency(object):
         """
         return self._implmethod.fitparam_names
 
-    def __call__(self, src_pos, src_flux_params):
-        """Retrieves the detector signal efficiency for the given source
-        position and source flux parameters. The unit is mean number of signal
+    def __call__(self, src, src_flux_params):
+        """Retrieves the detector signal efficiency for the given sources
+        and source flux parameters. The unit is mean number of signal
         events per steradian, i.e. sr^-1.
 
         Parameters
         ----------
-        src_pos : numpy record ndarray
-            The numpy record array containing the position of the signal
-            sources. The required fields of this record array are implementation
-            method dependent. But in the most generic case, it must contain the
-            following three fields: ra, dec, time.
+        src : numpy record ndarray
+            The numpy record array containing the spatial information of the
+            signal sources. The required fields of this record array are
+            implementation method dependent. In the most generic case for a
+            point-like source, it must contain the following three fields:
+            ra, dec, time.
 
         src_flux_params : dict
             The dictionary with the flux parameters of the sources. It is
@@ -245,4 +246,4 @@ class DetectorSignalEfficiency(object):
             parameter for each source. If the detector signal efficiency depends
             on no fit parameter, None is returned.
         """
-        return self._implmethod.get(src_pos, src_flux_params)
+        return self._implmethod.get(src, src_flux_params)
