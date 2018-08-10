@@ -87,7 +87,32 @@ class DetSigEffImplMethod(object):
             raise TypeError('The DetSigEffImplMethod "%s" does not support the flux model "%s"!'%(self.__class__.__name__, fluxmodel.__class__.__name__))
 
     @abc.abstractmethod
-    def get(self, src, src_flux_params):
+    def source_to_array(self, source):
+        """This method is supposed to convert a (list of) source model(s) into
+        a numpy record array that is understood by the implementation method.
+        This is for efficiency reasons only. This way the user code can
+        pre-convert the list of sources into a numpy record array and cache the
+        array.
+        The fields of the array are detector signal efficiency implementation
+        dependent, i.e. what kind of sources: point-like source, or extended
+        source for instance. Because the sources usually don't change their
+        position in the sky, this has to be done only once.
+
+        Parameters
+        ----------
+        source : SourceModel | sequence of SourceModel
+            The source model containing the spatial information of the source.
+
+        Returns
+        -------
+        arr : numpy record ndarray
+            The generated numpy record ndarray holding the spatial information
+            for each source.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get(self, src, src_flux_params, t_obs):
         """Abstract method to receive the detector signal efficiency values for
         an array of given sources, given by their spatial source properties and
         source flux parameters.
@@ -103,6 +128,9 @@ class DetSigEffImplMethod(object):
             The dictionary with the flux parameters of the sources. It is
             assumed that the source parameters are the same for all requested
             sources.
+        t_obs : float
+            The obervation time. This time is needed to coordinate-transform
+            the source position into local detector coordinates.
 
         Returns
         -------
@@ -216,7 +244,7 @@ class DetectorSignalEfficiency(object):
         """
         return self._implmethod.fitparam_names
 
-    def __call__(self, src, src_flux_params):
+    def __call__(self, src, src_flux_params, t_obs):
         """Retrieves the detector signal efficiency for the given sources
         and source flux parameters. The unit is mean number of signal
         events per steradian, i.e. sr^-1.
@@ -229,11 +257,13 @@ class DetectorSignalEfficiency(object):
             implementation method dependent. In the most generic case for a
             point-like source, it must contain the following three fields:
             ra, dec, time.
-
         src_flux_params : dict
             The dictionary with the flux parameters of the sources. It is
             assumed that the flux parameters are the same for all requested
             sources.
+        t_obs : float
+            The obervation time. This time is needed to coordinate-transform
+            the source position into local detector coordinates.
 
         Returns
         -------
@@ -246,4 +276,4 @@ class DetectorSignalEfficiency(object):
             parameter for each source. If the detector signal efficiency depends
             on no fit parameter, None is returned.
         """
-        return self._implmethod.get(src, src_flux_params)
+        return self._implmethod.get(src, src_flux_params, t_obs)

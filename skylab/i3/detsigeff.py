@@ -6,12 +6,13 @@ import numpy as np
 import scipy.interpolate
 
 from skylab.core import multiproc
+from skylab.core.py import issequenceof
 from skylab.core.binning import BinningDefinition
 from skylab.core.detsigeff import DetSigEffImplMethod
 from skylab.physics.flux import FluxModel, PowerLawFlux
 from skylab.physics.flux import get_conversion_factor_to_internal_flux_unit
 
-class I3DetSigEffImplMethod(DetSigEffImplMethod):
+class I3PointLikeSourceDetSigEffImplMethod(DetSigEffImplMethod):
     """Abstract base class for all IceCube specific detector signal efficiency
     implementation methods. All IceCube detector signal efficiency
     implementation methods require a sinDec binning definition for the effective
@@ -44,6 +45,32 @@ class I3DetSigEffImplMethod(DetSigEffImplMethod):
         if(not isinstance(binning, BinningDefinition)):
             raise TypeError('The sinDec_binning property must be an instance of BinningDefinition!')
         self._sinDec_binning = binning
+
+    def source_to_array(self, source):
+        """Converts the sequence of PointLikeSource sources into a numpy record
+        array holding the spatial information of the sources needed for the
+        detector signal efficiency calculation.
+
+        Parameters
+        ----------
+        source : SourceModel | sequence of SourceModel
+            The source model containing the spatial information of the source.
+
+        Returns
+        -------
+        arr : numpy record ndarray
+            The generated numpy record ndarray holding the spatial information
+            for each source.
+        """
+        sources = list(source)
+        if(not issequenceof(sources, PointLikeSource)):
+            raise TypeError('The source argument must be an instance of PointLikeSource!')
+
+        arr = np.empty((len(sources),), dtype=[('dec', np.float)])
+        for (i, src) in enumerate(sources):
+            arr['dec'][i] = src.dec
+
+        return arr
 
 class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
     """This detector signal efficiency implementation method constructs a
@@ -141,7 +168,7 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
         self._log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
             self.sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
 
-    def get(self, src, src_flux_params):
+    def get(self, src, src_flux_params, t_obs=None):
         """Retrieves the detector signal efficiency for the list of given
         sources.
 
@@ -153,6 +180,11 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
         src_params : dict
             The dictionary containing the parameters of the sources. For this
             implementation method it is empty.
+        t_obs : None
+            The observation time needed to convert the source location from
+            equatorial coordinates into local detector coordinates. For IceCube
+            at the South Pole we only need the declination which as a trivial
+            transformation into zenith.
 
         Returns
         -------
@@ -348,7 +380,7 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Is
             self.sinDec_binning.bincenters, self.gamma_binning.binedges, np.log(h),
             kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
 
-    def get(self, src, src_flux_params):
+    def get(self, src, src_flux_params, t_obs=None):
         """Retrieves the detector signal efficiency for the given list of
         sources and their flux parameters.
 
@@ -357,9 +389,13 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Is
         src : numpy record ndarray
             The numpy record ndarray with the field ``dec`` holding the
             declination of the source.
-
         src_flux_params : dict
             The dictionary containing the source flux parameter ``gamma``.
+        t_obs : None
+            The observation time needed to convert the source location from
+            equatorial coordinates into local detector coordinates. For IceCube
+            at the South Pole we only need the declination which as a trivial
+            transformation into zenith.
 
         Returns
         -------
