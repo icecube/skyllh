@@ -453,39 +453,153 @@ class FitParameter(object):
         v = float_cast(v, 'The initial property must be castable to type float!')
         self._initial = v
 
+class SourceFitParameterMapper(object):
+    """This abstract base class defines the interface of the source fit
+    parameter mapper. This mapper provides the functionality to map a global fit
+    parameter to a source fit parameter.
+    """
+    __metaclass__ = abc.ABCMeta
 
-class SourceFitParameterManager(object):
-    """This class provides the functionality to manage the fit parameters of the
-    sources. It provides a translator functionality to translate a fit
-    parameter to a source model parameter of a source.
-    Sometimes it's necessary to define a fit parameter, which relates to a
-    source model parameter for a set of sources, while another fit parameter
-    relates to the same source model parameter, but for another set of sources.
+    def __init__(self):
+        # Define the list of fit parameters and the list of source parameter
+        # names, which map to the fit parameters.
+        # Define the (N_fitparams,)-shaped numpy array of FitParameter objects.
+        self._fit_params = np.empty((0,), dtype=np.object)
+        # Define the (N_fitparams,)-shaped numpy array of str objects.
+        self._src_param_names = np.empty((0,), dtype=np.object)
+
+    @property
+    def initials(self):
+        """(read-only) The 1D ndarray holding the initial values of all the fit
+        parameters.
+        """
+        return np.array([ fit_param.initial
+                         for fit_param in self._fit_params ], dtype=np.float)
+
+    @abc.abstractmethod
+    def def_fit_parameter(self, fit_param, src_param_name=None, sources=None):
+        """This method is supposed to define a new fit parameter that maps to a
+        given source fit parameter for a list of sources. If no list of sources
+        is given, it maps to all sources.
+
+        Parameters
+        ----------
+        fit_param : FitParameter
+            The FitParameter instance defining the fit parameter.
+        src_param_name : str | None
+            The name of the source parameter. It must match the name of a source
+            model property. If set to None (default) the name of the fit
+            parameter will be used.
+        sources : sequence of SourceModel | None
+            The sequence of SourceModel instances for which the fit parameter
+            applies. If None (the default) is specified, the fit parameter will
+            apply to all sources.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_source_fit_params(self, fitparam_values, src_idx=0):
+        """This method is supposed to create a dictionary of source fit
+        parameter names and values for the requested source based on the given
+        fit parameter values.
+
+        Parameters
+        ----------
+        fitparam_values : 1D ndarray
+            The array holding the current global fit parameter values.
+        src_idx : int
+            The index of the source for which the parameters should get
+            retrieved.
+
+        Returns
+        -------
+        src_fitparams : dict
+            The dictionary holding the translated source parameters that are
+            beeing fitted.
+        """
+        pass
+
+
+class SingleSourceFitParameterMapper(SourceFitParameterMapper):
+    """This class provides the functionality to map the global fit parameters to
+    the source fit parameters of the single source. This class assumes a single
+    source, hence the mapping can be performed faster than in the multi-source
+    case.
+    """
+    def __init__(self):
+        """Constructs a new source fit parameter mapper for a single source.
+        """
+        super(SingleSourceFitParameterMapper, self).__init__()
+
+    def def_fit_parameter(self, fit_param, src_param_name=None):
+        """Define a new fit parameter that maps to a given source fit parameter.
+
+        Parameters
+        ----------
+        fit_param : FitParameter
+            The FitParameter instance defining the fit parameter.
+        src_param_name : str | None
+            The name of the source parameter. It must match the name of a source
+            model property. If set to None (default) the name of the fit
+            parameter will be used.
+        """
+        if(not isinstance(fit_param, FitParameter)):
+            raise TypeError('The fit_param argument must be an instance of FitParameter!')
+
+        if(src_param_name is None):
+            src_param_name = fit_param.name
+        if(not isinstance(src_param_name, str)):
+            raise TypeError('The src_param_name argument must be of type str!')
+
+        # Append the fit parameter and source parameter name to the internal
+        # arrays.
+        self._fit_params = np.concatenate((self._fit_params, [fit_param]))
+        self._src_param_names = np.concatenate((self._src_param_names, [src_param_name]))
+
+    def get_source_fit_params(self, fitparam_values):
+        """Create a dictionary of source fit parameter names and values based on
+        the given fit parameter values.
+
+        Parameters
+        ----------
+        fitparam_values : 1D ndarray
+            The array holding the current global fit parameter values.
+
+        Returns
+        -------
+        src_fitparams : dict
+            The dictionary holding the translated source parameters that are
+            beeing fitted.
+        """
+        src_fitparams = dict(zip(self._src_param_names, fitparam_values))
+
+        return src_fitparams
+
+
+class MultiSourceFitParameterMapper(SourceFitParameterMapper):
+    """This class provides the functionality to map the global fit parameters to
+    the source fit parameters of the sources.
+    Sometimes it's necessary to define a global fit parameter, which relates to
+    a source model fit parameter for a set of sources, while another global fit
+    parameter relates to the same source model fit parameter, but for another
+    set of sources.
 
     At construction time this manager takes the collection of sources. Each
     source gets an index, which is defined as the position of the source within
     the collection.
     """
     def __init__(self, sources):
-        """Constructs a new source fit parameter manager.
+        """Constructs a new source fit parameter mapper for multiple sources.
 
         Parameters
         ----------
-        sources : SourceCollection | SourceModel
-            The instance of a SourceCollection defining the list of sources.
-            If a single source model is specified a SourceCollection object with
-            this source will be constructed automatically.
-
+        sources : sequence of SourceModel
+            The sequence of SourceModel instances defining the list of sources.
         """
+        super(MultiSourceFitParameterManager, self).__init__()
+
         self.sources = sources
 
-        # Define the list of fit parameters and the list of source parameter
-        # names, which map to the fit parameters.
-
-        # Define the (N_fitparams,)-shaped numpy array of FitParameter objects.
-        self._fit_params = np.empty((0,), dtype=np.object)
-        # Define the (N_fitparams,)-shaped numpy array of str objects.
-        self._src_param_names = np.empty((0,), dtype=np.object)
         # (N_fitparams, N_sources) shaped boolean ndarray defining what fit
         # parameter applies to which source.
         self._fit_param_2_src_mask = np.zeros((0, len(self.sources)), dtype=np.bool)
@@ -499,14 +613,6 @@ class SourceFitParameterManager(object):
     def sources(self, obj):
         obj = SourceCollection.cast(obj, 'The sources property must be castable to an instance of SourceCollection!')
         self._sources = obj
-
-    @property
-    def initials(self):
-        """(read-only) The 1D ndarray holding the initial values of all the fit
-        parameters.
-        """
-        return np.array([ fit_param.initial
-                         for fit_param in self._fit_params ], dtype=np.float)
 
     def def_fit_parameter(self, fit_param, src_param_name=None, sources=None):
         """Defines a new fit parameter that maps to a given source parameter
@@ -529,6 +635,8 @@ class SourceFitParameterManager(object):
         if(not isinstance(fit_param, FitParameter)):
             raise TypeError('The fit_param argument must be an instance of FitParameter!')
 
+        if(src_param_name is None):
+            src_param_name = fit_param.name
         if(not isinstance(src_param_name, str)):
             raise TypeError('The src_param_name argument must be of type str!')
 
@@ -549,7 +657,7 @@ class SourceFitParameterManager(object):
                 mask[idx] = True
         self._fit_param_2_src_mask = np.vstack((self._fit_param_2_src_mask, mask))
 
-    def get_source_fit_params(self, src_idx, fit_param_values):
+    def get_source_fit_params(self, fitparam_values, src_idx):
         """Constructs a dictionary with the source parameters that are beeing
         fitted. As values the given global fit parameter values will be used.
         Hence, this method translates the global fit parameter values into the
@@ -557,11 +665,11 @@ class SourceFitParameterManager(object):
 
         Parameters
         ----------
+        fitparam_values : 1D ndarray
+            The array holding the current global fit parameter values.
         src_idx : int
             The index of the source for which the parameters should get
             retieved.
-        fit_param_values : 1D ndarray
-            The array holding the current global fit parameter values.
 
         Returns
         -------
@@ -575,7 +683,7 @@ class SourceFitParameterManager(object):
 
         # Get the source parameter names.
         src_param_names = self._src_param_names[fp_mask]
-        src_param_values = fit_param_values[fp_mask]
+        src_param_values = fitparam_values[fp_mask]
 
         src_fitparams = dict(zip(src_param_names, src_param_values))
 
