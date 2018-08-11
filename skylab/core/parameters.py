@@ -498,7 +498,7 @@ class SourceFitParameterMapper(object):
         pass
 
     @abc.abstractmethod
-    def get_source_fit_params(self, fitparam_values, src_idx=0):
+    def get_src_fitparams(self, fitparam_values, src_idx=0):
         """This method is supposed to create a dictionary of source fit
         parameter names and values for the requested source based on the given
         fit parameter values.
@@ -556,7 +556,7 @@ class SingleSourceFitParameterMapper(SourceFitParameterMapper):
         self._fit_params = np.concatenate((self._fit_params, [fit_param]))
         self._src_param_names = np.concatenate((self._src_param_names, [src_param_name]))
 
-    def get_source_fit_params(self, fitparam_values):
+    def get_src_fitparams(self, fitparam_values):
         """Create a dictionary of source fit parameter names and values based on
         the given fit parameter values.
 
@@ -657,7 +657,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
                 mask[idx] = True
         self._fit_param_2_src_mask = np.vstack((self._fit_param_2_src_mask, mask))
 
-    def get_source_fit_params(self, fitparam_values, src_idx):
+    def get_src_fitparams(self, fitparam_values, src_idx):
         """Constructs a dictionary with the source parameters that are beeing
         fitted. As values the given global fit parameter values will be used.
         Hence, this method translates the global fit parameter values into the
