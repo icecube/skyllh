@@ -469,12 +469,34 @@ class SourceFitParameterMapper(object):
         self._src_param_names = np.empty((0,), dtype=np.object)
 
     @property
+    def fitparam_list(self):
+        """The list of the FitParameter instances.
+        """
+        return list(self._fit_params)
+
+    @property
     def initials(self):
         """(read-only) The 1D ndarray holding the initial values of all the fit
         parameters.
         """
         return np.array([ fit_param.initial
                          for fit_param in self._fit_params ], dtype=np.float)
+
+    def get_src_fitparam_name(self, fitparam_idx):
+        """Returns the name of the source fit parameter for the given global fit
+        parameter index.
+
+        Parameters
+        ----------
+        fitparam_idx : int
+            The index of the global fit parameter.
+
+        Returns
+        -------
+        src_fitparam_name : str
+            The name of the source fit parameter.
+        """
+        return self._src_param_names[fitparam_idx]
 
     @abc.abstractmethod
     def def_fit_parameter(self, fit_param, src_param_name=None, sources=None):
