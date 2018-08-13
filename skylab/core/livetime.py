@@ -7,7 +7,7 @@ from skylab.core.py import issequence
 
 class Livetime(object):
     """The ``Livetime`` class defines an interface to query the up-time of the
-    dector.
+    detector.
 
     The class holds an internal Nx2 float64 ndarray
     ``_uptime_mjd_intervals_arr``, where the first and second elements of the
