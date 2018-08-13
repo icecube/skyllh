@@ -9,8 +9,10 @@ from skylab.core import multiproc
 from skylab.core.py import issequenceof
 from skylab.core.binning import BinningDefinition
 from skylab.core.detsigeff import DetSigEffImplMethod
+from skylab.core.livetime import Livetime
 from skylab.physics.flux import FluxModel, PowerLawFlux
 from skylab.physics.flux import get_conversion_factor_to_internal_flux_unit
+
 
 class I3PointLikeSourceDetSigEffImplMethod(DetSigEffImplMethod):
     """Abstract base class for all IceCube specific detector signal efficiency
@@ -34,6 +36,19 @@ class I3PointLikeSourceDetSigEffImplMethod(DetSigEffImplMethod):
         self.sinDec_binning = sinDec_binning
 
     @property
+    def livetime(self):
+        """The integrated live-time in days.
+        """
+        return self._livetime
+    @livetime.setter
+    def livetime(self, lt):
+        if(isinstance(lt, Livetime)):
+            lt = lt.livetime
+        if(not isinstance(lt, float)):
+            raise TypeError('The livetime property must be of type float or an instance of Livetime!')
+        self._livetime = lt
+
+    @property
     def sinDec_binning(self):
         """The BinningDefinition instance for the sin(dec) binning that should
         be used for computing the sin(dec) dependency of the detector signal
@@ -45,6 +60,14 @@ class I3PointLikeSourceDetSigEffImplMethod(DetSigEffImplMethod):
         if(not isinstance(binning, BinningDefinition)):
             raise TypeError('The sinDec_binning property must be an instance of BinningDefinition!')
         self._sinDec_binning = binning
+
+    def construct(self, data_mc, fluxmodel, livetime):
+        super(I3PointLikeSourceDetSigEffImplMethod, self).construct(
+            data_mc, fluxmodel, livetime)
+
+        # Set the livetime property, which will convert a Livetime instance into
+        # a float with the integrated live-time.
+        self.livetime = livetime
 
     def source_to_array(self, source):
         """Converts the sequence of PointLikeSource sources into a numpy record
@@ -72,7 +95,8 @@ class I3PointLikeSourceDetSigEffImplMethod(DetSigEffImplMethod):
 
         return arr
 
-class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
+
+class I3PointLikeSourceFixedFluxDetSigEff(I3PointLikeSourceDetSigEffImplMethod):
     """This detector signal efficiency implementation method constructs a
     detector signal efficiency for a fixed flux model, assuming a point-like
     source. This means that the detector signal efficiency does not depend on
@@ -141,7 +165,7 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
                 GeV cm^2 sr.
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
-        livetime : float
+        livetime : float | Livetime
             The live-time in days to use for the detector signal efficiency.
         """
         super(I3FixedFluxDetSigEff, self).construct(data_mc, fluxmodel, livetime)
@@ -152,7 +176,7 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
 
         # Calculate the detector signal efficiency contribution of each event.
         # The unit of mcweight is assumed to be GeV cm^2 sr.
-        w = data_mc["mcweight"] * fluxmodel(data_mc["true_energy"])*toGeVcm2s * livetime * 86400.
+        w = data_mc["mcweight"] * fluxmodel(data_mc["true_energy"])*toGeVcm2s * self._livetime * 86400.
 
         # Create a histogram along sin(true_dec).
         (h, bins) = np.histogram(np.sin(mc["true_dec"]),
@@ -168,7 +192,7 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
         self._log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
             self.sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
 
-    def get(self, src, src_flux_params, t_obs=None):
+    def get(self, src, src_flux_params):
         """Retrieves the detector signal efficiency for the list of given
         sources.
 
@@ -180,11 +204,6 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
         src_params : dict
             The dictionary containing the parameters of the sources. For this
             implementation method it is empty.
-        t_obs : None
-            The observation time needed to convert the source location from
-            equatorial coordinates into local detector coordinates. For IceCube
-            at the South Pole we only need the declination which as a trivial
-            transformation into zenith.
 
         Returns
         -------
@@ -209,7 +228,8 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3DetSigEffImplMethod):
 
         return (values, None)
 
-class I3PointLikeSourcePowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.IsParallelizable):
+
+class I3PointLikeSourcePowerLawFluxDetSigEff(I3PointLikeSourceDetSigEffImplMethod, multiproc.IsParallelizable):
     """This detector signal efficiency implementation method constructs a
     detector signal efficiency for a variable power law flux model, which has
     the spectral index gamma as fit parameter, assuming a point-like source.
@@ -321,7 +341,7 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Is
                 The true energy value of the data event.
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
-        livetime : float
+        livetime : float | Livetime
             The live-time in days to use for the detector signal efficiency.
         """
         super(I3PowerLawFluxDetSigEff, self).construct(data_mc, fluxmodel, livetime)
@@ -364,7 +384,7 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Is
             return h
 
         data_sin_true_dec = np.sin(data_mc["true_dec"])
-        weights = data_mc["mcweight"] * toGeVcm2s * livetime * 86400.
+        weights = data_mc["mcweight"] * toGeVcm2s * self._livetime * 86400.
 
         # Construct the arguments for the hist function to be used in the
         # multiproc.parallelize function.
@@ -380,7 +400,7 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Is
             self.sinDec_binning.bincenters, self.gamma_binning.binedges, np.log(h),
             kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
 
-    def get(self, src, src_flux_params, t_obs=None):
+    def get(self, src, src_flux_params):
         """Retrieves the detector signal efficiency for the given list of
         sources and their flux parameters.
 
@@ -391,11 +411,6 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3DetSigEffImplMethod, multiproc.Is
             declination of the source.
         src_flux_params : dict
             The dictionary containing the source flux parameter ``gamma``.
-        t_obs : None
-            The observation time needed to convert the source location from
-            equatorial coordinates into local detector coordinates. For IceCube
-            at the South Pole we only need the declination which as a trivial
-            transformation into zenith.
 
         Returns
         -------
