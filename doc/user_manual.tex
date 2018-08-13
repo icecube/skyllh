@@ -297,7 +297,7 @@ $n_{\mathrm{s},j}$ for the individual data samples. The distribution of $\ns$
 along the different data samples is based on the detector signal efficiency
 $\mathcal{Y}_{\mathrm{s},j}$ of each sample:
 \begin{equation}
- n_{\mathrm{s},j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s},j}(\ps)},
+ n_{\mathrm{s},j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s},j'}(\ps)},
  \label{eq:nsjy}
 \end{equation}
 where $\ps$ denotes the source parameters as above and contains the source
@@ -306,7 +306,8 @@ for instance the spectral index $\gamma$.
 
 By defining the sample weight factor
 \begin{equation}
- f_j(\ps) \equiv \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s},j}(\ps)}
+ f_j(\ps) \equiv \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s},j'}(\ps)}
+ \label{eq:sample-weight-factor}
 \end{equation}
 with the property
 \begin{equation}
@@ -397,6 +398,12 @@ $p_{\mathrm{s}}$:
 with
 \begin{equation}
  \frac{\mathrm{d} \nsj}{\mathrm{d} p_{\mathrm{s}}} = \ns \frac{\mathrm{d} f_j(\ps)}{\mathrm{d} p_{\mathrm{s}}}.
+\end{equation}
+In case of a single source, the expression for the derivative of the sample
+weight factor, where $f_j(\ps)$ is given by equation (\ref{eq:sample-weight-factor}),
+reads via the quotient rule of differentation:
+\begin{equation}
+\frac{\mathrm{d}f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s},j}(\ps)}{\mathrm{d}p_{\mathrm{s}}} \sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s},j'}(\ps) - \mathcal{Y}_{\mathrm{s},j}(\ps) \sum_{j'=1}^{J} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s},j'}(\ps)}{\mathrm{d}p_{\mathrm{s}}} }{\left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s},j'}(\ps) \right)^2}
 \end{equation}
 
 
