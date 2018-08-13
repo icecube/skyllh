@@ -5,6 +5,7 @@ import numpy as np
 
 from astropy import units
 
+from skylab.core.livetime import Livetime
 from skylab.physics.flux import FluxModel
 
 class DetSigEffImplMethod(object):
@@ -80,7 +81,7 @@ class DetSigEffImplMethod(object):
             The numpy record ndarray holding the monte-carlo event data.
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
-        livetime : float
+        livetime : float | Livetime
             The live-time in days to use for the detector signal efficiency.
         """
         if(not self.supports_fluxmodel(fluxmodel)):
@@ -112,7 +113,7 @@ class DetSigEffImplMethod(object):
         pass
 
     @abc.abstractmethod
-    def get(self, src, src_flux_params, t_obs):
+    def get(self, src, src_flux_params):
         """Abstract method to receive the detector signal efficiency values for
         an array of given sources, given by their spatial source properties and
         source flux parameters.
@@ -128,9 +129,6 @@ class DetSigEffImplMethod(object):
             The dictionary with the flux parameters of the sources. It is
             assumed that the source parameters are the same for all requested
             sources.
-        t_obs : float
-            The obervation time. This time is needed to coordinate-transform
-            the source position into local detector coordinates.
 
         Returns
         -------
@@ -172,9 +170,8 @@ class DetectorSignalEfficiency(object):
             The numpy record ndarray holding the monte-carlo event data.
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
-        livetime : float
-            The live-time to use for the detector signal efficiency. Must be
-            given in the time unit of the flux model.
+        livetime : float | Livetime
+            The live-time in days to use for the detector signal efficiency.
         implmethod : DetSigEffImplMethod
             The implementation method to use for constructing and receiving
             the detector signal efficiency. The appropriate method depends on
@@ -219,8 +216,8 @@ class DetectorSignalEfficiency(object):
         return self._livetime
     @livetime.setter
     def livetime(self, lt):
-        if(not isinstance(lt, float)):
-            raise TypeError('The livetime property must be of type float!')
+        if(not (isinstance(lt, float) or isinstance(lt, Livetime))):
+            raise TypeError('The livetime property must be of type float or an instance of Livetime!')
         self._livetime = lt
 
     @property
@@ -244,7 +241,25 @@ class DetectorSignalEfficiency(object):
         """
         return self._implmethod.fitparam_names
 
-    def __call__(self, src, src_flux_params, t_obs):
+    def source_to_array(self, source):
+        """Converts the (sequence of) source(s) into a numpy record array needed
+        for the __call__ method. This convertion is intrinsic to the
+        implementation method.
+
+        Parameters
+        ----------
+        source : SourceModel | sequence of SourceModel
+            The source model containing the spatial information of the source.
+
+        Returns
+        -------
+        arr : numpy record ndarray
+            The generated numpy record ndarray holding the spatial information
+            for each source.
+        """
+        return self._implmethod.source_to_array(source)
+
+    def __call__(self, src, src_flux_params):
         """Retrieves the detector signal efficiency for the given sources
         and source flux parameters. The unit is mean number of signal
         events per steradian, i.e. sr^-1.
@@ -261,9 +276,6 @@ class DetectorSignalEfficiency(object):
             The dictionary with the flux parameters of the sources. It is
             assumed that the flux parameters are the same for all requested
             sources.
-        t_obs : float
-            The obervation time. This time is needed to coordinate-transform
-            the source position into local detector coordinates.
 
         Returns
         -------
@@ -276,4 +288,4 @@ class DetectorSignalEfficiency(object):
             parameter for each source. If the detector signal efficiency depends
             on no fit parameter, None is returned.
         """
-        return self._implmethod.get(src, src_flux_params, t_obs)
+        return self._implmethod.get(src, src_flux_params)
