@@ -8,11 +8,11 @@
 \newcommand{\class}[1]{\colorbox{blue!30}{\code{#1}}}
 
 \newcommand{\ns}{n_{\mathrm{s}}}
-\newcommand{\nsj}{n_{\mathrm{s},j}}
+\newcommand{\nsj}{n_{\mathrm{s}_j}}
 \newcommand{\ps}{\vec{p}_{\mathrm{s}}}
-\newcommand{\psk}{\vec{p}_{\mathrm{s},k}}
+\newcommand{\psk}{\vec{p}_{\mathrm{s}_k}}
 \newcommand{\xs}{\vec{x}_{\mathrm{s}}}
-\newcommand{\xsk}{\vec{x}_{\mathrm{s},k}}
+\newcommand{\xsk}{\vec{x}_{\mathrm{s}_k}}
 
 \newcommand{\dPhisdE}{\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}}
 
@@ -283,7 +283,7 @@ contribute.
 
 With Skylab a set of $J$ different data samples (datasets) $\mathrm{D}_j$ can be
 analyzed at once. Each data sample has its own detector signal efficiency
-$\mathcal{Y}_{\mathrm{s},j}$.
+$\mathcal{Y}_{\mathrm{s}_j}$.
 
 The composite likelihood function is the product of the individual dataset
 likelihood functions:
@@ -293,21 +293,22 @@ likelihood functions:
 \end{equation}
 
 The total number of signal events $\ns$ needs to get split-up into
-$n_{\mathrm{s},j}$ for the individual data samples. The distribution of $\ns$
-along the different data samples is based on the detector signal efficiency
-$\mathcal{Y}_{\mathrm{s},j}$ of each sample:
+$n_{\mathrm{s}_j}$ for the individual datasets. The distribution of $\ns$
+along the different datasets is based on the detector signal efficiency,
+$\mathcal{Y}_{\mathrm{s}_j}$, of each dataset. For a single source it is given by:
 \begin{equation}
- n_{\mathrm{s},j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s},j'}(\ps)},
+ n_{\mathrm{s}_j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)},
  \label{eq:nsjy}
 \end{equation}
-where $\ps$ denotes the source parameters as above and contains the source
-position(s) $\xs$ and possible additional source parameters like
-for instance the spectral index $\gamma$.
+where $\xs$ and $\ps$ denote the source position and flux fit parameters, e.g.
+the spectral index $\gamma$, respectively. The detector signal efficiency can be
+calculated via the detector effective area and the source flux (\emph{c.f.} section
+\ref{sec:detsigeff}).
 
-By defining the sample weight factor
+By defining the dataset weight factor
 \begin{equation}
- f_j(\ps) \equiv \frac{\mathcal{Y}_{\mathrm{s},j}(\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s},j'}(\ps)}
- \label{eq:sample-weight-factor}
+ f_j(\ps) \equiv \frac{\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)}
+ \label{eq:dataset-weight-factor-single-source}
 \end{equation}
 with the property
 \begin{equation}
@@ -315,25 +316,11 @@ with the property
 \end{equation}
 equation \ref{eq:nsjy} reads
 \begin{equation}
- n_{\mathrm{s},j}(\ns,\ps) = \ns f_{j}(\ps)
+ n_{\mathrm{s}_j}(\ns,\ps) = \ns f_{j}(\ps)
  \label{eq:ns-sample-weight-factor}
 \end{equation}
 
-The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\ps)$
-depends on the signal model parameters $\ps$, hence, on the source location(s) $\xs$
-and the spectral index $\gamma$. It can be calculated via the detector effective
-area and the source flux.
-
-For a single point source the sample weight factor can be calculated via the effective area
-$A_{\mathrm{eff},j}(E)|_{\xs}$ at the source location of each data sample, and the
-differential flux $\dPhisdE$ of the source.
-\begin{equation}
- f_{j}(\ps) = \frac{\int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E|{\xs}) \dPhisdE(E,\ps)}
-	           {\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E|{\xs}) \dPhisdE(E,\ps)}
- \label{eq:fj}
-\end{equation}
-
-Using the sample weight factor $f_{j}(\ps)$ the likelihood ratio of
+Using the dataset weight factor $f_{j}(\ps)$ the likelihood ratio of
 equation \eq{eq:logLambdaComposite} with equation \eq{eq:logLambdaOfX} can now
 be written as
 \begin{equation}
@@ -345,38 +332,40 @@ combined $\log \Lambda$ value of the multiple dataset. This can be achieved by
 using the substitution of $\ns$ as given by equation (\ref{eq:ns-sample-weight-factor}).
 Hence,
 \begin{equation}
- \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \log \Lambda_j(n_{\mathrm{s},j}(\ns,\ps),\ps).
+ \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \log \Lambda_j(n_{\mathrm{s}_j}(\ns,\ps),\ps).
  \label{eq:logLambdaOfLogLambdaj}
 \end{equation}
 
 For multiple point sources, i.e. a stacking of $K$ point sources with positions
-$\vec{x}_{\mathrm{s},k}$, the sample weight factor of each single source needs
-to be taking into account. Thus, $f_{j}$ can be written as the sum of the
-products of the sample weight factor $f_{j}(\vec{p}_{\mathrm{s},k})$ for
-source $k$ and the relative strength $f_{k}(\vec{p}_{\mathrm{s},k})$ of the
-$k$th source in all data samples compared to all the other sources in all data
-samples.
+$\xsk$, the dataset weight factor of each single source needs
+to be taking into account via Bayes' theorem. Thus, $f_{j}(\ps)$ can be written
+as the sum of the products of the dataset weight factor $f_{j}(\psk)$ for
+source $k$, as given by equation (\ref{eq:dataset-weight-factor-single-source}),
+and the relative strength, $f_{k}(\psk)$, of the $k$th source in all datasets
+compared to all the other sources in all datasets.
 \begin{equation}
- f_{j}(\ps) = \sum_{k=1}^{K} f_{j}(\vec{p}_{\mathrm{s},k}) f_{k}(\vec{p}_{\mathrm{s},k})
+ f_{j}(\ps) = \sum_{k=1}^{K} f_{k}(\psk) f_{j}(\psk)
 \end{equation}
 The relative strength of source $k$ can be written as
 \begin{equation}
- f_{k}(\vec{p}_{\mathrm{s},k}) =
-    \frac{\sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E|\vec{x}_{\mathrm{s},k}) \dPhisdE(E,\vec{p}_{\mathrm{s},k})}
-         {\sum_{\kappa=1}^{K} \sum_{i=1}^{J} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E|\vec{x}_{\mathrm{s},\kappa}) \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
+ f_{k}(\psk) = \frac{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}{\sum_{\kappa=1}^{K} \sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s}_{j,\kappa}}(\vec{x}_{\mathrm{s}_\kappa},\vec{p}_{\mathrm{s}_\kappa}) }
  \label{eq:fk}
 \end{equation}
-The combination of equation \ref{eq:fj} with $\ps \equiv \vec{p}_{\mathrm{s},k}$, hence,
-$\xs \equiv \vec{x}_{\mathrm{s},k}$ and equation
-\ref{eq:fk}, leads to the final expression for $f_{j}$ for multiple sources:
+By combining equation \ref{eq:dataset-weight-factor-single-source} with $\xs \equiv \xsk$
+and $\ps \equiv \psk$, and equation \ref{eq:fk}, the expression for
+$f_{j}(\ps)$ for multiple sources is given by:
 \begin{equation}
- f_{j}(\ps) =
-    \frac{\sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E|\vec{x}_{\mathrm{s},k}) \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
-         {\sum_{i=1}^{J} \sum_{k=1}^{K} \int_0^\infty \mathrm{d}E A_{\mathrm{eff},i}(E|\vec{x}_{\mathrm{s},k}) \dPhisdE(E,\vec{p}_{\mathrm{s},k}) }
- \label{eq:fjmultips}
+ f_{j}(\ps) = \sum_{k=1}^{K}
+    \frac{\left(\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk)\right) \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}
+         {\left(\sum_{\kappa=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',\kappa}}(\vec{x}_{\mathrm{s}_\kappa},\vec{p}_{\mathrm{s}_\kappa})\right) \left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk) \right)}
 \end{equation}
-One should note that by definition the numerator of equation \eq{eq:fjmultips}
-is one of the summands of the sum in the denumerator, i.e. for $i=j$.
+The sum over the datasets of the detector signal efficiency for source $k$ cancels
+out leaving the simplified equation
+\begin{equation}
+ f_{j}(\ps) = \frac{\sum_{k=1}^{K} \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}
+                   {\sum_{k=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk)}.
+ \label{eq:dataset-weight-factor-multiple-sources}
+\end{equation}
 
 \subsection{Gradients of the Multi-Dataset Log-Likelihood Ratio}
 
@@ -389,7 +378,7 @@ with
 \begin{equation}
 \frac{\mathrm{d} n_{\mathrm{s},j}}{\mathrm{d} \ns} = f_j(\ps).
 \end{equation}
-The derivative w.r.t. the single source fit parameter, $p_{\mathrm{s}}$, consists
+The derivative w.r.t. a single source fit parameter, $p_{\mathrm{s}}$, consists
 of the partial derivatives of $\log \Lambda_j$ w.r.t. $n_{\mathrm{s},j}$ and
 $p_{\mathrm{s}}$:
 \begin{equation}
@@ -399,22 +388,31 @@ with
 \begin{equation}
  \frac{\mathrm{d} \nsj}{\mathrm{d} p_{\mathrm{s}}} = \ns \frac{\mathrm{d} f_j(\ps)}{\mathrm{d} p_{\mathrm{s}}}.
 \end{equation}
-In case of a single source, the expression for the derivative of the sample
-weight factor, where $f_j(\ps)$ is given by equation (\ref{eq:sample-weight-factor}),
+In case of a single source, the expression for the derivative of the dataset
+weight factor, where $f_j(\ps)$ is given by equation (\ref{eq:dataset-weight-factor-single-source}),
 reads via the quotient rule of differentation:
 \begin{equation}
-\frac{\mathrm{d}f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s},j}(\ps)}{\mathrm{d}p_{\mathrm{s}}} \sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s},j'}(\ps) - \mathcal{Y}_{\mathrm{s},j}(\ps) \sum_{j'=1}^{J} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s},j'}(\ps)}{\mathrm{d}p_{\mathrm{s}}} }{\left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s},j'}(\ps) \right)^2}
+\frac{\mathrm{d}f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\mathrm{d}p_{\mathrm{s}}} \sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps) - \mathcal{Y}_{\mathrm{s}_j}(\xs,\ps) \sum_{j'=1}^{J} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)}{\mathrm{d}p_{\mathrm{s}}} }{\left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps) \right)^2}.
+\end{equation}
+In case of multiple sources (stacking), the expression for the derivative of the
+dataset weight factor, where $f_j(\ps)$ is given by equation
+(\ref{eq:dataset-weight-factor-multiple-sources}) reads via the quotient rule of
+differentation:
+\begin{equation}
+ \frac{\mathrm{d} f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} =
+    \frac{\left(\sum_{k=1}^{K} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j,k}}}{\mathrm{d}p_{\mathrm{s}}}\right) \left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j',k}}\right) - \left(\sum_{k=1}^{K}\mathcal{Y}_{\mathrm{s}_{j,k}}\right)\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j',k}}}{\mathrm{d}p_{\mathrm{s}}}\right)}
+         {\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j',k}} \right)^2}
 \end{equation}
 
-
 \section{Detector Signal Efficiency}
+\label{sec:detsigeff}
 
-The detector signal efficiency $\mathcal{Y}_{\mathrm{s},j}(\psk)$
+The detector signal efficiency $\mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)$
 of a data sample $j$ for a source $k$ is defined as the integral over the energy
 of the product of the detector effective area and the differential flux
 $\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}$ of the source:
 \begin{equation}
- \mathcal{Y}_{\mathrm{s},j}(\xsk,\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff},j}(E|\xsk) \frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}(E|\psk) T_{\mathrm{live},j}
+ \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff}_j}(E|\xsk) \frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}(E|\psk) T_{\mathrm{live}_j}
 \label{eq:Ysj}
 \end{equation}
 It is the mean number of signal events per steradian expected from a source at
@@ -435,7 +433,7 @@ Using the monte-carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$
 the effective area is given by the sum over the event weights divided by the
 solid angle and the energy range $\Delta E$ of the summed selected events:
 \begin{equation}
- A_{\mathrm{eff},j}(E) = \frac{\sum_{m=1}^{M} w_{m,j}}{\Omega \Delta E}
+ A_{\mathrm{eff}_j}(E) = \frac{\sum_{m=1}^{M} w_{m,j}}{\Omega \Delta E}
 \end{equation}
 
 
