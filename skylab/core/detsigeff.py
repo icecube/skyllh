@@ -125,9 +125,9 @@ class DetSigEffImplMethod(object):
             signal sources. The required fields of this record array are implementation
             method dependent. In the most generic case for a point-like source,
             it must contain the following three fields: ra, dec, time.
-        src_flux_params : dict
-            The dictionary with the flux parameters of the sources. It is
-            assumed that the source parameters are the same for all requested
+        src_flux_params : numpy record ndarray
+            The numpy record ndarray containing the flux parameters of the
+            sources. The flux parameters can be different for the different
             sources.
 
         Returns
@@ -272,9 +272,9 @@ class DetectorSignalEfficiency(object):
             implementation method dependent. In the most generic case for a
             point-like source, it must contain the following three fields:
             ra, dec, time.
-        src_flux_params : dict
-            The dictionary with the flux parameters of the sources. It is
-            assumed that the flux parameters are the same for all requested
+        src_flux_params : numpy record ndarray
+            The numpy record ndarray containing the flux parameters of the
+            sources. The flux parameters can be different for the different
             sources.
 
         Returns

@@ -409,8 +409,9 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3PointLikeSourceDetSigEffImplMetho
         src : numpy record ndarray
             The numpy record ndarray with the field ``dec`` holding the
             declination of the source.
-        src_flux_params : dict
-            The dictionary containing the source flux parameter ``gamma``.
+        src_flux_params : numpy record ndarray
+            The numpy record ndarray containing the flux parameter ``gamma`` for
+            the sources. ``gamma`` can be different for the different sources.
 
         Returns
         -------
@@ -422,7 +423,7 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3PointLikeSourceDetSigEffImplMetho
             parameter, i.e. gamma, the array is (N_sources,1)-shaped.
         """
         src_dec = np.atleast_1d(src['dec'])
-        gamma = src_flux_params['gamma']
+        src_gamma = src_flux_params['gamma']
 
         # Create results array.
         values = np.zeros_like(src_dec, dtype=np.float)
@@ -434,7 +435,7 @@ class I3PointLikeSourcePowerLawFluxDetSigEff(I3PointLikeSourceDetSigEffImplMetho
         mask = (np.sin(src_dec) >= self.sinDec_binning.lower_edge)\
               &(np.sin(src_dec) <= self.sinDec_binning.upper_edge)
 
-        values[mask] = np.exp(self._log_spl_sinDec_gamma(np.sin(src_dec[mask]), gamma, grid=False))
-        grads[mask] = values[mask] * self._log_spl_sinDec_gamma(np.sin(src_dec[mask]), gamma, grid=False, dy=1)
+        values[mask] = np.exp(self._log_spl_sinDec_gamma(np.sin(src_dec[mask]), src_gamma[mask], grid=False))
+        grads[mask] = values[mask] * self._log_spl_sinDec_gamma(np.sin(src_dec[mask]), src_gamma[mask], grid=False, dy=1)
 
         return (values, np.atleast_2d(grads))
