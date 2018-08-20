@@ -470,9 +470,15 @@ class SourceFitParameterMapper(object):
 
     @property
     def fitparam_list(self):
-        """The list of the FitParameter instances.
+        """(read-only) The list of the global FitParameter instances.
         """
         return list(self._fit_params)
+
+    @property
+    def N_global_fitparams(self):
+        """(read-only) The number of defined global fit parameters.
+        """
+        return len(self._fit_params)
 
     @property
     def initials(self):
@@ -541,6 +547,26 @@ class SourceFitParameterMapper(object):
         """
         pass
 
+    @abc.abstractmethod
+    def get_fitparams_array(self, fitparam_values):
+        """This method is supposed to create a numpy record ndarray holding the
+        unique source fit parameter names as key and their value for each
+        source. The returned array must be (N_sources,)-shaped.
+
+        Parameters
+        ----------
+        fitparam_values : 1D ndarray
+            The array holding the current global fit parameter values.
+
+        Returns
+        -------
+        fitparams_arr : (N_sources,)-shaped numpy record ndarray | None
+            The numpy record ndarray holding the fit parameter names as keys
+            and their value for each source in each row.
+            None must be returned if no global fit parameters were defined.
+        """
+        pass
+
 
 class SingleSourceFitParameterMapper(SourceFitParameterMapper):
     """This class provides the functionality to map the global fit parameters to
@@ -592,10 +618,36 @@ class SingleSourceFitParameterMapper(SourceFitParameterMapper):
         src_fitparams : dict
             The dictionary holding the translated source parameters that are
             beeing fitted.
+            An empty dictionary is returned if no fit parameters were defined.
         """
         src_fitparams = dict(zip(self._src_param_names, fitparam_values))
 
         return src_fitparams
+
+    def get_fitparams_array(self, fitparam_values):
+        """Creates a numpy record ndarray holding the fit parameters names as
+        key and their value for each source. The returned array is (1,)-shaped
+        since there is only one source defined for this mapper class.
+
+        Parameters
+        ----------
+        fitparam_values : 1D ndarray
+            The array holding the current global fit parameter values.
+
+        Returns
+        -------
+        fitparams_arr : (1,)-shaped numpy record ndarray | None
+            The numpy record ndarray holding the fit parameter names as keys
+            and their value for the one single source.
+            None is returned if no fit parameters were defined.
+        """
+        if(self.N_global_fitparams == 0):
+            return None
+
+        fitparams_arr = np.array([tuple(fitparam_values)],
+                                 dtype=[ (name, np.float)
+                                        for name in self._src_param_names ])
+        return fitparams_arr
 
 
 class MultiSourceFitParameterMapper(SourceFitParameterMapper):
@@ -626,6 +678,9 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         # parameter applies to which source.
         self._fit_param_2_src_mask = np.zeros((0, len(self.sources)), dtype=np.bool)
 
+        # Define an array, which will hold the unique source parameter names.
+        self._unique_src_param_names = np.empty((0,), dtype=np.object)
+
     @property
     def sources(self):
         """The SourceCollection defining the sources.
@@ -635,6 +690,12 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
     def sources(self, obj):
         obj = SourceCollection.cast(obj, 'The sources property must be castable to an instance of SourceCollection!')
         self._sources = obj
+
+    @property
+    def N_sources(self):
+        """(read-only) The number of sources.
+        """
+        return len(self._sources)
 
     def def_fit_parameter(self, fit_param, src_param_name=None, sources=None):
         """Defines a new fit parameter that maps to a given source parameter
@@ -671,6 +732,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         # arrays.
         self._fit_params = np.concatenate((self._fit_params, [fit_param]))
         self._src_param_names = np.concatenate((self._src_param_names, [src_param_name]))
+        self._unique_src_param_names = np.unique(self._src_param_names)
 
         # Get the list of source indices for which the fit parameter applies.
         mask = np.zeros((len(self.sources),), dtype=np.bool)
@@ -703,10 +765,50 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         # source.
         fp_mask = self._fit_param_2_src_mask[:,src_idx]
 
-        # Get the source parameter names.
+        # Get the source parameter names and values.
         src_param_names = self._src_param_names[fp_mask]
         src_param_values = fitparam_values[fp_mask]
 
         src_fitparams = dict(zip(src_param_names, src_param_values))
 
         return src_fitparams
+
+    def get_fitparams_array(self, fitparam_values):
+        """Creates a numpy record ndarray holding the fit parameters names as
+        key and their value for each source. The returned array is
+        (N_sources,)-shaped.
+
+        Parameters
+        ----------
+        fitparam_values : 1D ndarray
+            The array holding the current global fit parameter values.
+
+        Returns
+        -------
+        fitparams_arr : (N_sources,)-shaped numpy record ndarray | None
+            The numpy record ndarray holding the unique source fit parameter
+            names as keys and their value for each source per row.
+            None is returned if no fit parameters were defined.
+        """
+        if(self.N_global_fitparams == 0):
+            return None
+
+        fitparams_arr = np.empty((self.N_sources,),
+                                 dtype=[ (name, np.float)
+                                         for name in self._unique_src_param_names ])
+
+        for src_idx in xrange(self.N_sources):
+            # Get the mask of global fit parameters that apply to the requested
+            # source.
+            fp_mask = self._fit_param_2_src_mask[:,src_idx]
+
+            # Get the source parameter names and values.
+            src_param_names = self._src_param_names[fp_mask]
+            src_param_values = fitparam_values[fp_mask]
+
+            # Fill the fit params array.
+            for (name, value) in zip(src_param_names, src_param_values):
+                fitparams_arr[name][src_idx] = value
+
+        return fitparams_arr
+
