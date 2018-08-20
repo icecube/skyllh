@@ -192,7 +192,7 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3PointLikeSourceDetSigEffImplMethod):
         self._log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
             self.sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
 
-    def get(self, src, src_flux_params):
+    def get(self, src, src_flux_params=None):
         """Retrieves the detector signal efficiency for the list of given
         sources.
 
@@ -201,9 +201,9 @@ class I3PointLikeSourceFixedFluxDetSigEff(I3PointLikeSourceDetSigEffImplMethod):
         src : numpy record ndarray
             The numpy record ndarray with the field ``dec`` holding the
             declination of the source.
-        src_params : dict
-            The dictionary containing the parameters of the sources. For this
-            implementation method it is empty.
+        src_flux_params : None
+            Unused interface argument, because this implementation does not
+            depend on any source flux fit parameters.
 
         Returns
         -------
