@@ -317,6 +317,12 @@ class MultiSourceTCLLHRatio(TCLLHRatio):
 
 class DatasetSignalWeights(object):
     """Abstract base class for a dataset signal weight calculator class.
+    The current skylab framework assumes that all sources are of the same source
+    model, i.e. have the same flux model (e.g. power-law) and spatial source
+    model (e.g. point-like source). If this assumption would not be made, each
+    source and dataset combination would have to have its own detector signal
+    efficiency instance and the detsigeff_list property would have to be a
+    matrix (dataset x source) instead of a list (dataset).
     """
     __metaclass__ = abc.ABCMeta
 
@@ -501,14 +507,18 @@ class MultiDatasetTCLLHRatio(object):
 
     The different datasets contribute according to their dataset signal weight
     factor, f_j(p_s), which depends on possible signal fit parameters. By
-    definition the signal fit parameters are the same for each dataset.
+    definition the signal fit parameters are assumed to be the same for each
+    dataset.
+
+    By mathematical definition this class is suitable for single and multi
+    source hypotheses.
     """
-    def __init__(self, datasetweights):
+    def __init__(self, dataset_signal_weights):
         """Creates a new composite two-component log-likelihood ratio function.
 
         Parameters
         ----------
-        datasetweights : DatasetSignalWeights
+        dataset_signal_weights : DatasetSignalWeights
             An instance of DatasetSignalWeights, which calculates the relative
             dataset weight factors.
         """
@@ -550,21 +560,25 @@ class MultiDatasetTCLLHRatio(object):
         self._llhratio_list.append(llhratio)
 
     def evaluate(self, fitparam_values):
-        """Evaluates the composite log-likelihood-ratio function.
+        """Evaluates the composite log-likelihood-ratio function and returns its
+        value and global fit parameter gradients.
 
         Parameters
         ----------
         fitparam_values : (N_fitparams)-shaped numpy 1D ndarray
-            The ndarray holding the current values of the fit parameters.
+            The ndarray holding the current values of the global fit parameters.
             The first element of that array is, by definition, the number of
             signal events, ns.
 
         Returns
         -------
         log_lambda : float
-            The calculated log-lambda value.
+            The calculated log-lambda value of the composite
+            log-likelihood-ratio function.
         grads : (N_fitparams,)-shaped 1D ndarray
-            The ndarray holding the gradient value for each fit parameter.
+            The ndarray holding the gradient value of the composite
+            log-likelihood-ratio function for ns and each global fit parameter.
+            By definition the first element is the gradient for ns.
         """
         ns = fitparam_values[0]
 
@@ -573,4 +587,33 @@ class MultiDatasetTCLLHRatio(object):
         # f_grads is a (N_datasets,N_fitparams)-shaped 2D ndarray.
         (f, f_grads) = self._dataset_signal_weights(fitparam_values)
 
-        # TODO: Finish implementation
+        nsf = ns * f
+
+        # Calculate the composite log-likelihood-ratio function value and the
+        # gradient of the composite log-likelihood ratio function for each
+        # global fit parameter.
+        log_lambda = 0
+
+        # Allocate an array for the gradients of the composite log-likelihood
+        # function. It is always at least one element long, i.e. the gradient
+        # for ns.
+        grads = np.zeros((len(fitparam_values),), dtype=np.float)
+
+        # Create an array holding the fit parameter values for a particular
+        # llh ratio function. Since we need to adjust ns with nsj it's more
+        # efficient to create this array once and use it within the for loop
+        # over the llh ratio functions.
+        llhratio_fitparam_values = np.empty((len(fitparam_values),), dtype=np.float)
+        # Loop over the llh ratio functions.
+        for (j, llhratio) in enumerate(self._llhratio_list):
+            llhratio_fitparam_values[0] = nsf[j]
+            llhratio_fitparam_values[1:] = fitparam_values[1:]
+            (log_lambda_j, grads_j) = llhratio.evaluate(llhratio_fitparam_values)
+            log_lambda += log_lambda_j
+            # Gradient for ns.
+            grads[0] += grads_j[0] * f[j]
+            # Gradient for each global fit parameter, if there are any.
+            if(len(grads) > 1):
+                grads[1:] += grads_j[0] * ns * f_grads[j] + grads_j[1:]
+
+        return (log_lambda, grads)
