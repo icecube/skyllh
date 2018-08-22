@@ -372,17 +372,17 @@ out leaving the simplified equation
 By using equation (\ref{eq:logLambdaOfLogLambdaj}) for the combined log-likelihood
 ratio, its derivative w.r.t. $\ns$ is given by
 \begin{equation}
- \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{j=1}^{J} \frac{\mathrm{d} \log \Lambda_j(n_{\mathrm{s},j},\ps)}{\mathrm{d} n_{\mathrm{s},j}} \frac{\mathrm{d} n_{\mathrm{s},j}}{\mathrm{d} \ns},
+ \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{j=1}^{J} \frac{\mathrm{d} \log \Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d} n_{\mathrm{s}_j}} \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns},
 \end{equation}
 with
 \begin{equation}
-\frac{\mathrm{d} n_{\mathrm{s},j}}{\mathrm{d} \ns} = f_j(\ps).
+\frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns} = f_j(\ps).
 \end{equation}
 The derivative w.r.t. a single source fit parameter, $p_{\mathrm{s}}$, consists
-of the partial derivatives of $\log \Lambda_j$ w.r.t. $n_{\mathrm{s},j}$ and
+of the partial derivatives of $\log \Lambda_j$ w.r.t. $n_{\mathrm{s}_j}$ and
 $p_{\mathrm{s}}$:
 \begin{equation}
- \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{j=1}^{J} \frac{\partial \log \Lambda_j(\nsj,\ps)}{\partial \nsj} \frac{\mathrm{d} \nsj}{\mathrm{d} p_{\mathrm{s}}} + \frac{\partial \log \Lambda_j(\nsj,\ps)}{\partial p_{\mathrm{s}}},
+ \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{j=1}^{J} \left( \frac{\partial \log \Lambda_j(\nsj,\ps)}{\partial \nsj} \frac{\mathrm{d} \nsj}{\mathrm{d} p_{\mathrm{s}}} + \frac{\partial \log \Lambda_j(\nsj,\ps)}{\partial p_{\mathrm{s}}} \right),
 \end{equation}
 with
 \begin{equation}
