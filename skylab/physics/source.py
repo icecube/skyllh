@@ -7,8 +7,6 @@ point-like source at a given location in the sky with a given flux model.
 """
 
 from skylab.core.py import ObjectCollection, issequence, float_cast
-from skylab.physics.flux import FluxModel
-
 
 class SourceLocation(object):
     """Stores the location of a source, i.e. right-ascention and declination.
@@ -40,12 +38,10 @@ class SourceLocation(object):
 
 class SourceModel(object):
     """The base class for all source models in Skylab. Each source has a central
-    location given by a right-ascention and declination location, and a flux
-    model.
+    location given by a right-ascention and declination location.
     """
-    def __init__(self, ra, dec, fluxmodel):
+    def __init__(self, ra, dec):
         self.loc = SourceLocation(ra, dec)
-        self.fluxmodel = fluxmodel
 
     @property
     def loc(self):
@@ -57,18 +53,6 @@ class SourceModel(object):
         if(not isinstance(srcloc, SourceLocation)):
             raise TypeError('The loc property must be an instance of SourceLocation!')
         self._loc = srcloc
-
-    @property
-    def fluxmodel(self):
-        """The flux model of the source. It's an instance of class derived from
-        class FluxModel.
-        """
-        return self._fluxmodel
-    @fluxmodel.setter
-    def fluxmodel(self, obj):
-        if(not isinstance(obj, FluxModel)):
-            raise TypeError('The fluxmodel property must be an instance of FluxModel!')
-        self._fluxmodel = obj
 
     @property
     def id(self):
@@ -175,11 +159,10 @@ class Catalog(SourceCollection):
 
 class PointLikeSource(SourceModel):
     """The PointLikeSource class is a source model for a point-like source
-    object in the sky at a given location (right-ascention and declination) with
-    a given flux model.
+    object in the sky at a given location (right-ascention and declination).
     """
-    def __init__(self, ra, dec, fluxmodel):
-        super(PointLikeSource, self).__init__(ra, dec, fluxmodel)
+    def __init__(self, ra, dec):
+        super(PointLikeSource, self).__init__(ra, dec)
 
     @property
     def ra(self):
