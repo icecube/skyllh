@@ -172,7 +172,7 @@ class DetectorSignalEfficiency(object):
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime
             The live-time in days to use for the detector signal efficiency.
-        implmethod : DetSigEffImplMethod
+        implmethod : instance of DetSigEffImplMethod
             The implementation method to use for constructing and receiving
             the detector signal efficiency. The appropriate method depends on
             the used flux model.
