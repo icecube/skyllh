@@ -159,7 +159,10 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         """
         self.pdfratio_list = pdfratios
         self.fitparam_list = fitparams
-        self.events = events
+
+        # The ``events`` property will be set via the
+        # ``initialize_for_new_trial`` method.
+        self._events = None
 
         # Create a mapping of fit parameter index to pdfratio index. We
         # initialize the mapping with -1 first in order to be able to check in
@@ -177,10 +180,6 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         # Create a (N_pdfratios,N_events)-shaped array to hold the PDF ratio
         # values of each PDF ratio object for each event.
         self._ratio_values = np.empty((len(self._pdfratio_list),len(self._events)), dtype=np.float)
-
-        # Pre-compute the PDF ratio values for the PDF ratios that do not
-        # depend on any fit parameters.
-        self._precompute_static_pdfratio_values()
 
         # Create the list of indices of the PDFRatio instances, which depend on
         # at least one fit parameter.
@@ -243,7 +242,9 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         events : numpy record array
             The numpy record array holding the new data events of the new trial.
         """
-        n_events_old = len(self._events)
+        n_events_old = 0
+        if(self._events is not None):
+            n_events_old = len(self._events)
 
         # Set the new events.
         self.events = events
