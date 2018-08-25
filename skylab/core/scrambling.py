@@ -29,9 +29,9 @@ class DataScramblingMethod(object):
         """
         pass
 
-class RAScramblingMethod(DataScramblingMethod):
-    """The RAScramblingMethod method performs right-ascention scrambling within
-    a given RA range. By default it's (0, 2\pi).
+class UniformRAScramblingMethod(DataScramblingMethod):
+    """The UniformRAScramblingMethod method performs right-ascention scrambling
+    uniformly within a given RA range. By default it's (0, 2\pi).
 
     Note: This alters only the ``ra`` values of the data!
     """
@@ -47,7 +47,7 @@ class RAScramblingMethod(DataScramblingMethod):
             values should get drawn from. If set to None, the default (0, 2\pi)
             will be used.
         """
-        super(RAScramblingMethod, self).__init__()
+        super(UniformRAScramblingMethod, self).__init__()
         self.rss = rss
         self.ra_range = ra_range
 
@@ -141,7 +141,7 @@ class TimeScramblingMethod(DataScramblingMethod):
         (data['ra'], data['dec']) = self.hor_to_equ_transform(data['azi'], data['zen'], mjds)
 
 class DataScrambler(object):
-    def __init__(self, method):
+    def __init__(self, method, inplace_scrambling=True):
         """Creates a data scrambler instance with a given defined scrambling
         method.
 
@@ -150,8 +150,14 @@ class DataScrambler(object):
         method : DataScramblingMethod
             The instance of DataScramblingMethod that defines the method of
             the data scrambling.
+        inplace_scrambling : bool
+            Flag if the scrambler should perform an in-place scrambling of the
+            data. If set to False, a copy of the given data is created before
+            the scrambling is performed on the data, otherwise (the default)
+            the scrambling is performed on the given data directly.
         """
         self.method = method
+        self.inplace_scrambling = inplace_scrambling
 
     @property
     def method(self):
@@ -165,8 +171,41 @@ class DataScrambler(object):
             raise TypeError('The data scrambling method must be an instance of DataScramblingMethod!')
         self._method = method
 
+    @property
+    def inplace_scrambling(self):
+        """Flag if the scrambler should perform an in-place scrambling of the
+        data. If set to False, a copy of the given data is created before the
+        scrambling is performed on the data, otherwise (the default) the
+        scrambling is performed on the given data directly.
+        """
+        return self._inplace_scrambling
+    @inplace_scrambling.setter
+    def inplace_scrambling(self, flag):
+        if(not isinstance(flag, bool)):
+            raise TypeError('The inplace_scrambling property must be of type bool!')
+        self._inplace_scrambling = flag
+
     def scramble_data(self, data):
         """Scrambles the given data by calling the scramble method of the
         scrambling method class, that was configured for the data scrambler.
+        If the ``inplace_scrambling`` property is set to False, a copy of the
+        data is created before the scrambling is performed.
+
+        Parameters
+        ----------
+        data : numpy record array
+            The numpy record array holding the data, which should get scrambled.
+
+        Returns
+        -------
+        data : numpy record array
+            The numpy record array with the scrambled data. If the
+            ``inplace_scrambling`` property is set to True, this output array is
+            the same array as the input array, otherwise it's a new array.
         """
+        if(not self._inplace_scrambling):
+            data = np.copy(data)
+
         self._method.scramble(data)
+
+        return data
