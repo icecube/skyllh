@@ -35,17 +35,11 @@ class TCLLHRatio(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, events, n_pure_bkg_events, pdfratios, src_fitparam_mapper):
+    def __init__(self, pdfratios, src_fitparam_mapper):
         """Constructor of the two-component log-likelihood ratio function.
 
         Parameters
         ----------
-        events : numpy record array
-            The numpy record array holding the data events which should get
-            evaluated.
-        n_pure_bkg_events : int
-            The number of pure background events, which are not part of
-            `events`, but must be considered for the log_lambda value.
         pdfratios : sequence of PDFRatio
             The sequence of PDFRatio instances. A PDFRatio instance might depend
             on none, one, or several fit parameters.
@@ -59,10 +53,13 @@ class TCLLHRatio(object):
         """
         super(TCLLHRatio, self).__init__()
 
-        self.events = events
-        self.n_pure_bkg_events = n_pure_bkg_events
         self.pdfratio_list = pdfratios
         self.src_fitparam_mapper = src_fitparam_mapper
+
+        # These properties will be set via the ``initialize_for_new_trial``
+        # method.
+        self._events = events = None
+        self._n_pure_bkg_events = None
 
     @property
     def events(self):
@@ -161,18 +158,12 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
     log-likelihood ratio function for a list of independent PDFRatio instances
     assuming a single source.
     """
-    def __init__(self, events, n_pure_bkg_events, pdfratios, src_fitparam_mapper):
+    def __init__(self, pdfratios, src_fitparam_mapper):
         """Constructor for creating a 2-component, i.e. signal and background,
         log-likelihood ratio function assuming a single source.
 
         Parameters
         ----------
-        events : numpy record array
-            The numpy record array holding the data events which should get
-            evaluated.
-        n_pure_bkg_events : int
-            The number of pure background events, which are not part of
-            `events`, but must be considered for the log_lambda value.
         pdfratios : list of PDFRatio
             The list of PDFRatio instances. A PDFRatio instance might depend on
             none, one, or several fit parameters.
@@ -188,14 +179,14 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
             raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
 
         super(SingleSourceSpatialEnergyTCLLHRatio, self).__init__(
-            events, n_pure_bkg_events, pdfratios, src_fitparam_mapper)
+            pdfratios, src_fitparam_mapper)
 
         # Construct a PDFRatio array arithmetic object specialized for a single
         # source. This will pre-calculate the PDF ratio values for all PDF ratio
         # instances, which do not depend on any fit parameters.
         self._pdfratioarray = SingleSourcePDFRatioArrayArithmetic(
             self._pdfratio_list,
-            self._src_fitparam_mapper.fitparam_list, self._events)
+            self._src_fitparam_mapper.fitparam_list)
 
     def initialize_for_new_trial(self, events, n_pure_bkg_events):
         """Initializes the log-likelihood ratio function for a new trial.
