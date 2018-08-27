@@ -28,8 +28,37 @@ from skylab.core.pdfratio import\
 from skylab.physics.source import\
     SourceModel
 
+class LLHRatio(object):
+    """Abstract base class for a log-likelihood (LLH) ratio function.
+    """
+    __metaclass__ = abc.ABCMeta
 
-class TCLLHRatio(object):
+    def __init__(self):
+        super(LLHRatio, self).__init__()
+
+    @abc.abstractmethod
+    def evaluate(self, fitparam_values):
+        """This method evaluates the LLH ratio function for the given set of
+        fit parameter values.
+
+        Parameters
+        ----------
+        fitparam_values : numpy 1D ndarray
+            The ndarray holding the current values of the (global) fit
+            parameters.
+
+        Returns
+        -------
+        log_lambda : float
+            The calculated log-lambda value.
+        grads : (N_fitparams,)-shaped 1D ndarray
+            The ndarray holding the gradient value for each (global) fit
+            parameter.
+        """
+        pass
+
+
+class TCLLHRatio(LLHRatio):
     """Abstract base class for a two-component (TC) log-likelihood (LLH) ratio
     function with a list of independent PDF ratio components.
     """
@@ -92,6 +121,12 @@ class TCLLHRatio(object):
         self._n_pure_bkg_events = n
 
     @property
+    def n_selected_events(self):
+        """(read-only) The number of selected events.
+        """
+        return self.n_events - self.n_pure_bkg_events
+
+    @property
     def pdfratio_list(self):
         """The list of PDFRatio instances.
         """
@@ -130,27 +165,6 @@ class TCLLHRatio(object):
         """
         self.events = events
         self.n_pure_bkg_events = n_pure_bkg_events
-
-    @abc.abstractmethod
-    def evaluate(self, fitparam_values):
-        """This method evaluates the LLH ratio function for the given set of
-        fit parameter values.
-
-        Parameters
-        ----------
-        fitparam_values : numpy 1D ndarray
-            The ndarray holding the current values of the fit parameters.
-            The first element of that array is, by definition, the number of
-            signal events, ns.
-
-        Returns
-        -------
-        log_lambda : float
-            The calculated log-lambda value.
-        grads : (N_fitparams,)-shaped 1D ndarray
-            The ndarray holding the gradient value for each fit parameter.
-        """
-        pass
 
 
 class SingleSourceTCLLHRatio(TCLLHRatio):
@@ -481,7 +495,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
             # sumj_Y_grads is a (N_fitparams,)-shaped 1D array.
             sumj_Y_grads = np.sum(Y_grads, axis=0)
             f_grads = (Y_grads*sumj_Y - Y[...,np.newaxis]*sumj_Y_grads) / sumj_Y**2
-        else
+        else:
             f_grads = None
 
         return (f, f_grads)
@@ -491,7 +505,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
 # dataset AND source, because each source could have a different spectrum model
 # with different fit parameters.
 
-class MultiDatasetTCLLHRatio(object):
+class MultiDatasetTCLLHRatio(LLHRatio):
     """This class describes a two-component log-likelihood ratio function for
     multiple datasets. The final log-likelihood ratio value is the sum of the
     individual log-likelihood ratio values.
@@ -513,6 +527,8 @@ class MultiDatasetTCLLHRatio(object):
             An instance of DatasetSignalWeights, which calculates the relative
             dataset weight factors.
         """
+        super(MultiDatasetTCLLHRatio, self).__init__()
+
         self.dataset_signal_weights = datasetweights
 
         self._llhratio_list = []
@@ -535,6 +551,16 @@ class MultiDatasetTCLLHRatio(object):
         composite log-likelihood-ratio function.
         """
         return self._llhratio_list
+
+    @property
+    def n_selected_events(self):
+        """The sum of selected events of each individual log-likelihood ratio
+        function.
+        """
+        n_selected_events = 0
+        for llhratio in self._llhratio_list:
+            n_selected_events += llhratio.n_selected_events
+        return n_selected_events
 
     def add_llhratio(self, llhratio):
         """Adds the given two-component log-likelihood ratio function to this
