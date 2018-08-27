@@ -61,6 +61,16 @@ def isproperty(obj, name):
     """
     return isinstance(type(obj).__dict__[name], property)
 
+def int_cast(v, errmsg):
+    """Casts the given value to an integer value. If the cast is impossible, a
+    TypeError is raised with the given error message.
+    """
+    try:
+        v = int(v)
+    except:
+        raise TypeError(errmsg)
+    return v
+
 def float_cast(v, errmsg):
     """Casts the given value to a float. If the cast is impossible, a TypeError
     is raised with the given error message.
