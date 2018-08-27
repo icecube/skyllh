@@ -7,6 +7,7 @@ from copy import deepcopy
 
 from skylab.physics.source import SourceModel, SourceCollection
 from skylab.core.py import ObjectCollection, issequence, float_cast
+from skylab.core.random import RandomStateService
 
 def make_linear_parameter_grid_1d(name, low, high, delta):
     """Utility function to create a ParameterGrid object for a 1-dimensional
@@ -453,6 +454,118 @@ class FitParameter(object):
         v = float_cast(v, 'The initial property must be castable to type float!')
         self._initial = v
 
+
+class FitParameterSet(object):
+    """This class describes a set of FitParameter instances.
+    """
+    def __init__(self, rss):
+        """Constructs a fit parameter set instance.
+        """
+        self.rss = rss
+
+        # Define the list of fit parameters.
+        # Define the (N_fitparams,)-shaped numpy array of FitParameter objects.
+        self._fitparams = np.empty((0,), dtype=np.object)
+        # Define a list for the fit parameter names. This is for optimization
+        # purpose only.
+        self._fitparam_name_list = []
+
+    @property
+    def rss(self):
+        """The instance of RandomStateService to use for drawing random numbers
+        from.
+        """
+        return self._rss
+    @rss.setter
+    def rss(self, rss):
+        if(not isinstance(rss, RandomStateService)):
+            raise TypeError('The rss property must be an instance of RandomStateService!')
+        self._rss = rss
+
+    @property
+    def fitparams(self):
+        """The 1D ndarray holding the FitParameter instances.
+        """
+        return self._fitparams
+
+    @property
+    def fitparam_list(self):
+        """(read-only) The list of the global FitParameter instances.
+        """
+        return list(self._fitparams)
+
+    @property
+    def initials(self):
+        """(read-only) The 1D ndarray holding the initial values of all the
+        global fit parameters.
+        """
+        return np.array([ fitparam.initial
+                         for fitparam in self._fitparams ], dtype=np.float)
+
+    @property
+    def bounds(self):
+        """(read-only) The 2D (N_fitparams,2)-shaped ndarray holding the
+        boundaries for all the global fit parameters.
+        """
+        return np.array([ (fitparam.valmin, fitparams.valmax)
+                         for fitparam in self._fitparams ], dtype=np.float)
+
+    def add_fitparam(self, fitparam, atfront=False):
+        """Adds the given FitParameter instance to the list of fit parameters.
+
+        Parameters
+        ----------
+        fitparam : instance of FitParameter
+            The fit parameter, which should get added.
+        atfront : bool
+            Flag if the fit parameter should be added at the front of the
+            parameter list. If set to False (default), it will be added at the
+            back.
+        """
+        if(not isinstance(fitparam, FitParameter)):
+            raise TypeError('The fitparam argument must be an instance of FitParameter!')
+
+        if(atfront):
+            # Add fit parameter at front of list.
+            self._fitparams = np.concatenate(([fitparam], self._fitparams))
+            self._fitparam_name_list = [fitparam.name] + self._fitparam_name_list
+        else:
+            # Add fit parameter at back of list.
+            self._fitparams = np.concatenate((self._fitparams, [fitparam]))
+            self._fitparam_name_list = self._fitparam_name_list + [fitparam.name]
+
+    def get_fitparam_dict(self, fitparam_values):
+        """Constructs a dictionary with the fit parameter names and values.
+
+        Parameters
+        ----------
+        fitparam_values : 1D ndarray
+            The ndarray holding the fit parameter values in the order that the
+            fit parameters are defined.
+
+        Returns
+        -------
+        fitparam_dict : dict
+            The dictionary with the fit parameter names and values.
+        """
+        fitparam_dict = dict(zip(self._fitparam_name_list, fitparam_values))
+        return fitparam_dict
+
+    def generate_random_initials(self):
+        """Generates a set of random initials for all global fit parameters.
+        A new random initial is defined as
+
+            lower_bound + RAND * (upper_bound - lower_bound),
+
+        where RAND is a uniform random variable between 0 and 1.
+        """
+        vb = self.bounds
+        # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound)
+        ri = vb[:,0] + self._rss.uniform(size=vb.shape[0]) * (vb[:,1] - vb[:,0])
+
+        return ri
+
+
 class SourceFitParameterMapper(object):
     """This abstract base class defines the interface of the source fit
     parameter mapper. This mapper provides the functionality to map a global fit
@@ -460,33 +573,34 @@ class SourceFitParameterMapper(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        # Define the list of fit parameters and the list of source parameter
-        # names, which map to the fit parameters.
-        # Define the (N_fitparams,)-shaped numpy array of FitParameter objects.
-        self._fit_params = np.empty((0,), dtype=np.object)
+    def __init__(self, rss):
+        """Constructor of the source fit parameter mapper.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use when drawing random
+            numbers for the ``generate_random_initials`` method.
+        """
+        self._fitparamset = FitParameterSet(rss)
+
+        # Define the list of source parameter names, which map to the fit
+        # parameters.
         # Define the (N_fitparams,)-shaped numpy array of str objects.
         self._src_param_names = np.empty((0,), dtype=np.object)
 
     @property
-    def fitparam_list(self):
-        """(read-only) The list of the global FitParameter instances.
+    def fitparamset(self):
+        """(read-only) The FitParameterSet instance holding the list of global
+        fit parameters.
         """
-        return list(self._fit_params)
+        return self._fitparamset
 
     @property
     def N_global_fitparams(self):
         """(read-only) The number of defined global fit parameters.
         """
-        return len(self._fit_params)
-
-    @property
-    def initials(self):
-        """(read-only) The 1D ndarray holding the initial values of all the fit
-        parameters.
-        """
-        return np.array([ fit_param.initial
-                         for fit_param in self._fit_params ], dtype=np.float)
+        return len(self._fitparamset.fitparams)
 
     def get_src_fitparam_name(self, fitparam_idx):
         """Returns the name of the source fit parameter for the given global fit
@@ -574,34 +688,37 @@ class SingleSourceFitParameterMapper(SourceFitParameterMapper):
     source, hence the mapping can be performed faster than in the multi-source
     case.
     """
-    def __init__(self):
+    def __init__(self, rss):
         """Constructs a new source fit parameter mapper for a single source.
-        """
-        super(SingleSourceFitParameterMapper, self).__init__()
 
-    def def_fit_parameter(self, fit_param, src_param_name=None):
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use when drawing random
+            numbers for the ``generate_random_initials`` method.
+        """
+        super(SingleSourceFitParameterMapper, self).__init__(rss)
+
+    def def_fit_parameter(self, fitparam, src_param_name=None):
         """Define a new fit parameter that maps to a given source fit parameter.
 
         Parameters
         ----------
-        fit_param : FitParameter
+        fitparam : FitParameter
             The FitParameter instance defining the fit parameter.
         src_param_name : str | None
             The name of the source parameter. It must match the name of a source
             model property. If set to None (default) the name of the fit
             parameter will be used.
         """
-        if(not isinstance(fit_param, FitParameter)):
-            raise TypeError('The fit_param argument must be an instance of FitParameter!')
+        self._fitparamset.add_fitparam(fitparam)
 
         if(src_param_name is None):
-            src_param_name = fit_param.name
+            src_param_name = fitparam.name
         if(not isinstance(src_param_name, str)):
             raise TypeError('The src_param_name argument must be of type str!')
 
-        # Append the fit parameter and source parameter name to the internal
-        # arrays.
-        self._fit_params = np.concatenate((self._fit_params, [fit_param]))
+        # Append the source parameter name to the internal array.
         self._src_param_names = np.concatenate((self._src_param_names, [src_param_name]))
 
     def get_src_fitparams(self, fitparam_values):
@@ -662,15 +779,18 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
     source gets an index, which is defined as the position of the source within
     the collection.
     """
-    def __init__(self, sources):
+    def __init__(self, rss, sources):
         """Constructs a new source fit parameter mapper for multiple sources.
 
         Parameters
         ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use when drawing random
+            numbers for the ``generate_random_initials`` method.
         sources : sequence of SourceModel
             The sequence of SourceModel instances defining the list of sources.
         """
-        super(MultiSourceFitParameterManager, self).__init__()
+        super(MultiSourceFitParameterManager, self).__init__(rss)
 
         self.sources = sources
 
@@ -697,14 +817,14 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         """
         return len(self._sources)
 
-    def def_fit_parameter(self, fit_param, src_param_name=None, sources=None):
+    def def_fit_parameter(self, fitparam, src_param_name=None, sources=None):
         """Defines a new fit parameter that maps to a given source parameter
         for a list of sources. If no list of sources is given, it maps to all
         sources.
 
         Parameters
         ----------
-        fit_param : FitParameter
+        fitparam : FitParameter
             The FitParameter instance defining the fit parameter.
         src_param_name : str | None
             The name of the source parameter. It must match the name of a source
@@ -715,11 +835,10 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
             parameter applies. If None (the default) is specified, the fit
             parameter will apply to all sources.
         """
-        if(not isinstance(fit_param, FitParameter)):
-            raise TypeError('The fit_param argument must be an instance of FitParameter!')
+        self._fitparamset.add_fitparam(fitparam)
 
         if(src_param_name is None):
-            src_param_name = fit_param.name
+            src_param_name = fitparam.name
         if(not isinstance(src_param_name, str)):
             raise TypeError('The src_param_name argument must be of type str!')
 
@@ -728,9 +847,8 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         sources = SourceCollection.cast(sources,
             'The sources argument must be castable to an instance of SourceCollection!')
 
-        # Append the fit parameter and source parameter name to the internal
-        # arrays.
-        self._fit_params = np.concatenate((self._fit_params, [fit_param]))
+        # Append the source parameter name to the internal array and keep track
+        # of the unique names.
         self._src_param_names = np.concatenate((self._src_param_names, [src_param_name]))
         self._unique_src_param_names = np.unique(self._src_param_names)
 
