@@ -197,30 +197,51 @@ class Analysis(object):
     common properties required by all analyses and defines the overall analysis
     interface howto set-up and run an analysis.
 
-    The procedure to construct and run an analysis is to create an Analysis
-    instance, define the global fit parameters via the source fit parameter
-    mapper, construct the analysis via the ``construct_analysis`` method,
-    initialize a trial via the ``initialize_trial`` method, and
-    then maximize the likelihood function via the ``maximize_llhratio`` method.
+    To set-up and run an analysis the following procedure applies:
+
+        1. Create an analysis instance.
+        2. Add the datasets and their PDF ratio instances via the
+           ``add_dataset`` method.
+        3. Construct the log-likelihood ratio function via the
+           ``construct_llhratio`` method.
+        4. Initialize a trial via the ``initialize_trial`` method.
+        5. Fit the global fit parameters to the trial data via the
+           ``maximize_llhratio`` method.
     """
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, src_fitparam_mapper):
+    def __init__(self, minimizer, src_fitparam_mapper):
         """Constructor of the analysis base class.
 
         Parameters
         ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of the log-likelihood ratio function.
         src_fitparam_mapper : instance of SourceFitParameterMapper
             The SourceFitParameterMapper instance managing the global fit
             parameters and their relation to the individual sources.
         """
         super(Analysis, self).__init__()
 
+        self.minimizer = minimizer
         self.src_fitparam_mapper = src_fitparam_mapper
 
         # Predefine the variable for the log-likelihood ratio function.
         self._llhratio = None
+
+    @property
+    def minimizer(self):
+        """The Minimizer instance used to minimize the negative of the
+        log-likelihood ratio function.
+        """
+        return self._minimizer
+    @minimizer.setter
+    def minimizer(self, minimizer):
+        if(not isinstance(minimizer, Minimizer)):
+            raise TypeError('The minimizer property must be an instance of Minimizer!')
+        self._minimizer = minimizer
 
     @property
     def src_fitparam_mapper(self):
@@ -243,10 +264,16 @@ class Analysis(object):
         return self._llhratio
 
     @abc.abstractmethod
-    def construct_analysis(self):
-        """This method is supposed to construct the analysis. This means needs
-        to create the log-likelihood ratio function and sets it as the _llhratio
-        property.
+    def add_dataset(self, dataset, *args, **kwars):
+        """This method is supposed to add a dataset and the corresponding PDF
+        ratio instances to the analysis.
+        """
+        pass
+
+    @abc.abstractmethod
+    def construct_llhratio(self):
+        """This method is supposed to construct the log-likelihood ratio
+        function and sets it as the _llhratio property.
         """
         pass
 
@@ -277,20 +304,19 @@ class Analysis(object):
 class MultiDatasetAnalysis(Analysis):
     """This is the base class for all analyses that use multiple datasets.
     """
-    def __init__(self, src_fitparam_mapper):
+    def __init__(self, minimizer, src_fitparam_mapper):
         """Constructor of the Analysis base class.
 
         Parameters
         ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of the log-likelihood ratio function.
         src_fitparam_mapper : instance of SourceFitParameterMapper
             The SourceFitParameterMapper instance managing the global fit
             parameters and their relation to the individual sources.
-        datasets : sequence of Dataset
-            The sequence of Dataset instances which define the used data. Each
-            dataset is treated as an independent set of data, which means for
-            each dataset PDF objects need to be created.
         """
-        super(MultiDatasetAnalysis, self).__init__(src_fitparam_mapper)
+        super(MultiDatasetAnalysis, self).__init__(minimizer, src_fitparam_mapper)
 
         self._dataset_list = []
 
@@ -319,22 +345,27 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
 
     To run this analysis the following procedure applies:
 
-        1. Define the global fit parameters via the SourceFitParameterMapper
-           instance accessible via the ``src_fitparam_mapper`` property.
-        2. Add the datasets and their spatial and energy PDF ratio instances
+        1. Add the datasets and their spatial and energy PDF ratio instances
            via the ``add_dataset`` method.
-        3. Construct the analysis via the ``construct_analysis`` method.
-
-    First the global fit parameters needs to be defined via
-    First the datasets have to be added via the ``add_dataset`` method. Then the
-    analysis needs to be constructed via the ``construct_analysis`` method.
+        2. Construct the log-likelihood ratio function via the
+           ``construct_llhratio`` method.
+        3. Initialize a trial via the ``initialize_trial`` method.
+        4. Fit the global fit parameters to the trial data via the
+           ``maximize_llhratio`` method.
     """
-    def __init__(self, src_hypo_manager, data_scrambler, event_selection_method=None):
+    def __init__(self, minimizer, src_fitparam_mapper, src_hypo_manager,
+                 data_scrambler, event_selection_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
         Parameters
         ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of the log-likelihood ratio function.
+        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
+            The instance of SingleSourceFitParameterMapper defining the global
+            fit parameters and their mapping to the source fit parameters.
         src_hypo_manager : instance of SourceHypoManager
             The instance of SourceHypoManager, which defines the sources, their
             flux models, and their detector signal efficiency implementation
@@ -350,8 +381,11 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
             If set to None (default), the AllEventSelectionMethod will be used,
             that selects all events for the analysis.
         """
+        if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
+            raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
+
         super(MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis, self).__init__(
-            SingleSourceFitParameterMapper())
+            minimizer, src_fitparam_mapper)
 
         self.src_hypo_manager = src_hypo_manager
         self.data_scrambler = data_scrambler
@@ -416,7 +450,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
             raise TypeError('The PDF type of the PDFRatio instance of argument energy_pdfratio must be EnergyPDF!')
         self._energy_pdfratio_list.append(energy_pdfratio)
 
-    def construct_analysis(self):
+    def construct_llhratio(self):
         """Constructs the analysis. This loads the dataset data, set-ups all the
         necessary analysis objects like
         detector signal efficiencies and dataset signal weights, constructs the
@@ -463,7 +497,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
         ----------
         scramble : bool
             Flag if the data should get scrambled before it is set to the
-            log-likelihood ratio functions.
+            log-likelihood ratio functions (default True).
             Note: Depending on the inplace_scrambling setting of the
                   DataScrambler, the scrambling of the data might be inplace,
                   changing the experimental data of the dataset itself!
@@ -486,5 +520,62 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
             n_pure_bkg_events = n_all_events - n_selected_events
             llhratio.initialize_for_new_trial(events, n_pure_bkg_events)
 
-    def maximize_llhratio(self):
-        pass
+    def maximize_llhratio(self, ns_fitparam):
+        """Maximizes the log-likelihood ratio function, by minimizing its
+        negative.
+
+        Parameters
+        ----------
+        ns_fitparam : instance of FitParameter
+            The instance of FitParameter for the fit parameter ``ns``.
+
+        Returns
+        -------
+        fitparam_dict : dict
+            The dictionary holding the global fit parameter name and value of
+            the log-likelihood ratio function maximum.
+        fmin : float
+            The value of the log-likelihood ratio function at its maximum.
+        status : dict
+            The dictionary with status information about the maximization
+            process, i.e. from the minimizer.
+        """
+        # Define the negative llhratio function, that will be minimized.
+        def func(fitparam_values):
+            (f, grads) = self._llhratio.evaluate(fitparam_values)
+            return (-f, -grads)
+
+        # Get the fit parameter set and add the ns fit parameter at the front.
+        fitparamset = self._src_fitparam_mapper.fitparamset
+        fitparamset.add_fitparam(ns_fitparam, atfront=True)
+
+        (xmin, fmin, status) = self._minimizer.minimize(fitparamset, func)
+
+        # Convert the fit parameter values into a dictionary with their names.
+        fitparam_dict = fitparamset.get_fitparam_dict(xmin)
+
+        return (fitparam_dict, fmin, status)
+
+    def calculate_test_statistic(self, ns, log_lambda):
+        """Calculates the test statistic value from the given log_lambda value.
+
+        The test statistic for this analysis is defined as:
+
+            TS = 2 * sgn(ns) * log_lambda
+
+        Parameters
+        ----------
+        ns : float | array of float
+            The best fit ns value.
+        log_lambda : float | array of float
+            The best fit log_lambda value.
+        """
+        ns = np.atleast_1d(ns)
+
+        # We need to distinguish between ns=0 and ns!=0, because the np.sign(ns)
+        # function returns 0 for ns=0, but we want it to be 1 in such cases.
+        sgn_ns = np.where(ns == 0, 1., np.sign(ns))
+
+        TS = 2 * sgn_ns * log_lambda
+
+        return TS
