@@ -65,7 +65,8 @@ By defining
 \mathcal{X}_i(\ps) \equiv \frac{1}{N}\left( \mathcal{R}_i(\ps) - 1 \right),
 \label{eq:Xi}
 \end{equation}
-with
+with the signal over background PDF ratio value, $\mathcal{R}_{i}(\ps)$, of the
+$i$th event,
 \begin{equation}
  \mathcal{R}_i(\ps) \equiv \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i},
 \end{equation}
@@ -74,11 +75,47 @@ this reads as:
  \log \Lambda(\ns,\ps) = \sum_{i=1}^{N} \log (1 + \ns\mathcal{X}_i(\ps)).
  \label{eq:logLambdaOfX}
 \end{equation}
-The $\mathcal{R}_{i}(\ps)$ is the signal over background PDF ratio value of the
-$i$th event.
+By defining
+\begin{equation}
+ \alpha_i(\ns,\ps) \equiv \ns \mathcal{X}_i(\ps)
+\end{equation}
+the log-likelihood ratio function of the $i$th event can be defined as
+\begin{equation}
+ \log \Lambda_i(\ns,\ps) \equiv \log(1 + \alpha_i(\ns, \ps)),
+ \label{eq:logLambdaiOfalphai}
+\end{equation}
+and the log-likelihood ratio function for all events can be written as
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{i=1}^{N} \log \Lambda_i(\ns,\ps).
+ \label{eq:logLambdaOflogLambdai}
+\end{equation}
 
-Using Wilks theorem a test statistic, TS, can be formulated using the
-log-$\Lambda$ function:
+In general, the argument of the $\log$-function, $\Lambda_i$, might become close
+to zero, causing a divergence of the log-likelihood ratio function for a particular event.
+To circumvent this, a Taylor expension of the
+log-likelihood ratio function of the $i$th event can be performed around a
+pre-defined threshold value $\alpha$.
+The event-based log-likelihood ratio function, $\log \Lambda_i$, is then
+approximated by a second-order Taylor expension for events with $\alpha_i < \alpha$:
+\begin{equation}
+ \log\Lambda_i(\ns,\ps) \equiv \log(1 + \alpha) + \frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha} - \frac{1}{2} \left(\frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha}\right)^2
+ \label{eq:logLambdaiTaylor}
+\end{equation}
+By defining
+\begin{equation}
+ \tilde{\alpha}_i(\ns,\ps) \equiv \frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha},
+\end{equation}
+the Taylor expanded log-likelihood ratio function reads more compactly:
+\begin{equation}
+ \log\Lambda_i(\ns,\ps) = \log(1 + \alpha) + \tilde{\alpha}_i(\ns,\ps) - \frac{1}{2} \tilde{\alpha}_i^2(\ns,\ps).
+ \label{eq:logLambdaiTaylorOfTildeAlpha}
+\end{equation}
+
+
+\subsection{Test Statistic}
+
+Using Wilks theorem a test statistic, TS, for the two-component log-likelihood
+ratio test can be formulated using the log-likelihood ratio function, $\log\Lambda$:
 \begin{equation}
  \mathrm{TS} = 2\mathrm{sgn}(\ns) \log \Lambda(\ns,\ps)
  \label{eq:TS}
@@ -93,13 +130,15 @@ a degree-of-freedom equal to the number of fit parameters.
 For point-source like signal hypotheses most of the events in the data sample
 will be far away from the hypothesised source, hence, the value of the
 signal PDF $\mathcal{S}_i$ will be zero or very close to zero. By selecting only
-the signal-contributing $N'$ events from the sample, the likelihood ratio
-$\log \Lambda$ reads
+the signal-contributing $N'$ events from the sample, the log-likelihood ratio
+function, $\log \Lambda$, reads
 \begin{equation}
- \log \Lambda(\ns,\ps) = \sum_{i=1}^{N'} \log(1 + \ns\mathcal{X}_i(\ps)) + (N - N')\log(1 - \frac{\ns}{N})
+ \log \Lambda(\ns,\ps) = \sum_{i=1}^{N'} \log \Lambda_i(\ns,\ps) + (N - N')\log(1 - \frac{\ns}{N}),
  \label{eq:logLambdaOfXOptimized}
 \end{equation}
-
+where for $N-N'$ events $\mathcal{R}_i(\ps)$ equals zero and hence
+$\alpha_i(\ns,\ps)$ becomes $-\ns/N$, and $\log \Lambda_i$ equals $\log(1 - \ns/N)$
+for all such pure background events.
 
 \subsection{Signal \& Background PDFs}
 
@@ -195,21 +234,48 @@ energy spectra, for the various sources.
 
 \subsection{Gradients of the Log-Likelihood Ratio}
 
-For maximizing the log-likelihood ratio function (equation \ref{eq:logLambdaOfX}),
+For maximizing the log-likelihood ratio function (equation (\ref{eq:logLambdaOflogLambdai})),
 or minimizing the negative of it, the minimizer algorithm requires the
-derivatives of the log-likelihood ratio function w.r.t. the fit parameters, $\ps$\footnote{In this formalism we assume that $\ps$
-consists solely of fit parameters for the signal, but in practice it can also consist of fixed
-signal parameters.}. Hence, here we provide the expressions of the derivatives
-for equation \ref{eq:logLambdaOfXOptimized}.
+derivatives of the log-likelihood ratio function w.r.t. the fit parameters,
+$\ns$ and $\ps$.
+Hence, here we provide the expressions of these derivatives
+for the optimized log-likelihood ratio function as given by equation
+(\ref{eq:logLambdaOfXOptimized}).
+
 The derivative w.r.t. $\ns$ is given by
 \begin{equation}
-\frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{i=1}^{N'} \frac{\mathcal{X}_i(\ps)}{1+\ns \mathcal{X}_i(\ps)} - \frac{N - N'}{N - \ns}.
+\frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{i=1}^{N'} \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} - \frac{N - N'}{N - \ns}.
 \end{equation}
-The derivative w.r.t. an individual signal parameter, $p_{\mathrm{s}}$,
-is given by
+For the numerical stable case, where $\alpha_i >= \alpha$, the derivative of the
+log-likelihood ratio function of the $i$th event w.r.t. $\ns$ is given by the
+derivative of equation (\ref{eq:logLambdaiOfalphai}) w.r.t. $\ns$:
 \begin{equation}
- \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\ns}{1+\ns\mathcal{X}_i(\ps)} \frac{\mathrm{d} \mathcal{X}_i(\ps)}{\mathrm{d} p_{\mathrm{s}}}.
+ \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{\mathcal{X}_i(\ps)}{1+\alpha_i(\ns,\ps)}.
 \end{equation}
+For the numerical unstable case, where $\alpha_i < \alpha$, this derivative is
+given by the derivative of the Taylor expension of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
+w.r.t. $\ns$:
+\begin{equation}
+ \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{1}{1+\alpha}\left(1 - \tilde{\alpha}_i(\ns,\ps)\right) \mathcal{X}_i(\ps)
+\end{equation}
+
+The derivative w.r.t. an individual signal parameter, $p_{\mathrm{s}}$, is given by
+\begin{equation}
+ \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}}
+\end{equation}
+Again, one needs to distinguish between the numerical stable ($\alpha_i >= \alpha$)
+and unstable ($\alpha_i < \alpha$) case.
+For the stable case the event-based derivative w.r.t. $p_{\mathrm{s}}$ is given by
+\begin{equation}
+ \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\ns}{1+\alpha_i(\ns,\ps)} \frac{\mathrm{d}\mathcal{X}_i(\ps)}{\mathrm{d}p_{\mathrm{s}}}.
+\end{equation}
+For the numerical unstable case this derivative is
+given by the derivative of the Taylor expension of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
+w.r.t. $p_{\mathrm{s}}$:
+\begin{equation}
+ \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\ns}{1+\alpha}\left(1 - \tilde{\alpha}_i(\ns,\ps)\right) \frac{\mathrm{d}\mathcal{X}_i(\ps)}{\mathrm{d}p_{\mathrm{s}}}.
+\end{equation}
+
 The derivative of $\mathcal{X}_i$ can be calculated using
 equation \ref{eq:Xi} and the expressions for the signal and background PDFs as given
 in equation \ref{eq:Si} and \ref{eq:Bi}, respectively. Depending on the type of
