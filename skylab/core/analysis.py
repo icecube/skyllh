@@ -480,13 +480,14 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
         dataset_signal_weights = SingleSourceDatasetSignalWeights(
             self._source, self._src_fitparam_mapper, detsigeff_list)
 
-        self._llhratio = MultiDatasetTCLLHRatio(dataset_signal_weights)
-
         # Add the log-likelihood functions for each dataset.
+        llhratio_list = []
         for (j, dataset) in enumerate(self.dataset_list):
             pdfratio_list = [self._spatial_pdfratio_list[j], self._energy_pdfratio_list[j]]
             llhratio = SingleSourceTCLLHRatio(pdfratio_list, self._src_fitparam_mapper)
-            self._llhratio.add_llhratio(llhratio)
+            llhratio_list.append(llhratio)
+
+        self._llhratio = MultiDatasetTCLLHRatio(dataset_signal_weights, llhratio_list)
 
     def initialize_trial(self, scramble=True):
         """Initializes the log-likelihood functions of the different datasets

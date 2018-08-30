@@ -9,24 +9,26 @@ from __future__ import division
 
 import abc
 
-from skylab.core.py import\
-    issequence,\
-    issequenceof
-
-from skylab.core.detsigeff import\
+from skylab.core.py import (
+    issequence,
+    issequenceof,
+    float_cast
+)
+from skylab.core.detsigeff import (
     DetectorSignalEfficiency
-
-from skylab.core.parameters import\
-    SourceFitParameterMapper,\
-    SingleSourceFitParameterMapper,\
+)
+from skylab.core.parameters import (
+    SourceFitParameterMapper,
+    SingleSourceFitParameterMapper,
     MultiSourceFitParameterMapper
-
-from skylab.core.pdfratio import\
-    PDFRatio,\
+)
+from skylab.core.pdfratio import (
+    PDFRatio,
     SingleSourcePDFRatioArrayArithmetic
-
-from skylab.physics.source import\
+)
+from skylab.physics.source import (
     SourceModel
+)
 
 class LLHRatio(object):
     """Abstract base class for a log-likelihood (LLH) ratio function.
@@ -63,6 +65,14 @@ class TCLLHRatio(LLHRatio):
     function with a list of independent PDF ratio components.
     """
     __metaclass__ = abc.ABCMeta
+
+    # The (1 + alpha)-threshold float value for which the log-likelihood ratio
+    # function of a single event should get approximated by a Taylor expansion.
+    # This is to prevent a divergence of the log-function for each event, where
+    # (1 + alpha_i) < (1 + alpha).
+    # This setting is implemented as a class type member instead of a class
+    # instance member, because it is supposed to be the same for all instances.
+    _one_plus_alpha = 1e-3
 
     def __init__(self, pdfratios, src_fitparam_mapper):
         """Constructor of the two-component log-likelihood ratio function.
@@ -166,6 +176,74 @@ class TCLLHRatio(LLHRatio):
         self.events = events
         self.n_pure_bkg_events = n_pure_bkg_events
 
+    def calculate_log_lambda_and_grads(self, N, ns, Xi, dXi_ps):
+        """Calculates the log(Lambda) value and its gradient for each global fit
+        parameter. This calculation is source and detector independent.
+
+        Parameters
+        ----------
+        N : int
+            The total number of events.
+        ns : float
+            The current fit parameter value for ns.
+        Xi : numpy (n_selected_events,)-shaped 1D ndarray
+            The X value of each selected event.
+        dXi_ps : numpy (N_fitparams,n_selected_events)-shaped 2D ndarray
+            The derivative value for each fit parameter ps of each event's X
+            value.
+
+        Returns
+        -------
+        log_lambda : float
+            The value of the log-likelihood ratio function.
+        grads : 1D numpy (N_fitparams+1,)-shaped ndarray
+            The gradient value of log_lambda for each fit parameter.
+            The first element is the gradient for ns.
+        """
+        # Get the number of selected events.
+        Nprime = len(Xi)
+
+        alpha = TCLLHRatio._one_plus_alpha - 1
+        alpha_i = ns*Xi
+
+        # Create a mask for events which have a stable non-diverging
+        # log-function argument, and an inverted mask thereof.
+        stablemask = alpha_i > alpha
+        unstablemask = ~stablemask
+
+        # Allocate memory for the log_lambda_i values.
+        log_lambda_i = np.empty_like(alpha_i, dtype=np.float)
+
+        # Calculate the log_lambda_i value for the numerical stable events.
+        log_lambda_i[stablemask] = np.log1p(alpha_i[stablemask])
+        # Calculate the log_lambda_i value for the numerical unstable events.
+        tildealpha_i = (alpha_i[unstablemask] - alpha) / _one_plus_alpha
+        log_lambda_i[unstablemask] = np.log1p(alpha) + tildealpha_i - 0.5*tildealpha_i**2
+
+        # Calculate the log_lambda value and account for pure background events.
+        log_lambda = np.sum(log_lambda_i) + (N - Nprime)*np.log1p(-ns/N)
+
+        # Calculate the gradient for each fit parameter.
+        grads = np.empty((dXi_ps.shape[1]+1,), dtype=np.float)
+
+        # Pre-calculate value that is used twice for the gradients of the
+        # numerical stable events.
+        one_over_one_plus_alpha_i_stablemask = 1 / (1 + alpha_i[stablemask])
+
+        # For ns.
+        nsgrad_i = np.empty_like(alpha_i, dtype=np.float)
+        nsgrad_i[stablemask] = Xi[stablemask] * one_over_one_plus_alpha_i_stablemask
+        nsgrad_i[unstablemask] = (1 - tildealpha_i)*Xi[unstablemask] / TCLLHRatio._one_plus_alpha
+        grads[0] = np.sum(nsgrad_i) - (N - Nprime)/(N - ns)
+
+        # For each other fit parameter.
+        # For all numerical stable events.
+        grads[1:] = np.sum(ns * one_over_one_plus_alpha_i_stablemask * dXi_ps[:,stablemask], axis=1)
+        # For all numerical unstable events.
+        grads[1:] += np.sum(ns*(1 - tildealpha_i)*dXi_ps[:,unstablemask] / TCLLHRatio._one_plus_alpha, axis=1)
+
+        return (log_lambda, grads)
+
 
 class SingleSourceTCLLHRatio(TCLLHRatio):
     """This class implements a 2-component, i.e. signal and background,
@@ -224,7 +302,7 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
 
         Parameters
         ----------
-        fitparam_values : numpy 1D ndarray
+        fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
             The ndarray holding the current values of the fit parameters.
             By definition, the first element is the fit parameter for the number
             of signal events, ns.
@@ -233,14 +311,14 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         -------
         log_lambda : float
             The calculated log-lambda value.
-        grads : (N_fitparams,)-shaped 1D ndarray
-            The ndarray holding the gradient value for each fit parameter.
+        grads : (N_fitparams+1,)-shaped 1D ndarray
+            The ndarray holding the gradient value of log_lambda for each fit
+            parameter and ns.
             The first element is the gradient for ns.
         """
         ns = fitparam_values[0]
 
-        Nprime = self.n_events
-        N = Nprime + self.n_pure_bkg_events
+        N = self.n_events + self.n_pure_bkg_events
 
         # Create the fitparams dictionary with the fit parameter names and
         # values.
@@ -257,21 +335,8 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         # Calculate Xi for each (selected) event.
         Xi = (Ri - 1.) / N
 
-        log_lambda = np.sum(np.log1p(ns*Xi))
-        if(Nprime != N):
-            # Account for the pure background events.
-            log_lambda += (N - Nprime)*np.log1p(-ns/N)
-
-        # Calculate the gradient for each fit parameter.
-        grads = np.zeros((len(fitparam_values),), dtype=np.float)
-
-        # Precalculate the denumerator which is used in all the derivatives.
-        one_plus_ns_times_Xi = 1 + ns*Xi
-
-        # For ns.
-        grads[0] = np.sum(Xi/one_plus_ns_times_Xi) - (N - Nprime)/(N - ns)
-
-        # For each other fit parameter.
+        # Calculate the gradients of Xi for each fit parameter (without ns).
+        dXi_ps = np.empty((len(fitparam_values)-1,len(Xi)), dtype=np.float)
         for (idx, fitparam_value) in enumerate(fitparam_values[1:]):
             fitparam_name = self._src_fitparam_mapper.get_src_fitparam_name(idx)
             # Get the PDFRatio instance from which we need the derivative from.
@@ -280,10 +345,10 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
             # Calculate the derivative of Ri.
             dRi = pdfratio.get_gradient(self.events, fitparams, fitparam_name) * self._pdfratioarray.get_ratio_product(excluded_fitparam_idx=idx)
 
-            # Calculate the derivative of Xi.
-            dXi = dRi / N
+            # Calculate the derivative of Xi w.r.t. the fit parameter.
+            dXi_ps[idx] = dRi / N
 
-            grads[idx+1] = np.sum(ns/one_plus_ns_times_Xi * dXi)
+        (log_lambda, grads) = self.calculate_log_lambda_and_grads(N, ns, Xi, dXi_ps)
 
         return (log_lambda, grads)
 
@@ -400,6 +465,18 @@ class DatasetSignalWeights(object):
         self._detsigeff_list = list(detsigeffs)
 
     @abc.abstractmethod
+    def get_n_datasets(self):
+        """This method is supposed to return the number of datasets this
+        DatasetSignalWeights instance is for.
+        """
+        pass
+
+    n_datasets = property(fget=get_n_datasets, doc=
+        """(read-only) The number of datasets this DatasetSignalWeights instance
+        is for.
+        """)
+
+    @abc.abstractmethod
     def __call__(self, fitparam_values):
         """This method is supposed to calculate the dataset signal weights and
         their gradients.
@@ -448,6 +525,12 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         super(SingleSourceDatasetSignalWeights, self).__init__(
             source, src_fitparam_mapper, detsigeffs)
 
+    def get_n_datasets(self):
+        """Returns the number of datasets this DatasetSignalWeights instance is
+        for.
+        """
+        return len(self._detsigeff_list)
+
     def __call__(self, fitparam_values):
         """Calculates the dataset signal weight and its fit parameter gradients
         for each dataset.
@@ -470,7 +553,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         """
         fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(fitparam_values[1:])
 
-        N_datasets = len(self._detsigeff_list)
+        N_datasets = self.n_datasets
         N_fitparams = len(self._src_fitparam_mapper.N_global_fitparams)
 
         Y = np.empty((N_datasets,), dtype=np.float)
@@ -518,7 +601,7 @@ class MultiDatasetTCLLHRatio(LLHRatio):
     By mathematical definition this class is suitable for single and multi
     source hypotheses.
     """
-    def __init__(self, dataset_signal_weights):
+    def __init__(self, dataset_signal_weights, llhratios):
         """Creates a new composite two-component log-likelihood ratio function.
 
         Parameters
@@ -526,12 +609,19 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         dataset_signal_weights : DatasetSignalWeights
             An instance of DatasetSignalWeights, which calculates the relative
             dataset weight factors.
+        llhratios : sequence of TCLLHRatio instances
+            The sequence of the two-component log-likelihood ratio functions,
+            one for each dataset.
         """
         super(MultiDatasetTCLLHRatio, self).__init__()
 
         self.dataset_signal_weights = datasetweights
+        self.llhratio_list = llhratios
 
-        self._llhratio_list = []
+        # Check if the number of datasets the DatasetSignalWeights instance is
+        # made for equals the number of log-likelihood ratio functions.
+        if(self.dataset_signal_weights.n_datasets != len(self._llhratio_list)):
+            raise ValueError('The number of datasets the DatasetSignalWeights instance is made for must be equal to the number of log-likelihood ratio functions!')
 
     @property
     def dataset_signal_weights(self):
@@ -551,6 +641,11 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         composite log-likelihood-ratio function.
         """
         return self._llhratio_list
+    @llhratio_list.setter
+    def llhratio_list(self, llhratios):
+        if(not issequenceof(llhratios, TCLLHRatio)):
+            raise TypeError('The llhratio_list property must be a sequence of TCLLHRatio instances!')
+        self._llhratio_list = list(llhratios)
 
     @property
     def n_selected_events(self):
@@ -561,20 +656,6 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         for llhratio in self._llhratio_list:
             n_selected_events += llhratio.n_selected_events
         return n_selected_events
-
-    def add_llhratio(self, llhratio):
-        """Adds the given two-component log-likelihood ratio function to this
-        multi-dataset two-component log-likelihood ratio function.
-
-        Parameters
-        ----------
-        llhratio : TCLLHRatio
-            The instance of TCLLHRatio that should be added.
-        """
-        if(not isinstance(llhratio, TCLLHRatio)):
-            raise TypeError('The llhratio argument must be an instance of TCLLHRatio!')
-
-        self._llhratio_list.append(llhratio)
 
     def evaluate(self, fitparam_values):
         """Evaluates the composite log-likelihood-ratio function and returns its
