@@ -96,7 +96,7 @@ To circumvent this, a Taylor expension of the
 log-likelihood ratio function of the $i$th event can be performed around a
 pre-defined threshold value $\alpha$.
 The event-based log-likelihood ratio function, $\log \Lambda_i$, is then
-approximated by a second-order Taylor expension for events with $\alpha_i < \alpha$:
+approximated by a second-order Taylor expension for events with $\alpha_i \leq \alpha$:
 \begin{equation}
  \log\Lambda_i(\ns,\ps) \equiv \log(1 + \alpha) + \frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha} - \frac{1}{2} \left(\frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha}\right)^2
  \label{eq:logLambdaiTaylor}
@@ -246,13 +246,13 @@ The derivative w.r.t. $\ns$ is given by
 \begin{equation}
 \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{i=1}^{N'} \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} - \frac{N - N'}{N - \ns}.
 \end{equation}
-For the numerical stable case, where $\alpha_i >= \alpha$, the derivative of the
+For the numerical stable case, where $\alpha_i > \alpha$, the derivative of the
 log-likelihood ratio function of the $i$th event w.r.t. $\ns$ is given by the
 derivative of equation (\ref{eq:logLambdaiOfalphai}) w.r.t. $\ns$:
 \begin{equation}
  \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{\mathcal{X}_i(\ps)}{1+\alpha_i(\ns,\ps)}.
 \end{equation}
-For the numerical unstable case, where $\alpha_i < \alpha$, this derivative is
+For the numerical unstable case, where $\alpha_i \leq \alpha$, this derivative is
 given by the derivative of the Taylor expension of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
 w.r.t. $\ns$:
 \begin{equation}
@@ -263,8 +263,8 @@ The derivative w.r.t. an individual signal parameter, $p_{\mathrm{s}}$, is given
 \begin{equation}
  \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}}
 \end{equation}
-Again, one needs to distinguish between the numerical stable ($\alpha_i >= \alpha$)
-and unstable ($\alpha_i < \alpha$) case.
+Again, one needs to distinguish between the numerical stable ($\alpha_i > \alpha$)
+and unstable ($\alpha_i \leq \alpha$) case.
 For the stable case the event-based derivative w.r.t. $p_{\mathrm{s}}$ is given by
 \begin{equation}
  \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\ns}{1+\alpha_i(\ns,\ps)} \frac{\mathrm{d}\mathcal{X}_i(\ps)}{\mathrm{d}p_{\mathrm{s}}}.
