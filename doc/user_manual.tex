@@ -555,7 +555,25 @@ I3PowerLawFluxDetSigEff & IceCube detector signal efficiency implementation meth
 \end{tabular}
 \end{table}
 
+\section{The Concept of Source Hypothesis Groups}
 
+The analyses in Skylab rely heavily on the calculation of detector signal
+efficiencies. As seen in section \ref{sec:detsigeff}, the detector signal
+efficiency depends on the source hypothesis (spatial model and flux model)
+and the detector response (dataset). Hence, the analyses require detector signal
+efficiency instances for each combination of source and dataset.
+However, the sources might be of the same kind, i.e. having the same spatial
+model and the same flux model. For such sources detector signal efficiency
+instances are needed only for each dataset. Thus, we define a group
+of sources with the same spatial model and flux model as a \emph{source hypothesis group},
+$G_{\mathrm{s}}$.
+
+A source hypothesis group has a list of spatial source models, e.g. point-like source
+locations in case of point-like sources, a flux model, and a detection signal
+efficiency implementation method assigned.
+
+Skylab provides the \class{SourceHypoGroupManager} class to define the groups of
+source hypotheses.
 
 \section{Implemented Log-Likelihood Models}
 This section describes the implemented log-likelihood models. \cite{TimeDepPSSearchMethods2010}
