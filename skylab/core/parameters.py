@@ -597,7 +597,7 @@ class SourceFitParameterMapper(object):
         return self._fitparamset
 
     @property
-    def N_global_fitparams(self):
+    def n_global_fitparams(self):
         """(read-only) The number of defined global fit parameters.
         """
         return len(self._fitparamset.fitparams)
@@ -758,7 +758,7 @@ class SingleSourceFitParameterMapper(SourceFitParameterMapper):
             and their value for the one single source.
             None is returned if no fit parameters were defined.
         """
-        if(self.N_global_fitparams == 0):
+        if(self.n_global_fitparams == 0):
             return None
 
         fitparams_arr = np.array([tuple(fitparam_values)],
@@ -908,7 +908,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
             names as keys and their value for each source per row.
             None is returned if no fit parameters were defined.
         """
-        if(self.N_global_fitparams == 0):
+        if(self.n_global_fitparams == 0):
             return None
 
         fitparams_arr = np.empty((self.N_sources,),
