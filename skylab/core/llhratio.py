@@ -387,56 +387,59 @@ class MultiSourceTCLLHRatio(TCLLHRatio):
 
 class DatasetSignalWeights(object):
     """Abstract base class for a dataset signal weight calculator class.
-    The current skylab framework assumes that all sources are of the same source
-    model, i.e. have the same flux model (e.g. power-law) and spatial source
-    model (e.g. point-like source). If this assumption would not be made, each
-    source and dataset combination would have to have its own detector signal
-    efficiency instance and the detsigeff_list property would have to be a
-    matrix (dataset x source) instead of a list (dataset).
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, source, src_fitparam_mapper, detsigeffs):
+    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, detsigeffs):
         """Base class constructor.
 
         Parameters
         ----------
-        source : SourceModel | sequence of SourceModel
-            The source or sequence of sources for which the dataset signal
-            weights should get calculated for.
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The instance of the SourceHypoGroupManager managing the source
+            hypothesis groups.
         src_fitparam_mapper : SourceFitParameterMapper
             The SourceFitParameterMapper instance that defines the global fit
             parameters and their mapping to the source fit parameters.
-        detsigeffs : sequence of DetectorSignalEfficiency instances
-            The sequence of detector signal efficiency instances, one for each
-            dataset, which should be used to calculate the dataset signal
-            weight factors. The order of the detector signal efficiency
-            instances must match the order to datasets, which are evaluated in
-            the multi-dataset log-likelihood ratio function.
-        """
-        self.source_list = source
-        self.src_fitparam_mapper = src_fitparam_mapper
-        self.detsigeff_list = detsigeffs
 
-        # Pre-convert the source list into a source array needed for the
-        # detector signal efficiency evaluation. Since all the detector signal
-        # efficiency instances must be of the same kind, we can just use the
-        # first one.
-        self._src_arr = self._detsigeff_list[0].source_to_array(self._source_list)
+        detsigeffs : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
+                     DetectorSignalEfficiency instances
+            The collection of DetectorSignalEfficiency instances for each
+            dataset and source group combination. The detector signal efficiency
+            instances are used to calculate the dataset signal weight factors.
+            The order must follow the definition order of the log-likelihood
+            ratio functions, i.e. datasets, and the definition order of the
+            source hypothesis groups.
+        """
+        self.src_hypo_group_manager = src_hypo_group_manager
+        self.src_fitparam_mapper = src_fitparam_mapper
+        self.detsigeff_arr = detsigeffs
+
+        if(self._detsigeff_arr.shape[0] != self._src_hypo_group_manager.N_src_groups):
+            raise ValueError('The detsigeffs array must have the same number of source hypothesis groups as the source hypothesis group manager defines!')
+
+        # Pre-convert the source list of each source hypothesis group into a
+        # source array needed for the detector signal efficiency evaluation.
+        # Since all the detector signal efficiency instances must be of the same
+        # kind for each dataset, we can just use the one of the first dataset of
+        # each source hypothesis group.
+        self._src_arr_list = []
+        for (gidx, src_hypo_group) in enumerate(src_hypo_group_manager.src_hypo_group_list):
+            self._src_arr_list.append(
+                self._detsigeff_arr[gidx,0].source_to_array(src_hypo_group.source_list)
+            )
 
     @property
-    def source_list(self):
-        """The list of SourceModel instances for which the dataset signal
-        weights should get calculated for.
+    def src_hypo_group_manager(self):
+        """The instance of SourceHypoGroupManager, which defines the source
+        hypothesis groups.
         """
-        return self._source_list
-    @source_list.setter
-    def source_list(self, sources):
-        if(not issequence(sources)):
-            sources = [ sources ]
-        if(not issequenceof(sources, SourceModel)):
-            raise TypeError('The source_list property must be a sequence of SourceModel instances!')
-        self._source_list = list(sources)
+        return self._src_hypo_group_manager
+    @src_hypo_group_manager.setter
+    def src_hypo_group_manager(self, manager):
+        if(not isinstance(manager, SourceHypoGroupManager)):
+            raise TypeError('The src_hypo_group_manager property must be an instance of SourceHypoGroupManager!')
+        self._src_hypo_group_manager = manager
 
     @property
     def src_fitparam_mapper(self):
@@ -451,30 +454,27 @@ class DatasetSignalWeights(object):
         self._src_fitparam_mapper = mapper
 
     @property
-    def detsigeff_list(self):
-        """The list of DetectorSignalEfficiency instances which should be used
-        to calculate the dataset signal weight factors.
+    def detsigeff_arr(self):
+        """The 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
+        DetectorSignalEfficiency instances.
         """
-        return self._detsigeff_list
-    @detsigeff_list.setter
-    def detsigeff_list(self, detsigeffs):
-        if(not issequence(detsigeffs)):
-            detsigeffs = [ detsigeffs ]
-        if(not issequenceof(detsigeffs, DetectorSignalEfficiency)):
-            raise TypeError('The detsigeff_list property must be a sequence of DetectorSignalEfficiency instances, one for each dataset!')
-        self._detsigeff_list = list(detsigeffs)
+        return self._detsigeff_arr
+    @detsigeff_arr.setter
+    def detsigeff_arr(self, detsigeffs):
+        if(not isinstance(detsigeffs, np.ndarray)):
+            raise TypeError('The detsigeff_arr property must be an instance of numpy.ndarray!')
+        if(detsigeffs.ndim != 2):
+            raise ValueError('The detsigeff_arr property must be a numpy.ndarray with 2 dimensions!')
+        if(not issequenceof(detsigeffs.flat, DetectorSignalEfficiency)):
+            raise TypeError('The detsigeff_arr property must contain DetectorSignalEfficiency instances, one for each source hypothesis group and dataset combination!')
+        self._detsigeff_arr = detsigeffs
 
-    @abc.abstractmethod
-    def get_n_datasets(self):
-        """This method is supposed to return the number of datasets this
-        DatasetSignalWeights instance is for.
-        """
-        pass
-
-    n_datasets = property(fget=get_n_datasets, doc=
+    @property
+    def n_datasets(self):
         """(read-only) The number of datasets this DatasetSignalWeights instance
         is for.
-        """)
+        """
+        return self._detsigeff_arr.shape[1]
 
     @abc.abstractmethod
     def __call__(self, fitparam_values):
@@ -483,7 +483,7 @@ class DatasetSignalWeights(object):
 
         Parameters
         ----------
-        fitparam_values : (N_fitparams,)-shaped 1D numpy ndarray
+        fitparam_values : (N_fitparams+1,)-shaped 1D numpy ndarray
             The ndarray holding the current values of the fit parameters.
             The first element of that array is, by definition, the number of
             signal events, ns.
@@ -503,15 +503,15 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
     """This class calculates the dataset signal weight factors for each dataset
     assuming a single source.
     """
-    def __init__(self, source, src_fitparam_mapper, detsigeffs):
+    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, detsigeffs):
         """Constructs a new DatasetSignalWeights instance assuming a single
         source.
 
         Parameters
         ----------
-        source : SourceModel
-            The source for which the dataset signal weights should get
-            calculated for.
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The instance of the SourceHypoGroupManager managing the source
+            hypothesis groups.
         src_fitparam_mapper : SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
@@ -519,17 +519,15 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
             The sequence of DetectorSignalEfficiency instances, one for each
             dataset.
         """
+
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
 
-        super(SingleSourceDatasetSignalWeights, self).__init__(
-            source, src_fitparam_mapper, detsigeffs)
+        # Convert sequence into a 2D numpy array.
+        detsigeffs = np.atleast_2d(detsigeffs)
 
-    def get_n_datasets(self):
-        """Returns the number of datasets this DatasetSignalWeights instance is
-        for.
-        """
-        return len(self._detsigeff_list)
+        super(SingleSourceDatasetSignalWeights, self).__init__(
+            src_hypo_group_manager, src_fitparam_mapper, detsigeffs)
 
     def __call__(self, fitparam_values):
         """Calculates the dataset signal weight and its fit parameter gradients
@@ -537,7 +535,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
 
         Parameters
         ----------
-        fitparam_values : (N_fitparams,)-shaped 1D numpy ndarray
+        fitparam_values : (N_fitparams+1,)-shaped 1D numpy ndarray
             The ndarray holding the current values of the fit parameters.
             The first element of that array is, by definition, the number of
             signal events, ns.
@@ -554,13 +552,15 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(fitparam_values[1:])
 
         N_datasets = self.n_datasets
-        N_fitparams = len(self._src_fitparam_mapper.N_global_fitparams)
+        N_fitparams = self._src_fitparam_mapper.n_global_fitparams
 
         Y = np.empty((N_datasets,), dtype=np.float)
         if(N_fitparams > 0):
             Y_grads = np.empty((N_datasets, N_fitparams), dtype=np.float)
-        for (j, detsigeff) in enumerate(self._detsigeff_list):
-            (Yj, Yj_grads) = detsigeff(self._src_arr, fitparams_arr)
+        # Loop over the detector signal efficiency instances for the first and
+        # only source hypothesis group.
+        for (j, detsigeff) in enumerate(self._detsigeff_arr[0]):
+            (Yj, Yj_grads) = detsigeff(self._src_arr_list[0], fitparams_arr)
             # Store the detector signal efficiency and its fit parameter
             # gradients for the first and only source (element 0).
             Y[j] = Yj[0]
@@ -583,10 +583,8 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
 
         return (f, f_grads)
 
-# For a general implementation the MultiSourceDatasetSignalWeights class needs
-# to be provides with different detector signal efficiency instances for each
-# dataset AND source, because each source could have a different spectrum model
-# with different fit parameters.
+#TODO: Implement MultiSourceDatasetSignalWeights class!
+
 
 class MultiDatasetTCLLHRatio(LLHRatio):
     """This class describes a two-component log-likelihood ratio function for
