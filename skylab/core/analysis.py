@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""The analysis module of skylab provides classes for pre-defined analyses.
+"""The analysis module provides classes for pre-defined analyses.
 """
 
 import abc
@@ -8,188 +8,11 @@ import abc
 from skylab.core.py import issequenceof
 from skylab.core.dataset import Dataset
 from skylab.core.parameters import SourceFitParameterMapper, SingleSourceFitParameterMapper
-from skylab.core.detsigeff import DetSigEffImplMethod
 from skylab.core.pdf import SpatialPDF, EnergyPDF
 from skylab.core.llhratio import SingleSourceDatasetSignalWeights
 from skylab.core.scrambling import DataScramblingMethod
 from skylab.core.optimize import EventSelectionMethod, AllEventSelectionMethod
-from skylab.physics.source import SourceModel
-from skylab.physics.flux import FluxModel
-
-
-class SourceHypoGroup(object):
-    """The source hypothesis group class provides a data container to describe
-    a group of sources that share the same flux model and detector signal
-    efficiency implementation method.
-    """
-    def __init__(self, sources, fluxmodel, detsigeff_implmethod):
-        """Constructs a new source hypothesis group.
-
-        Parameters
-        ----------
-        sources : SourceModel | sequence of SourceModel
-            The source or sequence of sources that define the source group.
-        fluxmodel : instance of FluxModel
-            The FluxModel instance that applies to the list of sources of the
-            group.
-        detsigeff_implmethod : instance of DetSigEffImplMethod
-            The instance of a detector signal efficiency implementation method,
-            which should be used to create the detector signal efficiency for
-            the sources of the group.
-        """
-        self.source_list = sources
-        self.fluxmodel = fluxmodel
-        self.detsigeff_implmethod = detsigeff_implmethod
-
-    @property
-    def source_list(self):
-        """The list of SourceModel instances for which the group is defined.
-        """
-        return self._source_list
-    @source_list.setter
-    def source_list(self, sources):
-        if(isinstance(sources, SourceModel)):
-            sources = [sources]
-        if(not issequenceof(sources, SourceModel)):
-            raise TypeError('The source_list property must be an instance of SourceModel or a sequence of SourceModel instances!')
-        self._source_list = list(sources)
-
-    @property
-    def fluxmodel(self):
-        """The FluxModel instance that applies to the list of sources of this
-        source group.
-        """
-        return self._fluxmodel
-    @fluxmodel.setter
-    def fluxmodel(self, fluxmodel):
-        if(not isinstance(fluxmodel, FluxModel)):
-            raise TypeError('The fluxmodel property must be an instance of FluxModel!')
-        self._fluxmodel = fluxmodel
-
-    @property
-    def detsigeff_implmethod(self):
-        """The instance of DetSigEffImplMethod, the detector signal efficiency
-        implementation method, which should be used to create the detector
-        signal efficiency for this group of sources.
-        """
-        return self._detsigeff_implmethod
-    @detsigeff_implmethod.setter
-    def detsigeff_implmethod(self, method):
-        if(not isinstance(method, DetSigEffImplMethod)):
-            raise TypeError('The detsigeff_implmethod property must be an instance of DetSigEffImplMethod!')
-        self._detsigeff_implmethod = method
-
-    @property
-    def N_sources(self):
-        """(read-only) The number of sources within this source group.
-        """
-        return len(self._source_list)
-
-
-class SourceHypoManager(object):
-    """The source hypothesis manager provides the functionality to manage
-    several sources with their flux models and corresponding detector signal
-    efficiencies in an efficient way for the evaluation of the likelihood
-    function.
-
-    Groups of sources can be defined that share the same flux model and hence
-    the same detector signal efficiency implementation method.
-    """
-    def __init__(self):
-        self._src_hypo_group_list = list()
-        # Define a 2D numpy array of shape (N_sources,2) that maps the source
-        # index (0 to N_sources-1) to the index of the group and the source
-        # index within the group for fast access.
-        self._sidx_to_gidx_gsidx_map_arr = np.empty((0,2), dtype=np.int)
-
-    @property
-    def source_list(self):
-        """The list of defined SourceModel instances.
-        """
-        source_list = []
-        for group in self._src_hypo_group_list:
-            source_list += group.source_list
-        return source_list
-
-    @property
-    def N_sources(self):
-        """(read-only) The total number of sources defined in all source groups.
-        """
-        return self._sidx_to_gidx_gsidx_map_arr.shape[0]
-
-    @property
-    def N_src_groups(self):
-        """The number of defined source groups.
-        """
-        return len(self._src_hypo_group_list)
-
-    def add_source_group(self, sources, fluxmodel, detsigeffmethod):
-        """Adds a group of sources to the source hypothesis manager. A group of
-        sources share the same flux model and the same detector signal
-        efficiency implementation method.
-
-        Parameters
-        ----------
-        sources : SourceModel | sequence of SourceModel
-            The source or sequence of sources that define the source group.
-        fluxmodel : instance of FluxModel
-            The FluxModel instance that applies to the list of sources of the
-            group.
-        detsigeffmethod : instance of DetSigEffImplMethod
-            The instance of a detector signal efficiency implementation method,
-            which should be used to create the detector signal efficiency for
-            the sources of the group.
-        """
-        # Create the source group.
-        group = SourceHypoGroup(sources, fluxmodel, detsigeffmethod)
-
-        # Add the group.
-        self._src_hypo_group_list.append(group)
-
-        # Extend the source index to (group index, group source index) map
-        # array.
-        arr = np.empty((group.N_sources,2))
-        arr[:,0] = self.N_src_groups-1 # Group index.
-        arr[:,1] = np.arange(group.N_sources) # Group source index.
-        self._sidx_to_gidx_gsidx_map_arr = np.vstack(
-            (self._sidx_to_gidx_gsidx_map_arr, arr))
-
-    def get_fluxmodel_by_src_idx(self, src_idx):
-        """Retrieves the FluxModel instance for the source specified by its
-        source index.
-
-        Parameters
-        ----------
-        src_idx : int
-            The index of the source, which must be in the range
-            [0, N_sources-1].
-
-        Returns
-        -------
-        fluxmodel : instance of FluxModel
-            The FluxModel instance that applies to the specified source.
-        """
-        gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
-        return self._src_hypo_group_list[gidx]._fluxmodel
-
-    def get_detsigeff_implmethod_by_src_idx(self, src_idx):
-        """Retrieves the DetSigEffImplMethod instance for the source specified
-        by its source index.
-
-        Parameters
-        ----------
-        src_idx : int
-            The index of the source, which must be in the range
-            [0, N_sources-1].
-
-        Returns
-        -------
-        detsigeff_implmethod : instance of DetSigEffImplMethod
-            The DetSigEffImplMethod instance that applies to the specified
-            source.
-        """
-        gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
-        return self._src_hypo_group_list[gidx]._detsigeff_implmethod
+from skylab.core.source_hypothesis import SourceHypoGroupManager
 
 
 class Analysis(object):
@@ -211,7 +34,7 @@ class Analysis(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, minimizer, src_fitparam_mapper):
+    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper):
         """Constructor of the analysis base class.
 
         Parameters
@@ -219,13 +42,19 @@ class Analysis(object):
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of the log-likelihood ratio function.
+        src_hypo_group_manager : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            efficiency implementation method.
         src_fitparam_mapper : instance of SourceFitParameterMapper
             The SourceFitParameterMapper instance managing the global fit
             parameters and their relation to the individual sources.
         """
+        # Call the super function to allow for multiple class inheritance.
         super(Analysis, self).__init__()
 
         self.minimizer = minimizer
+        self.src_hypo_group_manager = src_hypo_group_manager
         self.src_fitparam_mapper = src_fitparam_mapper
 
         # Predefine the variable for the log-likelihood ratio function.
@@ -242,6 +71,19 @@ class Analysis(object):
         if(not isinstance(minimizer, Minimizer)):
             raise TypeError('The minimizer property must be an instance of Minimizer!')
         self._minimizer = minimizer
+
+    @property
+    def src_hypo_group_manager(self):
+        """The SourceHypoGroupManager instance, which defines the groups of
+        source hypothesis, their flux model, and their detector signal
+        efficiency implementation method.
+        """
+        return self._src_hypo_group_manager
+    @src_hypo_group_manager.setter
+    def src_hypo_group_manager(self, manager):
+        if(not isinstance(manager, SourceHypoGroupManager)):
+            raise TypeError('The src_hypo_group_manager property must be an instance of SourceHypoGroupManager!')
+        self._src_hypo_group_manager = manager
 
     @property
     def src_fitparam_mapper(self):
@@ -301,22 +143,34 @@ class Analysis(object):
         pass
 
 
-class MultiDatasetAnalysis(Analysis):
-    """This is the base class for all analyses that use multiple datasets.
+class IsSingleDatasetAnalysis(object):
+    """This is the class classifier class to specify that an analysis is made
+    for a single dataset. This class provides the ``dataset`` property.
     """
-    def __init__(self, minimizer, src_fitparam_mapper):
-        """Constructor of the Analysis base class.
+    def __init__(self):
+        super(IsSingleDatasetAnalysis, self).__init__()
 
-        Parameters
-        ----------
-        minimizer : instance of Minimizer
-            The Minimizer instance that should be used to minimize the negative
-            of the log-likelihood ratio function.
-        src_fitparam_mapper : instance of SourceFitParameterMapper
-            The SourceFitParameterMapper instance managing the global fit
-            parameters and their relation to the individual sources.
+        self._dataset = None
+
+    @property
+    def dataset(self):
+        """The Dataset instance for the analysis.
         """
-        super(MultiDatasetAnalysis, self).__init__(minimizer, src_fitparam_mapper)
+        return self._dataset
+    @dataset.setter
+    def dataset(self, ds):
+        if(not isinstance(ds, Dataset)):
+            raise TypeError('The dataset property must be an instance of Dataset!')
+        self._dataset = ds
+
+
+class IsMultiDatasetAnalysis(object):
+    """This is the class classifier class to specify that an analysis is made
+    for multiple datasets. This class provides the ``dataset_list`` property
+    and the ``add_dataset`` method.
+    """
+    def __init__(self):
+        super(IsMultiDatasetAnalysis, self).__init__()
 
         self._dataset_list = []
 
@@ -325,6 +179,11 @@ class MultiDatasetAnalysis(Analysis):
         """The list of Dataset instances.
         """
         return self._dataset_list
+    @dataset_list.setter
+    def dataset_list(self, datasets):
+        if(not issequenceof(datasets, Dataset)):
+            raise TypeError('The dataset_list property must be a sequence of Dataset instances!')
+        self._dataset_list = list(datasets)
 
     def add_dataset(self, dataset):
         """Adds the given dataset to the list of datasets for this analysis.
@@ -339,7 +198,7 @@ class MultiDatasetAnalysis(Analysis):
         self._dataset_list.append(dataset)
 
 
-class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAnalysis):
+class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMultiDatasetAnalysis):
     """This analysis class implements a time-integrated analysis with a spatial
     and energy PDF for multiple datasets assuming a single source.
 
@@ -353,7 +212,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
         4. Fit the global fit parameters to the trial data via the
            ``maximize_llhratio`` method.
     """
-    def __init__(self, minimizer, src_fitparam_mapper, src_hypo_manager,
+    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
                  data_scrambler, event_selection_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
@@ -363,13 +222,13 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of the log-likelihood ratio function.
+        src_hypo_group_manager : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            efficiency implementation method.
         src_fitparam_mapper : instance of SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
-        src_hypo_manager : instance of SourceHypoManager
-            The instance of SourceHypoManager, which defines the sources, their
-            flux models, and their detector signal efficiency implementation
-            methods.
         data_scrambler : instance of DataScrambler
             The instance of DataScrambler that will scramble the data for a new
             analysis trial.
@@ -385,28 +244,14 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
             raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
 
         super(MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis, self).__init__(
-            minimizer, src_fitparam_mapper)
+            minimizer, src_hypo_group_manager, src_fitparam_mapper)
 
-        self.src_hypo_manager = src_hypo_manager
         self.data_scrambler = data_scrambler
         self.event_selection_method = event_selection_method
 
         self._llhratio = None
         self._spatial_pdfratio_list = []
         self._energy_pdfratio_list = []
-
-    @property
-    def src_hypo_manager(self):
-        """The SourceHypoManager instance, which defines the sources, their
-        flux models, and their detector signal efficiency implementation
-        methods.
-        """
-        return self._src_hypo_manager
-    @src_hypo_manager.setter
-    def src_hypo_manager(self, manager):
-        if(not isinstance(manager, SourceHypoManager)):
-            raise TypeError('The src_hypo_manager property must be an instance of SourceHypoManager!')
-        self._src_hypo_manager = manager
 
     @property
     def data_scrambler(self):
@@ -465,8 +310,8 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
         # Since this is for a single source, we don't have to have individual
         # detector signal efficiency instances for each source as well.
         detsigeff_list = []
-        fluxmodel = self._src_hypo_manager.get_fluxmodel_by_src_idx(0)
-        detsigeff_implmethod = self._src_hypo_manager.get_detsigeff_implmethod_by_src_idx(0)
+        fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
+        detsigeff_implmethod = self._src_hypo_group_manager.get_detsigeff_implmethod_by_src_idx(0)
         for dataset in self.dataset_list:
             detsigeff = DetectorSignalEfficiency(
                 dataset.data_mc,
@@ -480,13 +325,15 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
         dataset_signal_weights = SingleSourceDatasetSignalWeights(
             self._source, self._src_fitparam_mapper, detsigeff_list)
 
-        # Add the log-likelihood functions for each dataset.
+        # Create the list of log-likelihood ratio functions, one for each
+        # dataset.
         llhratio_list = []
         for (j, dataset) in enumerate(self.dataset_list):
             pdfratio_list = [self._spatial_pdfratio_list[j], self._energy_pdfratio_list[j]]
             llhratio = SingleSourceTCLLHRatio(pdfratio_list, self._src_fitparam_mapper)
             llhratio_list.append(llhratio)
 
+        # Create the final multi-dataset log-likelihood ratio function.
         self._llhratio = MultiDatasetTCLLHRatio(dataset_signal_weights, llhratio_list)
 
     def initialize_trial(self, scramble=True):
@@ -535,7 +382,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
         fitparam_dict : dict
             The dictionary holding the global fit parameter name and value of
             the log-likelihood ratio function maximum.
-        fmin : float
+        fmax : float
             The value of the log-likelihood ratio function at its maximum.
         status : dict
             The dictionary with status information about the maximization
@@ -551,11 +398,12 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(MultiDatasetAn
         fitparamset.add_fitparam(ns_fitparam, atfront=True)
 
         (xmin, fmin, status) = self._minimizer.minimize(fitparamset, func)
+        fmax = -fmin
 
         # Convert the fit parameter values into a dictionary with their names.
         fitparam_dict = fitparamset.get_fitparam_dict(xmin)
 
-        return (fitparam_dict, fmin, status)
+        return (fitparam_dict, fmax, status)
 
     def calculate_test_statistic(self, ns, log_lambda):
         """Calculates the test statistic value from the given log_lambda value.
