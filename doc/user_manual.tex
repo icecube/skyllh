@@ -9,8 +9,10 @@
 
 \newcommand{\ns}{n_{\mathrm{s}}}
 \newcommand{\nsj}{n_{\mathrm{s}_j}}
+\newcommand{\hatns}{\hat{n}_{\mathrm{s}}}
 \newcommand{\ps}{\vec{p}_{\mathrm{s}}}
 \newcommand{\psk}{\vec{p}_{\mathrm{s}_k}}
+\newcommand{\hatps}{\vec{\hat{p}}_{\mathrm{s}}}
 \newcommand{\xs}{\vec{x}_{\mathrm{s}}}
 \newcommand{\xsk}{\vec{x}_{\mathrm{s}_k}}
 
@@ -51,7 +53,7 @@ equation \ref{eq:L} is used in Skylab:
  \log \mathcal{L}(\ns,\ps~|D) = \sum_{i=1}^{N} \log (...)
 \end{equation}
 
-\subsection{Likelihood Ratio Test and Test Statistic}
+\subsection{Likelihood Ratio Test}
 
 For estimating the significance of an observation, the likelihood ratio
 $\Lambda$ with respect to a null hypothesis of no observation, i.e.
@@ -114,21 +116,38 @@ the Taylor expanded log-likelihood ratio function reads more compactly:
 
 \subsection{Test Statistic}
 
-Using Wilks theorem a test statistic, TS, for the two-component log-likelihood
-ratio test can be formulated using the log-likelihood ratio function, $\log\Lambda$:
+Assuming Wilks theorem, a test statistic, TS, for the two-component log-likelihood
+ratio test can be formulated using the log-likelihood ratio function, $\log\Lambda$,
+at its maximum:
 \begin{equation}
- \mathrm{TS} = 2\mathrm{sgn}(\ns) \log \Lambda(\ns,\ps)
+ \mathrm{TS} = 2\mathrm{sgn}(\hatns) \log \Lambda(\hatns, \hatps),
  \label{eq:TS}
 \end{equation}
-with separation of over- ($\ns > 0$) and under-fluctuations ($\ns < 0$).
+where $\log \Lambda(\hatns,\hatps)$ is the maximum of the
+log-likelihood ratio function as defined by equation (\ref{eq:logLambda}),
+with separation of an over- ($\hatns > 0$) and under-fluctuation ($\hatns < 0$).
 In case the assumptions of Wilks theorem are met within the analysis, the test
 statistic value distribution will follow a $\chi^2$-distribution with
 a degree-of-freedom equal to the number of fit parameters.
 
-\subsection{Optimizations for Point-Like Sources}
+For the case $\hatns=0$, the log-likelihood ratio function is zero
+with degenerate source fit parameter values $\hatps$.
+When calculating the sensitivity of the analysis, the median test-statistic value
+for background-only data is required. Hence, $\hatns$ is often zero in such cases.
+Having to deal with a delta-peak of the test-statistic distribution
+for $\mathrm{TS}=0$ is cumbersome. In order to resolve the delta-peak, the
+log-likelihood ratio function can be approximated with a second-order Taylor
+expansion around $\ns=0$, and the apex of that Taylor function defines the value of
+log-likelihood ratio function for $\hatns=0$. In this case the test-statistic
+function is given by
+\begin{equation}
+ \mathrm{TS} = -2\frac{\left(\frac{\mathrm{d}\log\Lambda(\ns=0,\ps=\hatps)}{\mathrm{d}\ns}\right)^2}{4\frac{\mathrm{d}^2\log\Lambda(\ns=0,\ps=\hatps)}{\mathrm{d}\ns^2}}.
+\end{equation}
 
-For point-source like signal hypotheses most of the events in the data sample
-will be far away from the hypothesised source, hence, the value of the
+\subsection{Optimizations for Spatially Restricted Sources}
+
+For spatially restricted sources, e.g. point-like sources, most of the events in
+the data sample will be far away from the hypothesised source, hence, the value of the
 signal PDF $\mathcal{S}_i$ will be zero or very close to zero. By selecting only
 the signal-contributing $N'$ events from the sample, the log-likelihood ratio
 function, $\log \Lambda$, reads
