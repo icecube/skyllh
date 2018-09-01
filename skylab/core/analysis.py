@@ -13,7 +13,7 @@ from skylab.core.llhratio import SingleSourceDatasetSignalWeights
 from skylab.core.scrambling import DataScramblingMethod
 from skylab.core.optimize import EventSelectionMethod, AllEventSelectionMethod
 from skylab.core.source_hypothesis import SourceHypoGroupManager
-
+from skylab.core.test_statistic import TestStatistic
 
 class Analysis(object):
     """This is the abstract base class for all analysis classes. It contains
@@ -30,11 +30,14 @@ class Analysis(object):
         4. Initialize a trial via the ``initialize_trial`` method.
         5. Fit the global fit parameters to the trial data via the
            ``maximize_llhratio`` method.
+        6. Calculate the test-statistic value via the
+           ``calculate_test_statistic`` method.
     """
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper):
+    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+                 test_statistic):
         """Constructor of the analysis base class.
 
         Parameters
@@ -49,6 +52,9 @@ class Analysis(object):
         src_fitparam_mapper : instance of SourceFitParameterMapper
             The SourceFitParameterMapper instance managing the global fit
             parameters and their relation to the individual sources.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
         """
         # Call the super function to allow for multiple class inheritance.
         super(Analysis, self).__init__()
@@ -56,6 +62,7 @@ class Analysis(object):
         self.minimizer = minimizer
         self.src_hypo_group_manager = src_hypo_group_manager
         self.src_fitparam_mapper = src_fitparam_mapper
+        self.test_statistic = test_statistic
 
         # Predefine the variable for the log-likelihood ratio function.
         self._llhratio = None
@@ -98,6 +105,18 @@ class Analysis(object):
         self._src_fitparam_mapper = mapper
 
     @property
+    def test_statistic(self):
+        """The TestStatistic instance that defines the test-statistic function
+        of the analysis.
+        """
+        return self._test_statistic
+    @test_statistic.setter
+    def test_statistic(self, ts):
+        if(not isinstance(ts, TestStatistic)):
+            raise TypeError('The test_statistic property must be an instance of TestStatistic!')
+        self._test_statistic = ts
+
+    @property
     def llhratio(self):
         """(read-only) The log-likelihood ratio function.
         """
@@ -105,12 +124,26 @@ class Analysis(object):
             raise RuntimeError('The log-likelihood ratio function is not defined yet. Call the construct_analysis method first!')
         return self._llhratio
 
-    @abc.abstractmethod
-    def add_dataset(self, dataset, *args, **kwars):
-        """This method is supposed to add a dataset and the corresponding PDF
-        ratio instances to the analysis.
+    def calculate_test_statistic(self, log_lambda, fitparam_dict):
+        """Calculates the test statistic value by calling the ``evaluate``
+        method of the TestStatistic class with the given log_lambda value and
+        fit parameter values.
+
+        Parameters
+        ----------
+        log_lambda : float
+            The value of the log-likelihood ratio function. Usually, this is its
+            maximum.
+        fitparam_dict : dict
+            The dictionary holding the fit parameter names and their values of
+            the log-likelihood ratio function for the given log_lambda value.
+
+        Returns
+        -------
+        TS : float
+            The calculated test-statistic value.
         """
-        pass
+        return self._test_statistic.evaluate(self._llhratio, log_lambda, fitparam_dict)
 
     @abc.abstractmethod
     def construct_llhratio(self):
@@ -213,7 +246,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
            ``maximize_llhratio`` method.
     """
     def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
-                 data_scrambler, event_selection_method=None):
+                 test_statistic, data_scrambler, event_selection_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
@@ -229,6 +262,9 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
         src_fitparam_mapper : instance of SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
         data_scrambler : instance of DataScrambler
             The instance of DataScrambler that will scramble the data for a new
             analysis trial.
@@ -244,7 +280,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
             raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
 
         super(MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis, self).__init__(
-            minimizer, src_hypo_group_manager, src_fitparam_mapper)
+            minimizer, src_hypo_group_manager, src_fitparam_mapper, test_statistic)
 
         self.data_scrambler = data_scrambler
         self.event_selection_method = event_selection_method
@@ -379,16 +415,16 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
 
         Returns
         -------
+        log_lambda_max : float
+            The value of the log-likelihood ratio function at its maximum.
         fitparam_dict : dict
             The dictionary holding the global fit parameter name and value of
             the log-likelihood ratio function maximum.
-        fmax : float
-            The value of the log-likelihood ratio function at its maximum.
         status : dict
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        # Define the negative llhratio function, that will be minimized.
+        # Define the negative llhratio function, that will get minimized.
         def func(fitparam_values):
             (f, grads) = self._llhratio.evaluate(fitparam_values)
             return (-f, -grads)
@@ -398,33 +434,10 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
         fitparamset.add_fitparam(ns_fitparam, atfront=True)
 
         (xmin, fmin, status) = self._minimizer.minimize(fitparamset, func)
-        fmax = -fmin
+        log_lambda_max = -fmin
 
         # Convert the fit parameter values into a dictionary with their names.
         fitparam_dict = fitparamset.get_fitparam_dict(xmin)
 
-        return (fitparam_dict, fmax, status)
+        return (log_lambda_max, fitparam_dict, status)
 
-    def calculate_test_statistic(self, ns, log_lambda):
-        """Calculates the test statistic value from the given log_lambda value.
-
-        The test statistic for this analysis is defined as:
-
-            TS = 2 * sgn(ns) * log_lambda
-
-        Parameters
-        ----------
-        ns : float | array of float
-            The best fit ns value.
-        log_lambda : float | array of float
-            The best fit log_lambda value.
-        """
-        ns = np.atleast_1d(ns)
-
-        # We need to distinguish between ns=0 and ns!=0, because the np.sign(ns)
-        # function returns 0 for ns=0, but we want it to be 1 in such cases.
-        sgn_ns = np.where(ns == 0, 1., np.sign(ns))
-
-        TS = 2 * sgn_ns * log_lambda
-
-        return TS
