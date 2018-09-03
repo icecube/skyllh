@@ -534,8 +534,9 @@ class FitParameterSet(object):
             self._fitparams = np.concatenate((self._fitparams, [fitparam]))
             self._fitparam_name_list = self._fitparam_name_list + [fitparam.name]
 
-    def get_fitparam_dict(self, fitparam_values):
-        """Constructs a dictionary with the fit parameter names and values.
+    def fitparam_values_to_dict(self, fitparam_values):
+        """Converts the given fit parameter values into a dictionary with the
+        fit parameter names and values.
 
         Parameters
         ----------
@@ -550,6 +551,26 @@ class FitParameterSet(object):
         """
         fitparam_dict = dict(zip(self._fitparam_name_list, fitparam_values))
         return fitparam_dict
+
+    def fitparam_dict_to_values(self, fitparam_dict):
+        """Converts the given fit parameter dictionary into a 1D ndarray holding
+        the fit parameter values in the order the fit parameters are defined.
+
+        Parameters
+        ----------
+        fitparam_dict : dict
+            The dictionary with the fit parameter names and values.
+
+        Returns
+        -------
+        fitparam_values : 1D ndarray
+            The ndarray holding the fit parameter values in the order that the
+            fit parameters are defined.
+        """
+        fitparam_values = np.empty_like(self._fitparams, dtype=np.float)
+        for (i, fitparam) in enumerate(self._fitparams):
+            fitparam_values[i] = fitparam_dict[fitparam.name]
+        return fitparam_values
 
     def generate_random_initials(self):
         """Generates a set of random initials for all global fit parameters.
