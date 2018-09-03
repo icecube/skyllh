@@ -1,6 +1,7 @@
 \documentclass{article}
 
 \usepackage{xcolor}
+\usepackage{amsmath}
 
 \newcommand{\eq}[1]{(\ref{#1})}
 
@@ -115,6 +116,7 @@ the Taylor expanded log-likelihood ratio function reads more compactly:
 
 
 \subsection{Test Statistic}
+\label{sec:teststatistic}
 
 Assuming Wilks theorem, a test statistic, TS, for the two-component log-likelihood
 ratio test can be formulated using the log-likelihood ratio function, $\log\Lambda$,
@@ -270,13 +272,38 @@ log-likelihood ratio function of the $i$th event w.r.t. $\ns$ is given by the
 derivative of equation (\ref{eq:logLambdaiOfalphai}) w.r.t. $\ns$:
 \begin{equation}
  \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{\mathcal{X}_i(\ps)}{1+\alpha_i(\ns,\ps)}.
+ \label{eq:dlogLambdaidns-for-alphai-gt-alpha}
 \end{equation}
 For the numerical unstable case, where $\alpha_i \leq \alpha$, this derivative is
 given by the derivative of the Taylor expension of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
 w.r.t. $\ns$:
 \begin{equation}
- \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{1}{1+\alpha}\left(1 - \tilde{\alpha}_i(\ns,\ps)\right) \mathcal{X}_i(\ps)
+ \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{1}{1+\alpha}\left(1 - \tilde{\alpha}_i(\ns,\ps)\right) \mathcal{X}_i(\ps)
+ \label{eq:dlogLambdaidns-for-alphai-le-alpha}
 \end{equation}
+
+For calculating the test-statistic, \emph{c.f.} section \ref{sec:teststatistic},
+the second derivative w.r.t. $\ns$ become in handy for the case $\ns=0$. Hence,
+it is provided here as well:
+\begin{equation}
+ \frac{\mathrm{d}^2\log\Lambda(\ns,\ps)}{\mathrm{d} \ns^2} = \sum_{i=1}^{N'} \frac{\mathrm{d}^2 \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns^2} - \frac{N-N'}{(N - \ns)^2}
+\end{equation}
+The second derivative w.r.t. $\ns$ of the log-likelihood ratio function for an
+individual event with $\alpha_i > \alpha$ is given by the derivative of equation
+(\ref{eq:dlogLambdaidns-for-alphai-gt-alpha}):
+\begin{equation}
+ \frac{\mathrm{d}^2\log\Lambda_i(\ns,\ps)}{\mathrm{d} \ns^2} = - \left(\frac{\mathcal{X}_i(\ps)}{1+\alpha_i(\ns,\ps)}\right)^2 = - \left( \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} \right)^2
+ \label{eq:d2logLambdadns2-for-alphai-gt-alpha}
+\end{equation}
+For the event case $\alpha_i \le \alpha$ this second derivative would be a
+constant due to the second-order nature of the chosen Taylor expansion in that
+case. At the junction point $\alpha$ the second derivative would not be differentiable.
+Hence, equation (\ref{eq:d2logLambdadns2-for-alphai-gt-alpha}) is used as well
+in this case, with $\mathrm{d}\log\Lambda_i(\ns,\ps)/\mathrm{d}\ns$ given by
+equation (\ref{eq:dlogLambdaidns-for-alphai-le-alpha}). This provides a second
+derivative that is differentiable for all $(1 + \alpha_i)$ values, does not
+diverge for $(1 + \alpha_i) \rightarrow 0$, and is closer to the second
+derivative of $\log\Lambda_i(\ns,\ps)$ for the $\alpha_i > \alpha$ case.
 
 The derivative w.r.t. an individual signal parameter, $p_{\mathrm{s}}$, is given by
 \begin{equation}
@@ -457,12 +484,18 @@ out leaving the simplified equation
 By using equation (\ref{eq:logLambdaOfLogLambdaj}) for the combined log-likelihood
 ratio, its derivative w.r.t. $\ns$ is given by
 \begin{equation}
- \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{j=1}^{J} \frac{\mathrm{d} \log \Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d} n_{\mathrm{s}_j}} \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns},
+ \frac{\mathrm{d}\log\Lambda(\ns,\ps)}{\mathrm{d}\ns} = \sum_{j=1}^{J} \frac{\mathrm{d}\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}} \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns},
 \end{equation}
 with
 \begin{equation}
 \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns} = f_j(\ps).
 \end{equation}
+Its second derivative w.r.t. $\ns$ is given by
+\begin{align}
+ \frac{\mathrm{d}^2\log\Lambda(\ns,\ps)}{\mathrm{d}\ns^2} &= \sum_{j=1}^{J} \frac{\mathrm{d}}{\mathrm{d}\ns}\left( \frac{\mathrm{d}\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}} \right) \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns}\\
+							  &= \sum_{j=1}^{J} \frac{\mathrm{d}^2\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}^2} \left( \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns} \right)^2.
+\end{align}
+
 The derivative w.r.t. a single source fit parameter, $p_{\mathrm{s}}$, consists
 of the partial derivatives of $\log \Lambda_j$ w.r.t. $n_{\mathrm{s}_j}$ and
 $p_{\mathrm{s}}$:
