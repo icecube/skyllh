@@ -100,6 +100,12 @@ class TCLLHRatio(LLHRatio):
         self._events = events = None
         self._n_pure_bkg_events = None
 
+        # Define cache variables for evaluate method to store values needed for
+        # a possible calculation of the second derivative w.r.t. ns of the
+        # log-likelihood ratio function.
+        self._cache_fitparam_values = None
+        self._cache_nsgrad_i = None
+
     @property
     def events(self):
         """The numpy record array holding the data events, which should get
@@ -134,7 +140,7 @@ class TCLLHRatio(LLHRatio):
     def n_selected_events(self):
         """(read-only) The number of selected events.
         """
-        return self.n_events - self.n_pure_bkg_events
+        return self.n_events
 
     @property
     def pdfratio_list(self):
@@ -176,12 +182,20 @@ class TCLLHRatio(LLHRatio):
         self.events = events
         self.n_pure_bkg_events = n_pure_bkg_events
 
-    def calculate_log_lambda_and_grads(self, N, ns, Xi, dXi_ps):
+    def calculate_log_lambda_and_grads(self, fitparam_values, N, ns, Xi, dXi_ps):
         """Calculates the log(Lambda) value and its gradient for each global fit
         parameter. This calculation is source and detector independent.
 
         Parameters
         ----------
+        fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
+            The ndarray holding the current values of the fit parameters.
+            By definition, the first element is the fit parameter for the number
+            of signal events, ns.
+            These numbers are used as cache key to validate the ``nsgrad_i``
+            values for the given fit parameter values for a possible later
+            calculation of the second derivative w.r.t. ns of the log-likelihood
+            ratio function.
         N : int
             The total number of events.
         ns : float
@@ -234,6 +248,14 @@ class TCLLHRatio(LLHRatio):
         nsgrad_i = np.empty_like(alpha_i, dtype=np.float)
         nsgrad_i[stablemask] = Xi[stablemask] * one_over_one_plus_alpha_i_stablemask
         nsgrad_i[unstablemask] = (1 - tildealpha_i)*Xi[unstablemask] / TCLLHRatio._one_plus_alpha
+        # Cache the nsgrad_i values for a possible later calculation of the
+        # second derivative w.r.t. ns of the log-likelihood ratio function.
+        # Note: We create a copy of the fitparam_values array here to make sure
+        #       that the values don't get changed outside this method before the
+        #       calculate_ns_grad2 method is called.
+        self._cache_fitparam_values = fitparam_values.copy()
+        self._cache_nsgrad_i = nsgrad_i
+        # Calculate the first derivative w.r.t. ns.
         grads[0] = np.sum(nsgrad_i) - (N - Nprime)/(N - ns)
 
         # For each other fit parameter.
@@ -243,6 +265,43 @@ class TCLLHRatio(LLHRatio):
         grads[1:] += np.sum(ns*(1 - tildealpha_i)*dXi_ps[:,unstablemask] / TCLLHRatio._one_plus_alpha, axis=1)
 
         return (log_lambda, grads)
+
+    def calculate_ns_grad2(self, fitparam_values):
+        """Calculates the second derivative w.r.t. ns of the log-likelihood
+        ratio function.
+        This method tries to use cached values for the first derivative
+        w.r.t. ns of the log-likelihood ratio function for the individual
+        events. If cached values don't exist or do not match the given fit
+        parameter values, they will get calculated automatically by calling the
+        evaluate method with the given fit parameter values.
+
+        Parameters
+        ----------
+        fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
+            The ndarray holding the current values of the fit parameters.
+            By definition, the first element is the fit parameter for the number
+            of signal events, ns.
+
+        Returns
+        -------
+        nsgrad2 : float
+            The second derivative w.r.t. ns of the log-likelihood ratio function
+            for the given fit parameter values.
+        """
+        # Check if the cached nsgrad_i values match the given fitparam_values.
+        if((self._cache_fitparam_values is None) or
+           (not np.all(self._cache_fitparam_values == fitparam_values))):
+            # Calculate the cache values by evaluating the log-likelihood ratio
+            # function.
+            self.evaluate(fitparam_values)
+
+        ns = fitparam_values[0]
+        Nprime = self.n_selected_events
+        N = Nprime + self.n_pure_bkg_events
+
+        nsgrad2 = -np.sum(self._cache_nsgrad_i**2) - (N - Nprime)/(N - ns)**2
+
+        return nsgrad2
 
 
 class SingleSourceTCLLHRatio(TCLLHRatio):
@@ -318,7 +377,7 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         """
         ns = fitparam_values[0]
 
-        N = self.n_events + self.n_pure_bkg_events
+        N = len(self._events) + self._n_pure_bkg_events
 
         # Create the fitparams dictionary with the fit parameter names and
         # values.
@@ -348,7 +407,8 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
             # Calculate the derivative of Xi w.r.t. the fit parameter.
             dXi_ps[idx] = dRi / N
 
-        (log_lambda, grads) = self.calculate_log_lambda_and_grads(N, ns, Xi, dXi_ps)
+        (log_lambda, grads) = self.calculate_log_lambda_and_grads(
+            fitparam_values, N, ns, Xi, dXi_ps)
 
         return (log_lambda, grads)
 
@@ -621,6 +681,12 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         if(self.dataset_signal_weights.n_datasets != len(self._llhratio_list)):
             raise ValueError('The number of datasets the DatasetSignalWeights instance is made for must be equal to the number of log-likelihood ratio functions!')
 
+        # Define cache variable for the dataset signal weight factors, which
+        # will be needed when calculating the second derivative w.r.t. ns of the
+        # log-likelihood ratio function.
+        self._cache_fitparam_values_ns = None
+        self._cache_f = None
+
     @property
     def dataset_signal_weights(self):
         """The DatasetSignalWeights instance that provides the relative dataset
@@ -682,6 +748,10 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         # f is a (N_datasets,)-shaped 1D ndarray.
         # f_grads is a (N_datasets,N_fitparams)-shaped 2D ndarray.
         (f, f_grads) = self._dataset_signal_weights(fitparam_values)
+        # Cache f for possible later calculation of the second derivative w.r.t.
+        # ns of the log-likelihood ratio function.
+        self._cache_fitparam_values_ns = ns
+        self._cache_f = f
 
         nsf = ns * f
 
@@ -713,3 +783,50 @@ class MultiDatasetTCLLHRatio(LLHRatio):
                 grads[1:] += grads_j[0] * ns * f_grads[j] + grads_j[1:]
 
         return (log_lambda, grads)
+
+    def calculate_ns_grad2(self, fitparam_values):
+        """Calculates the second derivative w.r.t. ns of the log-likelihood
+        ratio function.
+        This method tries to use cached values for the dataset signal weight
+        factors. If cached values don't exist or do not match the given fit
+        parameter values, they will get calculated automatically by calling the
+        evaluate method with the given fit parameter values.
+
+        Parameters
+        ----------
+        fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
+            The ndarray holding the current values of the fit parameters.
+            By definition, the first element is the fit parameter for the number
+            of signal events, ns.
+
+        Returns
+        -------
+        nsgrad2 : float
+            The second derivative w.r.t. ns of the log-likelihood ratio function
+            for the given fit parameter values.
+        """
+        ns = fitparam_values[0]
+
+        # Check if the cached fit parameters match the given ones. The ns value
+        # is special to the multi-dataset LLH ratio function, but all the other
+        # fit parameters are shared by all the LLH ratio functions of the
+        # different datasets. So those we just query from the first LLH ratio
+        # function.
+        if((self._cache_fitparam_values_ns is None) or
+           (self._cache_fitparam_values_ns != ns) or
+           (not np.all(self._llhratio_list[0]._cache_fitparam_values[1:] == fitparam_values[1:]))):
+            self.evaluate(fitparam_values)
+
+        nsf = ns * self._cache_f
+
+        nsgrad2j = np.empty((len(self._llhratio_list),), dtype=np.float)
+        # Loop over the llh ratio functions and their second derivative.
+        llhratio_fitparam_values = np.empty((len(fitparam_values),), dtype=np.float)
+        for (j, llhratio) in enumerate(self._llhratio_list):
+            llhratio_fitparam_values[0] = nsf[j]
+            llhratio_fitparam_values[1:] = fitparam_values[1:]
+            nsgrad2j[j] = llhratio.calculate_ns_grad2(llhratio_fitparam_values)
+
+        nsgrad2 = np.sum(nsgrad2j * self._cache_f**2)
+
+        return nsgrad2
