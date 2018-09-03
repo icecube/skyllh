@@ -124,7 +124,7 @@ class Analysis(object):
             raise RuntimeError('The log-likelihood ratio function is not defined yet. Call the construct_analysis method first!')
         return self._llhratio
 
-    def calculate_test_statistic(self, log_lambda, fitparam_dict):
+    def calculate_test_statistic(self, log_lambda, fitparam_values, *args, **kwargs):
         """Calculates the test statistic value by calling the ``evaluate``
         method of the TestStatistic class with the given log_lambda value and
         fit parameter values.
@@ -134,16 +134,22 @@ class Analysis(object):
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_dict : dict
-            The dictionary holding the fit parameter names and their values of
-            the log-likelihood ratio function for the given log_lambda value.
+        fitparam_values : (N_fitparam+1)-shaped 1D ndarray
+            The 1D ndarray holding the fit parameter values of the
+            log-likelihood ratio function for the given log_lambda value.
+
+        Additional arguments and keyword arguments
+        ------------------------------------------
+        Any additional arguments and keyword arguments are passed to the
+        evaluate method of the TestStatistic class instance.
 
         Returns
         -------
         TS : float
             The calculated test-statistic value.
         """
-        return self._test_statistic.evaluate(self._llhratio, log_lambda, fitparam_dict)
+        return self._test_statistic.evaluate(self._llhratio, log_lambda, fitparam_values,
+                                             *args, **kwargs)
 
     @abc.abstractmethod
     def construct_llhratio(self):
@@ -415,11 +421,15 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
 
         Returns
         -------
+        fitparamset : FitParameterSet instance
+            The instance of FitParameterSet holding the global fit parameter
+            definitions used in the maximization process.
         log_lambda_max : float
             The value of the log-likelihood ratio function at its maximum.
-        fitparam_dict : dict
-            The dictionary holding the global fit parameter name and value of
-            the log-likelihood ratio function maximum.
+        fitparam_values : (N_fitparam+1)-shaped 1D ndarray
+            The ndarray holding the global fit parameter values.
+            By definition, the first element is the value of the fit parameter
+            ns.
         status : dict
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
@@ -433,11 +443,8 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
         fitparamset = self._src_fitparam_mapper.fitparamset
         fitparamset.add_fitparam(ns_fitparam, atfront=True)
 
-        (xmin, fmin, status) = self._minimizer.minimize(fitparamset, func)
+        (fitparam_values, fmin, status) = self._minimizer.minimize(fitparamset, func)
         log_lambda_max = -fmin
 
-        # Convert the fit parameter values into a dictionary with their names.
-        fitparam_dict = fitparamset.get_fitparam_dict(xmin)
-
-        return (log_lambda_max, fitparam_dict, status)
+        return (fitparamset, log_lambda_max, fitparam_values, status)
 
