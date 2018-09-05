@@ -15,7 +15,7 @@ class SourceHypoGroup(object):
     a group of sources that share the same flux model and detector signal
     efficiency implementation method.
     """
-    def __init__(self, sources, fluxmodel, detsigeff_implmethod):
+    def __init__(self, sources, fluxmodel, detsigeff_implmethods):
         """Constructs a new source hypothesis group.
 
         Parameters
@@ -25,14 +25,17 @@ class SourceHypoGroup(object):
         fluxmodel : instance of FluxModel
             The FluxModel instance that applies to the list of sources of the
             group.
-        detsigeff_implmethod : instance of DetSigEffImplMethod
-            The instance of a detector signal efficiency implementation method,
-            which should be used to create the detector signal efficiency for
-            the sources of the group.
+        detsigeff_implmethods : sequence of DetSigEffImplMethod instances
+            The sequence of detector signal efficiency implementation method
+            instances, which should be used to create the detector signal
+            efficiency for the sources of the group. Each element is the
+            detector signal efficiency implementation method for the particular
+            dataset, if several datasets are used. If this list contains only
+            one implementation method, it should be used for all datasets.
         """
         self.source_list = sources
         self.fluxmodel = fluxmodel
-        self.detsigeff_implmethod = detsigeff_implmethod
+        self.detsigeff_implmethod_list = detsigeff_implmethods
 
     @property
     def source_list(self):
@@ -60,17 +63,21 @@ class SourceHypoGroup(object):
         self._fluxmodel = fluxmodel
 
     @property
-    def detsigeff_implmethod(self):
-        """The instance of DetSigEffImplMethod, the detector signal efficiency
-        implementation method, which should be used to create the detector
-        signal efficiency for this group of sources.
+    def detsigeff_implmethod_list(self):
+        """The list of DetSigEffImplMethod instances, which should be used to
+        create the detector signal efficiency for this group of sources. Each
+        element is the detector signal efficiency implementation method for
+        the particular dataset, if several datasets are used. If this list
+        contains only one implementation method, it should be used for all
+        datasets.
         """
-        return self._detsigeff_implmethod
-    @detsigeff_implmethod.setter
-    def detsigeff_implmethod(self, method):
-        if(not isinstance(method, DetSigEffImplMethod)):
-            raise TypeError('The detsigeff_implmethod property must be an instance of DetSigEffImplMethod!')
-        self._detsigeff_implmethod = method
+        return self._detsigeff_implmethod_list
+    @detsigeff_implmethod_list.setter
+    def detsigeff_implmethod_list(self, methods):
+        methods = list(methods)
+        if(not issequenceof(methods, DetSigEffImplMethod)):
+            raise TypeError('The detsigeff_implmethod_list property must be a sequence of DetSigEffImplMethod instances!')
+        self._detsigeff_implmethod_list = methods
 
     @property
     def n_sources(self):
@@ -113,8 +120,8 @@ class SourceHypoGroupManager(object):
         return self._sidx_to_gidx_gsidx_map_arr.shape[0]
 
     @property
-    def N_src_groups(self):
-        """The number of defined source groups.
+    def n_src_hypo_groups(self):
+        """The number of defined source hypothesis groups.
         """
         return len(self._src_hypo_group_list)
 
@@ -125,10 +132,11 @@ class SourceHypoGroupManager(object):
         """
         return self._src_hypo_group_list
 
-    def add_source_hypo_group(self, sources, fluxmodel, detsigeffmethod):
+    def add_source_hypo_group(self, sources, fluxmodel, detsigeff_implmethods):
         """Adds a source hypothesis group to the source hypothesis group
-        manager. A source hypothesis group of sources share the same flux model
-        and the same detector signal efficiency implementation method.
+        manager. A source hypothesis group share sources of the same source
+        model with the same flux model and hence the same detector signal
+        efficiency implementation method.
 
         Parameters
         ----------
@@ -137,13 +145,16 @@ class SourceHypoGroupManager(object):
         fluxmodel : instance of FluxModel
             The FluxModel instance that applies to the list of sources of the
             group.
-        detsigeffmethod : instance of DetSigEffImplMethod
-            The instance of a detector signal efficiency implementation method,
-            which should be used to create the detector signal efficiency for
-            the sources of the group.
+        detsigeff_implmethods : sequence of DetSigEffImplMethod instances
+            The sequence of detector signal efficiency implementation method
+            instances, which should be used to create the detector signal
+            efficiency for the sources of the group. Each element is the
+            detector signal efficiency implementation method for the particular
+            dataset, if several datasets are used. If this list contains only
+            one implementation method, it should be used for all datasets.
         """
         # Create the source group.
-        group = SourceHypoGroup(sources, fluxmodel, detsigeffmethod)
+        group = SourceHypoGroup(sources, fluxmodel, detsigeff_implmethods)
 
         # Add the group.
         self._src_hypo_group_list.append(group)
@@ -174,9 +185,9 @@ class SourceHypoGroupManager(object):
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
         return self._src_hypo_group_list[gidx]._fluxmodel
 
-    def get_detsigeff_implmethod_by_src_idx(self, src_idx):
-        """Retrieves the DetSigEffImplMethod instance for the source specified
-        by its source index.
+    def get_detsigeff_implmethod_list_by_src_idx(self, src_idx):
+        """Retrieves the list of DetSigEffImplMethod instances for the source
+        specified by its source index.
 
         Parameters
         ----------
@@ -186,9 +197,9 @@ class SourceHypoGroupManager(object):
 
         Returns
         -------
-        detsigeff_implmethod : instance of DetSigEffImplMethod
-            The DetSigEffImplMethod instance that applies to the specified
-            source.
+        detsigeff_implmethod_list : list of DetSigEffImplMethod instances
+            The list of DetSigEffImplMethod instances that apply to the
+            specified source.
         """
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
-        return self._src_hypo_group_list[gidx]._detsigeff_implmethod
+        return self._src_hypo_group_list[gidx]._detsigeff_implmethod_list
