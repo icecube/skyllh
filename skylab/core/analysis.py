@@ -7,7 +7,10 @@ import abc
 
 from skylab.core.py import issequenceof
 from skylab.core.dataset import Dataset
-from skylab.core.parameters import SourceFitParameterMapper, SingleSourceFitParameterMapper
+from skylab.core.parameters import (
+    SourceFitParameterMapper,
+    SingleSourceFitParameterMapper
+)
 from skylab.core.pdf import SpatialPDF, EnergyPDF
 from skylab.core.llhratio import SingleSourceDatasetSignalWeights
 from skylab.core.scrambling import DataScramblingMethod
@@ -202,6 +205,14 @@ class IsSingleDatasetAnalysis(object):
             raise TypeError('The dataset property must be an instance of Dataset!')
         self._dataset = ds
 
+    @property
+    def n_datasets(self):
+        """(read-only) The number of used datasets in this analysis.
+        """
+        if(self._dataset is None):
+            return 0
+        return 1
+
 
 class IsMultiDatasetAnalysis(object):
     """This is the class classifier class to specify that an analysis is made
@@ -223,6 +234,12 @@ class IsMultiDatasetAnalysis(object):
         if(not issequenceof(datasets, Dataset)):
             raise TypeError('The dataset_list property must be a sequence of Dataset instances!')
         self._dataset_list = list(datasets)
+
+    @property
+    def n_datasets(self):
+        """(read-only) The number of datasets used in this analysis.
+        """
+        return len(self._dataset_list)
 
     def add_dataset(self, dataset):
         """Adds the given dataset to the list of datasets for this analysis.
@@ -353,13 +370,20 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
         # detector signal efficiency instances for each source as well.
         detsigeff_list = []
         fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
-        detsigeff_implmethod = self._src_hypo_group_manager.get_detsigeff_implmethod_by_src_idx(0)
-        for dataset in self.dataset_list:
-            detsigeff = DetectorSignalEfficiency(
-                dataset.data_mc,
-                fluxmodel,
-                dataset.livetime,
-                detsigeff_implmethod)
+        detsigeff_implmethod_list = self._src_hypo_group_manager.get_detsigeff_implmethod_list_by_src_idx(0)
+        if((len(detsigeff_implmethod_list) != 1) and
+           (len(detsigeff_implmethod_list) != self.n_datasets)):
+            raise ValueError('The number of detector signal efficiency implementation methods is not 1 and does not match the number of used datasets in the analysis!')
+        for (j, dataset) in enumerate(self.dataset_list):
+            if(len(detsigeff_implmethod_list) == 1):
+                # Only one detsigeff implementation method was defined, so we
+                # use it for all datasets.
+                detsigeff_implmethod = detsigeff_implmethod_list[0]
+            else:
+                detsigeff_implmethod = detsigeff_implmethod_list[j]
+
+            detsigeff = detsigeff_implmethod.construct_detsigeff(
+                dataset, fluxmodel, dataset.livetime)
             detsigeff_list.append(detsigeff)
 
         # For multiple datasets we need a dataset signal weights instance in
