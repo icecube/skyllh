@@ -415,10 +415,38 @@ class Dataset(object):
 
     def get_binning_definition(self, name):
         """Gets the BinningDefinition object for the given binning name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the binning definition.
+
+        Returns
+        -------
+        binning_definition : BinningDefinition instance
+            The requested BinningDefinition instance.
         """
         if(name not in self._binning_definitions):
-            raise KeyError('The given binning name "%s" has not been added yet!'%(name))
+            raise KeyError('The given binning name "%s" has not been added to the dataset yet!'%(name))
         return self._binning_definitions[name]
+
+    def has_binning_definition(self, name):
+        """Checks if the dataset has a defined binning definition with the given
+        name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the binning definition.
+
+        Returns
+        -------
+        check : bool
+            True if the binning definition exists, False otherwise.
+        """
+        if(name in self._binning_definitions):
+            return True
+        return False
 
     def define_binning(self, name, binedges):
         """Defines a binning for ``name``, and adds it as binning definition.
