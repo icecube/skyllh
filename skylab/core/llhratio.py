@@ -475,7 +475,7 @@ class DatasetSignalWeights(object):
         self.src_fitparam_mapper = src_fitparam_mapper
         self.detsigeff_arr = detsigeffs
 
-        if(self._detsigeff_arr.shape[0] != self._src_hypo_group_manager.N_src_groups):
+        if(self._detsigeff_arr.shape[0] != self._src_hypo_group_manager.n_src_hypo_groups):
             raise ValueError('The detsigeffs array must have the same number of source hypothesis groups as the source hypothesis group manager defines!')
 
         # Pre-convert the source list of each source hypothesis group into a

@@ -161,9 +161,9 @@ class SourceHypoGroupManager(object):
 
         # Extend the source index to (group index, group source index) map
         # array.
-        arr = np.empty((group.N_sources,2))
-        arr[:,0] = self.N_src_groups-1 # Group index.
-        arr[:,1] = np.arange(group.N_sources) # Group source index.
+        arr = np.empty((group.n_sources,2))
+        arr[:,0] = self.n_src_hypo_groups-1 # Group index.
+        arr[:,1] = np.arange(group.n_sources) # Group source index.
         self._sidx_to_gidx_gsidx_map_arr = np.vstack(
             (self._sidx_to_gidx_gsidx_map_arr, arr))
 
