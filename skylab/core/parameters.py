@@ -454,6 +454,26 @@ class FitParameter(object):
         v = float_cast(v, 'The initial property must be castable to type float!')
         self._initial = v
 
+    def as_linear_grid(self, delta):
+        """Creates a ParameterGrid instance with a linear grid with constant
+        grid value distances delta.
+
+        Parameters
+        ----------
+        delta : float
+            The constant distance between the grid values. By definition this
+            defines also the precision of the parameter values.
+
+        Returns
+        -------
+        grid : ParameterGrid instance
+            The ParameterGrid instance holding the grid values.
+        """
+        delta = float_cast(delta, 'The delta argument must be castable to type float!')
+        grid = make_linear_parameter_grid_1d(
+            self._name, self._valmin, self._valmax, delta)
+        return grid
+
 
 class FitParameterSet(object):
     """This class describes a set of FitParameter instances.
