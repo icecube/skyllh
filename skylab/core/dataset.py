@@ -57,6 +57,65 @@ class Dataset(object):
 
         Dataset._MC_FIELD_NAMES = tuple(list(Dataset._MC_FIELD_NAMES) + fieldnames)
 
+    @staticmethod
+    def get_combined_exp_pathfilenames(datasets):
+        """Creates the combined list of exp pathfilenames of all the given
+        datasets.
+
+        Parameters
+        ----------
+        datasets : sequence of Dataset
+            The sequence of Dataset instances.
+        """
+        if(not issequenceof(datasets, Dataset)):
+            raise TypeError('The datasets argument must be a sequence of Dataset instances!')
+
+        exp_pathfilenames = []
+        for ds in datasets:
+            exp_pathfilenames += ds.exp_pathfilename_list
+
+        return exp_pathfilenames
+
+    @staticmethod
+    def get_combined_mc_pathfilenames(datasets):
+        """Creates the combined list of mc pathfilenames of all the given
+        datasets.
+
+        Parameters
+        ----------
+        datasets : sequence of Dataset
+            The sequence of Dataset instances.
+        """
+        if(not issequenceof(datasets, Dataset)):
+            raise TypeError('The datasets argument must be a sequence of Dataset instances!')
+
+        mc_pathfilenames = []
+        for ds in datasets:
+            mc_pathfilenames += ds.mc_pathfilename_list
+
+        return mc_pathfilenames
+
+    @staticmethod
+    def get_combined_livetime(datasets):
+        """Sums the live-time of all the given datasets.
+
+        Parameters
+        ----------
+        datasets : sequence of Dataset
+            The sequence of Dataset instances.
+
+        Returns
+        -------
+        livetime : float
+            The sum of all the individual live-times.
+        """
+        if(not issequenceof(datasets, Dataset)):
+            raise TypeError('The datasets argument must be a sequence of Dataset instances!')
+
+        livetime = np.sum([ ds.livetime for ds in datasets ])
+
+        return livetime
+
     def __init__(self, name, exp_pathfilenames, mc_pathfilenames, livetime, version, verqualifiers=None):
         """Creates a new dataset object that describes a self-consistent set of
         data.
