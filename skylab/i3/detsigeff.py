@@ -469,7 +469,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
     effective area depends soley on the zenith angle, and hence on the
     declination, of the source.
     """
-    def __init__(self, gamma_binning, sinDec_binning=None,
+    def __init__(self, gamma_grid, sinDec_binning=None,
                  spline_order_sinDec=2, spline_order_gamma=2, ncpu=None):
         """Creates a new IceCube detector signal efficiency implementation
         method object for a power law flux model. It requires a sinDec binning
@@ -479,8 +479,8 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
 
         Parameters
         ----------
-        gamma_binning : BinningDefinition
-            The BinningDefinition instance which defines the gamma binning.
+        gamma_grid : ParameterGrid instance
+            The ParameterGrid instance which defines the grid of gamma values.
         sinDec_binning : BinningDefinition | None
             The BinningDefinition instance which defines the sin(dec) binning.
             If set to None, the sin(dec) binning will be taken from the
@@ -502,22 +502,22 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
 
         self.supported_fluxmodels = (PowerLawFlux,)
 
-        self.gamma_binning = gamma_binning
+        self.gamma_grid = gamma_grid
         self.spline_order_sinDec = spline_order_sinDec
         self.spline_order_gamma = spline_order_gamma
 
     @property
-    def gamma_binning(self):
-        """The BinningDefinition instance for the gamma binning that should be
+    def gamma_grid(self):
+        """The ParameterGrid instance for the gamma grid that should be
         used for computing the gamma dependency of the detector signal
         efficiency.
         """
-        return self._gamma_binning
-    @gamma_binning.setter
-    def gamma_binning(self, binning):
-        if(not isinstance(binning, BinningDefinition)):
-            raise TypeError('The gamma_binning property must be an instance of BinningDefinition!')
-        self._gamma_binning = binning
+        return self._gamma_grid
+    @gamma_grid.setter
+    def gamma_grid(self, grid):
+        if(not isinstance(grid, ParameterGrid)):
+            raise TypeError('The gamma_grid property must be an instance of ParameterGrid!')
+        self._gamma_grid = grid
 
     @property
     def spline_order_sinDec(self):
@@ -630,10 +630,15 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
         data_sin_true_dec = np.sin(dataset.data_mc["true_dec"])
         weights = dataset.data_mc["mcweight"] * toGeVcm2s * livetime_days * 86400.
 
+        # Make a copy of the gamma grid and extend the grid by one bin on each
+        # side.
+        gamma_grid = self._gamma_grid.copy()
+        gamma_grid.add_extra_lower_and_upper_bin()
+
         # Construct the arguments for the hist function to be used in the
         # multiproc.parallelize function.
         args_list = [ ((data_sin_true_dec, dataset.data_mc['true_energy'], sinDec_binning, weights, fluxmodel.copy({'gamma':gamma})),{})
-                     for gamma in self.gamma_binning.binedges ]
+                     for gamma in gamma_grid.grid ]
         h = np.vstack(multiproc.parallelize(hist, args_list, self.ncpu)).T
 
         # Normalize by solid angle of each bin along the sin(dec) axis.
@@ -641,7 +646,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
         h /= (2.*np.pi * np.diff(sinDec_binning.binedges)).reshape((sinDec_binning.nbins,1))
 
         log_spl_sinDec_gamma = scipy.interpolate.RectBivariateSpline(
-            sinDec_binning.bincenters, self.gamma_binning.binedges, np.log(h),
+            sinDec_binning.bincenters, gamma_grid.grid, np.log(h),
             kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
 
         detsigeff = PowerLawFluxPointLikeSourceI3DetSigEff(
