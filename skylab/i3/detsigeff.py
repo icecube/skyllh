@@ -12,6 +12,7 @@ import scipy.interpolate
 from skylab.core import multiproc
 from skylab.core.py import issequenceof
 from skylab.core.binning import BinningDefinition
+from skylab.core.parameters import ParameterGrid
 from skylab.core.detsigeff import (
     DetSigEff,
     DetSigEffImplMethod
