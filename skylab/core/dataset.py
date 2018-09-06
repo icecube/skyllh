@@ -369,6 +369,30 @@ class Dataset(object):
 
         return s
 
+    def update_version_qualifiers(self, verqualifiers):
+        """Updates the version qualifiers of the dataset. The update can only
+        be done by increasing the version qualifier integer or by adding new
+        version qualifiers.
+
+        Parameters
+        ----------
+        verqualifiers : dict
+            The dictionary with the new version qualifiers.
+
+        Errors
+        ------
+        ValueError
+            If the integer number of an existing version qualifier is not larger
+            than the old one.
+        """
+        for q in verqualifiers:
+            # If the qualifier already exist, it must have a larger integer
+            # number.
+            if((q in self._verqualifiers) and
+               (verqualifiers[q] <= self._verqualifiers[q])):
+                raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
+            self._verqualifiers[q] = verqualifiers[q]
+
     def assert_data_format(self):
         """Checks the format of the loaded experimental and monte-carlo data.
 
@@ -702,3 +726,10 @@ class DatasetCollection(object):
         """
         for (dsname, dataset) in self._datasets.iteritems():
             dataset.add_data_preparation(func)
+
+    def update_version_qualifiers(self, verqualifiers):
+        """Updates the version qualifiers of all datasets of this dataset
+        collection.
+        """
+        for (dsname, dataset) in self._datasets.iteritems():
+            dataset.update_version_qualifiers(verqualifiers)
