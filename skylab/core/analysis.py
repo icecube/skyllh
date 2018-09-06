@@ -17,6 +17,8 @@ from skylab.core.scrambling import DataScramblingMethod
 from skylab.core.optimize import EventSelectionMethod, AllEventSelectionMethod
 from skylab.core.source_hypothesis import SourceHypoGroupManager
 from skylab.core.test_statistic import TestStatistic
+from skylab.core.minimizer import Minimizer
+from skylab.core.scrambling import DataScrambler
 
 class Analysis(object):
     """This is the abstract base class for all analysis classes. It contains

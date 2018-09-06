@@ -4,6 +4,8 @@
 hypotheses. The SourceHypoGroupManager manages the groups of source hypotheses.
 """
 
+import numpy as np
+
 from skylab.core.py import issequenceof
 from skylab.core.detsigeff import DetSigEffImplMethod
 from skylab.physics.source import SourceModel
@@ -45,7 +47,7 @@ class SourceHypoGroup(object):
     @source_list.setter
     def source_list(self, sources):
         if(isinstance(sources, SourceModel)):
-            sources = [sources]
+            sources = [ sources ]
         if(not issequenceof(sources, SourceModel)):
             raise TypeError('The source_list property must be an instance of SourceModel or a sequence of SourceModel instances!')
         self._source_list = list(sources)
@@ -74,7 +76,8 @@ class SourceHypoGroup(object):
         return self._detsigeff_implmethod_list
     @detsigeff_implmethod_list.setter
     def detsigeff_implmethod_list(self, methods):
-        methods = list(methods)
+        if(isinstance(methods, DetSigEffImplMethod)):
+            methods = [ methods ]
         if(not issequenceof(methods, DetSigEffImplMethod)):
             raise TypeError('The detsigeff_implmethod_list property must be a sequence of DetSigEffImplMethod instances!')
         self._detsigeff_implmethod_list = methods
@@ -114,7 +117,8 @@ class SourceHypoGroupManager(object):
 
         # Add source hypo groups if specified.
         if(src_hypo_groups is not None):
-            src_hypo_groups = list(src_hypo_groups)
+            if(isinstance(src_hypo_groups, SourceHypoGroup)):
+                src_hypo_groups = [ src_hypo_groups ]
             if(not issequenceof(src_hypo_groups, SourceHypoGroup)):
                 raise TypeError('The src_hypo_groups argument must be an instance of SourceHypoGroup, or a sequence of SourceHypoGroup instances!')
             for shg in src_hypo_groups:

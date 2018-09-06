@@ -147,14 +147,14 @@ class PointLikeSourceI3DetSigEffImplMethod(I3DetSigEffImplMethod):
         # Define the supported source models.
         self.supported_sourcemodels = (PointLikeSource,)
 
-    def source_to_array(self, source):
+    def source_to_array(self, sources):
         """Converts the sequence of PointLikeSource sources into a numpy record
         array holding the spatial information of the sources needed for the
         detector signal efficiency calculation.
 
         Parameters
         ----------
-        source : SourceModel | sequence of SourceModel
+        sources : SourceModel | sequence of SourceModel
             The source model containing the spatial information of the source.
 
         Returns
@@ -163,7 +163,8 @@ class PointLikeSourceI3DetSigEffImplMethod(I3DetSigEffImplMethod):
             The generated numpy record ndarray holding the spatial information
             for each source.
         """
-        sources = list(source)
+        if(isinstance(sources, PointLikeSource)):
+            sources = [ sources ]
         if(not issequenceof(sources, PointLikeSource)):
             raise TypeError('The source argument must be an instance of PointLikeSource!')
 

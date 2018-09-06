@@ -14,9 +14,7 @@ from skylab.core.py import (
     issequenceof,
     float_cast
 )
-from skylab.core.detsigeff import (
-    DetectorSignalEfficiency
-)
+from skylab.core.detsigeff import DetSigEff
 from skylab.core.parameters import (
     SourceFitParameterMapper,
     SingleSourceFitParameterMapper,
@@ -26,9 +24,8 @@ from skylab.core.pdfratio import (
     PDFRatio,
     SingleSourcePDFRatioArrayArithmetic
 )
-from skylab.physics.source import (
-    SourceModel
-)
+from skylab.physics.source import SourceModel
+
 
 class LLHRatio(object):
     """Abstract base class for a log-likelihood (LLH) ratio function.
@@ -463,8 +460,8 @@ class DatasetSignalWeights(object):
             parameters and their mapping to the source fit parameters.
 
         detsigeffs : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
-                     DetectorSignalEfficiency instances
-            The collection of DetectorSignalEfficiency instances for each
+                     DetSigEff instances
+            The collection of DetSigEff instances for each
             dataset and source group combination. The detector signal efficiency
             instances are used to calculate the dataset signal weight factors.
             The order must follow the definition order of the log-likelihood
@@ -516,7 +513,7 @@ class DatasetSignalWeights(object):
     @property
     def detsigeff_arr(self):
         """The 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
-        DetectorSignalEfficiency instances.
+        DetSigEff instances.
         """
         return self._detsigeff_arr
     @detsigeff_arr.setter
@@ -525,8 +522,8 @@ class DatasetSignalWeights(object):
             raise TypeError('The detsigeff_arr property must be an instance of numpy.ndarray!')
         if(detsigeffs.ndim != 2):
             raise ValueError('The detsigeff_arr property must be a numpy.ndarray with 2 dimensions!')
-        if(not issequenceof(detsigeffs.flat, DetectorSignalEfficiency)):
-            raise TypeError('The detsigeff_arr property must contain DetectorSignalEfficiency instances, one for each source hypothesis group and dataset combination!')
+        if(not issequenceof(detsigeffs.flat, DetSigEff)):
+            raise TypeError('The detsigeff_arr property must contain DetSigEff instances, one for each source hypothesis group and dataset combination!')
         self._detsigeff_arr = detsigeffs
 
     @property
@@ -575,8 +572,8 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         src_fitparam_mapper : SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
-        detsigeffs : sequence of DetectorSignalEfficiency
-            The sequence of DetectorSignalEfficiency instances, one for each
+        detsigeffs : sequence of DetSigEff
+            The sequence of DetSigEff instances, one for each
             dataset.
         """
 

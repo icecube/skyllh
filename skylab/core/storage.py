@@ -24,7 +24,7 @@ def register_FileLoader(formats, fileloader_cls):
         formats.
     """
     if(isinstance(formats, str)):
-        formats = list(formats)
+        formats = [ formats ]
     if(not issequence(formats)):
         raise TypeError('The "formats" argument must be a sequence!')
     if(not issubclass(fileloader_cls, FileLoader)):
@@ -103,7 +103,7 @@ class FileLoader:
     @pathfilename_list.setter
     def pathfilename_list(self, pathfilenames):
         if(isinstance(pathfilenames, str)):
-            pathfilenames = [pathfilenames]
+            pathfilenames = [ pathfilenames ]
         if(not issequence(pathfilenames)):
             raise TypeError('The pathfilename_list property must be a sequence type!')
         self._pathfilename_list = list(pathfilenames)

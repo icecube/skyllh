@@ -102,7 +102,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         """Creates a new L-BGF-S minimizer instance to minimize the given
         likelihood function with its given partial derivatives.
         """
-        super(LBFGSMinimizer, self).__init__()
+        super(LBFGSMinimizerImpl, self).__init__()
 
         # Import the external library here to make it an optional dependency.
         from scipy.optimize import fmin_l_bfgs_b

@@ -5,6 +5,7 @@ import numpy as np
 
 from astropy import units
 
+from skylab.core.py import issequenceofsubclass
 from skylab.core.dataset import Dataset
 from skylab.core.livetime import Livetime
 from skylab.physics.source import SourceModel
@@ -183,8 +184,8 @@ class DetSigEffImplMethod(object):
     def supported_sourcemodels(self, models):
         if(not isinstance(models, tuple)):
             raise TypeError('The supported_sourcemodels property must be of type tuple!')
-        if(not issequenceof(models, SourceModel)):
-            raise TypeError('The supported_sourcemodels property must be a sequence of SourceModel instances!')
+        if(not issequenceofsubclass(models, SourceModel)):
+            raise TypeError('The supported_sourcemodels property must be a sequence of SourceModel classes!')
         self._supported_sourcemodels = models
 
     @property
@@ -197,7 +198,7 @@ class DetSigEffImplMethod(object):
     def supported_fluxmodels(self, models):
         if(not isinstance(models, tuple)):
             raise TypeError('The supported_fluxmodels property must be of type tuple!')
-        if(not issequenceof(models, FluxModel)):
+        if(not issequenceofsubclass(models, FluxModel)):
             raise TypeError('The supported_fluxmodels property must be a sequence of FluxModel instances!')
         self._supported_fluxmodels = models
 

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import abc
-
 import numpy as np
+
+from skylab.core.py import float_cast
 
 class EventSelectionMethod(object):
     """This is the abstract base class for all event selection method classes.
