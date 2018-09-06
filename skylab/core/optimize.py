@@ -75,8 +75,7 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
         return self._src_ra
     @src_ra.setter
     def src_ra(self, arr):
-        if(not isinstance(arr, np.ndarray)):
-            TypeError('The src_ra property must be an instance of ndarray!')
+        arr = np.atleast_1d(arr)
         self._src_ra = arr
 
     @property
@@ -86,8 +85,7 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
         return self._src_dec
     @src_dec.setter
     def src_dec(self, arr):
-        if(not isinstance(arr, np.ndarray)):
-            TypeError('The src_dec property must be an instance of ndarray!')
+        arr = np.atleast_1d(arr)
         self._src_dec = arr
 
     @property
