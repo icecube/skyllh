@@ -66,6 +66,11 @@ class Dataset(object):
         ----------
         datasets : sequence of Dataset
             The sequence of Dataset instances.
+
+        Returns
+        -------
+        exp_pathfilenames : list
+            The combined list of exp pathfilenames.
         """
         if(not issequenceof(datasets, Dataset)):
             raise TypeError('The datasets argument must be a sequence of Dataset instances!')
@@ -85,6 +90,11 @@ class Dataset(object):
         ----------
         datasets : sequence of Dataset
             The sequence of Dataset instances.
+
+        Returns
+        -------
+        mc_pathfilenames : list
+            The combined list of mc pathfilenames.
         """
         if(not issequenceof(datasets, Dataset)):
             raise TypeError('The datasets argument must be a sequence of Dataset instances!')
