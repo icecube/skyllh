@@ -34,12 +34,24 @@ def issequence(obj):
     return True
 
 def issequenceof(obj, T):
-    """Checks if the given object ``obj`` is a sequence with items of type ``T``.
+    """Checks if the given object ``obj`` is a sequence with items being
+    instances of type ``T``.
     """
     if(not issequence(obj)):
         return False
     for item in obj:
         if(not isinstance(item, T)):
+            return False
+    return True
+
+def issequenceofsubclass(obj, T):
+    """Checks if the given object ``obj`` is a sequence with items being
+    sub-classes of class T.
+    """
+    if(not issequence(obj)):
+        return False
+    for item in obj:
+        if(not issubclass(item, T)):
             return False
     return True
 
