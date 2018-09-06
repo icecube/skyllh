@@ -95,7 +95,15 @@ class SourceHypoGroupManager(object):
     This helps to evaluate the log-likelihood ratio function in an efficient
     way.
     """
-    def __init__(self):
+    def __init__(self, src_hypo_groups=None):
+        """Creates a new source hypothesis group manager instance.
+
+        Parameters
+        ----------
+        src_hypo_groups : SourceHypoGroup instance |
+                          sequence of SourceHypoGroup instances | None
+            The SourceHypoGroup instances to initialize the manager with.
+        """
         super(SourceHypoGroupManager, self).__init__()
 
         self._src_hypo_group_list = list()
@@ -103,6 +111,15 @@ class SourceHypoGroupManager(object):
         # index (0 to N_sources-1) to the index of the group and the source
         # index within the group for fast access.
         self._sidx_to_gidx_gsidx_map_arr = np.empty((0,2), dtype=np.int)
+
+        # Add source hypo groups if specified.
+        if(src_hypo_groups is not None):
+            src_hypo_groups = list(src_hypo_groups)
+            if(not issequenceof(src_hypo_groups, SourceHypoGroup)):
+                raise TypeError('The src_hypo_groups argument must be an instance of SourceHypoGroup, or a sequence of SourceHypoGroup instances!')
+            for shg in src_hypo_groups:
+                self._src_hypo_group_list.append(shg)
+                self._extend_sidx_to_gidx_gsidx_map_arr(shg)
 
     @property
     def source_list(self):
@@ -131,6 +148,22 @@ class SourceHypoGroupManager(object):
         SourceHypoGroup instances.
         """
         return self._src_hypo_group_list
+
+    def _extend_sidx_to_gidx_gsidx_map_arr(self, shg):
+        """Extends the source index to (group index, group source index) map
+        array by one source hypo group.
+
+        Parameters
+        ----------
+        shg : SourceHypoGroup instance
+            The SourceHypoGroup instance for which the map array should get
+            extented.
+        """
+        arr = np.empty((shg.n_sources,2))
+        arr[:,0] = self.n_src_hypo_groups-1 # Group index.
+        arr[:,1] = np.arange(shg.n_sources) # Group source index.
+        self._sidx_to_gidx_gsidx_map_arr = np.vstack(
+            (self._sidx_to_gidx_gsidx_map_arr, arr))
 
     def add_source_hypo_group(self, sources, fluxmodel, detsigeff_implmethods):
         """Adds a source hypothesis group to the source hypothesis group
@@ -161,11 +194,7 @@ class SourceHypoGroupManager(object):
 
         # Extend the source index to (group index, group source index) map
         # array.
-        arr = np.empty((group.n_sources,2))
-        arr[:,0] = self.n_src_hypo_groups-1 # Group index.
-        arr[:,1] = np.arange(group.n_sources) # Group source index.
-        self._sidx_to_gidx_gsidx_map_arr = np.vstack(
-            (self._sidx_to_gidx_gsidx_map_arr, arr))
+        self._extend_sidx_to_gidx_gsidx_map_arr(group)
 
     def get_fluxmodel_by_src_idx(self, src_idx):
         """Retrieves the FluxModel instance for the source specified by its
