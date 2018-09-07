@@ -163,7 +163,7 @@ class SourceHypoGroupManager(object):
             The SourceHypoGroup instance for which the map array should get
             extented.
         """
-        arr = np.empty((shg.n_sources,2))
+        arr = np.empty((shg.n_sources,2), dtype=np.int)
         arr[:,0] = self.n_src_hypo_groups-1 # Group index.
         arr[:,1] = np.arange(shg.n_sources) # Group source index.
         self._sidx_to_gidx_gsidx_map_arr = np.vstack(

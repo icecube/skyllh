@@ -8,12 +8,14 @@ implement the pure math of the log-likelihood ratio function.
 from __future__ import division
 
 import abc
+import numpy as np
 
 from skylab.core.py import (
     issequence,
     issequenceof,
     float_cast
 )
+from skylab.core.source_hypothesis import SourceHypoGroupManager
 from skylab.core.detsigeff import DetSigEff
 from skylab.core.parameters import (
     SourceFitParameterMapper,
@@ -326,7 +328,7 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
 
-        super(SingleSourceSpatialEnergyTCLLHRatio, self).__init__(
+        super(SingleSourceTCLLHRatio, self).__init__(
             pdfratios, src_fitparam_mapper)
 
         # Construct a PDFRatio array arithmetic object specialized for a single
@@ -334,7 +336,7 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         # instances, which do not depend on any fit parameters.
         self._pdfratioarray = SingleSourcePDFRatioArrayArithmetic(
             self._pdfratio_list,
-            self._src_fitparam_mapper.fitparam_list)
+            self._src_fitparam_mapper.fitparamset.fitparam_list)
 
     def initialize_for_new_trial(self, events, n_pure_bkg_events):
         """Initializes the log-likelihood ratio function for a new trial.
@@ -670,7 +672,7 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         """
         super(MultiDatasetTCLLHRatio, self).__init__()
 
-        self.dataset_signal_weights = datasetweights
+        self.dataset_signal_weights = dataset_signal_weights
         self.llhratio_list = llhratios
 
         # Check if the number of datasets the DatasetSignalWeights instance is

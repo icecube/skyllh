@@ -348,7 +348,7 @@ class FixedFluxPointLikeSourceI3DetSigEffImplMethod(
             dataset, data, fluxmodel, livetime)
 
         # Get integrated live-time in days.
-        livetime_days = self.get_integrated_livetime_in_days(livetime)
+        livetime_days = get_integrated_livetime_in_days(livetime)
 
         # Get the sin(dec) binning definition either as setting from this
         # implementation method, or from the dataset.
@@ -589,7 +589,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
             dataset, data, fluxmodel, livetime)
 
         # Get integrated live-time in days.
-        livetime_days = self.get_integrated_livetime_in_days(livetime)
+        livetime_days = get_integrated_livetime_in_days(livetime)
 
         # Get the sin(dec) binning definition either as setting from this
         # implementation method, or from the dataset.

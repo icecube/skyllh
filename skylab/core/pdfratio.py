@@ -143,7 +143,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
     PDF ratio values of the PDF ratio objects which do not depend on that fit
     parameter is needed.
     """
-    def __init__(self, pdfratios, fitparams, events):
+    def __init__(self, pdfratios, fitparams):
         """Constructs a PDFRatio array arithmetic object assuming a single
         source.
 
@@ -154,8 +154,6 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         fitparams : list of FitParameter
             The list of fit parameters. The order must match the fit parameter
             order of the minimizer.
-        events : numpy record array
-            The numpy record array holding the data events.
         """
         self.pdfratio_list = pdfratios
         self.fitparam_list = fitparams
@@ -163,6 +161,12 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         # The ``events`` property will be set via the
         # ``initialize_for_new_trial`` method.
         self._events = None
+
+        # The ``_ratio_values`` member variable will hold a
+        # (N_pdfratios,N_events)-shaped array holding the PDF ratio values of
+        # each PDF ratio object for each event. It will be created by the
+        # ``initialize_for_new_trial`` method.
+        self._ratio_values = None
 
         # Create a mapping of fit parameter index to pdfratio index. We
         # initialize the mapping with -1 first in order to be able to check in
@@ -176,10 +180,6 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         check_mask = (self._fitparam_idx_2_pdfratio_idx == -1)
         if(np.any(check_mask)):
             raise KeyError('%d fit parameters are not defined in any of the PDF ratio instances!'%(np.sum(check_mask)))
-
-        # Create a (N_pdfratios,N_events)-shaped array to hold the PDF ratio
-        # values of each PDF ratio object for each event.
-        self._ratio_values = np.empty((len(self._pdfratio_list),len(self._events)), dtype=np.float)
 
         # Create the list of indices of the PDFRatio instances, which depend on
         # at least one fit parameter.

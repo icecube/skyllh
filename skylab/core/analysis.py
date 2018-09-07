@@ -13,7 +13,11 @@ from skylab.core.parameters import (
 )
 from skylab.core.pdf import SpatialPDF, EnergyPDF
 from skylab.core.pdfratio import PDFRatio
-from skylab.core.llhratio import SingleSourceDatasetSignalWeights
+from skylab.core.llhratio import (
+    SingleSourceDatasetSignalWeights,
+    SingleSourceTCLLHRatio,
+    MultiDatasetTCLLHRatio
+)
 from skylab.core.scrambling import DataScramblingMethod
 from skylab.core.optimize import EventSelectionMethod, AllEventSelectionMethod
 from skylab.core.source_hypothesis import SourceHypoGroupManager
@@ -421,13 +425,16 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
         # For multiple datasets we need a dataset signal weights instance in
         # order to distribute ns over the different datasets.
         dataset_signal_weights = SingleSourceDatasetSignalWeights(
-            self._source, self._src_fitparam_mapper, detsigeff_list)
+            self._src_hypo_group_manager, self._src_fitparam_mapper, detsigeff_list)
 
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
         llhratio_list = []
         for (j, dataset) in enumerate(self.dataset_list):
-            pdfratio_list = [self._spatial_pdfratio_list[j], self._energy_pdfratio_list[j]]
+            pdfratio_list = [
+                self._spatial_pdfratio_list[j],
+                self._energy_pdfratio_list[j]
+            ]
             llhratio = SingleSourceTCLLHRatio(pdfratio_list, self._src_fitparam_mapper)
             llhratio_list.append(llhratio)
 
