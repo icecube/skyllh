@@ -15,7 +15,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     signal parameters are the parameters that influence the source flux model.
     """
     def __init__(self, data_mc, logE_binning, sinDec_binning, fluxmodel,
-                 fitparams_grid_set, ncpu=None):
+                 fitparam_grid_set, ncpu=None):
         """Creates a new IceCube energy signal PDF for a given flux model and
         a set of fit parameter grids for the flux model.
         It creates a set of I3EnergyPDF objects for each signal parameter value
@@ -43,23 +43,27 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             The binning definition for the sin(declination).
         fluxmodel : FluxModel
             The flux model to use to create the signal energy PDF.
-        fitparams_grid_set : ParameterGridSet
-            The set of fit parameter grids. A ParameterGrid object for each
+        fitparam_grid_set : ParameterGridSet | ParameterGrid
+            The set of parameter grids. A ParameterGrid object for each
             energy fit parameter, for which an I3EnergyPDF object needs to be
             created.
         ncpu : int | None (default)
             The number of CPUs to use to create the different I3EnergyPDF
             objects for the different fit parameter grid values.
         """
+        if(isinstance(fitparam_grid_set, ParameterGrid)):
+            fitparam_grid_set = ParameterGridSet(fitparam_grid_set)
+        if(not isinstance(fitparam_grid_set, ParameterGridSet)):
+            raise TypeError('The fitparam_grid_set argument must be an instance of ParameterGrid or ParameterGridSet!')
+
         # We need to extend the fit parameter grids on the lower and upper end
         # by one bin to allow for the calculation of the interpolation. But we
         # will do this on a copy of the object.
-        fitparams_grid_set = fitparams_grid_set.copy()
-        fitparams_grid_set.add_extra_lower_and_upper_bin()
-        print fitparams_grid_set.grid
+        fitparam_grid_set = fitparam_grid_set.copy()
+        fitparam_grid_set.add_extra_lower_and_upper_bin()
 
         super(SignalI3EnergyPDFSet, self).__init__(pdf_type=I3EnergyPDF,
-            fitparams_grid_set=fitparams_grid_set, ncpu=ncpu)
+            fitparams_grid_set=fitparam_grid_set, ncpu=ncpu)
 
         if(not isinstance(logE_binning, BinningDefinition)):
             raise TypeError('The logE_binning argument must be an instance of BinningDefinition!')
