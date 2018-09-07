@@ -465,7 +465,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
 
             # Select events that have potential to be signal. This is for
             # runtime optimization only.
-            events = self._event_selection_method(events)
+            events = self._event_selection_method.select_events(events)
             n_selected_events = len(events)
 
             # Initialize the log-likelihood ratio function of the dataset with

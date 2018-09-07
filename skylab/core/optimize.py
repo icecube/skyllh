@@ -125,7 +125,7 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
         # Calculate the minus and plus declination around the source and bound
         # it to -90deg and +90deg, respectively.
         src_dec_minus = np.maximum(-np.pi/2, self.src_dec - self.delta_angle)
-        src_dec_plus = np.minimum(self.src_dec + self.delta_ang, np.pi/2)
+        src_dec_plus = np.minimum(self.src_dec + self.delta_angle, np.pi/2)
 
         # Calculate the cosine factor for the largest declination distance from
         # the source. We use np.amin here because smaller cosine values are
@@ -135,7 +135,7 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
 
         # Calculate delta RA, which is a function of declination.
         # dRA is a (N_sources,)-shaped ndarray.
-        dRA = np.amin([np.repeat(2*np.pi, len(self.src_ra)), 2*self.delta_ang / cosfact], axis=0)
+        dRA = np.amin([np.repeat(2*np.pi, len(self.src_ra)), 2*self.delta_angle / cosfact], axis=0)
 
         # Calculate the right-ascension distance of the events w.r.t. the
         # source. We make sure to use the smaller distance on the circle, thus
