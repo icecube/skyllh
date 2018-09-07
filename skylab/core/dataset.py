@@ -441,8 +441,18 @@ class Dataset(object):
         """
         fileloader_exp = storage.create_FileLoader(self.exp_pathfilename_list)
         fileloader_mc  = storage.create_FileLoader(self.mc_pathfilename_list)
-        self._data_exp = fileloader_exp.load_data()
-        self._data_mc  = fileloader_mc.load_data()
+        data_exp = fileloader_exp.load_data()
+        data_mc  = fileloader_mc.load_data()
+
+        # Convert the arrays into column-major stored arrays. Because most of
+        # the data operations operate column wise, this will be assure fastest
+        # access in memory.
+        data_exp = np.array(data_exp, order='F', copy=True, ndmin=1)
+        data_mc = np.array(data_mc, order='F', copy=True, ndmin=1)
+
+        self._data_exp = data_exp
+        self._data_mc = data_mc
+
         return self
 
     def add_data_preparation(self, func):
