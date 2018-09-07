@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skylab.core.analysis import UsesBinning
+from skylab.core.binning import UsesBinning
 from skylab.core.pdf import PDFAxis, EnergyPDF
 
 class I3EnergyPDF(EnergyPDF, UsesBinning):
