@@ -195,6 +195,7 @@ class IsSingleDatasetAnalysis(object):
         super(IsSingleDatasetAnalysis, self).__init__()
 
         self._dataset = None
+        self._data = None
 
     @property
     def dataset(self):
@@ -208,6 +209,18 @@ class IsSingleDatasetAnalysis(object):
         self._dataset = ds
 
     @property
+    def data(self):
+        """The DatasetData instance holding the original data of the dataset for
+        the analysis.
+        """
+        return self._data
+    @data.setter
+    def data(self, d):
+        if(not isinstance(d, DatasetData)):
+            raise TypeError('The data property must be an instance of DatasetData!')
+        self._data = d
+
+    @property
     def n_datasets(self):
         """(read-only) The number of used datasets in this analysis.
         """
@@ -218,13 +231,14 @@ class IsSingleDatasetAnalysis(object):
 
 class IsMultiDatasetAnalysis(object):
     """This is the class classifier class to specify that an analysis is made
-    for multiple datasets. This class provides the ``dataset_list`` property
-    and the ``add_dataset`` method.
+    for multiple datasets. This class provides the ``dataset_list`` and
+    ``data_list`` property, and the ``add_dataset`` method.
     """
     def __init__(self):
         super(IsMultiDatasetAnalysis, self).__init__()
 
         self._dataset_list = []
+        self._data_list = []
 
     @property
     def dataset_list(self):
@@ -238,22 +252,41 @@ class IsMultiDatasetAnalysis(object):
         self._dataset_list = list(datasets)
 
     @property
+    def data_list(self):
+        """The list of DatasetData instances holding the original data of the
+        dataset.
+        """
+        return self._data_list
+    @data_list.setter
+    def data_list(self, datas):
+        if(not issequenceof(datas, DatasetData)):
+            raise TypeError('The data_list property must be a sequence of DatasetData instances!')
+        self._data_list = list(datas)
+
+    @property
     def n_datasets(self):
         """(read-only) The number of datasets used in this analysis.
         """
         return len(self._dataset_list)
 
-    def add_dataset(self, dataset):
+    def add_dataset(self, dataset, data):
         """Adds the given dataset to the list of datasets for this analysis.
 
         Parameters
         ----------
-        dataset : Dataset
+        dataset : Dataset instance
             The Dataset instance that should get added.
+        data : DatasetData instance
+            The DatasetData instance holding the original (prepared) data of the
+            dataset.
         """
         if(not isinstance(dataset, Dataset)):
             raise TypeError('The dataset argument must be an instance of Dataset!')
+        if(not isinstance(data, DatasetData)):
+            raise TypeError('The data argument must be an instance of DatasetData!')
+
         self._dataset_list.append(dataset)
+        self._data_list.append(data)
 
 
 class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMultiDatasetAnalysis):
@@ -338,11 +371,11 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
             raise TypeError('The event_selection_method property must be an instance of EventSelectionMethod!')
         self._event_selection_method = method
 
-    def add_dataset(self, dataset, spatial_pdfratio, energy_pdfratio):
+    def add_dataset(self, dataset, data, spatial_pdfratio, energy_pdfratio):
         """Adds a dataset with its spatial and energy PDF ratio instances to the
         analysis.
         """
-        super(MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis, self).add_dataset(dataset)
+        super(MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis, self).add_dataset(dataset, data)
 
         if(not isinstance(spatial_pdfratio, PDFRatio)):
             raise TypeError('The spatial_pdfratio argument must be an instance of PDFRatio!')
@@ -363,10 +396,6 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
         log-likelihood ratio functions for each dataset and the final composite
         llh ratio function.
         """
-        # Load the data of each dataset.
-        for dataset in self.dataset_list:
-            dataset.load_and_prepare_data()
-
         # Create the detector signal efficiency instances for each dataset.
         # Since this is for a single source, we don't have to have individual
         # detector signal efficiency instances for each source as well.
@@ -376,7 +405,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
         if((len(detsigeff_implmethod_list) != 1) and
            (len(detsigeff_implmethod_list) != self.n_datasets)):
             raise ValueError('The number of detector signal efficiency implementation methods is not 1 and does not match the number of used datasets in the analysis!')
-        for (j, dataset) in enumerate(self.dataset_list):
+        for (j, (dataset, data)) in enumerate(zip(self.dataset_list, self.data_list)):
             if(len(detsigeff_implmethod_list) == 1):
                 # Only one detsigeff implementation method was defined, so we
                 # use it for all datasets.
@@ -385,7 +414,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
                 detsigeff_implmethod = detsigeff_implmethod_list[j]
 
             detsigeff = detsigeff_implmethod.construct_detsigeff(
-                dataset, fluxmodel, dataset.livetime)
+                dataset, data, fluxmodel, dataset.livetime)
             detsigeff_list.append(detsigeff)
 
         # For multiple datasets we need a dataset signal weights instance in
@@ -418,8 +447,8 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
                   DataScrambler, the scrambling of the data might be inplace,
                   changing the experimental data of the dataset itself!
         """
-        for (dataset, llhratio) in zip(self._dataset_list, self._llhratio.llhratio_list):
-            events = dataset.data_exp
+        for (data, llhratio) in zip(self._data_list, self._llhratio.llhratio_list):
+            events = data.exp
             n_all_events = len(events)
 
             # Scramble the data if requested.
