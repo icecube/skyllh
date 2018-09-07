@@ -6,7 +6,7 @@ import numpy as np
 from astropy import units
 
 from skylab.core.py import issequenceofsubclass
-from skylab.core.dataset import Dataset
+from skylab.core.dataset import Dataset, DatasetData
 from skylab.core.livetime import Livetime
 from skylab.physics.source import SourceModel
 from skylab.physics.flux import FluxModel
