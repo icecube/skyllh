@@ -51,25 +51,25 @@ class I3DetSigEff(DetSigEff):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, implmethod, dataset, fluxmodel, livetime, sinDec_binning):
+    def __init__(self, implmethod, dataset, fluxmodel, livetime, sin_dec_binning):
         """Constructor of the IceCube specific detector signal efficiency base
         class.
         """
         super(I3DetSigEff, self).__init__(implmethod, dataset, fluxmodel, livetime)
 
-        self.sinDec_binning = sinDec_binning
+        self.sin_dec_binning = sin_dec_binning
 
     @property
-    def sinDec_binning(self):
+    def sin_dec_binning(self):
         """The BinningDefinition instance defining the sin(dec) binning
         definition.
         """
-        return self._sinDec_binning
-    @sinDec_binning.setter
-    def sinDec_binning(self, bd):
+        return self._sin_dec_binning
+    @sin_dec_binning.setter
+    def sin_dec_binning(self, bd):
         if(not isinstance(bd, BinningDefinition)):
-            raise TypeError('The sinDec_binning property must be an instance of BinningDefinition!')
-        self._sinDec_binning = bd
+            raise TypeError('The sin_dec_binning property must be an instance of BinningDefinition!')
+        self._sin_dec_binning = bd
 
 
 class I3DetSigEffImplMethod(DetSigEffImplMethod):
@@ -78,45 +78,45 @@ class I3DetSigEffImplMethod(DetSigEffImplMethod):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sinDec_binning=None, *args, **kwargs):
+    def __init__(self, sin_dec_binning=None, *args, **kwargs):
         """Constructor of the IceCube specific detector signal efficiency
         implementation base class.
 
         Parameters
         ----------
-        sinDec_binning : BinningDefinition instance
+        sin_dec_binning : BinningDefinition instance
             The instance of BinningDefinition defining the binning of sin(dec).
         """
         super(I3DetSigEffImplMethod, self).__init__(*args, **kwargs)
 
-        self.sinDec_binning = sinDec_binning
+        self.sin_dec_binning = sin_dec_binning
 
     @property
-    def sinDec_binning(self):
+    def sin_dec_binning(self):
         """The BinningDefinition instance for the sin(dec) binning that should
         be used for computing the sin(dec) dependency of the detector signal
         efficiency. If None, the binning is supposed to be taken from the
         Dataset's binning definitions.
         """
-        return self._sinDec_binning
-    @sinDec_binning.setter
-    def sinDec_binning(self, binning):
+        return self._sin_dec_binning
+    @sin_dec_binning.setter
+    def sin_dec_binning(self, binning):
         if((binning is not None) and
            (not isinstance(binning, BinningDefinition))):
-            raise TypeError('The sinDec_binning property must be None, or an instance of BinningDefinition!')
-        self._sinDec_binning = binning
+            raise TypeError('The sin_dec_binning property must be None, or an instance of BinningDefinition!')
+        self._sin_dec_binning = binning
 
-    def get_sinDec_binning(self, dataset):
+    def get_sin_dec_binning(self, dataset):
         """Gets the sin(dec) binning definition either as setting from this
         detector signal efficiency implementation method itself, or from the
         given dataset.
         """
-        sinDec_binning = self.sinDec_binning
-        if(sinDec_binning is None):
+        sin_dec_binning = self.sin_dec_binning
+        if(sin_dec_binning is None):
             if(not dataset.has_binning_definition('sin_dec')):
                 raise KeyError('No binning definition named "sin_dec" is defined in the dataset and no user defined binning definition was provided to this detector signal efficiency implementation method!')
-            sinDec_binning = dataset.get_binning_definition('sin_dec')
-        return sinDec_binning
+            sin_dec_binning = dataset.get_binning_definition('sin_dec')
+        return sin_dec_binning
 
 
 class PointLikeSourceI3DetSigEffImplMethod(I3DetSigEffImplMethod):
@@ -129,13 +129,13 @@ class PointLikeSourceI3DetSigEffImplMethod(I3DetSigEffImplMethod):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sinDec_binning=None, *args, **kwargs):
+    def __init__(self, sin_dec_binning=None, *args, **kwargs):
         """Initializes a new detector signal efficiency implementation method
         object.
 
         Parameters
         ----------
-        sinDec_binning : BinningDefinition | None
+        sin_dec_binning : BinningDefinition | None
             The BinningDefinition instance defining the sin(dec) binning that
             should be used to compute the sin(dec) dependency of the detector
             effective area. If set to None, the binning will be taken from the
@@ -180,7 +180,7 @@ class FixedFluxPointLikeSourceI3DetSigEff(I3DetSigEff):
     FixedFluxPointLikeSourceI3DetSigEffImplMethod detector signal efficiency
     implementation method.
     """
-    def __init__(self, implmethod, dataset, fluxmodel, livetime, sinDec_binning, log_spl_sinDec):
+    def __init__(self, implmethod, dataset, fluxmodel, livetime, sin_dec_binning, log_spl_sinDec):
         """Constructs an IceCube detector signal efficiency instance for a
         point-like source with a fixed flux.
 
@@ -197,7 +197,7 @@ class FixedFluxPointLikeSourceI3DetSigEff(I3DetSigEff):
             efficiency is made for.
         livetime : float | Livetime instance
             The livetime in days or an instance of Livetime.
-        sinDec_binning : BinningDefinition instance
+        sin_dec_binning : BinningDefinition instance
             The binning definition for sin(dec).
         log_spl_sinDec : scipy.interpolate.InterpolatedUnivariateSpline
             The spline instance representing the log value of the detector
@@ -207,7 +207,7 @@ class FixedFluxPointLikeSourceI3DetSigEff(I3DetSigEff):
             raise TypeError('The implmethod argument must be an instance of FixedFluxPointLikeSourceI3DetSigEffImplMethod!')
 
         super(FixedFluxPointLikeSourceI3DetSigEff, self).__init__(
-            implmethod, dataset, fluxmodel, livetime, sinDec_binning)
+            implmethod, dataset, fluxmodel, livetime, sin_dec_binning)
 
         self.log_spl_sinDec = log_spl_sinDec
 
@@ -253,8 +253,8 @@ class FixedFluxPointLikeSourceI3DetSigEff(I3DetSigEff):
 
         # Create mask for all source declinations which are inside the
         # declination range.
-        mask = (np.sin(src_dec) >= self._sinDec_binning.lower_edge)\
-              &(np.sin(src_dec) <= self._sinDec_binning.upper_edge)
+        mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge)\
+              &(np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
 
         values[mask] = np.exp(self._log_spl_sinDec(np.sin(src_dec[mask])))
 
@@ -278,7 +278,7 @@ class FixedFluxPointLikeSourceI3DetSigEffImplMethod(
     effective area depends soley on the zenith angle, and hence on the
     declination, of the source.
     """
-    def __init__(self, sinDec_binning=None, spline_order_sinDec=2):
+    def __init__(self, sin_dec_binning=None, spline_order_sinDec=2):
         """Creates a new IceCube detector signal efficiency implementation
         method object for a fixed flux model. It requires a sinDec binning
         definition to compute the sin(dec) dependency of the detector effective
@@ -288,7 +288,7 @@ class FixedFluxPointLikeSourceI3DetSigEffImplMethod(
 
         Parameters
         ----------
-        sinDec_binning : BinningDefinition
+        sin_dec_binning : BinningDefinition
             The BinningDefinition instance which defines the sin(dec) binning.
         spline_order_sinDec : int
             The order of the spline function for the logarithmic values of the
@@ -296,7 +296,7 @@ class FixedFluxPointLikeSourceI3DetSigEffImplMethod(
             The default is 2.
         """
         super(FixedFluxPointLikeSourceI3DetSigEffImplMethod, self).__init__(
-            sinDec_binning)
+            sin_dec_binning)
 
         self.supported_fluxmodels = (FluxModel,)
 
@@ -314,14 +314,16 @@ class FixedFluxPointLikeSourceI3DetSigEffImplMethod(
             raise TypeError('The spline_order_sinDec property must be of type int!')
         self._spline_order_sinDec = order
 
-    def construct_detsigeff(self, dataset, fluxmodel, livetime):
+    def construct_detsigeff(self, dataset, data, fluxmodel, livetime):
         """Constructs a detector signal efficiency log spline function for the
         given fixed flux model.
 
         Parameters
         ----------
         dataset : Dataset instance
-            The Dataset instance holding the monte-carlo event data.
+            The Dataset instance holding meta information about the data.
+        data : DatasetData instance
+            The DatasetData instance holding the monte-carlo event data.
             The numpy record ndarray holding the monte-carlo event data must
             contain the following data fields:
             'true_dec' : float
@@ -343,14 +345,14 @@ class FixedFluxPointLikeSourceI3DetSigEffImplMethod(
         """
         # Check data types of the input arguments.
         super(FixedFluxPointLikeSourceI3DetSigEffImplMethod, self).construct_detsigeff(
-            dataset, fluxmodel, livetime)
+            dataset, data, fluxmodel, livetime)
 
         # Get integrated live-time in days.
         livetime_days = self.get_integrated_livetime_in_days(livetime)
 
         # Get the sin(dec) binning definition either as setting from this
         # implementation method, or from the dataset.
-        sinDec_binning = self.get_sinDec_binning(dataset)
+        sin_dec_binning = self.get_sin_dec_binning(dataset)
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
@@ -358,24 +360,24 @@ class FixedFluxPointLikeSourceI3DetSigEffImplMethod(
 
         # Calculate the detector signal efficiency contribution of each event.
         # The unit of mcweight is assumed to be GeV cm^2 sr.
-        w = dataset.data_mc["mcweight"] * fluxmodel(dataset.data_mc["true_energy"])*toGeVcm2s * livetime_days * 86400.
+        w = data.mc["mcweight"] * fluxmodel(data.mc["true_energy"])*toGeVcm2s * livetime_days * 86400.
 
         # Create a histogram along sin(true_dec).
-        (h, bins) = np.histogram(np.sin(dataset.data_mc["true_dec"]),
+        (h, bins) = np.histogram(np.sin(data.mc["true_dec"]),
                                  weights = w,
-                                 bins = sinDec_binning.binedges,
+                                 bins = sin_dec_binning.binedges,
                                  density = False)
 
         # Normalize by solid angle of each bin which is
         # 2*\pi*(\Delta sin(\delta)).
-        h /= (2.*np.pi * np.diff(sinDec_binning.binedges))
+        h /= (2.*np.pi * np.diff(sin_dec_binning.binedges))
 
         # Create spline in ln(h) at the histogram's bin centers.
         log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
-            sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
+            sin_dec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
 
         detsigeff = FixedFluxPointLikeSourceI3DetSigEff(
-            self, dataset, fluxmodel, livetime, sinDec_binning, log_spl_sinDec)
+            self, dataset, fluxmodel, livetime, sin_dec_binning, log_spl_sinDec)
 
         return detsigeff
 
@@ -386,7 +388,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEff(I3DetSigEff):
     implementation method.
     """
     def __init__(self, implmethod, dataset, fluxmodel, livetime,
-                 sinDec_binning, log_spl_sinDec_gamma):
+                 sin_dec_binning, log_spl_sinDec_gamma):
         """Constructs the detector signal efficiency instance.
 
         """
@@ -394,7 +396,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEff(I3DetSigEff):
             raise TypeError('The implmethod argument must be an instance of PowerLawFluxPointLikeSourceI3DetSigEffImplMethod!')
 
         super(PowerLawFluxPointLikeSourceI3DetSigEff, self).__init__(
-            implmethod, dataset, fluxmodel, livetime, sinDec_binning)
+            implmethod, dataset, fluxmodel, livetime, sin_dec_binning)
 
         self.log_spl_sinDec_gamma = log_spl_sinDec_gamma
 
@@ -443,8 +445,8 @@ class PowerLawFluxPointLikeSourceI3DetSigEff(I3DetSigEff):
         # Calculate the detector signal efficiency only for the sources for
         # which we actually have efficiency. For the other sources, the detector
         # signal efficiency is zero.
-        mask = (np.sin(src_dec) >= self._sinDec_binning.lower_edge)\
-              &(np.sin(src_dec) <= self._sinDec_binning.upper_edge)
+        mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge)\
+              &(np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
 
         values[mask] = np.exp(self._log_spl_sinDec_gamma(
             np.sin(src_dec[mask]), src_gamma[mask], grid=False))
@@ -471,7 +473,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
     effective area depends soley on the zenith angle, and hence on the
     declination, of the source.
     """
-    def __init__(self, gamma_grid, sinDec_binning=None,
+    def __init__(self, gamma_grid, sin_dec_binning=None,
                  spline_order_sinDec=2, spline_order_gamma=2, ncpu=None):
         """Creates a new IceCube detector signal efficiency implementation
         method object for a power law flux model. It requires a sinDec binning
@@ -483,7 +485,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
         ----------
         gamma_grid : ParameterGrid instance
             The ParameterGrid instance which defines the grid of gamma values.
-        sinDec_binning : BinningDefinition | None
+        sin_dec_binning : BinningDefinition | None
             The BinningDefinition instance which defines the sin(dec) binning.
             If set to None, the sin(dec) binning will be taken from the
             dataset's binning definitions.
@@ -500,7 +502,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
             not specified, i.e. set to None.
         """
         super(PowerLawFluxPointLikeSourceI3DetSigEffImplMethod, self).__init__(
-            sinDec_binning, ncpu=ncpu)
+            sin_dec_binning, ncpu=ncpu)
 
         self.supported_fluxmodels = (PowerLawFlux,)
 
@@ -551,15 +553,16 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
         """
         return ['gamma']
 
-    def construct_detsigeff(self, dataset, fluxmodel, livetime):
+    def construct_detsigeff(self, dataset, data, fluxmodel, livetime):
         """Constructs a detector signal efficiency 2-dimensional log spline
         function for the given power law flux model with varying gamma values.
 
         Parameters
         ----------
         dataset : Dataset instance
-            The Dataset instance holding the monte-carlo event data and the
-            sin(dec) binning definition.
+            The Dataset instance holding the sin(dec) binning definition.
+        data : DatasetData instance
+            The DatasetData instance holding the monte-carlo event data.
             The numpy record array for the monte-carlo data of the dataset must
             contain the following data fields:
             'true_dec' : float
@@ -583,14 +586,14 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
         """
         # Check for the correct data types of the input arguments.
         super(PowerLawFluxPointLikeSourceI3DetSigEffImplMethod, self).construct_detsigeff(
-            dataset, fluxmodel, livetime)
+            dataset, data, fluxmodel, livetime)
 
         # Get integrated live-time in days.
         livetime_days = self.get_integrated_livetime_in_days(livetime)
 
         # Get the sin(dec) binning definition either as setting from this
         # implementation method, or from the dataset.
-        sinDec_binning = self.get_sinDec_binning(dataset)
+        sin_dec_binning = self.get_sin_dec_binning(dataset)
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
@@ -599,7 +602,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
         # Define a function that creates a detector signal efficiency histogram
         # along sin(dec) for a given flux model, i.e. for given spectral index,
         # gamma.
-        def hist(data_sin_true_dec, data_true_energy, sinDec_binning, weights, fluxmodel):
+        def hist(data_sin_true_dec, data_true_energy, sin_dec_binning, weights, fluxmodel):
             """Creates a histogram of the detector signal efficiency with the
             given sin(dec) binning.
 
@@ -609,7 +612,7 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
                 The sin(true_dec) values of the monte-carlo events.
             data_true_energy : 1d ndarray
                 The true energy of the monte-carlo events.
-            sinDec_binning : BinningDefinition
+            sin_dec_binning : BinningDefinition
                 The sin(dec) binning definition to use for the histogram.
             weights : 1d ndarray
                 The weight factors of each monte-carlo event where only the
@@ -624,13 +627,13 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
                 The numpy array containing the histogram values.
             """
             (h, edges) = np.histogram(data_sin_true_dec,
-                                      bins = sinDec_binning.binedges,
+                                      bins = sin_dec_binning.binedges,
                                       weights = weights * fluxmodel(data_true_energy),
                                       density = False)
             return h
 
-        data_sin_true_dec = np.sin(dataset.data_mc["true_dec"])
-        weights = dataset.data_mc["mcweight"] * toGeVcm2s * livetime_days * 86400.
+        data_sin_true_dec = np.sin(data.mc["true_dec"])
+        weights = data.mc["mcweight"] * toGeVcm2s * livetime_days * 86400.
 
         # Make a copy of the gamma grid and extend the grid by one bin on each
         # side.
@@ -639,19 +642,19 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
 
         # Construct the arguments for the hist function to be used in the
         # multiproc.parallelize function.
-        args_list = [ ((data_sin_true_dec, dataset.data_mc['true_energy'], sinDec_binning, weights, fluxmodel.copy({'gamma':gamma})),{})
+        args_list = [ ((data_sin_true_dec, data.mc['true_energy'], sin_dec_binning, weights, fluxmodel.copy({'gamma':gamma})),{})
                      for gamma in gamma_grid.grid ]
         h = np.vstack(multiproc.parallelize(hist, args_list, self.ncpu)).T
 
         # Normalize by solid angle of each bin along the sin(dec) axis.
         # The solid angle is given by 2*\pi*(\Delta sin(\delta))
-        h /= (2.*np.pi * np.diff(sinDec_binning.binedges)).reshape((sinDec_binning.nbins,1))
+        h /= (2.*np.pi * np.diff(sin_dec_binning.binedges)).reshape((sin_dec_binning.nbins,1))
 
         log_spl_sinDec_gamma = scipy.interpolate.RectBivariateSpline(
-            sinDec_binning.bincenters, gamma_grid.grid, np.log(h),
+            sin_dec_binning.bincenters, gamma_grid.grid, np.log(h),
             kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
 
         detsigeff = PowerLawFluxPointLikeSourceI3DetSigEff(
-            self, dataset, fluxmodel, livetime, sinDec_binning, log_spl_sinDec_gamma)
+            self, dataset, fluxmodel, livetime, sin_dec_binning, log_spl_sinDec_gamma)
 
         return detsigeff
