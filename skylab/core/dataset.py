@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import os.path
 import numpy as np
 from copy import deepcopy
 
@@ -770,3 +771,49 @@ def remove_events(data_exp, mjds):
         data_exp = data_exp[~mask]
 
     return data_exp
+
+def generate_data_file_path(
+    default_base_path, default_sub_path,
+    version, verqualifiers,
+    base_path=None, sub_path=None
+):
+    """Generates the path to the data files based on the given base path and
+    sub path. If base_path is None, default_base_path is used. If sub_path is
+    None, default_sub_path is used.
+
+    The default_sub_path and sub_path can contain the following wildcards:
+        - '%(version)d'
+        - '%(<verqualifiers_key>)d'
+
+    Parameters
+    ----------
+    default_base_path : str
+        The default base path if base_path is None.
+    default_sub_path : str
+        The default sub path if sub_path is None.
+    version : int
+        The version of the data sample.
+    verqualifiers : dict
+        The dictionary holding the version qualifiers of the data sample.
+    base_path : str | None
+        The user-specified base path.
+    sub_path : str | None
+        The user-specified sub path.
+
+    Returns
+    -------
+    path : str
+        The generated data file path.
+    """
+    if(base_path is None):
+        base_path = default_base_path
+
+    if(sub_path is None):
+        sub_path = default_sub_path
+
+    subdict = dict( [('version', version) + verqualifiers.items()] )
+    sub_path = sub_path%subdict
+
+    path = os.path.join(base_path, sub_path)
+
+    return path
