@@ -733,3 +733,30 @@ class DatasetCollection(object):
         """
         for (dsname, dataset) in self._datasets.iteritems():
             dataset.update_version_qualifiers(verqualifiers)
+
+def remove_events(data_exp, mjds):
+    """Utility function to remove events having the specified MJD time stamps.
+
+    Parameters
+    ----------
+    data_exp : numpy record ndarray
+        The numpy record ndarray holding the experimental data events.
+    mjds : float | array of floats
+        The MJD time stamps of the events, that should get removed from the
+        experimental data array.
+
+    Returns
+    -------
+    data_exp : numpy record ndarray
+        The array holding the experimental data events with the specified events
+        removed.
+    """
+    mjds = np.atleast_1d(mjds)
+
+    for time in mjds:
+        mask = data_exp['time'] == time
+        if(np.sum(mask) > 1):
+            raise LookupError('The MJD time stamp %f is not unique!'%(time))
+        data_exp = data_exp[~mask]
+
+    return data_exp
