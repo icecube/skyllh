@@ -9,7 +9,7 @@ from skylab.physics.flux import FluxModel
 
 from skylab.i3.pdf import I3EnergyPDF
 
-class SignalI3EnergyPDF(PDFSet, IsSignalPDF, IsParallelizable):
+class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     """This is the signal energy PDF for IceCube. It creates a set of
     I3EnergyPDF objects for a discrete set of energy signal parameters. Energy
     signal parameters are the parameters that influence the source flux model.
@@ -58,7 +58,7 @@ class SignalI3EnergyPDF(PDFSet, IsSignalPDF, IsParallelizable):
         fitparams_grid_set.add_extra_lower_and_upper_bin()
         print fitparams_grid_set.grid
 
-        super(SignalI3EnergyPDF, self).__init__(pdf_type=I3EnergyPDF,
+        super(SignalI3EnergyPDFSet, self).__init__(pdf_type=I3EnergyPDF,
             fitparams_grid_set=fitparams_grid_set, ncpu=ncpu)
 
         if(not isinstance(logE_binning, BinningDefinition)):
