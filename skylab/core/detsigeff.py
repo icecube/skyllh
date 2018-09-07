@@ -252,7 +252,7 @@ class DetSigEffImplMethod(object):
         return False
 
     @abc.abstractmethod
-    def construct_detsigeff(self, dataset, fluxmodel, livetime):
+    def construct_detsigeff(self, dataset, data, fluxmodel, livetime):
         """Abstract method to construct the DetSigEff instance.
         This method must be called by the derived class method implementation
         to ensure the compatibility check of the given flux model with the
@@ -261,8 +261,9 @@ class DetSigEffImplMethod(object):
         Parameters
         ----------
         dataset : Dataset
-            The Dataset instance holding the monte-carlo event data, and
-            possible dataset specific settings.
+            The Dataset instance holding possible dataset specific settings.
+        data : DatasetData
+            The DatasetData instance holding the monte-carlo event data.
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime
@@ -275,6 +276,8 @@ class DetSigEffImplMethod(object):
         """
         if(not isinstance(dataset, Dataset)):
             raise TypeError('The dataset argument must be an instance of Dataset!')
+        if(not isinstance(data, DatasetData)):
+            raise TypeError('The data argument must be an instance of DatasetData!')
         if(not self.supports_fluxmodel(fluxmodel)):
             raise TypeError('The DetSigEffImplMethod "%s" does not support the flux model "%s"!'%(self.__class__.__name__, fluxmodel.__class__.__name__))
         if((not isinstance(livetime, float)) and
