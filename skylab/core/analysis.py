@@ -6,12 +6,13 @@
 import abc
 
 from skylab.core.py import issequenceof
-from skylab.core.dataset import Dataset
+from skylab.core.dataset import Dataset, DatasetData
 from skylab.core.parameters import (
     SourceFitParameterMapper,
     SingleSourceFitParameterMapper
 )
 from skylab.core.pdf import SpatialPDF, EnergyPDF
+from skylab.core.pdfratio import PDFRatio
 from skylab.core.llhratio import SingleSourceDatasetSignalWeights
 from skylab.core.scrambling import DataScramblingMethod
 from skylab.core.optimize import EventSelectionMethod, AllEventSelectionMethod

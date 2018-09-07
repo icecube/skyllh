@@ -4,6 +4,7 @@ import numpy as np
 
 from skylab.core.binning import BinningDefinition
 from skylab.core.multiproc import IsParallelizable, parallelize
+from skylab.core.parameters import ParameterGrid, ParameterGridSet
 from skylab.core.pdf import PDFSet, IsSignalPDF
 from skylab.physics.flux import FluxModel
 
@@ -52,7 +53,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             objects for the different fit parameter grid values.
         """
         if(isinstance(fitparam_grid_set, ParameterGrid)):
-            fitparam_grid_set = ParameterGridSet(fitparam_grid_set)
+            fitparam_grid_set = ParameterGridSet([fitparam_grid_set])
         if(not isinstance(fitparam_grid_set, ParameterGridSet)):
             raise TypeError('The fitparam_grid_set argument must be an instance of ParameterGrid or ParameterGridSet!')
 
