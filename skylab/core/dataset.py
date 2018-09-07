@@ -251,7 +251,9 @@ class Dataset(object):
                 raise TypeError('The version qualifier "%s" must be of type str!'%(q))
             if(not isinstance(v, int)):
                 raise TypeError('The version for the qualifier "%s" must be of type int!'%(q))
-        self._verqualifiers = verqualifiers
+        # We need to take a deep copy in order to make sure that two datasets
+        # don't share the same version qualifier dictionary.
+        self._verqualifiers = deepcopy(verqualifiers)
 
     @property
     def version_str(self):
@@ -811,7 +813,7 @@ def generate_data_file_path(
     if(sub_path is None):
         sub_path = default_sub_path
 
-    subdict = dict( [('version', version) + verqualifiers.items()] )
+    subdict = dict( [('version', version)] + verqualifiers.items() )
     sub_path = sub_path%subdict
 
     path = os.path.join(base_path, sub_path)
