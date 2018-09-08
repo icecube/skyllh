@@ -3,6 +3,7 @@
 import os
 import os.path
 import numpy as np
+from numpy.lib import recfunctions as np_rfn
 from copy import deepcopy
 
 from skylab.core.binning import BinningDefinition
@@ -23,13 +24,16 @@ class Dataset(object):
     _MC_FIELD_NAMES = ('true_ra', 'true_dec', 'true_energy', 'mcweight')
 
     @staticmethod
-    def add_required_exp_field_names(fieldnames):
+    def add_required_exp_field_names(cls, fieldnames):
         """Static method to add required experimental data field names to the
         list of already required field names for experimental data.
         This method is useful for derived dataset classes.
 
         Parameters
         ----------
+        cls : class object
+            The class object, for which the new set of required exp field names
+            should apply.
         fieldnames : str | list of str
             The field name or the list of field names to add.
         """
@@ -38,16 +42,19 @@ class Dataset(object):
         if(not issequenceof(fieldnames, str)):
             raise TypeError('The fieldnames argument must be a sequence of str objects!')
 
-        Dataset._EXP_FIELD_NAMES = tuple(list(Dataset._EXP_FIELD_NAMES) + fieldnames)
+        cls._EXP_FIELD_NAMES = tuple(list(Dataset._EXP_FIELD_NAMES) + fieldnames)
 
     @staticmethod
-    def add_required_mc_field_names(fieldnames):
+    def add_required_mc_field_names(cls, fieldnames):
         """Static method to add required monte-carlo field names to the list of
         already required field names for the monte-carlo.
         This method is useful for derived dataset classes.
 
         Parameters
         ----------
+        cls : class object
+            The class object, for which the new set of required mc field names
+            should apply.
         fieldnames : str | list of str
             The field name or the list of field names to add.
         """
@@ -56,7 +63,7 @@ class Dataset(object):
         if(not issequenceof(fieldnames, str)):
             raise TypeError('The fieldnames argument must be a sequence of str objects!')
 
-        Dataset._MC_FIELD_NAMES = tuple(list(Dataset._MC_FIELD_NAMES) + fieldnames)
+        cls._MC_FIELD_NAMES = tuple(list(Dataset._MC_FIELD_NAMES) + fieldnames)
 
     @staticmethod
     def get_combined_exp_pathfilenames(datasets):
@@ -411,11 +418,26 @@ class Dataset(object):
         for func in self._data_preparation_functions:
             (data.exp, data.mc) = func(data.exp, data.mc)
 
-    def load_and_prepare_data(self):
+    def load_and_prepare_data(self, keep_fields=None, compress=False):
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
-        It also asserts the data format of the experimental and monte-carlo
-        data.
+        After loading the data it drops all unnecessary data fields if they are
+        not listed in ``keep_fields``.
+        In the end it asserts the data format of the experimental and
+        monte-carlo data.
+
+        Parameters
+        ----------
+        keep_fields : sequence of str | None
+            The list of additional data fields that should get kept.
+            By default only the required data fields are kept.
+        compress : bool
+            Flag if the float64 data fields of the data should get converted,
+            i.e. compressed, into float32 data fields, in order to save main
+            memory.
+            The only field, which will not get converted is the 'mcweight'
+            field, in order to ensure reliable calculations.
+            Default is False.
 
         Returns
         -------
@@ -423,8 +445,30 @@ class Dataset(object):
             The DatasetData instance holding the experimental and monte-carlo
             data.
         """
+        if(keep_fields is None):
+            keep_fields = tuple()
+        if(not issequenceof(keep_fields, str)):
+            raise TypeError('The keep_fields argument must be None, or a sequence of str!')
+        keep_fields = tuple(keep_fields)
+
         data = self.load_data()
         self.prepare_data(data)
+
+        # Drop unrequired data fields.
+        data.exp = tidy_up_recarray(
+            data.exp, keep_fields=(type(self)._EXP_FIELD_NAMES +
+                                   keep_fields))
+        data.mc = tidy_up_recarray(
+            data.mc, keep_fields=(type(self)._EXP_FIELD_NAMES +
+                                  type(self)._MC_FIELD_NAMES +
+                                  keep_fields))
+
+        # Convert float64 fields into float32 fields if requested.
+        if(compress):
+            data.exp = convert_recarray_fields_float64_into_float32(
+                data.exp, order='F')
+            data.mc = convert_recarray_fields_float64_into_float32(
+                data.mc, except_fields=('mcweight',), order='F')
 
         assert_data_format(self, data)
 
@@ -727,6 +771,73 @@ class DatasetData(object):
         self._mc = data
 
 
+def tidy_up_recarray(arr, keep_fields):
+    """Tidies up the given numpy record array by dropping all fields, which are
+    not specified through the keep_fields argument.
+
+    Parameters
+    ----------
+    arr : numpy record ndarray
+        The numpy record ndarray, which should get tidied up.
+    keep_fields : list of str
+        The list of field names which should get kept.
+
+    Returns
+    -------
+    cleaned_arr : numpy record ndarray
+        The cleaned record array.
+    """
+    if(not isinstance(arr, np.ndarray)):
+        raise TypeError('The arr argument must be an instance of numpy.ndarray!')
+    if(not issequenceof(keep_fields, str)):
+        raise TypeError('The keep_fields argument must be a sequence of str!')
+
+    drop_fields = [ fname for (fname, ftype) in arr.dtype.descr
+                   if fname not in keep_fields ]
+    cleaned_arr = np_rfn.drop_fields(arr, drop_fields, usemask=False)
+
+    return cleaned_arr
+
+def convert_recarray_fields_float64_into_float32(arr, except_fields=None, order='K'):
+    """Converts the float64 data fields of the given record ndarray into float32
+    data fields.
+
+    Parameters
+    ----------
+    arr : numpy record ndarray
+        The numpy record ndarray holding the data that should get converted
+        into 32bit values.
+    except_fields : list of str | None
+        The list of field names, which should not get converted.
+    order : str
+        The order of the converted record array. This is one of
+        {'C', 'F', 'A', 'K'}.
+
+    Returns
+    -------
+    converted_arr : numpy record ndarray
+        The numpy record ndarray with the converted data.
+    """
+    if(not isinstance(arr, np.ndarray)):
+        raise TypeError('The arr argument must be an instance of numpy.ndarray!')
+    if(except_fields is None):
+        except_fields = []
+    if(not issequenceof(except_fields, str)):
+        raise TypeError('The except_fields argument must be a sequence of str!')
+
+    dt_fields = arr.dtype.descr
+    for (i, (fname, ftype)) in enumerate(dt_fields):
+        # Do not convert fields that are present in except_fields.
+        if(fname in except_fields):
+            continue
+        # Convert float64 field into float32 field.
+        if(ftype == np.dtype(np.float64).str):
+            dt_fields[i] = (fname, np.float32)
+
+    converted_arr = arr.astype(dt_fields, order=order)
+
+    return converted_arr
+
 def assert_data_format(dataset, data):
     """Checks the format of the experimental and monte-carlo data.
 
@@ -743,13 +854,15 @@ def assert_data_format(dataset, data):
                 missing_keys.append(reqkey)
         return missing_keys
 
+    dataset_cls = type(dataset)
+
     # Check experimental data keys.
-    missing_exp_keys = _get_missing_keys(data.exp.dtype.names, Dataset._EXP_FIELD_NAMES)
+    missing_exp_keys = _get_missing_keys(data.exp.dtype.names, dataset_cls._EXP_FIELD_NAMES)
     if(len(missing_exp_keys) != 0):
         raise KeyError('The following data fields are missing for the experimental data of dataset "%s": '%(dataset.name)+', '.join(missing_exp_keys))
 
     # Check monte-carlo data keys.
-    missing_mc_keys = _get_missing_keys(data.mc.dtype.names, Dataset._EXP_FIELD_NAMES + Dataset._MC_FIELD_NAMES)
+    missing_mc_keys = _get_missing_keys(data.mc.dtype.names, dataset_cls._EXP_FIELD_NAMES + dataset_cls._MC_FIELD_NAMES)
     if(len(missing_mc_keys) != 0):
         raise KeyError('The following data fields are missing for the monte-carlo data of dataset "%s": '%(dataset.name)+', '.join(missing_mc_keys))
 

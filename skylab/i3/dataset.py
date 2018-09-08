@@ -65,5 +65,9 @@ class I3Dataset(Dataset):
 
         data.exp = np_rfn.append_fields(data.exp,
             'sin_dec', np.sin(data.exp['dec']), dtypes=np.float, usemask=False)
+        data.mc = np_rfn.append_fields(data.mc,
+            'sin_dec', np.sin(data.mc['dec']), dtypes=np.float, usemask=False)
 
         return data
+
+I3Dataset.add_required_exp_field_names(I3Dataset, ['sin_dec'])
