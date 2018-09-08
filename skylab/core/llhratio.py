@@ -230,14 +230,14 @@ class TCLLHRatio(LLHRatio):
         # Calculate the log_lambda_i value for the numerical stable events.
         log_lambda_i[stablemask] = np.log1p(alpha_i[stablemask])
         # Calculate the log_lambda_i value for the numerical unstable events.
-        tildealpha_i = (alpha_i[unstablemask] - alpha) / _one_plus_alpha
+        tildealpha_i = (alpha_i[unstablemask] - alpha) / TCLLHRatio._one_plus_alpha
         log_lambda_i[unstablemask] = np.log1p(alpha) + tildealpha_i - 0.5*tildealpha_i**2
 
         # Calculate the log_lambda value and account for pure background events.
         log_lambda = np.sum(log_lambda_i) + (N - Nprime)*np.log1p(-ns/N)
 
         # Calculate the gradient for each fit parameter.
-        grads = np.empty((dXi_ps.shape[1]+1,), dtype=np.float)
+        grads = np.empty((dXi_ps.shape[0]+1,), dtype=np.float)
 
         # Pre-calculate value that is used twice for the gradients of the
         # numerical stable events.

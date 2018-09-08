@@ -473,13 +473,13 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
             n_pure_bkg_events = n_all_events - n_selected_events
             llhratio.initialize_for_new_trial(events, n_pure_bkg_events)
 
-    def maximize_llhratio(self, ns_fitparam):
+    def maximize_llhratio(self, fitparam_ns):
         """Maximizes the log-likelihood ratio function, by minimizing its
         negative.
 
         Parameters
         ----------
-        ns_fitparam : instance of FitParameter
+        fitparam_ns : instance of FitParameter
             The instance of FitParameter for the fit parameter ``ns``.
 
         Returns
@@ -503,8 +503,8 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
             return (-f, -grads)
 
         # Get the fit parameter set and add the ns fit parameter at the front.
-        fitparamset = self._src_fitparam_mapper.fitparamset
-        fitparamset.add_fitparam(ns_fitparam, atfront=True)
+        fitparamset = self._src_fitparam_mapper.fitparamset.copy()
+        fitparamset.add_fitparam(fitparam_ns, atfront=True)
 
         (fitparam_values, fmin, status) = self._minimizer.minimize(fitparamset, func)
         log_lambda_max = -fmin

@@ -270,16 +270,17 @@ class FitParameterManifoldGridInterpolationMethod(object):
         return len(self.fitparams_grid_set)
 
     @abc.abstractmethod
-    def get_value_and_gradients(self, events, fitparams):
+    def get_value_and_gradients(self, eventdata, fitparams):
         """Retrieves the interpolated value of the manifold at the d-dimensional
         point ``fitparams`` for all given events, along with the d gradients,
         i.e. partial derivatives.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the
-            manifold value should get calculated.
+        eventdata : numpy (N_events,V)-shaped 2D ndarray
+            The 2D (N_events,V)-shaped numpy ndarray holding the event data,
+            where N_events is the number of events, and V the dimensionality of
+            the event data.
         fitparams : dict
             The dictionary with the fit parameter values, defining the point
             on the manifold for which the value should get calculated.
@@ -328,15 +329,16 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
             'b': b
         }
 
-    def get_value_and_gradients(self, events, fitparams):
+    def get_value_and_gradients(self, eventdata, fitparams):
         """Calculates the interpolted manifold value and its gradient for each
         given event at the point ``fitparams``.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the
-            manifold value should get calculated.
+        eventdata : numpy (N_events,V)-shaped 2D ndarray
+            The 2D (N_events,V)-shaped numpy ndarray holding the event data,
+            where N_events is the number of events, and V the dimensionality of
+            the event data.
         fitparams : dict
             The dictionary with the fit parameter values, defining the point
             on the manifold for which the value should get calculated.
@@ -357,11 +359,11 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
 
         # Check if the parabola parametrization for x1 is already cached.
         if((self._cache['x1'] == x1) and
-           (len(events) == len(self._cache['M1']))
+           (eventdata.shape[0] == len(self._cache['M1']))
           ):
-            M1 = self._cache_parabola['M1']
-            a = self._cache_parabola['a']
-            b = self._cache_parabola['b']
+            M1 = self._cache['M1']
+            a = self._cache['a']
+            b = self._cache['b']
         else:
             # Calculate the neighboring gridponts to x1: x0 and x2.
             x0 = self.p_grid.round_to_precision(x1 - dx)
@@ -527,8 +529,19 @@ class FitParameterSet(object):
         """(read-only) The 2D (N_fitparams,2)-shaped ndarray holding the
         boundaries for all the global fit parameters.
         """
-        return np.array([ (fitparam.valmin, fitparams.valmax)
+        return np.array([ (fitparam.valmin, fitparam.valmax)
                          for fitparam in self._fitparams ], dtype=np.float)
+
+    def copy(self):
+        """Creates a deep copy of this FitParameterSet instance.
+
+        Returns
+        -------
+        copy : FitParameterSet instance
+            The copied instance of this FitParameterSet instance.
+        """
+        copy = deepcopy(self)
+        return copy
 
     def add_fitparam(self, fitparam, atfront=False):
         """Adds the given FitParameter instance to the list of fit parameters.

@@ -233,7 +233,7 @@ class Minimizer(object):
     def minimizer_impl(self, impl):
         if(not isinstance(impl, MinimizerImpl)):
             raise TypeError('The minimizer_impl property must be an instance of MinimizerImpl!')
-        self._minimize_impl = impl
+        self._minimizer_impl = impl
 
     @property
     def max_repetitions(self):
