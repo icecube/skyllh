@@ -5,6 +5,7 @@ functions.
 """
 
 import abc
+import numpy as np
 
 
 class TestStatistic(object):
