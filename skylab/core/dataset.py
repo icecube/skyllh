@@ -379,7 +379,7 @@ class Dataset(object):
         data_exp = np.array(data_exp, order='F', copy=True, ndmin=1)
         data_mc = np.array(data_mc, order='F', copy=True, ndmin=1)
 
-        data = DatasetData(self, data_exp, data_mc)
+        data = DatasetData(data_exp, data_mc)
         return data
 
     def add_data_preparation(self, func):
@@ -399,6 +399,18 @@ class Dataset(object):
             raise TypeError('The argument "func" must be a callable object with call signature __call__(exp, mc)!')
         self._data_preparation_functions.append(func)
 
+    def prepare_data(self, data):
+        """Prepares the data by calling the data preparation callback functions
+        of this dataset.
+
+        Parameters
+        ----------
+        data : DatasetData instance
+            The DatasetData instance holding the data.
+        """
+        for func in self._data_preparation_functions:
+            (data.exp, data.mc) = func(data.exp, data.mc)
+
     def load_and_prepare_data(self):
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
@@ -412,8 +424,10 @@ class Dataset(object):
             data.
         """
         data = self.load_data()
-        data.prepare_data()
-        data.assert_data_format()
+        self.prepare_data(data)
+
+        assert_data_format(self, data)
+
         return data
 
     def add_binning_definition(self, binning):
@@ -665,20 +679,16 @@ class DatasetData(object):
     monto-carlo data. It also holds a reference to the Dataset instance, which
     holds the data's meta information.
     """
-    def __init__(self, dataset, data_exp, data_mc):
+    def __init__(self, data_exp, data_mc):
         """Creates a new DatasetData instance.
 
         Parameters
         ----------
-        dataset : Dataset instance
-            The Dataset instance, which holds the meta information about the
-            data.
         data_exp : numpy record ndarray
             The numpy record ndarray holding the experimental data.
         data_mc : numpy record ndarray
             The numpy record ndarray holding the monto-carlo data.
         """
-        self.dataset = dataset
         self.exp = data_exp
         self.mc = data_mc
 
@@ -716,45 +726,32 @@ class DatasetData(object):
             raise TypeError('The data_mc property must be an instance of numpy.ndarray!')
         self._mc = data
 
-    def assert_data_format(self):
-        """Checks the format of the experimental and monte-carlo data.
 
-        Errors
-        ------
-        KeyError
-            If a required data field is missing.
+def assert_data_format(dataset, data):
+    """Checks the format of the experimental and monte-carlo data.
 
-        """
-        def _get_missing_keys(keys, required_keys):
-            missing_keys = []
-            for reqkey in required_keys:
-                if(reqkey not in keys):
-                    missing_keys.append(reqkey)
-            return missing_keys
+    Errors
+    ------
+    KeyError
+        If a required data field is missing.
 
-        # Check experimental data keys.
-        missing_exp_keys = _get_missing_keys(self._exp.dtype.names, Dataset._EXP_FIELD_NAMES)
-        if(len(missing_exp_keys) != 0):
-            raise KeyError('The following data fields are missing for the experimental data of dataset "%s": '%(self._dataset.name)+', '.join(missing_exp_keys))
+    """
+    def _get_missing_keys(keys, required_keys):
+        missing_keys = []
+        for reqkey in required_keys:
+            if(reqkey not in keys):
+                missing_keys.append(reqkey)
+        return missing_keys
 
-        # Check monte-carlo data keys.
-        missing_mc_keys = _get_missing_keys(self._mc.dtype.names, Dataset._EXP_FIELD_NAMES + Dataset._MC_FIELD_NAMES)
-        if(len(missing_mc_keys) != 0):
-            raise KeyError('The following data fields are missing for the monte-carlo data of dataset "%s": '%(self._dataset.name)+', '.join(missing_mc_keys))
+    # Check experimental data keys.
+    missing_exp_keys = _get_missing_keys(data.exp.dtype.names, Dataset._EXP_FIELD_NAMES)
+    if(len(missing_exp_keys) != 0):
+        raise KeyError('The following data fields are missing for the experimental data of dataset "%s": '%(dataset.name)+', '.join(missing_exp_keys))
 
-    def prepare_data(self):
-        """Prepares the data by calling the data preparation callback functions
-        of the assigned dataset.
-
-        Returns
-        -------
-        self : DatasetData
-            The DatasetData instance itself.
-        """
-        for func in self._dataset.data_preparation_functions:
-            (self.exp, self.mc) = func(self._exp, self._mc)
-
-        return self
+    # Check monte-carlo data keys.
+    missing_mc_keys = _get_missing_keys(data.mc.dtype.names, Dataset._EXP_FIELD_NAMES + Dataset._MC_FIELD_NAMES)
+    if(len(missing_mc_keys) != 0):
+        raise KeyError('The following data fields are missing for the monte-carlo data of dataset "%s": '%(dataset.name)+', '.join(missing_mc_keys))
 
 
 def remove_events(data_exp, mjds):
