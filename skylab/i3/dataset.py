@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
+from numpy.lib import recfunctions as np_rfn
+
 from skylab.core.dataset import Dataset
 
 class I3Dataset(Dataset):
@@ -45,3 +48,22 @@ class I3Dataset(Dataset):
             for pathfilename in self.grl_pathfilename_list:
                 s += '%s%s\n'%(pad*2, pathfilename)
         return s
+
+    def load_data(self):
+        """Loads the data, which is described by the dataset and pre-calculates
+        the following data fields:
+            - sin_dec: float
+                The sin value of the declination coordinate.
+
+        Returns
+        -------
+        data : DatasetData
+            A DatasetData instance holding the experimental and monte-carlo
+            data.
+        """
+        data = super(I3Dataset, self).load_data()
+
+        data.exp = np_rfn.append_fields(data.exp,
+            'sin_dec', np.sin(data.exp['dec']), dtypes=np.float, usemask=False)
+
+        return data
