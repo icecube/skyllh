@@ -8,6 +8,7 @@ import abc
 from skylab.core.py import issequenceof
 from skylab.core.dataset import Dataset, DatasetData
 from skylab.core.parameters import (
+    FitParameter,
     SourceFitParameterMapper,
     SingleSourceFitParameterMapper
 )
@@ -47,7 +48,7 @@ class Analysis(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
-                 test_statistic):
+                 test_statistic, data_scrambler):
         """Constructor of the analysis base class.
 
         Parameters
@@ -65,6 +66,9 @@ class Analysis(object):
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
+        data_scrambler : instance of DataScrambler
+            The instance of DataScrambler that will scramble the data for a new
+            analysis trial.
         """
         # Call the super function to allow for multiple class inheritance.
         super(Analysis, self).__init__()
@@ -73,6 +77,7 @@ class Analysis(object):
         self.src_hypo_group_manager = src_hypo_group_manager
         self.src_fitparam_mapper = src_fitparam_mapper
         self.test_statistic = test_statistic
+        self.data_scrambler = data_scrambler
 
         # Predefine the variable for the log-likelihood ratio function.
         self._llhratio = None
@@ -125,6 +130,17 @@ class Analysis(object):
         if(not isinstance(ts, TestStatistic)):
             raise TypeError('The test_statistic property must be an instance of TestStatistic!')
         self._test_statistic = ts
+
+    @property
+    def data_scrambler(self):
+        """The DataScrambler instance that implements the data scrambling.
+        """
+        return self._data_scrambler
+    @data_scrambler.setter
+    def data_scrambler(self, scrambler):
+        if(not isinstance(scrambler, DataScrambler)):
+            raise TypeError('The data_scrambler property must be an instance of DataScrambler!')
+        self._data_scrambler = scrambler
 
     @property
     def llhratio(self):
@@ -309,6 +325,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
            ``maximize_llhratio`` method.
     """
     def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+                 fitparam_ns,
                  test_statistic, data_scrambler, event_selection_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
@@ -325,6 +342,8 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
         src_fitparam_mapper : instance of SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
+        fitparam_ns : FitParameter instance
+            The FitParameter instance defining the fit parameter ns.
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
@@ -343,25 +362,31 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
             raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
 
         super(MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis, self).__init__(
-            minimizer, src_hypo_group_manager, src_fitparam_mapper, test_statistic)
+            minimizer, src_hypo_group_manager, src_fitparam_mapper,
+            test_statistic, data_scrambler)
 
-        self.data_scrambler = data_scrambler
+        self.fitparam_ns = fitparam_ns
         self.event_selection_method = event_selection_method
 
-        self._llhratio = None
         self._spatial_pdfratio_list = []
         self._energy_pdfratio_list = []
 
+        # Create the FitParameterSet instance holding the fit parameter ns and
+        # all the other additional fit parameters. This set is used by the
+        # ``maximize_llhratio`` method.
+        self._fitparamset = self._src_fitparam_mapper.fitparamset.copy()
+        self._fitparamset.add_fitparam(self._fitparam_ns, atfront=True)
+
     @property
-    def data_scrambler(self):
-        """The DataScrambler instance that implements the data scrambling.
+    def fitparam_ns(self):
+        """The FitParameter instance for the fit parameter ns.
         """
-        return self._data_scrambler
-    @data_scrambler.setter
-    def data_scrambler(self, scrambler):
-        if(not isinstance(scrambler, DataScrambler)):
-            raise TypeError('The data_scrambler property must be an instance of DataScrambler!')
-        self._data_scrambler = scrambler
+        return self._fitparam_ns
+    @fitparam_ns.setter
+    def fitparam_ns(self, fitparam):
+        if(not isinstance(fitparam, FitParameter)):
+            raise TypeError('The fitparam_ns property must be an instance of FitParameter!')
+        self._fitparam_ns = fitparam
 
     @property
     def event_selection_method(self):
@@ -473,14 +498,9 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
             n_pure_bkg_events = n_all_events - n_selected_events
             llhratio.initialize_for_new_trial(events, n_pure_bkg_events)
 
-    def maximize_llhratio(self, fitparam_ns):
+    def maximize_llhratio(self):
         """Maximizes the log-likelihood ratio function, by minimizing its
         negative.
-
-        Parameters
-        ----------
-        fitparam_ns : instance of FitParameter
-            The instance of FitParameter for the fit parameter ``ns``.
 
         Returns
         -------
@@ -502,12 +522,9 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
             (f, grads) = self._llhratio.evaluate(fitparam_values)
             return (-f, -grads)
 
-        # Get the fit parameter set and add the ns fit parameter at the front.
-        fitparamset = self._src_fitparam_mapper.fitparamset.copy()
-        fitparamset.add_fitparam(fitparam_ns, atfront=True)
-
-        (fitparam_values, fmin, status) = self._minimizer.minimize(fitparamset, func)
+        (fitparam_values, fmin, status) = self._minimizer.minimize(
+            self._fitparamset, func)
         log_lambda_max = -fmin
 
-        return (fitparamset, log_lambda_max, fitparam_values, status)
+        return (self._fitparamset, log_lambda_max, fitparam_values, status)
 
