@@ -5,7 +5,7 @@ import abc
 import numpy as np
 
 from skylab.core.random import RandomStateService
-from skylab.core.time import TimeGenerator
+from skylab.core.times import TimeGenerator
 
 class DataScramblingMethod(object):
     """Base class (type) for implementing a data scrambling method.
