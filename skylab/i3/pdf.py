@@ -73,7 +73,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             normed = False)
         self._hist_mask_mc_covered_zero_physics = h > 0
 
-        # Create a 2D histogram which only the data which as physics
+        # Create a 2D histogram with only the data which has physics
         # contribution. We will do the normalization along the logE
         # axis manually.
         data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
