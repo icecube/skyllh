@@ -4,6 +4,14 @@ import numpy as np
 
 from skylab.core.binning import UsesBinning
 from skylab.core.pdf import PDFAxis, EnergyPDF
+from skylab.core.smoothing import (
+    UNSMOOTH_AXIS,
+    SmoothingFilter,
+    HistSmoothingMethod,
+    NoHistSmoothingMethod,
+    NeighboringBinHistSmoothingMethod
+)
+
 
 class I3EnergyPDF(EnergyPDF, UsesBinning):
     """This is the base class for all IceCube specific energy PDF models.
@@ -14,7 +22,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
     but for different sin(declination) bins, hence, stored as a 2d histogram.
     """
     def __init__(self, data_logE, data_sinDec, data_mcweight, data_physicsweight,
-                 logE_binning, sinDec_binning):
+                 logE_binning, sinDec_binning, smoothing_filter):
         """Creates a new IceCube energy PDF object.
 
         Parameters
@@ -35,6 +43,9 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             The binning definition for the log(E) axis.
         sinDec_binning : BinningDefinition
             The binning definition for the sin(declination) axis.
+        smoothing_filter : SmoothingFilter instance | None
+            The smoothing filter to use for smoothing the energy histogram.
+            If None, no smoothing will be applied.
         """
         super(I3EnergyPDF, self).__init__()
 
@@ -49,8 +60,20 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         self.add_binning(logE_binning, 'log_energy')
         self.add_binning(sinDec_binning, 'sin_dec')
 
+        # Create the smoothing method instance tailored to the energy PDF.
+        # We will smooth only the first axis (logE).
+        if((smoothing_filter is not None) and
+           (not isinstance(smoothing_filter, SmoothingFilter))):
+            raise TypeError('The smoothing_filter argument must be None or an instance of SmoothingFilter!')
+        if(smoothing_filter is None):
+            self.hist_smoothing_method = NoHistSmoothingMethod()
+        else:
+            self.hist_smoothing_method = NeighboringBinHistSmoothingMethod(
+                (smoothing_filter.axis_kernel_array, UNSMOOTH_AXIS))
+
         # We have to figure out, which histogram bins are zero due to no
-        # monte-carlo coverage which due to zero physics model contribution.
+        # monte-carlo coverage, and which due to zero physics model
+        # contribution.
 
         # Create a 2D histogram with only the MC events to determine the MC
         # coverage.
@@ -58,6 +81,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             bins = [logE_binning.binedges, sinDec_binning.binedges],
             range = [logE_binning.range, sinDec_binning.range],
             normed = False)
+        h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered = h > 0
 
         # Select the events which have MC coverage but zero physics
@@ -71,6 +95,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             bins = [logE_binning.binedges, sinDec_binning.binedges],
             range = [logE_binning.range, sinDec_binning.range],
             normed = False)
+        h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered_zero_physics = h > 0
 
         # Create a 2D histogram with only the data which has physics
@@ -89,8 +114,21 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         # is a 2D array of the same shape as h.
         norms = np.sum(h, axis=(0,))[np.newaxis,...] * np.diff(logE_binning.binedges)[...,np.newaxis]
         h /= norms
+        h = self._hist_smoothing_method.smooth(h)
 
         self._hist_logE_sinDec = h
+
+    @property
+    def hist_smoothing_method(self):
+        """The HistSmoothingMethod instance defining the smoothing filter of the
+        energy PDF histogram.
+        """
+        return self._hist_smoothing_method
+    @hist_smoothing_method.setter
+    def hist_smoothing_method(self, method):
+        if(not isinstance(method, HistSmoothingMethod)):
+            raise TypeError('The hist_smoothing_method property must be an instance of HistSmoothingMethod!')
+        self._hist_smoothing_method = method
 
     @property
     def hist(self):

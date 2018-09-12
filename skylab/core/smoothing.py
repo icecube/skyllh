@@ -62,7 +62,7 @@ class NoHistSmoothingMethod(HistSmoothingMethod):
 class NeighboringBinHistSmoothingMethod(HistSmoothingMethod):
     """This class implements
     """
-    def __init__(self, axis_kernel_arrays)
+    def __init__(self, axis_kernel_arrays):
         """Constructs a new neighboring bin histogram smoothing method.
 
         Parameters
@@ -110,13 +110,17 @@ class NeighboringBinHistSmoothingMethod(HistSmoothingMethod):
             if(self._k.shape[d] > h.shape[d]):
                 raise ValueError('The shape value (%d) of dimension %d of ndarray k must be smaller than or equal to the shape value (%d) of dimension %d of ndarray h!'%(self._k.shape[d], d, h.shape[d], d))
 
-        norm = scipy.signal.convolve(np.ones_like(h), k, mode="same")
-        smoothed_h = scipy.signal.convolve(h, k, mode="same") / norm
+        norm = scipy.signal.convolve(np.ones_like(h), self._k, mode="same")
+        smoothed_h = scipy.signal.convolve(h, self._k, mode="same") / norm
 
         return smoothed_h
 
 
 class SmoothingFilter(object):
+    """This class provides a base class for a histogram smoothing filter. It
+    provides an axis kernel array that defines how many neighboring bins of a
+    histogram bin should be used to smooth that histogram bin.
+    """
     def __init__(self, axis_kernel_array):
         super(SmoothingFilter, self).__init__()
 
@@ -128,8 +132,8 @@ class SmoothingFilter(object):
         """
         return self._axis_kernel_array
     @axis_kernel_array.setter
-    axis_kernel_array(self, arr):
-        if(not isinstance(arr, ndarray)):
+    def axis_kernel_array(self, arr):
+        if(not isinstance(arr, np.ndarray)):
             raise TypeError('The axis_kernel_array property must be an instance of numpy.ndarray!')
         self._axis_kernel_array = arr
 

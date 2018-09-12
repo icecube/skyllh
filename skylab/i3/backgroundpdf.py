@@ -178,7 +178,8 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     experimental data. This class is derived from I3EnergyPDF.
     """
-    def __init__(self, data_exp, logE_binning, sinDec_binning):
+    def __init__(self, data_exp, logE_binning, sinDec_binning,
+                 smoothing_filter=None):
         """Constructs a new IceCube energy background PDF from experimental
         data.
 
@@ -196,6 +197,9 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             The binning definition for the binning in log10(E).
         sinDec_binning : BinningDefinition
             The binning definition for the sin(declination).
+        smoothing_filter : SmoothingFilter instance | None
+            The smoothing filter to use for smoothing the energy histogram.
+            If None, no smoothing will be applied.
         """
         if(not isinstance(data_exp, np.ndarray)):
             raise TypeError('The data_exp argument must be of type numpy.ndarray!')
@@ -209,14 +213,15 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         # Create the PDF using the base class.
         super(DataBackgroundI3EnergyPDF, self).__init__(
             data_logE, data_sinDec, data_mcweight, data_physicsweight,
-            logE_binning, sinDec_binning
+            logE_binning, sinDec_binning, smoothing_filter
         )
 
 class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     monte-carlo data. This class is derived from I3EnergyPDF.
     """
-    def __init__(self, data_mc, physics_weight_field_names, logE_binning, sinDec_binning):
+    def __init__(self, data_mc, physics_weight_field_names, logE_binning,
+                 sinDec_binning, smoothing_filter=None):
         """Constructs a new IceCube energy background PDF from monte-carlo
         data.
 
@@ -241,6 +246,9 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             The binning definition for the binning in log10(E).
         sinDec_binning : BinningDefinition
             The binning definition for the sin(declination).
+        smoothing_filter : SmoothingFilter instance | None
+            The smoothing filter to use for smoothing the energy histogram.
+            If None, no smoothing will be applied.
         """
         if(not isinstance(data_mc, np.ndarray)):
             raise TypeError('The data_mc argument must be of type numpy.ndarray!')
@@ -265,5 +273,5 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         # Create the PDF using the base class.
         super(MCBackgroundI3EnergyPDF, self).__init__(
             data_logE, data_sinDec, data_mcweight, data_physicsweight,
-            logE_binning, sinDec_binning
+            logE_binning, sinDec_binning, smoothing_filter
         )

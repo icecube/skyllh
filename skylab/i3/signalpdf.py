@@ -5,6 +5,7 @@ import numpy as np
 from skylab.core.binning import BinningDefinition
 from skylab.core.multiproc import IsParallelizable, parallelize
 from skylab.core.parameters import ParameterGrid, ParameterGridSet
+from skylab.core.smoothing import SmoothingFilter
 from skylab.core.pdf import PDFSet, IsSignalPDF
 from skylab.physics.flux import FluxModel
 
@@ -16,7 +17,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     signal parameters are the parameters that influence the source flux model.
     """
     def __init__(self, data_mc, logE_binning, sinDec_binning, fluxmodel,
-                 fitparam_grid_set, ncpu=None):
+                 fitparam_grid_set, smoothing_filter=None, ncpu=None):
         """Creates a new IceCube energy signal PDF for a given flux model and
         a set of fit parameter grids for the flux model.
         It creates a set of I3EnergyPDF objects for each signal parameter value
@@ -48,6 +49,9 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             The set of parameter grids. A ParameterGrid object for each
             energy fit parameter, for which an I3EnergyPDF object needs to be
             created.
+        smoothing_filter : SmoothingFilter instance | None
+            The smoothing filter to use for smoothing the energy histogram.
+            If None, no smoothing will be applied.
         ncpu : int | None (default)
             The number of CPUs to use to create the different I3EnergyPDF
             objects for the different fit parameter grid values.
@@ -72,11 +76,16 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             raise TypeError('The sinDec_binning argument must be an instance of BinningDefinition!')
         if(not isinstance(fluxmodel, FluxModel)):
             raise TypeError('The fluxmodel argument must be an instance of FluxModel!')
+        if((smoothing_filter is not None) and
+           (not isinstance(smoothing_filter, SmoothingFilter))):
+            raise TypeError('The smoothing_filter argument must be None or an instance of SmoothingFilter!')
 
         # Create I3EnergyPDF objects for all permutations of the fit parameter
         # grid values.
-        def create_I3EnergyPDF(data_logE, data_sinDec, data_mcweight, data_true_energy,
-                               logE_binning, sinDec_binning, fluxmodel, gridfitparams):
+        def create_I3EnergyPDF(
+            data_logE, data_sinDec, data_mcweight, data_true_energy,
+            logE_binning, sinDec_binning, smoothing_filter, fluxmodel,
+            gridfitparams):
             """Creates an I3EnergyPDF object for the given flux model and flux
             parameters.
 
@@ -95,6 +104,9 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 The binning definition for the binning in log10(E).
             sinDec_binning : BinningDefinition
                 The binning definition for the sin(declination).
+            smoothing_filter : SmoothingFilter instance | None
+                The smoothing filter to use for smoothing the energy histogram.
+                If None, no smoothing will be applied.
             fluxmodel : FluxModel
                 The flux model to use to create the signal event weights.
             gridfitparams : dict
@@ -116,8 +128,9 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             # flux unit.
             data_physicsweight = myfluxmodel(data_true_energy)
 
-            i3energypdf = I3EnergyPDF(data_logE, data_sinDec, data_mcweight, data_physicsweight,
-                                      logE_binning, sinDec_binning)
+            i3energypdf = I3EnergyPDF(
+                data_logE, data_sinDec, data_mcweight, data_physicsweight,
+                logE_binning, sinDec_binning, smoothing_filter)
 
             return i3energypdf
 
@@ -127,7 +140,8 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         data_true_energy = data_mc['true_energy']
 
         args_list = [ ((data_logE, data_sinDec, data_mcweight, data_true_energy,
-                        logE_binning, sinDec_binning, fluxmodel, gridfitparams), {})
+                        logE_binning, sinDec_binning, smoothing_filter,
+                        fluxmodel, gridfitparams), {})
                      for gridfitparams in self.gridfitparams_list ]
 
         i3energypdf_list = parallelize(create_I3EnergyPDF, args_list, self.ncpu)
