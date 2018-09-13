@@ -6,8 +6,10 @@ likelihood function.
 
 import numpy as np
 
+from skylab.core.py import issequenceof
 from skylab.core.pdf import SpatialPDF, IsSignalPDF
-from skylab.physics.source import PointLikeSource, PointLikeSourceCollection
+from skylab.core.source_hypothesis import SourceHypoGroupManager
+from skylab.physics.source import PointLikeSource
 
 class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     """This spatial signal PDF model describes the spatial PDF for a point
@@ -20,30 +22,70 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     where \sigma is the spatial uncertainty of the event and r the distance on
     the sphere between the source and the data event.
     """
-    def __init__(self, sources):
+    def __init__(self, src_hypo_group_manager):
         """Creates a new spatial signal PDF for point-like sources with a
-        gaussian PSF.
+        gaussian point-spread-function (PSF).
 
         Parameters
         ----------
-        sources : PointLikeSource | PointLikeSourceCollection
-            The instance of PointLikeSourceCollection containing the
-            PointLikeSource objects for which the spatial PDF values should get
-            calculated for.
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance, that defines the sources, for
+            which the spatial PDF values should get calculated for.
         """
         super(GaussianPSFPointLikeSourceSignalSpatialPDF, self).__init__(
             ra_range=(0, 2*np.pi),
             dec_range=(-np.pi/2, np.pi/2))
 
-        if(isinstance(sources, PointLikeSource)):
-            sources = PointLikeSourceCollection([sources])
-        if(not isinstance(sources, PointLikeSourceCollection)):
-            raise TypeError('The sources argument must be an instance of PointLikeSourceCollection!')
+        if(not isinstance(src_hypo_group_manager, SourceHypoGroupManager)):
+            raise TypeError('The src_hypo_group_manager argument must be an instance of SourceHypoGroupManager!')
 
         # For the calculation ndarrays for the right-ascention and declination
         # of the different point-like sources is more efficient.
-        self.src_ra = np.array([ src.ra for src in sources ])
-        self.src_dec = np.array([ src.dec for src in sources ])
+        self._src_arr = self.source_to_array(src_hypo_group_manager.source_list)
+
+    def source_to_array(self, sources):
+        """Converts the given sequence of PointLikeSource instances into a numpy
+        record array holding the necessary source information for calculating
+        the spatial signal PDF values.
+
+        Parameters
+        ----------
+        sources : sequence of PointLikeSource instances
+            The sequence of PointLikeSource instances for which the signal PDF
+            values should get calculated for.
+
+        Returns
+        -------
+        arr : numpy record ndarray
+            The generated numpy record ndarray holding the necessary source
+            information needed for this spatial signal PDF.
+        """
+        if(not issequenceof(sources, PointLikeSource)):
+            raise TypeError('The sources argument must be a sequence of PointLikeSource instances!')
+
+        arr = np.empty(
+            (len(sources),),
+            dtype=[('ra', np.float), ('dec', np.float)],
+            order='F')
+
+        for (i, src) in enumerate(sources):
+            arr['ra'][i] = src.ra
+            arr['dec'][i] = src.dec
+
+        return arr
+
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the SourceHypoGroupManager instance that defines the sources,
+        for which the spatial signal PDF values should get calculated for.
+        This recreates the internal source array.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance that should be used for this
+            spatial signal PDF.
+        """
+        self._src_arr = self.source_to_array(src_hypo_group_manager.source_list)
 
     def get_prob(self, events, params=None):
         """Calculates the spatial signal probability of each event for all given
@@ -77,8 +119,8 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         # Make the source position angles two-dimensional so the PDF value can
         # be calculated via numpy broadcasting automatically for several
         # sources. This is useful for stacking analyses.
-        src_ra = self.src_ra[:,np.newaxis]
-        src_dec = self.src_dec[:,np.newaxis]
+        src_ra = self._src_arr['ra'][:,np.newaxis]
+        src_dec = self._src_arr['dec'][:,np.newaxis]
 
         # Calculate the cosine of the distance of the source and the event on
         # the sphere.

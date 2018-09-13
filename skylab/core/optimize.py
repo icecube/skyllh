@@ -47,7 +47,13 @@ class EventSelectionMethod(object):
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Changes the SourceHypoGroupManager instance of the event selection
-        method. This will also recreate the source numpy record array.
+        method. This will also recreate the internal source numpy record array.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance, that should be used for
+            this event selection method.
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self._src_arr = self.source_to_array(self._src_hypo_group_manager.source_list)
@@ -200,7 +206,6 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
         selected_events : numpy record array
             The numpy record array holding only the selected events.
         """
-
         # Calculate the minus and plus declination around the source and bound
         # it to -90deg and +90deg, respectively.
         src_dec_minus = np.maximum(-np.pi/2, self._src_arr['dec'] - self.delta_angle)

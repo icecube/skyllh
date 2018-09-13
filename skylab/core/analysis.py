@@ -25,6 +25,7 @@ from skylab.core.source_hypothesis import SourceHypoGroupManager
 from skylab.core.test_statistic import TestStatistic
 from skylab.core.minimizer import Minimizer
 from skylab.core.scrambling import DataScrambler
+from skylab.physics.source import SourceModel
 
 class Analysis(object):
     """This is the abstract base class for all analysis classes. It contains
@@ -465,6 +466,43 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
 
         # Create the final multi-dataset log-likelihood ratio function.
         self._llhratio = MultiDatasetTCLLHRatio(dataset_signal_weights, llhratio_list)
+
+    def change_source(self, source):
+        """Changes the source of the analysis to the given source. It makes the
+        necessary changes to all the objects of the analysis.
+
+        Parameters
+        ----------
+        source : SourceModel instance
+            The SourceModel instance describing the new source.
+        """
+        if(not isinstance(source, SourceModel)):
+            raise TypeError('The source argument must be an instance of SourceModel')
+
+        if(self._llhratio is None):
+            raise RuntimeError('The LLH ratio function has to be constructed, before the change_source method can be called!')
+
+        # Change the source in the SourceHypoGroupManager instance.
+        # Because this is a single source analysis, there can only be one source
+        # hypothesis group defined.
+        self._src_hypo_group_manager.src_hypo_group_list[0].source_list[0] = source
+
+        # Change the source hypo group manager of the EventSelectionMethod
+        # instance.
+        self._event_selection_method.change_source_hypo_group_manager(
+            self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the DatasetSignalWeights
+        # instance of the LLH ratio function.
+        self._llhratio.dataset_signal_weights.change_source_hypo_group_manager(
+            self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the PDFRatio instances of
+        # each single dataset LLH ratio function.
+        for llhratio in self._llhratio.llhratio_list:
+            for pdfratio in llhratio.pdfratio_list:
+                pdfratio.change_source_hypo_group_manager(
+                    self._src_hypo_group_manager)
 
     def initialize_trial(self, scramble=True):
         """Initializes the log-likelihood functions of the different datasets

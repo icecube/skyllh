@@ -83,6 +83,13 @@ class PDFRatio(object):
         """
         return []
 
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """This method must be reimplemented by the derived class if necessary.
+        It is supposed to change the SourceHypoGroupManager instance of the PDF
+        instances, which rely on it. By definition these are the signal PDFs.
+        """
+        pass
+
     @abc.abstractmethod
     def get_ratio(self, events, fitparams=None):
         """Retrieves the PDF ratio value for each given event, given the given
@@ -564,6 +571,18 @@ class SigOverBkgPDFRatio(PDFRatio):
             raise TypeError('The backgroundpdf property must be an instance of IsBackgroundPDF!')
         self._backgroundpdf = pdf
 
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Calls the ``change_source_hypo_group_manager`` method of the signal
+        and background PDF.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance.
+        """
+        self._signalpdf.change_source_hypo_group_manager(src_hypo_group_manager)
+        self._backgroundpdf.change_source_hypo_group_manager(src_hypo_group_manager)
+
     def get_ratio(self, events, fitparams=None):
         """Calculates the PDF ratio for the given events.
 
@@ -688,6 +707,18 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         the signal fit parameters.
         """
         return self._sigpdfset.fitparams_grid_set.parameter_names
+
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Calls the change_source_hypo_group_manager method of the signal
+        PDFSet and background PDF instances.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance.
+        """
+        self._sigpdfset.change_source_hypo_group_manager(src_hypo_group_manager)
+        self._bkgpdf.change_source_hypo_group_manager(src_hypo_group_manager)
 
     def convert_signal_fitparam_name_into_index(self, signal_fitparam_name):
         """Converts the given signal fit parameter name into the parameter

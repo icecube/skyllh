@@ -482,11 +482,39 @@ class DatasetSignalWeights(object):
         # Since all the detector signal efficiency instances must be of the same
         # kind for each dataset, we can just use the one of the first dataset of
         # each source hypothesis group.
-        self._src_arr_list = []
+        self._src_arr_list = self._create_src_arr_list(
+            self._src_hypo_group_manager, self._detsigeff_arr)
+
+    def _create_src_arr_list(self, src_hypo_group_manager, detsigeff_arr):
+        """Pre-convert the source list of each source hypothesis group into a
+        source array needed for the detector signal efficiency evaluation.
+        Since all the detector signal efficiency instances must be of the same
+        kind for each dataset, we can just use the one of the first dataset of
+        each source hypothesis group.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance defining the sources.
+
+        detsigeff_arr : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
+                        DetSigEff instances
+            The collection of DetSigEff instances for each dataset and source
+            group combination.
+        Returns
+        -------
+        src_arr_list : list of numpy record ndarrays
+            The list of the source numpy record ndarrays, one for each source
+            hypothesis group, which is needed by the detector signal efficiency
+            instance.
+        """
+        src_arr_list = []
         for (gidx, src_hypo_group) in enumerate(src_hypo_group_manager.src_hypo_group_list):
-            self._src_arr_list.append(
-                self._detsigeff_arr[gidx,0].source_to_array(src_hypo_group.source_list)
+            src_arr_list.append(
+                detsigeff_arr[gidx,0].source_to_array(src_hypo_group.source_list)
             )
+
+        return src_arr_list
 
     @property
     def src_hypo_group_manager(self):
@@ -534,6 +562,22 @@ class DatasetSignalWeights(object):
         is for.
         """
         return self._detsigeff_arr.shape[1]
+
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the SourceHypoGroupManager instance of this
+        DatasetSignalWeights instance. This will also recreate the internal
+        source numpy record arrays needed for the detector signal efficiency
+        calculation.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance, that should be used for
+            this dataset signal weights instance.
+        """
+        self.src_hypo_group_manager = src_hypo_group_manager
+        self._src_arr_list = self._create_src_arr_list(
+            self._src_hypo_group_manager, self._detsigeff_arr)
 
     @abc.abstractmethod
     def __call__(self, fitparam_values):

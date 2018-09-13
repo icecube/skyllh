@@ -172,6 +172,12 @@ class PDF(object):
             raise TypeError('The axis argument must be an instance of PDFAxis!')
         self._axes += axis
 
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """This method must be reimplemented by the derived class if the
+        derived PDF class relies on the source hypothesis group manager.
+        """
+        pass
+
     @abc.abstractmethod
     def assert_is_valid_for_exp_data(self, data_exp):
         """This abstract method is supposed to check if this PDF is valid for
@@ -434,6 +440,13 @@ class PDFSet(object):
         pdf = self._gridfitparams_hash_pdf_dict[gridfitparams_hash]
         return pdf
 
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Calls the ``change_source_hypo_group_manager`` method of all the PDF
+        instances added to this PDF set.
+        """
+        for (key, pdf) in self._gridfitparams_hash_pdf_dict.iteritems():
+            pdf.change_source_hypo_group_manager(src_hypo_group_manager)
+
 
 class IsBackgroundPDF(object):
     """This is a classifier class that can be used by other classes to indicate
@@ -455,4 +468,3 @@ class IsSignalPDF(object):
         created which derives from this IsSignalPDF class.
         """
         super(IsSignalPDF, self).__init__(*args, **kwargs)
-
