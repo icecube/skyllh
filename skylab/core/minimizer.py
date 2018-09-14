@@ -4,6 +4,8 @@ a function.
 import abc
 import numpy as np
 
+import scipy.optimize
+
 from skylab.core.parameters import FitParameterSet
 
 class MinimizerImpl(object):
@@ -16,7 +18,8 @@ class MinimizerImpl(object):
         super(MinimizerImpl, self).__init__()
 
     @abc.abstractmethod
-    def minimize(self, initials, bounds, func, args=None, kwargs=None):
+    def minimize(self, initials, bounds, func, args=None,
+                 func_provides_grads=True, kwargs=None):
         """This method is supposed to minimize the given function with the given
         initials.
 
@@ -104,11 +107,10 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         """
         super(LBFGSMinimizerImpl, self).__init__()
 
-        # Import the external library here to make it an optional dependency.
-        from scipy.optimize import fmin_l_bfgs_b
-        self._fmin_l_bfgs_b = fmin_l_bfgs_b
+        self._fmin_l_bfgs_b = scipy.optimize.fmin_l_bfgs_b
 
-    def minimize(self, initials, bounds, func, args=None, kwargs=None):
+    def minimize(self, initials, bounds, func, args=None,
+                 func_provides_grads=True, kwargs=None):
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials``.
 
@@ -127,9 +129,14 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
             The return value of ``func`` must be (f, grads), the function value
             at the function arguments ``x`` and the ndarray with the values of
-            the function gradient for each fit parameter.
+            the function gradient for each fit parameter, if
+            ``func_provides_grads`` is set to True. If set to False, it must
+            return only the function value.
         args : sequence | None
             Optional sequence of arguments for ``func``.
+        func_provides_grads : bool
+            Flag if function ``func`` provides its gradients.
+            Default is True.
         kwargs : dict | None
             Optional additional keyword arguments for the underlaying
             ``scipy.optimize.fmin_l_bfgs_b`` minimization function.
@@ -154,7 +161,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             func, initials,
             bounds = bounds,
             args = args,
-            approx_grad = False,
+            approx_grad = not func_provides_grads,
             **kwargs
         )
 
@@ -248,7 +255,7 @@ class Minimizer(object):
             raise TypeError('The maximal repetitions property must be of type int!')
         self._max_repetitions = n
 
-    def minimize(self, fitparamset, func, args=None, kwargs=None):
+    def minimize(self, fitparamset, func, args=None, func_provides_grads=True, kwargs=None):
         """Minimizes the the given function ``func`` by calling the ``minimize``
         method of the minimizer implementation.
 
@@ -270,9 +277,14 @@ class Minimizer(object):
 
             The return value of ``func`` must be (f, grads), the function value
             at the function arguments ``x`` and the 1D ndarray with the values
-            of the function gradient for each fit parameter.
+            of the function gradient for each fit parameter, if
+            ``func_provides_grads`` is set to True. If set to False, it must
+            return only the function value.
         args : sequence of arguments for ``func`` | None
             The optional sequence of arguments for ``func``.
+        func_provides_grads : bool
+            Flag if function ``func`` provides its gradients.
+            Default is True.
         kwargs : dict | None
             The optional dictionary with keyword arguments for the minimizer
             implementation minimize method.
@@ -288,7 +300,7 @@ class Minimizer(object):
         bounds = fitparamset.bounds
 
         (xmin, fmin, status) = self.minimizer_impl.minimize(
-            fitparamset.initials, bounds, func, args=args, kwargs=kwargs)
+            fitparamset.initials, bounds, func, args, func_provides_grads, kwargs=kwargs)
 
         reps = 0
         while((not self.minimizer_impl.has_converged(status)) and
@@ -305,7 +317,7 @@ class Minimizer(object):
 
             # Repeat the minimization process.
             (xmin, fmin, status) = self.minimizer_impl.minimize(
-                initials, bounds, func, args=args, kwargs=kwargs)
+                initials, bounds, func, args, func_provides_grads, kwargs=kwargs)
 
             reps += 1
 
