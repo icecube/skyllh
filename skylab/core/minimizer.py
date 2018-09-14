@@ -309,4 +309,9 @@ class Minimizer(object):
 
             reps += 1
 
+        # Correct possible minimizer rounding errors of the fit values to
+        # enforce their bounds.
+        xmin = np.where(xmin < bounds[:,0], bounds[:,0], xmin)
+        xmin = np.where(xmin > bounds[:,1], bounds[:,1], xmin)
+
         return (xmin, fmin, status)
