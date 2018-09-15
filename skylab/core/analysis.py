@@ -186,9 +186,18 @@ class Analysis(object):
         pass
 
     @abc.abstractmethod
-    def initialize_trial(self):
+    def initialize_trial(self, scramble=True):
         """This method is supposed to initialize the log-likelihood ratio
         function with a new trial.
+
+        Parameters
+        ----------
+        scramble : bool
+            Flag if the data should get scrambled before it is set to the
+            log-likelihood ratio functions (default True).
+            Note: Depending on the inplace_scrambling setting of the
+                  DataScrambler, the scrambling of the data might be inplace,
+                  changing the experimental data of the dataset itself!
         """
         pass
 
@@ -208,6 +217,31 @@ class Analysis(object):
         """
         pass
 
+    def unblind(self):
+        """Evaluates the unscrambled data, i.e. unblinds the data.
+
+        Returns
+        -------
+        TS : float
+            The test-statistic value.
+        fitparam_dict : dict
+            The dictionary holding the global fit parameter names and their best
+            fit values.
+        status : dict
+            The status dictionary with information about the performed
+            minimization process of the negative of the log-likelihood ratio
+            function.
+        """
+        self.initialize_trial(scramble=False)
+        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio()
+        TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
+
+        fitparam_dict = fitparamset.fitparam_values_to_dict(fitparam_values)
+
+        return (TS, fitparam_dict, status)
+
+    #def do_trial(self, signal_injector=None, signal_mean=0):
+    #    pass
 
 class IsSingleDatasetAnalysis(object):
     """This is the class classifier class to specify that an analysis is made
