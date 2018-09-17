@@ -2,6 +2,8 @@
 
 from __future__ import division
 
+from skylab.core.signal_injector import SignalInjector
+
 def source_dec_shift_linear(x, w, L, U):
     """Calculates the shift of the sine of the source declination, in order to
     allow the construction of the source sine declination band with
@@ -72,3 +74,29 @@ def source_dec_shift_cubic(x, w, L, U):
     S = m * np.power(x-0.5*(L+U),3)
 
     return S
+
+
+class SinglePointLikeSourceI3SignalInjector(SignalInjector):
+    """This class provides a signal injector for the IceCube detector and
+    a single point-like source with a certain flux.
+    """
+    def __init__(self, src_hypo_group_manager, src_dec_shift_func=None):
+        """Creates a new signal injector instance.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance defining the source groups with
+            their spectra.
+        src_dec_shift_func : callable | None
+            The function that provides the source sin(dec) shift needed for
+            constructing the source declination bands from where to draw
+            monte-carlo events from. If set to None, the default function
+            ``source_dec_shift_linear`` will be used.
+        """
+        super(PointLikeSourceI3SignalInjector, self).__init__(src_hypo_group_manager)
+
+        if(src_dec_shift_func is None):
+            src_dec_shift_func = source_dec_shift_linear
+
+        self.src_dec_shift_func = src_dec_shift_func
