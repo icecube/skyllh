@@ -76,25 +76,23 @@ def source_dec_shift_cubic(x, w, L, U):
     return S
 
 
-class SinglePointLikeSourceI3SignalInjector(SignalInjector):
-    """This class provides a signal injector for the IceCube detector and
-    a single point-like source with a certain flux.
+class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
+    """This class provides a signal generation method for a point-like source
+    seen in the IceCube detector.
     """
-    def __init__(self, src_hypo_group_manager, src_dec_shift_func=None):
-        """Creates a new signal injector instance.
+    def __init__(self, src_dec_shift_func=None):
+        """Constructs a new signal generation method instance for a point-like
+        source detected with IceCube.
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The SourceHypoGroupManager instance defining the source groups with
-            their spectra.
         src_dec_shift_func : callable | None
             The function that provides the source sin(dec) shift needed for
             constructing the source declination bands from where to draw
             monte-carlo events from. If set to None, the default function
             ``source_dec_shift_linear`` will be used.
         """
-        super(PointLikeSourceI3SignalInjector, self).__init__(src_hypo_group_manager)
+        super(PointLikeSourceI3SignalGenerationMethod, self).__init__()
 
         if(src_dec_shift_func is None):
             src_dec_shift_func = source_dec_shift_linear
