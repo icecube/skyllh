@@ -98,6 +98,38 @@ def float_cast(v, errmsg):
         raise TypeError(errmsg)
     return v
 
+def get_smallest_numpy_int_type(values):
+    """Returns the smallest numpy integer type that can represent the given
+    integer values.
+
+    Parameters
+    ----------
+    values : int | sequence of int
+        The integer value(s) that need to be representable by the returned
+        integer type.
+
+    Returns
+    -------
+    inttype : numpy integer type
+        The smallest numpy integer type that can represent the given values.
+    """
+    values = np.at_least1d(values)
+
+    vmin = np.min(values)
+    vmax = np.max(values)
+
+    if(vmin < 0):
+        types = [np.int8, np.int16, np.int32, np.int64]
+    else:
+        types = [np.uint8, np.uint16, np.uint32, np.uint64]
+
+    for inttype in types:
+        ii = np.iinfo(inttype)
+        if(vmin >= ii.min and vmax <= ii.max):
+            return inttype
+
+    raise ValueError("No integer type spans [%d, %d]!"%(vmin, vmax))
+
 class ObjectCollection(object):
     """This class provides a collection of objects of a specific type. Objects
     can be added to the collection via the ``add`` method or can be removed
