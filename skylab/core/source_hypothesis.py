@@ -8,6 +8,7 @@ import numpy as np
 
 from skylab.core.py import issequenceof
 from skylab.core.detsigeff import DetSigEffImplMethod
+from skylab.core.signal_generator import SignalGenerationMethod
 from skylab.physics.source import SourceModel
 from skylab.physics.flux import FluxModel
 
@@ -17,7 +18,7 @@ class SourceHypoGroup(object):
     a group of sources that share the same flux model and detector signal
     efficiency implementation method.
     """
-    def __init__(self, sources, fluxmodel, detsigeff_implmethods):
+    def __init__(self, sources, fluxmodel, detsigeff_implmethods, sig_gen_method):
         """Constructs a new source hypothesis group.
 
         Parameters
@@ -34,10 +35,17 @@ class SourceHypoGroup(object):
             detector signal efficiency implementation method for the particular
             dataset, if several datasets are used. If this list contains only
             one implementation method, it should be used for all datasets.
+        sig_gen_method : SignalGenerationMethod instance | None
+            The instance of SignalGenerationMethod that implements the signal
+            generation for the specific detector and source hypothesis. It can
+            be set to None, which means, no signal can be generated. Useful for
+            data unblinding and data trial generation, where no signal is
+            required.
         """
         self.source_list = sources
         self.fluxmodel = fluxmodel
         self.detsigeff_implmethod_list = detsigeff_implmethods
+        self.sig_gen_method = sig_gen_method
 
     @property
     def source_list(self):
@@ -61,7 +69,8 @@ class SourceHypoGroup(object):
     @fluxmodel.setter
     def fluxmodel(self, fluxmodel):
         if(not isinstance(fluxmodel, FluxModel)):
-            raise TypeError('The fluxmodel property must be an instance of FluxModel!')
+            raise TypeError('The fluxmodel property must be an instance of '
+                'FluxModel!')
         self._fluxmodel = fluxmodel
 
     @property
@@ -79,8 +88,25 @@ class SourceHypoGroup(object):
         if(isinstance(methods, DetSigEffImplMethod)):
             methods = [ methods ]
         if(not issequenceof(methods, DetSigEffImplMethod)):
-            raise TypeError('The detsigeff_implmethod_list property must be a sequence of DetSigEffImplMethod instances!')
+            raise TypeError('The detsigeff_implmethod_list property must be a '
+                'sequence of DetSigEffImplMethod instances!')
         self._detsigeff_implmethod_list = methods
+
+    @property
+    def sig_gen_method(self):
+        """The instance of SignalGenerationMethod that implements the signal
+        generation for the specific detector and source hypothesis. It can
+        be None, which means, no signal can be generated. Useful for
+        data unblinding and data trial generation, where no signal is
+        required.
+        """
+        return self._sig_gen_method
+    @sig_gen_method.setter
+    def sig_gen_method(self, method):
+        if(not isinstance(method, SignalGenerationMethod)):
+            raise TypeError('The sig_gen_method property must be an instance '
+                'of SignalGenerationMethod!')
+        self._sig_gen_method = method
 
     @property
     def n_sources(self):
@@ -169,7 +195,9 @@ class SourceHypoGroupManager(object):
         self._sidx_to_gidx_gsidx_map_arr = np.vstack(
             (self._sidx_to_gidx_gsidx_map_arr, arr))
 
-    def add_source_hypo_group(self, sources, fluxmodel, detsigeff_implmethods):
+    def add_source_hypo_group(
+        self, sources, fluxmodel, detsigeff_implmethods, sig_gen_method=None
+    ):
         """Adds a source hypothesis group to the source hypothesis group
         manager. A source hypothesis group share sources of the same source
         model with the same flux model and hence the same detector signal
@@ -189,9 +217,13 @@ class SourceHypoGroupManager(object):
             detector signal efficiency implementation method for the particular
             dataset, if several datasets are used. If this list contains only
             one implementation method, it should be used for all datasets.
+        sig_gen_method : instance of SignalGenerationMethod | None
+            The SignalGenerationMethod instance that implements the detector
+            and source hypothesis specific signal generation.
+            It can be set to None which means no signal can be generated.
         """
         # Create the source group.
-        group = SourceHypoGroup(sources, fluxmodel, detsigeff_implmethods)
+        group = SourceHypoGroup(sources, fluxmodel, detsigeff_implmethods, sig_gen_method)
 
         # Add the group.
         self._src_hypo_group_list.append(group)
