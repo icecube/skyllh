@@ -188,7 +188,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         Parameters
         ----------
         data_mc : numpy record ndarray
-            The numpy record array holding all the MC events.
+            The numpy record array holding the MC events of a dataset.
         src_hypo_group : SourceHypoGroup instance
             The source hypothesis group, which defines the list of sources, and
             their flux model.

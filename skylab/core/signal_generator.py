@@ -2,6 +2,8 @@
 
 import abc
 
+import itertools
+
 from skylab.core.py import (
     issequence,
     issequenceof,
@@ -130,14 +132,46 @@ class SignalGenerator(object):
         n_datasets = len(self._dataset_list)
         n_sources = self._src_hypo_group_manager.n_sources
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
-        mc_ptr_dtype = [
+        sig_candidates_dtype = [
             ('ds_idx', get_smallest_numpy_int_type((0, n_datasets))),
+            ('ev_idx', get_smallest_numpy_int_type(
+                [0]+[len(data.mc) for data in self._data_list])),
             ('shg_idx', get_smallest_numpy_int_type((0, n_sources))),
             ('shg_src_idx', get_smallest_numpy_int_type(
-                [0]+[shg.n_sources for shg in shg_list]))
+                [0]+[shg.n_sources for shg in shg_list])),
+            ('weight', np.float)
         ]
-        self._mc_ptr = np.empty((0,), dtype=mc_ptr_dtype)
+        self._sig_candidates = np.empty(
+            (0,), dtype=sig_candidates_dtype, order='F')
 
+        # Go through the source hypothesis groups to get the signal event
+        # candidates.
+        for ((shg_idx,shg), (j,(ds,data))) in itertools.product(
+            enumerate(shg_list), enumerate(zip(self._dataset_list, self._data_list))):
+            (ev_indices_list, flux_list) = shg.sig_gen_method.calc_source_signal_mc_event_flux(
+                data.mc, shg
+            )
+            for (k, ev_indices, flux) in enumerate(zip(indices_list, flux_list)):
+                ev = data.mc[ev_indices]
+                # The weight of the event specifies the number of signal events
+                # this one event corresponds to.
+                # [weight] = GeV cm^2 sr * s * 1/(GeV cm^2 s sr)
+                weight = ev['mc_weight'] * ds.livetime * 86400 * flux
+
+                sig_candidates = np.empty(
+                    (len(ev_indices),), dtype=sig_candidates_dtype, order='F'
+                )
+                sig_candidates['ds_idx'] = j
+                sig_candidates['ev_idx'] = ev_indices
+                sig_candidates['shg_idx'] = shg_idx
+                sig_candidates['shg_src_idx'] = k
+                sig_candidates['weight'] = weight
+
+                self._sig_candidates = np.append(self._sig_candidates, sig_candidates)
+
+        # Normalize the signal candidate weights.
+        self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
+        self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
 
     @property
     def src_hypo_group_manager(self):
@@ -179,39 +213,10 @@ class SignalGenerator(object):
                 'DatasetData instances!')
         self._data_list = datas
 
-    @abc.abstractmethod
-    def sample(self, mean_signal, poisson=True):
-        """This method is supposed to sample monte-carlo events coming from the
-        defined sources.
+    def generate(self, mean_signal, poisson=True):
+        """Generates a given number of signal events from the monte-carlo
+        datasets.
         """
         pass
 
 
-class SingleSourceSignalInjector(SignalInjector):
-    """Base class for a single source signal injector class.
-    """
-    def __init__(self, src_hypo_group_manager):
-        """Constructs a new signal injector instance for a single source.
-
-        Parameters
-        ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The SourceHypoGroupManager instance defining the source groups with
-            their spectra.
-        """
-        super(SingleSourceSignalInjector, self).__init__(src_hypo_group_manager)
-
-
-class MultiSourceSignalInjector(SignalInjector):
-    """Base class for a multiple source (stacking) signal injector class.
-    """
-    def __init__(self, src_hypo_group_manager):
-        """Constructs a new signal injector instance for multiple sources.
-
-        Parameters
-        ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The SourceHypoGroupManager instance defining the source groups with
-            their spectra.
-        """
-        super(MultiSourceSignalInjector, self).__init__(src_hypo_group_manager)
