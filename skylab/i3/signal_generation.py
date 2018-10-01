@@ -8,6 +8,7 @@ from skylab.core.py import (
     get_smallest_numpy_int_type,
     float_cast
 )
+from skylab.core.coords import rotate_spherical_vector
 from skylab.core.signal_generation import SignalGenerationMethod
 from skylab.physics.source import PointLikeSource
 from skylab.physics.flux import (
@@ -229,7 +230,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             np.min(data_mc_sin_true_dec),
             np.max(data_mc_sin_true_dec)
         )
-        (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega) = _get_src_dec_bands(src_dec, max_sin_dec_range)
+        (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega) = self._get_src_dec_bands(src_dec, max_sin_dec_range)
 
         # Get the flux model of this source hypo group.
         fluxmodel = src_hypo_group.fluxmodel
@@ -286,18 +287,18 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         Returns
         -------
-        sig_events : numpy record ndarray
+        shg_sig_events : numpy record ndarray
             The numpy record ndarray with the processed MC signal events.
         """
         # Get the unique source indices of that source hypo group.
-        shg_src_idxs = np.unique(sig_events_meta['shg_src_idx'])
+        shg_src_idxs = np.unique(shg_sig_events_meta['shg_src_idx'])
         # Go through each (sampled) source.
         for shg_src_idx in shg_src_idxs:
             source = shg.source_list[shg_src_idx]
             # Get the signal events of the source hypo group, that belong to the
             # source index.
-            shg_src_mask = sig_events_meta['shg_src_idx'] == shg_src_idx
-            shg_src_sig_events = sig_events[shg_src_mask]
+            shg_src_mask = shg_sig_events_meta['shg_src_idx'] == shg_src_idx
+            shg_src_sig_events = shg_sig_events[shg_src_mask]
             n_sig = len(shg_src_sig_events)
 
             # Rotate the signal events to the source location.
@@ -311,4 +312,4 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             shg_src_sig_events['dec'] = dec
             shg_src_sig_events['sin_dec'] = np.sin(dec)
 
-        return sig_events
+        return shg_sig_events

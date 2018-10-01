@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import itertools
+import numpy as np
 
 from skylab.core.py import (
     issequenceof,
@@ -76,12 +77,12 @@ class SignalGenerator(object):
             (ev_indices_list, flux_list) = sig_gen_method.calc_source_signal_mc_event_flux(
                 data.mc, shg
             )
-            for (k, ev_indices, flux) in enumerate(zip(indices_list, flux_list)):
+            for (k, (ev_indices, flux)) in enumerate(zip(ev_indices_list, flux_list)):
                 ev = data.mc[ev_indices]
                 # The weight of the event specifies the number of signal events
                 # this one event corresponds to.
                 # [weight] = GeV cm^2 sr * s * 1/(GeV cm^2 s sr)
-                weight = ev['mc_weight'] * ds.livetime * 86400 * flux
+                weight = ev['mcweight'] * ds.livetime * 86400 * flux
 
                 sig_candidates = np.empty(
                     (len(ev_indices),), dtype=sig_candidates_dtype, order='F'
@@ -217,7 +218,7 @@ class SignalGenerator(object):
             # current dataset.
             shg_idxs = np.unique(sig_events_meta[ds_mask]['shg_idx'])
             for shg_idx in shg_idxs:
-                shg = self._src_hypo_group_manager.source_hypo_group_list[shg_idx]
+                shg = self._src_hypo_group_manager.src_hypo_group_list[shg_idx]
                 shg_mask = sig_events_meta['shg_idx'] == shg_idx
                 # Get the MC events for the drawn signal events.
                 ds_shg_mask = ds_mask & shg_mask

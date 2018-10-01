@@ -75,21 +75,34 @@ class SignalGenerationMethod(object):
         """
         pass
 
-    def signal_event_post_sampling_processing(self, signal_events, src_hypo_group):
+    def signal_event_post_sampling_processing(
+        self, shg, shg_sig_events_meta, shg_sig_events
+    ):
         """This method should be reimplemented by the derived class if there
         is some processing needed after the MC signal events have been sampled
         from the global MC data.
 
         Parameters
         ----------
-        signal_events : numpy record array
-            The numpy record array holding the MC signal events in the same
-            format as the original MC events.
+        shg : SourceHypoGroup instance
+            The source hypothesis group instance holding the sources and their
+            locations.
+        shg_sig_events_meta : numpy record ndarray
+            The numpy record ndarray holding meta information about the
+            generated signal events for the given source hypothesis group.
+            The length of this array must be the same as shg_sig_events.
+            It needs to conatin the following data fields:
+                'shg_src_idx': int
+                    The source index within the source hypothesis group.
+        shg_sig_events : numpy record ndarray
+            The numpy record ndarray holding the generated signal events for
+            the given source hypothesis group and in the format of the original
+            MC events.
 
         Returns
         -------
-        signal_events : numpy record array
+        shg_sig_events : numpy record array
             The processed signal events. In the default implementation of this
-            method this is just the signal_events input array.
+            method this is just the shg_sig_events input array.
         """
-        return signal_events
+        return shg_sig_events

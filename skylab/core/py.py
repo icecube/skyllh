@@ -116,7 +116,7 @@ def get_smallest_numpy_int_type(values):
     inttype : numpy integer type
         The smallest numpy integer type that can represent the given values.
     """
-    values = np.at_least1d(values)
+    values = np.atleast_1d(values)
 
     vmin = np.min(values)
     vmax = np.max(values)
