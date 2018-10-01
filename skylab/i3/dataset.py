@@ -49,22 +49,21 @@ class I3Dataset(Dataset):
                 s += '%s%s\n'%(pad*2, pathfilename)
         return s
 
-    def load_data(self):
-        """Loads the data, which is described by the dataset and pre-calculates
-        the following experimental data fields:
+    def prepare_data(self, data):
+        """Prepares the data for IceCube by pre-calculating the following
+        experimental data fields:
             - sin_dec: float
                 The sin value of the declination coordinate.
         and monte-carlo data fields:
             - sin_true_dec: float
                 The sin value of the true declination coordinate.
 
-        Returns
-        -------
-        data : DatasetData
-            A DatasetData instance holding the experimental and monte-carlo
-            data.
+        Parameters
+        ----------
+        data : DatasetData instance
+            The DatasetData instance holding the data as numpy record ndarray.
         """
-        data = super(I3Dataset, self).load_data()
+        super(I3Dataset, self).prepare_data(data)
 
         data.exp = np_rfn.append_fields(data.exp,
             'sin_dec', np.sin(data.exp['dec']), dtypes=np.float, usemask=False)
@@ -72,8 +71,6 @@ class I3Dataset(Dataset):
             ('sin_dec', 'sin_true_dec'),
             (np.sin(data.mc['dec']), np.sin(data.mc['true_dec'])),
             dtypes=(np.float,np.float), usemask=False)
-
-        return data
 
 I3Dataset.add_required_exp_field_names(I3Dataset, ['sin_dec'])
 I3Dataset.add_required_mc_field_names(I3Dataset, ['sin_true_dec'])
