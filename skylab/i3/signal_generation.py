@@ -2,8 +2,13 @@
 
 from __future__ import division
 
-from skylab.core.py import get_smallest_numpy_int_type
-from skylab.core.signal_injector import SignalInjector
+import numpy as np
+
+from skylab.core.py import (
+    get_smallest_numpy_int_type,
+    float_cast
+)
+from skylab.core.signal_generation import SignalGenerationMethod
 from skylab.physics.source import PointLikeSource
 from skylab.physics.flux import (
     get_conversion_factor_to_internal_flux_unit
@@ -235,7 +240,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         # Select the events that belong to a given source.
         indices_list = []
-        flux_list []
+        flux_list = []
 
         for k in xrange(n_sources):
             # Create the sin(true_dec) range event mask for the source.
@@ -256,39 +261,43 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         return (indices_list, flux_list)
 
-    def signal_event_post_sampling_processing(self, sig_events, shg_idx, shg):
+    def signal_event_post_sampling_processing(
+        self, shg, shg_sig_events_meta, shg_sig_events
+    ):
         """Rotates the generated signal events to their source location for a
         given source hypothesis group.
 
         Parameters
         ----------
-        sig_events : numpy record ndarray
-            The numpy record ndarray holding the generated signal events in the
-            format of the original MC events. In addition it needs to conatin
-            the following data fields:
-
-            'shg_idx' : int
-                The source hypothesis group index.
-            'shg_src_idx': int
-                The source index within the source hypothesis group.
-
-        shg_idx : int
-            The index of the source hypothesis group.
         shg : SourceHypoGroup instance
             The source hypothesis group instance holding the sources and their
             locations.
-        """
-        # Get the signal events, that belong to source hypo group.
-        shg_mask = sig_events['shg_idx'] == shg_idx
-        shg_sig_events = sig_events[shg_mask]
+        shg_sig_events_meta : numpy record ndarray
+            The numpy record ndarray holding meta information about the
+            generated signal events for the given source hypothesis group.
+            The length of this array must be the same as shg_sig_events.
+            It needs to conatin the following data fields:
+                'shg_src_idx': int
+                    The source index within the source hypothesis group.
+        shg_sig_events : numpy record ndarray
+            The numpy record ndarray holding the generated signal events for
+            the given source hypothesis group and in the format of the original
+            MC events.
 
-        shg_src_idxs = np.unique(shg_sig_events['shg_src_idx'])
+        Returns
+        -------
+        sig_events : numpy record ndarray
+            The numpy record ndarray with the processed MC signal events.
+        """
+        # Get the unique source indices of that source hypo group.
+        shg_src_idxs = np.unique(sig_events_meta['shg_src_idx'])
+        # Go through each (sampled) source.
         for shg_src_idx in shg_src_idxs:
             source = shg.source_list[shg_src_idx]
             # Get the signal events of the source hypo group, that belong to the
             # source index.
-            shg_src_mask = shg_sig_events['shg_src_idx'] == shg_src_idx
-            shg_src_sig_events = shg_sig_events[shg_src_mask]
+            shg_src_mask = sig_events_meta['shg_src_idx'] == shg_src_idx
+            shg_src_sig_events = sig_events[shg_src_mask]
             n_sig = len(shg_src_sig_events)
 
             # Rotate the signal events to the source location.

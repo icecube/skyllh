@@ -1,103 +1,16 @@
 # -*- coding: utf-8 -*-
 
-import abc
-
 import itertools
 
 from skylab.core.py import (
-    issequence,
     issequenceof,
     float_cast,
+    int_cast,
     get_smallest_numpy_int_type
 )
+from skylab.core.random import RandomStateService
 from skylab.core.dataset import Dataset, DatasetData
 from skylab.core.source_hypothesis import SourceHypoGroupManager
-
-class SignalGenerationMethod(object):
-    """This is a base class for a source and detector specific signal generation
-    method, that calculates the source flux for a given monte-carlo event, which
-    is needed to calculate the MC event weights for the signal injector.
-    """
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, energy_range):
-        """Constructs a new signal generation method instance.
-
-        Parameters
-        ----------
-        energy_range : 2-element tuple of float | None
-            The energy range from which to take MC events into account for
-            signal event generation.
-            If set to None, the entire energy range [0, +inf] is used.
-        """
-        super(SignalGenerationMethod, self).__init__()
-
-        self.energy_range = energy_range
-
-    @property
-    def energy_range(self):
-        """The 2-element tuple of floats holding the energy range from which to
-        take MC events into account for signal event generation.
-        """
-        return self._energy_range
-    @energy_range.setter
-    def energy_range(self, r):
-        if(not issequence(r)):
-            raise TypeError('The energy_range property must be a sequence!')
-        if(len(r) != 2):
-            raise ValueError('The energy_range property must be a sequence of '
-                '2 elements!')
-        r = tuple(
-            float_cast(r[0], 'The first element of the energy_range '
-                             'sequence must be castable to type float!'),
-            float_cast(r[1], 'The second element of the energy_range '
-                             'sequence must be castable to type float!')
-        )
-        self._energy_range = r
-
-    @abc.abstractmethod
-    def calc_source_signal_mc_event_flux(self, data_mc, src_hypo_group):
-        """This method is supposed to calculate the signal flux of each given
-        MC event for each source hypothesis of the given source hypothesis
-        group.
-
-        Parameters
-        ----------
-        data_mc : numpy record ndarray
-            The numpy record array holding all the MC events.
-        src_hypo_group : SourceHypoGroup instance
-            The source hypothesis group, which defines the list of sources, and
-            their flux model.
-
-        Returns
-        -------
-        flux_list : list of 2-element tuples
-            The list of 2-element tuples with one tuple for each source. Each
-            tuple must be made of two 1D ndarrays of size
-            N_selected_signal_events, where the first array contains the global
-            MC data event indices and the second array the flux of each selected
-            signal event.
-        """
-        pass
-
-    def signal_event_post_sampling_processing(self, signal_events, src_hypo_group):
-        """This method should be reimplemented by the derived class if there
-        is some processing needed after the MC signal events have been sampled
-        from the global MC data.
-
-        Parameters
-        ----------
-        signal_events : numpy record array
-            The numpy record array holding the MC signal events in the same
-            format as the original MC events.
-
-        Returns
-        -------
-        signal_events : numpy record array
-            The processed signal events. In the default implementation of this
-            method this is just the signal_events input array.
-        """
-        return signal_events
 
 
 class SignalGenerator(object):
@@ -105,11 +18,14 @@ class SignalGenerator(object):
     detector or source hypothesis, because these dependencies are factored out
     into the signal generation method.
     """
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list):
+    def __init__(self, rss, src_hypo_group_manager, dataset_list, data_list):
         """Constructs a new signal generator instance.
 
         Parameters
         ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService providing the random number
+            generator state.
         src_hypo_group_manager : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance defining the source groups with
             their spectra.
@@ -122,13 +38,18 @@ class SignalGenerator(object):
         """
         super(SignalGenerator, self).__init__()
 
+        self.rss = rss
         self.src_hypo_group_manager = src_hypo_group_manager
 
         self.dataset_list = dataset_list
         self.data_list = data_list
 
-        # Construct an array holding pointer information of signal candidate events
-        # pointing into the real MC dataset(s).
+        self._construct_signal_candidates()
+
+    def _construct_signal_candidates(self):
+        """Constructs an array holding pointer information of signal candidate
+        events pointing into the real MC dataset(s).
+        """
         n_datasets = len(self._dataset_list)
         n_sources = self._src_hypo_group_manager.n_sources
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
@@ -148,7 +69,11 @@ class SignalGenerator(object):
         # candidates.
         for ((shg_idx,shg), (j,(ds,data))) in itertools.product(
             enumerate(shg_list), enumerate(zip(self._dataset_list, self._data_list))):
-            (ev_indices_list, flux_list) = shg.sig_gen_method.calc_source_signal_mc_event_flux(
+            sig_gen_method = shg.sig_gen_method
+            if(sig_gen_method is None):
+                raise ValueError('No signal generation method has been '
+                    'specified for the %dth source hypothesis group!'%(shg_idx))
+            (ev_indices_list, flux_list) = sig_gen_method.calc_source_signal_mc_event_flux(
                 data.mc, shg
             )
             for (k, ev_indices, flux) in enumerate(zip(indices_list, flux_list)):
@@ -172,6 +97,19 @@ class SignalGenerator(object):
         # Normalize the signal candidate weights.
         self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
+
+    @property
+    def rss(self):
+        """The RandomStateService instance providing the state of the random
+        number generator.
+        """
+        return self._rss
+    @rss.setter
+    def rss(self, rss):
+        if(not isinstance(rss, RandomStateService)):
+            raise TypeError('The rss property must be an instance of '
+                'RandomStateService!')
+        self._rss = rss
 
     @property
     def src_hypo_group_manager(self):
@@ -213,10 +151,91 @@ class SignalGenerator(object):
                 'DatasetData instances!')
         self._data_list = datas
 
-    def generate(self, mean_signal, poisson=True):
-        """Generates a given number of signal events from the monte-carlo
-        datasets.
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Recreates the signal candidates with the changed source hypothesis
+        group manager.
         """
-        pass
+        self.src_hypo_group_manager = src_hypo_group_manager
+        self._construct_signal_candidates()
 
+    def generate_signal_events(self, mean, poisson=True):
+        """Generates a given number of signal events from the signal candidate
+        monte-carlo events.
 
+        Parameters
+        ----------
+        mean : float
+            The mean number of signal events. If the ``poisson`` argument is set
+            to True, the actual number of generated signal events will be drawn
+            from a Poisson distribution with this given mean value of signal
+            events.
+        poisson : bool
+            If set to True, the actual number of generated signal events will
+            be drawn from a Poisson distribution with the given mean value of
+            signal events.
+            If set to False, the argument ``mean`` specifies the actual number
+            of generated signal events.
+
+        Returns
+        -------
+        n_signal : int
+            The number of generated signal events.
+        signal_events_dict : dict of numpy record array
+            The dictionary holding the numpy record arrays holding the generated
+            signal events. Each key of this dictionary represents the dataset
+            index for which the signal events have been generated.
+        """
+        if(poisson):
+            mean = self._rss.random.poisson(float_cast(
+                mean, 'The mean argument must be castable to type of float!'))
+
+        n_signal = int_cast(
+            mean, 'The mean argument must be castable to type of int!')
+
+        # Draw n_signal signal candidates according to their weight.
+        sig_events_meta = self._rss.random.choice(
+            self._sig_candidates,
+            size=n_signal,
+            p=self._sig_candidates['weight']
+        )
+
+        # Get the list of unique dataset and source hypothesis group indices of
+        # the drawn signal events.
+        # Note: This code does not assume the same format for each of the
+        #       individual MC dataset numpy record arrays, thus might be a bit
+        #       slower. If one could assume the same MC dataset format, one
+        #       could gather all the MC events of all the datasets first and do
+        #       the signal event post processing for all datasets at once.
+        signal_events_dict = dict()
+        ds_idxs = np.unique(sig_events_meta['ds_idx'])
+        for ds_idx in ds_idxs:
+            ds_mask = sig_events_meta['ds_idx'] == ds_idx
+            sig_events = np.empty(
+                (np.count_nonzero(ds_mask),), dtype=self._data_list[ds_idx].mc.dtype)
+            fill_start_idx = 0
+            # Get the list of unique source hypothesis group indices for the
+            # current dataset.
+            shg_idxs = np.unique(sig_events_meta[ds_mask]['shg_idx'])
+            for shg_idx in shg_idxs:
+                shg = self._src_hypo_group_manager.source_hypo_group_list[shg_idx]
+                shg_mask = sig_events_meta['shg_idx'] == shg_idx
+                # Get the MC events for the drawn signal events.
+                ds_shg_mask = ds_mask & shg_mask
+                shg_sig_events_meta = sig_events_meta[ds_shg_mask]
+                n_shg_sig_events = len(shg_sig_events_meta)
+                ev_idx = shg_sig_events_meta['ev_idx']
+                # Get the signal MC events of the current dataset and source
+                # hypothesis group. We have to create a copy to not alter the
+                # original MC events.
+                shg_sig_events = np.copy(self._data_list[ds_idx].mc[ev_idx])
+
+                # Do the signal event post sampling processing.
+                shg_sig_events = shg.sig_gen_method.signal_event_post_sampling_processing(
+                    shg, shg_sig_events_meta, shg_sig_events)
+
+                sig_events[fill_start_idx:fill_start_idx+n_shg_sig_events] = shg_sig_events
+                fill_start_idx += n_shg_sig_events
+
+            signal_events_dict[ds_idx] = sig_events
+
+        return (n_signal, signal_events_dict)

@@ -25,7 +25,9 @@ from skylab.core.source_hypothesis import SourceHypoGroupManager
 from skylab.core.test_statistic import TestStatistic
 from skylab.core.minimizer import Minimizer
 from skylab.core.scrambling import DataScrambler
+from skylab.core.signal_generator import SignalGenerator
 from skylab.physics.source import SourceModel
+
 
 class Analysis(object):
     """This is the abstract base class for all analysis classes. It contains
@@ -80,8 +82,14 @@ class Analysis(object):
         self.test_statistic = test_statistic
         self.data_scrambler = data_scrambler
 
+        self._dataset_list = []
+        self._data_list = []
+
         # Predefine the variable for the log-likelihood ratio function.
         self._llhratio = None
+
+        # Predefine the variable for the signal generator.
+        self._signal_generator = None
 
     @property
     def minimizer(self):
@@ -144,12 +152,66 @@ class Analysis(object):
         self._data_scrambler = scrambler
 
     @property
+    def dataset_list(self):
+        """The list of Dataset instances.
+        """
+        return self._dataset_list
+    @dataset_list.setter
+    def dataset_list(self, datasets):
+        if(not issequenceof(datasets, Dataset)):
+            raise TypeError('The dataset_list property must be a sequence of Dataset instances!')
+        self._dataset_list = list(datasets)
+
+    @property
+    def data_list(self):
+        """The list of DatasetData instances holding the original data of the
+        dataset.
+        """
+        return self._data_list
+    @data_list.setter
+    def data_list(self, datas):
+        if(not issequenceof(datas, DatasetData)):
+            raise TypeError('The data_list property must be a sequence of DatasetData instances!')
+        self._data_list = list(datas)
+
+    @property
+    def n_datasets(self):
+        """(read-only) The number of datasets used in this analysis.
+        """
+        return len(self._dataset_list)
+
+    @property
     def llhratio(self):
         """(read-only) The log-likelihood ratio function.
         """
         if(self._llhratio is None):
             raise RuntimeError('The log-likelihood ratio function is not defined yet. Call the construct_analysis method first!')
         return self._llhratio
+
+    @property
+    def signal_generator(self):
+        """(read-only) The signal generator instance.
+        """
+        return self._signal_generator
+
+    def add_dataset(self, dataset, data):
+        """Adds the given dataset to the list of datasets for this analysis.
+
+        Parameters
+        ----------
+        dataset : Dataset instance
+            The Dataset instance that should get added.
+        data : DatasetData instance
+            The DatasetData instance holding the original (prepared) data of the
+            dataset.
+        """
+        if(not isinstance(dataset, Dataset)):
+            raise TypeError('The dataset argument must be an instance of Dataset!')
+        if(not isinstance(data, DatasetData)):
+            raise TypeError('The data argument must be an instance of DatasetData!')
+
+        self._dataset_list.append(dataset)
+        self._data_list.append(data)
 
     def calculate_test_statistic(self, log_lambda, fitparam_values, *args, **kwargs):
         """Calculates the test statistic value by calling the ``evaluate``
@@ -184,6 +246,19 @@ class Analysis(object):
         function and sets it as the _llhratio property.
         """
         pass
+
+    def construct_signal_generator(self, rss):
+        """Constructs the signal generator for all the added datasets.
+        This method must be called after all the datasets were added via the
+        add_dataset method.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance to use for the signal generator.
+        """
+        self._signal_generator = SignalGenerator(
+            rss, self._src_hypo_group_manager, self._dataset_list, self._data_list)
 
     @abc.abstractmethod
     def initialize_trial(self, scramble=True):
@@ -243,109 +318,8 @@ class Analysis(object):
     #def do_trial(self, signal_injector=None, signal_mean=0):
     #    pass
 
-class IsSingleDatasetAnalysis(object):
-    """This is the class classifier class to specify that an analysis is made
-    for a single dataset. This class provides the ``dataset`` property.
-    """
-    def __init__(self):
-        super(IsSingleDatasetAnalysis, self).__init__()
 
-        self._dataset = None
-        self._data = None
-
-    @property
-    def dataset(self):
-        """The Dataset instance for the analysis.
-        """
-        return self._dataset
-    @dataset.setter
-    def dataset(self, ds):
-        if(not isinstance(ds, Dataset)):
-            raise TypeError('The dataset property must be an instance of Dataset!')
-        self._dataset = ds
-
-    @property
-    def data(self):
-        """The DatasetData instance holding the original data of the dataset for
-        the analysis.
-        """
-        return self._data
-    @data.setter
-    def data(self, d):
-        if(not isinstance(d, DatasetData)):
-            raise TypeError('The data property must be an instance of DatasetData!')
-        self._data = d
-
-    @property
-    def n_datasets(self):
-        """(read-only) The number of used datasets in this analysis.
-        """
-        if(self._dataset is None):
-            return 0
-        return 1
-
-
-class IsMultiDatasetAnalysis(object):
-    """This is the class classifier class to specify that an analysis is made
-    for multiple datasets. This class provides the ``dataset_list`` and
-    ``data_list`` property, and the ``add_dataset`` method.
-    """
-    def __init__(self):
-        super(IsMultiDatasetAnalysis, self).__init__()
-
-        self._dataset_list = []
-        self._data_list = []
-
-    @property
-    def dataset_list(self):
-        """The list of Dataset instances.
-        """
-        return self._dataset_list
-    @dataset_list.setter
-    def dataset_list(self, datasets):
-        if(not issequenceof(datasets, Dataset)):
-            raise TypeError('The dataset_list property must be a sequence of Dataset instances!')
-        self._dataset_list = list(datasets)
-
-    @property
-    def data_list(self):
-        """The list of DatasetData instances holding the original data of the
-        dataset.
-        """
-        return self._data_list
-    @data_list.setter
-    def data_list(self, datas):
-        if(not issequenceof(datas, DatasetData)):
-            raise TypeError('The data_list property must be a sequence of DatasetData instances!')
-        self._data_list = list(datas)
-
-    @property
-    def n_datasets(self):
-        """(read-only) The number of datasets used in this analysis.
-        """
-        return len(self._dataset_list)
-
-    def add_dataset(self, dataset, data):
-        """Adds the given dataset to the list of datasets for this analysis.
-
-        Parameters
-        ----------
-        dataset : Dataset instance
-            The Dataset instance that should get added.
-        data : DatasetData instance
-            The DatasetData instance holding the original (prepared) data of the
-            dataset.
-        """
-        if(not isinstance(dataset, Dataset)):
-            raise TypeError('The dataset argument must be an instance of Dataset!')
-        if(not isinstance(data, DatasetData)):
-            raise TypeError('The data argument must be an instance of DatasetData!')
-
-        self._dataset_list.append(dataset)
-        self._data_list.append(data)
-
-
-class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMultiDatasetAnalysis):
+class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
     """This analysis class implements a time-integrated analysis with a spatial
     and energy PDF for multiple datasets assuming a single source.
 
@@ -537,6 +511,11 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis, IsMu
             for pdfratio in llhratio.pdfratio_list:
                 pdfratio.change_source_hypo_group_manager(
                     self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the signal generator instance.
+        if(self._signal_generator is not None):
+            self._signal_generator.change_source_hypo_group_manager(
+                self._src_hypo_group_manager)
 
     def initialize_trial(self, scramble=True):
         """Initializes the log-likelihood functions of the different datasets
