@@ -1,4 +1,7 @@
+# -*- coding: utf-8 -*-
+
 import copy
+import numpy as np
 
 def typename(t):
     """Returns the name of the given type ``t``.
