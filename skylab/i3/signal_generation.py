@@ -176,7 +176,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         # declination band via src_dec +/- half-bandwidth
         src_sin_dec = np.sin(src_dec)
         src_sin_dec += self._src_sin_dec_shift_func(
-            src_dec, self._src_sin_dec_half_bandwidth, *max_sin_dec_range)
+            src_sin_dec, self._src_sin_dec_half_bandwidth, *max_sin_dec_range)
 
         src_sin_dec_band_min = src_sin_dec - self._src_sin_dec_half_bandwidth
         src_sin_dec_band_max = src_sin_dec + self._src_sin_dec_half_bandwidth
@@ -186,7 +186,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         return (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega)
 
-    def calc_source_signal_mc_event_flux(self, data_mc, src_hypo_group):
+    def calc_source_signal_mc_event_flux(self, data_mc, shg):
         """Calculates the signal flux of each given MC event for each source
         hypothesis of the given source hypothesis group. The unit of the signal
         flux must be 1/(GeV cm^2 s sr).
@@ -195,28 +195,34 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         ----------
         data_mc : numpy record ndarray
             The numpy record array holding the MC events of a dataset.
-        src_hypo_group : SourceHypoGroup instance
+        shg : SourceHypoGroup instance
             The source hypothesis group, which defines the list of sources, and
             their flux model.
 
         Returns
         -------
-        flux_list : list of 2-element tuples
-            The list of 2-element tuples with one tuple for each source. Each
-            tuple must be made of two 1D ndarrays of size
-            N_selected_signal_events, where the first array contains the global
-            MC data event indices and the second array the flux of each selected
-            signal event.
+        indices_list : list of 1D ndarrays
+            The list of event indices arrays specifying which MC events have
+            been selected as signal candidate events for each source of the
+            given source hypothesis group. Hence, the length of that list is the
+            number of sources of the source hypothesis group. The length of the
+            different 1D ndarrays is variable and depends on the source.
+        flux_list : list of 1D ndarrays
+            The list of 1D ndarrays holding the flux value of the selected
+            signal candidate events. One array for each source of the given
+            source hypothesis group. Hence, the length of that list is the
+            number of sources of the source hypothesis group. The length of the
+            different 1D ndarrays is variable and depends on the source.
         """
         indices = np.arange(
             0, len(data_mc),
             dtype=get_smallest_numpy_int_type((0, len(data_mc)))
         )
-        n_sources = src_hypo_group.n_sources
+        n_sources = shg.n_sources
 
         # Get 1D array of source declination.
         src_dec = np.empty((n_sources,), dtype=np.float)
-        for (k, source) in enumerate(src_hypo_group.source_list):
+        for (k, source) in enumerate(shg.source_list):
             if(not isinstance(source, PointLikeSource)):
                 raise TypeError('The source instance must be an instance of '
                     'PointLikeSource!')
@@ -233,7 +239,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega) = self._get_src_dec_bands(src_dec, max_sin_dec_range)
 
         # Get the flux model of this source hypo group.
-        fluxmodel = src_hypo_group.fluxmodel
+        fluxmodel = shg.fluxmodel
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
@@ -311,5 +317,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             shg_src_sig_events['ra'] = ra
             shg_src_sig_events['dec'] = dec
             shg_src_sig_events['sin_dec'] = np.sin(dec)
+
+            shg_sig_events[shg_src_mask] = shg_src_sig_events
 
         return shg_sig_events
