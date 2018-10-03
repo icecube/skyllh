@@ -4,6 +4,7 @@ import numpy as np
 from numpy.lib import recfunctions as np_rfn
 
 from skylab.core.dataset import Dataset
+from skylab.core.stopwatch import get_stopwatch_lap_taker
 
 class I3Dataset(Dataset):
     """The I3Dataset class is an IceCube specific Dataset class that adds
@@ -49,7 +50,7 @@ class I3Dataset(Dataset):
                 s += '%s%s\n'%(pad*2, pathfilename)
         return s
 
-    def prepare_data(self, data):
+    def prepare_data(self, data, sw=None):
         """Prepares the data for IceCube by pre-calculating the following
         experimental data fields:
             - sin_dec: float
@@ -62,15 +63,30 @@ class I3Dataset(Dataset):
         ----------
         data : DatasetData instance
             The DatasetData instance holding the data as numpy record ndarray.
+        sw : Stopwatch instance | None
+            The Stopwatch instance that should be used to time the data
+            preparation.
         """
-        super(I3Dataset, self).prepare_data(data)
+        super(I3Dataset, self).prepare_data(data, sw=sw)
+
+        sw_take_lap = get_stopwatch_lap_taker(sw)
 
         data.exp = np_rfn.append_fields(data.exp,
             'sin_dec', np.sin(data.exp['dec']), dtypes=np.float, usemask=False)
+        sw_take_lap('Appended IceCube-specific data fields to exp data.')
+
+        # Append sin(dec) and sin(true_dec) to the MC data.
+        # Note: We do this in two separate calls because it is 5-times faster
+        #       than having it done with a single call!
         data.mc = np_rfn.append_fields(data.mc,
-            ('sin_dec', 'sin_true_dec'),
-            (np.sin(data.mc['dec']), np.sin(data.mc['true_dec'])),
-            dtypes=(np.float,np.float), usemask=False)
+            'sin_dec',
+            np.sin(data.mc['dec']),
+            dtypes=np.float, usemask=False)
+        data.mc = np_rfn.append_fields(data.mc,
+            'sin_true_dec',
+            np.sin(data.mc['true_dec']),
+            dtypes=np.float, usemask=False)
+        sw_take_lap('Appended IceCube-specific data fields to MC data.')
 
 I3Dataset.add_required_exp_field_names(I3Dataset, ['sin_dec'])
 I3Dataset.add_required_mc_field_names(I3Dataset, ['sin_true_dec'])

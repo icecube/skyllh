@@ -8,6 +8,7 @@ from copy import deepcopy
 
 from skylab.core.binning import BinningDefinition
 from skylab.core.py import issequence, issequenceof
+from skylab.core.stopwatch import get_stopwatch_lap_taker
 from skylab.core import display
 from skylab.core import storage
 
@@ -363,11 +364,16 @@ class Dataset(object):
                 raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
             self._verqualifiers[q] = verqualifiers[q]
 
-    def load_data(self):
+    def load_data(self, sw=None):
         """Loads the data, which is described by the dataset.
 
         Note: This does not call the ``prepare_data`` method! It only loads
               the data as the method names says.
+
+        Parameters
+        ----------
+        sw : Stopwatch instance | None
+            The Stopwatch instance to use to time the data loading procedure.
 
         Returns
         -------
@@ -375,16 +381,16 @@ class Dataset(object):
             A DatasetData instance holding the experimental and monte-carlo
             data.
         """
+        sw_take_lap = get_stopwatch_lap_taker(sw)
+
         fileloader_exp = storage.create_FileLoader(self._exp_pathfilename_list)
         fileloader_mc  = storage.create_FileLoader(self._mc_pathfilename_list)
-        data_exp = fileloader_exp.load_data()
-        data_mc  = fileloader_mc.load_data()
 
-        # Convert the arrays into column-major stored arrays. Because most of
-        # the data operations operate column wise, this will be assure fastest
-        # access in memory.
-        data_exp = np.array(data_exp, order='F', copy=True, ndmin=1)
-        data_mc = np.array(data_mc, order='F', copy=True, ndmin=1)
+        data_exp = fileloader_exp.load_data()
+        sw_take_lap('Loaded exp data from disk.')
+
+        data_mc = fileloader_mc.load_data()
+        sw_take_lap('Loaded mc data from disk.')
 
         data = DatasetData(data_exp, data_mc)
         return data
@@ -406,7 +412,7 @@ class Dataset(object):
             raise TypeError('The argument "func" must be a callable object with call signature __call__(exp, mc)!')
         self._data_preparation_functions.append(func)
 
-    def prepare_data(self, data):
+    def prepare_data(self, data, sw=None):
         """Prepares the data by calling the data preparation callback functions
         of this dataset.
 
@@ -414,11 +420,18 @@ class Dataset(object):
         ----------
         data : DatasetData instance
             The DatasetData instance holding the data.
+        sw : Stopwatch instance | None
+            The Stopwatch instance that should be used to time the data
+            preparation.
         """
+        sw_take_lap = get_stopwatch_lap_taker(sw)
+
         for func in self._data_preparation_functions:
             (data.exp, data.mc) = func(data.exp, data.mc)
+            sw_take_lap('Prepared data by "'+func.__name__+'".')
 
-    def load_and_prepare_data(self, keep_fields=None, compress=False):
+    def load_and_prepare_data(
+        self, keep_fields=None, compress=False, sw=None):
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
         After loading the data it drops all unnecessary data fields if they are
@@ -438,6 +451,9 @@ class Dataset(object):
             The only field, which will not get converted is the 'mcweight'
             field, in order to ensure reliable calculations.
             Default is False.
+        sw : Stopwatch instance | None
+            The Stopwatch instance that should be used to time the data loading
+            and preparation. This method will take laps for the different steps.
 
         Returns
         -------
@@ -448,29 +464,38 @@ class Dataset(object):
         if(keep_fields is None):
             keep_fields = tuple()
         if(not issequenceof(keep_fields, str)):
-            raise TypeError('The keep_fields argument must be None, or a sequence of str!')
+            raise TypeError('The keep_fields argument must be None, or a '
+                'sequence of str!')
         keep_fields = tuple(keep_fields)
 
-        data = self.load_data()
-        self.prepare_data(data)
+        sw_take_lap = get_stopwatch_lap_taker(sw)
+
+        data = self.load_data(sw=sw)
+        self.prepare_data(data, sw=sw)
 
         # Drop unrequired data fields.
         data.exp = tidy_up_recarray(
             data.exp, keep_fields=(type(self)._EXP_FIELD_NAMES +
                                    keep_fields))
+        sw_take_lap('Cleaned exp data.')
         data.mc = tidy_up_recarray(
             data.mc, keep_fields=(type(self)._EXP_FIELD_NAMES +
                                   type(self)._MC_FIELD_NAMES +
                                   keep_fields))
+        sw_take_lap('Cleaned MC data.')
 
         # Convert float64 fields into float32 fields if requested.
         if(compress):
             data.exp = convert_recarray_fields_float64_into_float32(
-                data.exp, order='F')
+                data.exp)
+            sw_take_lap('Compressed exp data.')
+
             data.mc = convert_recarray_fields_float64_into_float32(
-                data.mc, except_fields=('mcweight',), order='F')
+                data.mc, except_fields=('mcweight',))
+            sw_take_lap('Compressed MC data.')
 
         assert_data_format(self, data)
+        sw_take_lap('Asserted data format.')
 
         return data
 
