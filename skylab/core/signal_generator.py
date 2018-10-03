@@ -74,11 +74,12 @@ class SignalGenerator(object):
             if(sig_gen_method is None):
                 raise ValueError('No signal generation method has been '
                     'specified for the %dth source hypothesis group!'%(shg_idx))
+            data_mc = data.mc
             (ev_indices_list, flux_list) = sig_gen_method.calc_source_signal_mc_event_flux(
-                data.mc, shg
+                data_mc, shg
             )
             for (k, (ev_indices, flux)) in enumerate(zip(ev_indices_list, flux_list)):
-                ev = data.mc[ev_indices]
+                ev = data_mc[ev_indices]
                 # The weight of the event specifies the number of signal events
                 # this one event corresponds to.
                 # [weight] = GeV cm^2 sr * s * 1/(GeV cm^2 s sr)
