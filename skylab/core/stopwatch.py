@@ -5,7 +5,7 @@ import time
 
 from skylab.core import display
 
-def get_sw_lap_taker(sw):
+def get_stopwatch_lap_taker(sw):
     """Returns a function with call signature ``__call__(msg)`` to take a lap
     for the given Stopwatch instance.
 
