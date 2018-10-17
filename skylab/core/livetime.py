@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """The livetime module provides general functionality for detector up-time.
 """
 import numpy as np
@@ -8,29 +10,31 @@ from skylab.core.py import issequence
 class Livetime(object):
     """The ``Livetime`` class defines an interface to query the up-time of the
     detector.
-
-    The class holds an internal Nx2 float64 ndarray
-    ``_uptime_mjd_intervals_arr``, where the first and second elements of the
-    second axis is the start and end time of the up-time interval, respectively.
-    This data array needs to be set by the derived class by setting the
-    ``_uptime_mjd_intervals`` property with the appropriate data array.
-
-        Note 1: The intervals must be sorted ascedent in time.
-
-        Note 2: By definition the lower edge is included in the interval,
-            whereas the upper edge is excluded from the interval.
-
-        Note 3: The intervals must not overlap.
-
-    The integrity of the internal mjd interval array will be ensured by the
-    property setter method by calling the ``assert_mjd_intervals_integrity``
-    method.
     """
+    def __init__(self, uptime_mjd_intervals_arr):
+        """Creates a new Livetime object from a (N,2)-shaped ndarray holding
+        the uptime intervals.
 
-    def __init__(self):
+        Parameters
+        ----------
+        uptime_mjd_intervals_arr : (N,2)-shaped ndarray
+            The (N,2)-shaped ndarray holding the start and end times of each
+            up-time interval.
+
+            Note 1: The intervals must be sorted ascedent in time.
+
+            Note 2: By definition the lower edge is included in the interval,
+                whereas the upper edge is excluded from the interval.
+
+            Note 3: The intervals must not overlap.
+
+            The integrity of the internal mjd interval array will be ensured by
+            the property setter method of ``uptime_mjd_intervals_arr`` by
+            calling the ``assert_mjd_intervals_integrity`` method.
+        """
         # The internal Nx2 numpy ndarray holding the MJD intervals when the
         # detector was taking data.
-        self._uptime_mjd_intervals_arr = np.ndarray((0,2), dtype=np.float64)
+        self.uptime_mjd_intervals_arr = uptime_mjd_intervals_arr
 
     def assert_mjd_intervals_integrity(self):
         """Checks if the internal MJD interval array conforms with all its
@@ -57,14 +61,14 @@ class Livetime(object):
             raise ValueError('The interval edges of the internal MJD interval array are not monotonically increasing!')
 
     @property
-    def _uptime_mjd_intervals(self):
+    def uptime_mjd_intervals_arr(self):
         """The Nx2 numpy ndarray holding the up-time intervals of the detector.
         The first and second elements of the second axis is the start and stop
         time of the up-time interval, respectively.
         """
         return self._uptime_mjd_intervals_arr
     @_uptime_mjd_intervals.setter
-    def _uptime_mjd_intervals(self, arr):
+    def uptime_mjd_intervals_arr(self, arr):
         self._uptime_mjd_intervals_arr = arr
         self.assert_mjd_intervals_integrity()
 

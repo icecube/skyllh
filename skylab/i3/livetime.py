@@ -1,18 +1,18 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
 
 from skylab.core.livetime import Livetime
 from skylab.core import storage
 
 class I3Livetime(Livetime):
-    """The I3LiveTime class provides the functionality to load a Livetime object
+    """The I3Livetime class provides the functionality to load a Livetime object
     from a good-run-list data file.
     """
-    def __init__(self):
-        super(I3Livetime, self).__init__()
-
-    def load_from_GRL_files(self, pathfilenames):
-        """Loads the live time from the given good-run-list (GRL) data file.
-        The data file needs to contain the following data fields:
+    @staticmethod
+    def from_GRL_files(pathfilenames):
+        """Loads an I3Livetime instance from the given good-run-list (GRL) data
+        file. The data file needs to contain the following data fields:
 
             start : float
                 The MJD of the run start.
@@ -28,13 +28,16 @@ class I3Livetime(Livetime):
         """
         grl_data = storage.create_FileLoader(pathfilenames).load_data()
 
-        data = np.hstack((
+        uptime_mjd_intervals_arr = np.hstack((
             grl_data['start'].reshape((grl_data.shape[0],1)),
             grl_data['stop'].reshape((grl_data.shape[0],1))
         ))
 
         # Remove bad runs.
-        data = np.compress(grl_data['good_i3'], data, axis=0)
+        uptime_mjd_intervals_arr = np.compress(
+            grl_data['good_i3'], uptime_mjd_intervals_arr, axis=0)
 
-        self._uptime_mjd_intervals = data
+        return I3Livetime(uptime_mjd_intervals_arr)
 
+    def __init__(self, uptime_mjd_intervals_arr):
+        super(I3Livetime, self).__init__(uptime_mjd_intervals_arr)
