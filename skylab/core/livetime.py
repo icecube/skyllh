@@ -67,7 +67,7 @@ class Livetime(object):
         time of the up-time interval, respectively.
         """
         return self._uptime_mjd_intervals_arr
-    @_uptime_mjd_intervals.setter
+    @uptime_mjd_intervals.setter
     def uptime_mjd_intervals_arr(self, arr):
         self._uptime_mjd_intervals_arr = arr
         self.assert_mjd_intervals_integrity()
