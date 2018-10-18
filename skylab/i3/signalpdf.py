@@ -193,7 +193,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             signal energy probability should be calculated. Note, that the
             parameter values must match a set of parameter grid values for which
             an I3EnergyPDF object has been created at construction time of this
-            I3SignalEnergyPDF object. There is no interpolation method defined
+            SignalI3EnergyPDF object. There is no interpolation method defined
             at this point to allow for arbitrary parameter values!
 
         Returns
