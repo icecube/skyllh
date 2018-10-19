@@ -67,7 +67,7 @@ class Livetime(object):
         time of the up-time interval, respectively.
         """
         return self._uptime_mjd_intervals_arr
-    @uptime_mjd_intervals.setter
+    @uptime_mjd_intervals_arr.setter
     def uptime_mjd_intervals_arr(self, arr):
         self._uptime_mjd_intervals_arr = arr
         self.assert_mjd_intervals_integrity()
@@ -144,6 +144,55 @@ class Livetime(object):
 
         """
         self._uptime_mjd_intervals = intervals
+
+    def get_ontime_intervals_between(self, t_start, t_end):
+        """Creates a (N,2)-shaped ndarray holding the on-time detector intervals
+        between the given time range from t_start to t_end.
+
+        Parameters
+        ----------
+        t_start : float
+            The MJD start time of the time range to consider. This might be the
+            lower bound of the first on-time interval.
+        t_end : float
+            The MJD end time of the time range to consider. This might be the
+            upper bound of the last on-time interval.
+
+        Returns
+        -------
+        ontime_intervals : (N,2)-shaped ndarray
+            The (N,2)-shaped ndarray holding the on-time detector intervals.
+        """
+        onoff_intervals = self._onoff_intervals
+
+        (t_start_idx, t_end_idx) = self._get_onoff_interval_indices((t_start, t_end))
+        if(t_start_idx % 2 == 0):
+            # t_start is during off-time. Use the next on-time lower edge as
+            # first on-time edge.
+            t_start = onoff_intervals[t_start_idx]
+        else:
+            t_start_idx -= 1
+        if(t_end_idx % 2 == 0):
+            # t_end is during off-time. Use the previous on-time upper edge as
+            # the last on-time edge.
+            t_end = onoff_intervals[t_end_idx-1]
+        else:
+            t_end_idx += 1
+
+        # The t_start_idx and t_end_idx variables hold even indices.
+        N_ontime_intervals = int((t_end_idx - t_start_idx)/2)
+
+        ontime_intervals_flat = np.empty((N_ontime_intervals*2,), dtype=np.float)
+        # Set the first and last on-time interval edges.
+        ontime_intervals_flat[0] = t_start
+        ontime_intervals_flat[-1] = t_end
+        if(N_ontime_intervals > 1):
+            # Fill also the interval edges of the intermediate on-time bins.
+            ontime_intervals_flat[1:-1] = onoff_intervals[t_start_idx+1:t_end_idx-1]
+
+        ontime_intervals = np.reshape(ontime_intervals_flat, (N_ontime_intervals,2))
+
+        return ontime_intervals
 
     def get_ontime_upto(self, mjd):
         """Calculates the cumulative detector on-time up to the given time.
