@@ -86,6 +86,22 @@ class TimeProfileModel(object):
         """
         pass
 
+    @abc.abstractmethod
+    def get_value(self, t):
+        """Retrieves the value of the time profile at time t.
+
+        Parameters
+        ----------
+        t : float
+            The MJD time for which the time profile value should get retrieved.
+
+        Returns
+        -------
+        value : float
+            The time profile value at the given time.
+        """
+        pass
+
 
 class BoxTimeProfile(TimeProfileModel):
     """The BoxTimeProfile describes a box-shaped emission time profile of a
@@ -169,3 +185,27 @@ class BoxTimeProfile(TimeProfileModel):
         integrals[m] = f*(t2-t1)
 
         return integrals
+
+    def get_value(self, t):
+        """Retrieves the value of the box-shaped time profile at time t.
+        For a box-shaped time profile the values are all equal to 1/duration
+        for times within the time duration and zero otherwise.
+
+        Parameters
+        ----------
+        t : float | array of float
+            The MJD time(s) for which the time profile value(s) should get
+            retrieved.
+
+        Returns
+        -------
+        values : array of float
+            The time profile value(s) at the given time(s).
+        """
+        t = np.atleast_1d(t)
+
+        values = np.zeros((t.shape[0],), dtype=np.float)
+        m = (t >= self._t_start) & (t < self._t_end)
+        values[m] = 1./self.duration
+
+        return values
