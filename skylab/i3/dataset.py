@@ -3,6 +3,7 @@
 import numpy as np
 from numpy.lib import recfunctions as np_rfn
 
+from skylab.core.py import issequenceof
 from skylab.core.dataset import Dataset
 from skylab.core.stopwatch import get_stopwatch_lap_taker
 
@@ -17,6 +18,11 @@ class I3Dataset(Dataset):
     def __init__(self, grl_pathfilenames=None, *args, **kwargs):
         """Creates a new IceCube specific dataset, that also can hold a list
         of GRL data files.
+
+        Parameters
+        ----------
+        grl_pathfilenames : str | sequence of str
+
         """
         super(I3Dataset, self).__init__(*args, **kwargs)
 
@@ -34,9 +40,9 @@ class I3Dataset(Dataset):
             pathfilenames = []
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
-        if(not isinstance(pathfilenames, list)):
-            raise TypeError('The grl_pathfilename_list property must be of type list!')
-        self._grl_pathfilename_list = pathfilenames
+        if(not issequenceof(pathfilenames, str)):
+            raise TypeError('The grl_pathfilename_list property must be a sequence of str!')
+        self._grl_pathfilename_list = list(pathfilenames)
 
     def __str__(self):
         """Implementation of the pretty string representation of the I3Dataset
@@ -44,10 +50,12 @@ class I3Dataset(Dataset):
         """
         pad = ' '*4
         s = super(I3Dataset, self).__str__()
+        s += '%s GRL data:\n'%(pad)
         if(len(self.grl_pathfilename_list) > 0):
-            s += '%s GRL data:\n'%(pad)
             for pathfilename in self.grl_pathfilename_list:
                 s += '%s%s\n'%(pad*2, pathfilename)
+        else:
+            s += '%s None'%(pad*2)
         return s
 
     def prepare_data(self, data, sw=None):
