@@ -4,6 +4,7 @@ import numpy as np
 
 from skylab.core.livetime import Livetime
 from skylab.core import storage
+from skylab.i3.dataset import I3Dataset
 
 class I3Livetime(Livetime):
     """The I3Livetime class provides the functionality to load a Livetime object
@@ -25,6 +26,11 @@ class I3Livetime(Livetime):
         ----------
         pathfilenames : str | list of str
             The list of fully qualified file names of the GRL data files.
+
+        Returns
+        -------
+        livetime : I3Livetime instance
+            The created I3Livetime instance for the provided GRL data.
         """
         grl_data = storage.create_FileLoader(pathfilenames).load_data()
 
@@ -38,6 +44,29 @@ class I3Livetime(Livetime):
             grl_data['good_i3'], uptime_mjd_intervals_arr, axis=0)
 
         return I3Livetime(uptime_mjd_intervals_arr)
+
+    @staticmethod
+    def from_I3Dataset(ds):
+        """Loads an I3Livetime instance from a given I3Dataset instance, which
+        must have a good-run-list (GRL) files defined.
+
+        Parameters
+        ----------
+        ds : I3Dataset instance
+            The instance of I3Dataset which defined the good-run-list (GRL)
+            files for the dataset.
+
+        Returns
+        -------
+        livetime : I3Livetime instance
+            The created I3Livetime instance for the GRL data from the provided
+            dataset.
+        """
+        if(not isinstance(ds, I3Dataset)):
+            raise TypeError('The ds argument must be an instance of I3Dataset!')
+        if(len(ds.grl_pathfilename_list) == 0):
+            raise ValueError('No GRL files have been defined for the given dataset!')
+        return I3Livetime.from_GRL_files(ds.grl_pathfilename_list)
 
     def __init__(self, uptime_mjd_intervals_arr):
         super(I3Livetime, self).__init__(uptime_mjd_intervals_arr)
