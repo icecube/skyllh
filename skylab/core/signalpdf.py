@@ -290,6 +290,6 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         # if the time profile is entirly during detector off-time.
         prob = np.zeros((len(events),), dtype=np.float)
         if(self._S > 0):
-            prob[on] = self._time_profile.get_value(events_time[on]) * self._I / self._S
+            prob[on] = self._time_profile.get_value(events_time[on]) / (self._I * self._S)
 
         return prob
