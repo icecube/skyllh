@@ -5,7 +5,7 @@
 import numpy as np
 
 from skylab.core.random import RandomStateService
-from skylab.core.py import issequence
+from skylab.core.py import issequence, classname
 
 class Livetime(object):
     """The ``Livetime`` class defines an interface to query the up-time of the
@@ -87,12 +87,24 @@ class Livetime(object):
 
     @property
     def time_window(self):
-        """The two-element tuple holding the time window which is spanned by all
-        the MJD uptime intervals. By definition this included possible
-        dector down-times.
+        """(read-only) The two-element tuple holding the time window which is
+        spanned by all the MJD uptime intervals.
+        By definition this included possible dector down-time periods.
         """
         return (self._uptime_mjd_intervals_arr[0,0],
                 self._uptime_mjd_intervals_arr[-1,1])
+
+    @property
+    def time_start(self):
+        """(read-only) The start of the detector live-time.
+        """
+        return self._uptime_mjd_intervals_arr[0,0]
+
+    @property
+    def time_end(self):
+        """(read-only) The end of the detector live-time.
+        """
+        return self._uptime_mjd_intervals_arr[-1,1]
 
     @property
     def _onoff_intervals(self):
@@ -101,6 +113,13 @@ class Livetime(object):
         elements are off-time intervals.
         """
         return np.reshape(self._uptime_mjd_intervals_arr, (self._uptime_mjd_intervals_arr.size,))
+
+    def __str__(self):
+        """Pretty string representation of the Livetime class instance.
+        """
+        s = '%s(time_window=(%.6f, %.6f))'%(
+            classname(self), self.time_window[0], self.time_window[1])
+        return s
 
     def _get_onoff_interval_indices(self, mjds):
         """Retrieves the indices of the on-time and off-time intervals, which
@@ -240,8 +259,8 @@ class Livetime(object):
             return np.asscalar(ontimes)
         return ontimes
 
-    def is_live(self, mjd):
-        """Checks if the detector is live at the given MJD time. MJD times
+    def is_on(self, mjd):
+        """Checks if the detector is on at the given MJD time. MJD times
         outside any live-time interval will be masked as False.
 
         Parameters
@@ -251,21 +270,20 @@ class Livetime(object):
 
         Returns
         -------
-        is_live : bool | array of bool
+        is_on : array of bool
             True if the detector was on at the given time.
         """
-        mjds = np.atleast_1d(mjd)
+        mjd = np.atleast_1d(mjd)
 
         # Get the on-off-time interval indices corresponding to the given MJD
         # values.
-        onoff_idxs = self._get_onoff_interval_indices(mjds)
+        onoff_idxs = self._get_onoff_interval_indices(mjd)
 
-        # Mask odd indices as on-time (True) MJD values.
-        is_live = np.array(onoff_idxs & 0x1, dtype=np.bool)
+        # Mask odd indices as on-time (True) MJD values and even indices as
+        # off-time (False).
+        is_on = np.array(onoff_idxs & 0x1, dtype=np.bool)
 
-        if(not issequence(mjd)):
-            return np.asscalar(is_live)
-        return is_live
+        return is_on
 
     def draw_ontimes(self, rss, size):
         """Draws random MJD times based on the detector on-time intervals.
