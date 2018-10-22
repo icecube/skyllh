@@ -202,9 +202,44 @@ The data quantity $\sigma_i$ describes the angular reconstruction uncertainty of
 the event, hence the PSF is narrower for well-reconstructed events, and wider
 for events which have a large reconstruction uncertainty.
 
+The energy signal PDF can be constructed from monte-carlo data using the assumed
+source energy spectrum.
 When considering a power law as source flux model, the energy source parameters,
 $\vec{p}_{\mathrm{s,energy}}$, consists of the spectral index $\gamma$ and possibly
 an energy cut-off parameter $E_{\mathrm{cut}}$.
+
+The source time PDF describes the emmission time profile of the source. Different
+functional forms of this time profile could be imagined. Common profiles are:
+A steady source profile over the entire observation time, $T_{\mathrm{obs}}$,
+\begin{equation}
+ \mathcal{T}_{\mathcal{S}}(t) \equiv \frac{1}{T_{\mathrm{obs}}},
+\end{equation}
+a box profile of length $T_{\mathrm{W}}$ with the box's middle time position, $T_{0}$,
+\begin{equation}
+ \mathcal{T}_{\mathcal{S}}(t|T_0,T_{\mathrm{W}}) = \begin{cases}
+                                 \frac{1}{T_{\mathrm{W}}} & \forall t \in \left[T_0 - T_{\mathrm{W}}/2; T_0 + T_{\mathrm{W}}/2 \right]\\
+                                 0 & \mathrm{otherwise}
+                                 \end{cases},
+\end{equation}
+or a gaussian shaped time profile centered at $T_0$ with a time width of $\sigma_T$,
+\begin{equation}
+ \mathcal{T}_{\mathcal{S}}(t|T_0,\sigma_T) \equiv \frac{1}{\sqrt{2\pi}\sigma_T}\exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right).
+\end{equation}
+For efficiency reasons, the gaussian shape source time profile is truncated at
+a certain distance from $T_0$, \emph{e.g.} at $\pm\sigma_T$:
+\begin{equation}
+ \mathcal{T}_{\mathcal{S}}(t|T_0,\sigma_T) \equiv \begin{cases}
+                                      \frac{1}{\sqrt{2\pi}\sigma_T}\exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right) & \left|t-T_0\right| \le \sigma_T\\
+                                      0 & \mathrm{otherwise}
+                                     \end{cases}.
+\end{equation}
+
+
+The final time PDF is then the convolution of the source time profile,
+$\mathcal{T}_{\mathcal{S}}(t)$, and the detector live-time function,
+$T_{\mathrm{live}}(t)$, where the final result is normalized to unity again.
+
+
 
 In analog to the signal PDF, the background PDF can be formulated as
 \begin{equation}
