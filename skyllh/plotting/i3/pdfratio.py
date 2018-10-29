@@ -9,8 +9,8 @@ import itertools
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
-from skylab.core.py import classname
-from skylab.i3.pdfratio import I3EnergySigOverBkgPDFRatioSpline
+from skyllh.core.py import classname
+from skyllh.i3.pdfratio import I3EnergySigOverBkgPDFRatioSpline
 
 class I3EnergySigOverBkgPDFRatioSplinePlotter(object):
     """Plotter class to plot an I3EnergySigOverBkgPDFRatioSpline object.

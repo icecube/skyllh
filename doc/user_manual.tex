@@ -24,13 +24,13 @@
 
 \section{The Likelihood Formalism}
 
-This section describes the mathematical likelihood formalism used in Skylab.
+This section describes the mathematical likelihood formalism used in Skyllh.
 First it introduces the log-likelihood approach, second the likelihood ratio
 test and the used test statistic and then describes the used optimizations.
 
 \subsection{The Log-Likelihood Approach}
 
-Skylab implements the two-component likelihood approach with a likelihood
+Skyllh implements the two-component likelihood approach with a likelihood
 function $\mathcal{L}(n_{\mathrm{s}},\vec{p}_{\mathrm{s}}~|D)$ of the form
 \begin{equation}
  \mathcal{L}(\ns,\ps~|D) = \prod_{i=1}^{N}\left[ \frac{\ns}{N} \mathcal{S}_{i}(\ps) + (1 - \frac{\ns}{N}) \mathcal{B}_{i} \right],
@@ -49,7 +49,7 @@ $\mathcal{Y}_i$, which, in general, depends on the celestrial direction, the
 energy, and the observation time of the data event.
 
 For computational stability reasons the logarithm of the likelihood function of
-equation \ref{eq:L} is used in Skylab:
+equation \ref{eq:L} is used in Skyllh:
 \begin{equation}
  \log \mathcal{L}(\ns,\ps~|D) = \sum_{i=1}^{N} \log (...)
 \end{equation}
@@ -428,7 +428,7 @@ contribute.
 
 \subsection{Multiple Datasets}
 
-With Skylab a set of $J$ different data samples (datasets) $\mathrm{D}_j$ can be
+With Skyllh a set of $J$ different data samples (datasets) $\mathrm{D}_j$ can be
 analyzed at once. Each data sample has its own detector signal efficiency
 $\mathcal{Y}_{\mathrm{s}_j}$.
 
@@ -576,7 +576,7 @@ $\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}},t_{\mathrm{obs}})$.
 
 \subsection{Effective Area}
 
-In Skylab the effective area $A_{\mathrm{eff},j}$ of a data sample $j$ is not
+In Skyllh the effective area $A_{\mathrm{eff},j}$ of a data sample $j$ is not
 calculated separately in order to avoid binning effects. However, the effective
 area can be calculated using the monte-carlo weights \code{mcweight}\footnote{In IceCube
 known as ``OneWeight'', but which already includes the number of used MC files.}
@@ -644,7 +644,7 @@ I3PowerLawFluxDetSigEff & IceCube detector signal efficiency implementation meth
 
 \section{The Concept of Source Hypothesis Groups}
 
-The analyses in Skylab rely heavily on the calculation of detector signal
+The analyses in Skyllh rely heavily on the calculation of detector signal
 efficiencies. As seen in section \ref{sec:detsigeff}, the detector signal
 efficiency depends on the source hypothesis (spatial model and flux model)
 and the detector response (dataset). Hence, the analyses require detector signal
@@ -659,7 +659,7 @@ A source hypothesis group has a list of spatial source models, e.g. point-like s
 locations in case of point-like sources, a flux model, and a detection signal
 efficiency implementation method assigned.
 
-Skylab provides the \class{SourceHypoGroupManager} class to define the groups of
+Skyllh provides the \class{SourceHypoGroupManager} class to define the groups of
 source hypotheses.
 
 \section{Implemented Log-Likelihood Models}

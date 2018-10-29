@@ -5,7 +5,7 @@ from __future__ import division
 import abc
 import numpy as np
 
-from skylab.core.py import float_cast, classname
+from skyllh.core.py import float_cast, classname
 
 class TimeProfileModel(object):
     """Abstract base class for an emission time profile of a source.

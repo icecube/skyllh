@@ -6,8 +6,8 @@ import itertools
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
-from skylab.core.py import classname
-from skylab.core.pdf import SpatialPDF, IsSignalPDF
+from skyllh.core.py import classname
+from skyllh.core.pdf import SpatialPDF, IsSignalPDF
 
 class SignalSpatialPDFPlotter(object):
     def __init__(self, pdf):

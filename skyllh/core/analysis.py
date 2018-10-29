@@ -5,28 +5,28 @@
 
 import abc
 
-from skylab.core.py import issequenceof
-from skylab.core.dataset import Dataset, DatasetData
-from skylab.core.parameters import (
+from skyllh.core.py import issequenceof
+from skyllh.core.dataset import Dataset, DatasetData
+from skyllh.core.parameters import (
     FitParameter,
     SourceFitParameterMapper,
     SingleSourceFitParameterMapper
 )
-from skylab.core.pdf import SpatialPDF, EnergyPDF
-from skylab.core.pdfratio import PDFRatio
-from skylab.core.llhratio import (
+from skyllh.core.pdf import SpatialPDF, EnergyPDF
+from skyllh.core.pdfratio import PDFRatio
+from skyllh.core.llhratio import (
     SingleSourceDatasetSignalWeights,
     SingleSourceTCLLHRatio,
     MultiDatasetTCLLHRatio
 )
-from skylab.core.scrambling import DataScramblingMethod
-from skylab.core.optimize import EventSelectionMethod, AllEventSelectionMethod
-from skylab.core.source_hypothesis import SourceHypoGroupManager
-from skylab.core.test_statistic import TestStatistic
-from skylab.core.minimizer import Minimizer
-from skylab.core.scrambling import DataScrambler
-from skylab.core.signal_generator import SignalGenerator
-from skylab.physics.source import SourceModel
+from skyllh.core.scrambling import DataScramblingMethod
+from skyllh.core.optimize import EventSelectionMethod, AllEventSelectionMethod
+from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.test_statistic import TestStatistic
+from skyllh.core.minimizer import Minimizer
+from skyllh.core.scrambling import DataScrambler
+from skyllh.core.signal_generator import SignalGenerator
+from skyllh.physics.source import SourceModel
 
 
 class Analysis(object):

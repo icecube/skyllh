@@ -4,9 +4,9 @@ import abc
 import itertools
 import numpy as np
 
-from skylab.core.py import typename, classname, issequenceof
-from skylab.core.parameters import FitParameter, FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
-from skylab.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
+from skyllh.core.py import typename, classname, issequenceof
+from skyllh.core.parameters import FitParameter, FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
+from skyllh.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
 
 
 class PDFRatio(object):

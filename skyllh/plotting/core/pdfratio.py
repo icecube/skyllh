@@ -8,8 +8,8 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
-from skylab.core.py import classname
-from skylab.core.pdfratio import SpatialSigOverBkgPDFRatio
+from skyllh.core.py import classname
+from skyllh.core.pdfratio import SpatialSigOverBkgPDFRatio
 
 class SpatialSigOverBkgPDFRatioPlotter(object):
     """Plotter class to plot a SpatialSigOverBkgPDFRatio object.

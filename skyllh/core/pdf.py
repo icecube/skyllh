@@ -2,8 +2,8 @@
 
 import abc
 
-from skylab.core.py import typename, ObjectCollection
-from skylab.core.parameters import ParameterGrid, ParameterGridSet, make_params_hash
+from skyllh.core.py import typename, ObjectCollection
+from skyllh.core.parameters import ParameterGrid, ParameterGridSet, make_params_hash
 
 class PDFAxis(object):
     """This class describes an axis of a PDF. It's main purpose is to define

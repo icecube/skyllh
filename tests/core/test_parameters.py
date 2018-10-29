@@ -13,7 +13,7 @@ class TestParameters(unittest.TestCase):
         """Test the arameter_permutation_dict_list method of the
         ParameterGridSet class.
         """
-        from skylab.core.parameters import make_linear_parameter_grid_1d, ParameterGridSet
+        from skyllh.core.parameters import make_linear_parameter_grid_1d, ParameterGridSet
 
         GAMMA_GRID = [ 1. ,  1.1,  1.2,  1.3,  1.4,  1.5,  1.6,  1.7,  1.8,  1.9,  2. ]
         ECUT_GRID = [ 9., 9.1 ]
@@ -37,9 +37,9 @@ class TestParameters(unittest.TestCase):
         self.assertTrue(isAlmostEqual( [ d['Ecut'] for d in perm_dict_list ], ECUT_GRID*len(GAMMA_GRID)))
 
     def test_SourceFitParameterManager(self):
-        from skylab.physics.flux import PowerLawFlux
-        from skylab.physics.source import PointLikeSource
-        from skylab.core.parameters import SourceFitParameterManager, FitParameter
+        from skyllh.physics.flux import PowerLawFlux
+        from skyllh.physics.source import PointLikeSource
+        from skyllh.core.parameters import SourceFitParameterManager, FitParameter
 
         # Define the flux model.
         fluxmodel = PowerLawFlux(1, 1e3, -2)

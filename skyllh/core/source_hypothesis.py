@@ -6,8 +6,8 @@ hypotheses. The SourceHypoGroupManager manages the groups of source hypotheses.
 
 import numpy as np
 
-from skylab.core.py import issequenceof
-from skylab.core.source_hypo_group import SourceHypoGroup
+from skyllh.core.py import issequenceof
+from skyllh.core.source_hypo_group import SourceHypoGroup
 
 
 class SourceHypoGroupManager(object):

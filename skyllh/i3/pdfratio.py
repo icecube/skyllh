@@ -4,11 +4,11 @@ import abc
 import numpy as np
 import scipy.interpolate
 
-from skylab.core.parameters import make_params_hash
-from skylab.core.multiproc import IsParallelizable, parallelize
-from skylab.core.pdfratio import SigSetOverBkgPDFRatio, PDFRatioFillMethod
+from skyllh.core.parameters import make_params_hash
+from skyllh.core.multiproc import IsParallelizable, parallelize
+from skyllh.core.pdfratio import SigSetOverBkgPDFRatio, PDFRatioFillMethod
 
-from skylab.i3.pdf import I3EnergyPDF
+from skyllh.i3.pdf import I3EnergyPDF
 
 
 class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizable):

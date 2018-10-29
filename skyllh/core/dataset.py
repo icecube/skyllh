@@ -6,11 +6,11 @@ import numpy as np
 from numpy.lib import recfunctions as np_rfn
 from copy import deepcopy
 
-from skylab.core.binning import BinningDefinition
-from skylab.core.py import issequence, issequenceof
-from skylab.core.stopwatch import get_stopwatch_lap_taker
-from skylab.core import display
-from skylab.core import storage
+from skyllh.core.binning import BinningDefinition
+from skyllh.core.py import issequence, issequenceof
+from skyllh.core.stopwatch import get_stopwatch_lap_taker
+from skyllh.core import display
+from skyllh.core import storage
 
 
 class Dataset(object):

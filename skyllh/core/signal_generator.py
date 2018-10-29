@@ -3,15 +3,15 @@
 import itertools
 import numpy as np
 
-from skylab.core.py import (
+from skyllh.core.py import (
     issequenceof,
     float_cast,
     int_cast,
     get_smallest_numpy_int_type
 )
-from skylab.core.random import RandomStateService
-from skylab.core.dataset import Dataset, DatasetData
-from skylab.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.random import RandomStateService
+from skyllh.core.dataset import Dataset, DatasetData
+from skyllh.core.source_hypothesis import SourceHypoGroupManager
 
 
 class SignalGenerator(object):

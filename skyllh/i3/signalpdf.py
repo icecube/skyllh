@@ -2,14 +2,14 @@
 
 import numpy as np
 
-from skylab.core.binning import BinningDefinition
-from skylab.core.multiproc import IsParallelizable, parallelize
-from skylab.core.parameters import ParameterGrid, ParameterGridSet
-from skylab.core.smoothing import SmoothingFilter
-from skylab.core.pdf import PDFSet, IsSignalPDF
-from skylab.physics.flux import FluxModel
+from skyllh.core.binning import BinningDefinition
+from skyllh.core.multiproc import IsParallelizable, parallelize
+from skyllh.core.parameters import ParameterGrid, ParameterGridSet
+from skyllh.core.smoothing import SmoothingFilter
+from skyllh.core.pdf import PDFSet, IsSignalPDF
+from skyllh.physics.flux import FluxModel
 
-from skylab.i3.pdf import I3EnergyPDF
+from skyllh.i3.pdf import I3EnergyPDF
 
 class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     """This is the signal energy PDF for IceCube. It creates a set of

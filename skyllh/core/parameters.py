@@ -5,9 +5,9 @@ import itertools
 import numpy as np
 from copy import deepcopy
 
-from skylab.physics.source import SourceModel, SourceCollection
-from skylab.core.py import ObjectCollection, issequence, float_cast
-from skylab.core.random import RandomStateService
+from skyllh.physics.source import SourceModel, SourceCollection
+from skyllh.core.py import ObjectCollection, issequence, float_cast
+from skyllh.core.random import RandomStateService
 
 def make_linear_parameter_grid_1d(name, low, high, delta):
     """Utility function to create a ParameterGrid object for a 1-dimensional

@@ -10,23 +10,23 @@ from __future__ import division
 import abc
 import numpy as np
 
-from skylab.core.py import (
+from skyllh.core.py import (
     issequence,
     issequenceof,
     float_cast
 )
-from skylab.core.source_hypothesis import SourceHypoGroupManager
-from skylab.core.detsigeff import DetSigEff
-from skylab.core.parameters import (
+from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.detsigeff import DetSigEff
+from skyllh.core.parameters import (
     SourceFitParameterMapper,
     SingleSourceFitParameterMapper,
     MultiSourceFitParameterMapper
 )
-from skylab.core.pdfratio import (
+from skyllh.core.pdfratio import (
     PDFRatio,
     SingleSourcePDFRatioArrayArithmetic
 )
-from skylab.physics.source import SourceModel
+from skyllh.physics.source import SourceModel
 
 
 class LLHRatio(object):

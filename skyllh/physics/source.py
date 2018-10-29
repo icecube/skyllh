@@ -6,7 +6,7 @@ derived class. The most common one is the PointLikeSource source model for a
 point-like source at a given location in the sky with a given flux model.
 """
 
-from skylab.core.py import ObjectCollection, issequence, float_cast
+from skyllh.core.py import ObjectCollection, issequence, float_cast
 
 class SourceLocation(object):
     """Stores the location of a source, i.e. right-ascention and declination.
@@ -37,7 +37,7 @@ class SourceLocation(object):
 
 
 class SourceModel(object):
-    """The base class for all source models in Skylab. Each source has a central
+    """The base class for all source models in Skyllh. Each source has a central
     location given by a right-ascention and declination location.
     """
     def __init__(self, ra, dec):

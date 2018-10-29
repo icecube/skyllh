@@ -7,8 +7,8 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
-from skylab.core.py import classname
-from skylab.i3.backgroundpdf import I3BackgroundSpatialPDF
+from skyllh.core.py import classname
+from skyllh.i3.backgroundpdf import I3BackgroundSpatialPDF
 
 class I3BackgroundSpatialPDFPlotter(object):
     """Plotter class to plot an I3BackgroundSpatialPDF object.

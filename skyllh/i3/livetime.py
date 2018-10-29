@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from skylab.core.livetime import Livetime
-from skylab.core import storage
-from skylab.i3.dataset import I3Dataset
+from skyllh.core.livetime import Livetime
+from skyllh.core import storage
+from skyllh.i3.dataset import I3Dataset
 
 class I3Livetime(Livetime):
     """The I3Livetime class provides the functionality to load a Livetime object

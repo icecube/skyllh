@@ -6,7 +6,7 @@ import numpy as np
 
 import scipy.optimize
 
-from skylab.core.parameters import FitParameterSet
+from skyllh.core.parameters import FitParameterSet
 
 class MinimizerImpl(object):
     """Abstract base class for a minimizer implementation. It defines the

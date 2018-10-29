@@ -3,7 +3,7 @@
 import numpy as np
 import time
 
-from skylab.core import display
+from skyllh.core import display
 
 def get_stopwatch_lap_taker(sw):
     """Returns a function with call signature ``__call__(msg)`` to take a lap

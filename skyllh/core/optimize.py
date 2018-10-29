@@ -3,9 +3,9 @@
 import abc
 import numpy as np
 
-from skylab.core.py import float_cast, issequenceof
-from skylab.core.source_hypothesis import SourceHypoGroupManager
-from skylab.physics.source import SourceModel
+from skyllh.core.py import float_cast, issequenceof
+from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.physics.source import SourceModel
 
 
 class EventSelectionMethod(object):

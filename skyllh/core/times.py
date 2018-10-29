@@ -2,8 +2,8 @@
 
 import abc
 
-from skylab.core.random import RandomStateService
-from skylab.core.livetime import Livetime
+from skyllh.core.random import RandomStateService
+from skyllh.core.livetime import Livetime
 
 class TimeGenerationMethod(object):
     """Base class (type) for implementing a method to generate times.

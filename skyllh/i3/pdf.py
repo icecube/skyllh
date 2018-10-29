@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from skylab.core.binning import UsesBinning
-from skylab.core.pdf import PDFAxis, EnergyPDF
-from skylab.core.smoothing import (
+from skyllh.core.binning import UsesBinning
+from skyllh.core.pdf import PDFAxis, EnergyPDF
+from skyllh.core.smoothing import (
     UNSMOOTH_AXIS,
     SmoothingFilter,
     HistSmoothingMethod,

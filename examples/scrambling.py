@@ -1,9 +1,9 @@
-# Example how to use the data scrambling mechanism of skylab.
+# Example how to use the data scrambling mechanism of skyllh.
 
 import numpy as np
 
-from skylab.core.random import RandomStateService
-from skylab.core.scrambling import DataScrambler, RAScramblingMethod
+from skyllh.core.random import RandomStateService
+from skyllh.core.scrambling import DataScrambler, RAScramblingMethod
 
 def gen_data(rss, N=100, window=(0,365)):
     """Create uniformly distributed data on sphere. """

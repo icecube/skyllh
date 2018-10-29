@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from skylab.core.py import issequenceof
-from skylab.core.detsigeff import DetSigEffImplMethod
-from skylab.core.signal_generation import SignalGenerationMethod
-from skylab.physics.source import SourceModel
-from skylab.physics.flux import FluxModel
+from skyllh.core.py import issequenceof
+from skyllh.core.detsigeff import DetSigEffImplMethod
+from skyllh.core.signal_generation import SignalGenerationMethod
+from skyllh.physics.source import SourceModel
+from skyllh.physics.flux import FluxModel
 
 
 class SourceHypoGroup(object):

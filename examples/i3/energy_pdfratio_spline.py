@@ -2,13 +2,13 @@
 
 """Example script how to create an IceCube energy PDF ratio spline object.
 """
-from skylab.physics.flux import PowerLawFlux
-from skylab.core.parameters import make_linear_parameter_grid_1d
-from skylab.i3.pdfratio import I3EnergySigOverBkgPDFRatioSpline
-from skylab.i3.signalpdf import SignalI3EnergyPDF
-from skylab.i3.backgroundpdf import DataBackgroundI3EnergyPDF
+from skyllh.physics.flux import PowerLawFlux
+from skyllh.core.parameters import make_linear_parameter_grid_1d
+from skyllh.i3.pdfratio import I3EnergySigOverBkgPDFRatioSpline
+from skyllh.i3.signalpdf import SignalI3EnergyPDF
+from skyllh.i3.backgroundpdf import DataBackgroundI3EnergyPDF
 
-from skylab.plotting.i3.pdfratio import I3EnergySigOverBkgPDFRatioSplinePlotter
+from skyllh.plotting.i3.pdfratio import I3EnergySigOverBkgPDFRatioSplinePlotter
 
 from matplotlib import pyplot as plt
 
@@ -16,11 +16,11 @@ ncpu = 6
 season_name = 'IC86, 2015-2017'
 
 # Enable multi-core processing globally.
-from skylab.core import multiproc
+from skyllh.core import multiproc
 multiproc.NCPU = ncpu
 
 # Define the GFU dataset collection.
-from i3skylab.datasets import GFU_v002p01 as datasample
+from i3skyllh.datasets import GFU_v002p01 as datasample
 GFU_dsc = datasample.create_dataset_collection("/home/mwolf/data/ana/analyses/gfu/version-002-p01/")
 
 # Get a dataset from the collection and load and prepare its data.

@@ -4,7 +4,7 @@ import abc
 import numpy as np
 import os.path
 
-from skylab.core.py import issequence, issequenceof
+from skyllh.core.py import issequence, issequenceof
 
 # Define a file loader registry that holds the FileLoader classes for different
 # file formats.

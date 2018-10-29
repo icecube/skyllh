@@ -9,17 +9,17 @@ import numpy as np
 
 import scipy.interpolate
 
-from skylab.core import multiproc
-from skylab.core.py import issequenceof
-from skylab.core.binning import BinningDefinition
-from skylab.core.parameters import ParameterGrid
-from skylab.core.detsigeff import (
+from skyllh.core import multiproc
+from skyllh.core.py import issequenceof
+from skyllh.core.binning import BinningDefinition
+from skyllh.core.parameters import ParameterGrid
+from skyllh.core.detsigeff import (
     DetSigEff,
     DetSigEffImplMethod
 )
-from skylab.core.livetime import Livetime
-from skylab.physics.source import PointLikeSource
-from skylab.physics.flux import (
+from skyllh.core.livetime import Livetime
+from skyllh.physics.source import PointLikeSource
+from skyllh.physics.flux import (
     FluxModel,
     PowerLawFlux,
     get_conversion_factor_to_internal_flux_unit

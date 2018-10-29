@@ -2,10 +2,10 @@ from __future__ import division
 
 import numpy as np
 
-from skylab.core import lh
-from skylab.core.lh import LHComponent as LHC
-from skylab.core.lh import LHFunction as LHF
-from skylab.core.minimizer import LBFGSMinimizer
+from skyllh.core import lh
+from skyllh.core.lh import LHComponent as LHC
+from skyllh.core.lh import LHFunction as LHF
+from skyllh.core.minimizer import LBFGSMinimizer
 
 from scipy.optimize import fmin_l_bfgs_b as minimize
 

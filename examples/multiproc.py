@@ -4,7 +4,7 @@ the function f(x) = x^2 + c
 
 import numpy as np
 
-from skylab.core.multiproc import parallelize
+from skyllh.core.multiproc import parallelize
 
 
 def f(x, c=0.):

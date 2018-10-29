@@ -6,13 +6,13 @@ likelihood function.
 
 import numpy as np
 
-from skylab.core import display
-from skylab.core.py import issequenceof, classname
-from skylab.core.livetime import Livetime
-from skylab.core.pdf import SpatialPDF, IsSignalPDF, TimePDF, PDFAxis
-from skylab.core.source_hypothesis import SourceHypoGroupManager
-from skylab.physics.source import PointLikeSource
-from skylab.physics.time_profile import TimeProfileModel
+from skyllh.core import display
+from skyllh.core.py import issequenceof, classname
+from skyllh.core.livetime import Livetime
+from skyllh.core.pdf import SpatialPDF, IsSignalPDF, TimePDF, PDFAxis
+from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.physics.source import PointLikeSource
+from skyllh.physics.time_profile import TimeProfileModel
 
 class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     """This spatial signal PDF model describes the spatial PDF for a point

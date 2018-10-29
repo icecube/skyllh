@@ -4,8 +4,8 @@
 """
 import numpy as np
 
-from skylab.core.random import RandomStateService
-from skylab.core.py import issequence, classname
+from skyllh.core.random import RandomStateService
+from skyllh.core.py import issequence, classname
 
 class Livetime(object):
     """The ``Livetime`` class defines an interface to query the up-time of the
@@ -291,7 +291,7 @@ class Livetime(object):
         Parameters
         ----------
         rss : RandomStateService
-            The skylab RandomStateService instance to use for drawing random
+            The skyllh RandomStateService instance to use for drawing random
             numbers from.
         size : int
             The number of random MJD times to generate.

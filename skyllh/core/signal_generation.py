@@ -2,7 +2,7 @@
 
 import abc
 
-from skylab.core.py import (
+from skyllh.core.py import (
     issequence,
     float_cast
 )

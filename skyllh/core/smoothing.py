@@ -6,7 +6,7 @@ import numpy as np
 import scipy.signal
 import scipy.stats
 
-from skylab.core.py import issequenceof
+from skyllh.core.py import issequenceof
 
 # Define a constant that can be used when specifying a histogram axis as
 # unsmooth, i.e. no smoothing should be applied along that axis.

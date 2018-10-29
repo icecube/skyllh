@@ -4,14 +4,14 @@ from __future__ import division
 
 import numpy as np
 
-from skylab.core.py import (
+from skyllh.core.py import (
     get_smallest_numpy_int_type,
     float_cast
 )
-from skylab.core.coords import rotate_spherical_vector
-from skylab.core.signal_generation import SignalGenerationMethod
-from skylab.physics.source import PointLikeSource
-from skylab.physics.flux import (
+from skyllh.core.coords import rotate_spherical_vector
+from skyllh.core.signal_generation import SignalGenerationMethod
+from skyllh.physics.source import PointLikeSource
+from skyllh.physics.flux import (
     get_conversion_factor_to_internal_flux_unit
 )
 

@@ -5,11 +5,11 @@ import numpy as np
 
 from astropy import units
 
-from skylab.core.py import issequenceofsubclass
-from skylab.core.dataset import Dataset, DatasetData
-from skylab.core.livetime import Livetime
-from skylab.physics.source import SourceModel
-from skylab.physics.flux import FluxModel
+from skyllh.core.py import issequenceofsubclass
+from skyllh.core.dataset import Dataset, DatasetData
+from skyllh.core.livetime import Livetime
+from skyllh.physics.source import SourceModel
+from skyllh.physics.flux import FluxModel
 
 
 class DetSigEff(object):

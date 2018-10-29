@@ -3,9 +3,9 @@
 import numpy as np
 from numpy.lib import recfunctions as np_rfn
 
-from skylab.core.py import issequenceof
-from skylab.core.dataset import Dataset
-from skylab.core.stopwatch import get_stopwatch_lap_taker
+from skyllh.core.py import issequenceof
+from skyllh.core.dataset import Dataset
+from skyllh.core.stopwatch import get_stopwatch_lap_taker
 
 class I3Dataset(Dataset):
     """The I3Dataset class is an IceCube specific Dataset class that adds

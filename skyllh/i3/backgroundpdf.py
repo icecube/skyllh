@@ -4,9 +4,9 @@ import numpy as np
 
 import scipy.interpolate
 
-from skylab.core.binning import BinningDefinition, UsesBinning
-from skylab.core.pdf import SpatialPDF, EnergyPDF, IsBackgroundPDF
-from skylab.i3.pdf import I3EnergyPDF
+from skyllh.core.binning import BinningDefinition, UsesBinning
+from skyllh.core.pdf import SpatialPDF, EnergyPDF, IsBackgroundPDF
+from skyllh.i3.pdf import I3EnergyPDF
 
 class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     """This is the base class for all IceCube specific spatial background PDF

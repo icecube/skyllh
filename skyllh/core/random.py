@@ -5,7 +5,7 @@ import numpy as np
 class RandomStateService(object):
     """The RandomStateService class provides a container for a
     numpy.random.RandomState object, initialized with a given seed. This service
-    can then be passed to any function or method within skylab that requires a
+    can then be passed to any function or method within skyllh that requires a
     random number generator.
     """
     def __init__(self, seed=None):
