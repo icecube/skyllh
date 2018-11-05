@@ -14,7 +14,7 @@ def classname(obj):
     return typename(type(obj))
 
 def issequence(obj):
-    """Checks if the given object ``obj`` is a squence or not. The definition of
+    """Checks if the given object ``obj`` is a sequence or not. The definition of
     a sequence in this case is, that the function ``len`` is defined for the
     object.
 
