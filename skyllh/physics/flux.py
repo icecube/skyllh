@@ -301,8 +301,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
         return self._Ecut
     @Ecut.setter
     def Ecut(self, val):
-        if(not isinstance(val, float)):
-            raise TypeError('Property Ecut must be of type float!')
+        val = float_cast(val, 'Property val must be castable to type float!')
         self._Ecut = val
 
     @property

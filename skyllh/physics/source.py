@@ -6,7 +6,10 @@ derived class. The most common one is the PointLikeSource source model for a
 point-like source at a given location in the sky with a given flux model.
 """
 
+import numpy as np
+
 from skyllh.core.py import ObjectCollection, issequence, float_cast
+
 
 class SourceLocation(object):
     """Stores the location of a source, i.e. right-ascention and declination.
@@ -155,6 +158,7 @@ class Catalog(SourceCollection):
         """Creates a SourceCollection object for this catalog and returns it.
         """
         source_collection = SourceCollection(source_type=self.source_type, sources=self.sources)
+        return source_collection
 
 
 class PointLikeSource(SourceModel):
