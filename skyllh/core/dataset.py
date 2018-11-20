@@ -7,6 +7,7 @@ from numpy.lib import recfunctions as np_rfn
 from copy import deepcopy
 
 from skyllh.core.binning import BinningDefinition
+from skyllh.core.livetime import Livetime
 from skyllh.core.py import issequence, issequenceof
 from skyllh.core.stopwatch import get_stopwatch_lap_taker
 from skyllh.core import display
@@ -762,18 +763,6 @@ class DatasetData(object):
         self.mc = data_mc
 
     @property
-    def dataset(self):
-        """The reference to the Dataset object holding the meta information of
-        the data.
-        """
-        return self._dataset
-    @dataset.setter
-    def dataset(self, ds):
-        if(not isinstance(ds, Dataset)):
-            raise TypeError('The dataset property must be an instance of Dataset!')
-        self._dataset = ds
-
-    @property
     def exp(self):
         """The numpy record array holding the experimental data.
         """
@@ -964,3 +953,44 @@ def generate_data_file_path(
     path = os.path.join(base_path, sub_path)
 
     return path
+
+def get_data_subset(data, livetime, t_start, t_end):
+    """Gets DatasetData and Livetime objects with data subsets between the given
+    time range from t_start to t_end.
+
+    Parameters
+    ----------
+    data : DatasetData
+        The DatasetData object.
+    livetime : Livetime
+        The Livetime object.
+    t_start : float
+        The MJD start time of the time range to consider.
+    t_end : float
+        The MJD end time of the time range to consider.
+
+    Returns
+    -------
+    (dataset_data_subset, livetime_subset) : (DatasetData, Livetime)
+        The tuple of DatasetData and Livetime objects with subset of the data
+        between the given time range from t_start to t_end.
+    """
+    if(not isinstance(data, DatasetData)):
+        raise TypeError('The "data" argument must be of type DatasetData!')
+    if(not isinstance(livetime, Livetime)):
+        raise TypeError('The "livetime" argument must be of type Livetime!')
+
+    exp_slice = np.logical_and(data.exp['time'] >= t_start,
+                               data.exp['time'] < t_end)
+    mc_slice = np.logical_and(data.mc['time'] >= t_start,
+                              data.mc['time'] < t_end)
+
+    data_exp = data.exp[exp_slice]
+    data_mc = data.mc[mc_slice]
+
+    uptime_mjd_intervals_arr = livetime.get_ontime_intervals_between(t_start, t_end)
+
+    dataset_data_subset = DatasetData(data_exp, data_mc)
+    livetime_subset = Livetime(uptime_mjd_intervals_arr)
+
+    return (dataset_data_subset, livetime_subset)
