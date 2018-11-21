@@ -971,9 +971,12 @@ def get_data_subset(data, livetime, t_start, t_end):
 
     Returns
     -------
-    (dataset_data_subset, livetime_subset) : (DatasetData, Livetime)
-        The tuple of DatasetData and Livetime objects with subset of the data
-        between the given time range from t_start to t_end.
+    dataset_data_subset : DatasetData
+        DatasetData object with subset of the data between the given time range
+        from t_start to t_end.
+    livetime_subset : Livetime
+        Livetime object with subset of the data between the given time range
+        from t_start to t_end.
     """
     if(not isinstance(data, DatasetData)):
         raise TypeError('The "data" argument must be of type DatasetData!')
