@@ -8,18 +8,18 @@ from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
 from skyllh.core.py import classname
-from skyllh.i3.backgroundpdf import I3BackgroundSpatialPDF
+from skyllh.i3.backgroundpdf import BackgroundI3SpatialPDF
 
-class I3BackgroundSpatialPDFPlotter(object):
-    """Plotter class to plot an I3BackgroundSpatialPDF object.
+class BackgroundI3SpatialPDFPlotter(object):
+    """Plotter class to plot an BackgroundI3SpatialPDF object.
     """
     def __init__(self, pdf):
-        """Creates a new plotter object for plotting an I3BackgroundSpatialPDF
+        """Creates a new plotter object for plotting an BackgroundI3SpatialPDF
         object.
 
         Parameters
         ----------
-        pdf : I3BackgroundSpatialPDF
+        pdf : BackgroundI3SpatialPDF
             The PDF object to plot.
         """
         self.pdf = pdf
@@ -31,8 +31,8 @@ class I3BackgroundSpatialPDFPlotter(object):
         return self._pdf
     @pdf.setter
     def pdf(self, pdf):
-        if(not isinstance(pdf, I3BackgroundSpatialPDF)):
-            raise TypeError('The pdf property must be an object of instance I3BackgroundSpatialPDF!')
+        if(not isinstance(pdf, BackgroundI3SpatialPDF)):
+            raise TypeError('The pdf property must be an object of instance BackgroundI3SpatialPDF!')
         self._pdf = pdf
 
     def plot(self, axes):
@@ -47,7 +47,7 @@ class I3BackgroundSpatialPDFPlotter(object):
         if(not isinstance(axes, Axes)):
             raise TypeError('The axes argument must be an instance of matplotlib.axes.Axes!')
 
-        # By construction the I3BackgroundSpatialPDF does not depend on
+        # By construction the BackgroundI3SpatialPDF does not depend on
         # right-ascention. Hence, we only need a single bin for the
         # right-ascention.
         sin_dec_binning = self.pdf.get_binning('sin_dec')

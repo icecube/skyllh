@@ -8,7 +8,7 @@ from skyllh.core.binning import BinningDefinition, UsesBinning
 from skyllh.core.pdf import SpatialPDF, EnergyPDF, IsBackgroundPDF
 from skyllh.i3.pdf import I3EnergyPDF
 
-class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
+class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     """This is the base class for all IceCube specific spatial background PDF
     models. IceCube spatial background PDFs depend solely on the zenith angle,
     and hence, on the declination of the event.
@@ -31,7 +31,7 @@ class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             The order of the spline function for the logarithmic values of the
             spatial background PDF along the sin(dec) axis.
         """
-        super(I3BackgroundSpatialPDF, self).__init__(
+        super(BackgroundI3SpatialPDF, self).__init__(
             ra_range=(0, 2*np.pi),
             dec_range=(np.arcsin(sinDec_binning.lower_edge),
                        np.arcsin(sinDec_binning.upper_edge)))
@@ -91,7 +91,7 @@ class I3BackgroundSpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         return prob
 
 
-class I3DataBackgroundSpatialPDF(I3BackgroundSpatialPDF):
+class DataI3BackgroundSpatialPDF(BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     experimental data.
     """
@@ -120,11 +120,11 @@ class I3DataBackgroundSpatialPDF(I3BackgroundSpatialPDF):
         data_weights = np.ones((data_exp.size,))
 
         # Create the PDF using the base class.
-        super(I3DataBackgroundSpatialPDF, self).__init__(
+        super(DataI3BackgroundSpatialPDF, self).__init__(
             data_sinDec, data_weights, sinDec_binning, spline_order_sinDec
         )
 
-class I3MCBackgroundSpatialPDF(I3BackgroundSpatialPDF):
+class MCI3BackgroundSpatialPDF(BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     monte-carlo data.
     """
@@ -170,7 +170,7 @@ class I3MCBackgroundSpatialPDF(I3BackgroundSpatialPDF):
             data_weights += data_mc[name]
 
         # Create the PDF using the base class.
-        super(I3MCBackgroundSpatialPDF, self).__init__(
+        super(MCI3BackgroundSpatialPDF, self).__init__(
             data_sinDec, data_weights, sinDec_binning, spline_order_sinDec
         )
 
