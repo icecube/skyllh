@@ -844,7 +844,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         sources : sequence of SourceModel
             The sequence of SourceModel instances defining the list of sources.
         """
-        super(MultiSourceFitParameterManager, self).__init__(rss)
+        super(MultiSourceFitParameterMapper, self).__init__(rss)
 
         self.sources = sources
 
