@@ -91,7 +91,7 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         return prob
 
 
-class DataI3BackgroundSpatialPDF(BackgroundI3SpatialPDF):
+class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     experimental data.
     """
@@ -120,11 +120,11 @@ class DataI3BackgroundSpatialPDF(BackgroundI3SpatialPDF):
         data_weights = np.ones((data_exp.size,))
 
         # Create the PDF using the base class.
-        super(DataI3BackgroundSpatialPDF, self).__init__(
+        super(DataBackgroundI3SpatialPDF, self).__init__(
             data_sinDec, data_weights, sinDec_binning, spline_order_sinDec
         )
 
-class MCI3BackgroundSpatialPDF(BackgroundI3SpatialPDF):
+class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     monte-carlo data.
     """
@@ -170,7 +170,7 @@ class MCI3BackgroundSpatialPDF(BackgroundI3SpatialPDF):
             data_weights += data_mc[name]
 
         # Create the PDF using the base class.
-        super(MCI3BackgroundSpatialPDF, self).__init__(
+        super(MCBackgroundI3SpatialPDF, self).__init__(
             data_sinDec, data_weights, sinDec_binning, spline_order_sinDec
         )
 
