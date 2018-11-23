@@ -77,7 +77,7 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         events = np.zeros((ratios.size,),
                           dtype=[('ira', np.int), ('ra', np.float),
                                  ('idec', np.int), ('dec', np.float),
-                                 ('sigma', np.float)])
+                                 ('ang_err', np.float)])
         for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
                                                 enumerate(ra_bincenters),
                                                 enumerate(dec_bincenters))):
@@ -85,7 +85,7 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
             events['ra'][i] = ra
             events['idec'][i] = idec
             events['dec'][i] = dec
-            events['sigma'][i] = np.deg2rad(0.5)
+            events['ang_err'][i] = np.deg2rad(0.5)
 
         event_ratios = self.pdfratio.get_ratio(events)
 

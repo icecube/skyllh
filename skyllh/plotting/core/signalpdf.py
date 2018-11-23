@@ -87,7 +87,7 @@ class SignalSpatialPDFPlotter(object):
         events = np.zeros((probs.size,),
                           dtype=[('ira', np.int), ('ra', np.float),
                                  ('idec', np.int), ('dec', np.float),
-                                 ('sigma', np.float)])
+                                 ('ang_err', np.float)])
         for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
                                                 enumerate(ra_bincenters),
                                                 enumerate(dec_bincenters))):
@@ -98,7 +98,7 @@ class SignalSpatialPDFPlotter(object):
                 events['dec'][i] = np.arcsin(dec)
             else:
                 events['dec'][i] = dec
-            events['sigma'][i] = np.deg2rad(sigma_deg)
+            events['ang_err'][i] = np.deg2rad(sigma_deg)
 
         event_probs = self.pdf.get_prob(events)
 

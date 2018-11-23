@@ -104,7 +104,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                 The right-ascention in radian of the data event.
             'dec' : float
                 The declination in radian of the data event.
-            'sigma': float
+            'ang_err': float
                 The reconstruction uncertainty in radian of the data event.
         params : None
             Unused interface argument.
@@ -117,7 +117,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         """
         ra = events['ra']
         dec = events['dec']
-        sigma = events['sigma']
+        sigma = events['ang_err']
 
         # Make the source position angles two-dimensional so the PDF value can
         # be calculated via numpy broadcasting automatically for several
