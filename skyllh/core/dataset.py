@@ -747,6 +747,19 @@ class DatasetCollection(object):
         for (dsname, dataset) in self._datasets.iteritems():
             dataset.add_data_preparation(func)
 
+    def remove_data_preparation(self, index=-1):
+        """Removes data preparation function from all the datasets of this
+        dataset collection.
+
+        Parameters
+        ----------
+        index : int, optional
+            Index of which data preparation function to remove. Default value
+            is the last added function.
+        """
+        for (dsname, dataset) in self._datasets.iteritems():
+            dataset.remove_data_preparation(index=index)
+
     def update_version_qualifiers(self, verqualifiers):
         """Updates the version qualifiers of all datasets of this dataset
         collection.
