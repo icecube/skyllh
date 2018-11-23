@@ -413,6 +413,17 @@ class Dataset(object):
             raise TypeError('The argument "func" must be a callable object with call signature __call__(exp, mc)!')
         self._data_preparation_functions.append(func)
 
+    def remove_data_preparation(self, index=-1):
+        """Removes data preparation function from the dataset.
+
+        Parameters
+        ----------
+        index : int, optional
+            Index of which data preparation function to remove. Default value
+            is the last added function.
+        """
+        del self._data_preparation_functions[index]
+
     def prepare_data(self, data, sw=None):
         """Prepares the data by calling the data preparation callback functions
         of this dataset.
