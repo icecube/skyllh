@@ -30,26 +30,26 @@ test and the used test statistic and then describes the used optimizations.
 
 \subsection{The Log-Likelihood Approach}
 
-Skyllh implements the two-component likelihood approach with a likelihood
+SkyLLH implements the two-component likelihood approach with a likelihood
 function $\mathcal{L}(n_{\mathrm{s}},\vec{p}_{\mathrm{s}}~|D)$ of the form
 \begin{equation}
- \mathcal{L}(\ns,\ps~|D) = \prod_{i=1}^{N}\left[ \frac{\ns}{N} \mathcal{S}_{i}(\ps) + (1 - \frac{\ns}{N}) \mathcal{B}_{i} \right],
+ \mathcal{L}(\ns,\ps~|D) = \prod_{i=1}^{N}\left[ \frac{\ns}{N} S_{i}(\ps) + (1 - \frac{\ns}{N}) B_{i} \right],
 \label{eq:L}
 \end{equation}
 where $\ns$ is the number of signal events, hence, $(N-\ns)$ the number of
-background events in the dataset $D$ of $N$ total events.
-The set of signal model parameters is denoted as $\ps$. For a point-like source
-model, the signal model parameters include the source position $\xs$ and the
+background events in the data sample $D$ of $N$ total events.
+The set of source model parameters is denoted as $\ps$. For a point-like source
+model, the source model parameters include the source position $\xs$ and the
 spectral index $\gamma$ of the source flux.
-$\mathcal{S}_i(\ps)$ and $\mathcal{B}_i$ is the value of the signal and background PDF for the $i$th data
-event, respectively.
+$S_i(\ps)$ and $B_i$ is the value of the signal and background PDF for the $i$th
+data event, respectively.
 
 The signal and background PDFs must incorperate the detector efficiency (yield),
 $\mathcal{Y}_i$, which, in general, depends on the celestrial direction, the
 energy, and the observation time of the data event.
 
 For computational stability reasons the logarithm of the likelihood function of
-equation \ref{eq:L} is used in Skyllh:
+equation \ref{eq:L} is used in SkyLLH:
 \begin{equation}
  \log \mathcal{L}(\ns,\ps~|D) = \sum_{i=1}^{N} \log (...)
 \end{equation}
@@ -60,7 +60,7 @@ For estimating the significance of an observation, the likelihood ratio
 $\Lambda$ with respect to a null hypothesis of no observation, i.e.
 equation \ref{eq:L} at $\ns=0$ is tested:
 \begin{equation}
- \log \Lambda(\ns,\ps) = \log \frac{L(\ns,\ps)}{L(\ns=0)} = \sum_{i=1}^{N} \log \left[ 1 + \frac{\ns}{N}\left( \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} - 1 \right) \right]
+ \log \Lambda(\ns,\ps) = \log \frac{L(\ns,\ps)}{L(\ns=0)} = \sum_{i=1}^{N} \log \left[ 1 + \frac{\ns}{N}\left( \frac{S_i(\ps)}{B_i} - 1 \right) \right]
 \label{eq:logLambda}
 \end{equation}
 By defining
@@ -71,7 +71,7 @@ By defining
 with the signal over background PDF ratio value, $\mathcal{R}_{i}(\ps)$, of the
 $i$th event,
 \begin{equation}
- \mathcal{R}_i(\ps) \equiv \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i},
+ \mathcal{R}_i(\ps) \equiv \frac{S_i(\ps)}{B_i},
 \end{equation}
 this reads as:
 \begin{equation}
@@ -150,7 +150,7 @@ function is given by
 
 For spatially restricted sources, e.g. point-like sources, most of the events in
 the data sample will be far away from the hypothesised source, hence, the value of the
-signal PDF $\mathcal{S}_i$ will be zero or very close to zero. By selecting only
+signal PDF, $S_i$, will be zero or very close to zero. By selecting only
 the signal-contributing $N'$ events from the sample, the log-likelihood ratio
 function, $\log \Lambda$, reads
 \begin{equation}
@@ -161,23 +161,32 @@ where for $N-N'$ events $\mathcal{R}_i(\ps)$ equals zero and hence
 $\alpha_i(\ns,\ps)$ becomes $-\ns/N$, and $\log \Lambda_i$ equals $\log(1 - \ns/N)$
 for all such pure background events.
 
-\subsection{Signal \& Background PDFs}
+\subsection{Signal PDFs}
 
 The likelihood ratio function as given in equation \eq{eq:logLambda}
-incorperates signal, $\mathcal{S}_i$, and background, $\mathcal{B}_i$,
-probability density functions (PDFs). Both PDFs can be factorized into a
-spatial ($S_i$), an energy ($\mathcal{E}_i$), and a time ($\mathcal{T}_i$)
-component.
-
-The signal PDF can be written as
+incorperates a signal probability, $S_i$, for an individual event $i$.
+Without loss of generality this signal probability can be expressed as the
+product of a spatial-energy, $\mathcal{P}_{\mathcal{SE}}(\vec{x}_i,E_i|\ps)$, and a time,
+$\mathcal{T}_{\mathrm{S}}(t_i|\ps)$, probability, where $\vec{x}_i$, $E_i$, and $t_i$ are
+reconstructed observables of event $i$. In general the spatial-energy probability
+is the joint probability of the spatial, $\mathcal{S}_{\mathrm{S}}$, and energy,
+$\mathcal{E}_{\mathrm{S}}$, signal probabilities:
 \begin{equation}
- \mathcal{S}_i(\ps) \equiv S_{\mathcal{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathcal{S}}(E_i|\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathcal{S}}(t_i|\vec{p}_{\mathrm{s,time}}),
+ \mathcal{P}_{\mathcal{SE}}(\vec{x}_i,E_i|\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\ps) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,\ps).
+\end{equation}
+Here, we assume that the energy PDF depends on the reconstructed direction of
+the recorded event, but the reconstructed direction is independent of the
+event's energy.
+
+The final event's signal probability can be written as
+\begin{equation}
+ S_i(\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathrm{S}}(t_i|\vec{p}_{\mathrm{s,time}}),
  \label{eq:Si}
 \end{equation}
 where the signal model parameters $\ps$ can be divided into spatial, energy, and
 time parameters, i.e. $\vec{p}_{\mathrm{s}} = (\vec{p}_{\mathrm{s,spatial}},
 \vec{p}_{\mathrm{s,energy}}, \vec{p}_{\mathrm{s,time}})$. The spatial component,
-$S_{\mathcal{S}}$, can be identified as the convolution,
+$\mathcal{S}_{\mathrm{S}}$, can be identified as the convolution,
 $(\Psi \ast \mathrm{PSF})(\alpha,\delta)$\footnote{The 2D convolution on the sky
 is defined as
 $(f \ast g)(\alpha,\delta) = \int_{0}^{2\pi} \mathrm{d}\alpha' \int_{-\pi}^{\pi} \mathrm{d}\delta' f(\alpha',\delta')g(\alpha-\alpha',\delta-\delta')$.},
@@ -188,9 +197,9 @@ $\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}})$, that is
 $\Psi(\alpha,\delta) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}})$,
 where $\delta(\cdot)$ is the delta-distribution, this convolution collapses to
 a single point in the sky. With a 2D gaussian PSF
-$S_{\mathcal{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}})$ is given as
+$\mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}})$ is given as
 \begin{equation}
- S_{\mathcal{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \equiv S_{\mathcal{S}}(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
+ \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \equiv \mathcal{S}_{\mathrm{S}}(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
 \end{equation}
 where $r_i$ is the space angle between the source position and the recorded
 reconstructed event direction. In equatorial coordinates,
@@ -208,48 +217,75 @@ When considering a power law as source flux model, the energy source parameters,
 $\vec{p}_{\mathrm{s,energy}}$, consists of the spectral index $\gamma$ and possibly
 an energy cut-off parameter $E_{\mathrm{cut}}$.
 
-The source time PDF describes the emmission time profile of the source. Different
-functional forms of this time profile could be imagined. Common profiles are:
-A steady source profile over the entire observation time, $T_{\mathrm{obs}}$,
+The source time PDF, $T_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$, describes the emmission time profile
+of the source. Different functional forms of this time profile could be imagined.
+Common profiles are:
+A steady source profile over the entire observation (live) time,
+$T_{\mathrm{obs}}$,
 \begin{equation}
- \mathcal{T}_{\mathcal{S}}(t) \equiv \frac{1}{T_{\mathrm{obs}}},
+ T_{\mathrm{S}}(t) \equiv \frac{1}{T_{\mathrm{obs}}},
 \end{equation}
-a box profile of length $T_{\mathrm{W}}$ with the box's middle time position, $T_{0}$,
+with
 \begin{equation}
- \mathcal{T}_{\mathcal{S}}(t|T_0,T_{\mathrm{W}}) = \begin{cases}
-                                 \frac{1}{T_{\mathrm{W}}} & \forall t \in \left[T_0 - T_{\mathrm{W}}/2; T_0 + T_{\mathrm{W}}/2 \right]\\
-                                 0 & \mathrm{otherwise}
-                                 \end{cases},
+ T_{\mathrm{obs}} = \int T_{\mathrm{live}}(t) \mathrm{d}t,
+ \label{eq:Tobs}
+\end{equation}
+where $T_{\mathrm{live}}(t)$ is the detector live-time function, defined as:
+\begin{equation}
+ T_{\mathrm{live}}(t) = \begin{cases}
+                         1 & \forall t \in \text{detector on-time window} \\
+                         0 & \text{otherwise}
+                        \end{cases}
+\end{equation}
+
+Other functional forms could be a box profile of length $T_{\mathrm{W}}$ with
+the box's middle time position, $T_{0}$,
+\begin{equation}
+ T_{\mathrm{S}}(t|T_0,T_{\mathrm{W}}) =
+   \begin{cases}
+     \frac{1}{T_{\mathrm{W}}} & \forall t \in \left[T_0 - T_{\mathrm{W}}/2; T_0 + T_{\mathrm{W}}/2 \right]\\
+     0 & \mathrm{otherwise}
+   \end{cases},
 \end{equation}
 or a gaussian shaped time profile centered at $T_0$ with a time width of $\sigma_T$,
 \begin{equation}
- \mathcal{T}_{\mathcal{S}}(t|T_0,\sigma_T) \equiv \frac{1}{\sqrt{2\pi}\sigma_T}\exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right).
+ T_{\mathrm{S}}(t|T_0,\sigma_T) \equiv \frac{1}{\sqrt{2\pi}\sigma_T}\exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right).
 \end{equation}
 For efficiency reasons, the gaussian shape source time profile is truncated at
 a certain distance from $T_0$, \emph{e.g.} at $\pm\sigma_T$:
 \begin{equation}
- \mathcal{T}_{\mathcal{S}}(t|T_0,\sigma_T) \equiv \begin{cases}
-                                      \frac{1}{\sqrt{2\pi}\sigma_T}\exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right) & \left|t-T_0\right| \le \sigma_T\\
-                                      0 & \mathrm{otherwise}
-                                     \end{cases}.
+ T_{\mathrm{S}}(t|T_0,\sigma_T) \equiv
+   \begin{cases}
+     \frac{1}{\sqrt{2\pi}\sigma_T}\exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right) & \left|t-T_0\right| \le \sigma_T\\
+     0 & \mathrm{otherwise}
+   \end{cases}.
 \end{equation}
 
-
-The final time PDF is then the convolution of the source time profile,
-$\mathcal{T}_{\mathcal{S}}(t)$, and the detector live-time function,
+The final time PDF, $\mathcal{T}_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$,
+is then the convolution of the source time profile,
+$T_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$, and the detector live-time function,
 $T_{\mathrm{live}}(t)$, where the final result is normalized to unity again.
 
-
+\subsection{Background PDFs}
 
 In analog to the signal PDF, the background PDF can be formulated as
 \begin{equation}
- \mathcal{B}_i \equiv S_{\mathcal{B}}(\vec{x}_i) \mathcal{E}_{\mathcal{B}}(E_i) \mathcal{T}_{\mathcal{B}}(t_i).
+ B_i \equiv \mathcal{S}_{\mathrm{B}}(\vec{x}_i) \mathcal{E}_{\mathrm{B}}(E_i|\vec{x}_i) \mathcal{T}_{\mathrm{B}}(t_i).
  \label{eq:Bi}
 \end{equation}
 All the background PDF components can either be determined from the data itself
 or by using monte-carlo simulation.
 
-\subsubsection{Notes on the energy PDFs}
+For a background hypothesis without any time-dependence, \emph{i.e.} a constant
+background flux, the background time PDF,
+$\mathcal{T}_{\mathrm{B}}(t)$, is given through
+\begin{equation}
+ \mathcal{T}_{\mathrm{B}}(t) \equiv \frac{1}{T_{\mathrm{obs}}},
+\end{equation}
+where $T_{\mathrm{obs}}$ is given by equation (\ref{eq:Tobs}).
+
+
+\subsection{Notes on the energy PDFs for Signal \& Background}
 
 In general, the energy PDFs are detector response dependent. That means they
 depend on the local direction of the detected events. Hence, the spatial and
@@ -261,8 +297,8 @@ set of (reconstructed) declination bands, both, for signal and background. At
 the data evaluation, the signal and background PDFs are selected corresponding
 to the declination band the event's declination is part of. Hence, for IceCube,
 the signal and background energy PDFs can be formulated as
-$\mathcal{E}_{\mathcal{S}}(E|\vec{p}_{\mathrm{s,energy}},\delta)$ and
-$\mathcal{E}_{\mathcal{B}}(E|\delta)$, respectively.
+$\mathcal{E}_{\mathrm{S}}(E|\delta,\vec{p}_{\mathrm{s,energy}})$ and
+$\mathcal{E}_{\mathrm{B}}(E|\delta)$, respectively.
 
 A lengthly discussion has been conducted in the past to clarify whether the true or
 reconstructed direction of the monte-carlo events should be used to generate
@@ -568,6 +604,12 @@ $\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}$ of the source:
  \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff}_j}(E|\xsk) \frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}(E|\psk) T_{\mathrm{live}_j}
 \label{eq:Ysj}
 \end{equation}
+
+%\begin{equation}
+% \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk) \equiv \int_0^\infty \mathrm{d}E A_{\mathrm{eff}_j}(E|\xsk) \frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}(E|\psk) T_{\mathrm{live}_j}
+%\label{eq:Ysj-time}
+%\end{equation}
+
 It is the mean number of signal events per steradian expected from a source at
 position $\xs$ with source parameters $\ps$. In the most-general case,
 the source position $\xs$ consists of three quantities: right-ascention,
