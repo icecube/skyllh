@@ -19,14 +19,11 @@ class SignalGenerator(object):
     detector or source hypothesis, because these dependencies are factored out
     into the signal generation method.
     """
-    def __init__(self, rss, src_hypo_group_manager, dataset_list, data_list):
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list):
         """Constructs a new signal generator instance.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService providing the random number
-            generator state.
         src_hypo_group_manager : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance defining the source groups with
             their spectra.
@@ -39,7 +36,6 @@ class SignalGenerator(object):
         """
         super(SignalGenerator, self).__init__()
 
-        self.rss = rss
         self.src_hypo_group_manager = src_hypo_group_manager
 
         self.dataset_list = dataset_list
@@ -101,19 +97,6 @@ class SignalGenerator(object):
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
 
     @property
-    def rss(self):
-        """The RandomStateService instance providing the state of the random
-        number generator.
-        """
-        return self._rss
-    @rss.setter
-    def rss(self, rss):
-        if(not isinstance(rss, RandomStateService)):
-            raise TypeError('The rss property must be an instance of '
-                'RandomStateService!')
-        self._rss = rss
-
-    @property
     def src_hypo_group_manager(self):
         """The SourceHypoGroupManager instance defining the source groups with
         their spectra.
@@ -160,12 +143,15 @@ class SignalGenerator(object):
         self.src_hypo_group_manager = src_hypo_group_manager
         self._construct_signal_candidates()
 
-    def generate_signal_events(self, mean, poisson=True):
+    def generate_signal_events(self, rss, mean, poisson=True):
         """Generates a given number of signal events from the signal candidate
         monte-carlo events.
 
         Parameters
         ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService providing the random number
+            generator state.
         mean : float
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
@@ -188,14 +174,14 @@ class SignalGenerator(object):
             index for which the signal events have been generated.
         """
         if(poisson):
-            mean = self._rss.random.poisson(float_cast(
+            mean = rss.random.poisson(float_cast(
                 mean, 'The mean argument must be castable to type of float!'))
 
         n_signal = int_cast(
             mean, 'The mean argument must be castable to type of int!')
 
         # Draw n_signal signal candidates according to their weight.
-        sig_events_meta = self._rss.random.choice(
+        sig_events_meta = rss.random.choice(
             self._sig_candidates,
             size=n_signal,
             p=self._sig_candidates['weight']
