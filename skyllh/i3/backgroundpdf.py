@@ -42,8 +42,13 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         (h, bins) = np.histogram(data_sinDec,
                                  bins = sinDec_binning.binedges,
                                  weights = data_weights,
-                                 range = sinDec_binning.range,
-                                 density = True)
+                                 range = sinDec_binning.range)
+
+        # Save original histogram
+        self._orig_hist = h
+
+        # Normalize histogram to get PDF
+        h = h / h.sum() / (bins[1:] - bins[:-1])
 
         # Check if there are any NaN values.
         if(np.any(np.isnan(h))):
@@ -56,6 +61,9 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         self._log_spline = scipy.interpolate.InterpolatedUnivariateSpline(
             sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
 
+        # Save original spline
+        self._orig_log_spline = self._log_spline
+
     @property
     def spline_order_sinDec(self):
         """The order (int) of the logarithmic spline function, that splines the
@@ -67,6 +75,42 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         if(not isinstance(order, int)):
             raise TypeError('The spline_order_sinDec property must be of type int!')
         self._spline_order_sinDec = order
+
+    def add_events(self, events):
+        """Add events to spatial background PDF object and recalculate
+        logarithmic spline function.
+
+        Parameters
+        ----------
+        events : numpy record ndarray
+            The array holding the event data. The following data fields must
+            exist:
+            'sin_dec' : float
+                The sin(declination) value of the event.
+        """
+        data = events['sin_dec']
+
+        sinDec_binning = self.get_binning('sin_dec')
+
+        (h_upd, bins) = np.histogram(data,
+                         bins = sinDec_binning.binedges,
+                         range = sinDec_binning.range)
+
+        # Construct histogram with added events
+        h = self._orig_hist + h_upd
+
+        # Normalize histogram to get PDF
+        h = h / h.sum() / (bins[1:] - bins[:-1])
+
+        # Create the updated logarithmic spline.
+        self._log_spline = scipy.interpolate.InterpolatedUnivariateSpline(
+            sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
+
+    def reset(self):
+        """Reset the logarithmic spline to the original function, which was
+        calculated when the object was initialized.
+        """
+        self._log_spline = self._orig_log_spline
 
     def get_prob(self, events, params=None):
         """Calculates the spatial background probability on the sphere of each
