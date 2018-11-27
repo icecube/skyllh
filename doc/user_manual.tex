@@ -24,7 +24,7 @@
 
 \section{The Likelihood Formalism}
 
-This section describes the mathematical likelihood formalism used in Skyllh.
+This section describes the mathematical likelihood formalism used in SkyLLH.
 First it introduces the log-likelihood approach, second the likelihood ratio
 test and the used test statistic and then describes the used optimizations.
 
@@ -44,8 +44,8 @@ spectral index $\gamma$ of the source flux.
 $S_i(\ps)$ and $B_i$ is the value of the signal and background PDF for the $i$th
 data event, respectively.
 
-The signal and background PDFs must incorperate the detector efficiency (yield),
-$\mathcal{Y}_i$, which, in general, depends on the celestrial direction, the
+The signal and background PDFs must incorporate the detector efficiency (yield),
+$\mathcal{Y}_i$, which, in general, depends on the celestial direction, the
 energy, and the observation time of the data event.
 
 For computational stability reasons the logarithm of the likelihood function of
@@ -95,11 +95,11 @@ and the log-likelihood ratio function for all events can be written as
 
 In general, the argument of the $\log$-function, $\Lambda_i$, might become close
 to zero, causing a divergence of the log-likelihood ratio function for a particular event.
-To circumvent this, a Taylor expension of the
+To circumvent this, a Taylor expansion of the
 log-likelihood ratio function of the $i$th event can be performed around a
-pre-defined threshold value $\alpha$.
+predefined threshold value $\alpha$.
 The event-based log-likelihood ratio function, $\log \Lambda_i$, is then
-approximated by a second-order Taylor expension for events with $\alpha_i \leq \alpha$:
+approximated by a second-order Taylor expansion for events with $\alpha_i \leq \alpha$:
 \begin{equation}
  \log\Lambda_i(\ns,\ps) \equiv \log(1 + \alpha) + \frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha} - \frac{1}{2} \left(\frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha}\right)^2
  \label{eq:logLambdaiTaylor}
@@ -118,7 +118,7 @@ the Taylor expanded log-likelihood ratio function reads more compactly:
 \subsection{Test Statistic}
 \label{sec:teststatistic}
 
-Assuming Wilks theorem, a test statistic, TS, for the two-component log-likelihood
+Assuming Wilks' theorem, a test statistic, TS, for the two-component log-likelihood
 ratio test can be formulated using the log-likelihood ratio function, $\log\Lambda$,
 at its maximum:
 \begin{equation}
@@ -128,7 +128,7 @@ at its maximum:
 where $\log \Lambda(\hatns,\hatps)$ is the maximum of the
 log-likelihood ratio function as defined by equation (\ref{eq:logLambda}),
 with separation of an over- ($\hatns > 0$) and under-fluctuation ($\hatns < 0$).
-In case the assumptions of Wilks theorem are met within the analysis, the test
+In case the assumptions of Wilks' theorem are met within the analysis, the test
 statistic value distribution will follow a $\chi^2$-distribution with
 a degree-of-freedom equal to the number of fit parameters.
 
@@ -164,7 +164,7 @@ for all such pure background events.
 \subsection{Signal PDFs}
 
 The likelihood ratio function as given in equation \eq{eq:logLambda}
-incorperates a signal probability, $S_i$, for an individual event $i$.
+incorporates a signal probability, $S_i$, for an individual event $i$.
 Without loss of generality this signal probability can be expressed as the
 product of a spatial-energy, $\mathcal{P}_{\mathcal{SE}}(\vec{x}_i,E_i|\ps)$, and a time,
 $\mathcal{T}_{\mathrm{S}}(t_i|\ps)$, probability, where $\vec{x}_i$, $E_i$, and $t_i$ are
@@ -196,7 +196,7 @@ For a point-like spatial source extension at position
 $\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}})$, that is
 $\Psi(\alpha,\delta) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}})$,
 where $\delta(\cdot)$ is the delta-distribution, this convolution collapses to
-a single point in the sky. With a 2D gaussian PSF
+a single point in the sky. With a 2D Gaussian PSF
 $\mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}})$ is given as
 \begin{equation}
  \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \equiv \mathcal{S}_{\mathrm{S}}(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
@@ -211,13 +211,13 @@ The data quantity $\sigma_i$ describes the angular reconstruction uncertainty of
 the event, hence the PSF is narrower for well-reconstructed events, and wider
 for events which have a large reconstruction uncertainty.
 
-The energy signal PDF can be constructed from monte-carlo data using the assumed
+The energy signal PDF can be constructed from Monte-Carlo data using the assumed
 source energy spectrum.
 When considering a power law as source flux model, the energy source parameters,
 $\vec{p}_{\mathrm{s,energy}}$, consists of the spectral index $\gamma$ and possibly
 an energy cut-off parameter $E_{\mathrm{cut}}$.
 
-The source time PDF, $T_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$, describes the emmission time profile
+The source time PDF, $T_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$, describes the emission time profile
 of the source. Different functional forms of this time profile could be imagined.
 Common profiles are:
 A steady source profile over the entire observation (live) time,
@@ -247,11 +247,11 @@ the box's middle time position, $T_{0}$,
      0 & \mathrm{otherwise}
    \end{cases},
 \end{equation}
-or a gaussian shaped time profile centered at $T_0$ with a time width of $\sigma_T$,
+or a Gaussian shaped time profile centered at $T_0$ with a time width of $\sigma_T$,
 \begin{equation}
  T_{\mathrm{S}}(t|T_0,\sigma_T) \equiv \frac{1}{\sqrt{2\pi}\sigma_T}\exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right).
 \end{equation}
-For efficiency reasons, the gaussian shape source time profile is truncated at
+For efficiency reasons, the Gaussian shape source time profile is truncated at
 a certain distance from $T_0$, \emph{e.g.} at $\pm\sigma_T$:
 \begin{equation}
  T_{\mathrm{S}}(t|T_0,\sigma_T) \equiv
@@ -274,7 +274,7 @@ In analog to the signal PDF, the background PDF can be formulated as
  \label{eq:Bi}
 \end{equation}
 All the background PDF components can either be determined from the data itself
-or by using monte-carlo simulation.
+or by using Monte-Carlo simulation.
 
 For a background hypothesis without any time-dependence, \emph{i.e.} a constant
 background flux, the background time PDF,
@@ -301,7 +301,7 @@ $\mathcal{E}_{\mathrm{S}}(E|\delta,\vec{p}_{\mathrm{s,energy}})$ and
 $\mathcal{E}_{\mathrm{B}}(E|\delta)$, respectively.
 
 A lengthly discussion has been conducted in the past to clarify whether the true or
-reconstructed direction of the monte-carlo events should be used to generate
+reconstructed direction of the Monte-Carlo events should be used to generate
 the several signal energy PDFs. Since, we mainly use experimental data as
 background estimation it as been concluded to use the reconstructed event
 direction in order to be consistent in the data evaluation for signal and
@@ -310,8 +310,8 @@ background PDFs.
 \subsection{Stacking of Sources}
 
 In general a likelihood value can be calculated for a set of $K$ stacked
-sources in a weighted fassion. In this case the signal PDF expression of
-equation (\ref{eq:Si}) becames a bit more complicated due to the relative
+sources in a weighted fashion. In this case the signal PDF expression of
+equation (\ref{eq:Si}) becomes a bit more complicated due to the relative
 source weighting. The sources must be weighted according to their signal detection
 efficiency, $\mathcal{Y}_{\mathrm{s},k}$, and a relative strength weight of the
 sources, $W_k$, with $\sum_{k=1}^{K} W_k = 1$. Hence, the combined signal PDF is
@@ -346,7 +346,7 @@ derivative of equation (\ref{eq:logLambdaiOfalphai}) w.r.t. $\ns$:
  \label{eq:dlogLambdaidns-for-alphai-gt-alpha}
 \end{equation}
 For the numerical unstable case, where $\alpha_i \leq \alpha$, this derivative is
-given by the derivative of the Taylor expension of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
+given by the derivative of the Taylor expansion of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
 w.r.t. $\ns$:
 \begin{equation}
  \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{1}{1+\alpha}\left(1 - \tilde{\alpha}_i(\ns,\ps)\right) \mathcal{X}_i(\ps)
@@ -387,7 +387,7 @@ For the stable case the event-based derivative w.r.t. $p_{\mathrm{s}}$ is given 
  \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\ns}{1+\alpha_i(\ns,\ps)} \frac{\mathrm{d}\mathcal{X}_i(\ps)}{\mathrm{d}p_{\mathrm{s}}}.
 \end{equation}
 For the numerical unstable case this derivative is
-given by the derivative of the Taylor expension of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
+given by the derivative of the Taylor expansion of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
 w.r.t. $p_{\mathrm{s}}$:
 \begin{equation}
  \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\ns}{1+\alpha}\left(1 - \tilde{\alpha}_i(\ns,\ps)\right) \frac{\mathrm{d}\mathcal{X}_i(\ps)}{\mathrm{d}p_{\mathrm{s}}}.
@@ -464,7 +464,7 @@ contribute.
 
 \subsection{Multiple Datasets}
 
-With Skyllh a set of $J$ different data samples (datasets) $\mathrm{D}_j$ can be
+With SkyLLH a set of $J$ different data samples (datasets) $\mathrm{D}_j$ can be
 analyzed at once. Each data sample has its own detector signal efficiency
 $\mathcal{Y}_{\mathrm{s}_j}$.
 
@@ -509,7 +509,7 @@ be written as
 \begin{equation}
  \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \sum_{i=1}^{N} \log (1 + \ns f_{j}(\ps)\mathcal{X}_i(\ps)).
 \end{equation}
-From a reuseability-of-software point of view it is advisable to be able to use
+From a reusability-of-software point of view it is advisable to be able to use
 the mathematical form of $\log \Lambda$ for the single dataset to calculate the
 combined $\log \Lambda$ value of the multiple dataset. This can be achieved by
 using the substitution of $\ns$ as given by equation (\ref{eq:ns-sample-weight-factor}).
@@ -579,14 +579,14 @@ with
 \end{equation}
 In case of a single source, the expression for the derivative of the dataset
 weight factor, where $f_j(\ps)$ is given by equation (\ref{eq:dataset-weight-factor-single-source}),
-reads via the quotient rule of differentation:
+reads via the quotient rule of differentiation:
 \begin{equation}
 \frac{\mathrm{d}f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\mathrm{d}p_{\mathrm{s}}} \sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps) - \mathcal{Y}_{\mathrm{s}_j}(\xs,\ps) \sum_{j'=1}^{J} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)}{\mathrm{d}p_{\mathrm{s}}} }{\left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps) \right)^2}.
 \end{equation}
 In case of multiple sources (stacking), the expression for the derivative of the
 dataset weight factor, where $f_j(\ps)$ is given by equation
 (\ref{eq:dataset-weight-factor-multiple-sources}) reads via the quotient rule of
-differentation:
+differentiation:
 \begin{equation}
  \frac{\mathrm{d} f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} =
     \frac{\left(\sum_{k=1}^{K} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j,k}}}{\mathrm{d}p_{\mathrm{s}}}\right) \left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j',k}}\right) - \left(\sum_{k=1}^{K}\mathcal{Y}_{\mathrm{s}_{j,k}}\right)\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j',k}}}{\mathrm{d}p_{\mathrm{s}}}\right)}
@@ -612,19 +612,19 @@ $\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}$ of the source:
 
 It is the mean number of signal events per steradian expected from a source at
 position $\xs$ with source parameters $\ps$. In the most-general case,
-the source position $\xs$ consists of three quantities: right-ascention,
+the source position $\xs$ consists of three quantities: right-ascension,
 declination, and observation time, i.e.
 $\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}},t_{\mathrm{obs}})$.
 
 \subsection{Effective Area}
 
-In Skyllh the effective area $A_{\mathrm{eff},j}$ of a data sample $j$ is not
+In SkyLLH the effective area $A_{\mathrm{eff},j}$ of a data sample $j$ is not
 calculated separately in order to avoid binning effects. However, the effective
-area can be calculated using the monte-carlo weights \code{mcweight}\footnote{In IceCube
+area can be calculated using the Monte-Carlo weights \code{mcweight}\footnote{In IceCube
 known as ``OneWeight'', but which already includes the number of used MC files.}
 of the simulation events.
-The monte-carlo weights have the unit GeV~cm$^2$~sr.
-Using the monte-carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$
+The Monte-Carlo weights have the unit GeV~cm$^2$~sr.
+Using the Monte-Carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$
 the effective area is given by the sum over the event weights divided by the
 solid angle and the energy range $\Delta E$ of the summed selected events:
 \begin{equation}
@@ -644,7 +644,7 @@ efficiency implementation method derived from the \class{DetSigEffImplMethod}
 class.
 
 Detector signal efficiency values can be retrieved via the call operator
-\code{\_\_call\_\_(src\_pos src\_params)}, which takes the celestrial position
+\code{\_\_call\_\_(src\_pos src\_params)}, which takes the celestial position
 of the source and the additional source parameters as arguments.
 
 \subsubsection{The DetSigEffImplMethod Class}
@@ -673,7 +673,7 @@ I3FixedFluxDetSigEff & IceCube detector signal efficiency implementation method 
     $\sin(\delta)$-dependent detector signal efficiency.
 
     The constructor of this implementation method requires a $\sin(\delta)$
-    binning definition for the monte-carlo events and the order of the spline
+    binning definition for the Monte-Carlo events and the order of the spline
     function.\\
 I3PowerLawFluxDetSigEff & IceCube detector signal efficiency implementation method for a
     power law flux model, implemented by the \class{PowerLawFlux} class.
@@ -686,7 +686,7 @@ I3PowerLawFluxDetSigEff & IceCube detector signal efficiency implementation meth
 
 \section{The Concept of Source Hypothesis Groups}
 
-The analyses in Skyllh rely heavily on the calculation of detector signal
+The analyses in SkyLLH rely heavily on the calculation of detector signal
 efficiencies. As seen in section \ref{sec:detsigeff}, the detector signal
 efficiency depends on the source hypothesis (spatial model and flux model)
 and the detector response (dataset). Hence, the analyses require detector signal
@@ -701,7 +701,7 @@ A source hypothesis group has a list of spatial source models, e.g. point-like s
 locations in case of point-like sources, a flux model, and a detection signal
 efficiency implementation method assigned.
 
-Skyllh provides the \class{SourceHypoGroupManager} class to define the groups of
+SkyLLH provides the \class{SourceHypoGroupManager} class to define the groups of
 source hypotheses.
 
 \section{Implemented Log-Likelihood Models}
