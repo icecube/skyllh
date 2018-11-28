@@ -10,18 +10,18 @@ from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
 from skyllh.core.py import classname
-from skyllh.i3.pdfratio import I3EnergySigOverBkgPDFRatioSpline
+from skyllh.i3.pdfratio import I3EnergySigSetOverBkgPDFRatioSpline
 
-class I3EnergySigOverBkgPDFRatioSplinePlotter(object):
-    """Plotter class to plot an I3EnergySigOverBkgPDFRatioSpline object.
+class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
+    """Plotter class to plot an I3EnergySigSetOverBkgPDFRatioSpline object.
     """
     def __init__(self, pdfratio):
         """Creates a new plotter object for plotting an
-        I3EnergySigOverBkgPDFRatioSpline object.
+        I3EnergySigSetOverBkgPDFRatioSpline object.
 
         Parameters
         ----------
-        pdfratio : I3EnergySigOverBkgPDFRatioSpline
+        pdfratio : I3EnergySigSetOverBkgPDFRatioSpline
             The PDF ratio object to plot.
         """
         self.pdfratio = pdfratio
@@ -33,8 +33,8 @@ class I3EnergySigOverBkgPDFRatioSplinePlotter(object):
         return self._pdfratio
     @pdfratio.setter
     def pdfratio(self, pdfratio):
-        if(not isinstance(pdfratio, I3EnergySigOverBkgPDFRatioSpline)):
-            raise TypeError('The pdfratio property must be an object of instance I3EnergySigOverBkgPDFRatioSpline!')
+        if(not isinstance(pdfratio, I3EnergySigSetOverBkgPDFRatioSpline)):
+            raise TypeError('The pdfratio property must be an object of instance I3EnergySigSetOverBkgPDFRatioSpline!')
         self._pdfratio = pdfratio
 
     def plot(self, axes, fitparams):

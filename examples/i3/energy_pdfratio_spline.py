@@ -8,7 +8,7 @@ from skyllh.i3.pdfratio import I3EnergySigOverBkgPDFRatioSpline
 from skyllh.i3.signalpdf import SignalI3EnergyPDF
 from skyllh.i3.backgroundpdf import DataBackgroundI3EnergyPDF
 
-from skyllh.plotting.i3.pdfratio import I3EnergySigOverBkgPDFRatioSplinePlotter
+from skyllh.plotting.i3.pdfratio import I3EnergySigSetOverBkgPDFRatioSplinePlotter
 
 from matplotlib import pyplot as plt
 
@@ -51,7 +51,7 @@ backgroundpdf = DataBackgroundI3EnergyPDF(ds.data_exp,
 # Create the object for the signal over background energy PDF ratio.
 energy_pdf_ratio = I3EnergySigOverBkgPDFRatioSpline(signalpdfset, backgroundpdf)
 
-plotter = I3EnergySigOverBkgPDFRatioSplinePlotter(energy_pdf_ratio)
+plotter = I3EnergySigSetOverBkgPDFRatioSplinePlotter(energy_pdf_ratio)
 
 # Create a matplotlib figure and Axes object.
 fig = plt.figure()

@@ -23,7 +23,7 @@ lh = LHComponent(signal_fraction) + LHComponent(background_fraction)
 import numbers
 import numpy as np
 
-from py import is_sequence
+from py import issequence
 
 def log(lhcomponent):
     """Convinient function to add the numpy.log operation to the likelihood
@@ -464,7 +464,7 @@ class CombinedLHComponent(LHComponent):
     def operator_args(self, args):
         if(args is None):
             args = list()
-        if(not is_sequence(args)):
+        if(not issequence(args)):
             args = [args]
         self._operator_args = list(args)
 
@@ -563,7 +563,7 @@ class LHComponentOperator(object):
     def operator_args(self, args):
         if(args is None):
             args = list()
-        if(not is_sequence(args)):
+        if(not issequence(args)):
             args = [args]
         self._operator_args = list(args)
 
