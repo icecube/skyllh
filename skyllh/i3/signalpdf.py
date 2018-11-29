@@ -29,16 +29,18 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         data_mc : numpy record ndarray
             The array holding the monte-carlo data. The following data fields
             must exist:
-            'true_energy' : float
+
+            - 'true_energy' : float
                 The true energy value of the data event.
-            'log_energy' : float
+            - 'log_energy' : float
                 The logarithm of the reconstructed energy value of the data
                 event.
-            'dec' : float
+            - 'dec' : float
                 The declination of the data event.
-            'mcweight' : float
+            - 'mcweight' : float
                 The monte-carlo weight value of the data events in unit
                 GeV cm^2 sr.
+
         logE_binning : BinningDefinition
             The binning definition for the binning in log10(E).
         sinDec_binning : BinningDefinition
@@ -161,12 +163,13 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            'log_energy' : float
+            
+            - 'log_energy' : float
                 The logarithm of the energy value of the data event.
-            'dec' : float
+            - 'dec' : float
                 The declination of the data event.
 
-        Errors
+        Raises
         ------
         ValueError
             If some of the data is outside the logE or sin(dec) binning range.
@@ -184,10 +187,12 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         events : numpy record ndarray
             The array holding the event data. The following data fields must
             exist:
-            'log_energy' : float
+
+            - 'log_energy' : float
                 The logarithm of the energy value of the event.
-            'sinDec' : float
+            - 'sinDec' : float
                 The sin(declination) value of the event.
+                
         gridfitparams : dict
             The dictionary holding the signal parameter values for which the
             signal energy probability should be calculated. Note, that the
@@ -201,7 +206,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         prob : 1d ndarray
             The array with the signal energy probability for each event.
 
-        Errors
+        Raises
         ------
         KeyError
             If no energy PDF can be found for the given signal parameter values.

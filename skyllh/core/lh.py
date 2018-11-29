@@ -77,7 +77,9 @@ class LHComponent(object):
         source : callable
             The callable source of the LH component. The __call__ function must
             have the following call signature:
-                __call__(self, params, events),
+
+                ``__call__(self, params, events)``,
+
             where events is a one-dimensional numpy.recarray where each entry
             represents an event, and params is a dictionary with the current
             set of parameters of the likelihood function.
@@ -292,7 +294,8 @@ class LHComponent(object):
     def as_function(self):
         """Creates a LHFunction object for this likelihood component.
 
-        Returns:
+        Returns
+        -------
         lhf : LHFunction
             The LHFunction object for this likelihood component.
         """
@@ -322,8 +325,8 @@ class CombinedLHComponent(LHComponent):
         :py:meth:`LHComponent.__init__` constructor method of the
         LHComponent class.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         lhcomponent_a : LHComponent
             The first LHComponent object in the above assignment operation.
 

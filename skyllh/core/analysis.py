@@ -38,14 +38,14 @@ class Analysis(object):
 
         1. Create an analysis instance.
         2. Add the datasets and their PDF ratio instances via the
-           ``add_dataset`` method.
+           :meth:`.add_dataset` method.
         3. Construct the log-likelihood ratio function via the
-           ``construct_llhratio`` method.
-        4. Initialize a trial via the ``initialize_trial`` method.
+           :meth:`.construct_llhratio` method.
+        4. Initialize a trial via the :meth:`.initialize_trial` method.
         5. Fit the global fit parameters to the trial data via the
-           ``maximize_llhratio`` method.
+           :meth:`.maximize_llhratio` method.
         6. Calculate the test-statistic value via the
-           ``calculate_test_statistic`` method.
+           :meth:`.calculate_test_statistic` method.
     """
 
     __metaclass__ = abc.ABCMeta
@@ -270,9 +270,10 @@ class Analysis(object):
         scramble : bool
             Flag if the data should get scrambled before it is set to the
             log-likelihood ratio functions (default True).
+            
             Note: Depending on the inplace_scrambling setting of the
-                  DataScrambler, the scrambling of the data might be inplace,
-                  changing the experimental data of the dataset itself!
+            DataScrambler, the scrambling of the data might be inplace,
+            changing the experimental data of the dataset itself!
         """
         pass
 
@@ -326,12 +327,12 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
     To run this analysis the following procedure applies:
 
         1. Add the datasets and their spatial and energy PDF ratio instances
-           via the ``add_dataset`` method.
+           via the :meth:`.add_dataset` method.
         2. Construct the log-likelihood ratio function via the
-           ``construct_llhratio`` method.
-        3. Initialize a trial via the ``initialize_trial`` method.
+           :meth:`construct_llhratio` method.
+        3. Initialize a trial via the :meth:`initialize_trial` method.
         4. Fit the global fit parameters to the trial data via the
-           ``maximize_llhratio`` method.
+           :meth:`maximize_llhratio` method.
     """
     def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
                  fitparam_ns,
@@ -527,9 +528,10 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
         scramble : bool
             Flag if the data should get scrambled before it is set to the
             log-likelihood ratio functions (default True).
+            
             Note: Depending on the inplace_scrambling setting of the
-                  DataScrambler, the scrambling of the data might be inplace,
-                  changing the experimental data of the dataset itself!
+            DataScrambler, the scrambling of the data might be inplace,
+            changing the experimental data of the dataset itself!
         """
         for (data, llhratio) in zip(self._data_list, self._llhratio.llhratio_list):
             events = data.exp

@@ -34,7 +34,7 @@ class MinimizerImpl(object):
             The function that should get minimized.
             The call signature must be
 
-                __call__(x, *args)
+                ``__call__(x, *args)``
 
             The return value of ``func`` must be (f, grads), the function value
             at the function arguments ``x`` and the 1D ndarray with the values
@@ -125,7 +125,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             The function that should get minimized.
             The call signature must be
 
-                __call__(x, *args)
+                ``__call__(x, *args)``
 
             The return value of ``func`` must be (f, grads), the function value
             at the function arguments ``x`` and the ndarray with the values of
@@ -270,10 +270,10 @@ class Minimizer(object):
         fitparamset : instance of FitParameterSet
             The set of FitParameter instances defining fit parameters of the
             function ``func``.
-        func : callable f(x, *args)
+        func : callable ``f(x, *args)``
             The function to be minimized. It must have the call signature
 
-                __call__(x, *args)
+                ``__call__(x, *args)``
 
             The return value of ``func`` must be (f, grads), the function value
             at the function arguments ``x`` and the 1D ndarray with the values

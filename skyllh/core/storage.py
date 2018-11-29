@@ -130,7 +130,7 @@ class NPYFileLoader(FileLoader):
         data : numpy.recarray
             The numpy record array holding the loaded data.
 
-        Errors
+        Raises
         ------
         RuntimeError if a file does not exist.
         """

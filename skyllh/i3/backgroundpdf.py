@@ -44,10 +44,10 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
                                  weights = data_weights,
                                  range = sinDec_binning.range)
 
-        # Save original histogram
+        # Save original histogram.
         self._orig_hist = h
 
-        # Normalize histogram to get PDF
+        # Normalize histogram to get PDF.
         h = h / h.sum() / (bins[1:] - bins[:-1])
 
         # Check if there are any NaN values.
@@ -61,7 +61,7 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         self._log_spline = scipy.interpolate.InterpolatedUnivariateSpline(
             sinDec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
 
-        # Save original spline
+        # Save original spline.
         self._orig_log_spline = self._log_spline
 
     @property
@@ -85,7 +85,8 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         events : numpy record ndarray
             The array holding the event data. The following data fields must
             exist:
-            'sin_dec' : float
+
+            - 'sin_dec' : float
                 The sin(declination) value of the event.
         """
         data = events['sin_dec']
@@ -96,10 +97,10 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
                          bins = sinDec_binning.binedges,
                          range = sinDec_binning.range)
 
-        # Construct histogram with added events
+        # Construct histogram with added events.
         h = self._orig_hist + h_upd
 
-        # Normalize histogram to get PDF
+        # Normalize histogram to get PDF.
         h = h / h.sum() / (bins[1:] - bins[:-1])
 
         # Create the updated logarithmic spline.
@@ -121,7 +122,8 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         events : numpy record ndarray
             The array holding the event data. The following data fields must
             exist:
-            'sin_dec' : float
+
+            - 'sin_dec' : float
                 The sin(declination) value of the event.
         params : None
             Unused interface parameter.
@@ -148,7 +150,8 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            'dec' : float
+            
+            - 'dec' : float
                 The declination of the data event.
         sinDec_binning : BinningDefinition
             The binning definition for the sin(declination).
@@ -181,7 +184,8 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
         data_mc : numpy record ndarray
             The array holding the monte-carlo data. The following data fields
             must exist:
-            'dec' : float
+            
+            - 'dec' : float
                 The declination of the data event.
         mc_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
@@ -232,10 +236,11 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            'log_energy' : float
+            
+            - 'log_energy' : float
                 The logarithm of the reconstructed energy value of the data
                 event.
-            'dec' : float
+            - 'dec' : float
                 The declination of the data event.
         logE_binning : BinningDefinition
             The binning definition for the binning in log10(E).
@@ -274,12 +279,13 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         data_mc : numpy record ndarray
             The array holding the monte-carlo data. The following data fields
             must exist:
-            'log_energy' : float
+            
+            - 'log_energy' : float
                 The logarithm of the reconstructed energy value of the data
                 event.
-            'dec' : float
+            - 'dec' : float
                 The declination of the data event.
-            'mcweight': float
+            - 'mcweight': float
                 The monte-carlo weight of the event.
         physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which

@@ -169,12 +169,13 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            'log_energy' : float
+            
+            - 'log_energy' : float
                 The logarithm of the energy value of the data event.
-            'dec' : float
+            - 'dec' : float
                 The declination of the data event.
 
-        Errors
+        Raises
         ------
         ValueError
             If some of the data is outside the logE or sin(dec) binning range.
@@ -199,10 +200,12 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         events : numpy record ndarray
             The array holding the event data. The following data fields must
             exist:
-            'log_energy' : float
+
+            - 'log_energy' : float
                 The logarithm of the energy value of the event.
-            'sinDec' : float
+            - 'sinDec' : float
                 The sin(declination) value of the event.
+
         fitparams : None
             Unused interface parameter.
 

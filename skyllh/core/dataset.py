@@ -351,7 +351,7 @@ class Dataset(object):
         verqualifiers : dict
             The dictionary with the new version qualifiers.
 
-        Errors
+        Raises
         ------
         ValueError
             If the integer number of an existing version qualifier is not larger
@@ -879,11 +879,10 @@ def convert_recarray_fields_float64_into_float32(arr, except_fields=None, order=
 def assert_data_format(dataset, data):
     """Checks the format of the experimental and monte-carlo data.
 
-    Errors
+    Raises
     ------
     KeyError
         If a required data field is missing.
-
     """
     def _get_missing_keys(keys, required_keys):
         missing_keys = []

@@ -326,13 +326,15 @@ class FixedFluxPointLikeSourceI3DetSigEffImplMethod(
             The DatasetData instance holding the monte-carlo event data.
             The numpy record ndarray holding the monte-carlo event data must
             contain the following data fields:
-            'true_dec' : float
+            
+            - 'true_dec' : float
                 The true declination of the data event.
-            'true_energy' : float
+            - 'true_energy' : float
                 The true energy value of the data event.
-            'mcweight' : float
+            - 'mcweight' : float
                 The monte-carlo weight of the data event in the unit
                 GeV cm^2 sr.
+
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime
@@ -565,13 +567,15 @@ class PowerLawFluxPointLikeSourceI3DetSigEffImplMethod(
             The DatasetData instance holding the monte-carlo event data.
             The numpy record array for the monte-carlo data of the dataset must
             contain the following data fields:
-            'true_dec' : float
+
+            - 'true_dec' : float
                 The true declination of the data event.
-            'mcweight' : float
+            - 'mcweight' : float
                 The monte-carlo weight of the data event in the unit
                 GeV cm^2 sr.
-            'true_energy' : float
+            - 'true_energy' : float
                 The true energy value of the data event.
+                
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime instance

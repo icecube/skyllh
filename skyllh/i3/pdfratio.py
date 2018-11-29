@@ -45,7 +45,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
             The number of CPUs to use to create the ratio splines for the
             different sets of signal parameters.
 
-        Errors
+        Raises
         ------
         ValueError
             If the signal and background PDFs use different binning.

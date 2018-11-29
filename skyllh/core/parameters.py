@@ -228,7 +228,9 @@ class FitParameterManifoldGridInterpolationMethod(object):
             value of the manifold at this d-dimensional point for each given
             event.
             The call signature of f must be:
-                __call__(gridfitparams, eventdata)
+
+                ``__call__(gridfitparams, eventdata)``
+                
             where gridfitparams is the dictionary with the fit parameter values
             on the grid and ``eventdata`` is a 2-dimensional (N,V)-shaped numpy
             ndarray holding the event data, where N is the number of events, and

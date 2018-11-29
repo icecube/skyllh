@@ -81,7 +81,7 @@ class SourceCollection(ObjectCollection):
         errmsg : str
             The error message if the cast fails.
 
-        Errors
+        Raises
         ------
         TypeError
             If the cast fails.

@@ -198,8 +198,11 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
         events : numpy record array
             The numpy record array with the event data.
             The following data fields must exist:
-                ra : The right-ascention of the event.
-                dec : The declination of the event.
+            
+            - 'ra' : float
+                The right-ascention of the event.    
+            - 'dec' : float
+                The declination of the event.
 
         Returns
         -------

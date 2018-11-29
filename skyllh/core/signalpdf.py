@@ -239,10 +239,11 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            'time' : float
+            
+            - 'time' : float
                 The MJD time of the data event.
 
-        Errors
+        Raises
         ------
         ValueError
             If some of the data is outside the time range of the PDF.
@@ -263,7 +264,8 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         events : numpy record ndarray
             The array holding the event data. The following data fields must
             exist:
-            'time' : float
+            
+            - 'time' : float
                 The MJD time of the event.
         fitparams : dict
             The dictionary holding the signal time parameter values for which

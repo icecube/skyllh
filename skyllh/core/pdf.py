@@ -103,7 +103,7 @@ class PDFAxes(ObjectCollection):
         axis : PDFAxis
             The PDFAxis object.
 
-        Errors
+        Raises
         ------
         KeyError
             If the axis could not be found.
@@ -191,7 +191,7 @@ class PDF(object):
         data_exp : numpy record ndarray
             The array holding the experimental data to check for.
 
-        Errors
+        Raises
         ------
         ValueError
             If the PDF is not valid for the given experimental data.
@@ -262,12 +262,13 @@ class SpatialPDF(PDF):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            'ra' : float
+
+            - 'ra' : float
                 The right-ascention of the data event.
-            'dec' : float
+            - 'dec' : float
                 The declination of the data event.
 
-        Errors
+        Raises
         ------
         ValueError
             If some of the data is outside the right-ascention or declination
@@ -392,7 +393,7 @@ class PDFSet(object):
             The dictionary with the grid fit parameter values, which identify
             the PDF object.
 
-        Errors
+        Raises
         ------
         KeyError
             If the given PDF was already added for the given set of parameters.
@@ -422,7 +423,7 @@ class PDFSet(object):
         pdf : pdf_type
             The pdf_type object for the given parameters.
 
-        Errors
+        Raises
         ------
         KeyError
             If no PDF object was created for the given set of parameters.

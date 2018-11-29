@@ -61,11 +61,14 @@ class I3Dataset(Dataset):
     def prepare_data(self, data, sw=None):
         """Prepares the data for IceCube by pre-calculating the following
         experimental data fields:
-            - sin_dec: float
-                The sin value of the declination coordinate.
+        
+        - sin_dec: float
+            The sin value of the declination coordinate.
+            
         and monte-carlo data fields:
-            - sin_true_dec: float
-                The sin value of the true declination coordinate.
+        
+        - sin_true_dec: float
+            The sin value of the true declination coordinate.
 
         Parameters
         ----------

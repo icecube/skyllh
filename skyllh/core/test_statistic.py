@@ -100,9 +100,13 @@ class TestStatisticWilksZeroNsTaylor(TestStatistic):
         TS = 2 * a^2 / (4*b)
 
     for ns_best == 0, with
+
         a = d/dns ( L(fitparam_best) / L(ns = 0) )
+
     being the derivative w.r.t. ns of the log-likelihood ratio function, and
+
         b = d/dns ( a )
+        
     being its second derivative w.r.t. ns.
     """
     def __init__(self):
