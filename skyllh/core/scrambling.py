@@ -4,8 +4,8 @@ import abc
 
 import numpy as np
 
-from skyllh.core.random import RandomStateService
 from skyllh.core.times import TimeGenerator
+
 
 class DataScramblingMethod(object):
     """Base class (type) for implementing a data scrambling method.
@@ -16,18 +16,26 @@ class DataScramblingMethod(object):
         pass
 
     @abc.abstractmethod
-    def scramble(self, data):
+    def scramble(self, rss, data):
         """The scramble method implements the actual scrambling of the given
         data, which is method dependent. The scrambling must be performed
         in-place, i.e. it alters the data inside the given data array.
 
         Parameters
         ----------
+        rss : RandomStateService
+            The random state service providing the random number
+            generator (RNG).
         data : numpy.ndarray
             The ndarray containing the to be scrambled data.
 
+        Returns
+        -------
+        data : numpy record ndarray
+            The given numpy record ndarray holding the scrambled data.
         """
         pass
+
 
 class UniformRAScramblingMethod(DataScramblingMethod):
     """The UniformRAScramblingMethod method performs right-ascention scrambling
@@ -35,32 +43,19 @@ class UniformRAScramblingMethod(DataScramblingMethod):
 
     Note: This alters only the ``ra`` values of the data!
     """
-    def __init__(self, rss, ra_range=None):
+    def __init__(self, ra_range=None):
         """Initializes a new RAScramblingMethod instance.
 
         Parameters
         ----------
-        rss : RandomStateService | None
-            The random state service providing the random number generator (RNG).
         ra_range : tuple | None
             The two-element tuple holding the range in radians within the RA
             values should get drawn from. If set to None, the default (0, 2\pi)
             will be used.
         """
         super(UniformRAScramblingMethod, self).__init__()
-        self.rss = rss
-        self.ra_range = ra_range
 
-    @property
-    def rss(self):
-        """The RandomStateService object providing the random number generator.
-        """
-        return self._rss
-    @rss.setter
-    def rss(self, rss):
-        if(not isinstance(rss, RandomStateService)):
-            raise TypeError('The random state service (rss) must be an instance of RandomStateService!')
-        self._rss = rss
+        self.ra_range = ra_range
 
     @property
     def ra_range(self):
@@ -78,8 +73,25 @@ class UniformRAScramblingMethod(DataScramblingMethod):
             raise ValueError('The ra_range tuple must contain 2 elements!')
         self._ra_range = ra_range
 
-    def scramble(self, data):
-        data["ra"] = self.rss.random.uniform(*self.ra_range, size=data.size)
+    def scramble(self, rss, data):
+        """Scrambles the given data uniformly in right-ascention.
+
+        Parameters
+        ----------
+        rss : RandomStateService
+            The random state service providing the random number
+            generator (RNG).
+        data : numpy.ndarray
+            The ndarray containing the to be scrambled data.
+
+        Returns
+        -------
+        data : numpy record ndarray
+            The given numpy record ndarray holding the scrambled data.
+        """
+        data["ra"] = rss.random.uniform(*self.ra_range, size=data.size)
+        return data
+
 
 class TimeScramblingMethod(DataScramblingMethod):
     """The TimeScramblingMethod class provides a data scrambling method to
@@ -135,10 +147,30 @@ class TimeScramblingMethod(DataScramblingMethod):
             raise TypeError('The hor_to_equ_transform property must be a callable object!')
         self._hor_to_equ_transform = transform
 
-    def scramble(self, data):
-        mjds = self.timegen.generate_times(data.size)
+    def scramble(self, rss, data):
+        """Scrambles the given data based on random MJD times, which are
+        generated from a TimeGenerator instance. The event's right-ascention and
+        declination coordinates are calculated via a horizontal-to-equatorial
+        coordinate transformation and the generated MJD time of the event.
+
+        Parameters
+        ----------
+        rss : RandomStateService
+            The random state service providing the random number
+            generator (RNG).
+        data : numpy.ndarray
+            The ndarray containing the to be scrambled data.
+
+        Returns
+        -------
+        data : numpy record ndarray
+            The given numpy record ndarray holding the scrambled data.
+        """
+        mjds = self.timegen.generate_times(rss, data.size)
         data['time'] = mjds
         (data['ra'], data['dec']) = self.hor_to_equ_transform(data['azi'], data['zen'], mjds)
+        return data
+
 
 class DataScrambler(object):
     def __init__(self, method, inplace_scrambling=True):
@@ -185,7 +217,7 @@ class DataScrambler(object):
             raise TypeError('The inplace_scrambling property must be of type bool!')
         self._inplace_scrambling = flag
 
-    def scramble_data(self, data):
+    def scramble_data(self, rss, data):
         """Scrambles the given data by calling the scramble method of the
         scrambling method class, that was configured for the data scrambler.
         If the ``inplace_scrambling`` property is set to False, a copy of the
@@ -193,19 +225,21 @@ class DataScrambler(object):
 
         Parameters
         ----------
+        rss : RandomStateService
+            The random state service providing the random number generator (RNG).
         data : numpy record array
             The numpy record array holding the data, which should get scrambled.
 
         Returns
         -------
         data : numpy record array
-            The numpy record array with the scrambled data. If the
+            The given numpy record array with the scrambled data. If the
             ``inplace_scrambling`` property is set to True, this output array is
             the same array as the input array, otherwise it's a new array.
         """
         if(not self._inplace_scrambling):
             data = np.copy(data)
 
-        self._method.scramble(data)
+        data = self._method.scramble(rss, data)
 
         return data
