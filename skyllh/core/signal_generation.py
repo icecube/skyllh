@@ -10,7 +10,7 @@ from skyllh.core.py import (
 class SignalGenerationMethod(object):
     """This is a base class for a source and detector specific signal generation
     method, that calculates the source flux for a given monte-carlo event, which
-    is needed to calculate the MC event weights for the signal injector.
+    is needed to calculate the MC event weights for the signal generator.
     """
     __metaclass__ = abc.ABCMeta
 
@@ -40,8 +40,8 @@ class SignalGenerationMethod(object):
             if(not issequence(r)):
                 raise TypeError('The energy_range property must be a sequence!')
             if(len(r) != 2):
-                raise ValueError('The energy_range property must be a sequence of '
-                    '2 elements!')
+                raise ValueError('The energy_range property must be a sequence '
+                    'of 2 elements!')
             r = tuple(
                 float_cast(r[0], 'The first element of the energy_range '
                                  'sequence must be castable to type float!'),
@@ -92,7 +92,7 @@ class SignalGenerationMethod(object):
             generated signal events for the given source hypothesis group.
             The length of this array must be the same as shg_sig_events.
             It needs to contain the following data fields:
-                
+
             - 'shg_src_idx' : int
                 The source index within the source hypothesis group.
         shg_sig_events : numpy record ndarray
