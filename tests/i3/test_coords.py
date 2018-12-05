@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import division
-
 import unittest
 import numpy as np
 
@@ -10,8 +8,6 @@ from skyllh.i3.coords import (
     ra_to_azi_transform,
     hor_to_equ_transform
 )
-
-from skyllh.core.py import float_cast
 
 
 class TestCoords(unittest.TestCase):

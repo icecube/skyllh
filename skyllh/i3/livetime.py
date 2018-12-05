@@ -19,8 +19,6 @@ class I3Livetime(Livetime):
                 The MJD of the run start.
             stop : float
                 The MJD of the run stop.
-            good_i3 : bool
-                The flag if the run had a good in-ice detector.
 
         Parameters
         ----------
@@ -38,10 +36,6 @@ class I3Livetime(Livetime):
             grl_data['start'].reshape((grl_data.shape[0],1)),
             grl_data['stop'].reshape((grl_data.shape[0],1))
         ))
-
-        # Remove bad runs.
-        uptime_mjd_intervals_arr = np.compress(
-            grl_data['good_i3'], uptime_mjd_intervals_arr, axis=0)
 
         return I3Livetime(uptime_mjd_intervals_arr)
 
