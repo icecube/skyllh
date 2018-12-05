@@ -15,9 +15,9 @@ class I3Livetime(Livetime):
         """Loads an I3Livetime instance from the given good-run-list (GRL) data
         file. The data file needs to contain the following data fields:
 
-            start : float
+            - start : float
                 The MJD of the run start.
-            stop : float
+            - stop : float
                 The MJD of the run stop.
 
         Parameters
