@@ -36,8 +36,8 @@ def ra_to_azi_transform(ra, mjd):
         The array with the MJD times for each right-ascention angle.
 
     """
-    # Use the azi_to_ra function because it is symmetric.
-    return azi_to_ra(ra, mjd)
+    # Use the azi_to_ra_transform function because it is symmetric.
+    return azi_to_ra_transform(ra, mjd)
 
 def hor_to_equ_transform(azi, zen, mjd):
     """Transforms the coordinate from the horizontal system (azimuth, zenith)

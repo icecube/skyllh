@@ -11,7 +11,7 @@ def isAlmostEqual(a, b, decimals=9):
 
 class TestParameters(unittest.TestCase):
     def test_ParameterGridSet_parameter_permutation_dict_list(self):
-        """Test the arameter_permutation_dict_list method of the
+        """Test the parameter_permutation_dict_list method of the
         ParameterGridSet class.
         """
         from skyllh.core.parameters import make_linear_parameter_grid_1d, ParameterGridSet
