@@ -261,6 +261,20 @@ class Dataset(object):
         self._verqualifiers = deepcopy(verqualifiers)
 
     @property
+    def exp_field_names(self):
+        """(read-only) The tuple of numpy record ndarray field names for the
+        experimental data.
+        """
+        return self.__class__._EXP_FIELD_NAMES
+
+    @property
+    def mc_field_names(self):
+        """(read-only) The tuple of numpy record ndarray field names for the
+        monto-carlo data.
+        """
+        return self.__class__._MC_FIELD_NAMES
+
+    @property
     def version_str(self):
         """The version string of the dataset. This combines all the version
         information about the dataset.
