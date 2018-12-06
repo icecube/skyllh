@@ -56,9 +56,9 @@ class Livetime(object):
             raise ValueError('The length of the second axis of the internal MJD interval array must be 2!')
 
         bins = self._onoff_intervals
-        # Check if the bin edges are monotonically increasing.
-        if(not np.all(np.diff(bins) > 0)):
-            raise ValueError('The interval edges of the internal MJD interval array are not monotonically increasing!')
+        # Check if the bin edges are monotonically non decreasing.
+        if(not np.all(np.diff(bins) >= 0)):
+            raise ValueError('The interval edges of the internal MJD interval array are not monotonically non decreasing!')
 
     @property
     def uptime_mjd_intervals_arr(self):
@@ -89,7 +89,7 @@ class Livetime(object):
     def time_window(self):
         """(read-only) The two-element tuple holding the time window which is
         spanned by all the MJD uptime intervals.
-        By definition this included possible dector down-time periods.
+        By definition this included possible detector down-time periods.
         """
         return (self._uptime_mjd_intervals_arr[0,0],
                 self._uptime_mjd_intervals_arr[-1,1])
