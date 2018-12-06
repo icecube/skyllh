@@ -13,7 +13,7 @@ class TestI3Livetime(unittest.TestCase):
     """
     def setUp(self):
         self.path = os.path.abspath(os.path.dirname(__file__))
-        self.pathfilenames = os.path.join(self.path, '../data_files/GRL/grl_data.npy')
+        self.pathfilenames = os.path.join(self.path, 'testdata/grl_testdata.npy')
         self.livetime_total = 1.6666178000014042
         self.n = 5
 
@@ -27,8 +27,8 @@ class TestI3Livetime(unittest.TestCase):
         i3dataset = I3Dataset(
             name = 'I3Dataset_test',
             livetime = self.livetime_total,
-            exp_pathfilenames = os.path.join(self.path, "../data_files/exp_data.npy"),
-            mc_pathfilenames  = os.path.join(self.path, "../data_files/mc_data.npy"),
+            exp_pathfilenames = os.path.join(self.path, "testdata/exp_testdata.npy"),
+            mc_pathfilenames  = os.path.join(self.path, "testdata/mc_testdata.npy"),
             grl_pathfilenames = self.pathfilenames,
             version = 1
         )

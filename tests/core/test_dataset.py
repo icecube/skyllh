@@ -18,9 +18,9 @@ from skyllh.core.py import float_cast
 class TestDatasetFunctions(unittest.TestCase):
     def setUp(self):
         path = os.path.abspath(os.path.dirname(__file__))
-        self.exp_data = np.load(os.path.join(path, '../data_files/exp_data.npy'))
-        self.mc_data = np.load(os.path.join(path, '../data_files/mc_data.npy'))
-        self.livetime_data = np.load(os.path.join(path, '../data_files/livetime_data.npy'))
+        self.exp_data = np.load(os.path.join(path, 'testdata/exp_testdata.npy'))
+        self.mc_data = np.load(os.path.join(path, 'testdata/mc_testdata.npy'))
+        self.livetime_data = np.load(os.path.join(path, 'testdata/livetime_testdata.npy'))
 
     def tearDown(self):
         # self.exp_data.close()
