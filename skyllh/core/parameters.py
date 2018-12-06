@@ -230,7 +230,7 @@ class FitParameterManifoldGridInterpolationMethod(object):
             The call signature of f must be:
 
                 ``__call__(gridfitparams, eventdata)``
-                
+
             where gridfitparams is the dictionary with the fit parameter values
             on the grid and ``eventdata`` is a 2-dimensional (N,V)-shaped numpy
             ndarray holding the event data, where N is the number of events, and
@@ -517,6 +517,12 @@ class FitParameterSet(object):
         """(read-only) The list of the global FitParameter instances.
         """
         return list(self._fitparams)
+
+    @property
+    def fitparam_name_list(self):
+        """(read-only) The list of the fit parameter names.
+        """
+        return self._fitparam_name_list
 
     @property
     def initials(self):
