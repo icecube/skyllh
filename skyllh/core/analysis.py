@@ -177,7 +177,7 @@ class Analysis(object):
         if(not isinstance(method, BackgroundGenerationMethod)):
             raise TypeError('The bkg_gen_method property must be an instance '
                 'of BackgroundGenerationMethod!')
-        self._data_scrambler = scrambler
+        self._bkg_gen_method = method
 
     @property
     def event_selection_method(self):
