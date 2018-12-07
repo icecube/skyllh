@@ -22,7 +22,7 @@ class Dataset(object):
     Independet dataset of the same kind, e.g. event selection, can be joined
     through a DatasetCollection object.
     """
-    _EXP_FIELD_NAMES = ('ra', 'dec', 'azi', 'zen', 'ang_err', 'time', 'log_energy')
+    _EXP_FIELD_NAMES = ('ra', 'dec', 'ang_err', 'time', 'log_energy')
     _MC_FIELD_NAMES = ('true_ra', 'true_dec', 'true_energy', 'mcweight')
 
     @staticmethod

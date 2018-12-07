@@ -99,5 +99,5 @@ class I3Dataset(Dataset):
             dtypes=np.float, usemask=False)
         sw_take_lap('Appended IceCube-specific data fields to MC data.')
 
-I3Dataset.add_required_exp_field_names(I3Dataset, ['sin_dec'])
-I3Dataset.add_required_mc_field_names(I3Dataset, ['sin_true_dec'])
+I3Dataset.add_required_exp_field_names(I3Dataset, ['azi', 'zen', 'sin_dec'])
+I3Dataset.add_required_mc_field_names(I3Dataset, ['true_azi', 'true_zen', 'sin_true_dec'])
