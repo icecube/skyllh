@@ -277,12 +277,22 @@ All the background PDF components can either be determined from the data itself
 or by using Monte-Carlo simulation.
 
 For a background hypothesis without any time-dependence, \emph{i.e.} a constant
-background flux, the background time PDF,
-$\mathcal{T}_{\mathrm{B}}(t)$, is given through
+background flux, the background time profile,
+$T_{\mathrm{B}}(t)$, is given through
 \begin{equation}
- \mathcal{T}_{\mathrm{B}}(t) \equiv \frac{1}{T_{\mathrm{obs}}},
+ T_{\mathrm{B}}(t) \equiv \frac{1}{T_{\mathrm{obs}}},
 \end{equation}
 where $T_{\mathrm{obs}}$ is given by equation (\ref{eq:Tobs}).
+
+In analog to the signal time PDF, the background time PDF, $\mathcal{T}_{\mathrm{B}}(t)$,
+is the convolution of the background time profile $T_{\mathrm{B}}(t)$ and the
+detector live-time function, $T_{\mathrm{live}}(t)$, where the final result is
+again normalized to unity.
+
+On short time-scales the uniform, time-independent, background hypothesis might
+not be a reasonable assumption possibly due to a varying event acceptance of the
+detector. In such cases the background time profile has to be determined from
+simulation or the experimental data itself.
 
 
 \subsection{Notes on the energy PDFs for Signal \& Background}
@@ -464,7 +474,7 @@ contribute.
 
 \subsection{Multiple Datasets}
 
-With SkyLLH a set of $J$ different data samples (datasets) $\mathrm{D}_j$ can be
+With SkyLLH a set of $J$ different data samples (datasets), $\mathrm{D}_j$, can be
 analyzed at once. Each data sample has its own detector signal efficiency
 $\mathcal{Y}_{\mathrm{s}_j}$.
 
