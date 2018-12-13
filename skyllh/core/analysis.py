@@ -24,7 +24,7 @@ from skyllh.core.optimize import EventSelectionMethod, AllEventSelectionMethod
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.test_statistic import TestStatistic
 from skyllh.core.minimizer import Minimizer
-from skyllh.core.multiproc import parallelize
+from skyllh.core.multiproc import get_ncpu, parallelize
 from skyllh.core.background_generation import BackgroundGenerationMethod
 from skyllh.core.background_generator import BackgroundGenerator
 from skyllh.core.signal_generator import SignalGenerator
@@ -335,7 +335,7 @@ class Analysis(object):
     def initialize_trial(self, events_list):
         """This method is supposed to initialize the log-likelihood ratio
         function with a new set of given trial data. This is a low-level method.
-        For convinient methods see the `unblind` and `do_trial` methods.
+        For convenient methods see the `unblind` and `do_trial` methods.
 
         Parameters
         ----------
@@ -474,18 +474,16 @@ class Analysis(object):
 
         return result
 
-    def do_trials(self, N, ncpu, rss, bkg_mean_list=None, sig_mean=0):
-        """Performs `N` analysis trials by generating a pseudo data sample with
-        background events and possible signal events, and performs the LLH
+    def do_trials(self, N, rss, bkg_mean_list=None, sig_mean=0, ncpu=None):
+        """Executes `do_trial` method `N` times with possible multi-processing. 
+        One trial performs an analysis trial by generating a pseudo data sample
+        with background events and possible signal events, and performs the LLH
         analysis on that random pseudo data sample.
 
         Parameters
         ----------
         N : int
             Number of trials to generate using the `do_trial` method.
-        ncpu : int
-            The number of CPUs to use, i.e. the number of subprocesses to
-            spawn.
         rss : RandomStateService
             The RandomStateService instance to use for generating random
             numbers.
@@ -497,6 +495,9 @@ class Analysis(object):
             The mean number of signal events that should be generated for the
             trial. The actual number of generated events will be drawn from a
             Poisson distribution with this given signal mean as mean.
+        ncpu : int | None
+            The number of CPUs to use, i.e. the number of subprocesses to
+            spawn.
 
         Returns
         -------
@@ -511,16 +512,17 @@ class Analysis(object):
             [<fitparam_name> ... : float ]
                 Any additional fit parameters of the LLH function.
         """
+        ncpu = get_ncpu(ncpu)
         args_list = [((), {'bkg_mean_list': bkg_mean_list,
             'sig_mean': sig_mean}) for i in xrange(N)]
         result_list = parallelize(do_trial, args_list, ncpu, rss=rss)
 
-        result_list_dtype = result_list[0].dtype
-        results = np.zeros(N, dtype=result_list_dtype)
-        for i in xrange(N):
-            results[i] = result_list[i]
+        result_dtype = result_list[0].dtype
+        result = np.zeros(N, dtype=result_dtype)
 
-        return results
+        result[:] = result_list[:]
+
+        return result
 
 
 class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):

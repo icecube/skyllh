@@ -52,7 +52,7 @@ def parallelize(func, args_list, ncpu, rss=None):
         of that list must be a 2-element tuple, where the first element is a
         tuple of the arguments of ``func``, and the second element is a
         dictionary with the keyword arguments of ``func``. If the `rss` argument
-        is not None, `func` argument `rss` has to be omited.
+        is not None, `func` argument `rss` has to be omitted.
     ncpu : int
         The number of CPUs to use, i.e. the number of subprocesses to spawn.
     rss : RandomStateService | None
@@ -82,7 +82,7 @@ def parallelize(func, args_list, ncpu, rss=None):
             element is a tuple of the arguments of ``func``, and the second
             element is a dictionary with the keyword arguments of ``func``.
             If the `rss` argument is not None, `func` argument `rss` has to be
-            omited.
+            omitted.
         pid : int
             The process ID that identifies the process in order to sort the
             results to the initial order of the function arguments.
