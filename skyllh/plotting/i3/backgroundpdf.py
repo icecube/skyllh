@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
-from skyllh.core.py import classname
+from skyllh.core.py import classname, range
 from skyllh.i3.backgroundpdf import BackgroundI3SpatialPDF
 
 class BackgroundI3SpatialPDFPlotter(object):

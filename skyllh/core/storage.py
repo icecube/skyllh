@@ -4,7 +4,7 @@ import abc
 import numpy as np
 import os.path
 
-from skyllh.core.py import issequence, issequenceof
+from skyllh.core.py import issequence, issequenceof, range
 
 # Define a file loader registry that holds the FileLoader classes for different
 # file formats.
@@ -137,7 +137,7 @@ class NPYFileLoader(FileLoader):
         pathfilename = self.pathfilename_list[0]
         assert_file_exists(pathfilename)
         data = np.load(pathfilename)
-        for i in xrange(1, len(self.pathfilename_list)):
+        for i in range(1, len(self.pathfilename_list)):
             pathfilename = self.pathfilename_list[i]
             assert_file_exists(pathfilename)
             data = np.append(data, np.load(pathfilename))

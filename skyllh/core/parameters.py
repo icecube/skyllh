@@ -6,7 +6,7 @@ import numpy as np
 from copy import deepcopy
 
 from skyllh.physics.source import SourceModel, SourceCollection
-from skyllh.core.py import ObjectCollection, issequence, float_cast
+from skyllh.core.py import ObjectCollection, issequence, float_cast, range
 from skyllh.core.random import RandomStateService
 
 def make_linear_parameter_grid_1d(name, low, high, delta):
@@ -977,7 +977,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
                                  dtype=[ (name, np.float)
                                          for name in self._unique_src_param_names ])
 
-        for src_idx in xrange(self.N_sources):
+        for src_idx in range(self.N_sources):
             # Get the mask of global fit parameters that apply to the requested
             # source.
             fp_mask = self._fit_param_2_src_mask[:,src_idx]

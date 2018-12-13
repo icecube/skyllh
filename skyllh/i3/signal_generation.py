@@ -6,7 +6,8 @@ import numpy as np
 
 from skyllh.core.py import (
     get_smallest_numpy_int_type,
-    float_cast
+    float_cast,
+    range
 )
 from skyllh.core.coords import rotate_spherical_vector
 from skyllh.core.signal_generation import SignalGenerationMethod
@@ -249,7 +250,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         indices_list = []
         flux_list = []
 
-        for k in xrange(n_sources):
+        for k in range(n_sources):
             # Create the sin(true_dec) range event mask for the source.
             src_event_mask = (
                 (data_mc_sin_true_dec >= src_sin_dec_band_min[k]) &

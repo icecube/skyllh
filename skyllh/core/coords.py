@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from skyllh.core.py import range 
+
 def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     """Calculates the rotation matrix R to rotate the spherical vector
     (ra1,dec1) onto the direction (ra2,dec2), and performs this rotation on the
@@ -65,7 +67,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     # Remap functions to avoid Python's (.)-resolution millions of times.
     (np_outer, np_dot, np_roll, np_diag, np_T) = (
      np.outer, np.dot, np.roll, np.diag, np.transpose)
-    for i in xrange(N_event):
+    for i in range(N_event):
         cos_alpha_i = cos_alpha[i]
         nrot_i = nrot[i]
         nrotTnrot_i = np_outer(nrot_i, nrot_i)

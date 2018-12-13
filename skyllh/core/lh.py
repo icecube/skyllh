@@ -23,7 +23,7 @@ lh = LHComponent(signal_fraction) + LHComponent(background_fraction)
 import numbers
 import numpy as np
 
-from py import issequence
+from skyllh.core.py import issequence, range
 
 def log(lhcomponent):
     """Convinient function to add the numpy.log operation to the likelihood
@@ -619,7 +619,7 @@ class LHFunctionParams(object):
         # Check if all the names are equal.
         self_names = self.names
         other_names = other.names
-        for i in xrange(self.N):
+        for i in range(self.N):
             if(self_names[i] != other_names[i]):
                 return False
 
@@ -648,7 +648,7 @@ class LHFunctionParams(object):
         """
         s = ''
         print self.bounds
-        for i in xrange(self.N):
+        for i in range(self.N):
             if(self.isconst_list[i] is True):
                 s += '%s: initial %e (constant)\n'%(self.names[i], self.initials[i])
             else:
@@ -691,7 +691,7 @@ class LHFunctionParams(object):
             # Copy the parameter definitions from the given LHFunctionParams
             # object.
             self.clear()
-            for i in xrange(name.N):
+            for i in range(name.N):
                 self.def_param(name.names[i], name.initials[i], name.isconst_list[i], name.bounds[i][0], name.bounds[i][1])
             return self
 
@@ -755,7 +755,7 @@ class LHFunctionParams(object):
         """Returns the parameter index for the given parameter name.
         It raises a KeyError if the given parameter does not exist.
         """
-        for i in xrange(len(self._param_name_list)):
+        for i in range(len(self._param_name_list)):
             if(self._param_name_list[i] == name):
                 return i
         raise KeyError('The parameter "%s" is not defined!'%(name))

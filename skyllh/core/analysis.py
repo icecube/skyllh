@@ -5,7 +5,7 @@
 
 import abc
 
-from skyllh.core.py import issequenceof
+from skyllh.core.py import issequenceof, range
 from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.parameters import (
     FitParameter,
@@ -514,7 +514,7 @@ class Analysis(object):
         """
         ncpu = get_ncpu(ncpu)
         args_list = [((), {'bkg_mean_list': bkg_mean_list,
-            'sig_mean': sig_mean}) for i in xrange(N)]
+            'sig_mean': sig_mean}) for i in range(N)]
         result_list = parallelize(do_trial, args_list, ncpu, rss=rss)
 
         result_dtype = result_list[0].dtype

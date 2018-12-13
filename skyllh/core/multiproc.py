@@ -3,6 +3,7 @@
 import numpy as np
 import multiprocessing as mp
 
+from skyllh.core.py import range
 from skyllh.core.random import RandomStateService
 
 # Global setting for the number of CPUs to use for functions that allow
@@ -125,7 +126,7 @@ def parallelize(func, args_list, ncpu, rss=None):
         if(not isinstance(rss, RandomStateService)):
             raise TypeError('The rss property must be an instance of Minimizer!')
         rss_list.extend([RandomStateService(seed=rss.random.randint(0, 2**32))
-            for i in xrange(1, ncpu)])
+            for i in range(1, ncpu)])
     
     processes = [mp.Process(target=wrapper,
                             args=(func, sub_args_list, pid, queue, rss_list[pid]))
@@ -150,7 +151,7 @@ def parallelize(func, args_list, ncpu, rss=None):
 
     # Order the result lists.
     result_list = []
-    for pid in xrange(len(pid_result_list_map)):
+    for pid in range(len(pid_result_list_map)):
         result_list += pid_result_list_map[pid]
 
     return result_list

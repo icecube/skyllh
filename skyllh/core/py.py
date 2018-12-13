@@ -133,6 +133,25 @@ def get_smallest_numpy_int_type(values):
 
     raise ValueError("No integer type spans [%d, %d]!"%(vmin, vmax))
 
+def _get_func_range():
+    """Returns a lazy iterable `range` function to be consistent with Python 3.
+
+    Returns
+    -------
+    func : function
+        Lazy iterable `range` function.
+    """
+    try:
+        func = xrange 
+    except NameError:
+        func = range
+
+    return func
+
+# Overwrite of built-in `range` function to be consistent with Python 3.
+range = _get_func_range()
+
+
 class ObjectCollection(object):
     """This class provides a collection of objects of a specific type. Objects
     can be added to the collection via the ``add`` method or can be removed

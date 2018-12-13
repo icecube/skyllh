@@ -4,7 +4,7 @@ import abc
 import itertools
 import numpy as np
 
-from skyllh.core.py import typename, classname, issequenceof
+from skyllh.core.py import typename, classname, issequenceof, range
 from skyllh.core.parameters import FitParameter, FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
 from skyllh.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
 
@@ -323,7 +323,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         # Get the index of the PDF ratio object that corresponds to the excluded
         # fit parameter.
         excluded_pdfratio_idx = self._fitparam_idx_2_pdfratio_idx[excluded_fitparam_idx]
-        pdfratio_indices = range(self._ratio_values.shape[0])
+        pdfratio_indices = list(range(self._ratio_values.shape[0]))
         pdfratio_indices.pop(excluded_pdfratio_idx)
         return np.prod(self._ratio_values[pdfratio_indices], axis=0)
 

@@ -2,7 +2,7 @@
 
 import abc
 
-from skyllh.core.py import typename, ObjectCollection
+from skyllh.core.py import typename, ObjectCollection, range
 from skyllh.core.parameters import ParameterGrid, ParameterGridSet, make_params_hash
 
 class PDFAxis(object):
