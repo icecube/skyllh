@@ -14,6 +14,7 @@ from skyllh.core.parameters import (
 )
 from skyllh.core.pdf import SpatialPDF, EnergyPDF
 from skyllh.core.pdfratio import PDFRatio
+from skyllh.core.random import RandomStateService
 from skyllh.core.llhratio import (
     SingleSourceDatasetSignalWeights,
     SingleSourceTCLLHRatio,
