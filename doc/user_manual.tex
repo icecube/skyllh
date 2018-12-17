@@ -538,26 +538,26 @@ contribute.
 \subsection{Multiple Datasets}
 
 With SkyLLH a set of $J$ different data samples (datasets), $\mathrm{D}_j$, can be
-analyzed at once. Each data sample has its own detector signal efficiency
+analyzed at once. Each data sample has its own detector signal yield,
 $\mathcal{Y}_{\mathrm{s}_j}$.
 
 The composite likelihood function is the product of the individual dataset
 likelihood functions:
 \begin{equation}
- \log \Lambda = \sum_{j=1}^{J} \log \Lambda_j
+ \log \Lambda = \sum_{j=1}^{J} \log \Lambda_j.
  \label{eq:logLambdaComposite}
 \end{equation}
 
 The total number of signal events $\ns$ needs to get split-up into
 $n_{\mathrm{s}_j}$ for the individual datasets. The distribution of $\ns$
-along the different datasets is based on the detector signal efficiency,
+along the different datasets is based on the detector signal yield,
 $\mathcal{Y}_{\mathrm{s}_j}$, of each dataset. For a single source it is given by:
 \begin{equation}
  n_{\mathrm{s}_j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)},
  \label{eq:nsjy}
 \end{equation}
 where $\xs$ and $\ps$ denote the source position and flux fit parameters, e.g.
-the spectral index $\gamma$, respectively. The detector signal efficiency can be
+the spectral index $\gamma$, respectively. The detector signal yield can be
 calculated via the detector effective area and the source flux (\emph{c.f.} section
 \ref{sec:detsigyield}).
 
@@ -594,13 +594,13 @@ Hence,
 
 For multiple point sources, i.e. a stacking of $K$ point sources with positions
 $\xsk$, the dataset weight factor of each single source needs
-to be taking into account via Bayes' theorem. Thus, $f_{j}(\ps)$ can be written
+to be taken into account via Bayes' theorem. Thus, $f_{j}(\ps)$ can be written
 as the sum of the products of the dataset weight factor $f_{j}(\psk)$ for
 source $k$, as given by equation (\ref{eq:dataset-weight-factor-single-source}),
 and the relative strength, $f_{k}(\psk)$, of the $k$th source in all datasets
-compared to all the other sources in all datasets.
+compared to all the other sources in all datasets:
 \begin{equation}
- f_{j}(\ps) = \sum_{k=1}^{K} f_{k}(\psk) f_{j}(\psk)
+ f_{j}(\ps) = \sum_{k=1}^{K} f_{k}(\psk) f_{j}(\psk).
 \end{equation}
 The relative strength of source $k$ can be written as
 \begin{equation}
@@ -615,7 +615,7 @@ $f_{j}(\ps)$ for multiple sources is given by:
     \frac{\left(\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk)\right) \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}
          {\left(\sum_{\kappa=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',\kappa}}(\vec{x}_{\mathrm{s}_\kappa},\vec{p}_{\mathrm{s}_\kappa})\right) \left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk) \right)}
 \end{equation}
-The sum over the datasets of the detector signal efficiency for source $k$ cancels
+The sum over the datasets of the detector signal yield for source $k$ cancels
 out leaving the simplified equation
 \begin{equation}
  f_{j}(\ps) = \frac{\sum_{k=1}^{K} \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}
