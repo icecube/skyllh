@@ -515,11 +515,10 @@ class Analysis(object):
         ncpu = get_ncpu(ncpu)
         args_list = [((), {'bkg_mean_list': bkg_mean_list,
             'sig_mean': sig_mean}) for i in range(N)]
-        result_list = parallelize(do_trial, args_list, ncpu, rss=rss)
+        result_list = parallelize(self.do_trial, args_list, ncpu, rss=rss)
 
         result_dtype = result_list[0].dtype
-        result = np.zeros(N, dtype=result_dtype)
-
+        result = np.empty(N, dtype=result_dtype)
         result[:] = result_list[:]
 
         return result
