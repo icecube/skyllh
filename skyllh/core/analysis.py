@@ -475,7 +475,7 @@ class Analysis(object):
         return result
 
     def do_trials(self, N, rss, bkg_mean_list=None, sig_mean=0, ncpu=None):
-        """Executes `do_trial` method `N` times with possible multi-processing. 
+        """Executes `do_trial` method `N` times with possible multi-processing.
         One trial performs an analysis trial by generating a pseudo data sample
         with background events and possible signal events, and performs the LLH
         analysis on that random pseudo data sample.
@@ -627,33 +627,33 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
         constructs the log-likelihood ratio functions for each dataset and the
         final composite llh ratio function.
         """
-        # Create the detector signal efficiency instances for each dataset.
+        # Create the detector signal yield instances for each dataset.
         # Since this is for a single source, we don't have to have individual
-        # detector signal efficiency instances for each source as well.
-        detsigeff_list = []
+        # detector signal yield instances for each source as well.
+        detsigyield_list = []
         fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
-        detsigeff_implmethod_list = self._src_hypo_group_manager.get_detsigeff_implmethod_list_by_src_idx(0)
-        if((len(detsigeff_implmethod_list) != 1) and
-           (len(detsigeff_implmethod_list) != self.n_datasets)):
-            raise ValueError('The number of detector signal efficiency '
+        detsigyield_implmethod_list = self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
+        if((len(detsigyield_implmethod_list) != 1) and
+           (len(detsigyield_implmethod_list) != self.n_datasets)):
+            raise ValueError('The number of detector signal yield '
                 'implementation methods is not 1 and does not match the number '
                 'of used datasets in the analysis!')
         for (j, (dataset, data)) in enumerate(zip(self.dataset_list, self.data_list)):
-            if(len(detsigeff_implmethod_list) == 1):
-                # Only one detsigeff implementation method was defined, so we
+            if(len(detsigyield_implmethod_list) == 1):
+                # Only one detsigyield implementation method was defined, so we
                 # use it for all datasets.
-                detsigeff_implmethod = detsigeff_implmethod_list[0]
+                detsigyield_implmethod = detsigyield_implmethod_list[0]
             else:
-                detsigeff_implmethod = detsigeff_implmethod_list[j]
+                detsigyield_implmethod = detsigyield_implmethod_list[j]
 
-            detsigeff = detsigeff_implmethod.construct_detsigeff(
+            detsigyield = detsigyield_implmethod.construct_detsigyield(
                 dataset, data, fluxmodel, dataset.livetime)
-            detsigeff_list.append(detsigeff)
+            detsigyield_list.append(detsigyield)
 
         # For multiple datasets we need a dataset signal weights instance in
         # order to distribute ns over the different datasets.
         dataset_signal_weights = SingleSourceDatasetSignalWeights(
-            self._src_hypo_group_manager, self._src_fitparam_mapper, detsigeff_list)
+            self._src_hypo_group_manager, self._src_fitparam_mapper, detsigyield_list)
 
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.

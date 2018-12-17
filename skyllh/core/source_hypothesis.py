@@ -92,12 +92,12 @@ class SourceHypoGroupManager(object):
             (self._sidx_to_gidx_gsidx_map_arr, arr))
 
     def add_source_hypo_group(
-        self, sources, fluxmodel, detsigeff_implmethods, sig_gen_method=None
+        self, sources, fluxmodel, detsigyield_implmethods, sig_gen_method=None
     ):
         """Adds a source hypothesis group to the source hypothesis group
         manager. A source hypothesis group share sources of the same source
         model with the same flux model and hence the same detector signal
-        efficiency implementation method.
+        yield and signal generation implementation methods.
 
         Parameters
         ----------
@@ -106,11 +106,11 @@ class SourceHypoGroupManager(object):
         fluxmodel : instance of FluxModel
             The FluxModel instance that applies to the list of sources of the
             group.
-        detsigeff_implmethods : sequence of DetSigEffImplMethod instances
-            The sequence of detector signal efficiency implementation method
+        detsigyield_implmethods : sequence of DetSigYieldImplMethod instances
+            The sequence of detector signal yield implementation method
             instances, which should be used to create the detector signal
-            efficiency for the sources of the group. Each element is the
-            detector signal efficiency implementation method for the particular
+            yield for the sources of the group. Each element is the
+            detector signal yield implementation method for the particular
             dataset, if several datasets are used. If this list contains only
             one implementation method, it should be used for all datasets.
         sig_gen_method : instance of SignalGenerationMethod | None
@@ -119,7 +119,7 @@ class SourceHypoGroupManager(object):
             It can be set to None which means no signal can be generated.
         """
         # Create the source group.
-        group = SourceHypoGroup(sources, fluxmodel, detsigeff_implmethods, sig_gen_method)
+        group = SourceHypoGroup(sources, fluxmodel, detsigyield_implmethods, sig_gen_method)
 
         # Add the group.
         self._src_hypo_group_list.append(group)
@@ -146,8 +146,8 @@ class SourceHypoGroupManager(object):
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
         return self._src_hypo_group_list[gidx]._fluxmodel
 
-    def get_detsigeff_implmethod_list_by_src_idx(self, src_idx):
-        """Retrieves the list of DetSigEffImplMethod instances for the source
+    def get_detsigyield_implmethod_list_by_src_idx(self, src_idx):
+        """Retrieves the list of DetSigYieldImplMethod instances for the source
         specified by its source index.
 
         Parameters
@@ -158,9 +158,9 @@ class SourceHypoGroupManager(object):
 
         Returns
         -------
-        detsigeff_implmethod_list : list of DetSigEffImplMethod instances
-            The list of DetSigEffImplMethod instances that apply to the
+        detsigyield_implmethod_list : list of DetSigYieldImplMethod instances
+            The list of DetSigYieldImplMethod instances that apply to the
             specified source.
         """
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
-        return self._src_hypo_group_list[gidx]._detsigeff_implmethod_list
+        return self._src_hypo_group_list[gidx]._detsigyield_implmethod_list

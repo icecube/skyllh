@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from skyllh.core.py import issequenceof
-from skyllh.core.detsigeff import DetSigEffImplMethod
+from skyllh.core.detsigyield import DetSigYieldImplMethod
 from skyllh.core.signal_generation import SignalGenerationMethod
 from skyllh.physics.source import SourceModel
 from skyllh.physics.flux import FluxModel
@@ -9,10 +9,10 @@ from skyllh.physics.flux import FluxModel
 
 class SourceHypoGroup(object):
     """The source hypothesis group class provides a data container to describe
-    a group of sources that share the same flux model and detector signal
-    efficiency implementation method.
+    a group of sources that share the same flux model, detector signal yield,
+    and signal generation implementation methods.
     """
-    def __init__(self, sources, fluxmodel, detsigeff_implmethods, sig_gen_method):
+    def __init__(self, sources, fluxmodel, detsigyield_implmethods, sig_gen_method):
         """Constructs a new source hypothesis group.
 
         Parameters
@@ -22,11 +22,11 @@ class SourceHypoGroup(object):
         fluxmodel : instance of FluxModel
             The FluxModel instance that applies to the list of sources of the
             group.
-        detsigeff_implmethods : sequence of DetSigEffImplMethod instances
-            The sequence of detector signal efficiency implementation method
+        detsigyield_implmethods : sequence of DetSigYieldImplMethod instances
+            The sequence of detector signal yield implementation method
             instances, which should be used to create the detector signal
-            efficiency for the sources of the group. Each element is the
-            detector signal efficiency implementation method for the particular
+            yield for the sources of this group. Each element is the
+            detector signal yield implementation method for the particular
             dataset, if several datasets are used. If this list contains only
             one implementation method, it should be used for all datasets.
         sig_gen_method : SignalGenerationMethod instance | None
@@ -38,7 +38,7 @@ class SourceHypoGroup(object):
         """
         self.source_list = sources
         self.fluxmodel = fluxmodel
-        self.detsigeff_implmethod_list = detsigeff_implmethods
+        self.detsigyield_implmethod_list = detsigyield_implmethods
         self.sig_gen_method = sig_gen_method
 
     @property
@@ -68,23 +68,23 @@ class SourceHypoGroup(object):
         self._fluxmodel = fluxmodel
 
     @property
-    def detsigeff_implmethod_list(self):
-        """The list of DetSigEffImplMethod instances, which should be used to
-        create the detector signal efficiency for this group of sources. Each
-        element is the detector signal efficiency implementation method for
+    def detsigyield_implmethod_list(self):
+        """The list of DetSigYieldImplMethod instances, which should be used to
+        create the detector signal yield for this group of sources. Each
+        element is the detector signal yield implementation method for
         the particular dataset, if several datasets are used. If this list
         contains only one implementation method, it should be used for all
         datasets.
         """
-        return self._detsigeff_implmethod_list
-    @detsigeff_implmethod_list.setter
-    def detsigeff_implmethod_list(self, methods):
-        if(isinstance(methods, DetSigEffImplMethod)):
+        return self._detsigyield_implmethod_list
+    @detsigyield_implmethod_list.setter
+    def detsigyield_implmethod_list(self, methods):
+        if(isinstance(methods, DetSigYieldImplMethod)):
             methods = [ methods ]
-        if(not issequenceof(methods, DetSigEffImplMethod)):
-            raise TypeError('The detsigeff_implmethod_list property must be a '
-                'sequence of DetSigEffImplMethod instances!')
-        self._detsigeff_implmethod_list = methods
+        if(not issequenceof(methods, DetSigYieldImplMethod)):
+            raise TypeError('The detsigyield_implmethod_list property must be '
+                'a sequence of DetSigYieldImplMethod instances!')
+        self._detsigyield_implmethod_list = methods
 
     @property
     def sig_gen_method(self):
