@@ -111,7 +111,7 @@ def parallelize(func, args_list, ncpu, rss=None):
 
     # Return result list if only one CPU is used.
     if(ncpu == 1):
-        return wrapper(func, args_list)
+        return wrapper(func, args_list, rss=rss_list[0])
 
     # Multiple CPUs are used. Split the work across multiple processes.
     # We will use our own process (pid = 0) as a worker too.
