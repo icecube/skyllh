@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from skyllh.core.background_generation import BackgroundGenerationMethod
+from skyllh.core.py import issequenceof
 from skyllh.core.random import RandomStateService
 
 
