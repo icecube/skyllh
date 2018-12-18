@@ -4,6 +4,7 @@
 """
 
 import abc
+import numpy as np
 
 from skyllh.core.py import issequenceof, range
 from skyllh.core.dataset import Dataset, DatasetData
