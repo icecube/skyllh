@@ -696,65 +696,79 @@ equation (\ref{eq:Tlive}).
 
 In SkyLLH the effective area $A_{\mathrm{eff},j}$ of a data sample $j$ is not
 calculated separately in order to avoid binning effects. However, the effective
-area can be calculated using the Monte-Carlo weights \code{mcweight}\footnote{In IceCube
-known as ``OneWeight'', but which already includes the number of used MC files.}
+area can be calculated using the Monte-Carlo weights, \code{mcweight}\footnote{In IceCube
+known as ``OneWeight'', but which already includes the number of used MC files.},
 of the simulation events.
 The Monte-Carlo weights have the unit GeV~cm$^2$~sr.
-Using the Monte-Carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$
-the effective area is given by the sum over the event weights divided by the
+Using the Monte-Carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$,
+that corresponds to a signal event, i.e. an event that has similar properties as
+a signal event (\emph{e.g.} same true direction), the effective area is given by
+the sum of the weights of those events, divided by the
 solid angle and the energy range $\Delta E$ of the summed selected events:
 \begin{equation}
  A_{\mathrm{eff}_j}(E) = \frac{\sum_{m=1}^{M} w_{m,j}}{\Omega \Delta E}
 \end{equation}
 
 
-\subsection{The DetectorSignalEfficiency Class}
+\subsection{The DetSigYield Class}
 
-\class{DetectorSignalEfficiency} provides a detector signal efficiency class to
-compute the integral given in equation \eq{eq:Ysj}. The detector signal
-efficiency depends on the flux model and its source parameters, which might
+\class{DetSigYield} provides an abstract base class for a detector signal yield
+class to compute the integral given in equation \eq{eq:Ysj}. The detector signal
+yield depends on the flux model and its source parameters, which might
 change during the likelihood maximization process. It is also dependent on the
 detector effective area, hence is detector dependent. Thus,
-\class{DetectorSignalEfficiency} must be provided with a detector signal
-efficiency implementation method derived from the \class{DetSigEffImplMethod}
+\class{DetSigYield} must be provided with a detector signal
+yield implementation method derived from the \class{DetSigYieldImplMethod}
 class.
 
-Detector signal efficiency values can be retrieved via the call operator
-\code{\_\_call\_\_(src\_pos src\_params)}, which takes the celestial position
-of the source and the additional source parameters as arguments.
+Detector signal yield values can be retrieved via the call operator
+\code{\_\_call\_\_(src, src\_flux\_params)}, which takes the celestial source
+position(s), and the additional source flux parameters as arguments.
 
-\subsubsection{The DetSigEffImplMethod Class}
+\subsubsection{The DetSigYieldImplMethod Class}
 
-\class{DetSigEffImplMethod} is an abstract base class and defines the interface
-between the detector signal efficiency implementation method and the
-\class{DetectorSignalEfficiency} class.
+\class{DetSigYieldImplMethod} is an abstract base class and defines the interface
+between the detector signal yield implementation method and the
+\class{DetSigYield} class.
 
-% List of detector signal efficiency implementation methods.
-Table \ref{tbl:I3DetSigEffImplMethod} lists all available IceCube specific
-detector signal efficiency implementation methods and their description.
+% List of detector signal yield implementation methods.
+Table \ref{tbl:I3DetSigYieldImplMethod} lists all available IceCube specific
+detector signal yield implementation methods and their description.
 \begin{table}
-\caption{IceCube specific detector signal efficiency implementation methods.}
-\label{tbl:I3DetSigEffImplMethod}
+\caption{IceCube specific detector signal yield implementation methods.}
+\label{tbl:I3DetSigYieldImplMethod}
 
-\begin{tabular}{l | p{10cm}}
+\begin{tabular}{p{.95\textwidth}}
 \hline
-Name of Class & Description \\
+Name of Class \& Description \\
 \hline
-I3FixedFluxDetSigEff & IceCube detector signal efficiency implementation method for a
-    fixed flux model, which might contain flux parameters, but which
-    are not fit in the likelihood maximization process.
-    This implementation assumes that the detector effective
-    area depends solely on the declination of the source. This method creates
+\textbf{FixedFluxPointLikeSourceI3DetSigYieldImplMethod}
+
+IceCube detector signal yield
+    implementation method for a fixed flux model and a point-like source.
+    The flux model might contain flux parameters, but these are not fit in the
+    likelihood maximization process.
+    This implementation assumes that the detector effective area depends solely
+    on the declination of the source. This method creates
     a spline function of given order for the logarithmic values of the
-    $\sin(\delta)$-dependent detector signal efficiency.
+    $\sin(\delta)$-dependent detector signal yield.
 
     The constructor of this implementation method requires a $\sin(\delta)$
     binning definition for the Monte-Carlo events and the order of the spline
-    function.\\
-I3PowerLawFluxDetSigEff & IceCube detector signal efficiency implementation method for a
-    power law flux model, implemented by the \class{PowerLawFlux} class.
+    function.
+
+    This implementation method create a detector signal yield instance of class
+    \class{FixedFluxPointLikeSourceI3DetSigYield}.
+\\
+\hline
+\textbf{PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod}
+
+IceCube detector signal
+    yield implementation method for a
+    power law flux model, implemented by the \class{PowerLawFlux} class, an a
+    point-like source.
     This method creates a 2D spline function of given orders for the logarithmic
-    values of the $\sin(\delta)$-dependent detector signal efficiency for a
+    values of the $\sin(\delta)$-dependent detector signal yield for a
     range of $\gamma$ values. This implementation method supports
     multi-processing.
 \end{tabular}
