@@ -24,30 +24,47 @@
 
 \section{The Hypotheses}
 
-Before performing a statistical test, is is important to formulate the exact hypotheses,
-which one wants to consider.
+Before performing a statistical test, is is important to formulate the exact
+hypotheses, which one wants to consider.
 
 For the log-likelihood ratio tests that are considered here, a null-hypothesis
 and an alternative hypothesis is required. As null-hypothesis a data set with
 no signal events, i.e. with only background events, is usuallly considered.
-As alternative hypothesis a data set including signal events from a given source
-hypothesis is usuallly considered.
+As alternative hypothesis a data set including signal events from a given signal
+(source) hypothesis is usuallly considered.
+
+As general source hypothesis one could consider a source flux, $\Phi_{\mathrm{S}}$,
+for instance a neutrino or gamma-ray particle flux from a source. Such a general flux
+can be parameterized as
+\begin{equation}
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs, \ps),
+ \label{eq:PhiS-general}
+\end{equation}
+which is a function of the observed celestial coordinates right-ascension, $\alpha$, and
+declination, $\delta$, as well as the observed energy and time of the signal
+particle, given the source to be at location $\xs$ with source
+parameters $\ps$. At this stage $\xs$ doesn't have to be a single coordinate,
+but could also describe an extended source, e.g. the galactic plane.
+
 
 \subsection{Point-like source hypotheses}
 \label{sec:point-like-source-hypotheses}
 
-As source hypothesis a point-like source could be assumed. The particle flux of
-such a point-like source could be formulated as:
+As source hypothesis a point-like source with factorized time-dependence of the
+spatial and energy profiles could be assumed. The particle flux of
+equation (\ref{eq:PhiS-general}) for such a point-like source could be
+formulated as:
 \begin{equation}
  \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\alpha_{\mathrm{s}}, \delta_{\mathrm{s}},\ps) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}) \Phi_0 \epsilon(E|\ps) T_{\mathrm{S}}(t|\ps),
 \end{equation}
 where $\alpha_{\mathrm{s}}$, and $\delta_{\mathrm{s}}$ are the right-ascension
 and declination coordinates of the source, $\Phi_0$ the (scalar) flux normalization,
-$\epsilon(E|\ps)$ the energy dependence of the source flux, and
-$T_{\mathrm{S}}(t|\ps)$ the time-profile of the source flux for given source parameters,
-$\ps$.
+$\epsilon(E|\ps)$ the energy-profile of the source flux, and
+$T_{\mathrm{S}}(t|\ps)$ the time-profile of the source flux for given source
+parameters, $\ps$.
 
-The energy-dependence of the source flux might be assumed to be a power-law:
+The energy-dependence of the source flux, i.e. the emission energy-profile of
+the source, might be assumed to be a power-law:
 \begin{equation}
  \epsilon(E|\ps) \equiv \epsilon(E|\gamma) = \left(\frac{E}{100\mathrm{TeV}}\right)^{-\gamma},
 \end{equation}
@@ -229,28 +246,29 @@ for all such pure background events.
 \subsection{Signal PDFs}
 
 The likelihood ratio function as given in equation \eq{eq:logLambda}
-incorporates a signal probability, $S_i$, for an individual event $i$.
-Without loss of generality this signal probability can be expressed as the
-product of a spatial-energy, $\mathcal{P}_{\mathcal{SE}}(\vec{x}_i,E_i|\ps)$, and a time,
-$\mathcal{T}_{\mathrm{S}}(t_i|\ps)$, probability, where $\vec{x}_i$, $E_i$, and $t_i$ are
-reconstructed observables of event $i$. In general the spatial-energy probability
-is the joint probability of the spatial, $\mathcal{S}_{\mathrm{S}}$, and energy,
-$\mathcal{E}_{\mathrm{S}}$, signal probabilities:
+incorporates a signal probability, $S_i$, for an individual event $i$, given a
+signal hypothesis.
+Without loss of generality it can be expressed as a joint probability of a
+spatial and an energy p.d.f. at the observation time $t_i$:
 \begin{equation}
- \mathcal{P}_{\mathcal{SE}}(\vec{x}_i,E_i|\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\ps) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,\ps).
+ S_i(\ps) \equiv S_i(\vec{x}_i, E_i, t_i|\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|t_i,\ps) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,t_i,\ps)
 \end{equation}
-Here, we assume that the energy PDF depends on the reconstructed direction of
-the recorded event, but the reconstructed direction is independent of the
-event's energy.
-
-The final event's signal probability can be written as
+It should be noted that at this stage the time-dependences of the spatial,
+$\mathcal{S}_{\mathrm{S}}$, and energy, $\mathcal{E}_{\mathrm{S}}$, p.d.f.s
+might still be different. In cases where the hypothesised source flux,
+$\Phi_{\mathrm{S}}$, has a spatial and energy independent time profile, i.e.
+usually named a ``flare'', the time-dependence factorizes:
+\begin{equation}
+ S_i(\ps) \equiv S_i(\vec{x}_i, E_i, t_i|\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\ps) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,\ps) \mathcal{T}_{\mathrm{S}}(t_i|\ps).
+\end{equation}
+In general, the signal model parameters $\ps$ can be divided into spatial,
+energy, and time parameters, i.e. $\ps = (\vec{p}_{\mathrm{s,spatial}},
+\vec{p}_{\mathrm{s,energy}}, \vec{p}_{\mathrm{s,time}})$:
 \begin{equation}
  S_i(\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathrm{S}}(t_i|\vec{p}_{\mathrm{s,time}}),
  \label{eq:Si}
 \end{equation}
-where the signal model parameters $\ps$ can be divided into spatial, energy, and
-time parameters, i.e. $\ps = (\vec{p}_{\mathrm{s,spatial}},
-\vec{p}_{\mathrm{s,energy}}, \vec{p}_{\mathrm{s,time}})$. The spatial component,
+The spatial component,
 $\mathcal{S}_{\mathrm{S}}$, can be identified as the convolution,
 $(\Psi \ast \mathrm{PSF})(\alpha,\delta)$\footnote{The 2D convolution on the sky
 is defined as
@@ -333,15 +351,20 @@ as given by equation (\ref{eq:Ts-gauss-non-truncated}),
 
 In analog to the signal PDF, the background PDF can be formulated as
 \begin{equation}
+ B_i \equiv \mathcal{S}_{\mathrm{B}}(\vec{x}_i|t_i) \mathcal{E}_{\mathrm{B}}(E_i|\vec{x}_i,t_i).
+ \label{eq:Bit}
+\end{equation}
+In cases where the background model has a spatial and energy independent
+time-profile, e.g. for a constant background flux, the time-dependence factorizes:
+\begin{equation}
  B_i \equiv \mathcal{S}_{\mathrm{B}}(\vec{x}_i) \mathcal{E}_{\mathrm{B}}(E_i|\vec{x}_i) \mathcal{T}_{\mathrm{B}}(t_i).
  \label{eq:Bi}
 \end{equation}
 All the background PDF components can either be determined from the data itself
 or by using Monte-Carlo simulation.
 
-For a background hypothesis without any time-dependence, \emph{i.e.} a constant
-background flux, the background time profile,
-$T_{\mathrm{B}}(t)$, is given through
+For a background model of a constant background flux the background time profile,
+$T_{\mathrm{B}}(t)$, is given by
 \begin{equation}
  T_{\mathrm{B}}(t) \equiv \frac{1}{T_{\mathrm{obs}}},
 \end{equation}
