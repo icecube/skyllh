@@ -46,27 +46,64 @@ particle, given the source to be at location $\xs$ with source
 parameters $\ps$. At this stage $\xs$ doesn't have to be a single coordinate,
 but could also describe an extended source, e.g. the galactic plane.
 
-
-\subsection{Point-like source hypotheses}
-\label{sec:point-like-source-hypotheses}
-
-As source hypothesis a point-like source with factorized time-dependence of the
-spatial and energy profiles could be assumed. The particle flux of
-equation (\ref{eq:PhiS-general}) for such a point-like source could be
-formulated as:
+This flux is a differential flux, thus can be written as
 \begin{equation}
- \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\alpha_{\mathrm{s}}, \delta_{\mathrm{s}},\ps) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}) \Phi_0 \epsilon(E|\ps) T_{\mathrm{S}}(t|\ps),
+ \frac{\mathrm{d}\Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs, \ps)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t},
+ \label{eq:differential-PhiS-general}
 \end{equation}
-where $\alpha_{\mathrm{s}}$, and $\delta_{\mathrm{s}}$ are the right-ascension
-and declination coordinates of the source, $\Phi_0$ the (scalar) flux normalization,
-$\epsilon(E|\ps)$ the energy-profile of the source flux, and
-$T_{\mathrm{S}}(t|\ps)$ the time-profile of the source flux for given source
-parameters, $\ps$.
+where $A$ and $\Omega$ denotes area and solid-angle, respectively.
 
-The energy-dependence of the source flux, i.e. the emission energy-profile of
-the source, might be assumed to be a power-law:
+\subsection{Flux Models}
+\label{sec:flux-models}
+
+SkyLLH implements several flux model classes for $\Phi_{\mathrm{S}}$. The most
+generic flux model class is \class{FluxModel}, which provides the abstract base
+class for all flux models given by the differential flux
+(\ref{eq:differential-PhiS-general}).
+
+\subsection{Factorized Flux Models}
+\label{sec:factorized-flux-models}
+
+The traditional point-like source searches in IceCube use a factorized flux
+model as signal hypothesis, where the spatial, energy, and time profiles of the
+source factorize, i.e. are independent of each other, and a constant $\Phi_0$
+provides the flux normalization. It should be noticed that such a
+flux model is already an assumption on the source. Such a factorized flux model
+is of the form
 \begin{equation}
- \epsilon(E|\ps) \equiv \epsilon(E|\gamma) = \left(\frac{E}{100\mathrm{TeV}}\right)^{-\gamma},
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs,\ps) = \Phi_0 \Psi_{\mathrm{S}}(\alpha,\delta|\xs,\ps) \epsilon_{\mathrm{S}}(E|\ps) T_{\mathrm{S}}(t|\ps),
+\end{equation}
+where $\Phi_0$ is the flux normalization carrying the differential flux units,
+and $\Psi_{\mathrm{S}}$, $\epsilon_{\mathrm{S}}$, and $T_{\mathrm{S}}$ are the
+spatial, energy, and time profiles of the source, respectively.
+
+In SkyLLH the Python class \class{FactorizedFluxModel}, derived from class
+\class{FluxModel}, provides a base class for this mathematical class of flux models.
+
+\subsection{Point-like Source Factorized Flux Models}
+\label{sec:point-like-source-factorized-flux-models}
+
+In IceCube the traditional searches for astro-physical neutrinos were searches
+for neutrino emission from point-like objects in the sky, where a factorized
+flux model has been used as source hypothesis. Thus, the spatial profile is
+given by two delta functions:
+\begin{equation}
+ \Psi_{\mathrm{S}}(\alpha,\delta|\xs) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}),
+\end{equation}
+where the source location $\xs$ is given by a single point in the sky in
+equatorial coordinates: $\xs = (\alpha_{\mathrm{s}}, \delta_{\mathrm{s}})$.
+Hence, the flux model can be formulated as:
+\begin{equation}
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs,\ps) = \Phi_0 \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}) \epsilon_{\mathrm{S}}(E|\ps) T_{\mathrm{S}}(t|\ps).
+\end{equation}
+
+For such point-like source flux models SkyLLH provides the
+\class{PointlikeSourceFFM} class, which is derived from the \class{FactorizedFluxModel}
+class.
+
+The emission energy-profile of the source flux might be assumed to be a power-law:
+\begin{equation}
+ \epsilon_{\mathrm{S}}(E|\ps) \equiv \epsilon_{\mathrm{S}}(E|\gamma) = \left(\frac{E}{100\mathrm{TeV}}\right)^{-\gamma},
 \end{equation}
 where $\gamma$ is the spectral index of the source.
 
@@ -303,7 +340,7 @@ an energy cut-off parameter $E_{\mathrm{cut}}$.
 The source time PDF, $\mathcal{T}_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$,
 is the convolution of the source time profile,
 $T_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$, as given in section
-\ref{sec:point-like-source-hypotheses}, and the detector live-time function,
+\ref{sec:point-like-source-factorized-flux-models}, and the detector live-time function,
 \begin{equation}
  T_{\mathrm{live}}(t) = \begin{cases}
                          1 & \forall t \in \text{detector on-time window} \\
@@ -313,8 +350,9 @@ $T_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$, as given in section
 \end{equation}
 where the final result is normalized to unity.
 
-For the source time emission profiles given in section \ref{sec:point-like-source-hypotheses}
-we here state their normalization factors, $\tilde{T}_{\mathrm{S}}$.
+For the source time emission profiles given in section
+\ref{sec:point-like-source-factorized-flux-models} we here state their
+normalization factors, $\tilde{T}_{\mathrm{S}}$.
 
 For a steady source profile over the entire observation (live) time,
 $T_{\mathrm{obs}}$,
