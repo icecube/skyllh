@@ -468,7 +468,7 @@ class Analysis(object):
         result_dtype = [('n_sig', np.int), ('TS', np.float)] + [
             (fitparam_name, np.float) for fitparam_name in self._fitparamset.fitparam_name_list
         ]
-        result = np.empty((1,), dtype=results_dtype)
+        result = np.empty((1,), dtype=result_dtype)
         result['n_sig'] = n_sig
         result['TS'] = TS
         for (idx, fitparam_name) in enumerate(self._fitparamset.fitparam_name_list):
