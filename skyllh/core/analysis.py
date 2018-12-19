@@ -442,6 +442,7 @@ class Analysis(object):
             events_list.append(
                 self._bkg_generator.generate_background_events(rss, idx, bkg_mean_list[idx]))
 
+        n_sig = 0
         if(sig_mean > 0):
             # Generate signal events with the given mean number of signal
             # events.
