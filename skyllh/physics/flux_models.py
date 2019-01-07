@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
-"""The `flux_models` module contains classes for different flux models. The
+r"""The `flux_models` module contains classes for different flux models. The
 class for the most generic flux model is `FluxModel`, which is an abstract base
-class. It describes a function for the differential flux::
+class. It describes a function for the differential flux:
+
+.. math::
 
     d\Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s) / (dA d\Omega dE dt)
-
 """
 
 import abc
@@ -19,8 +20,8 @@ from skyllh.core.py import classname, isproperty
 
 
 class FluxModel(object):
-    """Abstract base class for all flux models
-    ::math:`\Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s)`.
+    r"""Abstract base class for all flux models
+    :math:`\Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s)`.
 
     This base class defines the units used for the flux calculation. At this
     point the functional form of the flux model is not yet defined.
@@ -396,8 +397,10 @@ class NullTimeFluxProfile(TimeFluxProfile):
 
 
 class FactorizedFluxModel(FluxModel):
-    """This class describes a flux model where the spatial, energy, and time
-    profiles of the source factorize. That means the flux can be written as::
+    r"""This class describes a flux model where the spatial, energy, and time
+    profiles of the source factorize. That means the flux can be written as:
+
+    .. math::
 
         \Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s) =
             \Phi_0
@@ -405,8 +408,8 @@ class FactorizedFluxModel(FluxModel):
             \epsilon_S(E|\vec{p}_s)
             T_S(t|\vec{p}_s)
 
-    where, :math::`\Phi_0` is the normalization constant of the flux, and
-    :math::`\Psi_S`, :math::`\epsilon_S`, and :math::`T_S` are the spatial,
+    where, :math:`\Phi_0` is the normalization constant of the flux, and
+    :math:`\Psi_S`, :math:`\epsilon_S`, and :math:`T_S` are the spatial,
     energy, and time profiles of the source, respectively.
     """
     def __init__(self, Phi0, spatial_profile, energy_profile, time_profile):
