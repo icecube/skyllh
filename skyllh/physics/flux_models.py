@@ -16,7 +16,13 @@ from copy import deepcopy
 
 from astropy import units
 
-from skyllh.core.py import classname, isproperty
+from skyllh.core.py import (
+    classname,
+    isproperty,
+    issequence,
+    issequenceof,
+    float_cast
+)
 
 
 class FluxModel(object):
@@ -49,6 +55,8 @@ class FluxModel(object):
         self.energy_unit = units.GeV
         self.length_unit = units.cm
         self.time_unit = units.s
+
+        self.parameter_names = ()
 
     @property
     def angle_unit(self):
@@ -106,15 +114,38 @@ class FluxModel(object):
                          self.time_unit.to_string()+'^-1'))
 
     @property
+    def parameter_names(self):
+        """The tuple holding the names of the parameters this flux depends on.
+        """
+        return self._parameter_names
+    @parameter_names.setter
+    def parameter_names(self, names):
+        if(not issequence(names)):
+            names = (names,)
+        if(not issequenceof(names, str)):
+            raise TypeError('The parameter_names property must be a sequence '
+                'of str!')
+        names = tuple(names)
+        # Check if all the given names are actual properties of this flux class.
+        for name in names:
+            if(not hasattr(self, name)):
+                raise KeyError('The flux "%s" does not have a property '
+                    'named "%s"!'%(classname(self), name))
+            if(not isproperty(self, name)):
+                raise TypeError('The attribute "%s" of flux "%s" is not a '
+                    'property!'%(classname(self), name))
+        self._parameter_names = names
+
+    @property
     def internal_flux_unit_conversion_factor(self):
         """The unit conversion factor for converting the used flux unit of this
         flux model into the SkyLLH internally used flux unit 1/(GeV sr cm2 s).
         """
         unit_conversion_factor = (
-            1./fluxmodel.energy_unit *
-            1./fluxmodel.angle_unit**2 *
-            1./fluxmodel.length_unit**2 *
-            1./fluxmodel.time_unit
+            1./self.energy_unit *
+            1./self.angle_unit**2 *
+            1./self.length_unit**2 *
+            1./self.time_unit
         ).to(
             1./units.GeV *
             1./units.sr *
@@ -180,25 +211,21 @@ class FluxModel(object):
 
         return fluxmodel
 
-    def set_properties(self, propdict):
-        """Sets the properties of the flux model to the given property values.
+    def set_parameters(self, pdict):
+        """Sets the parameters of the flux model to the given parameter values.
 
         Parameters
         ----------
-        propdict : dict (name: value)
-            The dictionary holding the names of the properties and their new
+        pdict : dict (name: value)
+            The dictionary holding the names of the parameters and their new
             values.
         """
-        if(not isinstance(propdict, dict)):
-            raise TypeError('The propdict argument must be of type dict!')
-        for (prop, val) in propdict.iteritems():
-            if(not hasattr(self, prop)):
-                raise KeyError('The flux model "%s" does not have a property '
-                    'named "%s"!'%(classname(self), prop))
-            if(not isproperty(self, prop)):
-                raise TypeError('The attribute "%s" of flux model "%s" is no '
-                    'property!'%(classname(self), prop))
-            setattr(self, prop, val)
+        if(not isinstance(pdict, dict)):
+            raise TypeError('The pdict argument must be of type dict!')
+
+        for pname in self._parameter_names:
+            pvalue = pdict.get(pname, getattr(self, pname))
+            setattr(self, pname, pvalue)
 
 
 class FluxProfile(object):
@@ -209,6 +236,33 @@ class FluxProfile(object):
     def __init__(self):
         super(SpatialFluxProfile, self).__init__()
 
+        self.parameter_names = ()
+
+    @property
+    def parameter_names(self):
+        """The tuple holding the names of the parameters this flux profile
+        depends on.
+        """
+        return self._parameter_names
+    @parameter_names.setter
+    def parameter_names(self, names):
+        if(not issequence(names)):
+            names = (names,)
+        if(not issequenceof(names, str)):
+            raise TypeError('The parameter_names property must be a sequence '
+                'of str!')
+        names = tuple(names)
+        # Check if all the given names are actual properties of this flux
+        # profile class.
+        for name in names:
+            if(not hasattr(self, name)):
+                raise KeyError('The flux profile "%s" does not have a property '
+                    'named "%s"!'%(classname(self), name))
+            if(not isproperty(self, name)):
+                raise TypeError('The attribute "%s" of flux profile "%s" is '
+                    'not a property!'%(classname(self), name))
+        self._parameter_names = names
+
     @property
     @abc.abstractmethod
     def math_function_str(self):
@@ -216,6 +270,24 @@ class FluxProfile(object):
         profile.
         """
         pass
+
+    def set_parameters(self, pdict):
+        """Sets the parameters of the flux profile to the given parameter
+        values.
+
+        Parameters
+        ----------
+        pdict : dict (name: value)
+            The dictionary holding the names of the parameters and their new
+            values. Only parameters will be considered, which are part of the
+            tuple property `parameter_names`.
+        """
+        if(not isinstance(pdict, dict)):
+            raise TypeError('The pdict argument must be of type dict!')
+
+        for pname in self._parameter_names:
+            pvalue = pdict.get(pname, getattr(self, pname))
+            setattr(self, pname, pvalue)
 
 
 class SpatialFluxProfile(FluxProfile):
@@ -227,7 +299,7 @@ class SpatialFluxProfile(FluxProfile):
         super(SpatialFluxProfile, self).__init__()
 
     @abc.abstractmethod
-    def __call__(self, alpha, delta, pdict):
+    def __call__(self, alpha, delta):
         """This method is supposed to return the spatial profile value for the
         given celestrial coordinates.
 
@@ -237,8 +309,6 @@ class SpatialFluxProfile(FluxProfile):
             The right-ascention coordinate.
         delta : float | 1d numpy ndarray of float
             The declination coordinate.
-        pdict : dict
-            The dictionary with spatial flux parameters.
 
         Returns
         -------
@@ -248,16 +318,16 @@ class SpatialFluxProfile(FluxProfile):
         pass
 
 
-class NullSpatialFluxProfile(SpatialFluxProfile):
+class UnitySpatialFluxProfile(SpatialFluxProfile):
     """Spatial flux profile for the constant profile function 1.
     """
     def __init__(self):
-        super(NullSpatialFluxProfile, self).__init__()
+        super(UnitySpatialFluxProfile, self).__init__()
 
     def math_function_str(self):
         return '1'
 
-    def __call__(self, alpha, delta, pdict):
+    def __call__(self, alpha, delta):
         """Returns 1 as numpy ndarray in same shape as alpha and delta.
 
         Parameters
@@ -266,9 +336,6 @@ class NullSpatialFluxProfile(SpatialFluxProfile):
             The right-ascention coordinate.
         delta : float | 1d numpy ndarray of float
             The declination coordinate.
-        pdict : dict
-            The dictionary with spatial flux parameters.
-            This argument is ignored.
 
         Returns
         -------
@@ -282,16 +349,121 @@ class NullSpatialFluxProfile(SpatialFluxProfile):
         return np.ones_like(alpha)
 
 
+class PointSpatialFluxProfile(SpatialFluxProfile):
+    """Spatial flux profile for a delta function at the celestrical coordinate
+    (alpha_s, delta_s).
+    """
+    def __init__(self, alpha_s, delta_s):
+        """Creates a new spatial flux profile for a point.
+
+        Parameters
+        ----------
+        alpha_s : float
+            The right-ascention of the point-like source.
+        delta_s : float
+            The declination of the point-like source.
+        """
+        super(PointSpatialFluxProfile, self).__init__()
+
+        # Define the names of the parameters, which can be updated.
+        self.parameter_names = ('alpha_s', 'delta_s')
+
+        self.alpha_s = alpha_s
+        self.delta_s = delta_s
+
+    @property
+    def alpha_s(self):
+        """The right-ascention of the point-like source.
+        """
+        return self._alpha_s
+    @alpha_s.setter
+    def alpha_s(self, v):
+        v = float_cast(v,
+                'The alpha_s property must be castable to type float!')
+        self._alpha_s = v
+
+    @property
+    def delta_s(self):
+        """The declination of the point-like source.
+        """
+        return self._delta_s
+    @delta_s.setter
+    def delta_s(self, v):
+        v = float_cast(v,
+                'The delta_s property must be castable to type float!')
+        self._delta_s = v
+
+    def math_function_str(self):
+        return 'delta(alpha-%.2e)*delta(delta-%.2e)'%(
+            self._alpha_s, self._delta_s)
+
+    def __call__(self, alpha, delta):
+        """Returns a numpy ndarray in same shape as alpha and delta with 1 if
+        `alpha` equals `alpha_s` and `delta` equals `delta_s`, and 0 otherwise.
+
+        Parameters
+        ----------
+        alpha : float | 1d numpy ndarray of float
+            The right-ascention coordinate at which to evaluate the spatial flux
+            profile.
+        delta : float | 1d numpy ndarray of float
+            The declination coordinate at which to evaluate the spatial flux
+            profile.
+
+        Returns
+        -------
+        value : 1d numpy ndarray
+            A numpy ndarray in same shape as alpha and delta with 1 if `alpha`
+            equals `alpha_s` and `delta` equals `delta_s`, and 0 otherwise.
+        """
+        (alpha, delta) = np.atleast_1d(alpha, delta)
+        if(alpha.shape != delta.shape):
+            raise ValueError('The alpha and delta arguments must be of the '
+                'same shape!')
+
+        value = ((alpha == self._alpha_s) & (delta == self._delta_s)).astype(np.float, copy=False)
+        return value
+
+
 class EnergyFluxProfile(FluxProfile):
     """The abstract base class for an energy flux profile function.
     """
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
+        """Creates a new energy flux profile with a given energy unit to be used
+        for flux calculation.
+        """
         super(EnergyFluxProfile, self).__init__()
 
+        # Set the default energy unit.
+        self.energy_unit = units.GeV
+
+    @property
+    def energy_unit(self):
+        """The unit of energy used for the flux profile calculation.
+        """
+        return self._energy_unit
+    @energy_unit.setter
+    def energy_unit(self, unit):
+        if(not isinstance(unit, units.UnitBase)):
+            raise TypeError('The property energy_unit must be of type '
+                'astropy.units.UnitBase!')
+        self._energy_unit_conversion_factor = (
+            units.GeV
+        ).to(unit).value
+        self._energy_unit = unit
+
+    @property
+    def energy_unit_conversion_factor(self):
+        """(read-only) The unit conversion factor for converting the SkyLLH
+        internally used energy unit GeV into the used energy unit of this energy
+        flux profile.
+        """
+        return self._energy_unit_conversion_factor
+
     @abc.abstractmethod
-    def __call__(self, E, pdict):
+    def __call__(self, E):
         """This method is supposed to return the energy profile value for the
         given energy value.
 
@@ -299,8 +471,6 @@ class EnergyFluxProfile(FluxProfile):
         ----------
         E : float | 1d numpy ndarray of float
             The energy value for which to retrieve the energy profile value.
-        pdict : dict
-            The dictionary with energy flux parameters.
 
         Returns
         -------
@@ -310,25 +480,22 @@ class EnergyFluxProfile(FluxProfile):
         pass
 
 
-class NullEnergyFluxProfile(EnergyFluxProfile):
+class UnityEnergyFluxProfile(EnergyFluxProfile):
     """Energy flux profile for the constant function 1.
     """
     def __init__(self):
-        super(EnergyFluxProfile, self).__init__()
+        super(UnityEnergyFluxProfile, self).__init__()
 
     def math_function_str(self):
         return '1'
 
-    def __call__(self, E, pdict):
+    def __call__(self, E):
         """Returns 1 as numpy ndarray in some shape as E.
 
         Parameters
         ----------
         E : float | 1d numpy ndarray of float
             The energy value for which to retrieve the energy profile value.
-        pdict : dict
-            The dictionary with energy flux parameters.
-            This argument is ignored.
 
         Returns
         -------
@@ -337,6 +504,65 @@ class NullEnergyFluxProfile(EnergyFluxProfile):
         """
         E = np.atleast_1d(E)
         return np.ones_like(E)
+
+
+class PowerLawEnergyFluxProfile(EnergyFluxProfile):
+    """Energy flux profile for a power law profile with a reference energy E0
+    and a spectral index gamma.
+    """
+    def __init__(self, E0, gamma):
+        """Creates a new power law flux profile with the reference energy E0
+        and spectral index gamma.
+        """
+        super(PowerLawEnergyFluxProfile, self).__init__()
+
+        self.parameter_names = ('gamma',)
+
+        self.E0 = E0
+        self.gamma = gamma
+
+    @property
+    def E0(self):
+        """The reference energy.
+        """
+        return self._E0
+    @E0.setter
+    def E0(self, v):
+        v = float_cast(v, 'Property E0 must be castable to type float!')
+        self._E0 = v
+
+    @property
+    def gamma(self):
+        """The spectral index.
+        """
+        return self._gamma
+    @gamma.setter
+    def gamma(self, v):
+        v = float_cast(v, 'Property gamma must be castable to type float!')
+        self._gamma = v
+
+    def math_function_str(self):
+        return '(E / %.2e %s)^-%.2f'%(self.E0, self.energy_unit, self.gamma)
+
+    def __call__(self, E):
+        """Returns the power law values for the given energies as numpy ndarray
+        in same shape as E.
+
+        Parameters
+        ----------
+        E : float | 1d numpy ndarray of float
+            The energy value for which to retrieve the energy profile value.
+
+        Returns
+        -------
+        value : 1d numpy ndarray
+            1 in same shape as E.
+        """
+        E = E * self._energy_unit_conversion_factor
+
+        value = np.power(E / self._E0, -self._gamma)
+
+        return value
 
 
 class TimeFluxProfile(FluxProfile):
@@ -367,11 +593,11 @@ class TimeFluxProfile(FluxProfile):
         pass
 
 
-class NullTimeFluxProfile(TimeFluxProfile):
+class UnityTimeFluxProfile(TimeFluxProfile):
     """Time flux profile for the constant profile function 1.
     """
     def __init__(self):
-        super(NullTimeFluxProfile, self).__init__()
+        super(UnityTimeFluxProfile, self).__init__()
 
     def math_function_str(self):
         return '1'
@@ -422,25 +648,27 @@ class FactorizedFluxModel(FluxModel):
         spatial_profile : SpatialFluxProfile instance | None
             The SpatialFluxProfile instance providing the spatial profile
             function of the flux.
-            If set to None, an instance of NullSpatialFluxProfile will be used,
+            If set to None, an instance of UnitySpatialFluxProfile will be used,
             which represents the constant function 1.
         energy_profile : EnergyFluxProfile instance | None
             The EnergyFluxProfile instance providing the energy profile
             function of the flux.
-            If set to None, an instance of NullEnergyFluxProfile will be used,
+            If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
         time_profile : TimeFluxProfile instance | None
             The TimeFluxProfile instance providing the time profile function
             of the flux.
-            If set to None, an instance of NullTimeFluxProfile will be used,
+            If set to None, an instance of UnityTimeFluxProfile will be used,
             which represents the constant function 1.
         """
-        super(FactorizedFluxModel, self).__init__()
-
         self.Phi0 = Phi0
         self.spatial_profile = spatial_profile
         self.energy_profile = energy_profile
         self.time_profile = time_profile
+
+        # The base class will set the default (internally used) flux unit, which
+        # will be set automatically to the particular profile.
+        super(FactorizedFluxModel, self).__init__()
 
     @property
     def spatial_profile(self):
@@ -451,7 +679,7 @@ class FactorizedFluxModel(FluxModel):
     @spatial_profile.setter
     def spatial_profile(self, profile):
         if(profile is None):
-            profile = NullSpatialFluxProfile()
+            profile = UnitySpatialFluxProfile()
         if(not isinstance(profile, SpatialFluxProfile)):
             raise TypeError('The spatial_profile property must be None, or an '
                 'instance of SpatialFluxProfile!')
@@ -466,7 +694,7 @@ class FactorizedFluxModel(FluxModel):
     @energy_profile.setter
     def energy_profile(self, profile):
         if(profile is None):
-            profile = NullEnergyFluxProfile()
+            profile = UnityEnergyFluxProfile()
         if(not isinstance(profile, EnergyFluxProfile)):
             raise TypeError('The energy_profile property must be None, or an '
                 'instance of EnergyFluxProfile!')
@@ -480,7 +708,7 @@ class FactorizedFluxModel(FluxModel):
     @time_profile.setter
     def time_profile(self, profile):
         if(profile is None):
-            profile = NullTimeFluxProfile()
+            profile = UnityTimeFluxProfile()
         if(not isinstance(profile, TimeFluxProfile)):
             raise TypeError('The time_profile property must be None, or an '
                 'instance of TimeFluxProfile!')
@@ -497,7 +725,33 @@ class FactorizedFluxModel(FluxModel):
             self.time_profile.math_function_str
         )
 
-    def __call__(self, alpha, delta, E, time, pdict):
+    @property
+    def energy_unit(self):
+        """The unit of energy used for the flux calculation.
+        """
+        return self.energy_profile.energy_unit
+    @energy_unit.setter
+    def energy_unit(self, unit):
+        if(not isinstance(unit, units.UnitBase)):
+            raise TypeError('The property energy_unit must be of type '
+                'astropy.units.UnitBase!')
+        self.energy_profile.energy_unit = unit
+
+    def set_parameters(self, pdict):
+        """Sets the parameters of the flux model. For this factorized flux model
+        it means that it sets the parameters of the spatial, energy, and time
+        profiles.
+
+        Parameters
+        ----------
+        pdict : dictionary
+            The flux parameter dictionary.
+        """
+        self._spatial_profile.set_parameters(pdict)
+        self._energy_profile.set_parameters(pdict)
+        self._time_profile.set_parameters(pdict)
+
+    def __call__(self, alpha, delta, E, time):
         """Calculates the flux values for the given celestrial
         positions, energies, and observation times.
 
@@ -511,8 +765,6 @@ class FactorizedFluxModel(FluxModel):
             The energy for which to retrieve the flux value.
         time : float | (Ntime,)-shaped 1d numpy ndarray of float
             The MJD observation time for which to retrieve the flux value.
-        pdict : dictionary
-            The flux parameter dictionary.
 
         Returns
         -------
@@ -520,9 +772,9 @@ class FactorizedFluxModel(FluxModel):
             The flux values in unit [energy]^-1 [angle]^-2 [length]^-2 [time]^-1.
             By default that is GeV^-1 sr^-1 cm^-2 s^-1.
         """
-        spatial_profile_values = self.spatial_profile(alpha, delta, pdict)
-        energy_profile_values = self.energy_profile(E, pdict)
-        time_profile_values = self.time_profile(time, pdict)
+        spatial_profile_values = self._spatial_profile(alpha, delta)
+        energy_profile_values = self._energy_profile(E)
+        time_profile_values = self._time_profile(time)
 
         flux = (
             self.Phi0 *
@@ -532,3 +784,69 @@ class FactorizedFluxModel(FluxModel):
         )
 
         return flux
+
+
+class PointlikeSourceFFM(FactorizedFluxModel):
+    """This class describes a factorized flux model (FFM), where the spatial
+    profile is modeled as a point. This class provides the base class for a flux
+    model of a point-like source.
+    """
+    def __init__(self, alpha_s, delta_s, Phi0, energy_profile, time_profile):
+        """Creates a new factorized flux model for a point-like source.
+
+        Parameters
+        ----------
+        alpha_s : float
+            The right-ascention of the point-like source.
+        delta_s : float
+            The declination of the point-like source.
+        Phi0 : float
+            The flux normalization constant.
+        energy_profile : EnergyFluxProfile instance | None
+            The EnergyFluxProfile instance providing the energy profile
+            function of the flux.
+            If set to None, an instance of UnityEnergyFluxProfile will be used,
+            which represents the constant function 1.
+        time_profile : TimeFluxProfile instance | None
+            The TimeFluxProfile instance providing the time profile function
+            of the flux.
+            If set to None, an instance of UnityTimeFluxProfile will be used,
+            which represents the constant function 1.
+        """
+        super(PointlikeSourceFFM, self).__init__(
+            Phi0=Phi0,
+            spatial_profile=PointSpatialFluxProfile(alpha_s, delta_s),
+            energy_profile=energy_profile,
+            time_profile=time_profile
+        )
+
+
+class SteadyPointlikeSourceFFM(PointlikeSourceFFM):
+    """This class describes a factorized flux model (FFM), where the spatial
+    profile is modeled as a point and the time profile as constant 1.
+    """
+    def __init__(self, alpha_s, delta_s, Phi0, energy_profile):
+        """Creates a new factorized flux model for a point-like source with no
+        time dependance.
+
+        Parameters
+        ----------
+        alpha_s : float
+            The right-ascention of the point-like source.
+        delta_s : float
+            The declination of the point-like source.
+        Phi0 : float
+            The flux normalization constant.
+        energy_profile : EnergyFluxProfile instance | None
+            The EnergyFluxProfile instance providing the energy profile
+            function of the flux.
+            If set to None, an instance of UnityEnergyFluxProfile will be used,
+            which represents the constant function 1.
+        """
+        super(PointlikeSourceFFM, self).__init__(
+            alpha_s=alpha_s,
+            delta_s=delta_s,
+            Phi0=Phi0,
+            energy_profile=energy_profile,
+            time_profile=UnityTimeFluxProfile()
+        )
