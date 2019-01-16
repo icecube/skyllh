@@ -7,7 +7,7 @@ import logging.handlers
 def setup_logging(console_level=logging.WARNING, file_level=logging.INFO):
     """Setup logging to console and rotating file."""
     base_path = os.path.dirname(os.path.abspath(__file__))
-    log_file_path = os.path.join(base_path, '/../log_file.log')
+    log_file_path = os.path.join(base_path, '../log_file.log')
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     formatter = logging.Formatter(log_format)
 
