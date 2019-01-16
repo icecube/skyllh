@@ -264,6 +264,8 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             data_logE, data_sinDec, data_mcweight, data_physicsweight,
             logE_binning, sinDec_binning, smoothing_filter
         )
+        # Check if this PDF is valid for all the given experimental data.
+        self.assert_is_valid_for_exp_data(data_exp)
 
 class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from

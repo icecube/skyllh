@@ -314,7 +314,7 @@ class PDFSet(object):
     consists of multiple same-kind PDFs for different signal fit parameters.
     In general background PDFs could have fit parameters, too.
 
-    This class has the ``fitparams_gid_set`` property holding the set of fit
+    This class has the ``fitparams_grid_set`` property holding the set of fit
     parameter grids. Also it holds a dictionary with the PDFs for the different
     sets of fit parameter values. The type of the PDF objects is defined through
     the ``pdf_type`` property. PDF objects of type ``pdf_type`` can be added
@@ -328,7 +328,7 @@ class PDFSet(object):
         ----------
         pdf_type : type
             The PDF class that can be added to the set.
-        fitparams_gid_set : ParameterGridSet | ParameterGrid
+        fitparams_grid_set : ParameterGridSet | ParameterGrid
             The ParameterGridSet with the fit parameter grids defining the
             descrete fit parameter values for which the PDFs of this PDF set
             are made for.
@@ -359,7 +359,7 @@ class PDFSet(object):
         if(isinstance(obj, ParameterGrid)):
             obj = ParameterGridSet([obj])
         if(not isinstance(obj, ParameterGridSet)):
-            raise TypeError('The fitparams_gid_set property must be an object of type ParameterGridSet!')
+            raise TypeError('The fitparams_grid_set property must be an object of type ParameterGridSet!')
         self._fitparams_grid_set = obj
 
     @property

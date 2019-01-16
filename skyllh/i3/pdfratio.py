@@ -103,7 +103,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
                 tuple(points_list),
                 np.log(ratio),
                 method='linear',
-                bounds_error=True)
+                bounds_error=False,
+                fill_value=0.)
 
             return log_ratio_spline
 

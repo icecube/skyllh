@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import logging
 import numpy as np
 
 class BinningDefinition(object):
@@ -16,6 +17,8 @@ class BinningDefinition(object):
         binedges : sequence
             The sequence of the bin edges, which should be used for the binning.
         """
+        self.logger = logging.getLogger(__name__)
+
         self.name = name
         self.binedges = binedges
 
@@ -81,6 +84,26 @@ class BinningDefinition(object):
         """The tuple (lower_edge, upper_edge) of the binning.
         """
         return (self.lower_edge, self.upper_edge)
+
+    def any_data_out_of_binning_range(self, data):
+        """Checks if any of the given data is outside of the binning range.
+
+        Parameters
+        ----------
+        data : 1d ndarray
+            The array with the data values to check.
+
+        Returns
+        -------
+        outofrange : bool
+            True if any data value is outside the binning range.
+            False otherwise.
+        """
+        outofrange = np.any((data < self.lower_edge) |
+                            (data > self.upper_edge))
+        if outofrange:
+            self.logger.debug('Out of range data: %s', data[np.logical_or(data < self.lower_edge, data > self.upper_edge)])
+        return outofrange
 
 
 class UsesBinning(object):
@@ -185,21 +208,3 @@ class UsesBinning(object):
             raise TypeError('The name argument must be of type str or int!')
 
         return binning
-
-    def any_data_out_of_binning_range(self, data):
-        """Checks if any of the given data is outside of the binning range.
-
-        Parameters
-        ----------
-        data : 1d ndarray
-            The array with the data values to check.
-
-        Returns
-        -------
-        outofrange : bool
-            True if any data value is outside the binning range.
-            False otherwise.
-        """
-        outofrange = np.any((data < self.lower_edge) |
-                            (data > self.upper_edge))
-        return outofrange

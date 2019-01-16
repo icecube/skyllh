@@ -28,7 +28,7 @@ def setup_logging(console_level=logging.WARNING, file_level=logging.INFO):
     logger.addHandler(rfh)
 
 # Set logging levels of console and file output logs.
-console_level = logging.WARNING
+console_level = logging.INFO
 file_level = logging.DEBUG
 
 setup_logging(console_level, file_level)

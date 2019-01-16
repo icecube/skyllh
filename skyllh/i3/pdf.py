@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import logging
 import numpy as np
 
 from skyllh.core.binning import UsesBinning
@@ -48,6 +49,8 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             If None, no smoothing will be applied.
         """
         super(I3EnergyPDF, self).__init__()
+
+        self.logger = logging.getLogger(__name__)
 
         # Define the PDF axes.
         self.add_axis(PDFAxis(name='log_energy',
@@ -188,9 +191,9 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
 
         # Check if all the data is within the binning range.
         if(logE_binning.any_data_out_of_binning_range(exp_logE)):
-            raise ValueError('Some data is outside the logE range (%.3f, %.3f)!'%(logE_binning.lower_edge, logE_binning.upper_edge))
+            self.logger.warning('Some data is outside the logE range (%.3f, %.3f)', logE_binning.lower_edge, logE_binning.upper_edge)
         if(sinDec_binning.any_data_out_of_binning_range(exp_sinDec)):
-            raise ValueError('Some data is outside the sin(dec) range (%.3f, %.3f)!'%(sinDec_binning.lower_edge, sinDec_binning.upper_edge))
+            self.logger.warning('Some data is outside the sin(dec) range (%.3f, %.3f)', sinDec_binning.lower_edge, sinDec_binning.upper_edge)
 
     def get_prob(self, events, fitparams=None):
         """Calculates the energy probability (in logE) of each event.
