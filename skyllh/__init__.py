@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 
-import skyllh.core.logging
+import skyllh.core.logging_setup
