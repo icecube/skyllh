@@ -28,7 +28,7 @@ class I3Dataset(Dataset):
         Returns
         -------
         grl_pathfilenames : list
-            The combined list of exp pathfilenames.
+            The combined list of grl pathfilenames.
         """
         if(not issequenceof(datasets, I3Dataset)):
             raise TypeError('The datasets argument must be a sequence of I3Dataset instances!')
