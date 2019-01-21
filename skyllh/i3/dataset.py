@@ -15,6 +15,30 @@ class I3Dataset(Dataset):
         * good-run-list (GRL)
 
     """
+    @staticmethod
+    def get_combined_grl_pathfilenames(datasets):
+        """Creates the combined list of grl pathfilenames of all the given
+        datasets.
+
+        Parameters
+        ----------
+        datasets : sequence of I3Dataset
+            The sequence of I3Dataset instances.
+
+        Returns
+        -------
+        grl_pathfilenames : list
+            The combined list of exp pathfilenames.
+        """
+        if(not issequenceof(datasets, I3Dataset)):
+            raise TypeError('The datasets argument must be a sequence of I3Dataset instances!')
+
+        grl_pathfilenames = []
+        for ds in datasets:
+            grl_pathfilenames += ds.grl_pathfilename_list
+
+        return grl_pathfilenames
+
     def __init__(self, grl_pathfilenames=None, *args, **kwargs):
         """Creates a new IceCube specific dataset, that also can hold a list
         of GRL data files.
