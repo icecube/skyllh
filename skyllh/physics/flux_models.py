@@ -9,6 +9,8 @@ class. It describes a function for the differential flux:
     d\Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s) / (dA d\Omega dE dt)
 """
 
+from __future__ import division
+
 import abc
 import numpy as np
 
@@ -162,7 +164,7 @@ class FluxModel(object):
         pass
 
     @abc.abstractmethod
-    def __call__(self, alpha, delta, E, time, pdict):
+    def __call__(self, alpha, delta, E, time):
         """The call operator to retrieve a flux value for a given celestrial
         position, energy, and observation time.
 
@@ -176,8 +178,6 @@ class FluxModel(object):
             The energy for which to retrieve the flux value.
         time : float | (Ntime,)-shaped 1d numpy ndarray of float
             The MJD observation time for which to retrieve the flux value.
-        pdict : dictionary
-            The flux parameter dictionary.
 
         Returns
         -------
@@ -192,22 +192,22 @@ class FluxModel(object):
         """
         return self.math_function_str + ' ' + self.unit_str
 
-    def copy(self, newprop=None):
+    def copy(self, newparams=None):
         """Copies this flux model object by calling the copy.deepcopy function,
-        and sets new properties if requested.
+        and sets new parameters if requested.
 
         Parameters
         ----------
-        newprop : dict | None
-            The dictionary with the new property values to set, where the
-            dictionary key is the property name and the dictionary value is the
-            new value of the property.
+        newparams : dict | None
+            The dictionary with the new parameter values to set, where the
+            dictionary key is the parameter name and the dictionary value is the
+            new value of the parameter.
         """
         fluxmodel = deepcopy(self)
 
-        # Set the new property values.
-        if(newprop is not None):
-            fluxmodel.set_properties(newprop)
+        # Set the new parameter values.
+        if(newparams is not None):
+            fluxmodel.set_parameters(newparams)
 
         return fluxmodel
 
@@ -219,13 +219,25 @@ class FluxModel(object):
         pdict : dict (name: value)
             The dictionary holding the names of the parameters and their new
             values.
+
+        Returns
+        -------
+        updated : bool
+            Flag if parameter values were actually updated.
         """
         if(not isinstance(pdict, dict)):
             raise TypeError('The pdict argument must be of type dict!')
 
+        updated = False
+
         for pname in self._parameter_names:
-            pvalue = pdict.get(pname, getattr(self, pname))
-            setattr(self, pname, pvalue)
+            current_value = getattr(self, pname)
+            pvalue = pdict.get(pname, current_value)
+            if(pvalue != current_value):
+                setattr(self, pname, pvalue)
+                updated = True
+
+        return updated
 
 
 class FluxProfile(object):
@@ -281,13 +293,25 @@ class FluxProfile(object):
             The dictionary holding the names of the parameters and their new
             values. Only parameters will be considered, which are part of the
             tuple property `parameter_names`.
+
+        Returns
+        -------
+        updated : bool
+            Flag if parameters were actually updated.
         """
         if(not isinstance(pdict, dict)):
             raise TypeError('The pdict argument must be of type dict!')
 
+        updated = False
+
         for pname in self._parameter_names:
-            pvalue = pdict.get(pname, getattr(self, pname))
-            setattr(self, pname, pvalue)
+            current_value = getattr(self, pname)
+            pvalue = pdict.get(pname, current_value)
+            if(pvalue != current_value):
+                setattr(self, pname, pvalue)
+                updated = True
+
+        return updated
 
 
 class SpatialFluxProfile(FluxProfile):
@@ -421,7 +445,8 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
             raise ValueError('The alpha and delta arguments must be of the '
                 'same shape!')
 
-        value = ((alpha == self._alpha_s) & (delta == self._delta_s)).astype(np.float, copy=False)
+        value = ((alpha == self._alpha_s) &
+                 (delta == self._delta_s)).astype(np.float, copy=False)
         return value
 
 
@@ -558,7 +583,7 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
         value : 1d numpy ndarray
             1 in same shape as E.
         """
-        E = E * self._energy_unit_conversion_factor
+        E *= self._energy_unit_conversion_factor
 
         value = np.power(E / self._E0, -self._gamma)
 
@@ -570,25 +595,143 @@ class TimeFluxProfile(FluxProfile):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
+    def __init__(self, t_start=-np.inf, t_end=np.inf):
+        """Creates a new time flux profile instance.
+
+        Parameters
+        ----------
+        t_start : float
+            The MJD start time of the time profile.
+            If set to -inf, it means, that the profile starts at the beginning
+            of the entire time-span of the dataset.
+        t_end : float
+            The MJD end time of the time profile.
+            If set to +inf, it means, that the profile ends at the end of the
+            entire time-span of the dataset.
+        """
         super(TimeFluxProfile, self).__init__()
 
+        # Define the default time unit.
+        self.time_unit = units.s
+
+        # Define the parameters which can be set via the `set_parameters`
+        # method.
+        self.parameter_names = ('t_start', 't_end')
+
+        self.t_start = t_start
+        self.t_end = t_end
+
+    @property
+    def t_start(self):
+        """The MJD start time of the time profile. Can be -inf which means, that
+        the profile starts at the beginning of the entire dataset.
+        """
+        return self._t_start
+    @t_start.setter
+    def t_start(self, t):
+        t = float_cast(t,
+            'The t_start property must be castable to type float!'
+        )
+        self._t_start = t
+
+    @property
+    def t_end(self):
+        """The MJD end time of the time profile. Can be +inf which means, that
+        the profile ends at the end of the entire dataset.
+        """
+        return self._t_end
+    @t_end.setter
+    def t_end(self, t):
+        t = float_cast(t,
+            'The t_end property must be castable to type float!'
+        )
+        self._t_end = t
+
+    @property
+    def duration(self):
+        """The duration (in days) of the time profile.
+        """
+        return self._t_end - self._t_start
+
+    @property
+    def time_unit(self):
+        """The unit of time used for the flux profile calculation.
+        """
+        return self._time_unit
+    @time_unit.setter
+    def time_unit(self, unit):
+        if(not isinstance(unit, units.UnitBase)):
+            raise TypeError('The property time_unit must be of type '
+                'astropy.units.UnitBase!')
+        self._time_unit_conversion_factor = (
+            units.s
+        ).to(unit).value
+        self._time_unit = unit
+
+    @property
+    def time_unit_conversion_factor(self):
+        """(read-only) The unit conversion factor for converting the SkyLLH
+        internally used time unit second into the used time unit of this time
+        flux profile.
+        """
+        return self._time_unit_conversion_factor
+
+    def get_total_integral(self):
+        """Calculates the total integral of the time profile from t_start to
+        t_end.
+
+        Returns
+        -------
+        integral : float
+            The integral value of the entire time profile.
+        """
+        return self.get_integral(self.t_start, self.t_end)
+
     @abc.abstractmethod
-    def __call__(self, time, pdict):
+    def __call__(self, t):
         """This method is supposed to return the time profile value of the flux
         for the given time.
 
         Parameters
         ----------
-        time : float | 1d numpy ndarray of float
-            The MJD time.
-        pdict : dict
-            The dictionary with time flux parameters.
+        t : float | 1d numpy ndarray of float
+            The MJD time(s) for which to get the time flux profile values.
 
         Returns
         -------
         value : 1d numpy ndarray
             The time profile value.
+        """
+        pass
+
+    @abc.abstractmethod
+    def move(self, dt):
+        """Abstract method to move the time profile by the given amount of time.
+
+        Parameters
+        ----------
+        dt : float
+            The MJD time difference of how far to move the time profile in time.
+            This can be a positive or negative time shift.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_integral(self, t1, t2):
+        """This method is supposed to calculate the integral of the time profile
+        from time t1 to time t2.
+
+        Parameters
+        ----------
+        t1 : float | array of float
+            The MJD start time of the integration.
+        t2 : float | array of float
+            The MJD end time of the integration.
+
+        Returns
+        -------
+        integral : array of float
+            The integral value(s) of the time profile.
         """
         pass
 
@@ -602,25 +745,179 @@ class UnityTimeFluxProfile(TimeFluxProfile):
     def math_function_str(self):
         return '1'
 
-    def __call__(self, time, pdict):
-        """Returns 1 as numpy ndarray in same shape as time.
+    def __call__(self, t):
+        """Returns 1 as numpy ndarray in same shape as t.
 
         Parameters
         ----------
-        time : float | 1d numpy ndarray of float
-            The MJD time.
-        pdict : dict
-            The dictionary with time flux parameters.
-            This argument is ignored.
+        t : float | 1d numpy ndarray of float
+            The MJD time(s) for which to get the time flux profile values.
 
         Returns
         -------
         value : 1d numpy ndarray
             1 in same shape as time.
         """
-        time = np.atleast_1d(time)
-        return np.ones_like(time)
+        t = np.atleast_1d(t)
+        return np.ones_like(t)
 
+    def move(self, dt):
+        """Moves the time profile by the given amount of time. By definition
+        this method does nothing, because the profile is 1 over the entire
+        dataset time range.
+
+        Parameters
+        ----------
+        dt : float
+            The MJD time difference of how far to move the time profile in time.
+            This can be a positive or negative time shift.
+        """
+        pass
+
+    def get_integral(self, t1, t2):
+        """Calculates the integral of the time profile from time t1 to time t2.
+
+        Parameters
+        ----------
+        t1 : float | array of float
+            The MJD start time of the integration.
+        t2 : float | array of float
+            The MJD end time of the integration.
+
+        Returns
+        -------
+        integral : array of float
+            The integral value(s) of the time profile.
+        """
+        integral = t2 - t1
+        return integral
+
+
+class BoxTimeFluxProfile(TimeFluxProfile):
+    """This class describes a box-shaped time flux profile of a source.
+    It has the following fit parameters:
+
+        T0 : float
+            The mid MJD time of the box profile.
+        Tw : float
+            The width (days) of the box profile.
+    """
+    def __init__(self, T0, Tw):
+        """Creates a new box-shaped time profile instance.
+
+        Parameters
+        ----------
+        T0 : float
+            The mid MJD time of the box profile.
+        Tw : float
+            The width (days) of the box profile.
+        """
+        t_start = T0 - Tw/2.
+        t_end = T0 + Tw/2.
+
+        super(BoxTimeFluxProfile, self).__init__(t_start, t_end)
+
+        # Define the parameters which can be set via the `set_parameters`
+        # method.
+        self.parameter_names = ('T0', 'Tw')
+
+    @property
+    def T0(self):
+        """The time of the mid point of the box.
+        """
+        return 0.5*(self._t_start + self._t_end)
+    @T0.setter
+    def T0(self, t):
+        old_T0 = self.T0
+        dt = t - old_T0
+        self.move(dt)
+
+    @property
+    def Tw(self):
+        """The time width (in days) of the box.
+        """
+        return self._t_end - self._t_start
+    @Tw.setter
+    def Tw(self, w):
+        T0 = self.T0
+        self._t_start = T0 - 0.5*w
+        self._t_end = T0 + 0.5*w
+
+    def math_function_str(self):
+        return '1'
+
+    def move(self, dt):
+        """Moves the box-shaped time profile by the time difference dt.
+
+        Parameters
+        ----------
+        dt : float
+            The MJD time difference of how far to move the time profile in time.
+            This can be a positive or negative time shift.
+        """
+        self._t_start += dt
+        self._t_end += dt
+
+    def get_integral(self, t1, t2):
+        """Calculates the integral of the box-shaped time flux profile from MJD
+        time t1 to time t2.
+
+        Parameters
+        ----------
+        t1 : float | array of float
+            The MJD start time(s) of the integration.
+        t2 : float | array of float
+            The MJD end time(s) of the integration.
+
+        Returns
+        -------
+        integral : array of float
+            The integral value(s).
+        """
+        t1 = np.atleast_1d(t1)
+        t2 = np.atleast_1d(t2)
+
+        integral = np.zeros((t1.shape[0],), dtype=np.float)
+
+        m = (t2 > self._t_start) & (t1 < self._t_end)
+        N = np.count_nonzero(m)
+
+        t1 = np.max(np.vstack((t1[m], np.repeat(self._t_start, N))).T, axis=1)
+        t2 = np.min(np.vstack((t2[m], np.repeat(self._t_end, N))).T, axis=1)
+
+        integral[m] = t2 - t1
+
+        return integral
+
+    def __str__(self):
+        """Pretty string representation of the BoxTimeFluxProfile class
+        instance.
+        """
+        s = '%s(T0=%.6f, Tw=%.6f)'%(classname(self), self.T0, self.Tw)
+        return s
+
+    def __call__(self, t):
+        """Returns 1 for all t within the interval [T0-Tw/2; T0+Tw/2], and 0
+        otherwise.
+
+        Parameters
+        ----------
+        t : float | 1d numpy ndarray of float
+            The MJD time(s) for which to get the time flux profile values.
+
+        Returns
+        -------
+        value : 1d numpy ndarray
+            The value(s) of the time flux profile for the given time(s).
+        """
+        t = np.atleast_1d(t)
+
+        values = np.zeros((t.shape[0],), dtype=np.float)
+        m = (t >= self._t_start) & (t < self._t_end)
+        values[m] = 1.
+        return values
+
+# TODO Implement time profiles for gaussian time profile.
 
 class FactorizedFluxModel(FluxModel):
     r"""This class describes a flux model where the spatial, energy, and time
@@ -669,6 +966,20 @@ class FactorizedFluxModel(FluxModel):
         # The base class will set the default (internally used) flux unit, which
         # will be set automatically to the particular profile.
         super(FactorizedFluxModel, self).__init__()
+
+        # Define the parameters which can be set via the `set_parameters`
+        # method.
+        self.parameter_names = ('Phi0',)
+
+    @property
+    def Phi0(self):
+        """The flux normalization constant.
+        """
+        return self._Phi0
+    @Phi0.setter
+    def Phi0(self, v):
+        v = float_cast(v, 'The Phi0 property must be castable to type float!')
+        self._Phi0 = v
 
     @property
     def spatial_profile(self):
@@ -719,23 +1030,35 @@ class FactorizedFluxModel(FluxModel):
         """The string showing the mathematical function of the flux.
         """
         return '%.2e * %s * %s * %s'%(
-            self.Phi0,
-            self.spatial_profile.math_function_str,
-            self.energy_profile.math_function_str,
-            self.time_profile.math_function_str
+            self._Phi0,
+            self._spatial_profile.math_function_str,
+            self._energy_profile.math_function_str,
+            self._time_profile.math_function_str
         )
 
     @property
     def energy_unit(self):
         """The unit of energy used for the flux calculation.
         """
-        return self.energy_profile.energy_unit
+        return self._energy_profile.energy_unit
     @energy_unit.setter
     def energy_unit(self, unit):
         if(not isinstance(unit, units.UnitBase)):
             raise TypeError('The property energy_unit must be of type '
                 'astropy.units.UnitBase!')
-        self.energy_profile.energy_unit = unit
+        self._energy_profile.energy_unit = unit
+
+    @property
+    def time_unit(self):
+        """The unit of time used for the flux calculation.
+        """
+        return self._time_profile.time_unit
+    @time_unit.setter
+    def time_unit(self, unit):
+        if(not isinstance(unit, units.UnitBase)):
+            raise TypeError('The property time_unit must be of type '
+                'astropy.units.UnitBase!')
+        self._time_profile.time_unit = unit
 
     def set_parameters(self, pdict):
         """Sets the parameters of the flux model. For this factorized flux model
@@ -746,10 +1069,19 @@ class FactorizedFluxModel(FluxModel):
         ----------
         pdict : dictionary
             The flux parameter dictionary.
+
+        Returns
+        -------
+        updated : bool
+            Flag if parameter values were actually updated.
         """
-        self._spatial_profile.set_parameters(pdict)
-        self._energy_profile.set_parameters(pdict)
-        self._time_profile.set_parameters(pdict)
+        updated = False
+
+        updated |= self._spatial_profile.set_parameters(pdict)
+        updated |= self._energy_profile.set_parameters(pdict)
+        updated |= self._time_profile.set_parameters(pdict)
+
+        return updated
 
     def __call__(self, alpha, delta, E, time):
         """Calculates the flux values for the given celestrial
