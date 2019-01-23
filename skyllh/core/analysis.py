@@ -452,7 +452,7 @@ class Analysis(object):
             (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
                 rss, sig_mean)
             # Inject the signal events to the generated background data.
-            for (idx, sig_events) in ds_sig_events_dict:
+            for (idx, sig_events) in ds_sig_events_dict.iteritems():
                 field_name_list = list(self._dataset_list[idx].exp_field_names)
                 bkg_events = events_list[idx]
                 events_list[idx] = np.append(
