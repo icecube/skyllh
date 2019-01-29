@@ -8,7 +8,11 @@ from copy import deepcopy
 
 from skyllh.core.binning import BinningDefinition
 from skyllh.core.livetime import Livetime
-from skyllh.core.py import issequence, issequenceof
+from skyllh.core.py import (
+    float_cast,
+    issequence,
+    issequenceof
+)
 from skyllh.core.stopwatch import get_stopwatch_lap_taker
 from skyllh.core import display
 from skyllh.core import storage
@@ -144,8 +148,10 @@ class Dataset(object):
         ----------
         name : str
             The name of the dataset.
-        livetime : float
-            The integrated live-time in days of the dataset.
+        livetime : float | None
+            The integrated live-time in days of the dataset. It can be None for
+            cases where the live-time is retrieved directly from the data files
+            uppon data loading.
         version: int
             The version number of the dataset. Higher version numbers indicate
             newer datasets.
@@ -184,7 +190,8 @@ class Dataset(object):
     @description.setter
     def description(self, description):
         if(not isinstance(description, str)):
-            raise TypeError('The description of the dataset must be of type str!')
+            raise TypeError('The description of the dataset must be of '
+                'type str!')
         self._description = description
 
     @property
@@ -198,7 +205,8 @@ class Dataset(object):
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
         if(not isinstance(pathfilenames, list)):
-            raise TypeError('The exp_pathfilename_list property must be of type list!')
+            raise TypeError('The exp_pathfilename_list property must be of '
+                'type list!')
         self._exp_pathfilename_list = pathfilenames
 
     @property
@@ -212,19 +220,23 @@ class Dataset(object):
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
         if(not isinstance(pathfilenames, list)):
-            raise TypeError('The mc_pathfilename_list property must be of type list!')
+            raise TypeError('The mc_pathfilename_list property must be of '
+                'type list!')
         self._mc_pathfilename_list = pathfilenames
 
     @property
     def livetime(self):
-        """The integrated live-time in days of the dataset.
+        """The integrated live-time in days of the dataset. This can be None in
+        cases where the livetime is retrieved directly from the data files.
         """
         return self._lifetime
     @livetime.setter
-    def livetime(self, livetime):
-        if(not isinstance(livetime, float)):
-            raise TypeError('The lifetime of the dataset must be of type float!')
-        self._lifetime = livetime
+    def livetime(self, lt):
+        if(lt is not None):
+            lt = float_cast(lt,
+                'The lifetime property of the dataset must be castable to '
+                'type float!')
+        self._lifetime = lt
 
     @property
     def version(self):
@@ -379,7 +391,7 @@ class Dataset(object):
                 raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
             self._verqualifiers[q] = verqualifiers[q]
 
-    def load_data(self, sw=None):
+    def load_data(self, livetime=None, sw=None):
         """Loads the data, which is described by the dataset.
 
         Note: This does not call the ``prepare_data`` method! It only loads
@@ -387,6 +399,10 @@ class Dataset(object):
 
         Parameters
         ----------
+        livetime : float | None
+            If not None, uses this livetime (in days) for the DatasetData
+            instance, otherwise uses the Dataset livetime property value for
+            the DatasetData instance.
         sw : Stopwatch instance | None
             The Stopwatch instance to use to time the data loading procedure.
 
@@ -407,7 +423,15 @@ class Dataset(object):
         data_mc = fileloader_mc.load_data()
         sw_take_lap('Loaded mc data from disk.')
 
-        data = DatasetData(data_exp, data_mc)
+        lt = self.livetime
+        if(livetime is not None):
+            lt = livetime
+        if(lt is None):
+            raise ValueError('No livetime was provided for dataset '
+                '"%s"!'%(self.name))
+
+        data = DatasetData(data_exp, data_mc, lt)
+
         return data
 
     def add_data_preparation(self, func):
@@ -416,15 +440,14 @@ class Dataset(object):
         Parameters
         ----------
         func : callable
-            The object with call signature __call__(exp, mc) that will prepare
-            the data after it was loaded. The arguments 'exp' and 'mc' are
-            numpy record arrays holding the experimental and monte-carlo data,
-            respectively. The return value must be a two-element tuple of the
-            form (exp, mc) with the modified experimental and monto-carlo data.
+            The object with call signature __call__(data) that will prepare
+            the data after it was loaded. The argument 'data' is a DatasetData
+            instance holding the experimental and monte-carlo data. The function
+            must alter the properties of the DatasetData instance.
 
         """
         if(not callable(func)):
-            raise TypeError('The argument "func" must be a callable object with call signature __call__(exp, mc)!')
+            raise TypeError('The argument "func" must be a callable object with call signature __call__(data)!')
         self._data_preparation_functions.append(func)
 
     def remove_data_preparation(self, index=-1):
@@ -452,9 +475,10 @@ class Dataset(object):
         """
         sw_take_lap = get_stopwatch_lap_taker(sw)
 
-        for func in self._data_preparation_functions:
-            (data.exp, data.mc) = func(data.exp, data.mc)
-            sw_take_lap('Prepared data by "'+func.__name__+'".')
+        for data_prep_func in self._data_preparation_functions:
+            data_prep_func(data)
+            sw_take_lap('Prepared data of dataset "'+self.name+'" '
+                'by "'+data_prep_func.__name__+'".')
 
     def load_and_prepare_data(
         self, keep_fields=None, compress=False, sw=None):
@@ -787,7 +811,7 @@ class DatasetData(object):
     monto-carlo data. It also holds a reference to the Dataset instance, which
     holds the data's meta information.
     """
-    def __init__(self, data_exp, data_mc):
+    def __init__(self, data_exp, data_mc, livetime):
         """Creates a new DatasetData instance.
 
         Parameters
@@ -796,9 +820,12 @@ class DatasetData(object):
             The numpy record ndarray holding the experimental data.
         data_mc : numpy record ndarray
             The numpy record ndarray holding the monto-carlo data.
+        livetime : float
+            The integrated livetime in days of the data.
         """
         self.exp = data_exp
         self.mc = data_mc
+        self.livetime = livetime
 
     @property
     def exp(self):
@@ -821,6 +848,17 @@ class DatasetData(object):
         if(not isinstance(data, np.ndarray)):
             raise TypeError('The data_mc property must be an instance of numpy.ndarray!')
         self._mc = data
+
+    @property
+    def livetime(self):
+        """The integrated livetime in days of the data.
+        """
+        return self._livetime
+    @livetime.setter
+    def livetime(self, lt):
+        lt = float_cast(lt,
+            'The livetime property must be castable to type float!')
+        self._livetime = lt
 
 
 def tidy_up_recarray(arr, keep_fields):
