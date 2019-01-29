@@ -6,6 +6,7 @@ from numpy.lib import recfunctions as np_rfn
 from skyllh.core.py import issequenceof
 from skyllh.core.dataset import Dataset
 from skyllh.core.stopwatch import get_stopwatch_lap_taker
+from skyllh.core import storage
 
 class I3Dataset(Dataset):
     """The I3Dataset class is an IceCube specific Dataset class that adds
@@ -82,15 +83,81 @@ class I3Dataset(Dataset):
             s += '%s None'%(pad*2)
         return s
 
+    def load_grl(self, sw=None):
+        """Loads the good-run-list and returns a structured numpy ndarray with
+        the following data fields:
+
+            run : int
+                The run number.
+            start : float
+                The MJD start time of the run.
+            stop : float
+                The MJD stop time of the run.
+            livetime : float
+                The livetime in days of the run.
+            events : int
+                The number of experimental events in the run.
+
+        Parameters
+        ----------
+        sw : Stopwatch instance | None
+            The Stopwatch instance to use to time the data loading procedure.
+
+        Returns
+        -------
+        grl_data : numpy record ndarray
+            The numpy record ndarray holding the good-run-list information of
+            the dataset.
+        """
+        sw_take_lap = get_stopwatch_lap_taker(sw)
+
+        fileloader_grl = storage.create_FileLoader(self._grl_pathfilename_list)
+        grl_data = fileloader_grl.load_data()
+        sw_take_lap('Loaded grl data from disk.')
+
+        return grl_data
+
+    def load_data(self, sw=None):
+        """Loads the data, which is described by the dataset. If a good-run-list
+        (GRL) is provided for this dataset, only experimental data will be
+        selected which matches the GRL.
+
+        Parameters
+        ----------
+        sw : Stopwatch instance | None
+            The Stopwatch instance that should be used to time the data load
+            operation.
+        """
+        # Load the good-run-list (GRL) data if it is provided for this dataset,
+        # and calculate the livetime based on the GRL.
+        grl_data = None
+        lt = self.livetime
+        if(len(self._grl_pathfilename_list) > 0):
+            grl_data = self.load_grl(sw=sw)
+            lt = np.sum(grl_data['livetime'])
+
+        # Load all the defined data.
+        data = super(I3Dataset, self).load_data(livetime=lt, sw=sw)
+
+        # Select only the experimental data which fits the good-run-list for
+        # this dataset.
+        if(grl_data is not None):
+            runs = np.unique(grl_data['run'])
+            mask = np.isin(data.exp['run'], runs)
+            data.exp = data.exp[mask]
+            sw_take_lap = get_stopwatch_lap_taker(sw)
+            sw_take_lap('Selected only the experimental data that matches '
+                'the GRL for dataset "%s".'%(self.name))
+
     def prepare_data(self, data, sw=None):
         """Prepares the data for IceCube by pre-calculating the following
         experimental data fields:
-        
+
         - sin_dec: float
             The sin value of the declination coordinate.
-            
+
         and monte-carlo data fields:
-        
+
         - sin_true_dec: float
             The sin value of the true declination coordinate.
 
@@ -102,6 +169,7 @@ class I3Dataset(Dataset):
             The Stopwatch instance that should be used to time the data
             preparation.
         """
+        # Execute all the data preparation functions for this dataset.
         super(I3Dataset, self).prepare_data(data, sw=sw)
 
         sw_take_lap = get_stopwatch_lap_taker(sw)
