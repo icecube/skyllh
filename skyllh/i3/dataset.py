@@ -149,6 +149,8 @@ class I3Dataset(Dataset):
             sw_take_lap('Selected only the experimental data that matches '
                 'the GRL for dataset "%s".'%(self.name))
 
+        return data
+
     def prepare_data(self, data, sw=None):
         """Prepares the data for IceCube by pre-calculating the following
         experimental data fields:
