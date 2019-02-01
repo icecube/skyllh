@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import numpy as np
 
 class BinningDefinition(object):
@@ -17,8 +16,6 @@ class BinningDefinition(object):
         binedges : sequence
             The sequence of the bin edges, which should be used for the binning.
         """
-        self.logger = logging.getLogger(__name__)
-
         self.name = name
         self.binedges = binedges
 
@@ -101,8 +98,6 @@ class BinningDefinition(object):
         """
         outofrange = np.any((data < self.lower_edge) |
                             (data > self.upper_edge))
-        if outofrange:
-            self.logger.debug('Out of range data: %s', data[np.logical_or(data < self.lower_edge, data > self.upper_edge)])
         return outofrange
 
 
