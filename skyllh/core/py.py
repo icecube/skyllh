@@ -90,15 +90,33 @@ def float_cast(v, errmsg):
     """Casts the given value to a float. If the cast is impossible, a TypeError
     is raised with the given error message.
     """
-    if(isinstance(v, int)):
+    try:
         v = float(v)
-    elif(isinstance(v, str)):
-        try:
-            v = float(v)
-        except:
-            raise TypeError(errmsg)
-    if(not isinstance(v, float)):
+    except:
         raise TypeError(errmsg)
+    return v
+
+def str_cast(v, errmsg):
+    """Casts the given value to a str object.
+    If the cast is impossible, a TypeError is raised with the given error
+    message.
+    """
+    try:
+        v = str(v)
+    except:
+        raise TypeError(errmsg)
+    return v
+
+def list_of_cast(t, v, errmsg):
+    """Casts the given value `v` to a list of items of type `t`.
+    If the cast is impossible, a TypeError is raised with the given error
+    message.
+    """
+    if(isinstance(v, t)):
+        v = [v]
+    if(not issequenceof(v, t)):
+        raise TypeError(errmsg)
+    v = list(v)
     return v
 
 def get_smallest_numpy_int_type(values):
@@ -142,7 +160,7 @@ def _get_func_range():
         Lazy iterable `range` function.
     """
     try:
-        func = xrange 
+        func = xrange
     except NameError:
         func = range
 
