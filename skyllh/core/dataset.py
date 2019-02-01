@@ -11,7 +11,9 @@ from skyllh.core.livetime import Livetime
 from skyllh.core.py import (
     float_cast,
     issequence,
-    issequenceof
+    issequenceof,
+    list_of_cast,
+    str_cast
 )
 from skyllh.core.stopwatch import get_stopwatch_lap_taker
 from skyllh.core import display
@@ -148,6 +150,10 @@ class Dataset(object):
         ----------
         name : str
             The name of the dataset.
+        exp_pathfilenames : str | sequence of str
+            The file name(s), including paths, of the experimental data file(s).
+        mc_pathfilenames : str | sequence of str
+            The file name(s), including paths, of the monte-carlo data file(s).
         livetime : float | None
             The integrated live-time in days of the dataset. It can be None for
             cases where the live-time is retrieved directly from the data files
@@ -171,6 +177,7 @@ class Dataset(object):
 
         self._data_preparation_functions = list()
         self._binning_definitions = dict()
+        self._aux_data_definitions = dict()
 
     @property
     def name(self):
@@ -204,10 +211,10 @@ class Dataset(object):
     def exp_pathfilename_list(self, pathfilenames):
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
-        if(not isinstance(pathfilenames, list)):
+        if(not issequenceof(pathfilenames, str)):
             raise TypeError('The exp_pathfilename_list property must be of '
-                'type list!')
-        self._exp_pathfilename_list = pathfilenames
+                'type str or a sequence of str!')
+        self._exp_pathfilename_list = list(pathfilenames)
 
     @property
     def mc_pathfilename_list(self):
@@ -219,10 +226,10 @@ class Dataset(object):
     def mc_pathfilename_list(self, pathfilenames):
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
-        if(not isinstance(pathfilenames, list)):
+        if(not issequenceof(pathfilenames, str)):
             raise TypeError('The mc_pathfilename_list property must be of '
-                'type list!')
-        self._mc_pathfilename_list = pathfilenames
+                'type str or a sequence of str!')
+        self._mc_pathfilename_list = list(pathfilenames)
 
     @property
     def livetime(self):
@@ -423,14 +430,20 @@ class Dataset(object):
         data_mc = fileloader_mc.load_data()
         sw_take_lap('Loaded mc data from disk.')
 
-        lt = self.livetime
-        if(livetime is not None):
-            lt = livetime
-        if(lt is None):
+        if(livetime is None):
+            livetime = self.livetime
+        if(livetime is None):
             raise ValueError('No livetime was provided for dataset '
                 '"%s"!'%(self.name))
 
-        data = DatasetData(data_exp, data_mc, lt)
+        # Load all the auxiliary data for this dataset.
+        data_aux = dict()
+        for (aux_name, aux_pathfilename_list) in self._aux_data_definitions.iteritems():
+            fileloader_aux = storage.create_FileLoader(aux_pathfilename_list)
+            data_aux[aux_name] = fileloader_aux.load_data()
+            sw_take_lap('Loaded aux data "%s" from disk.'%(aux_name))
+
+        data = DatasetData(data_exp, data_mc, data_aux, livetime)
 
         return data
 
@@ -620,6 +633,30 @@ class Dataset(object):
         self.add_binning_definition(binning)
         return binning
 
+    def add_aux_data_definition(self, name, pathfilenames):
+        """Adds the given data files as auxiliary data definition to the
+        dataset.
+
+        Parameters
+        ----------
+        name : str
+            The name of the auxiliary data. The name is used as identifier for
+            the data within SkyLLH.
+        pathfilenames : str | sequence of str
+            The file name(s) (including paths) of the data file(s).
+        """
+        name = str_cast(name,
+            'The name argument must be castable to type str!')
+        pathfilenames = list_of_cast(str, pathfilenames,
+            'The pathfilenames argument must be of type str or a sequence '
+            'of str!')
+
+        if(name in self._aux_data_definitions):
+            raise KeyError('The auxiliary data definition "%s" is already '
+                'defined for dataset "%s"!'%(name, self.name))
+
+        self._aux_data_definitions[name] = pathfilenames
+
 
 class DatasetCollection(object):
     """The DatasetCollection class describes a collection of different datasets.
@@ -776,11 +813,10 @@ class DatasetCollection(object):
         Parameters
         ----------
         func : callable
-            The object with call signature __call__(exp, mc) that will prepare
-            the data after it was loaded. The arguments 'exp' and 'mc' are
-            numpy record arrays holding the experimental and monte-carlo data,
-            respectively. The return value must be a two-element tuple of the
-            form (exp, mc) with the modified experimental and monto-carlo data.
+            The object with call signature __call__(data) that will prepare
+            the data after it was loaded. The argument 'data' is the DatasetData
+            instance holding the experimental and monte-carlo data.
+            This function must alter the properties of the DatasetData instance.
         """
         for (dsname, dataset) in self._datasets.iteritems():
             dataset.add_data_preparation(func)
@@ -811,7 +847,7 @@ class DatasetData(object):
     monto-carlo data. It also holds a reference to the Dataset instance, which
     holds the data's meta information.
     """
-    def __init__(self, data_exp, data_mc, livetime):
+    def __init__(self, data_exp, data_mc, data_aux, livetime):
         """Creates a new DatasetData instance.
 
         Parameters
@@ -820,11 +856,18 @@ class DatasetData(object):
             The numpy record ndarray holding the experimental data.
         data_mc : numpy record ndarray
             The numpy record ndarray holding the monto-carlo data.
+        data_aux : dict
+            The dictionary holding the auxiliary data for the dataset. The key
+            of the dictionary identifies the auxiliary data. The value is the
+            data in any type and format.
         livetime : float
             The integrated livetime in days of the data.
         """
+        super(DatasetData, self).__init__()
+
         self.exp = data_exp
         self.mc = data_mc
+        self.aux = data_aux
         self.livetime = livetime
 
     @property
@@ -846,8 +889,21 @@ class DatasetData(object):
     @mc.setter
     def mc(self, data):
         if(not isinstance(data, np.ndarray)):
-            raise TypeError('The data_mc property must be an instance of numpy.ndarray!')
+            raise TypeError('The mc property must be an instance of numpy.ndarray!')
         self._mc = data
+
+    @property
+    def aux(self):
+        """The dictionary holding the auxiliary data of the dataset. The key
+        of the dictionary identifies the auxiliary data. The value is the data
+        in any type and format.
+        """
+        return self._aux
+    @aux.setter
+    def aux(self, d):
+        if(not isinstance(d, dict)):
+            raise TypeError('The aux property must be an instance of dict!')
+        self._aux = d
 
     @property
     def livetime(self):
@@ -1067,8 +1123,8 @@ def get_data_subset(data, livetime, t_start, t_end):
     data_mc = data.mc[mc_slice]
 
     uptime_mjd_intervals_arr = livetime.get_ontime_intervals_between(t_start, t_end)
-
-    dataset_data_subset = DatasetData(data_exp, data_mc)
     livetime_subset = Livetime(uptime_mjd_intervals_arr)
+
+    dataset_data_subset = DatasetData(data_exp, data_mc, data.aux, livetime_subset.livetime)
 
     return (dataset_data_subset, livetime_subset)
