@@ -86,9 +86,9 @@ def _calc_median_signal_for_ts_quantile(analysis, rss, eps, p, h0_ts_quantile, n
 
     # Initialization.
     p_trial_max = 1
-    p_trial_max_sigma = eps
+    p_trial_max_sigma = 2*eps
     p_trial_min = 0
-    p_trial_min_sigma = eps
+    p_trial_min_sigma = 2*eps
     while (p_trial_min_sigma + p_trial_max_sigma)/2. > eps:
         # Left part of signal range.
         p_trial_min = _estimate_p_trial(analysis, N*N_scaling, rss, range_min, bkg_TS_percentile)
