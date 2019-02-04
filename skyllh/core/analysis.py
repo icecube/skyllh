@@ -349,9 +349,14 @@ class Analysis(object):
         pass
 
     @abc.abstractmethod
-    def maximize_llhratio(self):
+    def maximize_llhratio(self, rss):
         """This method is supposed to maximize the log-likelihood ratio
         function.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance to draw random numbers from.
 
         Returns
         -------
@@ -364,8 +369,14 @@ class Analysis(object):
         """
         pass
 
-    def unblind(self):
+    def unblind(self, rss):
         """Evaluates the unscrambled data, i.e. unblinds the data.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance that should be used draw random
+            numbers from.
 
         Returns
         -------
@@ -381,7 +392,7 @@ class Analysis(object):
         """
         events_list = [ data.exp for data in self._data_list ]
         self.initialize_trial(events_list)
-        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio()
+        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
         TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
 
         fitparam_dict = fitparamset.fitparam_values_to_dict(fitparam_values)
@@ -462,7 +473,7 @@ class Analysis(object):
 
         self.initialize_trial(events_list)
 
-        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio()
+        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
         TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
 
         # Create the structured array data type for the result array.
@@ -739,9 +750,16 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
             n_pure_bkg_events = n_all_events - n_selected_events
             llhratio.initialize_for_new_trial(events, n_pure_bkg_events)
 
-    def maximize_llhratio(self):
+    def maximize_llhratio(self, rss):
         """Maximizes the log-likelihood ratio function, by minimizing its
         negative.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance that should be used to draw random
+            numbers from. It is used by the minimizer to generate random
+            fit parameter initial values.
 
         Returns
         -------
@@ -764,7 +782,7 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
             return (-f, -grads)
 
         (fitparam_values, fmin, status) = self._minimizer.minimize(
-            self._fitparamset, func)
+            rss, self._fitparamset, func)
         log_lambda_max = -fmin
 
         return (self._fitparamset, log_lambda_max, fitparam_values, status)

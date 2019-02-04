@@ -255,7 +255,7 @@ class Minimizer(object):
             raise TypeError('The maximal repetitions property must be of type int!')
         self._max_repetitions = n
 
-    def minimize(self, fitparamset, func, args=None, func_provides_grads=True, kwargs=None):
+    def minimize(self, rss, fitparamset, func, args=None, func_provides_grads=True, kwargs=None):
         """Minimizes the the given function ``func`` by calling the ``minimize``
         method of the minimizer implementation.
 
@@ -267,6 +267,8 @@ class Minimizer(object):
 
         Parameters
         ----------
+        rss : RandomStateService instance
+            The RandomStateService instance to draw random numbers from.
         fitparamset : instance of FitParameterSet
             The set of FitParameter instances defining fit parameters of the
             function ``func``.
@@ -313,7 +315,7 @@ class Minimizer(object):
 
             # Create a new set of random parameter initials based on the
             # parameter bounds.
-            initials = fitparamset.generate_random_initials()
+            initials = fitparamset.generate_random_initials(rss)
 
             # Repeat the minimization process.
             (xmin, fmin, status) = self.minimizer_impl.minimize(

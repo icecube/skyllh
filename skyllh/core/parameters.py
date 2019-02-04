@@ -482,29 +482,15 @@ class FitParameter(object):
 class FitParameterSet(object):
     """This class describes a set of FitParameter instances.
     """
-    def __init__(self, rss):
+    def __init__(self):
         """Constructs a fit parameter set instance.
         """
-        self.rss = rss
-
         # Define the list of fit parameters.
         # Define the (N_fitparams,)-shaped numpy array of FitParameter objects.
         self._fitparams = np.empty((0,), dtype=np.object)
         # Define a list for the fit parameter names. This is for optimization
         # purpose only.
         self._fitparam_name_list = []
-
-    @property
-    def rss(self):
-        """The instance of RandomStateService to use for drawing random numbers
-        from.
-        """
-        return self._rss
-    @rss.setter
-    def rss(self, rss):
-        if(not isinstance(rss, RandomStateService)):
-            raise TypeError('The rss property must be an instance of RandomStateService!')
-        self._rss = rss
 
     @property
     def fitparams(self):
@@ -613,17 +599,23 @@ class FitParameterSet(object):
             fitparam_values[i] = fitparam_dict[fitparam.name]
         return fitparam_values
 
-    def generate_random_initials(self):
+    def generate_random_initials(self, rss):
         """Generates a set of random initials for all global fit parameters.
         A new random initial is defined as
 
             lower_bound + RAND * (upper_bound - lower_bound),
 
         where RAND is a uniform random variable between 0 and 1.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance that should be used for drawing
+            random numbers from.
         """
         vb = self.bounds
         # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound)
-        ri = vb[:,0] + self._rss.uniform(size=vb.shape[0]) * (vb[:,1] - vb[:,0])
+        ri = vb[:,0] + rss.uniform(size=vb.shape[0]) * (vb[:,1] - vb[:,0])
 
         return ri
 
@@ -635,16 +627,10 @@ class SourceFitParameterMapper(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, rss):
+    def __init__(self):
         """Constructor of the source fit parameter mapper.
-
-        Parameters
-        ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService to use when drawing random
-            numbers for the ``generate_random_initials`` method.
         """
-        self._fitparamset = FitParameterSet(rss)
+        self._fitparamset = FitParameterSet()
 
         # Define the list of source parameter names, which map to the fit
         # parameters.
@@ -750,16 +736,10 @@ class SingleSourceFitParameterMapper(SourceFitParameterMapper):
     source, hence the mapping can be performed faster than in the multi-source
     case.
     """
-    def __init__(self, rss):
+    def __init__(self):
         """Constructs a new source fit parameter mapper for a single source.
-
-        Parameters
-        ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService to use when drawing random
-            numbers for the ``generate_random_initials`` method.
         """
-        super(SingleSourceFitParameterMapper, self).__init__(rss)
+        super(SingleSourceFitParameterMapper, self).__init__()
 
     def def_fit_parameter(self, fitparam, src_param_name=None):
         """Define a new fit parameter that maps to a given source fit parameter.
@@ -841,18 +821,15 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
     source gets an index, which is defined as the position of the source within
     the collection.
     """
-    def __init__(self, rss, sources):
+    def __init__(self, sources):
         """Constructs a new source fit parameter mapper for multiple sources.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService to use when drawing random
-            numbers for the ``generate_random_initials`` method.
         sources : sequence of SourceModel
             The sequence of SourceModel instances defining the list of sources.
         """
-        super(MultiSourceFitParameterMapper, self).__init__(rss)
+        super(MultiSourceFitParameterMapper, self).__init__()
 
         self.sources = sources
 
