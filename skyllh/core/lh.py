@@ -26,7 +26,7 @@ import numpy as np
 from skyllh.core.py import issequence, range
 
 def log(lhcomponent):
-    """Convinient function to add the numpy.log operation to the likelihood
+    """Convenient function to add the numpy.log operation to the likelihood
     function.
 
     Parameters
@@ -43,7 +43,7 @@ def log(lhcomponent):
     return lhcomponent.add_operation(np.log)
 
 def sum(lhcomponent):
-    """Convinient function to add the numpy.sum operation to the likelihood
+    """Convenient function to add the numpy.sum operation to the likelihood
     function.
 
     Parameters
