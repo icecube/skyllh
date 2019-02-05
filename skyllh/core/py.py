@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import copy
+import inspect
 import numpy as np
 
 def typename(t):
@@ -75,6 +76,24 @@ def isproperty(obj, name):
         True if the given attribute is of type property, False otherwise.
     """
     return isinstance(type(obj).__dict__[name], property)
+
+def func_has_n_args(func, n):
+    """Checks if the given function `func` has `n` arguments.
+
+    Parameters
+    ----------
+    func : callable
+        The function to check.
+    n : int
+        The number of arguments the function must have.
+
+    Returns
+    -------
+    check : bool
+        True if the given function has `n` arguments. False otherwise.
+    """
+    check = (len(inspect.getargspec(func)[0]) == n)
+    return check
 
 def int_cast(v, errmsg):
     """Casts the given value to an integer value. If the cast is impossible, a
