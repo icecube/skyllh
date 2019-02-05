@@ -916,6 +916,18 @@ class DatasetData(object):
             'The livetime property must be castable to type float!')
         self._livetime = lt
 
+    @property
+    def exp_field_names(self):
+        """(read-only) The list of field names present in the experimental data.
+        """
+        return self._exp.dtype.names
+
+    @property
+    def mc_field_names(self):
+        """(read-only) The list of field names present in the monte-carlo data.
+        """
+        return self._mc.dtype.names
+
 
 def tidy_up_recarray(arr, keep_fields):
     """Tidies up the given numpy record array by dropping all fields, which are
