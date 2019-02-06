@@ -6,7 +6,11 @@
 import abc
 import numpy as np
 
-from skyllh.core.py import issequenceof, range
+from skyllh.core.py import (
+    classname,
+    issequenceof,
+    range
+)
 from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.parameters import (
     FitParameter,
@@ -37,6 +41,10 @@ class Analysis(object):
     """This is the abstract base class for all analysis classes. It contains
     common properties required by all analyses and defines the overall analysis
     interface howto set-up and run an analysis.
+
+    Note: This analysis base class assumes the analysis to be a log-likelihood
+          ratio test, i.e. requires a mathematical log-likelihood ratio
+          function.
 
     To set-up and run an analysis the following procedure applies:
 
@@ -166,7 +174,7 @@ class Analysis(object):
     def test_statistic(self, ts):
         if(not isinstance(ts, TestStatistic)):
             raise TypeError('The test_statistic property must be an instance '
-                'of TestStatistic!')
+                'of TestStatistic, but is %s!'%(classname(ts)))
         self._test_statistic = ts
 
     @property
@@ -538,9 +546,9 @@ class Analysis(object):
         return result
 
 
-class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
-    """This analysis class implements a time-integrated analysis with a spatial
-    and energy PDF for multiple datasets assuming a single source.
+class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
+    """This is an analysis class that implements a time-integrated LLH ratio
+    analysis for multiple datasets assuming a single source.
 
     To run this analysis the following procedure applies:
 
@@ -575,9 +583,9 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        data_scrambler : instance of DataScrambler
-            The instance of DataScrambler that will scramble the data for a new
-            analysis trial.
+        bkg_gen_method : instance of BackgroundGenerationMethod
+            The instance of BackgroundGenerationMethod that will be used to
+            generate background events for a new analysis trial.
         event_selection_method : instance of EventSelectionMethod | None
             The instance of EventSelectionMethod that implements the selection
             of the events, which have potential to be signal. All non-selected
@@ -590,14 +598,15 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
             raise TypeError('The src_fitparam_mapper argument must be an '
                 'instance of SingleSourceFitParameterMapper!')
 
-        super(MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis, self).__init__(
+        super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
             minimizer, src_hypo_group_manager, src_fitparam_mapper,
             test_statistic, bkg_gen_method, event_selection_method)
 
         self.fitparam_ns = fitparam_ns
 
-        self._spatial_pdfratio_list = []
-        self._energy_pdfratio_list = []
+        # Define the member for the list of PDF ratio lists. Each list entry is
+        # a list of PDF ratio instances for each data set.
+        self._pdfratio_list_list = []
 
         # Create the FitParameterSet instance holding the fit parameter ns and
         # all the other additional fit parameters. This set is used by the
@@ -616,26 +625,34 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
             raise TypeError('The fitparam_ns property must be an instance of FitParameter!')
         self._fitparam_ns = fitparam
 
-    def add_dataset(self, dataset, data, spatial_pdfratio, energy_pdfratio):
-        """Adds a dataset with its spatial and energy PDF ratio instances to the
-        analysis.
+    def add_dataset(self, dataset, data, pdfratios):
+        """Adds a dataset with its PDF ratio instances to the analysis.
+
+        Parameters
+        ----------
+        dataset : Dataset instance
+            The Dataset instance that should get added.
+        data : DatasetData instance
+            The DatasetData instance holding the original (prepared) data of the
+            dataset.
+        pdfratios : PDFRatio instance | sequence of PDFRatio instances
+            The PDFRatio instance or the sequence of PDFRatio instances for the
+            to-be-added data set.
         """
-        super(MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis, self).add_dataset(dataset, data)
+        super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(
+            dataset, data)
 
-        if(not isinstance(spatial_pdfratio, PDFRatio)):
-            raise TypeError('The spatial_pdfratio argument must be an instance of PDFRatio!')
-        if(not issubclass(spatial_pdfratio.pdf_type, SpatialPDF)):
-            raise TypeError('The PDF type of the PDFRatio instance of argument spatial_pdfratio must be SpatialPDF!')
-        self._spatial_pdfratio_list.append(spatial_pdfratio)
+        if(isinstance(pdfratios, PDFRatio)):
+            pdfratios = [pdfratios]
+        if(not issequenceof(pdfratios, PDFRatio)):
+            raise TypeError('The pdfratios argument must be an instance of '
+                'PDFRatio or a sequence of PDFRatio!')
 
-        if(not isinstance(energy_pdfratio, PDFRatio)):
-            raise TypeError('The energy_pdfratio argument must be an instance of PDFRatio!')
-        if(not issubclass(energy_pdfratio.pdf_type, EnergyPDF)):
-            raise TypeError('The PDF type of the PDFRatio instance of argument energy_pdfratio must be EnergyPDF!')
-        self._energy_pdfratio_list.append(energy_pdfratio)
+        self._pdfratio_list_list.append(list(pdfratios))
 
     def construct_llhratio(self):
-        """Constructs the analysis. This setups all the necessary analysis
+        """Constructs the log-likelihood-ratio (LLH-ratio) function of the
+        analysis. This setups all the necessary analysis
         objects like detector signal efficiencies and dataset signal weights,
         constructs the log-likelihood ratio functions for each dataset and the
         final composite llh ratio function.
@@ -671,11 +688,8 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
         llhratio_list = []
-        for (j, dataset) in enumerate(self.dataset_list):
-            pdfratio_list = [
-                self._spatial_pdfratio_list[j],
-                self._energy_pdfratio_list[j]
-            ]
+        for j in range(self.n_datasets):
+            pdfratio_list = self._pdfratio_list_list[j]
             llhratio = SingleSourceTCLLHRatio(pdfratio_list, self._src_fitparam_mapper)
             llhratio_list.append(llhratio)
 
@@ -726,9 +740,9 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
                 self._src_hypo_group_manager)
 
     def initialize_trial(self, events_list):
-        """This method initializes the log-likelihood ratio function with a new
-        set of given trial data. This is a low-level method. For convenient
-        methods see the `unblind` and `do_trial` methods.
+        """This method initializes the multi-dataset log-likelihood ratio
+        function with a new set of given trial data. This is a low-level method.
+        For convenient methods see the `unblind` and `do_trial` methods.
 
         Parameters
         ----------
@@ -787,3 +801,168 @@ class MultiDatasetTimeIntegratedSpacialEnergySingleSourceAnalysis(Analysis):
 
         return (self._fitparamset, log_lambda_max, fitparam_values, status)
 
+
+class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
+    TimeIntegratedMultiDatasetSingleSourceAnalysis):
+    """This is an analysis class that implements a time-integrated LLH ratio
+    analysis with separate spatial and energy PDFs for multiple datasets
+    assuming a single source.
+
+    To run this analysis the following procedure applies:
+
+        1. Add the datasets and their spatial and energy PDF ratio instances
+           via the :meth:`.add_dataset` method.
+        2. Construct the log-likelihood ratio function via the
+           :meth:`construct_llhratio` method.
+        3. Initialize a trial via the :meth:`initialize_trial` method.
+        4. Fit the global fit parameters to the trial data via the
+           :meth:`maximize_llhratio` method.
+    """
+    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+                 fitparam_ns,
+                 test_statistic, bkg_gen_method, event_selection_method=None):
+        """Creates a new time-integrated analysis with separate spatial and
+        energy PDFs for multiple datasets assuming a single source.
+
+        Parameters
+        ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of the log-likelihood ratio function.
+        src_hypo_group_manager : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            efficiency implementation method.
+        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
+            The instance of SingleSourceFitParameterMapper defining the global
+            fit parameters and their mapping to the source fit parameters.
+        fitparam_ns : FitParameter instance
+            The FitParameter instance defining the fit parameter ns.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
+        bkg_gen_method : instance of BackgroundGenerationMethod
+            The instance of BackgroundGenerationMethod that will be used to
+            generate background events for a new analysis trial.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod that implements the selection
+            of the events, which have potential to be signal. All non-selected
+            events will be treated as pure background events. This is for
+            runtime optimization only.
+            If set to None (default), the AllEventSelectionMethod will be used,
+            that selects all events for the analysis.
+        """
+        super(SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
+            minimizer, src_hypo_group_manager, src_fitparam_mapper,
+            fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
+
+    def add_dataset(self, dataset, data, spatial_pdfratio, energy_pdfratio):
+        """Adds a dataset with its spatial and energy PDF ratio instances to the
+        analysis.
+
+        Parameters
+        ----------
+        dataset : Dataset instance
+            The Dataset instance that should get added.
+        data : DatasetData instance
+            The DatasetData instance holding the original (prepared) data of the
+            dataset.
+        spatial_pdfratio : SpatialPDF sub-classed PDFRatio instance
+            The PDFRatio instance for the spatial PDF.
+        energy_pdfratio : EnergyPDF sub-classed PDFRatio instance
+            The PDFRatio instance for the energy PDF.
+        """
+        if(not isinstance(spatial_pdfratio, PDFRatio)):
+            raise TypeError('The spatial_pdfratio argument must be an instance '
+                'of PDFRatio!')
+        if(not issubclass(spatial_pdfratio.pdf_type, SpatialPDF)):
+            raise TypeError('The PDF type of the PDFRatio instance of argument '
+                'spatial_pdfratio must be SpatialPDF!')
+
+        if(not isinstance(energy_pdfratio, PDFRatio)):
+            raise TypeError('The energy_pdfratio argument must be an instance '
+                'of PDFRatio!')
+        if(not issubclass(energy_pdfratio.pdf_type, EnergyPDF)):
+            raise TypeError('The PDF type of the PDFRatio instance of argument '
+                'energy_pdfratio must be EnergyPDF!')
+
+        pdfratios = [spatial_pdfratio, energy_pdfratio]
+
+        super(SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(dataset, data, pdfratios)
+
+
+class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
+    TimeIntegratedMultiDatasetSingleSourceAnalysis):
+    """This is an analysis class that implements a time-integrated LLH ratio
+    analysis with a single multi-dimensional PDF for multiple datasets
+    assuming a single source.
+
+    To run this analysis the following procedure applies:
+
+        1. Add the datasets and their multi-dimensional PDF ratio instance
+           via the :meth:`.add_dataset` method.
+        2. Construct the log-likelihood ratio function via the
+           :meth:`construct_llhratio` method.
+        3. Initialize a trial via the :meth:`initialize_trial` method.
+        4. Fit the global fit parameters to the trial data via the
+           :meth:`maximize_llhratio` method.
+    """
+    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+                 fitparam_ns,
+                 test_statistic, bkg_gen_method, event_selection_method=None):
+        """Creates a new time-integrated analysis with a single
+        multi-dimensional PDF for multiple datasets assuming a single source.
+
+        Parameters
+        ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of the log-likelihood ratio function.
+        src_hypo_group_manager : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            efficiency implementation method.
+        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
+            The instance of SingleSourceFitParameterMapper defining the global
+            fit parameters and their mapping to the source fit parameters.
+        fitparam_ns : FitParameter instance
+            The FitParameter instance defining the fit parameter ns.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
+        bkg_gen_method : instance of BackgroundGenerationMethod
+            The instance of BackgroundGenerationMethod that will be used to
+            generate background events for a new analysis trial.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod that implements the selection
+            of the events, which have potential to be signal. All non-selected
+            events will be treated as pure background events. This is for
+            runtime optimization only.
+            If set to None (default), the AllEventSelectionMethod will be used,
+            that selects all events for the analysis.
+        """
+        super(SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
+            minimizer, src_hypo_group_manager, src_fitparam_mapper,
+            fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
+
+    def add_dataset(self, dataset, data, multidim_pdfratio):
+        """Adds a dataset with its single multi-dimensional PDF ratio instance
+        to the analysis.
+
+        Parameters
+        ----------
+        dataset : Dataset instance
+            The Dataset instance that should get added.
+        data : DatasetData instance
+            The DatasetData instance holding the original (prepared) data of the
+            dataset.
+        multidim_pdfratio : PDFRatio instance
+            The multi-dimensional PDFRatio instance for the data set.
+        """
+        if(not isinstance(multidim_pdfratio, PDFRatio)):
+            raise TypeError('The multidim_pdfratio argument must be an '
+                'instance of PDFRatio!')
+
+        pdfratios = [multidim_pdfratio]
+
+        super(SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(dataset, data, pdfratios)
