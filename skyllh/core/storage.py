@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import abc
+import pickle
 import numpy as np
 import os.path
 
@@ -112,6 +113,7 @@ class FileLoader:
     def load_data(self):
         pass
 
+
 class NPYFileLoader(FileLoader):
     """The NPYFileLoader class provides the data loading functionality for
     numpy data files containing numpy arrays. It uses the ``numpy.load``
@@ -144,4 +146,41 @@ class NPYFileLoader(FileLoader):
 
         return data
 
+
+class PKLFileLoader(FileLoader):
+    """The PKLFileLoader class provides the data loading functionality for
+    pickled Python data files containing Python data structures. It uses the
+    `pickle.load` function for loading the data from the file.
+    """
+    def __init__(self, pathfilenames):
+        super(PKLFileLoader, self).__init__(pathfilenames)
+
+    def load_data(self):
+        """Loads the data from the files specified through their fully qualified
+        file names.
+
+        Returns
+        -------
+        data : Python object | list of Python objects
+            The de-pickled Python object. If more than one file was specified,
+            this is a list of Python objects, i.e. one object for each file.
+            The file <-> object mapping order is preserved.
+
+        Raises
+        ------
+        RuntimeError if a file does not exist.
+        """
+        data = []
+        for pathfilename in self.pathfilename_list:
+            assert_file_exists(pathfilename)
+            with open(pathfilename, 'rb') as ifile:
+                data.append(pickle.load(ifile))
+
+        if(len(data) == 1):
+            data = data[0]
+
+        return data
+
+
 register_FileLoader(['.npy'], NPYFileLoader)
+register_FileLoader(['.pkl'], PKLFileLoader)
