@@ -84,15 +84,14 @@ def assert_file_exists(pathfilename):
 class FileLoader:
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, pathfilenames):
+    def __init__(self, pathfilenames, **kwargs):
         """Initializes a new FileLoader instance.
 
         Parameters
         ----------
-        pathfilenames : sequence
+        pathfilenames : str | sequence of str
             The sequence of fully qualified file names of the data files that
-            need to be loaded. The data arrays of several files will be
-            concatenated to a single data array uppon loading the data.
+            need to be loaded.
         """
         self.pathfilename_list = pathfilenames
 
@@ -106,7 +105,8 @@ class FileLoader:
         if(isinstance(pathfilenames, str)):
             pathfilenames = [ pathfilenames ]
         if(not issequence(pathfilenames)):
-            raise TypeError('The pathfilename_list property must be a sequence type!')
+            raise TypeError('The pathfilename_list property must be of type '
+                'str or a sequence of type str!')
         self._pathfilename_list = list(pathfilenames)
 
     @abc.abstractmethod
@@ -120,7 +120,7 @@ class NPYFileLoader(FileLoader):
     function for loading the data and the numpy.append function to concatenate
     several data files.
     """
-    def __init__(self, pathfilenames):
+    def __init__(self, pathfilenames, **kwargs):
         super(NPYFileLoader, self).__init__(pathfilenames)
 
     def load_data(self):
@@ -152,8 +152,36 @@ class PKLFileLoader(FileLoader):
     pickled Python data files containing Python data structures. It uses the
     `pickle.load` function for loading the data from the file.
     """
-    def __init__(self, pathfilenames):
+    def __init__(self, pathfilenames, pkl_encoding=None, **kwargs):
+        """Creates a new file loader instance for a pickled data file.
+
+        Parameters
+        ----------
+        pathfilenames : str | sequence of str
+            The sequence of fully qualified file names of the data files that
+            need to be loaded.
+        pkl_encoding : str | None
+            The encoding of the pickled data files. If None, the default
+            encodings 'ASCII' and 'latin1' will be tried to load the data.
+        """
         super(PKLFileLoader, self).__init__(pathfilenames)
+
+        self.pkl_encoding = pkl_encoding
+
+    @property
+    def pkl_encoding(self):
+        """The encoding of the pickled data files. Can be None.
+        If None, the default encodings 'ASCII' and 'latin1' will be tried to
+        load the data.
+        """
+        return self._pkl_encoding
+    @pkl_encoding.setter
+    def pkl_encoding(self, encoding):
+        if(encoding is not None):
+            if(not isinstance(encoding, str)):
+                raise TypeError('The pkl_encoding property must be None or of '
+                    'type str!')
+        self._pkl_encoding = encoding
 
     def load_data(self):
         """Loads the data from the files specified through their fully qualified
@@ -170,11 +198,33 @@ class PKLFileLoader(FileLoader):
         ------
         RuntimeError if a file does not exist.
         """
+        # Define the possible encodings of the pickled files.
+        encodings = ['ASCII', 'latin1']
+        if(self._pkl_encoding is not None):
+            encodings = [self._pkl_encoding] + encodings
+
         data = []
         for pathfilename in self.pathfilename_list:
             assert_file_exists(pathfilename)
             with open(pathfilename, 'rb') as ifile:
-                data.append(pickle.load(ifile))
+                enc_idx = 0
+                load_ok = False
+                obj = None
+                while (not load_ok) and (enc_idx < len(encodings)):
+                    try:
+                        encoding = encodings[enc_idx]
+                        obj = pickle.load(ifile, encoding=encoding)
+                    except UnicodeDecodeError:
+                        enc_idx += 1
+                        # Move the file pointer back to the beginning of the
+                        # file.
+                        ifile.seek(0)
+                    else:
+                        load_ok = True
+                if(obj is None):
+                    raise RuntimeError('The file "%s" could not get unpickled! '
+                        'No correct encoding available!'%(pathfilename))
+                data.append(obj)
 
         if(len(data) == 1):
             data = data[0]
