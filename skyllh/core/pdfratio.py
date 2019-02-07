@@ -591,6 +591,15 @@ class SigOverBkgPDFRatio(PDFRatio):
         self._signalpdf.change_source_hypo_group_manager(src_hypo_group_manager)
         self._backgroundpdf.change_source_hypo_group_manager(src_hypo_group_manager)
 
+    def initialize_for_new_trial(self, events):
+        """Notifies the signal and background PDFs that a new data trial is
+        being initialized with the given events. This calls the
+        `initialize_for_new_trial` method of the signal and background PDF class
+        instance.
+        """
+        self._signalpdf.initialize_for_new_trial(events)
+        self._backgroundpdf.initialize_for_new_trial(events)
+
     def get_ratio(self, events, fitparams=None):
         """Calculates the PDF ratio for the given events.
 

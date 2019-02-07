@@ -178,6 +178,13 @@ class PDF(object):
         """
         pass
 
+    def initialize_for_new_trial(self, events):
+        """This method must be reimplemented by the derived class if the
+        derived PDF class requires notification whenever a new data trial with
+        the given events is being initialized.
+        """
+        pass
+
     @abc.abstractmethod
     def assert_is_valid_for_exp_data(self, data_exp):
         """This abstract method is supposed to check if this PDF is valid for
