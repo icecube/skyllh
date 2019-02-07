@@ -149,7 +149,8 @@ class TCLLHRatio(LLHRatio):
     @pdfratio_list.setter
     def pdfratio_list(self, seq):
         if(not issequenceof(seq, PDFRatio)):
-            raise TypeError('The pdfratio_list property must be a sequence of PDFRatio instances!')
+            raise TypeError('The pdfratio_list property must be a sequence of '
+                'PDFRatio instances!')
         self._pdfratio_list = list(seq)
 
     @property
@@ -161,7 +162,8 @@ class TCLLHRatio(LLHRatio):
     @src_fitparam_mapper.setter
     def src_fitparam_mapper(self, mapper):
         if(not isinstance(mapper, SourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper property must be an instance of SourceFitParameterMapper!')
+            raise TypeError('The src_fitparam_mapper property must be an '
+                'instance of SourceFitParameterMapper!')
         self._src_fitparam_mapper = mapper
 
     def initialize_for_new_trial(self, events, n_pure_bkg_events):
@@ -180,6 +182,9 @@ class TCLLHRatio(LLHRatio):
         """
         self.events = events
         self.n_pure_bkg_events = n_pure_bkg_events
+
+        for pdfratio in self._pdfratio_list:
+            pdfratio.initialize_for_new_trial(events)
 
     def calculate_log_lambda_and_grads(self, fitparam_values, N, ns, Xi, dXi_ps):
         """Calculates the log(Lambda) value and its gradient for each global fit

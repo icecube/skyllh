@@ -90,6 +90,14 @@ class PDFRatio(object):
         """
         pass
 
+    def initialize_for_new_trial(self, events):
+        """This method must be reimplemented by the derived class if necessary.
+        It is supposed to tell the PDF ratio class and hence its assigned signal
+        and background classes that a new trial is being initialized with the
+        given events.
+        """
+        pass
+
     @abc.abstractmethod
     def get_ratio(self, events, fitparams=None):
         """Retrieves the PDF ratio value for each given event, given the given
