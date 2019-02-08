@@ -2,8 +2,17 @@
 
 import abc
 
-from skyllh.core.py import typename, ObjectCollection, range
-from skyllh.core.parameters import ParameterGrid, ParameterGridSet, make_params_hash
+from skyllh.core.py import (
+    ObjectCollection,
+    func_has_n_args,
+    range,
+    typename
+)
+from skyllh.core.parameters import (
+    ParameterGrid,
+    ParameterGridSet,
+    make_params_hash
+)
 
 class PDFAxis(object):
     """This class describes an axis of a PDF. It's main purpose is to define
@@ -136,6 +145,210 @@ class PDFAxes(ObjectCollection):
         return True
 
 
+class PDFDataField(object):
+    """This class defines a data field and its calculation that is used by a
+    PDF class instance. The calculation is defined through an external function
+    with the call signature: `__call__(pdf, events, fitparams)`, where `pdf` is
+    the PDF class instance, and `events` is the numpy record ndarray holding the
+    event data. The return type of this function must be a numpy ndarray.
+    """
+    def __init__(self, name, func):
+        """Creates a new instance of a PDFDataField instance.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field. It serves as the identifier for the
+            data field.
+        func : callable
+            The function that calculates the new data field. The call signature
+            must be `__call__(pdf, events, fitparams)`, where `pdf` is the PDF
+            class instance, and `events` is the numpy record ndarray holding the
+            event data. The return type of this function must be a numpy
+            ndarray.
+        """
+        super(PDFDataField, self).__init__()
+
+        self.name = name
+        self.func = func
+
+        # Define the member variable that holds the numpy ndarray with the data
+        # field values.
+        self._values = None
+
+    @property
+    def name(self):
+        """The name of the data field.
+        """
+        return self._name
+    @name.setter
+    def name(self, name):
+        if(not isinstance(name, str)):
+            raise TypeError('The name property must be an instance of str!')
+        self._name = name
+
+    @property
+    def func(self):
+        """The function that calculates the data field values.
+        """
+        return self._func
+    @func.setter
+    def func(self, f):
+        if(not callable(f)):
+            raise TypeError('The func property must be a callable object!')
+        if(not func_has_n_args(f, 2)):
+            raise TypeError('The func property must be a function with 2 '
+                'arguments!')
+        self._func = f
+
+    @property
+    def values(self):
+        """(read-only) The calculated data values of the data field.
+        """
+        return self._values
+
+    def calculate(self, pdf, events, fitparams):
+        """Calculates the data field values utilizing the defined external
+        function.
+
+        Parameters
+        ----------
+        pdf : PDF instance
+            The PDF instance for which to calculate the PDF data field values.
+        events : numpy record ndarray
+            The numpy record ndarray holding the event data.
+        fitparams : dict
+            The dictionary holding the current fit parameter names and values.
+        """
+        self._values = self._func(pdf, events, fitparams)
+
+
+class PDFDataFields(object):
+    """This class provides the functionality of additional event data fields for
+    PDF classes, that are required by the PDF class and have to be calculated
+    based on properties of the PDF class instance.
+    """
+    def __init__(self):
+        super(PDFDataFields, self).__init__()
+
+        self._precalc_data_fields = []
+        self._precalc_data_field_reg = dict()
+
+        self._dynamic_data_fields = []
+        self._dynamic_data_field_reg = dict()
+
+    def add(self, name, func, precalc=False):
+        """Adds a new PDF data field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field. It serves as the identifier for the
+            data field.
+        func : callable
+            The function that calculates the new data field. The call signature
+            must be `__call__(pdf, events)`, where `pdf` is the PDF class
+            instance, and `events` is the numpy record ndarray holding the event
+            data. The return type of this function must be a numpy ndarray.
+        precalc : bool
+            Flag if this data field can be pre-calculated whenever a new trial
+            is being initialized. Otherwise the data field gets calculated for
+            every PDF value evaluation, which would be required in cases where
+            the calculation of the data field depends on fit parameter values.
+        """
+        if(not isinstance(precalc, bool)):
+            raise TypeError('The precalc argument must be an instance of bool!')
+
+        if((name in self._precalc_data_field_reg) or
+           (name in self._dynamic_data_field_reg)):
+            raise KeyError('The PDF data field "%s" is already defined!'%(name))
+
+        data_field = PDFDataField(name, func)
+
+        if(precalc is True):
+            self._precalc_data_fields.append(data_field)
+            self._precalc_data_field_reg[name] = data_field
+        else:
+            self._dynamic_data_fields.append(data_field)
+            self._dynamic_data_field_reg[name] = data_field
+
+    def __getitem__(self, name):
+        """Retrieves the values of a given data field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field.
+
+        Returns
+        -------
+        values : numpy ndarray
+            The numpy ndarray holding the calculated field values.
+
+        Raises
+        ------
+        KeyError
+            If the given data field is not defined.
+        """
+        if(name in self._precalc_data_field_reg):
+            return self._precalc_data_field_reg[name].values
+        if(name in self._dynamic_data_field_reg):
+            return self._dynamic_data_field_reg[name].values
+
+        raise KeyError('The PDF data field "%s" is not defined!')
+
+    def get_field_values(self, name):
+        """Retrieves the values of a given data field. This is equivalent to
+        __getitem__(name).
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field.
+
+        Returns
+        -------
+        values : numpy ndarray
+            The numpy ndarray holding the calculated field values.
+
+        Raises
+        ------
+        KeyError
+            If the given data field is not defined.
+        """
+        return self.__getitem__(name)
+
+    def calc_precalc_data_fields(self, pdf, events):
+        """Calculates the data values of the data fields that can be
+        pre-calculated.
+
+        Parameters
+        ----------
+        pdf : PDF instance
+            The PDF instance for which the data fields should get calculated.
+        events : numpy record ndarray
+            The numpy record ndarray holding the event data.
+        """
+        fitparams = dict()
+        for data_field in self._precalc_data_fields:
+            data_field.calculate(pdf, events, fitparams)
+
+    def calc_dynamic_data_fields(self, pdf, events, fitparams):
+        """Calculates the data values of the dynamic data fields.
+
+        Parameters
+        ----------
+        pdf : PDF instance
+            The PDF instance for which the data fields should get calculated.
+        events : numpy record ndarray
+            The numpy record ndarray holding the event data.
+        fitparams : dict | None
+            The dictionary holding the current fit parameter names and values.
+        """
+        for data_field in self._dynamic_data_fields:
+            data_field.calculate(pdf, events, fitparams)
+
+
 class PDF(object):
     """The abstract base class for all probability distribution functions (PDF)
     models.
@@ -149,6 +362,7 @@ class PDF(object):
         super(PDF, self).__init__(*args, **kwargs)
 
         self._axes = PDFAxes()
+        self._data_fields = PDFDataFields()
 
     @property
     def axes(self):
@@ -156,6 +370,14 @@ class PDF(object):
         dimensions of the PDF.
         """
         return self._axes
+
+    @property
+    def data_fields(self):
+        """The PDFDataFields instance providing the functionality to define
+        additional data fields that depend on the properties of the PDF class
+        instance.
+        """
+        return self._data_fields
 
     @property
     def ndim(self):
@@ -181,9 +403,11 @@ class PDF(object):
     def initialize_for_new_trial(self, events):
         """This method must be reimplemented by the derived class if the
         derived PDF class requires notification whenever a new data trial with
-        the given events is being initialized.
+        the given events is being initialized. This base method calculates PDF
+        data fields that can be pre-calculated. Hence, this method needs to be
+        called by the derived implementation of this method.
         """
-        pass
+        self._data_fields.calc_precalc_data_fields(self, events)
 
     @abc.abstractmethod
     def assert_is_valid_for_exp_data(self, data_exp):
@@ -209,6 +433,9 @@ class PDF(object):
     def get_prob(self, events, fitparams):
         """This abstract method is supposed to calculate the probability for
         the specified events given the specified fit parameters.
+        It calculates the dynamic PDF data fields. Hence, this base method
+        should be called by the implementation of this method of the derived
+        class.
 
         Parameters
         ----------
@@ -231,7 +458,7 @@ class PDF(object):
             N_sources sources. By definition the 2D case is applicable only for
             signal PDFs.
         """
-        pass
+        self._data_fields.calc_dynamic_data_fields(self, events, fitparams)
 
 
 class SpatialPDF(PDF):
