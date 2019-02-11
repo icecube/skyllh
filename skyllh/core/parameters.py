@@ -353,7 +353,7 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
             The D manifold gradients for the N given events, where D is the
             number of fit parameters.
         """
-        (xname, x) = fitparams.items()[0]
+        (xname, x) = tuple(fitparams.items())[0]
 
         # Determine the nearest grid point x1 and the grid precision.
         x1 = self.p_grid.round_to_precision(x)
