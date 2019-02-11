@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import abc
+import numpy as np
 
+from scipy.interpolate import RegularGridInterpolator
+
+from skyllh.core.binning import BinningDefinition
 from skyllh.core.py import (
     ObjectCollection,
     func_has_n_args,
+    issequenceof,
     range,
     typename
 )
@@ -196,8 +201,8 @@ class PDFDataField(object):
     def func(self, f):
         if(not callable(f)):
             raise TypeError('The func property must be a callable object!')
-        if(not func_has_n_args(f, 2)):
-            raise TypeError('The func property must be a function with 2 '
+        if(not func_has_n_args(f, 3)):
+            raise TypeError('The func property must be a function with 3 '
                 'arguments!')
         self._func = f
 
@@ -247,9 +252,11 @@ class PDFDataFields(object):
             data field.
         func : callable
             The function that calculates the new data field. The call signature
-            must be `__call__(pdf, events)`, where `pdf` is the PDF class
-            instance, and `events` is the numpy record ndarray holding the event
-            data. The return type of this function must be a numpy ndarray.
+            must be `__call__(pdf, events, fitparams)`, where `pdf` is the PDF
+            class instance, `events` is the numpy record ndarray holding the
+            event data, and fitparams is the dictionary holding the current fit
+            parameter values. The return type of this function must be a numpy
+            ndarray.
         precalc : bool
             Flag if this data field can be pre-calculated whenever a new trial
             is being initialized. Otherwise the data field gets calculated for
@@ -271,6 +278,28 @@ class PDFDataFields(object):
         else:
             self._dynamic_data_fields.append(data_field)
             self._dynamic_data_field_reg[name] = data_field
+
+    def __contains__(self, name):
+        """Checks if the given data field is contained in this data field
+        collection.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field.
+
+        Returns
+        -------
+        check : bool
+            True if the data field is contained in this data field collection,
+            False otherwise.
+        """
+        if(name in self._precalc_data_field_reg):
+            return True
+        if(name in self._dynamic_data_field_reg):
+            return True
+
+        return False
 
     def __getitem__(self, name):
         """Retrieves the values of a given data field.
@@ -295,7 +324,7 @@ class PDFDataFields(object):
         if(name in self._dynamic_data_field_reg):
             return self._dynamic_data_field_reg[name].values
 
-        raise KeyError('The PDF data field "%s" is not defined!')
+        raise KeyError('The PDF data field "%s" is not defined!'%(name))
 
     def get_field_values(self, name):
         """Retrieves the values of a given data field. This is equivalent to
@@ -409,6 +438,38 @@ class PDF(object):
         """
         self._data_fields.calc_precalc_data_fields(self, events)
 
+    def calc_dynamic_data_fields(self, events, fitparams):
+        """Calculates the dynamic data fields, that depend on current fit
+        parameter values.
+        """
+        self._data_fields.calc_dynamic_data_fields(self, events, fitparams)
+
+    def get_data(self, name, eval_data):
+        """Gets the data for the given data field name. The data is stored
+        either in the eval_data numpy record array or in one of the additional
+        PDF data fields. Data from the evaluation data is prefered.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field for which to retrieve the data.
+        eval_data : numpy record ndarray
+            The data that is going to be evaluated.
+
+        Returns
+        -------
+        data : numpy ndarray
+            The data of the requested data field.
+
+        Raises
+        ------
+        KeyError
+            If the given PDF data field is not defined.
+        """
+        if(name in eval_data.dtype.names):
+            return eval_data[name]
+        return self._data_fields[name]
+
     @abc.abstractmethod
     def assert_is_valid_for_exp_data(self, data_exp):
         """This abstract method is supposed to check if this PDF is valid for
@@ -433,9 +494,6 @@ class PDF(object):
     def get_prob(self, events, fitparams):
         """This abstract method is supposed to calculate the probability for
         the specified events given the specified fit parameters.
-        It calculates the dynamic PDF data fields. Hence, this base method
-        should be called by the implementation of this method of the derived
-        class.
 
         Parameters
         ----------
@@ -458,7 +516,7 @@ class PDF(object):
             N_sources sources. By definition the 2D case is applicable only for
             signal PDFs.
         """
-        self._data_fields.calc_dynamic_data_fields(self, events, fitparams)
+        pass
 
 
 class SpatialPDF(PDF):
@@ -524,6 +582,7 @@ class SpatialPDF(PDF):
                   (data_exp['dec'] > dec_axis.vmax))):
             raise ValueError('Some data is outside the declination range (%.3f, %.3f)!'%(dec_axis.vmin, dec_axis.vmax))
 
+
 class EnergyPDF(PDF):
     """This is the abstract base class for an energy PDF model.
     """
@@ -540,6 +599,159 @@ class TimePDF(PDF):
 
     def __init__(self, *args, **kwargs):
         super(TimePDF, self).__init__(*args, **kwargs)
+
+
+class MultiDimGridPDF(PDF):
+    """This class provides a multi-dimensional PDF created from pre-calculated
+    PDF data on a grid. The grid data is interpolated using a
+    `scipy.interpolate.RegularGridInterpolator` instance.
+    """
+    def __init__(self, axis_binnings, pdf_grid_data, norm_factor_func=None):
+        """Creates a new PDF instance for a multi-dimensional PDF given
+        as PDF values on a grid. The grid data is interpolated with a
+        `scipy.interpolate.RegularGridInterpolator` instance. As grid points
+        the bin edges of the axis binning definitions are used.
+
+        Parameters
+        ----------
+        axis_binnings : sequence of BinningDefinition
+            The sequence of BinningDefinition instances defining the binning of
+            the PDF axes. The name of each BinningDefinition instance defines
+            the event field name that should be used for querying the PDF.
+        pdf_grid_data : n-dimensional numpy ndarray
+            The n-dimensional numpy ndarray holding the PDF values at given grid
+            points. The grid points must match the bin edges of the given
+            BinningDefinition instances of the `axis_binnings` argument.
+        norm_factor_func : callable | None
+            The function that calculates a possible required normalization
+            factor for the PDF value based on the event properties.
+            The call signature of this function
+            must be `__call__(pdf, events, fitparams)`, where `pdf` is this PDF
+            instance, `events` is a numpy record ndarray holding the events for
+            which to calculate the PDF values, and `fitparams` is a dictionary
+            with the current fit parameter names and values.
+        """
+        super(MultiDimGridPDF, self).__init__()
+
+        self.axis_binning_list = axis_binnings
+        self.norm_factor_func = norm_factor_func
+
+        # Define the PDF axes.
+        for axis_binning in self._axis_binnning_list:
+            self.add_axis(PDFAxis(
+                name=axis_binning.name,
+                vmin=axis_binning.lower_edge,
+                vmax=axis_binning.upper_edge
+            ))
+
+        self._pdf = RegularGridInterpolator(
+            tuple([ binning.binedges for binning in self._axis_binnning_list ]),
+            pdf_grid_data,
+            method='linear',
+            bounds_error=False,
+            fill_value=0
+        )
+
+    @property
+    def axis_binning_list(self):
+        """The list of BinningDefinition instances for each PDF axis.
+        The name of each BinningDefinition instance defines the event field
+        name that should be used for querying the PDF.
+        """
+    @axis_binning_list.setter
+    def axis_binning_list(self, binnings):
+        if(isinstance(binnings, BinningDefinition)):
+            binnings = [binnings]
+        if(not issequenceof(binnings, BinningDefinition)):
+            raise TypeError('The axis_binning_list property must be an '
+                'instance of BinningDefinition or a sequence of '
+                'BinningDefinition instances!')
+        self._axis_binnning_list = list(binnings)
+
+    @property
+    def norm_factor_func(self):
+        """The function that calculates the possible required normalization
+        factor. The call signature of this function must be
+        `__call__(pdf, events, fitparams)`, where `pdf` is this PDF instance,
+        `events` is a numpy record ndarray holding the events for which to
+        calculate the PDF values, and `fitparams` is a dictionary with the
+        current fit parameter names and values.
+        This property can be set to `None`. In that case a unity returning
+        function is used.
+        """
+        return self._norm_factor_func
+    @norm_factor_func.setter
+    def norm_factor_func(self, func):
+        if(func is None):
+            # Define a normalization function that just returns 1 for each
+            # event.
+            func = lambda pdf, events, fitparams: np.ones_like(events)
+        if(not callable(func)):
+            raise TypeError('The norm_factor_func property must be a callable '
+                'object!')
+        if(not func_has_n_args(func, 3)):
+            raise TypeError('The norm_factor_func property must be a function '
+                'with 3 arguments!')
+        self._norm_factor_func = func
+
+    def assert_is_valid_for_exp_data(self, data_exp):
+        """Checks if the PDF is valid for all values of the given experimental
+        data. This method is deprecated!
+        """
+        pass
+
+    def assert_is_valid_for_eval_data(self, eval_data):
+        """Checks if the PDF is valid for all values of the given evaluation
+        data. The evaluation data values must be within the ranges of the PDF
+        axes.
+
+        Parameters
+        ----------
+        eval_data : numpy record ndarray
+            The data that is going to be evaluated.
+
+        Raises
+        ------
+        ValueError
+            If any of the evaluation data is out of its axis range.
+        """
+        for axis in self._axes:
+            data = self.get_data(axis.name, eval_data)
+            if(np.any(data < axis.vmin) or
+               np.any(data > axis.vmax)
+            ):
+                raise ValueError('Some of the evaluation data for PDF axis '
+                    '"%s" is out of range (%g,%g)!'%(
+                    axis.name, axis.vmin, axis.vmax))
+
+    def get_prob(self, events, fitparams=None):
+        """Calculates the probability for the specified events given the
+        specified fit parameters.
+
+        Parameters
+        ----------
+        events : numpy record ndarray
+            The numpy record ndarray holding the data events for which the
+            probability should be calculated.
+        fitparams : dict | None
+            The dictionary containing the fit parameters for which the
+            probability should get calculated.
+
+        Returns
+        -------
+        prob : (N_events,) shaped numpy ndarray
+            The 1D numpy ndarray with the probability for each event.
+        """
+        # Calculate possible dynamic data fields.
+        self.calc_dynamic_data_fields(events, fitparams)
+
+        x = np.array([ self.get_data(axis.name, events) for axis in self._axes ]).T
+        prob = self._pdf(x)
+
+        norm = self._norm_factor_func(self, events, fitparams)
+        prob *= norm
+
+        return prob
 
 
 class PDFSet(object):
@@ -679,7 +891,7 @@ class PDFSet(object):
         """Calls the ``change_source_hypo_group_manager`` method of all the PDF
         instances added to this PDF set.
         """
-        for (key, pdf) in self._gridfitparams_hash_pdf_dict.iteritems():
+        for (key, pdf) in self._gridfitparams_hash_pdf_dict.items():
             pdf.change_source_hypo_group_manager(src_hypo_group_manager)
 
 
