@@ -172,10 +172,10 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
 
         # Draw the number of background events from a poisson distribution with
         # the given mean number of background events.
-        n_bkg = rss.poisson(mean)
+        n_bkg = rss.random.poisson(mean)
 
         # Draw the actual background events from the monto-carlo data set.
-        bkg_events = rss.choice(data.mc, size=n_bkg, p=self._cache_mc_event_bkg_prob)
+        bkg_events = rss.random.choice(data.mc, size=n_bkg, p=self._cache_mc_event_bkg_prob)
 
         # Remove MC specific data fields from the background events record
         # array. So the result contains only experimental data fields.
