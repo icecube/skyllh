@@ -471,7 +471,7 @@ class Analysis(object):
             (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
                 rss, sig_mean)
             # Inject the signal events to the generated background data.
-            for (idx, sig_events) in ds_sig_events_dict.iteritems():
+            for (idx, sig_events) in ds_sig_events_dict.items():
                 field_name_list = list(self._dataset_list[idx].exp_field_names)
                 bkg_events = events_list[idx]
                 events_list[idx] = np.append(
@@ -677,7 +677,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
                 detsigyield_implmethod = detsigyield_implmethod_list[j]
 
             detsigyield = detsigyield_implmethod.construct_detsigyield(
-                dataset, data, fluxmodel, dataset.livetime)
+                dataset, data, fluxmodel, data.livetime)
             detsigyield_list.append(detsigyield)
 
         # For multiple datasets we need a dataset signal weights instance in
