@@ -158,7 +158,7 @@ class FluxModel(object):
         """
         if(not isinstance(propdict, dict)):
             raise TypeError('The propdict argument must be of type dict!')
-        for (prop, val) in propdict.iteritems():
+        for (prop, val) in propdict.items():
             if(not hasattr(self, prop)):
                 raise KeyError('The flux model "%s" does not have a property named "%s"!'%(classname(self), prop))
             if(not isproperty(self, prop)):
