@@ -294,8 +294,10 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
 
         Parameters
         ----------
-        sin_dec_binning : BinningDefinition
+        sin_dec_binning : BinningDefinition | None
             The BinningDefinition instance which defines the sin(dec) binning.
+            If set to None, the binning will be taken from the Dataset binning
+            definitions.
         spline_order_sinDec : int
             The order of the spline function for the logarithmic values of the
             detector signal yield along the sin(dec) axis.
