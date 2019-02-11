@@ -7,12 +7,22 @@ likelihood function.
 import numpy as np
 
 from skyllh.core import display
-from skyllh.core.py import issequenceof, classname
+from skyllh.core.py import (
+    classname,
+    issequenceof
+)
 from skyllh.core.livetime import Livetime
-from skyllh.core.pdf import SpatialPDF, IsSignalPDF, TimePDF, PDFAxis
+from skyllh.core.pdf import (
+    PDFAxis,
+    IsSignalPDF,
+    MultiDimGridPDF,
+    SpatialPDF,
+    TimePDF
+)
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.physics.source import PointLikeSource
 from skyllh.physics.time_profile import TimeProfileModel
+
 
 class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     """This spatial signal PDF model describes the spatial PDF for a point
@@ -239,7 +249,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            
+
             - 'time' : float
                 The MJD time of the data event.
 
@@ -264,7 +274,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         events : numpy record ndarray
             The array holding the event data. The following data fields must
             exist:
-            
+
             - 'time' : float
                 The MJD time of the event.
         fitparams : dict
@@ -295,3 +305,102 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
             prob[on] = self._time_profile.get_value(events_time[on]) / (self._I * self._S)
 
         return prob
+
+
+class PointLikeSourceSignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
+    """This class provides a multi-dimensional signal PDF for point-like
+    sources. The PDF is created from pre-calculated PDF data on a grid.
+    The grid data is interpolated using a
+    `scipy.interpolate.RegularGridInterpolator` instance.
+    """
+    def __init__(self, src_hypo_group_manager, axis_binnings, pdf_grid_data,
+                 norm_factor_func=None):
+        """Creates a new signal PDF instance for a multi-dimensional PDF given
+        as PDF values on a grid. The grid data is interpolated with a
+        `scipy.interpolate.RegularGridInterpolator` instance. As grid points
+        the bin edges of the axis binning definitions are used.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance, that defines the sources, for
+            which the PDF values should get calculated for.
+        axis_binnings : sequence of BinningDefinition
+            The sequence of BinningDefinition instances defining the binning of
+            the PDF axes. The name of each BinningDefinition instance defines
+            the event field name that should be used for querying the PDF.
+        pdf_grid_data : n-dimensional numpy ndarray
+            The n-dimensional numpy ndarray holding the PDF values at given grid
+            points. The grid points must match the bin edges of the given
+            BinningDefinition instances of the `axis_binnings` argument.
+        norm_factor_func : callable | None
+            The function that calculates a possible required normalization
+            factor for the PDF value based on the event properties.
+            The call signature of this function
+            must be `__call__(pdf, events, fitparams)`, where `pdf` is this PDF
+            instance, `events` is a numpy record ndarray holding the events for
+            which to calculate the PDF values, and `fitparams` is a dictionary
+            with the current fit parameter names and values.
+        """
+        super(PointLikeSourceSignalMultiDimGridPDF, self).__init__(
+            axis_binnings, pdf_grid_data, norm_factor_func)
+
+        if(not isinstance(src_hypo_group_manager, SourceHypoGroupManager)):
+            raise TypeError('The src_hypo_group_manager argument must be an '
+                'instance of SourceHypoGroupManager!')
+
+        # For the calculation ndarrays for the right-ascention and declination
+        # of the different point-like sources is more efficient.
+        self._src_arr = self.source_to_array(src_hypo_group_manager.source_list)
+
+    @property
+    def source_array(self):
+        """(read-only) The numpy record ndarray holding information about the
+        source(s).
+        """
+        return self._src_arr
+
+    def source_to_array(self, sources):
+        """Converts the given sequence of PointLikeSource instances into a numpy
+        record array holding the necessary source information for calculating
+        the signal PDF values.
+
+        Parameters
+        ----------
+        sources : sequence of PointLikeSource instances
+            The sequence of PointLikeSource instances for which the signal PDF
+            values should get calculated for.
+
+        Returns
+        -------
+        arr : numpy record ndarray
+            The generated numpy record ndarray holding the necessary source
+            information needed for this signal PDF.
+        """
+        if(not issequenceof(sources, PointLikeSource)):
+            raise TypeError('The sources argument must be a sequence of '
+                'PointLikeSource instances!')
+
+        arr = np.empty(
+            (len(sources),),
+            dtype=[('ra', np.float), ('dec', np.float)],
+            order='F')
+
+        for (i, src) in enumerate(sources):
+            arr['ra'][i] = src.ra
+            arr['dec'][i] = src.dec
+
+        return arr
+
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the SourceHypoGroupManager instance that defines the sources,
+        for which the signal PDF values should get calculated.
+        This recreates the internal source array.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance that should be used for this
+            signal PDF.
+        """
+        self._src_arr = self.source_to_array(src_hypo_group_manager.source_list)
