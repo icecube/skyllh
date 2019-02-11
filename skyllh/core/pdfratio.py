@@ -531,7 +531,7 @@ class SigOverBkgPDFRatio(PDFRatio):
     fit parameters. Hence, calling the ``get_gradient`` method will result in
     throwing a RuntimeError exception.
     """
-    def __init__(self, pdf_type, signalpdf, backgroundpdf, *args, **kwargs):
+    def __init__(self, pdf_type, signalpdf, backgroundpdf, same_axes=True, *args, **kwargs):
         """Creates a new signal-over-background PDF ratio instance.
 
         Parameters
@@ -542,6 +542,9 @@ class SigOverBkgPDFRatio(PDFRatio):
             The instance of the signal PDF.
         backgroundpdf : class instance derived from `pdf_type`, IsBackgroundPDF
             The instance of the background PDF.
+        same_axes : bool
+            Flag if the signal and background PDFs are supposed to have the
+            same axes. Default is True.
         """
         super(SigOverBkgPDFRatio, self).__init__(pdf_type, *args, **kwargs)
 
@@ -550,8 +553,9 @@ class SigOverBkgPDFRatio(PDFRatio):
 
         # Check that the PDF axes ranges are the same for the signal and
         # background PDFs.
-        if(not signalpdf.axes.is_same_as(backgroundpdf.axes)):
-            raise ValueError('The signal and background PDFs do not have the same axes.')
+        if(same_axes and (not signalpdf.axes.is_same_as(backgroundpdf.axes))):
+            raise ValueError('The signal and background PDFs do not have the '
+                'same axes.')
 
     @property
     def signalpdf(self):
