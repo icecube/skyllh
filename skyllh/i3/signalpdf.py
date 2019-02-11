@@ -3,13 +3,23 @@
 import numpy as np
 
 from skyllh.core.binning import BinningDefinition
-from skyllh.core.multiproc import IsParallelizable, parallelize
-from skyllh.core.parameters import ParameterGrid, ParameterGridSet
+from skyllh.core.multiproc import (
+    IsParallelizable,
+    parallelize
+)
+from skyllh.core.parameters import (
+    ParameterGrid,
+    ParameterGridSet
+)
 from skyllh.core.smoothing import SmoothingFilter
-from skyllh.core.pdf import PDFSet, IsSignalPDF
+from skyllh.core.pdf import (
+    PDFSet,
+    IsSignalPDF
+)
 from skyllh.physics.flux import FluxModel
-
+from skyllh.physics.source import PointLikeSource
 from skyllh.i3.pdf import I3EnergyPDF
+
 
 class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     """This is the signal energy PDF for IceCube. It creates a set of
@@ -163,7 +173,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            
+
             - 'log_energy' : float
                 The logarithm of the energy value of the data event.
             - 'dec' : float
@@ -192,7 +202,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 The logarithm of the energy value of the event.
             - 'sinDec' : float
                 The sin(declination) value of the event.
-                
+
         gridfitparams : dict
             The dictionary holding the signal parameter values for which the
             signal energy probability should be calculated. Note, that the
