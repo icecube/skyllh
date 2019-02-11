@@ -12,7 +12,9 @@ from skyllh.core.py import (
 from skyllh.core.random import RandomStateService
 from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
-
+from skyllh.physics.flux import (
+    get_conversion_factor_to_internal_flux_unit
+)
 
 class SignalGenerator(object):
     """This is the general signal generator class. It does not depend on the
@@ -77,9 +79,9 @@ class SignalGenerator(object):
             for (k, (ev_indices, flux)) in enumerate(zip(ev_indices_list, flux_list)):
                 ev = data_mc[ev_indices]
                 # The weight of the event specifies the number of signal events
-                # this one event corresponds to.
+                # this one event corresponds to for the given reference flux.
                 # [weight] = GeV cm^2 sr * s * 1/(GeV cm^2 s sr)
-                weight = ev['mcweight'] * ds.livetime * 86400 * flux
+                weight = ev['mcweight'] * data.livetime * 86400 * flux
 
                 sig_candidates = np.empty(
                     (len(ev_indices),), dtype=sig_candidates_dtype, order='F'
@@ -142,6 +144,60 @@ class SignalGenerator(object):
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self._construct_signal_candidates()
+
+    def mu2flux(self, mu, per_source=False):
+        """Translate the mean number of signal events `mu` into the
+        corresponding flux. The unit of the returned flux is 1/(GeV cm^2 s).
+
+        Parameters
+        ----------
+        mu : float
+            The mean number of expected signal events for which to get the flux.
+        per_source : bool
+            Flag if the flux should be returned for each source individually
+            (True), or as the sum of all these fluxes (False). The default is
+            False.
+
+        Returns
+        -------
+        mu_flux : float | (n_sources,)-shaped numpy ndarray
+            The total flux for all sources (if `per_source = False`) that would
+            correspond to the given mean number of detected signal events `mu`.
+            If `per_source` is set to True, a numpy ndarray is returned that
+            contains the flux for each individual source.
+        """
+        # Calculate the expected mean number of signal events for each source
+        # of the source hypo group manager. For each source we can calculate the
+        # flux that would correspond to the given mean number of signal events
+        # `mu`. The total flux for all sources is then just the sum.
+
+        # The ref_N variable describes how many total signal events are expected
+        # on average for the reference fluxes.
+        ref_N = self._sig_candidates_weight_sum
+
+        # The mu_fluxes array is the flux of each source for mu mean detected
+        # signal events.
+        n_sources = self._src_hypo_group_manager.n_sources
+        mu_fluxes = np.empty((n_sources,), dtype=np.float)
+
+        shg_list = self._src_hypo_group_manager.src_hypo_group_list
+        for (shg_idx,shg) in enumerate(shg_list):
+            fluxmodel = shg.fluxmodel
+            # Calculate conversion factor from the flux model unit into the
+            # internal flux unit GeV^-1 cm^-2 s^-1.
+            toGeVcm2s = get_conversion_factor_to_internal_flux_unit(fluxmodel)
+            for k in range(shg.n_sources):
+                mask = ((self._sig_candidates['shg_idx'] == shg_idx) &
+                        (self._sig_candidates['shg_src_idx'] == k))
+                ref_N_k = np.sum(self._sig_candidates[mask]['weight']) * ref_N
+                mu_flux_k = mu / ref_N * (ref_N_k / ref_N) * fluxmodel.Phi0*toGeVcm2s
+                mu_fluxes[shg_idx*k] = mu_flux_k
+
+        if(per_source):
+            return mu_fluxes
+
+        mu_flux = np.sum(mu_fluxes)
+        return mu_flux
 
     def generate_signal_events(self, rss, mean, poisson=True):
         """Generates a given number of signal events from the signal candidate
