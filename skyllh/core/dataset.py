@@ -175,6 +175,9 @@ class Dataset(object):
 
         self.description = ''
 
+        self.exp_field_name_renaming_dict = dict()
+        self.mc_field_name_renaming_dict = dict()
+
         self._data_preparation_functions = list()
         self._binning_definitions = dict()
         self._aux_data_definitions = dict()
@@ -270,7 +273,7 @@ class Dataset(object):
         if(not isinstance(verqualifiers, dict)):
             raise TypeError('The version qualifiers must be of type dict!')
         # Check if the dictionary has format str:int.
-        for (q,v) in verqualifiers.iteritems():
+        for (q,v) in verqualifiers.items():
             if(not isinstance(q, str)):
                 raise TypeError('The version qualifier "%s" must be of type str!'%(q))
             if(not isinstance(v, int)):
@@ -278,6 +281,34 @@ class Dataset(object):
         # We need to take a deep copy in order to make sure that two datasets
         # don't share the same version qualifier dictionary.
         self._verqualifiers = deepcopy(verqualifiers)
+
+    @property
+    def exp_field_name_renaming_dict(self):
+        """The dictionary specifying the field names of the experimental data
+        which need to get renamed just after loading the data. The dictionary
+        values are the new names.
+        """
+        return self._exp_field_name_renaming_dict
+    @exp_field_name_renaming_dict.setter
+    def exp_field_name_renaming_dict(self, d):
+        if(not isinstance(d, dict)):
+            raise TypeError('The exp_field_name_renaming_dict property must '
+                'be an instance of dict!')
+        self._exp_field_name_renaming_dict = d
+
+    @property
+    def mc_field_name_renaming_dict(self):
+        """The dictionary specifying the field names of the monte-carlo data
+        which need to get renamed just after loading the data. The dictionary
+        values are the new names.
+        """
+        return self._mc_field_name_renaming_dict
+    @mc_field_name_renaming_dict.setter
+    def mc_field_name_renaming_dict(self, d):
+        if(not isinstance(d, dict)):
+            raise TypeError('The mc_field_name_renaming_dict property must '
+                'be an instance of dict!')
+        self._mc_field_name_renaming_dict = d
 
     @property
     def exp_field_names(self):
@@ -299,7 +330,7 @@ class Dataset(object):
         information about the dataset.
         """
         s = '%03d'%(self._version)
-        for (q,v) in self._verqualifiers.iteritems():
+        for (q,v) in self._verqualifiers.items():
             s += q+'%02d'%(v)
         return s
 
@@ -425,9 +456,11 @@ class Dataset(object):
         fileloader_mc  = storage.create_FileLoader(self._mc_pathfilename_list)
 
         data_exp = fileloader_exp.load_data()
+        data_exp = np_rfn.rename_fields(data_exp, self._exp_field_name_renaming_dict)
         sw_take_lap('Loaded exp data from disk.')
 
         data_mc = fileloader_mc.load_data()
+        data_mc = np_rfn.rename_fields(data_mc, self._mc_field_name_renaming_dict)
         sw_take_lap('Loaded mc data from disk.')
 
         if(livetime is None):
@@ -438,7 +471,7 @@ class Dataset(object):
 
         # Load all the auxiliary data for this dataset.
         data_aux = dict()
-        for (aux_name, aux_pathfilename_list) in self._aux_data_definitions.iteritems():
+        for (aux_name, aux_pathfilename_list) in self._aux_data_definitions.items():
             fileloader_aux = storage.create_FileLoader(aux_pathfilename_list)
             data_aux[aux_name] = fileloader_aux.load_data()
             sw_take_lap('Loaded aux data "%s" from disk.'%(aux_name))
@@ -753,7 +786,8 @@ class DatasetCollection(object):
 
         for dataset in datasets:
             if(not isinstance(dataset, Dataset)):
-                raise TypeError('The dataset object must be a sub-class of Dataset!')
+                raise TypeError('The dataset object must be a sub-class of '
+                    'Dataset!')
 
             if(dataset.name in self._datasets):
                 raise KeyError('Dataset "%s" already exists!'%(dataset.name))
@@ -771,7 +805,8 @@ class DatasetCollection(object):
             The name of the dataset that should get removed.
         """
         if(name not in self._datasets):
-            raise KeyError('Dataset "%s" is not part of the dataset collection "%s", nothing to remove!'%(name, self.name))
+            raise KeyError('Dataset "%s" is not part of the dataset '
+                'collection "%s", nothing to remove!'%(name, self.name))
 
         self._datasets.pop(name)
 
@@ -789,8 +824,37 @@ class DatasetCollection(object):
             The Dataset object holding all the information about the dataset.
         """
         if(name not in self._datasets):
-            raise KeyError('The dataset "%s" is not part of the dataset collection "%s"!'%(name, self.name))
+            raise KeyError('The dataset "%s" is not part of the dataset '
+                'collection "%s"!'%(name, self.name))
         return self._datasets[name]
+
+    def set_exp_field_name_renaming_dict(self, d):
+        """Sets the dictionary with the data field names of the experimental
+        data that needs to be renamed just after loading the data. The
+        dictionary will be set to all added data sets.
+
+        Parameters
+        ----------
+        d : dict
+            The dictionary with the old field names as keys and the new field
+            names as values.
+        """
+        for (dsname, dataset) in self._datasets.items():
+            dataset.exp_field_name_renaming_dict = d
+
+    def set_mc_field_name_renaming_dict(self, d):
+        """Sets the dictionary with the data field names of the monte-carlo
+        data that needs to be renamed just after loading the data. The
+        dictionary will be set to all added data sets.
+
+        Parameters
+        ----------
+        d : dict
+            The dictionary with the old field names as keys and the new field
+            names as values.
+        """
+        for (dsname, dataset) in self._datasets.items():
+            dataset.mc_field_name_renaming_dict = d
 
     def define_binning(self, name, binedges):
         """Defines a binning definition and adds it to all the datasets of this
@@ -803,7 +867,7 @@ class DatasetCollection(object):
         binedges : sequence
             The sequence of the bin edges, that should be used for the binning.
         """
-        for (dsname, dataset) in self._datasets.iteritems():
+        for (dsname, dataset) in self._datasets.items():
             dataset.define_binning(name, binedges)
 
     def add_data_preparation(self, func):
@@ -818,7 +882,7 @@ class DatasetCollection(object):
             instance holding the experimental and monte-carlo data.
             This function must alter the properties of the DatasetData instance.
         """
-        for (dsname, dataset) in self._datasets.iteritems():
+        for (dsname, dataset) in self._datasets.items():
             dataset.add_data_preparation(func)
 
     def remove_data_preparation(self, index=-1):
@@ -831,14 +895,14 @@ class DatasetCollection(object):
             Index of which data preparation function to remove. Default value
             is the last added function.
         """
-        for (dsname, dataset) in self._datasets.iteritems():
+        for (dsname, dataset) in self._datasets.items():
             dataset.remove_data_preparation(index=index)
 
     def update_version_qualifiers(self, verqualifiers):
         """Updates the version qualifiers of all datasets of this dataset
         collection.
         """
-        for (dsname, dataset) in self._datasets.iteritems():
+        for (dsname, dataset) in self._datasets.items():
             dataset.update_version_qualifiers(verqualifiers)
 
 
@@ -1090,7 +1154,7 @@ def generate_data_file_path(
     if(sub_path is None):
         sub_path = default_sub_path
 
-    subdict = dict( [('version', version)] + verqualifiers.items() )
+    subdict = dict( [('version', version)] + list(verqualifiers.items()) )
     sub_path = sub_path%subdict
 
     path = os.path.join(base_path, sub_path)
