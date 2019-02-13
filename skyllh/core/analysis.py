@@ -525,7 +525,7 @@ class Analysis(object):
 
         return result
 
-    def do_trials(self, N, rss, bkg_mean_list=None, sig_mean=0, ncpu=None):
+    def do_trials(self, rss, n, bkg_mean_list=None, sig_mean=0, ncpu=None):
         """Executes `do_trial` method `N` times with possible multi-processing.
         One trial performs an analysis trial by generating a pseudo data sample
         with background events and possible signal events, and performs the LLH
@@ -533,11 +533,11 @@ class Analysis(object):
 
         Parameters
         ----------
-        N : int
-            Number of trials to generate using the `do_trial` method.
         rss : RandomStateService
             The RandomStateService instance to use for generating random
             numbers.
+        n : int
+            Number of trials to generate using the `do_trial` method.
         bkg_mean_list : list of float | None
             The mean number of background events that should be generated for
             each dataset. If set to None (the default), the number of data
@@ -548,7 +548,7 @@ class Analysis(object):
             Poisson distribution with this given signal mean as mean.
         ncpu : int | None
             The number of CPUs to use, i.e. the number of subprocesses to
-            spawn.
+            spawn. If set to None, the global setting will be used.
 
         Returns
         -------
@@ -565,11 +565,11 @@ class Analysis(object):
         """
         ncpu = get_ncpu(ncpu)
         args_list = [((), {'bkg_mean_list': bkg_mean_list,
-            'sig_mean': sig_mean}) for i in range(N)]
+            'sig_mean': sig_mean}) for i in range(n)]
         result_list = parallelize(self.do_trial, args_list, ncpu, rss=rss)
 
         result_dtype = result_list[0].dtype
-        result = np.empty(N, dtype=result_dtype)
+        result = np.empty(n, dtype=result_dtype)
         result[:] = result_list[:]
 
         return result
