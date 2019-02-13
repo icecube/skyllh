@@ -117,7 +117,7 @@ def _calc_median_signal_for_ts_quantile(analysis, rss, eps, p, h0_ts_quantile, n
     range_min = ns_range[0]
     range_max = ns_range[1]
     N_scaling = 1/100
-    bkg_TS = analysis.do_trials(N*10, rss, sig_mean=0)['TS']
+    bkg_TS = analysis.do_trials(rss, N*10, sig_mean=0)['TS']
     bkg_TS_percentile = np.percentile(bkg_TS, (1-h0_ts_quantile)*100)
 
     # Initialization.
@@ -180,6 +180,6 @@ def _estimate_p_trial(analysis, N, rss, sig_mean, bkg_TS_percentile):
         Estimated trial with injected `sig_mean` signal probability for
         exceeding background test statistic threshold.
     """
-    sig_TS = analysis.do_trials(N, rss, sig_mean=sig_mean)['TS']
+    sig_TS = analysis.do_trials(rss, N, sig_mean=sig_mean)['TS']
     p_trial = sig_TS[sig_TS > bkg_TS_percentile].size/sig_TS.size
     return p_trial
