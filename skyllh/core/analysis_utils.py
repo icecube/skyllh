@@ -4,6 +4,9 @@ from __future__ import division
 
 import numpy as np
 
+"""This module contains common utility functions useful for an analysis.
+"""
+
 def estimate_sensitivity(analysis, rss, eps=0.03, p=0.9,
                          h0_ts_quantile=0.5, ns_range=[0, 5]):
     """Estimates number of signal events that should be injected to reach
