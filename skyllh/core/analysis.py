@@ -407,6 +407,73 @@ class Analysis(object):
 
         return (TS, fitparam_dict, status)
 
+    def generate_pseudo_data(self, rss, bkg_mean_list=None, sig_mean=0):
+        """Generates pseudo data with background and possible signal
+        events for each data set using the background and signal generation
+        methods of the analysis.
+
+        Parameters
+        ----------
+        rss : RandomStateService
+            The RandomStateService instance to use for generating random
+            numbers.
+        bkg_mean_list : list of float | None
+            The mean number of background events that should be generated for
+            each dataset. If set to None (the default), the background
+            generation method needs to obtain this number itself.
+        sig_mean : float
+            The mean number of signal events that should be generated for the
+            trial. The actual number of generated events will be drawn from a
+            Poisson distribution with this given signal mean as mean.
+
+        Returns
+        -------
+        n_sig : int
+            The actual number of injected signal events.
+        events_list : list of numpy record ndarray
+            The list of numpy record ndarrays containing the pseudo data events
+            for each data sample.
+        """
+        if(not isinstance(rss, RandomStateService)):
+            raise TypeError('The rss argument must be an instance of '
+                'RandomStateService!')
+
+        if(bkg_mean_list is None):
+            bkg_mean_list = [ None ]*self.n_datasets
+        if(not issequenceof(bkg_mean_list, (type(None), float))):
+            raise TypeError('The bkg_mean_list argument must be a sequence '
+                'of None and/or floats!')
+
+        # Construct the background event generator in case it's not constructed
+        # yet.
+        if(self._bkg_generator is None):
+            self.construct_background_generator()
+
+        # Generate pseudo data for each dataset with background and possible
+        # signal events.
+        events_list = [
+            self._bkg_generator.generate_background_events(
+                rss, ds_idx, bkg_mean_list[ds_idx])
+            for ds_idx in range(self.n_datasets)
+        ]
+
+        n_sig = 0
+        if(sig_mean > 0):
+            # Generate signal events with the given mean number of signal
+            # events.
+            # Construct the signal generator if not done yet.
+            if(self._sig_generator is None):
+                self.construct_signal_generator()
+            (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
+                rss, sig_mean)
+            # Inject the signal events to the generated background data.
+            for (idx, sig_events) in ds_sig_events_dict.items():
+                bkg_events = events_list[idx]
+                sig_events = sig_events[list(bkg_events.dtype.names)]
+                events_list[idx] = np.append(bkg_events, sig_events)
+
+        return (n_sig, events_list)
+
     def do_trial(self, rss, bkg_mean_list=None, sig_mean=0):
         """Performs an analysis trial by generating a pseudo data sample with
         background events and possible signal events, and performs the LLH
@@ -419,8 +486,8 @@ class Analysis(object):
             numbers.
         bkg_mean_list : list of float | None
             The mean number of background events that should be generated for
-            each dataset. If set to None (the default), the number of data
-            events of each data sample will be used as mean.
+            each dataset. If set to None (the default), the background
+            generation method needs to obtain this number itself.
         sig_mean : float
             The mean number of signal events that should be generated for the
             trial. The actual number of generated events will be drawn from a
@@ -439,45 +506,7 @@ class Analysis(object):
             [<fitparam_name> ... : float ]
                 Any additional fit parameters of the LLH function.
         """
-        if(not isinstance(rss, RandomStateService)):
-            raise TypeError('The rss argument must be an instance of '
-                'RandomStateService!')
-
-        if(bkg_mean_list is None):
-            bkg_mean_list = [ float(len(data.exp)) for data in self._data_list ]
-        if(not issequenceof(bkg_mean_list, float)):
-            raise TypeError('The bkg_mean_list argument must be a sequence '
-                'of floats!')
-
-        # Construct the background event generator in case it's not constructed
-        # yet.
-        if(self._bkg_generator is None):
-            self.construct_background_generator()
-
-        # Generate pseudo data for each dataset with background and possible
-        # signal events.
-        events_list = []
-        for (idx, data) in enumerate(self._data_list):
-            events_list.append(
-                self._bkg_generator.generate_background_events(rss, idx, bkg_mean_list[idx]))
-
-        n_sig = 0
-        if(sig_mean > 0):
-            # Generate signal events with the given mean number of signal
-            # events.
-            # Construct the signal generator if not done yet.
-            if(self._sig_generator is None):
-                self.construct_signal_generator()
-            (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
-                rss, sig_mean)
-            # Inject the signal events to the generated background data.
-            for (idx, sig_events) in ds_sig_events_dict.items():
-                field_name_list = list(self._dataset_list[idx].exp_field_names)
-                bkg_events = events_list[idx]
-                events_list[idx] = np.append(
-                    bkg_events,
-                    sig_events[field_name_list]
-                )
+        (n_sig, events_list) = self.generate_pseudo_data(rss, bkg_mean_list, sig_mean)
 
         self.initialize_trial(events_list)
 
