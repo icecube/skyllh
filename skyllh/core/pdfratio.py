@@ -4,9 +4,24 @@ import abc
 import itertools
 import numpy as np
 
-from skyllh.core.py import typename, classname, issequenceof, range
-from skyllh.core.parameters import FitParameter, FitParameterManifoldGridInterpolationMethod, ParabolaFitParameterInterpolationMethod
-from skyllh.core.pdf import SpatialPDF, PDFSet, IsSignalPDF, IsBackgroundPDF
+from skyllh.core.py import (
+    classname,
+    float_cast,
+    issequenceof,
+    range,
+    typename
+)
+from skyllh.core.parameters import (
+    FitParameter,
+    FitParameterManifoldGridInterpolationMethod,
+    ParabolaFitParameterInterpolationMethod
+)
+from skyllh.core.pdf import (
+    PDFSet,
+    IsBackgroundPDF,
+    IsSignalPDF,
+    SpatialPDF
+)
 
 
 class PDFRatio(object):
@@ -531,7 +546,8 @@ class SigOverBkgPDFRatio(PDFRatio):
     fit parameters. Hence, calling the ``get_gradient`` method will result in
     throwing a RuntimeError exception.
     """
-    def __init__(self, pdf_type, signalpdf, backgroundpdf, same_axes=True, *args, **kwargs):
+    def __init__(self, pdf_type, signalpdf, backgroundpdf, same_axes=True,
+        zero_bkg_ratio_value=1., *args, **kwargs):
         """Creates a new signal-over-background PDF ratio instance.
 
         Parameters
@@ -545,6 +561,9 @@ class SigOverBkgPDFRatio(PDFRatio):
         same_axes : bool
             Flag if the signal and background PDFs are supposed to have the
             same axes. Default is True.
+        zero_bkg_ratio_value : float
+            The value of the PDF ratio to take when the background PDF value
+            is zero. This is to avoid division by zero. Default is 1.
         """
         super(SigOverBkgPDFRatio, self).__init__(pdf_type, *args, **kwargs)
 
@@ -556,6 +575,8 @@ class SigOverBkgPDFRatio(PDFRatio):
         if(same_axes and (not signalpdf.axes.is_same_as(backgroundpdf.axes))):
             raise ValueError('The signal and background PDFs do not have the '
                 'same axes.')
+
+        self.zero_bkg_ratio_value = zero_bkg_ratio_value
 
     @property
     def signalpdf(self):
@@ -582,6 +603,18 @@ class SigOverBkgPDFRatio(PDFRatio):
         if(not isinstance(pdf, IsBackgroundPDF)):
             raise TypeError('The backgroundpdf property must be an instance of IsBackgroundPDF!')
         self._backgroundpdf = pdf
+
+    @property
+    def zero_bkg_ratio_value(self):
+        """The value of the PDF ratio to take when the background PDF value
+        is zero. This is to avoid division by zero.
+        """
+        return self._zero_bkg_ratio_value
+    @zero_bkg_ratio_value.setter
+    def zero_bkg_ratio_value(self, v):
+        v = float_cast(v, 'The zero_bkg_ratio_value must be castable into a '
+            'float!')
+        self._zero_bkg_ratio_value = v
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Calls the ``change_source_hypo_group_manager`` method of the signal
@@ -612,7 +645,6 @@ class SigOverBkgPDFRatio(PDFRatio):
         events : numpy record ndarray
             The numpy record ndarray holding the data events for which the PDF
             ratio values should get calculated.
-
         fitparams : None
             Unused interface argument.
 
@@ -627,7 +659,13 @@ class SigOverBkgPDFRatio(PDFRatio):
         sigprob = self._signalpdf.get_prob(events)
         bkgprob = self._backgroundpdf.get_prob(events)
 
-        ratios = sigprob / bkgprob
+        # Select only the events, where background pdf is greater than zero.
+        m = (bkgprob > 0)
+        minv = np.invert(m)
+
+        ratios = np.empty_like(events, dtype=np.float)
+        ratios[m] = sigprob[m] / bkgprob[m]
+        ratios[minv] = self._zero_bkg_ratio_value
 
         return ratios
 
@@ -636,7 +674,8 @@ class SigOverBkgPDFRatio(PDFRatio):
         because this PDF ratio class handles only spatial PDFs without any fit
         parameters.
         """
-        raise RuntimeError('The SigOverBkgPDFRatio handles only PDFs with no fit parameters! So calling get_gradient is meaningless!')
+        raise RuntimeError('The SigOverBkgPDFRatio handles only PDFs with no '
+            'fit parameters! So calling get_gradient is meaningless!')
 
 
 class SigSetOverBkgPDFRatio(PDFRatio):
@@ -661,6 +700,7 @@ class SigSetOverBkgPDFRatio(PDFRatio):
             discrete signal fit parameters.
         backgroundpdf : class instance derived from ``pdf_type``, and
                         IsBackgroundPDF
+            The background PDF instance.
         interpolmethod : class of FitParameterManifoldGridInterpolationMethod | None
             The class implementing the fit parameter interpolation method for
             the PDF ratio manifold grid.
