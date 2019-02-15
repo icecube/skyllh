@@ -58,7 +58,8 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
     mean number of background events and the probability of each monte-carlo
     event.
     """
-    def __init__(self, get_event_prob_func, get_mean_func=None):
+    def __init__(self, get_event_prob_func, get_mean_func=None,
+                 unique_events=False):
         """Creates a new instance of the MCDataSamplingBkgGenMethod class.
 
         Parameters
@@ -78,11 +79,15 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             This argument can be `None`, which means that the mean number of
             background events to generate needs to get specified through the
             `generate_events` method.
+        unique_events : bool
+            Flag if unique events should be drawn from the monte-carlo (True),
+            or if events can be drawn several times (False). Default is False.
         """
         super(MCDataSamplingBkgGenMethod, self).__init__()
 
         self.get_event_prob_func = get_event_prob_func
         self.get_mean_func = get_mean_func
+        self.unique_events = unique_events
 
         # Define cache members to cache the background probabilities for each
         # monte-carlo event. The probabilities change only if the data changes.
@@ -124,6 +129,18 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                 raise TypeError('The function provided for the get_mean_func '
                     'property must have 2 arguments!')
         self._get_mean_func = func
+
+    @property
+    def unique_events(self, ):
+        """Flag if unique events should be drawn from the monto-carlo (True),
+        or if the same event can be drawn multiple times from the monte-carlo.
+        """
+        return self._unique_events
+    @unique_events.setter
+    def unique_events(self, b):
+        if(not isinstance(b, bool)):
+            raise TypeError('The unique_events property must be of type bool!')
+        self._unique_events = b
 
     def generate_events(self, rss, dataset, data, mean):
         """Generates background events  a `mean` number of background
@@ -175,7 +192,9 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         n_bkg = rss.random.poisson(mean)
 
         # Draw the actual background events from the monto-carlo data set.
-        bkg_events = rss.random.choice(data.mc, size=n_bkg, p=self._cache_mc_event_bkg_prob)
+        bkg_events = rss.random.choice(
+            data.mc, size=n_bkg, p=self._cache_mc_event_bkg_prob,
+            replace=(not self._unique_events))
 
         # Remove MC specific data fields from the background events record
         # array. So the result contains only experimental data fields.
