@@ -16,6 +16,7 @@ from skyllh.core.py import (
     float_cast
 )
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.detsigyield import DetSigYield
 from skyllh.core.parameters import (
     SourceFitParameterMapper,
@@ -35,6 +36,8 @@ class LLHRatio(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
+        """Creates a new LLH ratio function instance.
+        """
         super(LLHRatio, self).__init__()
 
     @abc.abstractmethod
@@ -73,11 +76,18 @@ class TCLLHRatio(LLHRatio):
     # instance member, because it is supposed to be the same for all instances.
     _one_plus_alpha = 1e-3
 
-    def __init__(self, pdfratios, src_fitparam_mapper):
+    def __init__(self, src_hypo_group_manager, tdm, pdfratios,
+                 src_fitparam_mapper):
         """Constructor of the two-component log-likelihood ratio function.
 
         Parameters
         ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance that defines the source
+            hypotheses.
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial event data and
+            additional data fields for this LLH ratio function.
         pdfratios : sequence of PDFRatio
             The sequence of PDFRatio instances. A PDFRatio instance might depend
             on none, one, or several fit parameters.
@@ -91,12 +101,16 @@ class TCLLHRatio(LLHRatio):
         """
         super(TCLLHRatio, self).__init__()
 
+        self.src_hypo_group_manager = src_hypo_group_manager
+        self.tdm = tdm
         self.pdfratio_list = pdfratios
         self.src_fitparam_mapper = src_fitparam_mapper
 
+        # Calculate the data fields that solely depend on source parameters.
+        self._tdm.calculate_source_data_fields(src_hypo_group_manager)
+
         # These properties will be set via the ``initialize_for_new_trial``
         # method.
-        self._events = events = None
         self._n_pure_bkg_events = None
 
         # Define cache variables for evaluate method to store values needed for
@@ -106,22 +120,36 @@ class TCLLHRatio(LLHRatio):
         self._cache_nsgrad_i = None
 
     @property
-    def events(self):
-        """The numpy record array holding the data events, which should get
-        evaluated.
+    def src_hypo_group_manager(self):
+        """The SourceHypoGroupManager instance that defines the source
+        hypotheses.
         """
-        return self._events
-    @events.setter
-    def events(self, arr):
-        if(not isinstance(arr, np.ndarray)):
-            raise TypeError('The events property must be an instance of ndarray!')
-        self._events = arr
+        return self._src_hypo_group_manager
+    @src_hypo_group_manager.setter
+    def src_hypo_group_manager(self, manager):
+        if(not isinstance(manager, SourceHypoGroupManager)):
+            raise TypeError('The src_hypo_group_manager property must be an '
+                'instance of SourceHypoGroupManager!')
+        self._src_hypo_group_manager = manager
+
+    @property
+    def tdm(self):
+        """The TrialDataManager instance that holds the trial event data and
+        additional data fields for this LLH ratio function.
+        """
+        return self._tdm
+    @tdm.setter
+    def tdm(self, manager):
+        if(not isinstance(manager, TrialDataManager)):
+            raise TypeError('The tdm property must be an instance of '
+                'TrialDataManager!')
+        self._tdm = manager
 
     @property
     def n_events(self):
         """(read-only) The number of events which should get evaluated.
         """
-        return len(self._events)
+        return self._tdm.n_events
 
     @property
     def n_pure_bkg_events(self):
@@ -166,6 +194,18 @@ class TCLLHRatio(LLHRatio):
                 'instance of SourceFitParameterMapper!')
         self._src_fitparam_mapper = mapper
 
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the source hypothesis group manager of this two-component LLH
+        ratio function.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance.
+        """
+        self.src_hypo_group_manager = src_hypo_group_manager
+        self._tdm.change_source_hypo_group_manager(src_hypo_group_manager)
+
     def initialize_for_new_trial(self, events, n_pure_bkg_events):
         """Initializes the log-likelihood ratio function for a new trial.
         It must be re-implemented by the derived class, which calls the
@@ -180,11 +220,10 @@ class TCLLHRatio(LLHRatio):
             The number of pure background events, which are not part of
             `events`, but must be considered for the log_lambda value.
         """
-        self.events = events
-        self.n_pure_bkg_events = n_pure_bkg_events
+        self._tdm.initialize_for_new_trial(
+            self._src_hypo_group_manager, events)
 
-        for pdfratio in self._pdfratio_list:
-            pdfratio.initialize_for_new_trial(events)
+        self.n_pure_bkg_events = n_pure_bkg_events
 
     def calculate_log_lambda_and_grads(self, fitparam_values, N, ns, Xi, dXi_ps):
         """Calculates the log(Lambda) value and its gradient for each global fit
@@ -313,12 +352,19 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
     log-likelihood ratio function for a list of independent PDFRatio instances
     assuming a single source.
     """
-    def __init__(self, pdfratios, src_fitparam_mapper):
+    def __init__(self, src_hypo_group_manager, tdm, pdfratios,
+                 src_fitparam_mapper):
         """Constructor for creating a 2-component, i.e. signal and background,
         log-likelihood ratio function assuming a single source.
 
         Parameters
         ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance that defines the source
+            hypotheses.
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial event data and
+            additional data fields for this LLH ratio function.
         pdfratios : list of PDFRatio
             The list of PDFRatio instances. A PDFRatio instance might depend on
             none, one, or several fit parameters.
@@ -334,7 +380,7 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
             raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
 
         super(SingleSourceTCLLHRatio, self).__init__(
-            pdfratios, src_fitparam_mapper)
+            src_hypo_group_manager, tdm, pdfratios, src_fitparam_mapper)
 
         # Construct a PDFRatio array arithmetic object specialized for a single
         # source. This will pre-calculate the PDF ratio values for all PDF ratio
@@ -357,7 +403,7 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         """
         super(SingleSourceTCLLHRatio, self).initialize_for_new_trial(
             events, n_pure_bkg_events)
-        self._pdfratioarray.initialize_for_new_trial(events)
+        self._pdfratioarray.initialize_for_new_trial(self._tdm)
 
     def evaluate(self, fitparam_values):
         """Evaluates the log-likelihood ratio function for the given set of
@@ -379,21 +425,28 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
             parameter and ns.
             The first element is the gradient for ns.
         """
+        # Define local variables for avaid (.)-lookup procedure.
+        tdm = self._tdm
+        pdfratioarray = self._pdfratioarray
+
         ns = fitparam_values[0]
 
-        N = len(self._events) + self._n_pure_bkg_events
+        N = self.n_events + self._n_pure_bkg_events
 
         # Create the fitparams dictionary with the fit parameter names and
         # values.
         fitparams = self._src_fitparam_mapper.get_src_fitparams(fitparam_values[1:])
 
+        # Calculate the data fields that depend on fit parameter values.
+        tdm.calculate_fitparam_data_fields(self._src_hypo_group_manager, fitparams)
+
         # Calculate the PDF ratio values of all PDF ratio objects, which depend
         # on any fit parameter.
-        self._pdfratioarray.calculate_pdfratio_values(fitparams)
+        pdfratioarray.calculate_pdfratio_values(tdm, fitparams)
 
         # Calculate the product of all the PDF ratio values for each (selected)
         # event.
-        Ri = self._pdfratioarray.get_ratio_product()
+        Ri = pdfratioarray.get_ratio_product()
 
         # Calculate Xi for each (selected) event.
         Xi = (Ri - 1.) / N
@@ -403,10 +456,10 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         for (idx, fitparam_value) in enumerate(fitparam_values[1:]):
             fitparam_name = self._src_fitparam_mapper.get_src_fitparam_name(idx)
             # Get the PDFRatio instance from which we need the derivative from.
-            pdfratio = self._pdfratioarray.get_pdfratio(idx)
+            pdfratio = pdfratioarray.get_pdfratio(idx)
 
             # Calculate the derivative of Ri.
-            dRi = pdfratio.get_gradient(self.events, fitparams, fitparam_name) * self._pdfratioarray.get_ratio_product(excluded_fitparam_idx=idx)
+            dRi = pdfratio.get_gradient(tdm, fitparams, fitparam_name) * pdfratioarray.get_ratio_product(excluded_fitparam_idx=idx)
 
             # Calculate the derivative of Xi w.r.t. the fit parameter.
             dXi_ps[idx] = dRi / N
@@ -591,7 +644,7 @@ class DatasetSignalWeights(object):
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self._src_arr_list = self._create_src_arr_list(
-            self._src_hypo_group_manager, self._detsigeff_arr)
+            self._src_hypo_group_manager, self._detsigyield_arr)
 
     @abc.abstractmethod
     def __call__(self, fitparam_values):
@@ -777,6 +830,19 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         for llhratio in self._llhratio_list:
             n_selected_events += llhratio.n_selected_events
         return n_selected_events
+
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the source hypo group manager of all objects of this LLH
+        ratio function, hence, calling the `change_source_hypo_group_manager`
+        method of all TCLLHRatio objects of this LLHRatio instance.
+        """
+        # Change the source hypo group manager of the DatasetSignalWeights
+        # instance.
+        self._dataset_signal_weights.change_source_hypo_group_manager(
+            src_hypo_group_manager)
+
+        for llhratio in self._llhratio_list:
+            llhratio.change_source_hypo_group_manager(src_hypo_group_manager)
 
     def evaluate(self, fitparam_values):
         """Evaluates the composite log-likelihood-ratio function and returns its

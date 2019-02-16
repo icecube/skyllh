@@ -188,19 +188,20 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         # can just use an arbitrary object to verify the data.
         self.get_pdf(self.pdf_keys[0]).assert_is_valid_for_exp_data(data_exp)
 
-    def get_prob(self, events, gridfitparams):
+    def get_prob(self, tdm, gridfitparams):
         """Calculates the signal energy probability (in logE) of each event for
         a given set of signal fit parameters on a grid.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The array holding the event data. The following data fields must
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the data events for which the
+            probability should be calculated for. The following data fields must
             exist:
 
             - 'log_energy' : float
                 The logarithm of the energy value of the event.
-            - 'sinDec' : float
+            - 'sin_dec' : float
                 The sin(declination) value of the event.
 
         gridfitparams : dict
@@ -223,5 +224,5 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         """
         i3energypdf = self.get_pdf(gridfitparams)
 
-        prob = i3energypdf.get_prob(events)
+        prob = i3energypdf.get_prob(tdm)
         return prob

@@ -150,234 +150,6 @@ class PDFAxes(ObjectCollection):
         return True
 
 
-class PDFDataField(object):
-    """This class defines a data field and its calculation that is used by a
-    PDF class instance. The calculation is defined through an external function
-    with the call signature: `__call__(pdf, events, fitparams)`, where `pdf` is
-    the PDF class instance, and `events` is the numpy record ndarray holding the
-    event data. The return type of this function must be a numpy ndarray.
-    """
-    def __init__(self, name, func):
-        """Creates a new instance of a PDFDataField instance.
-
-        Parameters
-        ----------
-        name : str
-            The name of the data field. It serves as the identifier for the
-            data field.
-        func : callable
-            The function that calculates the new data field. The call signature
-            must be `__call__(pdf, events, fitparams)`, where `pdf` is the PDF
-            class instance, and `events` is the numpy record ndarray holding the
-            event data. The return type of this function must be a numpy
-            ndarray.
-        """
-        super(PDFDataField, self).__init__()
-
-        self.name = name
-        self.func = func
-
-        # Define the member variable that holds the numpy ndarray with the data
-        # field values.
-        self._values = None
-
-    @property
-    def name(self):
-        """The name of the data field.
-        """
-        return self._name
-    @name.setter
-    def name(self, name):
-        if(not isinstance(name, str)):
-            raise TypeError('The name property must be an instance of str!')
-        self._name = name
-
-    @property
-    def func(self):
-        """The function that calculates the data field values.
-        """
-        return self._func
-    @func.setter
-    def func(self, f):
-        if(not callable(f)):
-            raise TypeError('The func property must be a callable object!')
-        if(not func_has_n_args(f, 3)):
-            raise TypeError('The func property must be a function with 3 '
-                'arguments!')
-        self._func = f
-
-    @property
-    def values(self):
-        """(read-only) The calculated data values of the data field.
-        """
-        return self._values
-
-    def calculate(self, pdf, events, fitparams):
-        """Calculates the data field values utilizing the defined external
-        function.
-
-        Parameters
-        ----------
-        pdf : PDF instance
-            The PDF instance for which to calculate the PDF data field values.
-        events : numpy record ndarray
-            The numpy record ndarray holding the event data.
-        fitparams : dict
-            The dictionary holding the current fit parameter names and values.
-        """
-        self._values = self._func(pdf, events, fitparams)
-
-
-class PDFDataFields(object):
-    """This class provides the functionality of additional event data fields for
-    PDF classes, that are required by the PDF class and have to be calculated
-    based on properties of the PDF class instance.
-    """
-    def __init__(self):
-        super(PDFDataFields, self).__init__()
-
-        self._precalc_data_fields = []
-        self._precalc_data_field_reg = dict()
-
-        self._dynamic_data_fields = []
-        self._dynamic_data_field_reg = dict()
-
-    def add(self, name, func, precalc=False):
-        """Adds a new PDF data field.
-
-        Parameters
-        ----------
-        name : str
-            The name of the data field. It serves as the identifier for the
-            data field.
-        func : callable
-            The function that calculates the new data field. The call signature
-            must be `__call__(pdf, events, fitparams)`, where `pdf` is the PDF
-            class instance, `events` is the numpy record ndarray holding the
-            event data, and fitparams is the dictionary holding the current fit
-            parameter values. The return type of this function must be a numpy
-            ndarray.
-        precalc : bool
-            Flag if this data field can be pre-calculated whenever a new trial
-            is being initialized. Otherwise the data field gets calculated for
-            every PDF value evaluation, which would be required in cases where
-            the calculation of the data field depends on fit parameter values.
-        """
-        if(not isinstance(precalc, bool)):
-            raise TypeError('The precalc argument must be an instance of bool!')
-
-        if((name in self._precalc_data_field_reg) or
-           (name in self._dynamic_data_field_reg)):
-            raise KeyError('The PDF data field "%s" is already defined!'%(name))
-
-        data_field = PDFDataField(name, func)
-
-        if(precalc is True):
-            self._precalc_data_fields.append(data_field)
-            self._precalc_data_field_reg[name] = data_field
-        else:
-            self._dynamic_data_fields.append(data_field)
-            self._dynamic_data_field_reg[name] = data_field
-
-    def __contains__(self, name):
-        """Checks if the given data field is contained in this data field
-        collection.
-
-        Parameters
-        ----------
-        name : str
-            The name of the data field.
-
-        Returns
-        -------
-        check : bool
-            True if the data field is contained in this data field collection,
-            False otherwise.
-        """
-        if(name in self._precalc_data_field_reg):
-            return True
-        if(name in self._dynamic_data_field_reg):
-            return True
-
-        return False
-
-    def __getitem__(self, name):
-        """Retrieves the values of a given data field.
-
-        Parameters
-        ----------
-        name : str
-            The name of the data field.
-
-        Returns
-        -------
-        values : numpy ndarray
-            The numpy ndarray holding the calculated field values.
-
-        Raises
-        ------
-        KeyError
-            If the given data field is not defined.
-        """
-        if(name in self._precalc_data_field_reg):
-            return self._precalc_data_field_reg[name].values
-        if(name in self._dynamic_data_field_reg):
-            return self._dynamic_data_field_reg[name].values
-
-        raise KeyError('The PDF data field "%s" is not defined!'%(name))
-
-    def get_field_values(self, name):
-        """Retrieves the values of a given data field. This is equivalent to
-        __getitem__(name).
-
-        Parameters
-        ----------
-        name : str
-            The name of the data field.
-
-        Returns
-        -------
-        values : numpy ndarray
-            The numpy ndarray holding the calculated field values.
-
-        Raises
-        ------
-        KeyError
-            If the given data field is not defined.
-        """
-        return self.__getitem__(name)
-
-    def calc_precalc_data_fields(self, pdf, events):
-        """Calculates the data values of the data fields that can be
-        pre-calculated.
-
-        Parameters
-        ----------
-        pdf : PDF instance
-            The PDF instance for which the data fields should get calculated.
-        events : numpy record ndarray
-            The numpy record ndarray holding the event data.
-        """
-        fitparams = dict()
-        for data_field in self._precalc_data_fields:
-            data_field.calculate(pdf, events, fitparams)
-
-    def calc_dynamic_data_fields(self, pdf, events, fitparams):
-        """Calculates the data values of the dynamic data fields.
-
-        Parameters
-        ----------
-        pdf : PDF instance
-            The PDF instance for which the data fields should get calculated.
-        events : numpy record ndarray
-            The numpy record ndarray holding the event data.
-        fitparams : dict | None
-            The dictionary holding the current fit parameter names and values.
-        """
-        for data_field in self._dynamic_data_fields:
-            data_field.calculate(pdf, events, fitparams)
-
-
 class PDF(object):
     """The abstract base class for all probability distribution functions (PDF)
     models.
@@ -391,7 +163,6 @@ class PDF(object):
         super(PDF, self).__init__(*args, **kwargs)
 
         self._axes = PDFAxes()
-        self._data_fields = PDFDataFields()
 
     @property
     def axes(self):
@@ -399,14 +170,6 @@ class PDF(object):
         dimensions of the PDF.
         """
         return self._axes
-
-    @property
-    def data_fields(self):
-        """The PDFDataFields instance providing the functionality to define
-        additional data fields that depend on the properties of the PDF class
-        instance.
-        """
-        return self._data_fields
 
     @property
     def ndim(self):
@@ -422,53 +185,6 @@ class PDF(object):
         if(not isinstance(axis, PDFAxis)):
             raise TypeError('The axis argument must be an instance of PDFAxis!')
         self._axes += axis
-
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
-        """This method must be reimplemented by the derived class if the
-        derived PDF class relies on the source hypothesis group manager.
-        """
-        pass
-
-    def initialize_for_new_trial(self, events):
-        """This method must be reimplemented by the derived class if the
-        derived PDF class requires notification whenever a new data trial with
-        the given events is being initialized. This base method calculates PDF
-        data fields that can be pre-calculated. Hence, this method needs to be
-        called by the derived implementation of this method.
-        """
-        self._data_fields.calc_precalc_data_fields(self, events)
-
-    def calc_dynamic_data_fields(self, events, fitparams):
-        """Calculates the dynamic data fields, that depend on current fit
-        parameter values.
-        """
-        self._data_fields.calc_dynamic_data_fields(self, events, fitparams)
-
-    def get_data(self, name, eval_data):
-        """Gets the data for the given data field name. The data is stored
-        either in the eval_data numpy record array or in one of the additional
-        PDF data fields. Data from the evaluation data is prefered.
-
-        Parameters
-        ----------
-        name : str
-            The name of the data field for which to retrieve the data.
-        eval_data : numpy record ndarray
-            The data that is going to be evaluated.
-
-        Returns
-        -------
-        data : numpy ndarray
-            The data of the requested data field.
-
-        Raises
-        ------
-        KeyError
-            If the given PDF data field is not defined.
-        """
-        if(name in eval_data.dtype.names):
-            return eval_data[name]
-        return self._data_fields[name]
 
     @abc.abstractmethod
     def assert_is_valid_for_exp_data(self, data_exp):
@@ -491,14 +207,14 @@ class PDF(object):
         pass
 
     @abc.abstractmethod
-    def get_prob(self, events, fitparams):
+    def get_prob(self, trial_data_manager, fitparams):
         """This abstract method is supposed to calculate the probability for
         the specified events given the specified fit parameters.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the
+        trial_data_manager : TrialDataManager instance
+            The TrialDataManager instance holding the data events for which the
             probability should be calculated for. What data fields are required
             is defined by the derived PDF class and depends on the application.
         fitparams : dict
@@ -625,11 +341,11 @@ class MultiDimGridPDF(PDF):
         norm_factor_func : callable | None
             The function that calculates a possible required normalization
             factor for the PDF value based on the event properties.
-            The call signature of this function
-            must be `__call__(pdf, events, fitparams)`, where `pdf` is this PDF
-            instance, `events` is a numpy record ndarray holding the events for
-            which to calculate the PDF values, and `fitparams` is a dictionary
-            with the current fit parameter names and values.
+            The call signature of this function must be
+            `__call__(pdf, tdm, fitparams)`, where `pdf` is this PDF
+            instance, `tdm` is an instance of TrialDataManager holding the
+            events for which to calculate the PDF values, and `fitparams` is a
+            dictionary with the current fit parameter names and values.
         """
         super(MultiDimGridPDF, self).__init__()
 
@@ -672,12 +388,11 @@ class MultiDimGridPDF(PDF):
     def norm_factor_func(self):
         """The function that calculates the possible required normalization
         factor. The call signature of this function must be
-        `__call__(pdf, events, fitparams)`, where `pdf` is this PDF instance,
-        `events` is a numpy record ndarray holding the events for which to
-        calculate the PDF values, and `fitparams` is a dictionary with the
-        current fit parameter names and values.
-        This property can be set to `None`. In that case a unity returning
-        function is used.
+        `__call__(pdf, tdm, fitparams)`, where `pdf` is this PDF
+        instance, `tdm` is an instance of TrialDataManager holding the events
+        for which to calculate the PDF values, and `fitparams` is a dictionary
+        with the current fit parameter names and values. This property can be
+        set to `None`. In that case a unity returning function is used.
         """
         return self._norm_factor_func
     @norm_factor_func.setter
@@ -685,7 +400,7 @@ class MultiDimGridPDF(PDF):
         if(func is None):
             # Define a normalization function that just returns 1 for each
             # event.
-            func = lambda pdf, events, fitparams: np.ones_like(events)
+            func = lambda pdf, tdm, fitparams: np.ones((tdm.n_events,), dtype=np.float)
         if(not callable(func)):
             raise TypeError('The norm_factor_func property must be a callable '
                 'object!')
@@ -700,15 +415,16 @@ class MultiDimGridPDF(PDF):
         """
         pass
 
-    def assert_is_valid_for_eval_data(self, eval_data):
+    def assert_is_valid_for_trial_data(self, trial_data_manager):
         """Checks if the PDF is valid for all values of the given evaluation
         data. The evaluation data values must be within the ranges of the PDF
         axes.
 
         Parameters
         ----------
-        eval_data : numpy record ndarray
-            The data that is going to be evaluated.
+        trial_data_manager : TrialDataManager instance
+            The instance of TrialDataManager that holds the data which is going
+            to be evaluated.
 
         Raises
         ------
@@ -716,23 +432,23 @@ class MultiDimGridPDF(PDF):
             If any of the evaluation data is out of its axis range.
         """
         for axis in self._axes:
-            data = self.get_data(axis.name, eval_data)
+            data = trial_data_manager.get_data(axis.name)
             if(np.any(data < axis.vmin) or
                np.any(data > axis.vmax)
             ):
-                raise ValueError('Some of the evaluation data for PDF axis '
+                raise ValueError('Some of the trial data for PDF axis '
                     '"%s" is out of range (%g,%g)!'%(
                     axis.name, axis.vmin, axis.vmax))
 
-    def get_prob(self, events, fitparams=None):
-        """Calculates the probability for the specified events given the
+    def get_prob(self, tdm, fitparams=None):
+        """Calculates the probability for the trial events given the
         specified fit parameters.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the
-            probability should be calculated.
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial event data for which
+            the PDF values should get calculated.
         fitparams : dict | None
             The dictionary containing the fit parameters for which the
             probability should get calculated.
@@ -742,13 +458,10 @@ class MultiDimGridPDF(PDF):
         prob : (N_events,) shaped numpy ndarray
             The 1D numpy ndarray with the probability for each event.
         """
-        # Calculate possible dynamic data fields.
-        self.calc_dynamic_data_fields(events, fitparams)
-
-        x = np.array([ self.get_data(axis.name, events) for axis in self._axes ]).T
+        x = np.array([ tdm.get_data(axis.name) for axis in self._axes ]).T
         prob = self._pdf(x)
 
-        norm = self._norm_factor_func(self, events, fitparams)
+        norm = self._norm_factor_func(self, tdm, fitparams)
         prob *= norm
 
         return prob
@@ -886,13 +599,6 @@ class PDFSet(object):
 
         pdf = self._gridfitparams_hash_pdf_dict[gridfitparams_hash]
         return pdf
-
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
-        """Calls the ``change_source_hypo_group_manager`` method of all the PDF
-        instances added to this PDF set.
-        """
-        for (key, pdf) in self._gridfitparams_hash_pdf_dict.items():
-            pdf.change_source_hypo_group_manager(src_hypo_group_manager)
 
 
 class IsBackgroundPDF(object):

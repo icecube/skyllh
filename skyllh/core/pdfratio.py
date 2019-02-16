@@ -98,32 +98,17 @@ class PDFRatio(object):
         """
         return []
 
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
-        """This method must be reimplemented by the derived class if necessary.
-        It is supposed to change the SourceHypoGroupManager instance of the PDF
-        instances, which rely on it. By definition these are the signal PDFs.
-        """
-        pass
-
-    def initialize_for_new_trial(self, events):
-        """This method must be reimplemented by the derived class if necessary.
-        It is supposed to tell the PDF ratio class and hence its assigned signal
-        and background classes that a new trial is being initialized with the
-        given events.
-        """
-        pass
-
     @abc.abstractmethod
-    def get_ratio(self, events, fitparams=None):
-        """Retrieves the PDF ratio value for each given event, given the given
-        set of fit parameters. This method is called during the likelihood
-        maximization process.
+    def get_ratio(self, tdm, fitparams=None):
+        """Retrieves the PDF ratio value for each given trial data event, given
+        the given set of fit parameters. This method is called during the
+        likelihood maximization process.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the PDF
-            ratio values should get calculated.
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial data events for
+            which the PDF ratio values should get calculated.
         fitparams : dict | None
             The dictionary with the fit parameter name-value pairs.
             It's supposed to be set to None, if the PDF ratio does not depend
@@ -139,16 +124,16 @@ class PDFRatio(object):
         pass
 
     @abc.abstractmethod
-    def get_gradient(self, events, fitparams, fitparam_name):
-        """Retrieves the PDF ratio gradient for the parameter ``pidx`` for each
-        given event, given the given set of fit parameters. This method is
-        called during the likelihood maximization process.
+    def get_gradient(self, tdm, fitparams, fitparam_name):
+        """Retrieves the PDF ratio gradient for the parameter ``fitparam_name``
+        for each given trial event, given the given set of fit parameters.
+        This method is called during the likelihood maximization process.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the PDF
-            ratio gradients should get calculated.
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial data events for
+            which the PDF ratio values should get calculated.
         fitparams : dict
             The dictionary with the fit parameter values.
         fitparam_name : str
@@ -185,12 +170,10 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             The list of fit parameters. The order must match the fit parameter
             order of the minimizer.
         """
+        super(SingleSourcePDFRatioArrayArithmetic, self).__init__()
+
         self.pdfratio_list = pdfratios
         self.fitparam_list = fitparams
-
-        # The ``events`` property will be set via the
-        # ``initialize_for_new_trial`` method.
-        self._events = None
 
         # The ``_ratio_values`` member variable will hold a
         # (N_pdfratios,N_events)-shaped array holding the PDF ratio values of
@@ -209,15 +192,22 @@ class SingleSourcePDFRatioArrayArithmetic(object):
                 self._fitparam_idx_2_pdfratio_idx[fpidx] = pridx
         check_mask = (self._fitparam_idx_2_pdfratio_idx == -1)
         if(np.any(check_mask)):
-            raise KeyError('%d fit parameters are not defined in any of the PDF ratio instances!'%(np.sum(check_mask)))
+            raise KeyError('%d fit parameters are not defined in any of the '
+                'PDF ratio instances!'%(np.sum(check_mask)))
 
         # Create the list of indices of the PDFRatio instances, which depend on
         # at least one fit parameter.
         self._var_pdfratio_indices = np.unique(self._fitparam_idx_2_pdfratio_idx)
 
-    def _precompute_static_pdfratio_values(self):
+    def _precompute_static_pdfratio_values(self, tdm):
         """Pre-compute the PDF ratio values for the PDF ratios that do not
         depend on any fit parameters.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial event data for
+            which the PDF ratio values should get calculated.
         """
         for (i, pdfratio) in enumerate(self._pdfratio_list):
             if(pdfratio.n_fitparams == 0):
@@ -227,7 +217,8 @@ class SingleSourcePDFRatioArrayArithmetic(object):
                 # (N_sources, N_events)-shaped array, and we assume a single
                 # source, we need to reshape the array, which does not involve
                 # any data copying.
-                self._ratio_values[i] = np.reshape(pdfratio.get_ratio(self._events), (len(self._events),))
+                self._ratio_values[i] = np.reshape(
+                    pdfratio.get_ratio(tdm), (tdm.n_events,))
 
     @property
     def pdfratio_list(self):
@@ -251,42 +242,30 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             raise TypeError('The fitparam_list property must be a sequence of FitParameter instances!')
         self._fitparam_list = list(seq)
 
-    @property
-    def events(self):
-        """The numpy record array holding the event data.
-        """
-        return self._events
-    @events.setter
-    def events(self, arr):
-        if(not isinstance(arr, np.ndarray)):
-            raise TypeError('The events property must be an instance of numpy.ndarray!')
-        self._events = arr
-
-    def initialize_for_new_trial(self, events):
+    def initialize_for_new_trial(self, tdm):
         """Initializes the PDFRatio array arithmetic for a new trial. For a new
         trial the data events change, hence we need to recompute the PDF ratio
         values of the fit parameter independent PDFRatio instances.
 
         Parameters
         ----------
-        events : numpy record array
-            The numpy record array holding the new data events of the new trial.
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial event data for
+            that this PDFRatioArrayArithmetic instance should get initialized.
         """
         n_events_old = 0
-        if(self._events is not None):
-            n_events_old = len(self._events)
-
-        # Set the new events.
-        self.events = events
+        if(self._ratio_values is not None):
+            n_events_old = self._ratio_values.shape[1]
 
         # If the amount of events have changed, we need a new array holding the
         # ratio values.
-        if(n_events_old != len(self._events)):
+        if(n_events_old != tdm.n_events):
             # Create a (N_pdfratios,N_events)-shaped array to hold the PDF ratio
             # values of each PDF ratio object for each event.
-            self._ratio_values = np.empty((len(self._pdfratio_list),len(self._events)), dtype=np.float)
+            self._ratio_values = np.empty(
+                (len(self._pdfratio_list), tdm.n_events), dtype=np.float)
 
-        self._precompute_static_pdfratio_values()
+        self._precompute_static_pdfratio_values(tdm)
 
     def get_pdfratio(self, fitparam_idx):
         """Returns the PDFRatio instance that corresponds to the given fit
@@ -306,12 +285,15 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         pdfratio_idx = self._fitparam_idx_2_pdfratio_idx[fitparam_idx]
         return self._pdfratio_list[pdfratio_idx]
 
-    def calculate_pdfratio_values(self, fitparams):
+    def calculate_pdfratio_values(self, tdm, fitparams):
         """Calculates the PDF ratio values for the PDF ratio objects which
         depend on fit parameters.
 
         Parameters
         ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial event data for
+            which the PDF ratio values should get calculated.
         fitparams : dict
             The dictionary with the fit parameter name-value pairs.
         """
@@ -320,7 +302,9 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             # (N_sources, N_events)-shaped array, and we assume a single source,
             # we need to reshape the array, which does not involve any data
             # copying.
-            self._ratio_values[i] = np.reshape(self._pdfratio_list[i].get_ratio(self._events, fitparams), (len(self._events),))
+            self._ratio_values[i] = np.reshape(
+                self._pdfratio_list[i].get_ratio(tdm, fitparams),
+                (tdm.n_events,))
 
     def get_ratio_product(self, excluded_fitparam_idx=None):
         """Calculates the product of the of the PDF ratio values of each event,
@@ -616,35 +600,14 @@ class SigOverBkgPDFRatio(PDFRatio):
             'float!')
         self._zero_bkg_ratio_value = v
 
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
-        """Calls the ``change_source_hypo_group_manager`` method of the signal
-        and background PDF.
+    def get_ratio(self, tdm, fitparams=None):
+        """Calculates the PDF ratio for the given trial events.
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The new SourceHypoGroupManager instance.
-        """
-        self._signalpdf.change_source_hypo_group_manager(src_hypo_group_manager)
-        self._backgroundpdf.change_source_hypo_group_manager(src_hypo_group_manager)
-
-    def initialize_for_new_trial(self, events):
-        """Notifies the signal and background PDFs that a new data trial is
-        being initialized with the given events. This calls the
-        `initialize_for_new_trial` method of the signal and background PDF class
-        instance.
-        """
-        self._signalpdf.initialize_for_new_trial(events)
-        self._backgroundpdf.initialize_for_new_trial(events)
-
-    def get_ratio(self, events, fitparams=None):
-        """Calculates the PDF ratio for the given events.
-
-        Parameters
-        ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the PDF
-            ratio values should get calculated.
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial data events for
+            which the PDF ratio values should be calculated.
         fitparams : None
             Unused interface argument.
 
@@ -656,22 +619,26 @@ class SigOverBkgPDFRatio(PDFRatio):
             dimensionality of the probability ndarray returned by the
             ``get_prob`` method of signal PDF object.
         """
-        sigprob = self._signalpdf.get_prob(events)
-        bkgprob = self._backgroundpdf.get_prob(events)
+        sigprob = self._signalpdf.get_prob(tdm)
+        bkgprob = self._backgroundpdf.get_prob(tdm)
 
         # Select only the events, where background pdf is greater than zero.
-        m = (bkgprob > 0)
-        minv = np.invert(m)
+        m_bkg = (bkgprob > 0)
+        m_sig = m_bkg
+        if(bkgprob.ndim < sigprob.ndim):
+            n_dims_to_add = sigprob.ndim - bkgprob.ndim
+            for i in range(n_dims_to_add):
+                m_sig = np.expand_dims(m_sig, axis=0)
 
-        ratios = np.empty_like(events, dtype=np.float)
-        ratios[m] = sigprob[m] / bkgprob[m]
-        ratios[minv] = self._zero_bkg_ratio_value
+        ratios = np.empty_like(sigprob, dtype=np.float)
+        ratios[m_sig] = sigprob[m_sig] / bkgprob[m_bkg]
+        ratios[~m_sig] = self._zero_bkg_ratio_value
 
         return ratios
 
-    def get_gradient(self, events, fitparams, fitparam_name):
+    def get_gradient(self, tdm, fitparams, fitparam_name):
         """Calling this method results in throwing a RuntimeError exception,
-        because this PDF ratio class handles only spatial PDFs without any fit
+        because this PDF ratio class handles only PDFs without any fit
         parameters.
         """
         raise RuntimeError('The SigOverBkgPDFRatio handles only PDFs with no '
@@ -769,18 +736,6 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         """
         return self._sigpdfset.fitparams_grid_set.parameter_names
 
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
-        """Calls the change_source_hypo_group_manager method of the signal
-        PDFSet and background PDF instances.
-
-        Parameters
-        ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The new SourceHypoGroupManager instance.
-        """
-        self._sigpdfset.change_source_hypo_group_manager(src_hypo_group_manager)
-        self._bkgpdf.change_source_hypo_group_manager(src_hypo_group_manager)
-
     def convert_signal_fitparam_name_into_index(self, signal_fitparam_name):
         """Converts the given signal fit parameter name into the parameter
         index, i.e. the position of parameter in the signal parameter grid set.
@@ -806,7 +761,8 @@ class SigSetOverBkgPDFRatio(PDFRatio):
                 return index
 
         # At this point there is no parameter defined.
-        raise KeyError('The PDF ratio "%s" has no signal fit parameter named "%s"!'%(classname(self), signal_fitparam_name))
+        raise KeyError('The PDF ratio "%s" has no signal fit parameter named '
+            '"%s"!'%(classname(self), signal_fitparam_name))
 
 
 class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):

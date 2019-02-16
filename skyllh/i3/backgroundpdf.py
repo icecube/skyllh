@@ -8,6 +8,7 @@ from skyllh.core.binning import BinningDefinition, UsesBinning
 from skyllh.core.pdf import SpatialPDF, EnergyPDF, IsBackgroundPDF
 from skyllh.i3.pdf import I3EnergyPDF
 
+
 class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     """This is the base class for all IceCube specific spatial background PDF
     models. IceCube spatial background PDFs depend solely on the zenith angle,
@@ -16,7 +17,8 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     The IceCube spatial background PDF is modeled as a 1d spline function in
     sin(declination).
     """
-    def __init__(self, data_sinDec, data_weights, sinDec_binning, spline_order_sinDec):
+    def __init__(self, data_sinDec, data_weights, sinDec_binning,
+                 spline_order_sinDec):
         """Creates a new IceCube spatial background PDF object.
 
         Parameters
@@ -113,27 +115,27 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         """
         self._log_spline = self._orig_log_spline
 
-    def get_prob(self, events, params=None):
+    def get_prob(self, tdm, fitparams=None):
         """Calculates the spatial background probability on the sphere of each
         event.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The array holding the event data. The following data fields must
-            exist:
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial event data for which
+            to calculate the PDF values. The following data fields must exist:
 
             - 'sin_dec' : float
                 The sin(declination) value of the event.
-        params : None
+        fitparams : None
             Unused interface parameter.
 
         Returns
         -------
         prob : 1d ndarray
-            The spherical probability of each data event.
+            The spherical background probability of each data event.
         """
-        prob = 0.5 / np.pi * np.exp(self._log_spline(events['sin_dec']))
+        prob = 0.5 / np.pi * np.exp(self._log_spline(tdm.get_data('sin_dec')))
         return prob
 
 
@@ -150,7 +152,7 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            
+
             - 'dec' : float
                 The declination of the data event.
         sinDec_binning : BinningDefinition
@@ -161,21 +163,23 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
             The default is 2.
         """
         if(not isinstance(data_exp, np.ndarray)):
-            raise TypeError('The data_exp argument must be of type numpy.ndarray!')
+            raise TypeError('The data_exp argument must be of type '
+                'numpy.ndarray!')
 
         data_sinDec = np.sin(data_exp['dec'])
         data_weights = np.ones((data_exp.size,))
 
         # Create the PDF using the base class.
         super(DataBackgroundI3SpatialPDF, self).__init__(
-            data_sinDec, data_weights, sinDec_binning, spline_order_sinDec
-        )
+            data_sinDec, data_weights, sinDec_binning, spline_order_sinDec)
+
 
 class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     monte-carlo data.
     """
-    def __init__(self, data_mc, mc_weight_field_names, sinDec_binning, spline_order_sinDec=2):
+    def __init__(self, data_mc, mc_weight_field_names, sinDec_binning,
+                 spline_order_sinDec=2):
         """Constructs a new IceCube spatial background PDF from monte-carlo
         data.
 
@@ -184,7 +188,7 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
         data_mc : numpy record ndarray
             The array holding the monte-carlo data. The following data fields
             must exist:
-            
+
             - 'dec' : float
                 The declination of the data event.
         mc_weight_field_names : str | list of str
@@ -236,7 +240,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            
+
             - 'log_energy' : float
                 The logarithm of the reconstructed energy value of the data
                 event.
@@ -281,7 +285,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         data_mc : numpy record ndarray
             The array holding the monte-carlo data. The following data fields
             must exist:
-            
+
             - 'log_energy' : float
                 The logarithm of the reconstructed energy value of the data
                 event.

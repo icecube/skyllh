@@ -11,13 +11,19 @@ from skyllh.core.py import (
     issequenceof,
     range
 )
-from skyllh.core.dataset import Dataset, DatasetData
+from skyllh.core.dataset import (
+    Dataset,
+    DatasetData
+)
 from skyllh.core.parameters import (
     FitParameter,
     SourceFitParameterMapper,
     SingleSourceFitParameterMapper
 )
-from skyllh.core.pdf import SpatialPDF, EnergyPDF
+from skyllh.core.pdf import (
+    EnergyPDF,
+    SpatialPDF
+)
 from skyllh.core.pdfratio import PDFRatio
 from skyllh.core.random import RandomStateService
 from skyllh.core.llhratio import (
@@ -26,7 +32,11 @@ from skyllh.core.llhratio import (
     MultiDatasetTCLLHRatio
 )
 from skyllh.core.scrambling import DataScramblingMethod
-from skyllh.core.optimize import EventSelectionMethod, AllEventSelectionMethod
+from skyllh.core.trialdata import TrialDataManager
+from skyllh.core.optimize import (
+    EventSelectionMethod,
+    AllEventSelectionMethod
+)
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.test_statistic import TestStatistic
 from skyllh.core.minimizer import Minimizer
@@ -112,6 +122,7 @@ class Analysis(object):
 
         self._dataset_list = []
         self._data_list = []
+        self._tdm_list = []
 
         # Predefine the variable for the global fit parameter set, which holds
         # all the global fit parameters.
@@ -267,7 +278,7 @@ class Analysis(object):
         """
         return self._sig_generator
 
-    def add_dataset(self, dataset, data):
+    def add_dataset(self, dataset, data, tdm=None):
         """Adds the given dataset to the list of datasets for this analysis.
 
         Parameters
@@ -277,16 +288,28 @@ class Analysis(object):
         data : DatasetData instance
             The DatasetData instance holding the original (prepared) data of the
             dataset.
+        tdm : TrialDataManager instance | None
+            The TrialDataManager instance managing the trial data and additional
+            data fields of the data set. If set to None, it means that no
+            additional data fields are defined.
         """
         if(not isinstance(dataset, Dataset)):
             raise TypeError('The dataset argument must be an instance '
                 'of Dataset!')
+
         if(not isinstance(data, DatasetData)):
             raise TypeError('The data argument must be an instance '
                 'of DatasetData!')
 
+        if(tdm is None):
+            tdm = TrialDataManager()
+        if(not isinstance(tdm, TrialDataManager)):
+            raise TypeError('The tdm argument must be None or an instance of '
+                'TrialDataManager!')
+
         self._dataset_list.append(dataset)
         self._data_list.append(data)
+        self._tdm_list.append(tdm)
 
     def calculate_test_statistic(self, log_lambda, fitparam_values, *args, **kwargs):
         """Calculates the test statistic value by calling the ``evaluate``
@@ -312,8 +335,8 @@ class Analysis(object):
         TS : float
             The calculated test-statistic value.
         """
-        return self._test_statistic.evaluate(self._llhratio, log_lambda, fitparam_values,
-                                             *args, **kwargs)
+        return self._test_statistic.evaluate(
+            self._llhratio, log_lambda, fitparam_values, *args, **kwargs)
 
     @abc.abstractmethod
     def construct_llhratio(self):
@@ -654,7 +677,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             raise TypeError('The fitparam_ns property must be an instance of FitParameter!')
         self._fitparam_ns = fitparam
 
-    def add_dataset(self, dataset, data, pdfratios):
+    def add_dataset(self, dataset, data, pdfratios, tdm=None):
         """Adds a dataset with its PDF ratio instances to the analysis.
 
         Parameters
@@ -667,9 +690,12 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         pdfratios : PDFRatio instance | sequence of PDFRatio instances
             The PDFRatio instance or the sequence of PDFRatio instances for the
             to-be-added data set.
+        tdm : TrialDataManager instance | None
+            The TrialDataManager instance that manages the trial data and
+            additional data fields for this data set.
         """
         super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(
-            dataset, data)
+            dataset, data, tdm)
 
         if(isinstance(pdfratios, PDFRatio)):
             pdfratios = [pdfratios]
@@ -697,7 +723,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             raise ValueError('The number of detector signal yield '
                 'implementation methods is not 1 and does not match the number '
                 'of used datasets in the analysis!')
-        for (j, (dataset, data)) in enumerate(zip(self.dataset_list, self.data_list)):
+        for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
+                                                  self.data_list)):
             if(len(detsigyield_implmethod_list) == 1):
                 # Only one detsigyield implementation method was defined, so we
                 # use it for all datasets.
@@ -712,18 +739,25 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # For multiple datasets we need a dataset signal weights instance in
         # order to distribute ns over the different datasets.
         dataset_signal_weights = SingleSourceDatasetSignalWeights(
-            self._src_hypo_group_manager, self._src_fitparam_mapper, detsigyield_list)
+            self._src_hypo_group_manager, self._src_fitparam_mapper,
+            detsigyield_list)
 
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
         llhratio_list = []
         for j in range(self.n_datasets):
+            tdm = self._tdm_list[j]
             pdfratio_list = self._pdfratio_list_list[j]
-            llhratio = SingleSourceTCLLHRatio(pdfratio_list, self._src_fitparam_mapper)
+            llhratio = SingleSourceTCLLHRatio(
+                self._src_hypo_group_manager,
+                tdm,
+                pdfratio_list,
+                self._src_fitparam_mapper)
             llhratio_list.append(llhratio)
 
         # Create the final multi-dataset log-likelihood ratio function.
-        self._llhratio = MultiDatasetTCLLHRatio(dataset_signal_weights, llhratio_list)
+        self._llhratio = MultiDatasetTCLLHRatio(
+            dataset_signal_weights, llhratio_list)
 
     def change_source(self, source):
         """Changes the source of the analysis to the given source. It makes the
@@ -751,17 +785,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         self._event_selection_method.change_source_hypo_group_manager(
             self._src_hypo_group_manager)
 
-        # Change the source hypo group manager of the DatasetSignalWeights
-        # instance of the LLH ratio function.
-        self._llhratio.dataset_signal_weights.change_source_hypo_group_manager(
-            self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the PDFRatio instances of
-        # each single dataset LLH ratio function.
-        for llhratio in self._llhratio.llhratio_list:
-            for pdfratio in llhratio.pdfratio_list:
-                pdfratio.change_source_hypo_group_manager(
-                    self._src_hypo_group_manager)
+        # Change the source hypo group manager of the LLH ratio function
+        # instance.
+        self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
 
         # Change the source hypo group manager of the signal generator instance.
         if(self._sig_generator is not None):
@@ -885,7 +911,8 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
             minimizer, src_hypo_group_manager, src_fitparam_mapper,
             fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
 
-    def add_dataset(self, dataset, data, spatial_pdfratio, energy_pdfratio):
+    def add_dataset(self, dataset, data, spatial_pdfratio, energy_pdfratio,
+                    tdm=None):
         """Adds a dataset with its spatial and energy PDF ratio instances to the
         analysis.
 
@@ -900,6 +927,10 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
             The PDFRatio instance for the spatial PDF.
         energy_pdfratio : EnergyPDF sub-classed PDFRatio instance
             The PDFRatio instance for the energy PDF.
+        tdm : TrialDataManager instance | None
+            The TrialDataManager instance managing the trial data and additional
+            data fields of the data set. If set to None, it means that no
+            additional data fields are defined.
         """
         if(not isinstance(spatial_pdfratio, PDFRatio)):
             raise TypeError('The spatial_pdfratio argument must be an instance '
@@ -917,7 +948,8 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
 
         pdfratios = [spatial_pdfratio, energy_pdfratio]
 
-        super(SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(dataset, data, pdfratios)
+        super(SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis,
+            self).add_dataset(dataset, data, pdfratios, tdm)
 
 
 class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
@@ -974,7 +1006,7 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
             minimizer, src_hypo_group_manager, src_fitparam_mapper,
             fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
 
-    def add_dataset(self, dataset, data, multidim_pdfratio):
+    def add_dataset(self, dataset, data, multidim_pdfratio, tdm=None):
         """Adds a dataset with its single multi-dimensional PDF ratio instance
         to the analysis.
 
@@ -987,6 +1019,10 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
             dataset.
         multidim_pdfratio : PDFRatio instance
             The multi-dimensional PDFRatio instance for the data set.
+        tdm : TrialDataManager instance | None
+            The TrialDataManager instance managing the trial data and additional
+            data fields of the data set. If set to None, it means that no
+            additional data fields are defined.
         """
         if(not isinstance(multidim_pdfratio, PDFRatio)):
             raise TypeError('The multidim_pdfratio argument must be an '
@@ -994,4 +1030,5 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
 
         pdfratios = [multidim_pdfratio]
 
-        super(SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(dataset, data, pdfratios)
+        super(SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis,
+            self).add_dataset(dataset, data, pdfratios, tdm)

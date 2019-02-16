@@ -34,81 +34,37 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
     where \sigma is the spatial uncertainty of the event and r the distance on
     the sphere between the source and the data event.
+
+    This PDF requires the `src_array` data field, that is numpy record ndarray
+    with the data fields `ra` and `dec` holding the right-ascention and
+    declination of the point-like sources, respectively.
     """
-    def __init__(self, src_hypo_group_manager):
+    def __init__(self):
         """Creates a new spatial signal PDF for point-like sources with a
         gaussian point-spread-function (PSF).
-
-        Parameters
-        ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The SourceHypoGroupManager instance, that defines the sources, for
-            which the spatial PDF values should get calculated for.
         """
         super(GaussianPSFPointLikeSourceSignalSpatialPDF, self).__init__(
             ra_range=(0, 2*np.pi),
             dec_range=(-np.pi/2, np.pi/2))
 
-        if(not isinstance(src_hypo_group_manager, SourceHypoGroupManager)):
-            raise TypeError('The src_hypo_group_manager argument must be an instance of SourceHypoGroupManager!')
-
-        # For the calculation ndarrays for the right-ascention and declination
-        # of the different point-like sources is more efficient.
-        self._src_arr = self.source_to_array(src_hypo_group_manager.source_list)
-
-    def source_to_array(self, sources):
-        """Converts the given sequence of PointLikeSource instances into a numpy
-        record array holding the necessary source information for calculating
-        the spatial signal PDF values.
-
-        Parameters
-        ----------
-        sources : sequence of PointLikeSource instances
-            The sequence of PointLikeSource instances for which the signal PDF
-            values should get calculated for.
-
-        Returns
-        -------
-        arr : numpy record ndarray
-            The generated numpy record ndarray holding the necessary source
-            information needed for this spatial signal PDF.
-        """
-        if(not issequenceof(sources, PointLikeSource)):
-            raise TypeError('The sources argument must be a sequence of PointLikeSource instances!')
-
-        arr = np.empty(
-            (len(sources),),
-            dtype=[('ra', np.float), ('dec', np.float)],
-            order='F')
-
-        for (i, src) in enumerate(sources):
-            arr['ra'][i] = src.ra
-            arr['dec'][i] = src.dec
-
-        return arr
-
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
-        """Changes the SourceHypoGroupManager instance that defines the sources,
-        for which the spatial signal PDF values should get calculated for.
-        This recreates the internal source array.
-
-        Parameters
-        ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The new SourceHypoGroupManager instance that should be used for this
-            spatial signal PDF.
-        """
-        self._src_arr = self.source_to_array(src_hypo_group_manager.source_list)
-
-    def get_prob(self, events, params=None):
+    def get_prob(self, tdm, fitparams=None):
         """Calculates the spatial signal probability of each event for all given
         sources.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record array holding the event data. The following data
-            fields need to be present:
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial event data for which
+            to calculate the PDF values. The following data fields need to be
+            present:
+
+            'src_array' : numpy record ndarray
+                The numpy record ndarray with the following data fields:
+
+                `ra`: float
+                    The right-ascention of the point-like source.
+                `dec`: float
+                    The declination of the point-like source.
 
             'ra' : float
                 The right-ascention in radian of the data event.
@@ -116,7 +72,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                 The declination in radian of the data event.
             'ang_err': float
                 The reconstruction uncertainty in radian of the data event.
-        params : None
+        fitparams : None
             Unused interface argument.
 
         Returns
@@ -125,15 +81,17 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             The ndarray holding the spatial signal probability on the sphere for
             each source and event.
         """
-        ra = events['ra']
-        dec = events['dec']
-        sigma = events['ang_err']
+        get_data = tdm.get_data
+
+        ra = get_data('ra')
+        dec = get_data('dec')
+        sigma = get_data('ang_err')
 
         # Make the source position angles two-dimensional so the PDF value can
         # be calculated via numpy broadcasting automatically for several
         # sources. This is useful for stacking analyses.
-        src_ra = self._src_arr['ra'][:,np.newaxis]
-        src_dec = self._src_arr['dec'][:,np.newaxis]
+        src_ra = get_data('src_array')['ra'][:,np.newaxis]
+        src_dec = get_data('src_array')['dec'][:,np.newaxis]
 
         # Calculate the cosine of the distance of the source and the event on
         # the sphere.
@@ -265,14 +223,15 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
             raise ValueError('Some data is outside the time range (%.3f, %.3f)!'%(
                 time_axis.vmin, time_axis.vmax))
 
-    def get_prob(self, events, fitparams):
+    def get_prob(self, tdm, fitparams):
         """Calculates the signal time probability of each event for the given
         set of signal time fit parameter values.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The array holding the event data. The following data fields must
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF value. The following data fields must
             exist:
 
             - 'time' : float
@@ -292,7 +251,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         if(updated):
             (self._I, self._S) = self._calculate_time_profile_I_and_S()
 
-        events_time = events['time']
+        events_time = tdm.get_data('time')
 
         # Get a mask of the event times which fall inside a detector on-time
         # interval.
@@ -300,21 +259,19 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
         # The sum of the on-time integrals of the time profile, A, will be zero
         # if the time profile is entirly during detector off-time.
-        prob = np.zeros((len(events),), dtype=np.float)
+        prob = np.zeros((tdm.n_events,), dtype=np.float)
         if(self._S > 0):
             prob[on] = self._time_profile.get_value(events_time[on]) / (self._I * self._S)
 
         return prob
 
 
-class PointLikeSourceSignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
-    """This class provides a multi-dimensional signal PDF for point-like
-    sources. The PDF is created from pre-calculated PDF data on a grid.
-    The grid data is interpolated using a
-    `scipy.interpolate.RegularGridInterpolator` instance.
+class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
+    """This class provides a multi-dimensional signal PDF. The PDF is created
+    from pre-calculated PDF data on a grid. The grid data is interpolated using
+    a `scipy.interpolate.RegularGridInterpolator` instance.
     """
-    def __init__(self, src_hypo_group_manager, axis_binnings, pdf_grid_data,
-                 norm_factor_func=None):
+    def __init__(self, axis_binnings, pdf_grid_data, norm_factor_func=None):
         """Creates a new signal PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
         `scipy.interpolate.RegularGridInterpolator` instance. As grid points
@@ -322,9 +279,6 @@ class PointLikeSourceSignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The SourceHypoGroupManager instance, that defines the sources, for
-            which the PDF values should get calculated for.
         axis_binnings : sequence of BinningDefinition
             The sequence of BinningDefinition instances defining the binning of
             the PDF axes. The name of each BinningDefinition instance defines
@@ -342,65 +296,5 @@ class PointLikeSourceSignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
             which to calculate the PDF values, and `fitparams` is a dictionary
             with the current fit parameter names and values.
         """
-        super(PointLikeSourceSignalMultiDimGridPDF, self).__init__(
+        super(SignalMultiDimGridPDF, self).__init__(
             axis_binnings, pdf_grid_data, norm_factor_func)
-
-        if(not isinstance(src_hypo_group_manager, SourceHypoGroupManager)):
-            raise TypeError('The src_hypo_group_manager argument must be an '
-                'instance of SourceHypoGroupManager!')
-
-        # For the calculation ndarrays for the right-ascention and declination
-        # of the different point-like sources is more efficient.
-        self._src_arr = self.source_to_array(src_hypo_group_manager.source_list)
-
-    @property
-    def source_array(self):
-        """(read-only) The numpy record ndarray holding information about the
-        source(s).
-        """
-        return self._src_arr
-
-    def source_to_array(self, sources):
-        """Converts the given sequence of PointLikeSource instances into a numpy
-        record array holding the necessary source information for calculating
-        the signal PDF values.
-
-        Parameters
-        ----------
-        sources : sequence of PointLikeSource instances
-            The sequence of PointLikeSource instances for which the signal PDF
-            values should get calculated for.
-
-        Returns
-        -------
-        arr : numpy record ndarray
-            The generated numpy record ndarray holding the necessary source
-            information needed for this signal PDF.
-        """
-        if(not issequenceof(sources, PointLikeSource)):
-            raise TypeError('The sources argument must be a sequence of '
-                'PointLikeSource instances!')
-
-        arr = np.empty(
-            (len(sources),),
-            dtype=[('ra', np.float), ('dec', np.float)],
-            order='F')
-
-        for (i, src) in enumerate(sources):
-            arr['ra'][i] = src.ra
-            arr['dec'][i] = src.dec
-
-        return arr
-
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
-        """Changes the SourceHypoGroupManager instance that defines the sources,
-        for which the signal PDF values should get calculated.
-        This recreates the internal source array.
-
-        Parameters
-        ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The new SourceHypoGroupManager instance that should be used for this
-            signal PDF.
-        """
-        self._src_arr = self.source_to_array(src_hypo_group_manager.source_list)

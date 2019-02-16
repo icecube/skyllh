@@ -172,7 +172,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         data_exp : numpy record ndarray
             The array holding the experimental data. The following data fields
             must exist:
-            
+
             - 'log_energy' : float
                 The logarithm of the energy value of the data event.
             - 'dec' : float
@@ -195,18 +195,19 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         #if(sinDec_binning.any_data_out_of_binning_range(exp_sinDec)):
             #self.logger.warning('Some data is outside the sin(dec) range (%.3f, %.3f)', sinDec_binning.lower_edge, sinDec_binning.upper_edge)
 
-    def get_prob(self, events, fitparams=None):
+    def get_prob(self, tdm, fitparams=None):
         """Calculates the energy probability (in logE) of each event.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The array holding the event data. The following data fields must
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the data events for which the
+            probability should be calculated for. The following data fields must
             exist:
 
             - 'log_energy' : float
                 The logarithm of the energy value of the event.
-            - 'sinDec' : float
+            - 'sin_dec' : float
                 The sin(declination) value of the event.
 
         fitparams : None
@@ -217,11 +218,13 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         prob : 1D (N_events,) shaped ndarray
             The array with the energy probability for each event.
         """
+        get_data = tdm.get_data
+
         logE_binning = self.get_binning('log_energy')
         sinDec_binning = self.get_binning('sin_dec')
 
-        logE_idx = np.digitize(events['log_energy'], logE_binning.binedges)
-        sinDec_idx = np.digitize(events['sin_dec'], sinDec_binning.binedges)
+        logE_idx = np.digitize(get_data('log_energy'), logE_binning.binedges)
+        sinDec_idx = np.digitize(get_data('sin_dec'), sinDec_binning.binedges)
 
         prob = self._hist_logE_sinDec[(logE_idx,sinDec_idx)]
         return prob

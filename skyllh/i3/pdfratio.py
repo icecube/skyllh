@@ -163,23 +163,25 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
 
         return value
 
-    def _is_cached(self, events, fitparams_hash):
+    def _is_cached(self, tdm, fitparams_hash):
         """Checks if the ratio and gradients for the given set of fit parameters
         are already cached.
         """
         if((self._cache_fitparams_hash == fitparams_hash) and
-           (len(self._cache_ratio) == len(events))
+           (len(self._cache_ratio) == tdm.n_events)
           ):
             return True
         return False
 
-    def _calculate_ratio_and_gradients(self, events, fitparams, fitparams_hash):
+    def _calculate_ratio_and_gradients(self, tdm, fitparams, fitparams_hash):
         """Calculates the ratio values and ratio gradients for all the events
         given the fit parameters. It caches the results.
         """
+        get_data = tdm.get_data
+
         # Create a 2D event data array holding only the needed event data fields
         # for the PDF ratio spline evaluation.
-        eventdata = np.vstack([events[fn] for fn in self._data_field_names]).T
+        eventdata = np.vstack([get_data(fn) for fn in self._data_field_names]).T
 
         (ratio, gradients) = self._interpolmethod_instance.get_value_and_gradients(
             eventdata, fitparams)
@@ -194,18 +196,18 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         self._cache_ratio = ratio
         self._cache_gradients = gradients
 
-    def get_ratio(self, events, fitparams):
-        """Retrieves the PDF ratio value for each given event, given the given
-        set of fit parameters. This method is called during the likelihood
-        maximization process.
+    def get_ratio(self, tdm, fitparams):
+        """Retrieves the PDF ratio values for each given trial event data, given
+        the given set of fit parameters. This method is called during the
+        likelihood maximization process.
         For computational efficiency reasons, the gradients are calculated as
         well and will be cached.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the PDF
-            ratio values should get calculated.
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial event data for which
+            the PDF ratio values should get calculated.
         fitparams : dict
             The dictionary with the fit parameter values.
 
@@ -217,21 +219,21 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         fitparams_hash = make_params_hash(fitparams)
 
         # Check if the ratio value is already cached.
-        if(self._is_cached(events, fitparams_hash)):
+        if(self._is_cached(tdm, fitparams_hash)):
             return self._cache_ratio
 
-        self._calculate_ratio_and_gradients(events, fitparams, fitparams_hash)
+        self._calculate_ratio_and_gradients(tdm, fitparams, fitparams_hash)
 
         return self._cache_ratio
 
-    def get_gradient(self, events, fitparams, fitparam_name):
+    def get_gradient(self, tdm, fitparams, fitparam_name):
         """Retrieves the PDF ratio gradient for the pidx'th fit parameter.
 
         Parameters
         ----------
-        events : numpy record ndarray
-            The numpy record ndarray holding the data events for which the PDF
-            ratio values should get calculated.
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial event data for which
+            the PDF ratio gradient values should get calculated.
         fitparams : dict
             The dictionary with the fit parameter values.
         fitparam_name : str
@@ -244,10 +246,10 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         pidx = self.convert_signal_fitparam_name_into_index(fitparam_name)
 
         # Check if the gradients have been calculated already.
-        if(self._is_cached(events, fitparams_hash)):
+        if(self._is_cached(tdm, fitparams_hash)):
             return self._cache_gradients[pidx]
 
         # The gradients have not been calculated yet.
-        self._calculate_ratio_and_gradients(events, fitparams, fitparams_hash)
+        self._calculate_ratio_and_gradients(tdm, fitparams, fitparams_hash)
 
         return self._cache_gradients[pidx]

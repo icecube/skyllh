@@ -4,8 +4,50 @@ from __future__ import division
 
 import numpy as np
 
+from skyllh.core.py import issequenceof
+from skyllh.physics.source import PointLikeSource
+
 """This module contains common utility functions useful for an analysis.
 """
+
+def pointlikesource_to_data_field_array(tdm, src_hypo_group_manager):
+    """Function to transform a list of PointLikeSource sources into a numpy
+    record ndarray. The resulting numpy record ndarray contains the following
+    fields:
+
+        `ra`: float
+            The right-ascention of the point-like source.
+        `dec`: float
+            The declination of the point-like source.
+
+    Parameters
+    ----------
+    tdm : instance of TrialDataManager
+        The TrialDataManager instance.
+    src_hypo_group_manager : instance of SourceHypoGroupManager
+        The instance of SourceHypoGroupManager that defines the sources.
+
+    Returns
+    -------
+    arr : (N_sources,)-shaped numpy record ndarray
+        The numpy record ndarray holding the source parameters `ra` and `dec`.
+    """
+    sources = src_hypo_group_manager.source_list
+
+    if(not issequenceof(sources, PointLikeSource)):
+        raise TypeError('The sources of the SourceHypoGroupManager must be '
+            'PointLikeSource instances!')
+
+    arr = np.empty(
+        (len(sources),),
+        dtype=[('ra', np.float), ('dec', np.float)],
+        order='F')
+
+    for (i, src) in enumerate(sources):
+        arr['ra'][i] = src.ra
+        arr['dec'][i] = src.dec
+
+    return arr
 
 def estimate_sensitivity(analysis, rss, eps=0.03, p=0.9,
                          h0_ts_quantile=0.5, ns_range=[0, 5]):
