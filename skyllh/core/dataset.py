@@ -15,7 +15,6 @@ from skyllh.core.py import (
     list_of_cast,
     str_cast
 )
-from skyllh.core.stopwatch import get_stopwatch_lap_taker
 from skyllh.core import display
 from skyllh.core import storage
 
@@ -429,7 +428,7 @@ class Dataset(object):
                 raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
             self._verqualifiers[q] = verqualifiers[q]
 
-    def load_data(self, livetime=None, sw=None):
+    def load_data(self, livetime=None, tl=None):
         """Loads the data, which is described by the dataset.
 
         Note: This does not call the ``prepare_data`` method! It only loads
@@ -441,8 +440,8 @@ class Dataset(object):
             If not None, uses this livetime (in days) for the DatasetData
             instance, otherwise uses the Dataset livetime property value for
             the DatasetData instance.
-        sw : Stopwatch instance | None
-            The Stopwatch instance to use to time the data loading procedure.
+        tl : TimeLord instance | None
+            The TimeLord instance to use to time the data loading procedure.
 
         Returns
         -------
@@ -450,18 +449,18 @@ class Dataset(object):
             A DatasetData instance holding the experimental and monte-carlo
             data.
         """
-        sw_take_lap = get_stopwatch_lap_taker(sw)
-
         fileloader_exp = storage.create_FileLoader(self._exp_pathfilename_list)
         fileloader_mc  = storage.create_FileLoader(self._mc_pathfilename_list)
 
-        data_exp = fileloader_exp.load_data()
-        data_exp = np_rfn.rename_fields(data_exp, self._exp_field_name_renaming_dict)
-        sw_take_lap('Loaded exp data from disk.')
+        with tl.task_timer('Loading exp data from disk.'):
+            data_exp = fileloader_exp.load_data()
+            data_exp = np_rfn.rename_fields(data_exp,
+                self._exp_field_name_renaming_dict)
 
-        data_mc = fileloader_mc.load_data()
-        data_mc = np_rfn.rename_fields(data_mc, self._mc_field_name_renaming_dict)
-        sw_take_lap('Loaded mc data from disk.')
+        with tl.task_timer('Loading mc data from disk.'):
+            data_mc = fileloader_mc.load_data()
+            data_mc = np_rfn.rename_fields(data_mc,
+                self._mc_field_name_renaming_dict)
 
         if(livetime is None):
             livetime = self.livetime
@@ -472,9 +471,9 @@ class Dataset(object):
         # Load all the auxiliary data for this dataset.
         data_aux = dict()
         for (aux_name, aux_pathfilename_list) in self._aux_data_definitions.items():
-            fileloader_aux = storage.create_FileLoader(aux_pathfilename_list)
-            data_aux[aux_name] = fileloader_aux.load_data()
-            sw_take_lap('Loaded aux data "%s" from disk.'%(aux_name))
+            with tl.task_timer('Loaded aux data "%s" from disk.'%(aux_name)):
+                fileloader_aux = storage.create_FileLoader(aux_pathfilename_list)
+                data_aux[aux_name] = fileloader_aux.load_data()
 
         data = DatasetData(data_exp, data_mc, data_aux, livetime)
 
@@ -507,7 +506,7 @@ class Dataset(object):
         """
         del self._data_preparation_functions[index]
 
-    def prepare_data(self, data, sw=None):
+    def prepare_data(self, data, tl=None):
         """Prepares the data by calling the data preparation callback functions
         of this dataset.
 
@@ -515,19 +514,18 @@ class Dataset(object):
         ----------
         data : DatasetData instance
             The DatasetData instance holding the data.
-        sw : Stopwatch instance | None
-            The Stopwatch instance that should be used to time the data
+        tl : TimeLord instance | None
+            The TimeLord instance that should be used to time the data
             preparation.
         """
-        sw_take_lap = get_stopwatch_lap_taker(sw)
-
         for data_prep_func in self._data_preparation_functions:
-            data_prep_func(data)
-            sw_take_lap('Prepared data of dataset "'+self.name+'" '
-                'by "'+data_prep_func.__name__+'".')
+            task = 'Preparing data of dataset "'+self.name+'" by '\
+                '"'+data_prep_func.__name__+'".'
+            with tl.task_timer(task):
+                data_prep_func(data)
 
     def load_and_prepare_data(
-        self, keep_fields=None, compress=False, sw=None):
+        self, keep_fields=None, compress=False, tl=None):
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
         After loading the data it drops all unnecessary data fields if they are
@@ -547,9 +545,9 @@ class Dataset(object):
             The only field, which will not get converted is the 'mcweight'
             field, in order to ensure reliable calculations.
             Default is False.
-        sw : Stopwatch instance | None
-            The Stopwatch instance that should be used to time the data loading
-            and preparation. This method will take laps for the different steps.
+        tl : TimeLord instance | None
+            The TimeLord instance that should be used to time the data loading
+            and preparation.
 
         Returns
         -------
@@ -564,34 +562,32 @@ class Dataset(object):
                 'sequence of str!')
         keep_fields = tuple(keep_fields)
 
-        sw_take_lap = get_stopwatch_lap_taker(sw)
-
-        data = self.load_data(sw=sw)
-        self.prepare_data(data, sw=sw)
+        data = self.load_data(tl=tl)
+        self.prepare_data(data, tl=tl)
 
         # Drop unrequired data fields.
-        data.exp = tidy_up_recarray(
-            data.exp, keep_fields=(type(self)._EXP_FIELD_NAMES +
-                                   keep_fields))
-        sw_take_lap('Cleaned exp data.')
-        data.mc = tidy_up_recarray(
-            data.mc, keep_fields=(type(self)._EXP_FIELD_NAMES +
-                                  type(self)._MC_FIELD_NAMES +
-                                  keep_fields))
-        sw_take_lap('Cleaned MC data.')
+        with tl.task_timer('Cleaning exp data.'):
+            data.exp = tidy_up_recarray(
+                data.exp, keep_fields=(type(self)._EXP_FIELD_NAMES +
+                                       keep_fields))
+        with tl.task_timer('Cleaning MC data.'):
+            data.mc = tidy_up_recarray(
+                data.mc, keep_fields=(type(self)._EXP_FIELD_NAMES +
+                                      type(self)._MC_FIELD_NAMES +
+                                      keep_fields))
 
         # Convert float64 fields into float32 fields if requested.
         if(compress):
-            data.exp = convert_recarray_fields_float64_into_float32(
-                data.exp)
-            sw_take_lap('Compressed exp data.')
+            with tl.task_timer('Compressing exp data.'):
+                data.exp = convert_recarray_fields_float64_into_float32(
+                    data.exp)
 
-            data.mc = convert_recarray_fields_float64_into_float32(
-                data.mc, except_fields=('mcweight',))
-            sw_take_lap('Compressed MC data.')
+            with tl.task_timer('Compressing MC data.'):
+                data.mc = convert_recarray_fields_float64_into_float32(
+                    data.mc, except_fields=('mcweight',))
 
-        assert_data_format(self, data)
-        sw_take_lap('Asserted data format.')
+        with tl.task_timer('Asserting data format.'):
+            assert_data_format(self, data)
 
         return data
 
