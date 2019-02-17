@@ -389,6 +389,13 @@ class DataFieldRecordArray(object):
         self._data_fields[name] = data
         self._field_name_list.append(name)
 
+    def copy(self):
+        """Creates a new DataFieldRecordArray that is a copy of this
+        DataFieldRecordArray instance.
+        """
+        data = dict([(fname, self[fname]) for fname in self._field_name_list])
+        return DataFieldRecordArray(data, copy=True)
+
     def remove_field(self, name):
         """Removes the given field from this array.
 

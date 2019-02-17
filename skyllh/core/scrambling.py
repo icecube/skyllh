@@ -26,13 +26,13 @@ class DataScramblingMethod(object):
         rss : RandomStateService
             The random state service providing the random number
             generator (RNG).
-        data : numpy.ndarray
-            The ndarray containing the to be scrambled data.
+        data : instance of DataFieldRecordArray
+            The DataFieldRecordArray containing the to be scrambled data.
 
         Returns
         -------
-        data : numpy record ndarray
-            The given numpy record ndarray holding the scrambled data.
+        data : DataFieldRecordArray
+            The given DataFieldRecordArray holding the scrambled data.
         """
         pass
 
@@ -81,15 +81,16 @@ class UniformRAScramblingMethod(DataScramblingMethod):
         rss : RandomStateService
             The random state service providing the random number
             generator (RNG).
-        data : numpy.ndarray
-            The ndarray containing the to be scrambled data.
+        data : instance of DataFieldRecordArray
+            The DataFieldRecordArray instance containing the to be scrambled
+            data.
 
         Returns
         -------
-        data : numpy record ndarray
-            The given numpy record ndarray holding the scrambled data.
+        data : DataFieldRecordArray
+            The given DataFieldRecordArray holding the scrambled data.
         """
-        data["ra"] = rss.random.uniform(*self.ra_range, size=data.size)
+        data["ra"] = rss.random.uniform(*self.ra_range, size=len(data))
         return data
 
 
@@ -158,17 +159,19 @@ class TimeScramblingMethod(DataScramblingMethod):
         rss : RandomStateService
             The random state service providing the random number
             generator (RNG).
-        data : numpy.ndarray
-            The ndarray containing the to be scrambled data.
+        data : instance of DataFieldRecordArray
+            The DataFieldRecordArray instance containing the to be scrambled
+            data.
 
         Returns
         -------
-        data : numpy record ndarray
-            The given numpy record ndarray holding the scrambled data.
+        data : DataFieldRecordArray
+            The given DataFieldRecordArray holding the scrambled data.
         """
-        mjds = self.timegen.generate_times(rss, data.size)
+        mjds = self.timegen.generate_times(rss, len(data))
         data['time'] = mjds
-        (data['ra'], data['dec']) = self.hor_to_equ_transform(data['azi'], data['zen'], mjds)
+        (data['ra'], data['dec']) = self.hor_to_equ_transform(
+            data['azi'], data['zen'], mjds)
         return data
 
 
@@ -227,18 +230,20 @@ class DataScrambler(object):
         ----------
         rss : RandomStateService
             The random state service providing the random number generator (RNG).
-        data : numpy record array
-            The numpy record array holding the data, which should get scrambled.
+        data : instance of DataFieldRecordArray
+            The DataFieldRecordArray instance holding the data, which should get
+            scrambled.
 
         Returns
         -------
-        data : numpy record array
-            The given numpy record array with the scrambled data. If the
-            ``inplace_scrambling`` property is set to True, this output array is
-            the same array as the input array, otherwise it's a new array.
+        data : DataFieldRecordArray
+            The given DataFieldRecordArray instance with the scrambled data.
+            If the ``inplace_scrambling`` property is set to True, this output
+            array is the same array as the input array, otherwise it's a new
+            array.
         """
         if(not self._inplace_scrambling):
-            data = np.copy(data)
+            data = data.copy()
 
         data = self._method.scramble(rss, data)
 
