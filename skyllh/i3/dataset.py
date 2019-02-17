@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from numpy.lib import recfunctions as np_rfn
 
 from skyllh.core.py import issequenceof
 from skyllh.core.dataset import Dataset
-from skyllh.core import storage
+from skyllh.core.storage import create_FileLoader
+from skyllh.core.timing import TaskTimer
+
 
 class I3Dataset(Dataset):
     """The I3Dataset class is an IceCube specific Dataset class that adds
@@ -108,8 +109,8 @@ class I3Dataset(Dataset):
             The numpy record ndarray holding the good-run-list information of
             the dataset.
         """
-        with tl.task_timer('Loading grl data from disk.'):
-            fileloader_grl = storage.create_FileLoader(
+        with TaskTimer(tl, 'Loading grl data from disk.'):
+            fileloader_grl = create_FileLoader(
                 self._grl_pathfilename_list)
             grl_data = fileloader_grl.load_data()
 
@@ -142,7 +143,7 @@ class I3Dataset(Dataset):
         if(grl_data is not None):
             task = 'Selected only the experimental data that matches the GRL '\
                 'for dataset "%s".'%(self.name)
-            with tl.task_timer(task):
+            with TaskTimer(tl, task):
                 runs = np.unique(grl_data['run'])
                 mask = np.isin(data.exp['run'], runs)
                 data.exp = data.exp[mask]
@@ -173,25 +174,14 @@ class I3Dataset(Dataset):
         super(I3Dataset, self).prepare_data(data, tl=tl)
 
         task = 'Appending IceCube-specific data fields to exp data.'
-        with tl.task_timer(task):
-            data.exp = np_rfn.append_fields(data.exp,
-                'sin_dec',
-                np.sin(data.exp['dec']),
-                dtypes=np.float, usemask=False)
+        with TaskTimer(tl, task):
+            data.exp.append_field('sin_dec', np.sin(data.exp['dec']))
 
         # Append sin(dec) and sin(true_dec) to the MC data.
-        # Note: We do this in two separate calls because it is 5-times faster
-        #       than having it done with a single call!
         task = 'Appending IceCube-specific data fields to MC data.'
-        with tl.task_timer(task):
-            data.mc = np_rfn.append_fields(data.mc,
-                'sin_dec',
-                np.sin(data.mc['dec']),
-                dtypes=np.float, usemask=False)
-            data.mc = np_rfn.append_fields(data.mc,
-                'sin_true_dec',
-                np.sin(data.mc['true_dec']),
-                dtypes=np.float, usemask=False)
+        with TaskTimer(tl, task):
+            data.mc.append_field('sin_dec', np.sin(data.mc['dec']))
+            data.mc.append_field('sin_true_dec', np.sin(data.mc['true_dec']))
 
 
 I3Dataset.add_required_exp_field_names(I3Dataset, ['azi', 'zen', 'sin_dec'])

@@ -491,9 +491,7 @@ class Analysis(object):
                 rss, sig_mean)
             # Inject the signal events to the generated background data.
             for (idx, sig_events) in ds_sig_events_dict.items():
-                bkg_events = events_list[idx]
-                sig_events = sig_events[list(bkg_events.dtype.names)]
-                events_list[idx] = np.append(bkg_events, sig_events)
+                events_list[idx].append(sig_events)
 
         return (n_sig, events_list)
 

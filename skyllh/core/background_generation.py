@@ -7,7 +7,6 @@ from skyllh.core.py import (
     float_cast,
     func_has_n_args
 )
-from skyllh.core.dataset import tidy_up_recarray
 
 
 class BackgroundGenerationMethod(object):
@@ -192,12 +191,13 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         n_bkg = rss.random.poisson(mean)
 
         # Draw the actual background events from the monto-carlo data set.
-        bkg_events = rss.random.choice(
-            data.mc, size=n_bkg, p=self._cache_mc_event_bkg_prob,
+        bkg_event_indices = rss.random.choice(
+            data.mc.indices, size=n_bkg, p=self._cache_mc_event_bkg_prob,
             replace=(not self._unique_events))
+        bkg_events = data.mc[bkg_event_indices]
 
         # Remove MC specific data fields from the background events record
         # array. So the result contains only experimental data fields.
-        bkg_events = tidy_up_recarray(bkg_events, data.exp_field_names)
+        bkg_events.tidy_up(data.exp_field_names)
 
         return bkg_events

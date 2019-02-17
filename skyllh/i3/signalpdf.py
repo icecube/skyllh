@@ -36,7 +36,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         Parameters
         ----------
-        data_mc : numpy record ndarray
+        data_mc : instance of DataFieldRecordArray
             The array holding the monte-carlo data. The following data fields
             must exist:
 
@@ -71,7 +71,8 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         if(isinstance(fitparam_grid_set, ParameterGrid)):
             fitparam_grid_set = ParameterGridSet([fitparam_grid_set])
         if(not isinstance(fitparam_grid_set, ParameterGridSet)):
-            raise TypeError('The fitparam_grid_set argument must be an instance of ParameterGrid or ParameterGridSet!')
+            raise TypeError('The fitparam_grid_set argument must be an '
+                'instance of ParameterGrid or ParameterGridSet!')
 
         # We need to extend the fit parameter grids on the lower and upper end
         # by one bin to allow for the calculation of the interpolation. But we
@@ -83,14 +84,18 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             fitparams_grid_set=fitparam_grid_set, ncpu=ncpu)
 
         if(not isinstance(logE_binning, BinningDefinition)):
-            raise TypeError('The logE_binning argument must be an instance of BinningDefinition!')
+            raise TypeError('The logE_binning argument must be an instance of '
+                'BinningDefinition!')
         if(not isinstance(sinDec_binning, BinningDefinition)):
-            raise TypeError('The sinDec_binning argument must be an instance of BinningDefinition!')
+            raise TypeError('The sinDec_binning argument must be an instance '
+                'of BinningDefinition!')
         if(not isinstance(fluxmodel, FluxModel)):
-            raise TypeError('The fluxmodel argument must be an instance of FluxModel!')
+            raise TypeError('The fluxmodel argument must be an instance of '
+                'FluxModel!')
         if((smoothing_filter is not None) and
            (not isinstance(smoothing_filter, SmoothingFilter))):
-            raise TypeError('The smoothing_filter argument must be None or an instance of SmoothingFilter!')
+            raise TypeError('The smoothing_filter argument must be None or '
+                'an instance of SmoothingFilter!')
 
         # Create I3EnergyPDF objects for all permutations of the fit parameter
         # grid values.

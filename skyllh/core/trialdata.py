@@ -13,6 +13,7 @@ from skyllh.core.py import (
     func_has_n_args,
     issequenceof
 )
+from skyllh.core.storage import DataFieldRecordArray
 
 
 class DataField(object):
@@ -201,15 +202,15 @@ class TrialDataManager(object):
 
     @property
     def events(self):
-        """The numpy record array holding the data events, which should get
-        evaluated.
+        """The DataFieldRecordArray instance holding the data events, which
+        should get evaluated.
         """
         return self._events
     @events.setter
     def events(self, arr):
-        if(not isinstance(arr, np.ndarray)):
+        if(not isinstance(arr, DataFieldRecordArray)):
             raise TypeError('The events property must be an instance of '
-                'ndarray!')
+                'DataFieldRecordArray!')
         self._events = arr
 
     @property
@@ -396,7 +397,7 @@ class TrialDataManager(object):
         KeyError
             If the given data field is not defined.
         """
-        if(name in self._events.dtype.names):
+        if(name in self._events.field_name_list):
             return self._events[name]
         if(name in self._source_data_field_reg):
             return self._source_data_field_reg[name].values

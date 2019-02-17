@@ -4,8 +4,16 @@ import numpy as np
 
 import scipy.interpolate
 
-from skyllh.core.binning import BinningDefinition, UsesBinning
-from skyllh.core.pdf import SpatialPDF, EnergyPDF, IsBackgroundPDF
+from skyllh.core.binning import (
+    BinningDefinition,
+    UsesBinning
+)
+from skyllh.core.pdf import (
+    EnergyPDF,
+    IsBackgroundPDF,
+    SpatialPDF
+)
+from skyllh.core.storage import DataFieldRecordArray
 from skyllh.i3.pdf import I3EnergyPDF
 
 
@@ -149,12 +157,13 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
 
         Parameters
         ----------
-        data_exp : numpy record ndarray
-            The array holding the experimental data. The following data fields
-            must exist:
+        data_exp : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the experimental data.
+            The following data fields must exist:
 
             - 'dec' : float
                 The declination of the data event.
+
         sinDec_binning : BinningDefinition
             The binning definition for the sin(declination).
         spline_order_sinDec : int
@@ -162,12 +171,12 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
             spatial background PDF along the sin(dec) axis.
             The default is 2.
         """
-        if(not isinstance(data_exp, np.ndarray)):
+        if(not isinstance(data_exp, DataFieldRecordArray)):
             raise TypeError('The data_exp argument must be of type '
                 'numpy.ndarray!')
 
         data_sinDec = np.sin(data_exp['dec'])
-        data_weights = np.ones((data_exp.size,))
+        data_weights = np.ones((len(data_exp),))
 
         # Create the PDF using the base class.
         super(DataBackgroundI3SpatialPDF, self).__init__(
@@ -178,20 +187,21 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     monte-carlo data.
     """
-    def __init__(self, data_mc, mc_weight_field_names, sinDec_binning,
+    def __init__(self, data_mc, physics_weight_field_names, sinDec_binning,
                  spline_order_sinDec=2):
         """Constructs a new IceCube spatial background PDF from monte-carlo
         data.
 
         Parameters
         ----------
-        data_mc : numpy record ndarray
+        data_mc : instance of DataFieldRecordArray
             The array holding the monte-carlo data. The following data fields
             must exist:
 
             - 'dec' : float
                 The declination of the data event.
-        mc_weight_field_names : str | list of str
+
+        physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
             should be used as event weights. If a list is given, the weight
             values of all the fields will be summed to construct the final event
@@ -203,22 +213,25 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
             spatial background PDF along the sin(dec) axis.
             The default is 2.
         """
-        if(not isinstance(data_mc, np.ndarray)):
-            raise TypeError('The data_mc argument must be of type numpy.ndarray!')
+        if(not isinstance(data_mc, DataFieldRecordArray)):
+            raise TypeError('The data_mc argument must be and instance of '
+                'DataFieldRecordArray!')
 
-        if(isinstance(mc_weight_field_names, str)):
-            mc_weight_field_names = [mc_weight_field_names]
-        if(not issequenceof(mc_weight_field_names, str)):
-            raise TypeError('The mc_weight_field_names argument must be of type str or a sequence of type str!')
+        if(isinstance(physics_weight_field_names, str)):
+            physics_weight_field_names = [physics_weight_field_names]
+        if(not issequenceof(physics_weight_field_names, str)):
+            raise TypeError('The physics_weight_field_names argument must be '
+                'of type str or a sequence of type str!')
 
         data_sinDec = np.sin(data_mc['dec'])
 
         # Calculate the event weights as the sum of all the given data fields
         # for each event.
-        data_weights = np.zeros(data_mc.size, dtype=np.float64)
-        for name in mc_weight_field_names:
+        data_weights = np.zeros(len(data_mc), dtype=np.float64)
+        for name in physics_weight_field_names:
             if(name not in data_mc.dtype.names):
-                raise KeyError('The field "%s" does not exist in the MC data!'%(name))
+                raise KeyError('The field "%s" does not exist in the MC '
+                    'data!'%(name))
             data_weights += data_mc[name]
 
         # Create the PDF using the base class.
@@ -237,7 +250,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         Parameters
         ----------
-        data_exp : numpy record ndarray
+        data_exp : instance of DataFieldRecordArray
             The array holding the experimental data. The following data fields
             must exist:
 
@@ -246,6 +259,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
                 event.
             - 'dec' : float
                 The declination of the data event.
+
         logE_binning : BinningDefinition
             The binning definition for the binning in log10(E).
         sinDec_binning : BinningDefinition
@@ -254,13 +268,14 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         """
-        if(not isinstance(data_exp, np.ndarray)):
-            raise TypeError('The data_exp argument must be of type numpy.ndarray!')
+        if(not isinstance(data_exp, DataFieldRecordArray)):
+            raise TypeError('The data_exp argument must be an instance of '
+                'DataFieldRecordArray!')
 
         data_logE = data_exp['log_energy']
         data_sinDec = np.sin(data_exp['dec'])
         # For experimental data, the MC and physics weight are unity.
-        data_mcweight = np.ones((data_exp.size,))
+        data_mcweight = np.ones((len(data_exp),))
         data_physicsweight = data_mcweight
 
         # Create the PDF using the base class.
@@ -270,6 +285,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         )
         # Check if this PDF is valid for all the given experimental data.
         self.assert_is_valid_for_exp_data(data_exp)
+
 
 class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
@@ -282,7 +298,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         Parameters
         ----------
-        data_mc : numpy record ndarray
+        data_mc : instance of DataFieldRecordArray
             The array holding the monte-carlo data. The following data fields
             must exist:
 
@@ -293,6 +309,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
                 The declination of the data event.
             - 'mcweight': float
                 The monte-carlo weight of the event.
+
         physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
             should be used as physics event weights. If a list is given, the
@@ -306,13 +323,15 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         """
-        if(not isinstance(data_mc, np.ndarray)):
-            raise TypeError('The data_mc argument must be of type numpy.ndarray!')
+        if(not isinstance(data_mc, DataFieldRecordArray)):
+            raise TypeError('The data_mc argument must be an instance of '
+                'DataFieldRecordArray!')
 
-        if(isinstance(mc_weight_field_names, str)):
-            mc_weight_field_names = [mc_weight_field_names]
-        if(not issequenceof(mc_weight_field_names, str)):
-            raise TypeError('The mc_weight_field_names argument must be of type str or a sequence of type str!')
+        if(isinstance(physics_weight_field_names, str)):
+            physics_weight_field_names = [physics_weight_field_names]
+        if(not issequenceof(physics_weight_field_names, str)):
+            raise TypeError('The physics_weight_field_names argument must be '
+                'of type str or a sequence of type str!')
 
         data_logE = data_mc['log_energy']
         data_sinDec = np.sin(data_mc['dec'])
@@ -320,9 +339,9 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         # Calculate the event weights as the sum of all the given data fields
         # for each event.
-        data_physicsweight = np.zeros(data_mc.size, dtype=np.float64)
+        data_physicsweight = np.zeros(len(data_mc), dtype=np.float64)
         for name in physics_weight_field_names:
-            if(name not in data_mc.dtype.names):
+            if(name not in data_mc.field_name_list):
                 raise KeyError('The field "%s" does not exist in the MC data!'%(name))
             data_physicsweight += data_mc[name]
 

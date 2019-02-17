@@ -12,6 +12,7 @@ from skyllh.core.py import (
 from skyllh.core.random import RandomStateService
 from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.storage import DataFieldRecordArray
 from skyllh.physics.flux import (
     get_conversion_factor_to_internal_flux_unit
 )
@@ -224,10 +225,10 @@ class SignalGenerator(object):
         -------
         n_signal : int
             The number of generated signal events.
-        signal_events_dict : dict of numpy record array
-            The dictionary holding the numpy record arrays holding the generated
-            signal events. Each key of this dictionary represents the dataset
-            index for which the signal events have been generated.
+        signal_events_dict : dict of DataFieldRecordArray
+            The dictionary holding the DataFieldRecordArray instancs with the
+            generated signal events. Each key of this dictionary represents the
+            dataset index for which the signal events have been generated.
         """
         if(poisson):
             mean = rss.random.poisson(float_cast(
@@ -253,9 +254,17 @@ class SignalGenerator(object):
         signal_events_dict = dict()
         ds_idxs = np.unique(sig_events_meta['ds_idx'])
         for ds_idx in ds_idxs:
+            mc = self._data_list[ds_idx].mc
             ds_mask = sig_events_meta['ds_idx'] == ds_idx
-            sig_events = np.empty(
-                (np.count_nonzero(ds_mask),), dtype=self._data_list[ds_idx].mc.dtype)
+            n_sig_events_ds = np.count_nonzero(ds_mask)
+
+            data = dict(
+                [(fname, np.empty(
+                    (n_sig_events_ds,),
+                    dtype=mc.get_field_dtype(fname))
+                 ) for fname in mc.field_name_list])
+            sig_events = DataFieldRecordArray(data, copy=False)
+
             fill_start_idx = 0
             # Get the list of unique source hypothesis group indices for the
             # current dataset.
@@ -269,15 +278,17 @@ class SignalGenerator(object):
                 n_shg_sig_events = len(shg_sig_events_meta)
                 ev_idx = shg_sig_events_meta['ev_idx']
                 # Get the signal MC events of the current dataset and source
-                # hypothesis group. We have to create a copy to not alter the
-                # original MC events.
-                shg_sig_events = np.copy(self._data_list[ds_idx].mc[ev_idx])
+                # hypothesis group.
+                shg_sig_events = mc.get_selection(ev_idx)
 
                 # Do the signal event post sampling processing.
                 shg_sig_events = shg.sig_gen_method.signal_event_post_sampling_processing(
                     shg, shg_sig_events_meta, shg_sig_events)
 
-                sig_events[fill_start_idx:fill_start_idx+n_shg_sig_events] = shg_sig_events
+                indices = np.indices((n_shg_sig_events,))[0] + fill_start_idx
+                sig_events.set_selection(indices, shg_sig_events)
+
+                #sig_events[fill_start_idx:fill_start_idx+n_shg_sig_events] = shg_sig_events
                 fill_start_idx += n_shg_sig_events
 
             signal_events_dict[ds_idx] = sig_events

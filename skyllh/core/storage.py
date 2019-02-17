@@ -2,10 +2,14 @@
 
 import abc
 import pickle
-import numpy as np
 import os.path
+import numpy as np
 
-from skyllh.core.py import issequence, issequenceof, range
+from skyllh.core.py import (
+    issequence,
+    issequenceof,
+    range
+)
 
 # Define a file loader registry that holds the FileLoader classes for different
 # file formats.
@@ -230,6 +234,274 @@ class PKLFileLoader(FileLoader):
             data = data[0]
 
         return data
+
+
+class DataFieldRecordArray(object):
+    """The DataFieldRecordArray class provides a data container similar to a numpy
+    record ndarray. But the data fields are stored as individual numpy ndarray
+    objects. Hence, access of single data fields is must faster compared to
+    access on the record ndarray.
+    """
+    def __init__(self, data, copy=True):
+        """Creates a DataFieldRecordArray from the given numpy record ndarray.
+
+        Parameters
+        ----------
+        data : numpy record ndarray | dict
+            The numpy record ndarray that needs to get transformed into the
+            DataFieldRecordArray instance. Alternative a dictionary with field names
+            as keys and numpy ndarrays as values can be provided.
+        copy : bool
+            Flag if the input data should get copied. Default is True.
+        """
+        self._data_fields = dict()
+        self._len = None
+
+        if(isinstance(data, np.ndarray)):
+            field_names = data.dtype.names
+        elif(isinstance(data, dict)):
+            field_names = list(data.keys())
+        else:
+            raise TypeError('The data argument must be an instance of ndarray '
+                'or dict!')
+
+        for fname in field_names:
+            if(copy is True):
+                field_arr = np.copy(data[fname])
+            else:
+                field_arr = data[fname]
+            if(self._len is None):
+                self._len = len(field_arr)
+            elif(len(field_arr) != self._len):
+                raise ValueError('All field arrays must have the same length. '
+                    'Field "%s" has length %d, but must be %d!'%(
+                    fname, len(field_arr), self._len))
+            self._data_fields[fname] = field_arr
+
+        self._field_name_list = list(self._data_fields.keys())
+        self._indices = np.indices((self._len,))[0]
+
+    def __getitem__(self, name):
+        """Implements data field value access.
+
+        Parameters
+        ----------
+        name : str | numpy ndarray of int or bool
+            The name of the data field. If a numpy ndarray is given, it must
+            contain the indices for which to retrieve a data selection of the
+            entire DataFieldRecordArray. A numpy ndarray of bools can be given
+            as well to define a mask.
+
+        Returns
+        -------
+        data : numpy ndarray | DataFieldRecordArray
+            The requested field data or a DataFieldRecordArray holding the
+            requested selection of the entire data.
+        """
+        if(isinstance(name, np.ndarray)):
+            return self.get_selection(name)
+
+        if(name not in self._data_fields):
+            raise KeyError('The data field "%s" is not present in the '
+                'DataFieldRecordArray instance.'%(name))
+
+        return self._data_fields[name]
+
+    def __setitem__(self, name, arr):
+        """Implements data field value assigment.
+
+        Parameters
+        ----------
+        name : str | numpy ndarray of int or bool
+            The name of the data field, or a numpy ndarray holding the indices
+            or mask of a selection of this DataFieldRecordArray.
+        arr : numpy ndarray | instance of DataFieldRecordArray
+            The numpy ndarray holding the field values. It must be of the same
+            length as this DataFieldRecordArray. If `name` is a numpy ndarray,
+            `arr` must be a DataFieldRecordArray.
+        """
+        if(isinstance(name, np.ndarray)):
+            self.set_selection(name, arr)
+            return
+
+        # We set a particular data field.
+        if(len(arr) != self._len):
+            raise ValueError('The length of the to-be-set data (%d) must '
+                'match the length (%d) of the DataFieldRecordArray instance!'%(
+                len(arr), self._len))
+
+        self._data_fields[name] = arr
+
+    def __len__(self):
+        return self._len
+
+    @property
+    def field_name_list(self):
+        """(read-only) The list of the field names of this DataFieldRecordArray.
+        """
+        return self._field_name_list
+
+    @property
+    def indices(self):
+        """The numpy ndarray holding the indices of this DataFieldRecordArray.
+        """
+        return self._indices
+
+    def append(self, arr):
+        """Appends the given DataFieldRecordArray to this DataFieldRecordArray
+        instance.
+
+        Parameters
+        ----------
+        arr : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray that should get appended to
+            this DataFieldRecordArray. It must contain the same data fields.
+            Additional data fields are ignored.
+        """
+        if(not isinstance(arr, DataFieldRecordArray)):
+            raise TypeError('The arr argument must be an instance of '
+                'DataFieldRecordArray!')
+
+        for fname in self._field_name_list:
+            self._data_fields[fname] = np.append(self._data_fields[fname], arr[fname])
+
+        self._len += len(arr)
+        self._indices = np.indices((self._len,))[0]
+
+    def append_field(self, name, data):
+        """Appends a field and its data to this DataFieldRecordArray instance.
+
+        Parameters
+        ----------
+        name : str
+            The name of the new data field.
+        data : numpy ndarray
+            The numpy ndarray holding the data.
+        """
+        if(not isinstance(name, str)):
+            raise TypeError('The name argument must be an instance of str!')
+        if(not isinstance(data, np.ndarray)):
+            raise TypeError('The data argument must be an instance of ndarray!')
+        if(len(data) != self._len):
+            raise ValueError('The length of the given data is %d, but must '
+                'be %d!'%(len(data), self._len))
+
+        self._data_fields[name] = data
+        self._field_name_list.append(name)
+
+    def remove_field(self, name):
+        """Removes the given field from this array.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field that is to be removed.
+        """
+        self._data_fields.pop(name)
+        self._field_name_list.remove(name)
+
+    def get_field_dtype(self, name):
+        """Returns the numpy dtype object of the given data field.
+        """
+        return self._data_fields[name].dtype
+
+    def convert_dtypes(self, convertions, except_fields=None):
+        """Converts the data type of the data fields of this
+        DataFieldRecordArray. This method can be used to compress the data.
+
+        Parameters
+        ----------
+        convertions : dict of `old_dtype` -> `new_dtype`
+            The sequence of 2-element tuples that define the old and the new
+            data type as numpy dtype instances.
+        except_fields : list of str | None
+            The list of field names, which should not get converted.
+        """
+        if(not isinstance(convertions, dict)):
+            raise TypeError('The convertions argument must be an instance of '
+                'dict!')
+
+        if(except_fields is None):
+            except_fields = []
+        if(not issequenceof(except_fields, str)):
+            raise TypeError('The except_fields argument must be a sequence '
+                'of str!')
+
+        _data_fields = self._data_fields
+        for fname in self._field_name_list:
+            if(fname in except_fields):
+                continue
+            old_dtype = _data_fields[fname].dtype
+            if(old_dtype in convertions):
+                new_dtype = convertions[old_dtype]
+                _data_fields[fname] = _data_fields[fname].astype(new_dtype)
+
+    def get_selection(self, indices):
+        """Creates an DataFieldRecordArray that contains a selection of the data
+        of this DataFieldRecordArray instance.
+
+        Parameters
+        ----------
+        indices : (N,)-shaped numpy ndarray of int or bool
+            The numpy ndarray holding the indices for which to select the data.
+
+        Returns
+        -------
+        data_field_array : DataFieldRecordArray
+            The DataFieldRecordArray that contains the selection of the
+            original DataFieldRecordArray. The selection data is a copy of the
+            original data.
+        """
+        data = dict()
+        for fname in self._field_name_list:
+            # Get the data selection from the original data. This creates a
+            # copy.
+            data[fname] = self._data_fields[fname][indices]
+        return DataFieldRecordArray(data, copy=False)
+
+    def set_selection(self, indices, arr):
+        """Sets a selection of the data of this DataFieldRecordArray instance
+        to the data given in arr.
+
+        Parameters
+        ----------
+        indices : (N,)-shaped numpy ndarray of int or bool
+            The numpy ndarray holding the indices or mask for which to set the
+            data.
+        arr : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the selection data.
+            It must have the same fields defined as this DataFieldRecordArray
+            instance.
+        """
+        if(not isinstance(arr, DataFieldRecordArray)):
+            raise TypeError('The arr argument must be an instance of '
+                'DataFieldRecordArray!')
+
+        for fname in self._field_name_list:
+            self._data_fields[fname][indices] = arr[fname]
+
+    def rename_fields(self, convertions):
+        """Renames the given fields of this array.
+
+        Parameters
+        ----------
+        convertions : dict of `old_name` -> `new_name`
+            The dictionary holding the old and new names of the data fields.
+        """
+        for (old_fname, new_fname) in convertions.items():
+            self._data_fields[new_fname] = self._data_fields[old_fname]
+            self._data_fields.pop(old_fname)
+
+        self._field_name_list = list(self._data_fields.keys())
+
+    def tidy_up(self, keep_fields):
+        if(not issequenceof(keep_fields, str)):
+            raise TypeError('The keep_fields argument must be a sequence of '
+                'str!')
+
+        for fname in self._field_name_list:
+            if(fname not in keep_fields):
+                self.remove_field(fname)
 
 
 register_FileLoader(['.npy'], NPYFileLoader)

@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
-#import logging
 import numpy as np
 
 from skyllh.core.binning import UsesBinning
-from skyllh.core.pdf import PDFAxis, EnergyPDF
+from skyllh.core.pdf import (
+    EnergyPDF,
+    PDFAxis
+)
 from skyllh.core.smoothing import (
     UNSMOOTH_AXIS,
     SmoothingFilter,

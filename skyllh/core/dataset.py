@@ -16,7 +16,11 @@ from skyllh.core.py import (
     str_cast
 )
 from skyllh.core import display
-from skyllh.core import storage
+from skyllh.core.storage import (
+    DataFieldRecordArray,
+    create_FileLoader
+)
+from skyllh.core.timing import TaskTimer
 
 
 class Dataset(object):
@@ -449,18 +453,16 @@ class Dataset(object):
             A DatasetData instance holding the experimental and monte-carlo
             data.
         """
-        fileloader_exp = storage.create_FileLoader(self._exp_pathfilename_list)
-        fileloader_mc  = storage.create_FileLoader(self._mc_pathfilename_list)
+        fileloader_exp = create_FileLoader(self._exp_pathfilename_list)
+        fileloader_mc  = create_FileLoader(self._mc_pathfilename_list)
 
-        with tl.task_timer('Loading exp data from disk.'):
-            data_exp = fileloader_exp.load_data()
-            data_exp = np_rfn.rename_fields(data_exp,
-                self._exp_field_name_renaming_dict)
+        with TaskTimer(tl, 'Loading exp data from disk.'):
+            data_exp = DataFieldRecordArray(fileloader_exp.load_data())
+            data_exp.rename_fields(self._exp_field_name_renaming_dict)
 
-        with tl.task_timer('Loading mc data from disk.'):
-            data_mc = fileloader_mc.load_data()
-            data_mc = np_rfn.rename_fields(data_mc,
-                self._mc_field_name_renaming_dict)
+        with TaskTimer(tl, 'Loading mc data from disk.'):
+            data_mc = DataFieldRecordArray(fileloader_mc.load_data())
+            data_mc.rename_fields(self._mc_field_name_renaming_dict)
 
         if(livetime is None):
             livetime = self.livetime
@@ -471,8 +473,8 @@ class Dataset(object):
         # Load all the auxiliary data for this dataset.
         data_aux = dict()
         for (aux_name, aux_pathfilename_list) in self._aux_data_definitions.items():
-            with tl.task_timer('Loaded aux data "%s" from disk.'%(aux_name)):
-                fileloader_aux = storage.create_FileLoader(aux_pathfilename_list)
+            with TaskTimer(tl, 'Loaded aux data "%s" from disk.'%(aux_name)):
+                fileloader_aux = create_FileLoader(aux_pathfilename_list)
                 data_aux[aux_name] = fileloader_aux.load_data()
 
         data = DatasetData(data_exp, data_mc, data_aux, livetime)
@@ -521,7 +523,7 @@ class Dataset(object):
         for data_prep_func in self._data_preparation_functions:
             task = 'Preparing data of dataset "'+self.name+'" by '\
                 '"'+data_prep_func.__name__+'".'
-            with tl.task_timer(task):
+            with TaskTimer(tl, task):
                 data_prep_func(data)
 
     def load_and_prepare_data(
@@ -566,27 +568,25 @@ class Dataset(object):
         self.prepare_data(data, tl=tl)
 
         # Drop unrequired data fields.
-        with tl.task_timer('Cleaning exp data.'):
-            data.exp = tidy_up_recarray(
-                data.exp, keep_fields=(type(self)._EXP_FIELD_NAMES +
-                                       keep_fields))
-        with tl.task_timer('Cleaning MC data.'):
-            data.mc = tidy_up_recarray(
-                data.mc, keep_fields=(type(self)._EXP_FIELD_NAMES +
-                                      type(self)._MC_FIELD_NAMES +
-                                      keep_fields))
+        with TaskTimer(tl, 'Cleaning exp data.'):
+            data.exp.tidy_up(keep_fields=(type(self)._EXP_FIELD_NAMES +
+                                          keep_fields))
+        with TaskTimer(tl, 'Cleaning MC data.'):
+            data.mc.tidy_up(keep_fields=(type(self)._EXP_FIELD_NAMES +
+                                         type(self)._MC_FIELD_NAMES +
+                                         keep_fields))
 
         # Convert float64 fields into float32 fields if requested.
         if(compress):
-            with tl.task_timer('Compressing exp data.'):
-                data.exp = convert_recarray_fields_float64_into_float32(
-                    data.exp)
+            dtype_convertions = { np.dtype(np.float64): np.dtype(np.float32) }
+            with TaskTimer(tl, 'Compressing exp data.'):
+                data.exp.convert_dtypes(dtype_convertions)
 
-            with tl.task_timer('Compressing MC data.'):
-                data.mc = convert_recarray_fields_float64_into_float32(
-                    data.mc, except_fields=('mcweight',))
+            with TaskTimer(tl, 'Compressing MC data.'):
+                data.mc.convert_dtypes(dtype_convertions,
+                    except_fields=('mcweight',))
 
-        with tl.task_timer('Asserting data format.'):
+        with TaskTimer(tl, 'Asserting data format.'):
             assert_data_format(self, data)
 
         return data
@@ -912,10 +912,10 @@ class DatasetData(object):
 
         Parameters
         ----------
-        data_exp : numpy record ndarray
-            The numpy record ndarray holding the experimental data.
-        data_mc : numpy record ndarray
-            The numpy record ndarray holding the monto-carlo data.
+        data_exp : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the experimental data.
+        data_mc : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the monto-carlo data.
         data_aux : dict
             The dictionary holding the auxiliary data for the dataset. The key
             of the dictionary identifies the auxiliary data. The value is the
@@ -932,24 +932,26 @@ class DatasetData(object):
 
     @property
     def exp(self):
-        """The numpy record array holding the experimental data.
+        """The DataFieldRecordArray instance holding the experimental data.
         """
         return self._exp
     @exp.setter
     def exp(self, data):
-        if(not isinstance(data, np.ndarray)):
-            raise TypeError('The exp property must be an instance of numpy.ndarray!')
+        if(not isinstance(data, DataFieldRecordArray)):
+            raise TypeError('The exp property must be an instance of '
+                'DataFieldRecordArray!')
         self._exp = data
 
     @property
     def mc(self):
-        """The numpy record array holding the monte-carlo data.
+        """The DataFieldRecordArray instance holding the monte-carlo data.
         """
         return self._mc
     @mc.setter
     def mc(self, data):
-        if(not isinstance(data, np.ndarray)):
-            raise TypeError('The mc property must be an instance of numpy.ndarray!')
+        if(not isinstance(data, DataFieldRecordArray)):
+            raise TypeError('The mc property must be an instance of '
+                'DataFieldRecordArray!')
         self._mc = data
 
     @property
@@ -980,81 +982,14 @@ class DatasetData(object):
     def exp_field_names(self):
         """(read-only) The list of field names present in the experimental data.
         """
-        return self._exp.dtype.names
+        return self._exp.field_name_list
 
     @property
     def mc_field_names(self):
         """(read-only) The list of field names present in the monte-carlo data.
         """
-        return self._mc.dtype.names
+        return self._mc.field_name_list
 
-
-def tidy_up_recarray(arr, keep_fields):
-    """Tidies up the given numpy record array by dropping all fields, which are
-    not specified through the keep_fields argument.
-
-    Parameters
-    ----------
-    arr : numpy record ndarray
-        The numpy record ndarray, which should get tidied up.
-    keep_fields : list of str
-        The list of field names which should get kept.
-
-    Returns
-    -------
-    cleaned_arr : numpy record ndarray
-        The cleaned record array.
-    """
-    if(not isinstance(arr, np.ndarray)):
-        raise TypeError('The arr argument must be an instance of numpy.ndarray!')
-    if(not issequenceof(keep_fields, str)):
-        raise TypeError('The keep_fields argument must be a sequence of str!')
-
-    drop_fields = [ fname for (fname, ftype) in arr.dtype.descr
-                   if fname not in keep_fields ]
-    cleaned_arr = np_rfn.drop_fields(arr, drop_fields, usemask=False)
-
-    return cleaned_arr
-
-def convert_recarray_fields_float64_into_float32(arr, except_fields=None, order='K'):
-    """Converts the float64 data fields of the given record ndarray into float32
-    data fields.
-
-    Parameters
-    ----------
-    arr : numpy record ndarray
-        The numpy record ndarray holding the data that should get converted
-        into 32bit values.
-    except_fields : list of str | None
-        The list of field names, which should not get converted.
-    order : str
-        The order of the converted record array. This is one of
-        {'C', 'F', 'A', 'K'}.
-
-    Returns
-    -------
-    converted_arr : numpy record ndarray
-        The numpy record ndarray with the converted data.
-    """
-    if(not isinstance(arr, np.ndarray)):
-        raise TypeError('The arr argument must be an instance of numpy.ndarray!')
-    if(except_fields is None):
-        except_fields = []
-    if(not issequenceof(except_fields, str)):
-        raise TypeError('The except_fields argument must be a sequence of str!')
-
-    dt_fields = arr.dtype.descr
-    for (i, (fname, ftype)) in enumerate(dt_fields):
-        # Do not convert fields that are present in except_fields.
-        if(fname in except_fields):
-            continue
-        # Convert float64 field into float32 field.
-        if(ftype == np.dtype(np.float64).str):
-            dt_fields[i] = (fname, np.float32)
-
-    converted_arr = arr.astype(dt_fields, order=order)
-
-    return converted_arr
 
 def assert_data_format(dataset, data):
     """Checks the format of the experimental and monte-carlo data.
@@ -1074,12 +1009,14 @@ def assert_data_format(dataset, data):
     dataset_cls = type(dataset)
 
     # Check experimental data keys.
-    missing_exp_keys = _get_missing_keys(data.exp.dtype.names, dataset_cls._EXP_FIELD_NAMES)
+    missing_exp_keys = _get_missing_keys(data.exp.field_name_list,
+        dataset_cls._EXP_FIELD_NAMES)
     if(len(missing_exp_keys) != 0):
         raise KeyError('The following data fields are missing for the experimental data of dataset "%s": '%(dataset.name)+', '.join(missing_exp_keys))
 
     # Check monte-carlo data keys.
-    missing_mc_keys = _get_missing_keys(data.mc.dtype.names, dataset_cls._EXP_FIELD_NAMES + dataset_cls._MC_FIELD_NAMES)
+    missing_mc_keys = _get_missing_keys(data.mc.field_name_list,
+        dataset_cls._EXP_FIELD_NAMES + dataset_cls._MC_FIELD_NAMES)
     if(len(missing_mc_keys) != 0):
         raise KeyError('The following data fields are missing for the monte-carlo data of dataset "%s": '%(dataset.name)+', '.join(missing_mc_keys))
 
