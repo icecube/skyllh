@@ -176,7 +176,7 @@ class TimeScramblingMethod(DataScramblingMethod):
 
 
 class DataScrambler(object):
-    def __init__(self, method, inplace_scrambling=True):
+    def __init__(self, method):
         """Creates a data scrambler instance with a given defined scrambling
         method.
 
@@ -185,14 +185,8 @@ class DataScrambler(object):
         method : DataScramblingMethod
             The instance of DataScramblingMethod that defines the method of
             the data scrambling.
-        inplace_scrambling : bool
-            Flag if the scrambler should perform an in-place scrambling of the
-            data. If set to False, a copy of the given data is created before
-            the scrambling is performed on the data, otherwise (the default)
-            the scrambling is performed on the given data directly.
         """
         self.method = method
-        self.inplace_scrambling = inplace_scrambling
 
     @property
     def method(self):
@@ -203,24 +197,11 @@ class DataScrambler(object):
     @method.setter
     def method(self, method):
         if(not isinstance(method, DataScramblingMethod)):
-            raise TypeError('The data scrambling method must be an instance of DataScramblingMethod!')
+            raise TypeError('The data scrambling method must be an instance '
+                'of DataScramblingMethod!')
         self._method = method
 
-    @property
-    def inplace_scrambling(self):
-        """Flag if the scrambler should perform an in-place scrambling of the
-        data. If set to False, a copy of the given data is created before the
-        scrambling is performed on the data, otherwise (the default) the
-        scrambling is performed on the given data directly.
-        """
-        return self._inplace_scrambling
-    @inplace_scrambling.setter
-    def inplace_scrambling(self, flag):
-        if(not isinstance(flag, bool)):
-            raise TypeError('The inplace_scrambling property must be of type bool!')
-        self._inplace_scrambling = flag
-
-    def scramble_data(self, rss, data):
+    def scramble_data(self, rss, data, copy=False):
         """Scrambles the given data by calling the scramble method of the
         scrambling method class, that was configured for the data scrambler.
         If the ``inplace_scrambling`` property is set to False, a copy of the
@@ -229,10 +210,14 @@ class DataScrambler(object):
         Parameters
         ----------
         rss : RandomStateService
-            The random state service providing the random number generator (RNG).
+            The random state service providing the random number generator
+            (RNG).
         data : instance of DataFieldRecordArray
             The DataFieldRecordArray instance holding the data, which should get
             scrambled.
+        copy : bool
+            Flag if a copy of the given data should be made before scrambling
+            the data. The default is False.
 
         Returns
         -------
@@ -242,7 +227,7 @@ class DataScrambler(object):
             array is the same array as the input array, otherwise it's a new
             array.
         """
-        if(not self._inplace_scrambling):
+        if(copy):
             data = data.copy()
 
         data = self._method.scramble(rss, data)
