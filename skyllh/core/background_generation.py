@@ -7,6 +7,7 @@ from skyllh.core.py import (
     float_cast,
     func_has_n_args
 )
+from skyllh.core.scrambling import DataScrambler
 
 
 class BackgroundGenerationMethod(object):
@@ -58,7 +59,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
     event.
     """
     def __init__(self, get_event_prob_func, get_mean_func=None,
-                 unique_events=False):
+                 unique_events=False, data_scrambler=None):
         """Creates a new instance of the MCDataSamplingBkgGenMethod class.
 
         Parameters
@@ -81,12 +82,18 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         unique_events : bool
             Flag if unique events should be drawn from the monte-carlo (True),
             or if events can be drawn several times (False). Default is False.
+        data_scrambler : instance of DataScrambler | None
+            If set to an instance of DataScrambler, the drawn monte-carlo
+            background events will get scrambled. This can ensure more
+            independent data trials. It is especially important when monte-carlo
+            statistics are low.
         """
         super(MCDataSamplingBkgGenMethod, self).__init__()
 
         self.get_event_prob_func = get_event_prob_func
         self.get_mean_func = get_mean_func
         self.unique_events = unique_events
+        self.data_scrambler = data_scrambler
 
         # Define cache members to cache the background probabilities for each
         # monte-carlo event. The probabilities change only if the data changes.
@@ -140,6 +147,22 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         if(not isinstance(b, bool)):
             raise TypeError('The unique_events property must be of type bool!')
         self._unique_events = b
+
+    @property
+    def data_scrambler(self):
+        """The DataScrambler instance that should be used to scramble the drawn
+        monte-carlo background events to ensure more independent data trials.
+        This is especially important when monte-carlo statistics are low. It is
+        `None`, if no data scrambling should be used.
+        """
+        return self._data_scrambler
+    @data_scrambler.setter
+    def data_scrambler(self, scrambler):
+        if(scrambler is not None):
+            if(not isinstance(scrambler, DataScrambler)):
+                raise TypeError('The data_scrambler property must be an instance '
+                    'of DataScrambler!')
+        self._data_scrambler = scrambler
 
     def generate_events(self, rss, dataset, data, mean):
         """Generates background events  a `mean` number of background
@@ -199,5 +222,9 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # Remove MC specific data fields from the background events record
         # array. So the result contains only experimental data fields.
         bkg_events.tidy_up(data.exp_field_names)
+
+        # Scramble the background events if requested.
+        if(self._data_scrambler is not None):
+            bkg_events = self._data_scrambler.scramble_data(rss, bkg_events)
 
         return bkg_events
