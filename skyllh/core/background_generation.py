@@ -186,8 +186,9 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
 
         Returns
         -------
-        bkg_events : numpy record array
-            The numpy record arrays holding the generated background events.
+        bkg_events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the generated
+            background events.
         """
         data_id = id(data)
         if(self._cache_data_id != data_id):

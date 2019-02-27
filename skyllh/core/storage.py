@@ -247,12 +247,17 @@ class DataFieldRecordArray(object):
 
         Parameters
         ----------
-        data : numpy record ndarray | dict
+        data : numpy record ndarray | dict | DataFieldRecordArray
             The numpy record ndarray that needs to get transformed into the
-            DataFieldRecordArray instance. Alternative a dictionary with field names
-            as keys and numpy ndarrays as values can be provided.
+            DataFieldRecordArray instance. Alternative a dictionary with field
+            names as keys and numpy ndarrays as values can be provided. If an
+            instance of DataFieldRecordArray is provided, the new
+            DataFieldRecordArray gets constructed from the copy of the data of
+            the provided DataFieldRecordArray instance.
         copy : bool
-            Flag if the input data should get copied. Default is True.
+            Flag if the input data should get copied. Default is True. If a
+            DataFieldRecordArray instance is provided, this option is set to
+            `True` automatically.
         """
         self._data_fields = dict()
         self._len = None
@@ -261,9 +266,12 @@ class DataFieldRecordArray(object):
             field_names = data.dtype.names
         elif(isinstance(data, dict)):
             field_names = list(data.keys())
+        elif(isinstance(data, DataFieldRecordArray)):
+            field_names = data.field_name_list
+            copy = True
         else:
-            raise TypeError('The data argument must be an instance of ndarray '
-                'or dict!')
+            raise TypeError('The data argument must be an instance of ndarray, '
+                'dict, or DataFieldRecordArray!')
 
         for fname in field_names:
             if(copy is True):
@@ -393,8 +401,7 @@ class DataFieldRecordArray(object):
         """Creates a new DataFieldRecordArray that is a copy of this
         DataFieldRecordArray instance.
         """
-        data = dict([(fname, self[fname]) for fname in self._field_name_list])
-        return DataFieldRecordArray(data, copy=True)
+        return DataFieldRecordArray(self)
 
     def remove_field(self, name):
         """Removes the given field from this array.
