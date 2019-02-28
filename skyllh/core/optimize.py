@@ -80,19 +80,26 @@ class EventSelectionMethod(object):
         pass
 
     @abc.abstractmethod
-    def select_events(self, events):
+    def select_events(self, events, retmask=False):
         """This method selects the events, which will contribute to the
         log-likelihood ratio function.
 
         Parameters
         ----------
-        events : numpy record array
-            The set of all events.
+        events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the events.
+        retmask : bool
+            Flag if also the (N_events,)-shaped boolean ndarray mask of the
+            selected events should get returned.
+            Default is False.
 
         Returns
         -------
-        selected_events : numpy record array
-            The set of selected events, i.e. a subset of the events parameter.
+        selected_events : DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the selected events,
+            i.e. a subset of the `events` argument.
+        mask : (N_events,)-shaped ndarray of bools
+            The mask of the selected events, in case `retmask` is set to True.
         """
         pass
 
@@ -116,11 +123,52 @@ class AllEventSelectionMethod(EventSelectionMethod):
     def source_to_array(self, sources):
         return None
 
-    def select_events(self, events):
+    def select_events(self, events, retmask=False):
+        """Selects all of the given events. Hence, the returned event array is
+        the same as the given array.
+
+        Parameters
+        ----------
+        events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the events, for which
+            the selection method should get applied.
+        retmask : bool
+            Flag if also the mask of the selected events should get returned.
+            Default is False.
+
+        Returns
+        -------
+        selected_events : DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the selected events,
+            i.e. a subset of the `events` argument.
+        mask : (N_events,)-shaped ndarray of bools
+            The mask of the selected events, in case `retmask` is set to True.
+        """
+        if(retmask):
+            return (events, np.ones((len(events),), dtype=np.bool))
         return events
 
 
-class SpatialBoxEventSelectionMethod(EventSelectionMethod):
+class SpatialEventSelectionMethod(EventSelectionMethod):
+    """This class defines the base class for all spatial event selection
+    methods.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, src_hypo_group_manager):
+        """Creates a new event selection method instance.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The instance of SourceHypoGroupManager that defines the list of
+            sources, i.e. the list of SourceModel instances.
+        """
+        super(SpatialEventSelectionMethod, self).__init__(
+            src_hypo_group_manager)
+
+
+class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
     """This event selection method selects events within a spatial box in
     right-ascention and declination around a list of point-like sources
     positions.
@@ -137,7 +185,8 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
             The half-opening angle around the source for which events should
             get selected.
         """
-        super(SpatialBoxEventSelectionMethod, self).__init__(src_hypo_group_manager)
+        super(SpatialBoxEventSelectionMethod, self).__init__(
+            src_hypo_group_manager)
 
         self.delta_angle = delta_angle
 
@@ -185,7 +234,7 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
 
         return arr
 
-    def select_events(self, events):
+    def select_events(self, events, retmask=False):
         """Selects the events within the spatial box in right-ascention and
         declination.
 
@@ -195,19 +244,25 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
 
         Parameters
         ----------
-        events : numpy record array
-            The numpy record array with the event data.
+        events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray that holds the event data.
             The following data fields must exist:
-            
+
             - 'ra' : float
-                The right-ascention of the event.    
+                The right-ascention of the event.
             - 'dec' : float
                 The declination of the event.
+        retmask : bool
+            Flag if also the mask of the selected events should get returned.
+            Default is False.
 
         Returns
         -------
-        selected_events : numpy record array
-            The numpy record array holding only the selected events.
+        selected_events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding only the selected
+            events.
+        mask : (N_events,)-shaped ndarray of bools
+            The mask of the selected events, in case `retmask` is set to True.
         """
         # Calculate the minus and plus declination around the source and bound
         # it to -90deg and +90deg, respectively.
@@ -255,4 +310,6 @@ class SpatialBoxEventSelectionMethod(EventSelectionMethod):
         # Reduce the events according to the mask.
         selected_events = events[mask]
 
+        if(retmask):
+            return (selected_events, mask)
         return selected_events
