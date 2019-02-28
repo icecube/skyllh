@@ -5,6 +5,7 @@ import multiprocessing as mp
 
 from skyllh.core.py import range
 from skyllh.core.random import RandomStateService
+from skyllh.core.timing import TimeLord
 
 # Global setting for the number of CPUs to use for functions that allow
 # multi-processing. If this setting is set to an int value in the range [1, N]
@@ -39,7 +40,7 @@ def get_ncpu(local_ncpu):
         raise ValueError('The ncpu setting must be >= 1!')
     return ncpu
 
-def parallelize(func, args_list, ncpu, rss=None):
+def parallelize(func, args_list, ncpu, rss=None, tl=None):
     """Parallelizes the execution of the given function for different arguments.
 
     Parameters
@@ -58,6 +59,8 @@ def parallelize(func, args_list, ncpu, rss=None):
         The number of CPUs to use, i.e. the number of subprocesses to spawn.
     rss : RandomStateService | None
         The RandomStateService instance to use for generating random numbers.
+    tl : instance of TimeLord | None
+        The instance of TimeLord that should be used to time individual tasks.
 
     Returns
     -------
@@ -67,7 +70,7 @@ def parallelize(func, args_list, ncpu, rss=None):
     """
     # Define a wrapper function for the multiprocessing module that evaluates
     # ``func`` for a subset of args_list.
-    def wrapper(func, sub_args_list, pid=0, queue=None, rss=None):
+    def wrapper(func, sub_args_list, pid=0, queue=None, rss=None, tl=None):
         """Wrapper function for the multiprocessing module that evaluates
         ``func`` for the subset ``sub_args_list`` of ``args_list``.
 
@@ -92,6 +95,9 @@ def parallelize(func, args_list, ncpu, rss=None):
             If set to None, the result list will be returned.
         rss : RandomStateService | None
             The RandomStateService instance to use for generating random numbers.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks.
 
         Returns
         -------
@@ -99,51 +105,72 @@ def parallelize(func, args_list, ncpu, rss=None):
             The list of the function results for the different function
             arguments, only if ``queue`` is set to None.
         """
-        if rss is None:
-            result_list = [func(*args, **kwargs)
-                for (args,kwargs) in sub_args_list]
-        else:
-            result_list = [func(*args, rss=rss, **kwargs)
-                for (args,kwargs) in sub_args_list]
+        result_list = []
+        for (args,kwargs) in sub_args_list:
+            if(rss is not None):
+                kwargs['rss'] = rss
+            if(tl is not None):
+                kwargs['tl'] = tl
+            result_list.append(func(*args, **kwargs))
+
         if(queue is None):
             return result_list
-        queue.put((pid, result_list))
+        queue.put((pid, result_list, tl))
 
     # Return result list if only one CPU is used.
     if(ncpu == 1):
-        return wrapper(func, args_list, rss=rss)
+        return wrapper(func, args_list, rss=rss, tl=tl)
 
     # Multiple CPUs are used. Split the work across multiple processes.
     # We will use our own process (pid = 0) as a worker too.
     queue = mp.Queue()
     sub_args_list_list = np.array_split(args_list, ncpu)
 
-    # Create a list of RandomStateService for each process if rss argument is set.
+    # Create a list of RandomStateService for each process if rss argument is
+    # set.
     rss_list = [rss]
-    if rss is None:
+    if(rss is None):
         rss_list += [None]*(ncpu-1)
     else:
         if(not isinstance(rss, RandomStateService)):
-            raise TypeError('The rss property must be an instance of Minimizer!')
+            raise TypeError('The rss argument must be an instance of '
+                'RandomStateService!')
         rss_list.extend([RandomStateService(seed=rss.random.randint(0, 2**32))
             for i in range(1, ncpu)])
-    
-    processes = [mp.Process(target=wrapper,
-                            args=(func, sub_args_list, pid, queue, rss_list[pid]))
-            for (pid, sub_args_list) in enumerate(sub_args_list_list) if pid > 0]
+
+    # Create a list of TimeLord instances, one for each process if tl argument
+    # is set.
+    tl_list = [tl]
+    if(tl is None):
+        tl_list += [None]*(ncpu-1)
+    else:
+        if(not isinstance(tl, TimeLord)):
+            raise TypeError('The tl argument must be an instance of '
+                'TimeLord!')
+        tl_list.extend([TimeLord()
+            for i in range(1, ncpu)])
+
+    processes = [mp.Process(
+        target=wrapper,
+        args=(func, sub_args_list, pid, queue, rss_list[pid], tl_list[pid]))
+        for (pid, sub_args_list) in enumerate(sub_args_list_list) if pid > 0]
 
     # Start the processes.
     for proc in processes:
         proc.start()
 
     # Compute the first chunk in the main process.
-    result_list_0 = wrapper(func, sub_args_list_list[0], pid=0, rss=rss_list[0])
+    result_list_0 = wrapper(
+        func, sub_args_list_list[0], pid=0, rss=rss_list[0], tl=tl_list[0])
 
-    # Gather len(processes) results from the queue.
+    # Gather len(processes) results from the queue and join the process's
+    # TimeLord instance with the main TimeLord instance.
     pid_result_list_map = {0: result_list_0}
     for proc in processes:
-        (pid, result_list) = queue.get()
+        (pid, result_list, proc_tl) = queue.get()
         pid_result_list_map[pid] = result_list
+        if(tl is not None):
+            tl.join(proc_tl)
 
     # Join all the processes.
     for proc in processes:
@@ -155,6 +182,7 @@ def parallelize(func, args_list, ncpu, rss=None):
         result_list += pid_result_list_map[pid]
 
     return result_list
+
 
 class IsParallelizable(object):
     """Classifier class defining the ncpu property. Classes that derive from

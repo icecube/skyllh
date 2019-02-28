@@ -14,24 +14,89 @@ statement to time the execution of the code within the `with` block.
 
 class TaskRecord(object):
     def __init__(self, name, duration):
+        """Creates a new TaskRecord instance.
+
+        Parameters
+        ----------
+        name : str
+            The name of the task.
+        duration : float
+            The duration of the task in seconds.
+        """
         self.name = name
         self.duration = duration
+
+    def join(self, tr):
+        """Joins this TaskRecord with the given TaskRecord instance.
+
+        Parameters
+        ----------
+        tr : TaskRecord
+            The instance of TaskRecord that should be joined with this
+            TaskRecord instance.
+        """
+        self.duration += tr.duration
 
 
 class TimeLord(object):
     def __init__(self):
         self._task_records = []
-
-    def add_task_record(self, name, duration):
-        """Adds a task record to the internal list of task records.
-        """
-        self._task_records.append(TaskRecord(name, duration))
+        self._task_records_name_idx_map = {}
 
     @property
     def task_name_list(self):
         """(read-only) The list of task names.
         """
-        return [ task.name for task in self._task_records ]
+        return list(self._task_records_name_idx_map.keys())
+
+    def add_task_record(self, tr):
+        """Adds a given task record to the internal list of task records.
+        """
+        tname = tr.name
+
+        if(tname in self._task_records_name_idx_map):
+            # The TaskRecord already exists. Update the task record.
+            self_tr = self.get_task_record(tname)
+            self_tr.join(tr)
+            return
+
+        self._task_records.append(tr)
+        self._task_records_name_idx_map[tr.name] = len(self._task_records)-1
+
+    def get_task_record(self, name):
+        """Retrieves a task record of the given name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the task record.
+
+        Returns
+        -------
+        task_record : TaskRecord
+            The instance of TaskRecord with the requested name.
+        """
+        return self._task_records[self._task_records_name_idx_map[name]]
+
+    def join(self, tl):
+        """Joins a given TimeLord instance with this TimeLord instance. Tasks
+        of the same name will be updated and new tasks will be added.
+
+        Parameters
+        ----------
+        tl : TimeLord instance
+            The instance of TimeLord whos tasks should be joined with the tasks
+            of this TimeLord instance.
+        """
+        for tname in tl.task_name_list:
+            other_tr = tl.get_task_record(tname)
+            if(tname in self._task_records_name_idx_map):
+                # Update the task record.
+                tr = self.get_task_record(tname)
+                tr.join(other_tr)
+            else:
+                # Add a new task record.
+                self.add_task_record(other_tr)
 
     def task_timer(self, name):
         """Creates TaskTimer instance for the given task name.
@@ -49,8 +114,9 @@ class TimeLord(object):
 
         n_tasks = len(task_name_list)
         for i in range(n_tasks):
-            task_name = task_name_list[i][0:max_task_name_len]
-            task_duration = self._task_records[i].duration
+            tr = self._task_records[i]
+            task_name = tr.name[0:max_task_name_len]
+            task_duration = tr.duration
             l = '\n[%'+str(max_task_name_len)+'s] %g sec'
             s += l%(task_name, task_duration)
 
@@ -118,4 +184,4 @@ class TaskTimer(object):
         if(self._time_lord is None):
             return
 
-        self._time_lord.add_task_record(self._name, self.duration)
+        self._time_lord.add_task_record(TaskRecord(self._name, self.duration))

@@ -32,6 +32,7 @@ from skyllh.core.llhratio import (
     MultiDatasetTCLLHRatio
 )
 from skyllh.core.scrambling import DataScramblingMethod
+from skyllh.core.timing import TaskTimer
 from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.optimize import (
     EventSelectionMethod,
@@ -510,7 +511,7 @@ class Analysis(object):
 
         return (n_sig, n_events_list, events_list)
 
-    def do_trial(self, rss, bkg_mean_list=None, sig_mean=0):
+    def do_trial(self, rss, bkg_mean_list=None, sig_mean=0, tl=None):
         """Performs an analysis trial by generating a pseudo data sample with
         background events and possible signal events, and performs the LLH
         analysis on that random pseudo data sample.
@@ -528,6 +529,9 @@ class Analysis(object):
             The mean number of signal events that should be generated for the
             trial. The actual number of generated events will be drawn from a
             Poisson distribution with this given signal mean as mean.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks.
 
         Returns
         -------
@@ -542,13 +546,18 @@ class Analysis(object):
             [<fitparam_name> ... : float ]
                 Any additional fit parameters of the LLH function.
         """
-        (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
-            rss, bkg_mean_list, sig_mean)
+        with TaskTimer(tl, 'Generating pseudo data.'):
+            (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
+                rss, bkg_mean_list, sig_mean)
 
-        self.initialize_trial(events_list, n_events_list)
+        with TaskTimer(tl, 'Initializing trial.'):
+            self.initialize_trial(events_list, n_events_list)
 
-        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
-        TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
+        with TaskTimer(tl, 'Maximizing LLH ratio function.'):
+            (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
+
+        with TaskTimer(tl, 'Calculating test statistic.'):
+            TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
 
         # Create the structured array data type for the result array.
         result_dtype = [('n_sig', np.int), ('TS', np.float)] + [
@@ -562,7 +571,8 @@ class Analysis(object):
 
         return result
 
-    def do_trials(self, rss, n, bkg_mean_list=None, sig_mean=0, ncpu=None):
+    def do_trials(self, rss, n, bkg_mean_list=None, sig_mean=0, ncpu=None,
+        tl=None):
         """Executes `do_trial` method `N` times with possible multi-processing.
         One trial performs an analysis trial by generating a pseudo data sample
         with background events and possible signal events, and performs the LLH
@@ -586,6 +596,9 @@ class Analysis(object):
         ncpu : int | None
             The number of CPUs to use, i.e. the number of subprocesses to
             spawn. If set to None, the global setting will be used.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks.
 
         Returns
         -------
@@ -603,7 +616,8 @@ class Analysis(object):
         ncpu = get_ncpu(ncpu)
         args_list = [((), {'bkg_mean_list': bkg_mean_list,
             'sig_mean': sig_mean}) for i in range(n)]
-        result_list = parallelize(self.do_trial, args_list, ncpu, rss=rss)
+        result_list = parallelize(
+            self.do_trial, args_list, ncpu, rss=rss, tl=tl)
 
         result_dtype = result_list[0].dtype
         result = np.empty(n, dtype=result_dtype)
