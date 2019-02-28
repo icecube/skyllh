@@ -58,6 +58,8 @@ class FixedScrambledExpDataI3BkgGenMethod(BackgroundGenerationMethod):
 
         Returns
         -------
+        n_bkg : int
+            The number of generated background events.
         bkg_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the generated
             background events.
@@ -65,4 +67,4 @@ class FixedScrambledExpDataI3BkgGenMethod(BackgroundGenerationMethod):
         # Scramble the experimental data events, but make a copy first.
         bkg_events = self._data_scrambler.scramble_data(rss, data.exp.copy())
 
-        return bkg_events
+        return (len(bkg_events), bkg_events)

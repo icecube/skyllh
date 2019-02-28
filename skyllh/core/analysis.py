@@ -365,7 +365,7 @@ class Analysis(object):
             self._src_hypo_group_manager, self._dataset_list, self._data_list)
 
     @abc.abstractmethod
-    def initialize_trial(self, events_list):
+    def initialize_trial(self, events_list, n_events_list=None):
         """This method is supposed to initialize the log-likelihood ratio
         function with a new set of given trial data. This is a low-level method.
         For convenient methods see the `unblind` and `do_trial` methods.
@@ -376,6 +376,12 @@ class Analysis(object):
             The list of data events to use for the log-likelihood function
             evaluation. The data arrays for the datasets must be in the same
             order than the added datasets.
+        n_events_list : list of int | None
+            The list of the number of events of each data set. These numbers
+            can be larger than the number of events given by the `events_list`
+            argument in cases where an event selection method was already used.
+            If set to None, the number of events is taken from the given
+            `events_list` argument.
         """
         pass
 
@@ -453,9 +459,15 @@ class Analysis(object):
         -------
         n_sig : int
             The actual number of injected signal events.
-        events_list : list of numpy record ndarray
-            The list of numpy record ndarrays containing the pseudo data events
-            for each data sample.
+        n_events_list : list of int
+            The list of the number of events that have been generated for each
+            pseudo data set.
+        events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances containing the pseudo
+            data events for each data sample. The number of events for each
+            data set can be less than the number of events given by
+            `n_events_list` if an event selection method was already utilized
+            when generating background events.
         """
         if(not isinstance(rss, RandomStateService)):
             raise TypeError('The rss argument must be an instance of '
@@ -474,11 +486,13 @@ class Analysis(object):
 
         # Generate pseudo data for each dataset with background and possible
         # signal events.
-        events_list = [
-            self._bkg_generator.generate_background_events(
+        n_events_list = []
+        events_list = []
+        for ds_idx in range(self.n_datasets):
+            (n_bkg, bkg_events) = self._bkg_generator.generate_background_events(
                 rss, ds_idx, bkg_mean_list[ds_idx])
-            for ds_idx in range(self.n_datasets)
-        ]
+            n_events_list.append(n_bkg)
+            events_list.append(bkg_events)
 
         n_sig = 0
         if(sig_mean > 0):
@@ -491,9 +505,10 @@ class Analysis(object):
                 rss, sig_mean)
             # Inject the signal events to the generated background data.
             for (idx, sig_events) in ds_sig_events_dict.items():
+                n_events_list[idx] += len(sig_events)
                 events_list[idx].append(sig_events)
 
-        return (n_sig, events_list)
+        return (n_sig, n_events_list, events_list)
 
     def do_trial(self, rss, bkg_mean_list=None, sig_mean=0):
         """Performs an analysis trial by generating a pseudo data sample with
@@ -527,9 +542,10 @@ class Analysis(object):
             [<fitparam_name> ... : float ]
                 Any additional fit parameters of the LLH function.
         """
-        (n_sig, events_list) = self.generate_pseudo_data(rss, bkg_mean_list, sig_mean)
+        (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
+            rss, bkg_mean_list, sig_mean)
 
-        self.initialize_trial(events_list)
+        self.initialize_trial(events_list, n_events_list)
 
         (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
         TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
@@ -792,29 +808,37 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             self._sig_generator.change_source_hypo_group_manager(
                 self._src_hypo_group_manager)
 
-    def initialize_trial(self, events_list):
+    def initialize_trial(self, events_list, n_events_list=None):
         """This method initializes the multi-dataset log-likelihood ratio
         function with a new set of given trial data. This is a low-level method.
         For convenient methods see the `unblind` and `do_trial` methods.
 
         Parameters
         ----------
-        events_list : list of numpy record ndarray
-            The list of data events to use for the log-likelihood function
-            evaluation. The data arrays for the datasets must be in the same
-            order than the added datasets.
+        events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances holding the data events
+            to use for the log-likelihood function evaluation. The data arrays
+            for the datasets must be in the same order than the added datasets.
+        n_events_list : list of int | None
+            The list of the number of events of each data set. If set to None,
+            the number of events is taken from the size of the given events.
         """
-        for (events, llhratio) in zip(events_list, self._llhratio.llhratio_list):
-            n_all_events = len(events)
+        if(n_events_list is None):
+            n_events_list = [ len(events) for events in events_list ]
+
+        for (n_events, events, llhratio) in zip(
+            n_events_list, events_list, self._llhratio.llhratio_list):
 
             # Select events that have potential to be signal. This is for
-            # runtime optimization only.
+            # runtime optimization only. Doing this at this point, makes sure
+            # that both, background and signal events laying outside of the
+            # selection area get marked as pure background events.
             events = self._event_selection_method.select_events(events)
             n_selected_events = len(events)
 
             # Initialize the log-likelihood ratio function of the dataset with
             # the selected (scrambled) events.
-            n_pure_bkg_events = n_all_events - n_selected_events
+            n_pure_bkg_events = n_events - n_selected_events
             llhratio.initialize_for_new_trial(events, n_pure_bkg_events)
 
     def maximize_llhratio(self, rss):
