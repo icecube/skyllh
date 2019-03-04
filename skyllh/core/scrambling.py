@@ -90,7 +90,9 @@ class UniformRAScramblingMethod(DataScramblingMethod):
         data : DataFieldRecordArray
             The given DataFieldRecordArray holding the scrambled data.
         """
-        data["ra"] = rss.random.uniform(*self.ra_range, size=len(data))
+        dt = data['ra'].dtype
+        data['ra'] = rss.random.uniform(
+            *self.ra_range, size=len(data)).astype(dt)
         return data
 
 
