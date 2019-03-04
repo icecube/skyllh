@@ -397,6 +397,26 @@ class DataFieldRecordArray(object):
         self._data_fields[name] = data
         self._field_name_list.append(name)
 
+    def as_numpy_record_array(self):
+        """Creates a numpy record ndarray instance holding the data of this
+        DataFieldRecordArray instance.
+
+        Returns
+        -------
+        arr : numpy record ndarray
+            The numpy recarray ndarray holding the data of this
+            DataFieldRecordArray instance.
+        """
+        dt = np.dtype(
+            [(name, self._data_fields[name].dtype)
+             for name in self.field_name_list])
+
+        arr = np.empty((len(self),), dtype=dt)
+        for name in self.field_name_list:
+            arr[name] = self[name]
+
+        return arr
+
     def copy(self):
         """Creates a new DataFieldRecordArray that is a copy of this
         DataFieldRecordArray instance.
