@@ -79,7 +79,7 @@ class Analysis(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
-                 test_statistic, bkg_gen_method, event_selection_method=None):
+                 test_statistic, bkg_gen_method=None, event_selection_method=None):
         """Constructor of the analysis base class.
 
         Parameters
@@ -97,9 +97,10 @@ class Analysis(object):
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
             The instance of BackgroundGenerationMethod that should be used to
-            generate background events for pseudo data.
+            generate background events for pseudo data. This can be set to None,
+            if there is no need to generate background events.
         event_selection_method : instance of EventSelectionMethod | None
             The instance of EventSelectionMethod that implements the selection
             of the events, which have potential to be signal. All non-selected
@@ -192,14 +193,16 @@ class Analysis(object):
     @property
     def bkg_gen_method(self):
         """The BackgroundGenerationMethod instance that implements the
-        background event generation.
+        background event generation. This can be None if no background
+        generation method has been defined.
         """
         return self._bkg_gen_method
     @bkg_gen_method.setter
     def bkg_gen_method(self, method):
-        if(not isinstance(method, BackgroundGenerationMethod)):
-            raise TypeError('The bkg_gen_method property must be an instance '
-                'of BackgroundGenerationMethod!')
+        if(method is not None):
+            if(not isinstance(method, BackgroundGenerationMethod)):
+                raise TypeError('The bkg_gen_method property must be an '
+                    'instance of BackgroundGenerationMethod!')
         self._bkg_gen_method = method
 
     @property
@@ -352,6 +355,10 @@ class Analysis(object):
         add_dataset method. It sets the `bkg_generator` property of this
         Analysis class instance.
         """
+        if(self._bkg_gen_method is None):
+            raise RuntimeError('No background generation method has been '
+                'defined for this analysis!')
+
         self._bkg_generator = BackgroundGenerator(
             self._bkg_gen_method, self._dataset_list, self._data_list)
 
@@ -642,7 +649,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
     """
     def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
                  fitparam_ns,
-                 test_statistic, bkg_gen_method, event_selection_method=None):
+                 test_statistic, bkg_gen_method=None, event_selection_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
@@ -663,9 +670,10 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
             The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial.
+            generate background events for a new analysis trial. This can be set
+            to None, if no background events have to get generated.
         event_selection_method : instance of EventSelectionMethod | None
             The instance of EventSelectionMethod that implements the selection
             of the events, which have potential to be signal. All non-selected
@@ -909,9 +917,10 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
-    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
-                 fitparam_ns,
-                 test_statistic, bkg_gen_method, event_selection_method=None):
+    def __init__(
+        self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+        fitparam_ns, test_statistic, bkg_gen_method=None,
+        event_selection_method=None):
         """Creates a new time-integrated analysis with separate spatial and
         energy PDFs for multiple datasets assuming a single source.
 
@@ -932,9 +941,10 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
             The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial.
+            generate background events for a new analysis trial. This can be set
+            to `None`, if no background events have to get generated.
         event_selection_method : instance of EventSelectionMethod | None
             The instance of EventSelectionMethod that implements the selection
             of the events, which have potential to be signal. All non-selected
@@ -1004,9 +1014,10 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
-    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
-                 fitparam_ns,
-                 test_statistic, bkg_gen_method, event_selection_method=None):
+    def __init__(
+        self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+        fitparam_ns, test_statistic, bkg_gen_method=None,
+        event_selection_method=None):
         """Creates a new time-integrated analysis with a single
         multi-dimensional PDF for multiple datasets assuming a single source.
 
@@ -1027,9 +1038,10 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
             The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial.
+            generate background events for a new analysis trial. This can be set
+            to `None` if no background events have to get generated.
         event_selection_method : instance of EventSelectionMethod | None
             The instance of EventSelectionMethod that implements the selection
             of the events, which have potential to be signal. All non-selected
