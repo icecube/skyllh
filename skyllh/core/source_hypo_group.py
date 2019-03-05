@@ -12,7 +12,9 @@ class SourceHypoGroup(object):
     a group of sources that share the same flux model, detector signal yield,
     and signal generation implementation methods.
     """
-    def __init__(self, sources, fluxmodel, detsigyield_implmethods, sig_gen_method):
+    def __init__(
+            self, sources, fluxmodel, detsigyield_implmethods,
+            sig_gen_method=None):
         """Constructs a new source hypothesis group.
 
         Parameters
@@ -97,9 +99,10 @@ class SourceHypoGroup(object):
         return self._sig_gen_method
     @sig_gen_method.setter
     def sig_gen_method(self, method):
-        if(not isinstance(method, SignalGenerationMethod)):
-            raise TypeError('The sig_gen_method property must be an instance '
-                'of SignalGenerationMethod!')
+        if(method is not None):
+            if(not isinstance(method, SignalGenerationMethod)):
+                raise TypeError('The sig_gen_method property must be an '
+                    'instance of SignalGenerationMethod!')
         self._sig_gen_method = method
 
     @property
