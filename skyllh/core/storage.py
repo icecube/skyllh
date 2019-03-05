@@ -247,13 +247,15 @@ class DataFieldRecordArray(object):
 
         Parameters
         ----------
-        data : numpy record ndarray | dict | DataFieldRecordArray
+        data : numpy record ndarray | dict | DataFieldRecordArray | None
             The numpy record ndarray that needs to get transformed into the
             DataFieldRecordArray instance. Alternative a dictionary with field
             names as keys and numpy ndarrays as values can be provided. If an
             instance of DataFieldRecordArray is provided, the new
             DataFieldRecordArray gets constructed from the copy of the data of
             the provided DataFieldRecordArray instance.
+            If set to `None`, the DataFieldRecordArray instance is initialized
+            with no data and the length of the array is set to 0.
         copy : bool
             Flag if the input data should get copied. Default is True. If a
             DataFieldRecordArray instance is provided, this option is set to
@@ -261,6 +263,9 @@ class DataFieldRecordArray(object):
         """
         self._data_fields = dict()
         self._len = None
+
+        if(data is None):
+            data = dict()
 
         if(isinstance(data, np.ndarray)):
             field_names = data.dtype.names
@@ -285,6 +290,10 @@ class DataFieldRecordArray(object):
                     'Field "%s" has length %d, but must be %d!'%(
                     fname, len(field_arr), self._len))
             self._data_fields[fname] = field_arr
+        if(self._len is None):
+            # The DataFieldRecordArray is initialized with no fields, i.e. also
+            # also no data.
+            self._len = 0
 
         self._field_name_list = list(self._data_fields.keys())
         self._indices = np.indices((self._len,))[0]
