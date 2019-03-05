@@ -172,8 +172,8 @@ class DetSigYieldImplMethod(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, *args, **kwargs):
-        super(DetSigYieldImplMethod, self).__init__(*args, **kwargs)
+    def __init__(self):
+        super(DetSigYieldImplMethod, self).__init__()
 
         self.supported_sourcemodels = ()
         self.supported_fluxmodels = ()

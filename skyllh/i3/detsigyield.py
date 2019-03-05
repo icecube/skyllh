@@ -79,7 +79,7 @@ class I3DetSigYieldImplMethod(DetSigYieldImplMethod):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sin_dec_binning=None, *args, **kwargs):
+    def __init__(self, sin_dec_binning=None):
         """Constructor of the IceCube specific detector signal yield
         implementation base class.
 
@@ -88,7 +88,7 @@ class I3DetSigYieldImplMethod(DetSigYieldImplMethod):
         sin_dec_binning : BinningDefinition instance
             The instance of BinningDefinition defining the binning of sin(dec).
         """
-        super(I3DetSigYieldImplMethod, self).__init__(*args, **kwargs)
+        super(I3DetSigYieldImplMethod, self).__init__()
 
         self.sin_dec_binning = sin_dec_binning
 
@@ -134,7 +134,7 @@ class PointLikeSourceI3DetSigYieldImplMethod(I3DetSigYieldImplMethod):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sin_dec_binning=None, *args, **kwargs):
+    def __init__(self, sin_dec_binning=None):
         """Initializes a new detector signal yield implementation method
         object.
 
@@ -147,7 +147,7 @@ class PointLikeSourceI3DetSigYieldImplMethod(I3DetSigYieldImplMethod):
             Dataset binning definitions.
         """
         super(PointLikeSourceI3DetSigYieldImplMethod, self).__init__(
-            *args, **kwargs)
+            sin_dec_binning)
 
         # Define the supported source models.
         self.supported_sourcemodels = (PointLikeSource,)
