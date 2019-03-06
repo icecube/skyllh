@@ -12,6 +12,25 @@ from skyllh.physics.source import SourceModel
 from skyllh.physics.flux import FluxModel
 
 
+def get_integrated_livetime_in_days(livetime):
+    """Gets the integrated live-time in days from the given livetime argument.
+
+    Parameters
+    ----------
+    livetime : float | Livetime instance
+        The live-time in days as float, or an instance of Livetime.
+
+    Returns
+    -------
+    livetime_days : float
+        The integrated live-time in days.
+    """
+    livetime_days = livetime
+    if(isinstance(livetime, Livetime)):
+        livetime_days = lt.livetime
+    return livetime_days
+
+
 class DetSigYield(object):
     """This is the abstract base class for a detector signal yield.
 
@@ -172,8 +191,8 @@ class DetSigYieldImplMethod(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        super(DetSigYieldImplMethod, self).__init__()
+    def __init__(self, **kwargs):
+        super(DetSigYieldImplMethod, self).__init__(**kwargs)
 
         self.supported_sourcemodels = ()
         self.supported_fluxmodels = ()

@@ -15,7 +15,8 @@ from skyllh.core.binning import BinningDefinition
 from skyllh.core.parameters import ParameterGrid
 from skyllh.core.detsigyield import (
     DetSigYield,
-    DetSigYieldImplMethod
+    DetSigYieldImplMethod,
+    get_integrated_livetime_in_days
 )
 from skyllh.core.livetime import Livetime
 from skyllh.physics.source import PointLikeSource
@@ -24,24 +25,6 @@ from skyllh.physics.flux import (
     PowerLawFlux,
     get_conversion_factor_to_internal_flux_unit
 )
-
-def get_integrated_livetime_in_days(livetime):
-    """Gets the integrated live-time in days from the given livetime argument.
-
-    Parameters
-    ----------
-    livetime : float | Livetime instance
-        The live-time in days as float, or an instance of Livetime.
-
-    Returns
-    -------
-    livetime_days : float
-        The integrated live-time in days.
-    """
-    livetime_days = livetime
-    if(isinstance(livetime, Livetime)):
-        livetime_days = lt.livetime
-    return livetime_days
 
 
 class I3DetSigYield(DetSigYield):
@@ -79,7 +62,7 @@ class I3DetSigYieldImplMethod(DetSigYieldImplMethod):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sin_dec_binning=None):
+    def __init__(self, sin_dec_binning=None, **kwargs):
         """Constructor of the IceCube specific detector signal yield
         implementation base class.
 
@@ -88,7 +71,7 @@ class I3DetSigYieldImplMethod(DetSigYieldImplMethod):
         sin_dec_binning : BinningDefinition instance
             The instance of BinningDefinition defining the binning of sin(dec).
         """
-        super(I3DetSigYieldImplMethod, self).__init__()
+        super(I3DetSigYieldImplMethod, self).__init__(**kwargs)
 
         self.sin_dec_binning = sin_dec_binning
 
@@ -134,7 +117,7 @@ class PointLikeSourceI3DetSigYieldImplMethod(I3DetSigYieldImplMethod):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sin_dec_binning=None):
+    def __init__(self, sin_dec_binning=None, **kwargs):
         """Initializes a new detector signal yield implementation method
         object.
 
@@ -147,7 +130,7 @@ class PointLikeSourceI3DetSigYieldImplMethod(I3DetSigYieldImplMethod):
             Dataset binning definitions.
         """
         super(PointLikeSourceI3DetSigYieldImplMethod, self).__init__(
-            sin_dec_binning)
+            sin_dec_binning, **kwargs)
 
         # Define the supported source models.
         self.supported_sourcemodels = (PointLikeSource,)
@@ -284,7 +267,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
     effective area depends soley on the zenith angle, and hence on the
     declination, of the source.
     """
-    def __init__(self, sin_dec_binning=None, spline_order_sinDec=2):
+    def __init__(self, sin_dec_binning=None, spline_order_sinDec=2, **kwargs):
         """Creates a new IceCube detector signal yield implementation
         method object for a fixed flux model. It requires a sinDec binning
         definition to compute the sin(dec) dependency of the detector effective
@@ -304,7 +287,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
             The default is 2.
         """
         super(FixedFluxPointLikeSourceI3DetSigYieldImplMethod, self).__init__(
-            sin_dec_binning)
+            sin_dec_binning, **kwargs)
 
         self.supported_fluxmodels = (FluxModel,)
 
