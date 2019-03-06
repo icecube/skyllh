@@ -230,9 +230,9 @@ def _estimate_p_trial(analysis, N, rss, sig_mean, bkg_TS_percentile):
     p_trial = sig_TS[sig_TS > bkg_TS_percentile].size/sig_TS.size
     return p_trial
 
-def create_trial_data_file(analysis, rss, ns_max=30, N=1000,
-                           pathfilename='trial_data.npy'):
-    """Creates a trial data file for a given analysis. 
+def create_trial_data_file(analysis, rss, pathfilename, ns_max=30, N=2000):
+    """Creates and fills a trial data file with `N` generated trials for each
+    mean number of injected signal events up to `ns_max` for a given analysis. 
 
     Parameters
     ----------
@@ -241,12 +241,12 @@ def create_trial_data_file(analysis, rss, ns_max=30, N=1000,
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
+    pathfilename : string
+        Trial data file path including the filename.
     ns_max : int, optional
         Maximum number of injected signal events. 
     N : int
         Number of times to perform analysis trial.
-    pathfilename : string, optional
-        Trial data file path including the filename.
     """
     # Initialize empty `trial_data` array.
     trial_data = np.array([])
@@ -260,9 +260,9 @@ def create_trial_data_file(analysis, rss, ns_max=30, N=1000,
     # Save trial data to file.
     np.save(pathfilename, trial_data)
 
-def append_trial_data_file(analysis, rss, ns_max=30, N=1000,
-                           pathfilename='trial_data.npy'):
-    """Appends new trials to a trial data file for a given analysis. 
+def extend_trial_data_file(analysis, rss, pathfilename, ns_max=30, N=1000):
+    """Appends the trial data file with `N` generated trials for each mean
+    number of injected signal events up to `ns_max` for a given analysis. 
 
     Parameters
     ----------
@@ -271,19 +271,20 @@ def append_trial_data_file(analysis, rss, ns_max=30, N=1000,
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
+    pathfilename : string
+        Trial data file path including the filename.
     ns_max : int, optional
         Maximum number of injected signal events. 
     N : int
         Number of times to perform analysis trial.
-    pathfilename : string, optional
-        Trial data file path including the filename.
     """
     # Load trial data file.
     trial_data = NPYFileLoader(pathfilename).load_data()
 
     # Use unique seed to generate non identical trials.
     if rss.seed in trial_data['seed']:
-        seed = max(trial_data['seed']) + 1
+        seed = next(i for i, e in enumerate(sorted(trial_data['seed']) + [None],
+                    1) if i != e)
         rss.reseed(seed)
     for ns in range(0, ns_max):
         trials = analysis.do_trials(rss, N, sig_mean=ns)
@@ -295,9 +296,13 @@ def append_trial_data_file(analysis, rss, ns_max=30, N=1000,
     # Save trial data to the file.
     np.save(pathfilename, trial_data)
 
-def estimate_sensitivity_upper_limit(analysis, rss, N_bkg=5000, N_bins=100,
-                                     pathfilename='trial_data.npy'):
-    """Estimates sensitivity upper limit.
+def calculate_upper_limit_distribution(analysis, rss, pathfilename, N_bkg=5000,
+                                       n_bins=100):
+    """Function to calculate upper limit distribution. It loads the trial data
+    file containing test statistic distribution and calculates 10 percentile
+    value for each mean number of injected signal event. Then it finds upper
+    limit values which correspond to generated background trials test statistic
+    values by linearly interpolated curve of 10 percentile values distribution.
 
     Parameters
     ----------
@@ -306,12 +311,12 @@ def estimate_sensitivity_upper_limit(analysis, rss, N_bkg=5000, N_bins=100,
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
+    pathfilename : string
+        Trial data file path including the filename.
     N_bkg : int, optional
         Number of times to perform background analysis trial.
-    N_bins : int, optional
-        Number histogram bins.
-    pathfilename : string, optional
-        Test statistic data file path including the filename.
+    n_bins : int, optional
+        Number of returned test statistic histograms bins.
 
     Returns
     -------
@@ -336,24 +341,26 @@ def estimate_sensitivity_upper_limit(analysis, rss, N_bkg=5000, N_bins=100,
     # Load trial data file.
     trial_data = NPYFileLoader(pathfilename).load_data()
     ns_max = max(trial_data['sig_mean']) + 1
-    bins_range = (min(trial_data['TS']), max(trial_data['TS']))
+    ts_bins_range = (min(trial_data['TS']), max(trial_data['TS']))
 
     q = 10 # Upper limit criterion.
     trial_data_q_values = np.empty((ns_max,))
-    trial_data_ts_hist = np.empty((ns_max, N_bins))
+    trial_data_ts_hist = np.empty((ns_max, n_bins))
     for ns in range(ns_max):
         trial_data_q_values[ns] = np.percentile(
             trial_data['TS'][trial_data['sig_mean'] == ns], q)
-        trial_data_ts_hist[ns, :], bin_edges = np.histogram(
+        (trial_data_ts_hist[ns, :], bin_edges) = np.histogram(
             trial_data['TS'][trial_data['sig_mean'] == ns],
-            bins=N_bins, range=bins_range)
+            bins=n_bins, range=ts_bins_range)
 
+    ts_inv_f = interp1d(trial_data_q_values, range(ns_max), kind='linear')
     ts_bkg = analysis.do_trials(rss, N_bkg, sig_mean=0)['TS']
-        
-    ts_inv_f = interp1d(trial_data_q_values, range(ns_max), kind='linear',
-                        bounds_error=False, fill_value=(-5, 35))
 
-    ul_list = map(ts_inv_f, ts_bkg[ts_bkg > 0])
+    # Cut away lower background test statistic values than the minimal
+    # `ts_inv_f` interpolation boundary.
+    ts_bkg = ts_bkg[ts_bkg >= min(trial_data_q_values)]
+
+    ul_list = map(ts_inv_f, ts_bkg)
     ul_mean = np.mean(ul_list)
     ul_median = np.median(ul_list)
     ul_var = np.var(ul_list)
@@ -364,7 +371,7 @@ def estimate_sensitivity_upper_limit(analysis, rss, N_bkg=5000, N_bins=100,
     result['median'] = ul_median
     result['var'] = ul_var
     result['ts_hist'] = trial_data_ts_hist
-    result['extent'] = [0, ns_max, bins_range[0], bins_range[1]]
+    result['extent'] = [0, ns_max, ts_bins_range[0], ts_bins_range[1]]
     result['q_values'] = trial_data_q_values
 
     return result
