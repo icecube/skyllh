@@ -239,7 +239,7 @@ class PKLFileLoader(FileLoader):
 class DataFieldRecordArray(object):
     """The DataFieldRecordArray class provides a data container similar to a numpy
     record ndarray. But the data fields are stored as individual numpy ndarray
-    objects. Hence, access of single data fields is must faster compared to
+    objects. Hence, access of single data fields is much faster compared to
     access on the record ndarray.
     """
     def __init__(self, data, copy=True):

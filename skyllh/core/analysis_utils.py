@@ -3,9 +3,13 @@
 from __future__ import division
 
 import numpy as np
+from numpy.lib import recfunctions as np_rfn
 
-from skyllh.core.py import issequenceof
+from skyllh.core.py import issequenceof, range
+from skyllh.core.storage import NPYFileLoader
 from skyllh.physics.source import PointLikeSource
+
+from scipy.interpolate import interp1d
 
 """This module contains common utility functions useful for an analysis.
 """
@@ -49,7 +53,7 @@ def pointlikesource_to_data_field_array(tdm, src_hypo_group_manager):
 
     return arr
 
-def estimate_sensitivity(analysis, rss, eps=0.03, p=0.9,
+def estimate_sensitivity(analysis, rss, eps_p=0.03, p=0.9,
                          h0_ts_quantile=0.5, ns_range=[0, 5]):
     """Estimates number of signal events that should be injected to reach
     test statistic value higher than `h0_ts_quantile` part of null-hypothesis
@@ -63,7 +67,7 @@ def estimate_sensitivity(analysis, rss, eps=0.03, p=0.9,
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    eps : float, optional
+    eps_p : float, optional
         Precision in `p` for execution to break.
     p : float, optional
         Desired probability of signal test statistic for exceeding
@@ -82,10 +86,10 @@ def estimate_sensitivity(analysis, rss, eps=0.03, p=0.9,
         Estimated error of `median_signal`.
     """
 
-    median_signal, median_signal_sigma = _calc_median_signal_for_ts_quantile(analysis, rss, eps, p, h0_ts_quantile, ns_range)
+    median_signal, median_signal_sigma = _calc_median_signal_for_ts_quantile(analysis, rss, eps_p, p, h0_ts_quantile, ns_range)
     return (median_signal, median_signal_sigma)
 
-def estimate_discovery_potential(analysis, rss, eps=0.03, p=0.5,
+def estimate_discovery_potential(analysis, rss, eps_p=0.03, p=0.5,
                                  h0_ts_quantile=5.733e-7, ns_range=[0, 5]):
     """Estimates number of signal events that should be injected to reach
     test statistic value higher than `h0_ts_quantile` part of null-hypothesis
@@ -99,7 +103,7 @@ def estimate_discovery_potential(analysis, rss, eps=0.03, p=0.5,
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    eps : float, optional
+    eps_p : float, optional
         Precision in `p` for execution to break.
     p : float, optional
         Desired probability of signal test statistic for exceeding
@@ -117,16 +121,16 @@ def estimate_discovery_potential(analysis, rss, eps=0.03, p=0.5,
     median_signal_sigma : float
         Estimated error of `median_signal`.
     """
-    median_signal, median_signal_sigma = _calc_median_signal_for_ts_quantile(analysis, rss, eps, p, h0_ts_quantile, ns_range)
+    median_signal, median_signal_sigma = _calc_median_signal_for_ts_quantile(analysis, rss, eps_p, p, h0_ts_quantile, ns_range)
     return (median_signal, median_signal_sigma)
 
-def _calc_median_signal_for_ts_quantile(analysis, rss, eps, p, h0_ts_quantile, ns_range):
-    """ Calculates median signal events needed to be injected to reach test
+def _calc_median_signal_for_ts_quantile(analysis, rss, eps_p, p, h0_ts_quantile, ns_range):
+    """Calculates median signal events needed to be injected to reach test
     statistic distribution with defined properties for a given analysis.
     Calculation is done by calculating `p_trial` values at lower and upper range
     points and comparing if `p_trial` values interval is around given `p` value.
     If `p_trial` value is within 1 sigma to `p` we increase the number of trials
-    (resolution) until the desired `eps` precision is reached, otherwise the
+    (resolution) until the desired `eps_p` precision is reached, otherwise the
     interval bounds are changed to minimize ns_range while keeping
     `p_trial_min` <= `p` <= `p_trial_max` inequality correct.
 
@@ -137,7 +141,7 @@ def _calc_median_signal_for_ts_quantile(analysis, rss, eps, p, h0_ts_quantile, n
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    eps : float
+    eps_p : float
         Precision in `p` for execution to break.
     p : float
         Desired probability of signal test statistic for exceeding
@@ -164,10 +168,10 @@ def _calc_median_signal_for_ts_quantile(analysis, rss, eps, p, h0_ts_quantile, n
 
     # Initialization.
     p_trial_max = 1
-    p_trial_max_sigma = 2*eps
+    p_trial_max_sigma = 2*eps_p
     p_trial_min = 0
-    p_trial_min_sigma = 2*eps
-    while (p_trial_min_sigma + p_trial_max_sigma)/2 > eps:
+    p_trial_min_sigma = 2*eps_p
+    while (p_trial_min_sigma + p_trial_max_sigma)/2 > eps_p:
         # Left part of signal range.
         N_scaled = int(N*N_scaling)
         p_trial_min = _estimate_p_trial(analysis, N_scaled, rss, range_min, bkg_TS_percentile)
@@ -225,3 +229,142 @@ def _estimate_p_trial(analysis, N, rss, sig_mean, bkg_TS_percentile):
     sig_TS = analysis.do_trials(rss, N, sig_mean=sig_mean)['TS']
     p_trial = sig_TS[sig_TS > bkg_TS_percentile].size/sig_TS.size
     return p_trial
+
+def create_trial_data_file(analysis, rss, ns_max=30, N=1000,
+                           pathfilename='trial_data.npy'):
+    """Creates a trial data file for a given analysis. 
+
+    Parameters
+    ----------
+    analysis : Analysis
+        The Analysis instance to use for sensitivity estimation.
+    rss : RandomStateService
+        The RandomStateService instance to use for generating random
+        numbers.
+    ns_max : int, optional
+        Maximum number of injected signal events. 
+    N : int
+        Number of times to perform analysis trial.
+    pathfilename : string, optional
+        Trial data file path including the filename.
+    """
+    # Initialize empty `trial_data` array.
+    trial_data = np.array([])
+    for ns in range(0, ns_max):
+        trials = analysis.do_trials(rss, N, sig_mean=ns)
+        names = ['sig_mean', 'seed']
+        data = [[ns]*N, [rss.seed]*N]
+        trials = np_rfn.append_fields(trials, names, data)
+        trial_data = np_rfn.stack_arrays([trial_data, trials], usemask=False,
+                                         asrecarray=True)
+    # Save trial data to file.
+    np.save(pathfilename, trial_data)
+
+def append_trial_data_file(analysis, rss, ns_max=30, N=1000,
+                           pathfilename='trial_data.npy'):
+    """Appends new trials to a trial data file for a given analysis. 
+
+    Parameters
+    ----------
+    analysis : Analysis
+        The Analysis instance to use for sensitivity estimation.
+    rss : RandomStateService
+        The RandomStateService instance to use for generating random
+        numbers.
+    ns_max : int, optional
+        Maximum number of injected signal events. 
+    N : int
+        Number of times to perform analysis trial.
+    pathfilename : string, optional
+        Trial data file path including the filename.
+    """
+    # Load trial data file.
+    trial_data = NPYFileLoader(pathfilename).load_data()
+
+    # Use unique seed to generate non identical trials.
+    if rss.seed in trial_data['seed']:
+        seed = max(trial_data['seed']) + 1
+        rss.reseed(seed)
+    for ns in range(0, ns_max):
+        trials = analysis.do_trials(rss, N, sig_mean=ns)
+        names = ['sig_mean', 'seed']
+        data = [[ns]*N, [rss.seed]*N]
+        trials = np_rfn.append_fields(trials, names, data)
+        trial_data = np_rfn.stack_arrays([trial_data, trials], usemask=False,
+                                         asrecarray=True)
+    # Save trial data to the file.
+    np.save(pathfilename, trial_data)
+
+def estimate_sensitivity_upper_limit(analysis, rss, N_bkg=5000, N_bins=100,
+                                     pathfilename='trial_data.npy'):
+    """Estimates sensitivity upper limit.
+
+    Parameters
+    ----------
+    analysis : Analysis
+        The Analysis instance to use for sensitivity estimation.
+    rss : RandomStateService
+        The RandomStateService instance to use for generating random
+        numbers.
+    N_bkg : int, optional
+        Number of times to perform background analysis trial.
+    N_bins : int, optional
+        Number histogram bins.
+    pathfilename : string, optional
+        Test statistic data file path including the filename.
+
+    Returns
+    -------
+    result : dict
+        Result dictionary which contains the following fields:
+        - ul : list of float
+            List of upper limit values.
+        - mean : float
+            Mean of upper limit values.
+        - median : float
+            Median of upper limit values.
+        - var : float
+            Variance of upper limit values.
+        - ts_hist : numpy ndarray
+            2D array of test statistic histograms calculated by axis 1.
+        - extent : list of float
+            Test statistic histogram boundaries.
+        - q_values : list of float
+            `q` percentile values of test statistic for different injected
+            events means.
+    """
+    # Load trial data file.
+    trial_data = NPYFileLoader(pathfilename).load_data()
+    ns_max = max(trial_data['sig_mean']) + 1
+    bins_range = (min(trial_data['TS']), max(trial_data['TS']))
+
+    q = 10 # Upper limit criterion.
+    trial_data_q_values = np.empty((ns_max,))
+    trial_data_ts_hist = np.empty((ns_max, N_bins))
+    for ns in range(ns_max):
+        trial_data_q_values[ns] = np.percentile(
+            trial_data['TS'][trial_data['sig_mean'] == ns], q)
+        trial_data_ts_hist[ns, :], bin_edges = np.histogram(
+            trial_data['TS'][trial_data['sig_mean'] == ns],
+            bins=N_bins, range=bins_range)
+
+    ts_bkg = analysis.do_trials(rss, N_bkg, sig_mean=0)['TS']
+        
+    ts_inv_f = interp1d(trial_data_q_values, range(ns_max), kind='linear',
+                        bounds_error=False, fill_value=(-5, 35))
+
+    ul_list = map(ts_inv_f, ts_bkg[ts_bkg > 0])
+    ul_mean = np.mean(ul_list)
+    ul_median = np.median(ul_list)
+    ul_var = np.var(ul_list)
+    
+    result = {}
+    result['ul'] = ul_list
+    result['mean'] = ul_mean
+    result['median'] = ul_median
+    result['var'] = ul_var
+    result['ts_hist'] = trial_data_ts_hist
+    result['extent'] = [0, ns_max, bins_range[0], bins_range[1]]
+    result['q_values'] = trial_data_q_values
+
+    return result
