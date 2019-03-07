@@ -179,6 +179,12 @@ class PDF(object):
         """
         return len(self._axes)
 
+    def __mul__(self, other):
+        """Implements the operation `self * other` by creating a CombinedPDF
+        class instance.
+        """
+        return CombinedPDF(self, other, op=np.multiply)
+
     def add_axis(self, axis):
         """Adds the given PDFAxis object to this PDF.
         """
@@ -233,6 +239,131 @@ class PDF(object):
             signal PDFs.
         """
         pass
+
+
+class CombinedPDF(PDF):
+    """The CombinedPDF class describes a combination of two PDF instances. It
+    is derived from the PDF class and hence is a PDF itself. An operator defines
+    the type of combination of the two PDF instances.
+    """
+    def __init__(self, pdf1, pdf2, op=np.multiply, op_kwargs=None):
+        """Creates a new CombinedPDF instance, which implements the operation
+        `pdf1 op pdf2`. The operation is defined by the operator function `op`.
+        The axes of the two PDF instances will be merged.
+
+        Parameters
+        ----------
+        pdf1 : instance of PDF
+            The left-hand-side PDF in the operation `pdf1 op pdf2`.
+        pdf2 : instance of PDF
+            The right-hand-side PDF in the operation `pdf1 op pdf2`.
+        op : callable with two arguments
+            The numeric operator function, which combines the PDF values of
+            `pdf1` and `pdf2`. The function must have the following call
+            signature:
+                __call__(pdf1_values, pdf2_values),
+            where `pdf1_values` are the PDF values of `pdf1` and `pdf2_values`
+            the pdf values of `pdf2`.
+        op_kwargs : dict | None
+            Possible additional keyword arguments that should be passed to the
+            operator function.
+        """
+        super(CombinedPDF, self).__init__()
+
+        self.pdf1 = pdf1
+        self.pdf2 = pdf2
+        self.operator = op
+        self.operator_kwargs = op_kwargs
+
+        self._axes = pdf1.axes + pdf2.axes
+
+    @property
+    def pdf1(self):
+        """The left-hand-side PDF in the operation `pdf1 op pdf2`. It must be an
+        instance of PDF.
+        """
+        return self._pdf1
+    @pdf1.setter
+    def pdf1(self, pdf):
+        if(not isinstance(pdf, PDF)):
+            raise TypeError('The pdf1 property must be an instance of PDF!')
+        self._pdf1 = pdf
+
+    @property
+    def pdf2(self):
+        """The right-hand-side PDF in the operation `pdf1 op pdf2`. It must be
+        an instance of PDF.
+        """
+        return self._pdf2
+    @pdf2.setter
+    def pdf2(self, pdf):
+        if(not isinstance(pdf, PDF)):
+            raise TypeError('The pdf2 property must be an instance of PDF!')
+        self._pdf2 = pdf
+
+    @property
+    def operator(self):
+        """The operator function that combines the PDF values of `pdf1` and
+        `pdf2`.
+        """
+        return self._operator
+    @operator.setter
+    def operator(self, op):
+        if(not callable(op)):
+            raise TypeError('The operator property must be callable!')
+        if(not func_has_n_args(op, 2)):
+            raise TypeError('The operator property must be a function with '
+                '2 arguments!')
+        self._operator = op
+
+    @property
+    def operator_kwargs(self):
+        """Additional keyword arguments that should be passed to the operator
+        function.
+        """
+        return self._operator_kwargs
+    @operator_kwargs.setter
+    def operator_kwargs(self, kwargs):
+        if(kwargs is None):
+            kwargs = dict()
+        if(not isinstance(kwargs, dict)):
+            raise TypeError('The operator_kwargs property must be None or an '
+                'instance of dict!')
+        self._operator_kwargs = kwargs
+
+    def assert_is_valid_for_exp_data(self, data_exp):
+        """Calls the `assert_is_valid_for_exp_data` method of `pdf1` and `pdf2`.
+        """
+        self._pdf1.assert_is_valid_for_exp_data(data_exp)
+        self._pdf2.assert_is_valid_for_exp_data(data_exp)
+
+    def get_prob(self, tdm, fitparams=None):
+        """Calculates the probability for the trial events given the
+        specified fit parameters by calling the `get_prob` method of `pdf1`
+        and `pdf2` and combining the two properties using the defined operator
+        function `operator`.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial event data for which
+            the PDF values should get calculated.
+        fitparams : dict | None
+            The dictionary containing the fit parameter names and values for
+            which the probability should get calculated.
+
+        Returns
+        -------
+        prob : (N_events,) shaped numpy ndarray
+            The 1D numpy ndarray with the probability for each event.
+        """
+        prob = self._operator(
+            self._pdf1.get_prob(tdm, fitparams),
+            self._pdf2.get_prob(tdm, fitparams),
+            self._operator_kwargs
+        )
+
+        return prob
 
 
 class SpatialPDF(PDF):
