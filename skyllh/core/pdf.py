@@ -150,6 +150,58 @@ class PDFAxes(ObjectCollection):
         return True
 
 
+class IsBackgroundPDF(object):
+    """This is a classifier class that can be used by other classes to indicate
+    that the class describes a background PDF. This is useful for type checking.
+    """
+    def __init__(self, *args, **kwargs):
+        """Constructor method. Gets called when the an instance of a class is
+        created which derives from this IsBackgroundPDF class.
+        """
+        super(IsBackgroundPDF, self).__init__(*args, **kwargs)
+
+    def __mul__(self, other):
+        """Creates a CombinedBackgroundPDF instance for the combination of this
+        background PDF and another background PDF.
+
+        Parameters
+        ----------
+        other : instance of IsBackgroundPDF
+            The instance of IsBackgroundPDF, which is the other background PDF.
+        """
+        if(not isinstance(other, IsBackgroundPDF)):
+            raise TypeError('The other PDF must be an instance of '
+                'IsBackgroundPDF!')
+
+        return CombinedBackgroundPDF(self, other, op=np.multiply)
+
+
+class IsSignalPDF(object):
+    """This is a classifier class that can be used by other classes to indicate
+    that the class describes a signal PDF.
+    """
+    def __init__(self, *args, **kwargs):
+        """Constructor method. Gets called when the an instance of a class is
+        created which derives from this IsSignalPDF class.
+        """
+        super(IsSignalPDF, self).__init__(*args, **kwargs)
+
+    def __mul__(self, other):
+        """Creates a CombinedSignalPDF instance for the combination of this
+        signal PDF and another signal PDF.
+
+        Parameters
+        ----------
+        other : instance of IsSignalPDF
+            The instance of IsSignalPDF, which is the other signal PDF.
+        """
+        if(not isinstance(other, IsSignalPDF)):
+            raise TypeError('The other PDF must be an instance of '
+                'IsSignalPDF!')
+
+        return CombinedSignalPDF(self, other, op=np.multiply)
+
+
 class PDF(object):
     """The abstract base class for all probability distribution functions (PDF)
     models.
@@ -178,12 +230,6 @@ class PDF(object):
         might be smaller than this.
         """
         return len(self._axes)
-
-    def __mul__(self, other):
-        """Implements the operation `self * other` by creating a CombinedPDF
-        class instance.
-        """
-        return CombinedPDF(self, other, op=np.multiply)
 
     def add_axis(self, axis):
         """Adds the given PDFAxis object to this PDF.
@@ -246,7 +292,9 @@ class CombinedPDF(PDF):
     is derived from the PDF class and hence is a PDF itself. An operator defines
     the type of combination of the two PDF instances.
     """
-    def __init__(self, pdf1, pdf2, op=np.multiply, op_kwargs=None):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, pdf1, pdf2, op, op_kwargs):
         """Creates a new CombinedPDF instance, which implements the operation
         `pdf1 op pdf2`. The operation is defined by the operator function `op`.
         The axes of the two PDF instances will be merged.
@@ -311,9 +359,11 @@ class CombinedPDF(PDF):
     def operator(self, op):
         if(not callable(op)):
             raise TypeError('The operator property must be callable!')
-        if(not func_has_n_args(op, 2)):
-            raise TypeError('The operator property must be a function with '
-                '2 arguments!')
+        if(not isinstance(op, np.ufunc)):
+            # The func_has_n_args function works only on Python functions.
+            if(not func_has_n_args(op, 2)):
+                raise TypeError('The operator property must be a function with '
+                    '2 arguments!')
         self._operator = op
 
     @property
@@ -360,10 +410,24 @@ class CombinedPDF(PDF):
         prob = self._operator(
             self._pdf1.get_prob(tdm, fitparams),
             self._pdf2.get_prob(tdm, fitparams),
-            self._operator_kwargs
+            **self._operator_kwargs
         )
 
         return prob
+
+
+class CombinedSignalPDF(CombinedPDF, IsSignalPDF):
+    """This class provides a combined PDF for two signal PDF instances.
+    """
+    def __init__(self, pdf1, pdf2, op, op_kwargs=None):
+        super(CombinedSignalPDF, self).__init__(pdf1, pdf2, op, op_kwargs)
+
+
+class CombinedBackgroundPDF(CombinedPDF, IsBackgroundPDF):
+    """This class provides a combined PDF for two background PDF instances.
+    """
+    def __init__(self, pdf1, pdf2, op, op_kwargs=None):
+        super(CombinedBackgroundPDF, self).__init__(pdf1, pdf2, op, op_kwargs)
 
 
 class SpatialPDF(PDF):
@@ -730,25 +794,3 @@ class PDFSet(object):
 
         pdf = self._gridfitparams_hash_pdf_dict[gridfitparams_hash]
         return pdf
-
-
-class IsBackgroundPDF(object):
-    """This is a classifier class that can be used by other classes to indicate
-    that the class describes a background PDF. This is useful for type checking.
-    """
-    def __init__(self, *args, **kwargs):
-        """Constructor method. Gets called when the an instance of a class is
-        created which derives from this IsBackgroundPDF class.
-        """
-        super(IsBackgroundPDF, self).__init__(*args, **kwargs)
-
-
-class IsSignalPDF(object):
-    """This is a classifier class that can be used by other classes to indicate
-    that the class describes a signal PDF.
-    """
-    def __init__(self, *args, **kwargs):
-        """Constructor method. Gets called when the an instance of a class is
-        created which derives from this IsSignalPDF class.
-        """
-        super(IsSignalPDF, self).__init__(*args, **kwargs)
