@@ -527,7 +527,7 @@ class Dataset(object):
                 data_prep_func(data)
 
     def load_and_prepare_data(
-        self, keep_fields=None, compress=False, tl=None):
+            self, livetime=None, keep_fields=None, compress=False, tl=None):
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
         After loading the data it drops all unnecessary data fields if they are
@@ -537,6 +537,10 @@ class Dataset(object):
 
         Parameters
         ----------
+        livetime : float | None
+            The user-defined livetime in days of the data set. If not set to
+            None, livetime information from the data set will get ignored and
+            this value of the livetime will be used.
         keep_fields : sequence of str | None
             The list of additional data fields that should get kept.
             By default only the required data fields are kept.
@@ -564,7 +568,7 @@ class Dataset(object):
                 'sequence of str!')
         keep_fields = tuple(keep_fields)
 
-        data = self.load_data(tl=tl)
+        data = self.load_data(livetime=livetime, tl=tl)
         self.prepare_data(data, tl=tl)
 
         # Drop unrequired data fields.

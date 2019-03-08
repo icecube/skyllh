@@ -116,16 +116,27 @@ class I3Dataset(Dataset):
 
         return grl_data
 
-    def load_data(self, tl=None):
+    def load_data(self, livetime=None, tl=None):
         """Loads the data, which is described by the dataset. If a good-run-list
         (GRL) is provided for this dataset, only experimental data will be
         selected which matches the GRL.
 
         Parameters
         ----------
+        livetime : float | None
+            If not None, uses this livetime (in days) as livetime for the
+            DatasetData instance, otherwise uses the live time from the Dataset
+            instance or, if available, the livetime from the good-run-list
+            (GRL).
         tl : TimeLord instance | None
             The TimeLord instance that should be used to time the data load
             operation.
+
+        Returns
+        -------
+        data : instance of DatasetData
+            A DatasetData instance holding the experimental and monte-carlo
+            data of this data set.
         """
         # Load the good-run-list (GRL) data if it is provided for this dataset,
         # and calculate the livetime based on the GRL.
@@ -134,6 +145,10 @@ class I3Dataset(Dataset):
         if(len(self._grl_pathfilename_list) > 0):
             grl_data = self.load_grl(tl=tl)
             lt = np.sum(grl_data['livetime'])
+
+        # Override the the livetime if there is a user defined livetime.
+        if(livetime is not None):
+            lt = livetime
 
         # Load all the defined data.
         data = super(I3Dataset, self).load_data(livetime=lt, tl=tl)
