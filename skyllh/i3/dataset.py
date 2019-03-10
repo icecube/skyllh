@@ -3,8 +3,14 @@
 import numpy as np
 
 from skyllh.core.py import issequenceof
-from skyllh.core.dataset import Dataset
-from skyllh.core.storage import create_FileLoader
+from skyllh.core.dataset import (
+    Dataset,
+    DatasetData
+)
+from skyllh.core.storage import (
+    DataFieldRecordArray,
+    create_FileLoader
+)
 from skyllh.core.timing import TaskTimer
 
 
@@ -69,6 +75,14 @@ class I3Dataset(Dataset):
             raise TypeError('The grl_pathfilename_list property must be a sequence of str!')
         self._grl_pathfilename_list = list(pathfilenames)
 
+    @property
+    def grl_data(self):
+        """(read-only) The numpy record ndarray holding the good-run-list (GRL)
+        data of the data set. It is None, if there is no GRL data available for
+        this data set.
+        """
+        return self._grl_data
+
     def __str__(self):
         """Implementation of the pretty string representation of the I3Dataset
         object.
@@ -105,14 +119,14 @@ class I3Dataset(Dataset):
 
         Returns
         -------
-        grl_data : numpy record ndarray
-            The numpy record ndarray holding the good-run-list information of
-            the dataset.
+        grl_data : instance of DataFieldRecordArray
+            The DataFieldRecordArray instance holding the good-run-list
+            information of the dataset.
         """
         with TaskTimer(tl, 'Loading grl data from disk.'):
             fileloader_grl = create_FileLoader(
                 self._grl_pathfilename_list)
-            grl_data = fileloader_grl.load_data()
+            grl_data = DataFieldRecordArray(fileloader_grl.load_data())
 
         return grl_data
 
@@ -140,26 +154,28 @@ class I3Dataset(Dataset):
         """
         # Load the good-run-list (GRL) data if it is provided for this dataset,
         # and calculate the livetime based on the GRL.
-        grl_data = None
+        data_grl = None
         lt = self.livetime
         if(len(self._grl_pathfilename_list) > 0):
-            grl_data = self.load_grl(tl=tl)
-            lt = np.sum(grl_data['livetime'])
+            data_grl = self.load_grl(tl=tl)
+            lt = np.sum(data_grl['livetime'])
 
-        # Override the the livetime if there is a user defined livetime.
+        # Override the livetime if there is a user defined livetime.
         if(livetime is not None):
             lt = livetime
 
         # Load all the defined data.
-        data = super(I3Dataset, self).load_data(livetime=lt, tl=tl)
+        data = I3DatasetData(
+            super(I3Dataset, self).load_data(livetime=lt, tl=tl),
+            data_grl)
 
         # Select only the experimental data which fits the good-run-list for
         # this dataset.
-        if(grl_data is not None):
+        if(data_grl is not None):
             task = 'Selected only the experimental data that matches the GRL '\
                 'for dataset "%s".'%(self.name)
             with TaskTimer(tl, task):
-                runs = np.unique(grl_data['run'])
+                runs = np.unique(data_grl['run'])
                 mask = np.isin(data.exp['run'], runs)
                 data.exp = data.exp[mask]
 
@@ -201,3 +217,30 @@ class I3Dataset(Dataset):
 
 I3Dataset.add_required_exp_field_names(I3Dataset, ['azi', 'zen', 'sin_dec'])
 I3Dataset.add_required_mc_field_names(I3Dataset, ['sin_true_dec'])
+
+
+class I3DatasetData(DatasetData):
+    """The class provides the container for the loaded experimental and
+    monto-carlo data of a data set. It's the IceCube specific class that also
+    holds the good-run-list (GRL) data.
+    """
+    def __init__(self, data, data_grl):
+        super(I3DatasetData, self).__init__(
+            data._exp, data._mc, data._aux, data._livetime)
+
+        self.grl = data_grl
+
+    @property
+    def grl(self):
+        """The DataFieldRecordArray instance holding the good-run-list (GRL)
+        data of the IceCube data set. It is None, if there is no GRL data
+        available for this IceCube data set.
+        """
+        return self._grl
+    @grl.setter
+    def grl(self, data):
+        if(data is not None):
+            if(not isinstance(data, DataFieldRecordArray)):
+                raise TypeError('The grl property must be an instance of '
+                    'DataFieldRecordArray!')
+        self._grl = data
