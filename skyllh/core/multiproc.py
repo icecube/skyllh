@@ -3,8 +3,10 @@
 import numpy as np
 import multiprocessing as mp
 
+from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import range
 from skyllh.core.random import RandomStateService
+from skyllh.core.session import is_interactive_session
 from skyllh.core.timing import TimeLord
 
 # Global setting for the number of CPUs to use for functions that allow
@@ -69,10 +71,12 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
         list corresponds to the arguments element in ``args_list``.
     """
     # Define a wrapper function for the multiprocessing module that evaluates
-    # ``func`` for a subset of args_list.
-    def wrapper(func, sub_args_list, pid=0, queue=None, rss=None, tl=None):
+    # ``func`` for a subset of `args_list` on a worker process.
+    def worker_wrapper(
+            func, sub_args_list, pid, rqueue, squeue=None, rss=None, tl=None):
         """Wrapper function for the multiprocessing module that evaluates
-        ``func`` for the subset ``sub_args_list`` of ``args_list``.
+        ``func`` for the subset ``sub_args_list`` of ``args_list`` on a worker
+        process.
 
         Parameters
         ----------
@@ -90,40 +94,121 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
         pid : int
             The process ID that identifies the process in order to sort the
             results to the initial order of the function arguments.
-        queue : multiprocessing.Queue | None
+        rqueue : multiprocessing.Queue
             The Queue instance where to put the function result in.
             If set to None, the result list will be returned.
+        squeue : multiprocessing.Queue | None
+            The Queue instance where to put in status information about finished
+            tasks. Can be None to skip sending status information.
         rss : RandomStateService | None
-            The RandomStateService instance to use for generating random numbers.
+            The RandomStateService instance to use for generating random
+            numbers.
         tl : instance of TimeLord | None
             The instance of TimeLord that should be used to time individual
             tasks.
-
-        Returns
-        -------
-        result_list : list
-            The list of the function results for the different function
-            arguments, only if ``queue`` is set to None.
         """
         result_list = []
-        for (args,kwargs) in sub_args_list:
+        for (task_idx, (args,kwargs)) in enumerate(sub_args_list):
             if(rss is not None):
                 kwargs['rss'] = rss
             if(tl is not None):
                 kwargs['tl'] = tl
             result_list.append(func(*args, **kwargs))
 
-        if(queue is None):
-            return result_list
-        queue.put((pid, result_list, tl))
+            if(squeue is not None):
+                squeue.put((pid, task_idx))
+
+        rqueue.put((pid, result_list, tl))
+
+    # Define a wrapper function that evaluates ``func`` for a subset of
+    # `args_list` on the master process.
+    def master_wrapper(
+            pbar, sarr, func, sub_args_list, squeue=None, rss=None, tl=None):
+        """This is the wrapper function for the master process.
+
+        Parameters
+        ----------
+        pbar : instance of ProgressBar | None
+            The instance of ProgressBar that should be used to display the
+            progress if the current session is interactive.
+        sarr : numpy record ndarray
+            The status numpy record ndarray for all the processes. The length of
+            that array must equal the number of processes, including the master
+            process. Hence, the array index is the process id. The array must
+            contain the following fields:
+                n_finished_tasks : int
+                    The number of finished tasks.
+        func : callable
+            The function which should be called with different arguments, which
+            are given through the sub_args_list argument. If the `rss` argument
+            is not None `func` requires an argument named `rss`.
+        sub_args_list : list of 2-element tuple
+            The list of the different arguments for function ``func``. Each
+            element of that list must be a 2-element tuple, where the first
+            element is a tuple of the arguments of ``func``, and the second
+            element is a dictionary with the keyword arguments of ``func``.
+            If the `rss` argument is not None, `func` argument `rss` has to be
+            omitted.
+        squeue : multiprocessing.Queue | None
+            The status queue for the worker processes that should be used to
+            receive status information about finished tasks.
+        rss : RandomStateService | None
+            The RandomStateService instance to use for generating random
+            numbers.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks.
+        """
+        result_list = []
+        for (master_task_idx, (args,kwargs)) in enumerate(sub_args_list):
+            if(rss is not None):
+                kwargs['rss'] = rss
+            if(tl is not None):
+                kwargs['tl'] = tl
+            result_list.append(func(*args, **kwargs))
+
+            # Skip the rest, if we are not in an interactive session, hence
+            # there is not progress bar.
+            if(pbar is None):
+                continue
+
+            sarr[0]['n_finished_tasks'] = master_task_idx + 1
+
+            # Get possible status information from the worker processes.
+            if(squeue is not None):
+                while not squeue.empty():
+                    (pid, worker_task_idx) = squeue.get()
+                    sarr[pid]['n_finished_tasks'] = worker_task_idx + 1
+
+            # Calculate the total number of finished tasks.
+            n_finished_tasks = np.sum(sarr['n_finished_tasks'])
+            pbar.update(n_finished_tasks)
+
+        return result_list
+
+    # Create the progress bar if we are in an interactive session.
+    pbar = None
+    if(is_interactive_session()):
+        pbar = ProgressBar(maxval=len(args_list))
+        pbar.start()
 
     # Return result list if only one CPU is used.
     if(ncpu == 1):
-        return wrapper(func, args_list, rss=rss, tl=tl)
+        sarr = np.zeros((1,), dtype=[('n_finished_tasks', np.int)])
+        result_list = master_wrapper(
+            pbar, sarr, func, args_list, squeue=None, rss=rss, tl=tl)
+
+        if(pbar is not None):
+            pbar.finish()
+
+        return result_list
 
     # Multiple CPUs are used. Split the work across multiple processes.
     # We will use our own process (pid = 0) as a worker too.
-    queue = mp.Queue()
+    rqueue = mp.Queue()
+    squeue = None
+    if(is_interactive_session()):
+        squeue = mp.Queue()
     sub_args_list_list = np.array_split(args_list, ncpu)
 
     # Create a list of RandomStateService for each process if rss argument is
@@ -151,8 +236,8 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
             for i in range(1, ncpu)])
 
     processes = [mp.Process(
-        target=wrapper,
-        args=(func, sub_args_list, pid, queue, rss_list[pid], tl_list[pid]))
+        target=worker_wrapper,
+        args=(func, sub_args_list, pid, rqueue, squeue, rss_list[pid], tl_list[pid]))
         for (pid, sub_args_list) in enumerate(sub_args_list_list) if pid > 0]
 
     # Start the processes.
@@ -160,14 +245,16 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
         proc.start()
 
     # Compute the first chunk in the main process.
-    result_list_0 = wrapper(
-        func, sub_args_list_list[0], pid=0, rss=rss_list[0], tl=tl_list[0])
+    sarr = np.zeros((len(processes)+1,), dtype=[('n_finished_tasks', np.int)])
+    result_list_0 = master_wrapper(
+        pbar, sarr, func, sub_args_list_list[0], squeue=squeue, rss=rss_list[0],
+        tl=tl_list[0])
 
-    # Gather len(processes) results from the queue and join the process's
+    # Gather len(processes) results from the rqueue and join the process's
     # TimeLord instance with the main TimeLord instance.
     pid_result_list_map = {0: result_list_0}
     for proc in processes:
-        (pid, result_list, proc_tl) = queue.get()
+        (pid, result_list, proc_tl) = rqueue.get()
         pid_result_list_map[pid] = result_list
         if(tl is not None):
             tl.join(proc_tl)
@@ -180,6 +267,9 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
     result_list = []
     for pid in range(len(pid_result_list_map)):
         result_list += pid_result_list_map[pid]
+
+    if(pbar is not None):
+        pbar.finish()
 
     return result_list
 
