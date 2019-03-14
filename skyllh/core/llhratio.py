@@ -11,6 +11,7 @@ import abc
 import numpy as np
 
 from skyllh.core.py import (
+    int_cast,
     issequence,
     issequenceof,
     float_cast
@@ -844,6 +845,47 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         for llhratio in self._llhratio_list:
             llhratio.change_source_hypo_group_manager(src_hypo_group_manager)
 
+    def initialize_for_new_trial(
+            self, events_list, n_events_list=None, event_selection_method=None):
+        """Initializes the log-likelihood-ratio function with the given events.
+
+        Parameters
+        ----------
+        events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances holding the data events
+            for each data set, which should be used for the log-likelihood-ratio
+            function evaluation.
+        n_events_list : list of int | None
+            The list of the number of total events of the trial data for each
+            data set. This number can be larger than the number of given events
+            for each data set. If set to None, the number of events is taken
+            from the size of the given events array of each data set.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod to use to select only
+            signal-like events from the given events arrays. All other events
+            will be treated as pure background events. This reduces the amount
+            of log-likelihood-ratio function evaluations. If set to None, all
+            events will be evaluated.
+        """
+        if(n_events_list is None):
+            n_events_list = [ len(events) for events in events_list ]
+
+        for (n_events, events, llhratio) in zip(
+            n_events_list, events_list, self._llhratio_list):
+
+            # Select events that have potential to be signal. This is for
+            # runtime optimization only. Doing this at this point, makes sure
+            # that both, background and signal events laying outside of the
+            # selection area get marked as pure background events.
+            if(event_selection_method is not None):
+                events = event_selection_method.select_events(events)
+            n_selected_events = len(events)
+
+            # Initialize the log-likelihood ratio function of the dataset with
+            # the selected (scrambled) events.
+            n_pure_bkg_events = n_events - n_selected_events
+            llhratio.initialize_for_new_trial(events, n_pure_bkg_events)
+
     def evaluate(self, fitparam_values):
         """Evaluates the composite log-likelihood-ratio function and returns its
         value and global fit parameter gradients.
@@ -953,3 +995,135 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         nsgrad2 = np.sum(nsgrad2j * self._cache_f**2)
 
         return nsgrad2
+
+
+class NsProfileMultiDatasetTCLLHRatio(LLHRatio):
+    """This class implements a profile log-likelihood ratio function that has
+    only ns as fit parameter. It uses a MultiDatasetTCLLHRatio instance as
+    log-likelihood function. Hence, mathematically it is
+
+    :math::
+        \Lambda(n_s) = \frac{L(n_s)}{L(n_s=n_{s,0})},
+
+    where :math::`n_{s,0}` is the fixed number of signal events for the
+    null-hypothesis.
+    """
+    def __init__(self, llhratio, ns_0):
+        """Creates a new ns-profile log-likelihood-ratio function with a
+        null-hypothesis where ns is fixed to `ns_0`.
+
+        Parameters
+        ----------
+        llhratio : instance of MultiDatasetTCLLHRatio
+            The instance of MultiDatasetTCLLHRatio, which should be used as
+            log-likelihood function.
+        ns_0 : int
+            The number of signal events parameter value to use for the
+            null-hypothesis.
+        """
+        super(NsProfileMultiDatasetTCLLHRatio, self).__init__()
+
+        self.llhratio = llhratio
+        self.ns_0 = ns_0
+
+        # Check that the given log-likelihood-ratio function has no fit
+        # parameters, i.e. only ns in the end.
+        for sub_llhratio in llhratio.llhratio_list:
+            n_global_fitparams = sub_llhratio.src_fitparam_mapper.n_global_fitparams
+            if(n_global_fitparams != 0):
+                raise ValueError('The log-likelihood-ratio functions of the '
+                    'MultiDatasetTCLLHRatio instance must have no global fit '
+                    'parameters, i.e. only ns in the end! Currently it has %d '
+                    'global fit parameters'%(n_global_fitparams))
+
+        # Define a member to hold the constant null-hypothesis log-likelihood
+        # function value for ns=ns_0.
+        self._logL_0 = None
+
+    @property
+    def llhratio(self):
+        """The instance of MultiDatasetTCLLHRatio, which should be used as
+        log-likelihood function.
+        """
+        return self._llhratio
+    @llhratio.setter
+    def llhratio(self, obj):
+        if(not isinstance(obj, MultiDatasetTCLLHRatio)):
+            raise TypeError('The llhratio property must be an instance of '
+                'MultiDatasetTCLLHRatio!')
+        self._llhratio = obj
+
+    @property
+    def ns_0(self):
+        """The parameter value of the number of signal events to use for the
+        null-hypothesis.
+        """
+        return self._ns_0
+    @ns_0.setter
+    def ns_0(self, v):
+        v = int_cast(v, 'The ns_0 property must be castable to an '
+            'integer value!')
+        self._ns_0 = v
+
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the source hypo group manager of all objects of this LLH
+        ratio function, hence, calling the `change_source_hypo_group_manager`
+        method of the underlaying MultiDatasetTCLLHRatio instance of this
+        LLHRatio instance.
+        """
+        self._llhratio.change_source_hypo_group_manager(src_hypo_group_manager)
+
+    def initialize_for_new_trial(
+            self, events_list, n_events_list=None, event_selection_method=None):
+        """Initializes the log-likelihood-ratio function with the given events.
+
+        Parameters
+        ----------
+        events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances holding the data events
+            for each data set, which should be used for the log-likelihood-ratio
+            function evaluation.
+        n_events_list : list of int | None
+            The list of the number of total events of the trial data for each
+            data set. This number can be larger than the number of given events
+            for each data set. If set to None, the number of events is taken
+            from the size of the given events array of each data set.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod to use to select only
+            signal-like events from the given events arrays. All other events
+            will be treated as pure background events. This reduces the amount
+            of log-likelihood-ratio function evaluations. If set to None, all
+            events will be evaluated.
+        """
+        self._llhratio.initialize_for_new_trial(
+            events_list, n_events_list, event_selection_method)
+
+        # Compute the constant log-likelihood function value for the
+        # null-hypothesis.
+        fitparam_values_0 = np.array([self._ns_0], dtype=np.float)
+        (self._logL_0, grads_0) = self._llhratio.evaluate(fitparam_values_0)
+
+    def evaluate(self, fitparam_values):
+        """Evaluates the log-likelihood-ratio function and returns its value and
+        global fit parameter gradients.
+
+        Parameters
+        ----------
+        fitparam_values : (N_fitparams)-shaped numpy 1D ndarray
+            The ndarray holding the current values of the global fit parameters.
+            The first element of that array is, by definition, the number of
+            signal events, ns.
+
+        Returns
+        -------
+        log_lambda : float
+            The calculated log-lambda value of this log-likelihood-ratio
+            function.
+        grads : (N_fitparams,)-shaped 1D ndarray
+            The ndarray holding the gradient value of this log-likelihood-ratio
+            for ns.
+            By definition the first element is the gradient for ns.
+        """
+        (logL, grads) = self._llhratio.evaluate(fitparam_values)
+
+        return (logL - self._logL_0, grads)

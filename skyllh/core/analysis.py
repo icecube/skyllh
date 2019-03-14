@@ -845,23 +845,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The list of the number of events of each data set. If set to None,
             the number of events is taken from the size of the given events.
         """
-        if(n_events_list is None):
-            n_events_list = [ len(events) for events in events_list ]
-
-        for (n_events, events, llhratio) in zip(
-            n_events_list, events_list, self._llhratio.llhratio_list):
-
-            # Select events that have potential to be signal. This is for
-            # runtime optimization only. Doing this at this point, makes sure
-            # that both, background and signal events laying outside of the
-            # selection area get marked as pure background events.
-            events = self._event_selection_method.select_events(events)
-            n_selected_events = len(events)
-
-            # Initialize the log-likelihood ratio function of the dataset with
-            # the selected (scrambled) events.
-            n_pure_bkg_events = n_events - n_selected_events
-            llhratio.initialize_for_new_trial(events, n_pure_bkg_events)
+        self._llhratio.initialize_for_new_trial(
+            events_list, n_events_list, self._event_selection_method)
 
     def maximize_llhratio(self, rss):
         """Maximizes the log-likelihood ratio function, by minimizing its
