@@ -27,9 +27,10 @@ from skyllh.core.pdf import (
 from skyllh.core.pdfratio import PDFRatio
 from skyllh.core.random import RandomStateService
 from skyllh.core.llhratio import (
+    LLHRatio,
+    MultiDatasetTCLLHRatio,
     SingleSourceDatasetSignalWeights,
-    SingleSourceTCLLHRatio,
-    MultiDatasetTCLLHRatio
+    SingleSourceZeroSigH0SingleDatasetTCLLHRatio
 )
 from skyllh.core.scrambling import DataScramblingMethod
 from skyllh.core.timing import TaskTimer
@@ -259,12 +260,19 @@ class Analysis(object):
 
     @property
     def llhratio(self):
-        """(read-only) The log-likelihood ratio function.
+        """The log-likelihood ratio function instance. It is None, if it has
+        not been constructed yet.
         """
         if(self._llhratio is None):
             raise RuntimeError('The log-likelihood ratio function is not '
                 'defined yet. Call the construct_analysis method first!')
         return self._llhratio
+    @llhratio.setter
+    def llhratio(self, obj):
+        if(not isinstance(obj, LLHRatio)):
+            raise TypeError('The llhratio property must be an instance of '
+                'LLHRatio!')
+        self._llhratio = obj
 
     @property
     def bkg_generator(self):
@@ -518,7 +526,9 @@ class Analysis(object):
 
         return (n_sig, n_events_list, events_list)
 
-    def do_trial(self, rss, bkg_mean_list=None, sig_mean=0, tl=None):
+    def do_trial(
+            self, rss, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
+            tl=None):
         """Performs an analysis trial by generating a pseudo data sample with
         background events and possible signal events, and performs the LLH
         analysis on that random pseudo data sample.
@@ -528,14 +538,18 @@ class Analysis(object):
         rss : RandomStateService
             The RandomStateService instance to use for generating random
             numbers.
-        bkg_mean_list : list of float | None
+        mean_n_bkg_list : list of float | None
             The mean number of background events that should be generated for
             each dataset. If set to None (the default), the background
             generation method needs to obtain this number itself.
-        sig_mean : float
+        mean_n_sig : float
             The mean number of signal events that should be generated for the
             trial. The actual number of generated events will be drawn from a
             Poisson distribution with this given signal mean as mean.
+        mean_n_sig_0 : float | None
+            The fixed mean number of signal events for the null-hypothesis,
+            when using a ns-profile log-likelihood-ratio function.
+            If set to None, this argument is interpreted as 0.
         tl : instance of TimeLord | None
             The instance of TimeLord that should be used to time individual
             tasks.
@@ -546,16 +560,25 @@ class Analysis(object):
             The structured numpy ndarray holding the result of the trial. It
             contains the following data fields:
 
+            mean_n_sig : float
+                The mean number of signal events.
             n_sig : int
                 The actual number of injected signal events.
-            TS : float
+            mean_n_sig_0 : float
+                The fixed mean number of signal events for the null-hypothesis.
+            ts : float
                 The test-statistic value.
             [<fitparam_name> ... : float ]
                 Any additional fit parameters of the LLH function.
         """
+        if(mean_n_sig_0 is not None):
+            self._llhratio.mean_n_sig_0 = mean_n_sig_0
+        else:
+            mean_n_sig_0 = 0
+
         with TaskTimer(tl, 'Generating pseudo data.'):
             (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
-                rss, bkg_mean_list, sig_mean)
+                rss, mean_n_bkg_list, mean_n_sig)
 
         with TaskTimer(tl, 'Initializing trial.'):
             self.initialize_trial(events_list, n_events_list)
@@ -564,22 +587,31 @@ class Analysis(object):
             (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
 
         with TaskTimer(tl, 'Calculating test statistic.'):
-            TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
+            ts = self.calculate_test_statistic(log_lambda_max, fitparam_values)
 
         # Create the structured array data type for the result array.
-        result_dtype = [('n_sig', np.int), ('TS', np.float)] + [
-            (fitparam_name, np.float) for fitparam_name in self._fitparamset.fitparam_name_list
+        result_dtype = [
+            ('mean_n_sig', np.float),
+            ('n_sig', np.int),
+            ('mean_n_sig_0', np.float),
+            ('ts', np.float)
+        ] + [
+            (fitparam_name, np.float)
+                for fitparam_name in self._fitparamset.fitparam_name_list
         ]
         result = np.empty((1,), dtype=result_dtype)
+        result['mean_n_sig'] = mean_n_sig
         result['n_sig'] = n_sig
-        result['TS'] = TS
+        result['mean_n_sig_0'] = mean_n_sig_0
+        result['ts'] = ts
         for (idx, fitparam_name) in enumerate(self._fitparamset.fitparam_name_list):
             result[fitparam_name] = fitparam_values[idx]
 
         return result
 
-    def do_trials(self, rss, n, bkg_mean_list=None, sig_mean=0, ncpu=None,
-        tl=None):
+    def do_trials(
+            self, rss, n, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
+            ncpu=None, tl=None):
         """Executes `do_trial` method `N` times with possible multi-processing.
         One trial performs an analysis trial by generating a pseudo data sample
         with background events and possible signal events, and performs the LLH
@@ -592,14 +624,17 @@ class Analysis(object):
             numbers.
         n : int
             Number of trials to generate using the `do_trial` method.
-        bkg_mean_list : list of float | None
+        mean_n_bkg_list : list of float | None
             The mean number of background events that should be generated for
             each dataset. If set to None (the default), the number of data
             events of each data sample will be used as mean.
-        sig_mean : float
+        mean_n_sig : float
             The mean number of signal events that should be generated for the
             trial. The actual number of generated events will be drawn from a
             Poisson distribution with this given signal mean as mean.
+        mean_n_sig_0 : float | None
+            The fixed mean number of signal events for the null-hypothesis,
+            when using a ns-profile log-likelihood-ratio function.
         ncpu : int | None
             The number of CPUs to use, i.e. the number of subprocesses to
             spawn. If set to None, the global setting will be used.
@@ -615,14 +650,18 @@ class Analysis(object):
 
             n_sig : int
                 The actual number of injected signal events.
-            TS : float
+            ts : float
                 The test-statistic value.
             [<fitparam_name> ... : float ]
                 Any additional fit parameters of the LLH function.
         """
         ncpu = get_ncpu(ncpu)
-        args_list = [((), {'bkg_mean_list': bkg_mean_list,
-            'sig_mean': sig_mean}) for i in range(n)]
+        args_list = [((), {
+            'mean_n_bkg_list': mean_n_bkg_list,
+            'mean_n_sig': mean_n_sig,
+            'mean_n_sig_0': mean_n_sig_0
+            }) for i in range(n)
+        ]
         result_list = parallelize(
             self.do_trial, args_list, ncpu, rss=rss, tl=tl)
 
@@ -747,6 +786,12 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         objects like detector signal efficiencies and dataset signal weights,
         constructs the log-likelihood ratio functions for each dataset and the
         final composite llh ratio function.
+
+        Returns
+        -------
+        llhratio : instance of MultiDatasetTCLLHRatio
+            The instance of MultiDatasetTCLLHRatio that implements the
+            log-likelihood-ratio function of the analysis.
         """
         # Create the detector signal yield instances for each dataset.
         # Since this is for a single source, we don't have to have individual
@@ -784,16 +829,19 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         for j in range(self.n_datasets):
             tdm = self._tdm_list[j]
             pdfratio_list = self._pdfratio_list_list[j]
-            llhratio = SingleSourceTCLLHRatio(
+            llhratio = SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
                 self._src_hypo_group_manager,
+                self._src_fitparam_mapper,
                 tdm,
-                pdfratio_list,
-                self._src_fitparam_mapper)
+                pdfratio_list
+            )
             llhratio_list.append(llhratio)
 
         # Create the final multi-dataset log-likelihood ratio function.
-        self._llhratio = MultiDatasetTCLLHRatio(
+        llhratio = MultiDatasetTCLLHRatio(
             dataset_signal_weights, llhratio_list)
+
+        return llhratio
 
     def change_source(self, source):
         """Changes the source of the analysis to the given source. It makes the

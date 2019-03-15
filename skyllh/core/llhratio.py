@@ -64,61 +64,74 @@ class LLHRatio(object):
 
 
 class TCLLHRatio(LLHRatio):
-    """Abstract base class for a two-component (TC) log-likelihood (LLH) ratio
-    function with a list of independent PDF ratio components.
+    """Abstract base class for a log-likelihood (LLH) ratio function with two
+    components, i.e. signal and background.
     """
     __metaclass__ = abc.ABCMeta
 
-    # The (1 + alpha)-threshold float value for which the log-likelihood ratio
-    # function of a single event should get approximated by a Taylor expansion.
-    # This is to prevent a divergence of the log-function for each event, where
-    # (1 + alpha_i) < (1 + alpha).
-    # This setting is implemented as a class type member instead of a class
-    # instance member, because it is supposed to be the same for all instances.
-    _one_plus_alpha = 1e-3
+    def __init__(self, mean_n_sig_0):
+        """Creates a new two-component LLH ratio function instance.
 
-    def __init__(self, src_hypo_group_manager, tdm, pdfratios,
-                 src_fitparam_mapper):
-        """Constructor of the two-component log-likelihood ratio function.
+        Parameters
+        ----------
+        mean_n_sig_0 : float
+            The fixed mean number of signal events for the null-hypothesis.
+        """
+        super(TCLLHRatio, self).__init__()
+
+        self.mean_n_sig_0 = mean_n_sig_0
+
+    @property
+    def mean_n_sig_0(self):
+        """The parameter value for the mean number of signal events of the
+        null-hypothesis.
+        """
+        return self._mean_n_sig_0
+    @mean_n_sig_0.setter
+    def mean_n_sig_0(self, v):
+        v = float_cast(v, 'The mean_n_sig_0 property must be castable to a '
+            'float value!')
+        self._mean_n_sig_0 = v
+
+
+class SingleDatasetTCLLHRatio(TCLLHRatio):
+    """Abstract base class for a log-likelihood (LLH) ratio function with two
+    components, i.e. signal and background, for a single data set.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(
+            self, src_hypo_group_manager, src_fitparam_mapper, tdm,
+            mean_n_sig_0):
+        """Creates a new two-component LLH ratio function instance for a single
+        data set.
 
         Parameters
         ----------
         src_hypo_group_manager : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance that defines the source
             hypotheses.
-        tdm : instance of TrialDataManager
-            The instance of TrialDataManager that holds the trial event data and
-            additional data fields for this LLH ratio function.
-        pdfratios : sequence of PDFRatio
-            The sequence of PDFRatio instances. A PDFRatio instance might depend
-            on none, one, or several fit parameters.
         src_fitparam_mapper : SourceFitParameterMapper
             The instance of SourceFitParameterMapper defining the global fit
             parameters and their mapping to the source fit parameters.
             The order of the fit parameters defines the order of the fit values
             during the maximization process of the log-likelihood-ratio
             function. The names of the source fit parameters must coincide with
-            the signal fit parameter names of the PDF ratio instances.
+            the signal fit parameter names of the PDF instances.
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial event data and
+            additional data fields for this LLH ratio function.
+        mean_n_sig_0 : float
+            The fixed mean number of signal events for the null-hypothesis.
         """
-        super(TCLLHRatio, self).__init__()
+        super(SingleDatasetTCLLHRatio, self).__init__(mean_n_sig_0)
 
         self.src_hypo_group_manager = src_hypo_group_manager
-        self.tdm = tdm
-        self.pdfratio_list = pdfratios
         self.src_fitparam_mapper = src_fitparam_mapper
+        self.tdm = tdm
 
         # Calculate the data fields that solely depend on source parameters.
         self._tdm.calculate_source_data_fields(src_hypo_group_manager)
-
-        # These properties will be set via the ``initialize_for_new_trial``
-        # method.
-        self._n_pure_bkg_events = None
-
-        # Define cache variables for evaluate method to store values needed for
-        # a possible calculation of the second derivative w.r.t. ns of the
-        # log-likelihood ratio function.
-        self._cache_fitparam_values = None
-        self._cache_nsgrad_i = None
 
     @property
     def src_hypo_group_manager(self):
@@ -132,6 +145,19 @@ class TCLLHRatio(LLHRatio):
             raise TypeError('The src_hypo_group_manager property must be an '
                 'instance of SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
+
+    @property
+    def src_fitparam_mapper(self):
+        """The SourceFitParameterMapper instance defining the global fit
+        parameters and their mapping to the source fit parameters.
+        """
+        return self._src_fitparam_mapper
+    @src_fitparam_mapper.setter
+    def src_fitparam_mapper(self, mapper):
+        if(not isinstance(mapper, SourceFitParameterMapper)):
+            raise TypeError('The src_fitparam_mapper property must be an '
+                'instance of SourceFitParameterMapper!')
+        self._src_fitparam_mapper = mapper
 
     @property
     def tdm(self):
@@ -148,52 +174,29 @@ class TCLLHRatio(LLHRatio):
 
     @property
     def n_events(self):
-        """(read-only) The number of events which should get evaluated.
+        """The total number of events of the trial data.
         """
-        return self._tdm.n_events
+        return self._n_events
+    @n_events.setter
+    def n_events(self, n):
+        n = int_cast(n, 'The n_events property must be castable to an integer '
+            'value!')
+        self._n_events = n
 
     @property
     def n_pure_bkg_events(self):
-        """The number of pure background events, which are not part of the
-        `events` array property, but must be considered for the TS value.
+        """(read-only) The number of pure background events, which are not part
+        of the trial data, but must be considered for the test-statistic value.
+        It is the difference of n_events and n_selected_events.
         """
-        return self._n_pure_bkg_events
-    @n_pure_bkg_events.setter
-    def n_pure_bkg_events(self, n):
-        if(not isinstance(n, int)):
-            raise TypeError('The n_pure_bkg_events property must be of type int!')
-        self._n_pure_bkg_events = n
+        return self._n_events - self.n_selected_events
 
     @property
     def n_selected_events(self):
-        """(read-only) The number of selected events.
+        """(read-only) The number of selected events for the log-likelihood
+        ratio evaluation.
         """
-        return self.n_events
-
-    @property
-    def pdfratio_list(self):
-        """The list of PDFRatio instances.
-        """
-        return self._pdfratio_list
-    @pdfratio_list.setter
-    def pdfratio_list(self, seq):
-        if(not issequenceof(seq, PDFRatio)):
-            raise TypeError('The pdfratio_list property must be a sequence of '
-                'PDFRatio instances!')
-        self._pdfratio_list = list(seq)
-
-    @property
-    def src_fitparam_mapper(self):
-        """The SourceFitParameterMapper instance defining the global fit
-        parameters and their mapping to the source fit parameters.
-        """
-        return self._src_fitparam_mapper
-    @src_fitparam_mapper.setter
-    def src_fitparam_mapper(self, mapper):
-        if(not isinstance(mapper, SourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper property must be an '
-                'instance of SourceFitParameterMapper!')
-        self._src_fitparam_mapper = mapper
+        return self._tdm.n_events
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Changes the source hypothesis group manager of this two-component LLH
@@ -207,24 +210,94 @@ class TCLLHRatio(LLHRatio):
         self.src_hypo_group_manager = src_hypo_group_manager
         self._tdm.change_source_hypo_group_manager(src_hypo_group_manager)
 
-    def initialize_for_new_trial(self, events, n_pure_bkg_events):
+    def initialize_for_new_trial(self, events, n_events):
         """Initializes the log-likelihood ratio function for a new trial.
         It must be re-implemented by the derived class, which calls the
         method of the base class first.
 
         Parameters
         ----------
-        events : numpy record array
-            The numpy record array holding the new data events which should get
-            evaluated in the new trial.
-        n_pure_bkg_events : int
-            The number of pure background events, which are not part of
-            `events`, but must be considered for the log_lambda value.
+        events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the new data events
+            which should get evaluated in the new trial.
+        n_events : int
+            The total number of events of the trial data. This number can be
+            larger than the number of events given by the `events` array. The
+            difference is the number of pure background events, which are not
+            part of `events`, but must be considered for the log_lambda value.
         """
         self._tdm.initialize_for_new_trial(
             self._src_hypo_group_manager, events)
 
-        self.n_pure_bkg_events = n_pure_bkg_events
+        self.n_events = n_events
+
+
+class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
+    """This class implements a two-component (TC) log-likelihood (LLH) ratio
+    function for a single data assuming zero signal for the null-hypothesis.
+    The log-likelihood-ratio function uses a list of independent PDF ratio
+    instances.
+    """
+    # The (1 + alpha)-threshold float value for which the log-likelihood ratio
+    # function of a single event should get approximated by a Taylor expansion.
+    # This is to prevent a divergence of the log-function for each event, where
+    # (1 + alpha_i) < (1 + alpha).
+    # This setting is implemented as a class type member instead of a class
+    # instance member, because it is supposed to be the same for all instances.
+    _one_plus_alpha = 1e-3
+
+    def __init__(
+            self, src_hypo_group_manager, src_fitparam_mapper, tdm, pdfratios):
+        """Constructor of the two-component log-likelihood ratio function.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance that defines the source
+            hypotheses.
+        src_fitparam_mapper : SourceFitParameterMapper
+            The instance of SourceFitParameterMapper defining the global fit
+            parameters and their mapping to the source fit parameters.
+            The order of the fit parameters defines the order of the fit values
+            during the maximization process of the log-likelihood-ratio
+            function. The names of the source fit parameters must coincide with
+            the signal fit parameter names of the PDF ratio instances.
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial event data and
+            additional data fields for this LLH ratio function.
+        pdfratios : sequence of PDFRatio
+            The sequence of PDFRatio instances. A PDFRatio instance might depend
+            on none, one, or several fit parameters.
+        """
+        super(ZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
+            src_hypo_group_manager, src_fitparam_mapper, tdm, mean_n_sig_0=0)
+
+        self.pdfratio_list = pdfratios
+
+        # Define cache variables for evaluate method to store values needed for
+        # a possible calculation of the second derivative w.r.t. ns of the
+        # log-likelihood ratio function.
+        self._cache_fitparam_values = None
+        self._cache_nsgrad_i = None
+
+    @SingleDatasetTCLLHRatio.mean_n_sig_0.setter
+    def mean_n_sig_0(self, v):
+        SingleDatasetTCLLHRatio.mean_n_sig_0.fset(self, v)
+        if(self._mean_n_sig_0 != 0):
+            raise ValueError('The %s class is only valid for '
+                'mean_n_sig_0 = 0!'%(classname(self)))
+
+    @property
+    def pdfratio_list(self):
+        """The list of PDFRatio instances.
+        """
+        return self._pdfratio_list
+    @pdfratio_list.setter
+    def pdfratio_list(self, seq):
+        if(not issequenceof(seq, PDFRatio)):
+            raise TypeError('The pdfratio_list property must be a sequence of '
+                'PDFRatio instances!')
+        self._pdfratio_list = list(seq)
 
     def calculate_log_lambda_and_grads(self, fitparam_values, N, ns, Xi, dXi_ps):
         """Calculates the log(Lambda) value and its gradient for each global fit
@@ -261,7 +334,9 @@ class TCLLHRatio(LLHRatio):
         # Get the number of selected events.
         Nprime = len(Xi)
 
-        alpha = TCLLHRatio._one_plus_alpha - 1
+        one_plus_alpha = ZeroSigH0SingleDatasetTCLLHRatio._one_plus_alpha
+
+        alpha = one_plus_alpha - 1
         alpha_i = ns*Xi
 
         # Create a mask for events which have a stable non-diverging
@@ -275,7 +350,7 @@ class TCLLHRatio(LLHRatio):
         # Calculate the log_lambda_i value for the numerical stable events.
         log_lambda_i[stablemask] = np.log1p(alpha_i[stablemask])
         # Calculate the log_lambda_i value for the numerical unstable events.
-        tildealpha_i = (alpha_i[unstablemask] - alpha) / TCLLHRatio._one_plus_alpha
+        tildealpha_i = (alpha_i[unstablemask] - alpha) / one_plus_alpha
         log_lambda_i[unstablemask] = np.log1p(alpha) + tildealpha_i - 0.5*tildealpha_i**2
 
         # Calculate the log_lambda value and account for pure background events.
@@ -291,7 +366,7 @@ class TCLLHRatio(LLHRatio):
         # For ns.
         nsgrad_i = np.empty_like(alpha_i, dtype=np.float)
         nsgrad_i[stablemask] = Xi[stablemask] * one_over_one_plus_alpha_i_stablemask
-        nsgrad_i[unstablemask] = (1 - tildealpha_i)*Xi[unstablemask] / TCLLHRatio._one_plus_alpha
+        nsgrad_i[unstablemask] = (1 - tildealpha_i)*Xi[unstablemask] / one_plus_alpha
         # Cache the nsgrad_i values for a possible later calculation of the
         # second derivative w.r.t. ns of the log-likelihood ratio function.
         # Note: We create a copy of the fitparam_values array here to make sure
@@ -306,7 +381,7 @@ class TCLLHRatio(LLHRatio):
         # For all numerical stable events.
         grads[1:] = np.sum(ns * one_over_one_plus_alpha_i_stablemask * dXi_ps[:,stablemask], axis=1)
         # For all numerical unstable events.
-        grads[1:] += np.sum(ns*(1 - tildealpha_i)*dXi_ps[:,unstablemask] / TCLLHRatio._one_plus_alpha, axis=1)
+        grads[1:] += np.sum(ns*(1 - tildealpha_i)*dXi_ps[:,unstablemask] / one_plus_alpha, axis=1)
 
         return (log_lambda, grads)
 
@@ -348,13 +423,15 @@ class TCLLHRatio(LLHRatio):
         return nsgrad2
 
 
-class SingleSourceTCLLHRatio(TCLLHRatio):
+class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
+        ZeroSigH0SingleDatasetTCLLHRatio):
     """This class implements a 2-component, i.e. signal and background,
-    log-likelihood ratio function for a list of independent PDFRatio instances
-    assuming a single source.
+    log-likelihood ratio function for a single data set. The
+    log-likelihood-ratio function assumes a zero signal null-hypothesis and uses
+    a list of independent PDFRatio instances assuming a single source.
     """
-    def __init__(self, src_hypo_group_manager, tdm, pdfratios,
-                 src_fitparam_mapper):
+    def __init__(
+            self, src_hypo_group_manager, src_fitparam_mapper, tdm, pdfratios):
         """Constructor for creating a 2-component, i.e. signal and background,
         log-likelihood ratio function assuming a single source.
 
@@ -363,12 +440,6 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         src_hypo_group_manager : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance that defines the source
             hypotheses.
-        tdm : instance of TrialDataManager
-            The instance of TrialDataManager that holds the trial event data and
-            additional data fields for this LLH ratio function.
-        pdfratios : list of PDFRatio
-            The list of PDFRatio instances. A PDFRatio instance might depend on
-            none, one, or several fit parameters.
         src_fitparam_mapper : SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
@@ -376,12 +447,19 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
             during the maximization process.
             The names of the source fit parameters must coincide with the signal
             fit parameter names of the PDF ratio objects.
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial event data and
+            additional data fields for this LLH ratio function.
+        pdfratios : list of PDFRatio
+            The list of PDFRatio instances. A PDFRatio instance might depend on
+            none, one, or several fit parameters.
         """
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper argument must be an instance of SingleSourceFitParameterMapper!')
+            raise TypeError('The src_fitparam_mapper argument must be an '
+                'instance of SingleSourceFitParameterMapper!')
 
-        super(SingleSourceTCLLHRatio, self).__init__(
-            src_hypo_group_manager, tdm, pdfratios, src_fitparam_mapper)
+        super(SingleSourceZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
+            src_hypo_group_manager, src_fitparam_mapper, tdm, pdfratios)
 
         # Construct a PDFRatio array arithmetic object specialized for a single
         # source. This will pre-calculate the PDF ratio values for all PDF ratio
@@ -390,7 +468,7 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
             self._pdfratio_list,
             self._src_fitparam_mapper.fitparamset.fitparam_list)
 
-    def initialize_for_new_trial(self, events, n_pure_bkg_events):
+    def initialize_for_new_trial(self, events, n_events):
         """Initializes the log-likelihood ratio function for a new trial.
 
         Parameters
@@ -398,12 +476,15 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         events : numpy record array
             The numpy record array holding the new data events which should get
             evaluated in the new trial.
-        n_pure_bkg_events : int
-            The number of pure background events, which are not part of
-            `events`, but must be considered for the log_lambda value.
+        n_events : int
+            The total number of events of the trial data. This number can be
+            larger than the number of events given by the `events` array. The
+            difference is the number of pure background events, which are not
+            part of `events`, but must be considered for the log_lambda value.
         """
-        super(SingleSourceTCLLHRatio, self).initialize_for_new_trial(
-            events, n_pure_bkg_events)
+        super(SingleSourceZeroSigH0SingleDatasetTCLLHRatio,
+              self).initialize_for_new_trial(events, n_events)
+
         self._pdfratioarray.initialize_for_new_trial(self._tdm)
 
     def evaluate(self, fitparam_values):
@@ -432,7 +513,7 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
 
         ns = fitparam_values[0]
 
-        N = self.n_events + self._n_pure_bkg_events
+        N = self.n_events
 
         # Create the fitparams dictionary with the fit parameter names and
         # values.
@@ -471,37 +552,40 @@ class SingleSourceTCLLHRatio(TCLLHRatio):
         return (log_lambda, grads)
 
 
-class MultiSourceTCLLHRatio(TCLLHRatio):
-    """This class implements a 2-component, i.e. signal and background,
-    log-likelihood ratio function for a list of independent PDFRatio instances
-    assuming multiple sources (stacking).
-    """
-    def __init__(self, events, n_pure_bkg_events, pdfratios, src_fitparam_mapper):
-        """
-        Parameters
-        ----------
-        events : numpy record array
-            The numpy record array holding the data events which should get
-            evaluated.
-        n_pure_bkg_events : int
-            The number of pure background events, which are not part of
-            `events`, but must be considered for the log_lambda value.
-        pdfratios : sequence of PDFRatio
-            The sequence of PDFRatio instances. A PDFRatio instance might depend
-            on none, one, or several fit parameters.
-        src_fitparam_mapper : MultiSourceFitParameterMapper
-            The multi source fit parameter mapper that defines the fit
-            parameters and their relation to the source fit parameters of the
-            individual sources.
-        """
-        if(not isinstance(src_fitparam_mapper, MultiSourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper argument must be an '
-                'instance of MultiSourceFitParameterMapper!')
+#class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
+        #ZeroSigH0SingleDatasetTCLLHRatio):
+    #"""This class implements a 2-component, i.e. signal and background,
+    #log-likelihood ratio function for a single data set assuming zero signal for
+    #the null-hypothesis. It uses a list of independent PDFRatio instances
+    #assuming multiple sources (stacking).
+    #"""
+    #def __init__(
+            #self, events, n_pure_bkg_events, pdfratios, src_fitparam_mapper):
+        #"""
+        #Parameters
+        #----------
+        #events : numpy record array
+            #The numpy record array holding the data events which should get
+            #evaluated.
+        #n_pure_bkg_events : int
+            #The number of pure background events, which are not part of
+            #`events`, but must be considered for the log_lambda value.
+        #pdfratios : sequence of PDFRatio
+            #The sequence of PDFRatio instances. A PDFRatio instance might depend
+            #on none, one, or several fit parameters.
+        #src_fitparam_mapper : MultiSourceFitParameterMapper
+            #The multi source fit parameter mapper that defines the fit
+            #parameters and their relation to the source fit parameters of the
+            #individual sources.
+        #"""
+        #if(not isinstance(src_fitparam_mapper, MultiSourceFitParameterMapper)):
+            #raise TypeError('The src_fitparam_mapper argument must be an '
+                #'instance of MultiSourceFitParameterMapper!')
 
-        super(MultiSourceTCLLHRatio, self).__init__(
-            events, n_pure_bkg_events, pdfratios, src_fitparam_mapper)
+        #super(MultiSourceZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
+            #events, n_pure_bkg_events, pdfratios, src_fitparam_mapper)
 
-    # TODO: Implement this class!!
+    ## TODO: Implement this class!!
 
 
 class DatasetSignalWeights(object):
@@ -509,7 +593,8 @@ class DatasetSignalWeights(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
+    def __init__(
+            self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
         """Base class constructor.
 
         Parameters
@@ -674,7 +759,8 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
     """This class calculates the dataset signal weight factors for each dataset
     assuming a single source.
     """
-    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
+    def __init__(
+            self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
         """Constructs a new DatasetSignalWeights instance assuming a single
         source.
 
@@ -757,7 +843,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
 #TODO: Implement MultiSourceDatasetSignalWeights class!
 
 
-class MultiDatasetTCLLHRatio(LLHRatio):
+class MultiDatasetTCLLHRatio(TCLLHRatio):
     """This class describes a two-component log-likelihood ratio function for
     multiple datasets. The final log-likelihood ratio value is the sum of the
     individual log-likelihood ratio values.
@@ -778,14 +864,15 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         dataset_signal_weights : DatasetSignalWeights
             An instance of DatasetSignalWeights, which calculates the relative
             dataset weight factors.
-        llhratios : sequence of TCLLHRatio instances
+        llhratios : sequence of SingleDatasetTCLLHRatio instances
             The sequence of the two-component log-likelihood ratio functions,
             one for each dataset.
         """
-        super(MultiDatasetTCLLHRatio, self).__init__()
-
         self.dataset_signal_weights = dataset_signal_weights
         self.llhratio_list = llhratios
+
+        super(MultiDatasetTCLLHRatio,
+              self).__init__(self._llhratio_list[0].mean_n_sig_0)
 
         # Check if the number of datasets the DatasetSignalWeights instance is
         # made for equals the number of log-likelihood ratio functions.
@@ -818,19 +905,26 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         return self._llhratio_list
     @llhratio_list.setter
     def llhratio_list(self, llhratios):
-        if(not issequenceof(llhratios, TCLLHRatio)):
-            raise TypeError('The llhratio_list property must be a sequence of TCLLHRatio instances!')
+        if(not issequenceof(llhratios, SingleDatasetTCLLHRatio)):
+            raise TypeError('The llhratio_list property must be a sequence of '
+                'SingleDatasetTCLLHRatio instances!')
         self._llhratio_list = list(llhratios)
 
     @property
     def n_selected_events(self):
-        """The sum of selected events of each individual log-likelihood ratio
-        function.
+        """(read-only) The sum of selected events of each individual
+        log-likelihood ratio function.
         """
         n_selected_events = 0
         for llhratio in self._llhratio_list:
             n_selected_events += llhratio.n_selected_events
         return n_selected_events
+
+    @TCLLHRatio.mean_n_sig_0.setter
+    def mean_n_sig_0(self, v):
+        TCLLHRatio.mean_n_sig_0.fset(self, v)
+        for llhratio in self._llhratio_list:
+            llhratio.mean_n_sig_0 = self._mean_n_sig_0
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Changes the source hypo group manager of all objects of this LLH
@@ -871,20 +965,17 @@ class MultiDatasetTCLLHRatio(LLHRatio):
             n_events_list = [ len(events) for events in events_list ]
 
         for (n_events, events, llhratio) in zip(
-            n_events_list, events_list, self._llhratio_list):
-
+                n_events_list, events_list, self._llhratio_list):
             # Select events that have potential to be signal. This is for
             # runtime optimization only. Doing this at this point, makes sure
             # that both, background and signal events laying outside of the
             # selection area get marked as pure background events.
             if(event_selection_method is not None):
                 events = event_selection_method.select_events(events)
-            n_selected_events = len(events)
 
             # Initialize the log-likelihood ratio function of the dataset with
             # the selected (scrambled) events.
-            n_pure_bkg_events = n_events - n_selected_events
-            llhratio.initialize_for_new_trial(events, n_pure_bkg_events)
+            llhratio.initialize_for_new_trial(events, n_events)
 
     def evaluate(self, fitparam_values):
         """Evaluates the composite log-likelihood-ratio function and returns its
@@ -997,7 +1088,7 @@ class MultiDatasetTCLLHRatio(LLHRatio):
         return nsgrad2
 
 
-class NsProfileMultiDatasetTCLLHRatio(LLHRatio):
+class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
     """This class implements a profile log-likelihood ratio function that has
     only ns as fit parameter. It uses a MultiDatasetTCLLHRatio instance as
     log-likelihood function. Hence, mathematically it is
@@ -1005,26 +1096,25 @@ class NsProfileMultiDatasetTCLLHRatio(LLHRatio):
     :math::
         \Lambda(n_s) = \frac{L(n_s)}{L(n_s=n_{s,0})},
 
-    where :math::`n_{s,0}` is the fixed number of signal events for the
+    where :math::`n_{s,0}` is the fixed mean number of signal events for the
     null-hypothesis.
     """
-    def __init__(self, llhratio, ns_0):
+    def __init__(self, mean_n_sig_0, llhratio):
         """Creates a new ns-profile log-likelihood-ratio function with a
-        null-hypothesis where ns is fixed to `ns_0`.
+        null-hypothesis where ns is fixed to `mean_n_sig_0`.
 
         Parameters
         ----------
         llhratio : instance of MultiDatasetTCLLHRatio
             The instance of MultiDatasetTCLLHRatio, which should be used as
             log-likelihood function.
-        ns_0 : int
-            The number of signal events parameter value to use for the
-            null-hypothesis.
+        mean_n_sig_0 : float
+            The fixed parameter value for the mean number of signal events of
+            the null-hypothesis.
         """
-        super(NsProfileMultiDatasetTCLLHRatio, self).__init__()
+        super(NsProfileMultiDatasetTCLLHRatio, self).__init__(mean_n_sig_0)
 
         self.llhratio = llhratio
-        self.ns_0 = ns_0
 
         # Check that the given log-likelihood-ratio function has no fit
         # parameters, i.e. only ns in the end.
@@ -1037,7 +1127,7 @@ class NsProfileMultiDatasetTCLLHRatio(LLHRatio):
                     'global fit parameters'%(n_global_fitparams))
 
         # Define a member to hold the constant null-hypothesis log-likelihood
-        # function value for ns=ns_0.
+        # function value for ns=mean_n_sig_0.
         self._logL_0 = None
 
     @property
@@ -1052,18 +1142,6 @@ class NsProfileMultiDatasetTCLLHRatio(LLHRatio):
             raise TypeError('The llhratio property must be an instance of '
                 'MultiDatasetTCLLHRatio!')
         self._llhratio = obj
-
-    @property
-    def ns_0(self):
-        """The parameter value of the number of signal events to use for the
-        null-hypothesis.
-        """
-        return self._ns_0
-    @ns_0.setter
-    def ns_0(self, v):
-        v = int_cast(v, 'The ns_0 property must be castable to an '
-            'integer value!')
-        self._ns_0 = v
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Changes the source hypo group manager of all objects of this LLH
@@ -1100,7 +1178,7 @@ class NsProfileMultiDatasetTCLLHRatio(LLHRatio):
 
         # Compute the constant log-likelihood function value for the
         # null-hypothesis.
-        fitparam_values_0 = np.array([self._ns_0], dtype=np.float)
+        fitparam_values_0 = np.array([self._mean_n_sig_0], dtype=np.float)
         (self._logL_0, grads_0) = self._llhratio.evaluate(fitparam_values_0)
 
     def evaluate(self, fitparam_values):
