@@ -4,6 +4,7 @@ from __future__ import division
 
 import numpy as np
 from numpy.lib import recfunctions as np_rfn
+import itertools
 
 from skyllh.core.py import issequenceof, range
 from skyllh.core.storage import NPYFileLoader
@@ -230,9 +231,14 @@ def _estimate_p_trial(analysis, N, rss, sig_mean, bkg_TS_percentile):
     p_trial = sig_TS[sig_TS > bkg_TS_percentile].size/sig_TS.size
     return p_trial
 
-def create_trial_data_file(analysis, rss, pathfilename, ns_max=30, N=2000):
-    """Creates and fills a trial data file with `N` generated trials for each
-    mean number of injected signal events up to `ns_max` for a given analysis. 
+def create_trial_data_file(
+        analysis, rss, pathfilename, n_trials, mean_n_sig_min=0,
+        mean_n_sig_max=10, mean_n_sig_0_min=0, mean_n_sig_0_max=10,
+        mean_n_bkg_list=None, bkg_kwargs=None, sig_kwargs=None,
+        ncpu=None, tl=None):
+    """Creates and fills a trial data file with `n_trials` generated trials for
+    each mean number of injected signal events from `ns_min` up to `ns_max` for
+    a given analysis.
 
     Parameters
     ----------
@@ -243,26 +249,59 @@ def create_trial_data_file(analysis, rss, pathfilename, ns_max=30, N=2000):
         numbers.
     pathfilename : string
         Trial data file path including the filename.
-    ns_max : int, optional
-        Maximum number of injected signal events. 
-    N : int
-        Number of times to perform analysis trial.
+    n_trials : int
+        The number of trials to perform for each hypothesis test.
+    mean_n_sig_min : int
+        The minimum number of mean injected signal events.
+    mean_n_sig_max : int
+        The maximum number of mean injected signal events.
+    mean_n_sig_0_min : int
+        The minimum number of fixed mean signal events for the null-hypothesis.
+    mean_n_ns_0_max : int
+        The maximum number of fixed mean signal events for the null-hypothesis.
+    bkg_kwargs : dict | None
+        Additional keyword arguments for the `generate_events` method of the
+        background generation method class. An usual keyword argument is
+        `poisson`.
+    sig_kwargs : dict | None
+        Additional keyword arguments for the `generate_signal_events` method
+        of the `SignalGenerator` class. An usual keyword argument is
+        `poisson`.
+    ncpu : int | None
+        The number of CPUs to use.
+    tl: instance of TimeLord | None
+        The instance of TimeLord that should be used to measure individual
+        tasks.
     """
-    # Initialize empty `trial_data` array.
-    trial_data = np.array([])
-    for ns in range(0, ns_max):
-        trials = analysis.do_trials(rss, N, sig_mean=ns)
-        names = ['sig_mean', 'seed']
-        data = [[ns]*N, [rss.seed]*N]
-        trials = np_rfn.append_fields(trials, names, data)
-        trial_data = np_rfn.stack_arrays([trial_data, trials], usemask=False,
-                                         asrecarray=True)
-    # Save trial data to file.
+    trial_data = None
+    for (mean_n_sig, mean_n_sig_0) in itertools.product(
+            range(mean_n_sig_min, mean_n_sig_max+1),
+            range(mean_n_sig_0_min, mean_n_sig_0_max+1)):
+
+        trials = analysis.do_trials(
+            rss, n=n_trials, mean_n_bkg_list=mean_n_bkg_list,
+            mean_n_sig=mean_n_sig, mean_n_sig_0=mean_n_sig_0,
+            bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, ncpu=ncpu)
+
+        trials = np_rfn.append_fields(
+            trials, 'seed', np.repeat(rss.seed, n_trials))
+
+        if(trial_data is None):
+            trial_data = trials
+        else:
+            trial_data = np_rfn.stack_arrays(
+                [trial_data, trials], usemask=False, asrecarray=True)
+
+    if(trial_data is None):
+        raise RuntimeError('No trials have been generated! Check your '
+            'generation boundaries!')
+
+    # Save the trial data to file.
     np.save(pathfilename, trial_data)
 
 def extend_trial_data_file(analysis, rss, pathfilename, ns_max=30, N=1000):
     """Appends the trial data file with `N` generated trials for each mean
-    number of injected signal events up to `ns_max` for a given analysis. 
+    number of injected signal events up to `ns_max` for a given analysis.
 
     Parameters
     ----------
@@ -274,7 +313,7 @@ def extend_trial_data_file(analysis, rss, pathfilename, ns_max=30, N=1000):
     pathfilename : string
         Trial data file path including the filename.
     ns_max : int, optional
-        Maximum number of injected signal events. 
+        Maximum number of injected signal events.
     N : int
         Number of times to perform analysis trial.
     """
@@ -296,8 +335,8 @@ def extend_trial_data_file(analysis, rss, pathfilename, ns_max=30, N=1000):
     # Save trial data to the file.
     np.save(pathfilename, trial_data)
 
-def calculate_upper_limit_distribution(analysis, rss, pathfilename, N_bkg=5000,
-                                       n_bins=100):
+def calculate_upper_limit_distribution(
+        analysis, rss, pathfilename, N_bkg=5000, n_bins=100):
     """Function to calculate upper limit distribution. It loads the trial data
     file containing test statistic distribution and calculates 10 percentile
     value for each mean number of injected signal event. Then it finds upper
@@ -322,6 +361,7 @@ def calculate_upper_limit_distribution(analysis, rss, pathfilename, N_bkg=5000,
     -------
     result : dict
         Result dictionary which contains the following fields:
+
         - ul : list of float
             List of upper limit values.
         - mean : float
@@ -364,7 +404,7 @@ def calculate_upper_limit_distribution(analysis, rss, pathfilename, N_bkg=5000,
     ul_mean = np.mean(ul_list)
     ul_median = np.median(ul_list)
     ul_var = np.var(ul_list)
-    
+
     result = {}
     result['ul'] = ul_list
     result['mean'] = ul_mean
