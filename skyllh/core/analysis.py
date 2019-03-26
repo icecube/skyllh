@@ -624,14 +624,14 @@ class Analysis(object):
             ('ts', np.float)
         ] + [
             (fitparam_name, np.float)
-                for fitparam_name in self._fitparamset.fitparam_name_list
+                for fitparam_name in fitparamset.fitparam_name_list
         ]
         result = np.empty((1,), dtype=result_dtype)
         result['mean_n_sig'] = mean_n_sig
         result['n_sig'] = n_sig
         result['mean_n_sig_0'] = mean_n_sig_0
         result['ts'] = ts
-        for (idx, fitparam_name) in enumerate(self._fitparamset.fitparam_name_list):
+        for (idx, fitparam_name) in enumerate(fitparamset.fitparam_name_list):
             result[fitparam_name] = fitparam_values[idx]
 
         return result
