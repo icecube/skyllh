@@ -452,7 +452,9 @@ class Analysis(object):
 
         return (TS, fitparam_dict, status)
 
-    def generate_pseudo_data(self, rss, bkg_mean_list=None, sig_mean=0):
+    def generate_pseudo_data(
+            self, rss, mean_n_bkg_list=None, mean_n_sig=0, bkg_kwargs=None,
+            sig_kwargs=None):
         """Generates pseudo data with background and possible signal
         events for each data set using the background and signal generation
         methods of the analysis.
@@ -462,14 +464,22 @@ class Analysis(object):
         rss : RandomStateService
             The RandomStateService instance to use for generating random
             numbers.
-        bkg_mean_list : list of float | None
+        mean_n_bkg_list : list of float | None
             The mean number of background events that should be generated for
             each dataset. If set to None (the default), the background
             generation method needs to obtain this number itself.
-        sig_mean : float
+        mean_n_sig : float
             The mean number of signal events that should be generated for the
             trial. The actual number of generated events will be drawn from a
             Poisson distribution with this given signal mean as mean.
+        bkg_kwargs : dict | None
+            Additional keyword arguments for the `generate_events` method of the
+            background generation method class. An usual keyword argument is
+            `poisson`.
+        sig_kwargs : dict | None
+            Additional keyword arguments for the `generate_signal_events` method
+            of the `SignalGenerator` class. An usual keyword argument is
+            `poisson`.
 
         Returns
         -------
@@ -489,11 +499,17 @@ class Analysis(object):
             raise TypeError('The rss argument must be an instance of '
                 'RandomStateService!')
 
-        if(bkg_mean_list is None):
-            bkg_mean_list = [ None ]*self.n_datasets
-        if(not issequenceof(bkg_mean_list, (type(None), float))):
-            raise TypeError('The bkg_mean_list argument must be a sequence '
+        if(mean_n_bkg_list is None):
+            mean_n_bkg_list = [ None ]*self.n_datasets
+        if(not issequenceof(mean_n_bkg_list, (type(None), float))):
+            raise TypeError('The mean_n_bkg_list argument must be a sequence '
                 'of None and/or floats!')
+
+        if(bkg_kwargs is None):
+            bkg_kwargs = dict()
+
+        if(sig_kwargs is None):
+            sig_kwargs = dict()
 
         # Construct the background event generator in case it's not constructed
         # yet.
@@ -505,20 +521,22 @@ class Analysis(object):
         n_events_list = []
         events_list = []
         for ds_idx in range(self.n_datasets):
+            bkg_kwargs.update(mean=mean_n_bkg_list[ds_idx])
             (n_bkg, bkg_events) = self._bkg_generator.generate_background_events(
-                rss, ds_idx, bkg_mean_list[ds_idx])
+                rss, ds_idx, **bkg_kwargs)
             n_events_list.append(n_bkg)
             events_list.append(bkg_events)
 
         n_sig = 0
-        if(sig_mean > 0):
-            # Generate signal events with the given mean number of signal
-            # events.
+        if(mean_n_sig > 0):
             # Construct the signal generator if not done yet.
             if(self._sig_generator is None):
                 self.construct_signal_generator()
+            # Generate signal events with the given mean number of signal
+            # events.
+            sig_kwargs.update(mean=mean_n_sig)
             (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
-                rss, sig_mean)
+                rss, **sig_kwargs)
             # Inject the signal events to the generated background data.
             for (idx, sig_events) in ds_sig_events_dict.items():
                 n_events_list[idx] += len(sig_events)
@@ -528,7 +546,7 @@ class Analysis(object):
 
     def do_trial(
             self, rss, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
-            tl=None):
+            bkg_kwargs=None, sig_kwargs=None, tl=None):
         """Performs an analysis trial by generating a pseudo data sample with
         background events and possible signal events, and performs the LLH
         analysis on that random pseudo data sample.
@@ -550,6 +568,14 @@ class Analysis(object):
             The fixed mean number of signal events for the null-hypothesis,
             when using a ns-profile log-likelihood-ratio function.
             If set to None, this argument is interpreted as 0.
+        bkg_kwargs : dict | None
+            Additional keyword arguments for the `generate_events` method of the
+            background generation method class. An usual keyword argument is
+            `poisson`.
+        sig_kwargs : dict | None
+            Additional keyword arguments for the `generate_signal_events` method
+            of the `SignalGenerator` class. An usual keyword argument is
+            `poisson`.
         tl : instance of TimeLord | None
             The instance of TimeLord that should be used to time individual
             tasks.
@@ -578,7 +604,8 @@ class Analysis(object):
 
         with TaskTimer(tl, 'Generating pseudo data.'):
             (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
-                rss, mean_n_bkg_list, mean_n_sig)
+                rss=rss, mean_n_bkg_list=mean_n_bkg_list, mean_n_sig=mean_n_sig,
+                bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs)
 
         with TaskTimer(tl, 'Initializing trial.'):
             self.initialize_trial(events_list, n_events_list)
@@ -611,7 +638,7 @@ class Analysis(object):
 
     def do_trials(
             self, rss, n, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
-            ncpu=None, tl=None):
+            bkg_kwargs=None, sig_kwargs=None, ncpu=None, tl=None):
         """Executes `do_trial` method `N` times with possible multi-processing.
         One trial performs an analysis trial by generating a pseudo data sample
         with background events and possible signal events, and performs the LLH
@@ -635,6 +662,18 @@ class Analysis(object):
         mean_n_sig_0 : float | None
             The fixed mean number of signal events for the null-hypothesis,
             when using a ns-profile log-likelihood-ratio function.
+        bkg_kwargs : dict | None
+            Additional keyword arguments for the `generate_events` method of the
+            background generation method class. An usual keyword argument is
+            `poisson`.
+        sig_kwargs : dict | None
+            Additional keyword arguments for the `generate_signal_events` method
+            of the `SignalGenerator` class. An usual keyword argument is
+            `poisson`. If `poisson` is set to True, the actual number of
+            generated signal events will be drawn from a Poisson distribution
+            with the given mean number of signal events.
+            If set to False, the argument ``mean_n_sig`` specifies the actual
+            number of generated signal events.
         ncpu : int | None
             The number of CPUs to use, i.e. the number of subprocesses to
             spawn. If set to None, the global setting will be used.
@@ -659,7 +698,9 @@ class Analysis(object):
         args_list = [((), {
             'mean_n_bkg_list': mean_n_bkg_list,
             'mean_n_sig': mean_n_sig,
-            'mean_n_sig_0': mean_n_sig_0
+            'mean_n_sig_0': mean_n_sig_0,
+            'bkg_kwargs': bkg_kwargs,
+            'sig_kwargs': sig_kwargs
             }) for i in range(n)
         ]
         result_list = parallelize(

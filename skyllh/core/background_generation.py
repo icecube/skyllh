@@ -223,7 +223,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                     'None, or an instance of SpatialEventSelectionMethod!')
         self._event_selection_method = method
 
-    def generate_events(self, rss, dataset, data, mean):
+    def generate_events(self, rss, dataset, data, mean, poisson=True):
         """Generates background events  a `mean` number of background
         events for the given dataset and its data.
 
@@ -242,6 +242,12 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             The mean number of background events to generate.
             Can be `None`. In that case the mean number of background events is
             obtained through the `get_mean_func` function.
+        poisson : bool
+            If set to True (default), the actual number of generated background
+            events will be drawn from a Poisson distribution with the given mean
+            value of background events.
+            If set to False, the argument ``mean`` specifies the actual number
+            of generated background events.
 
         Returns
         -------
@@ -277,7 +283,8 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # Draw the number of background events from a poisson distribution with
         # the given mean number of background events. This will be the number of
         # background events for this data set.
-        n_bkg = int(rss.random.poisson(mean))
+        n_bkg = (int(rss.random.poisson(mean)) if poisson else
+                 int(np.round(mean, 0)))
 
         # Scramble the MC events if requested.
         if(self._data_scrambler is not None):

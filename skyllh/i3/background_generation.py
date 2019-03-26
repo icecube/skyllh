@@ -37,7 +37,7 @@ class FixedScrambledExpDataI3BkgGenMethod(BackgroundGenerationMethod):
                 'of DataScrambler!')
         self._data_scrambler = scrambler
 
-    def generate_events(self, rss, dataset, data, mean):
+    def generate_events(self, rss, dataset, data, **kwargs):
         """Generates background events from the given data, by scrambling the
         data. The number of events is equal to the size of the given dataset.
 
@@ -52,9 +52,6 @@ class FixedScrambledExpDataI3BkgGenMethod(BackgroundGenerationMethod):
         data : instance of DatasetData
             The DatasetData instance holding the data of the dataset for which
             background events should get generated.
-        mean : float
-            Ignored argument. The number of generated events corresponds to the
-            number of events in the dataset.
 
         Returns
         -------

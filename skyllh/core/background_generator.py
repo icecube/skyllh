@@ -73,7 +73,7 @@ class BackgroundGenerator(object):
                 'DatasetData instances!')
         self._data_list = datas
 
-    def generate_background_events(self, rss, dataset_idx, mean, **kwargs):
+    def generate_background_events(self, rss, dataset_idx, **kwargs):
         """Generates a mean number of background events for the given dataset.
 
         Parameters
@@ -84,21 +84,27 @@ class BackgroundGenerator(object):
         dataset_idx : int
             The index of the dataset for which background events should get
             generated for.
-        mean : float
-            The mean number of background events to generate.
         **kwargs
             Additional keyword arguments, which will be passed to the
             ``generate_events`` method of the background generation method
-            instance.
+            instance. Usual keyword arguments are `mean`, the mean number of
+            background events to generate, and `poisson`, the flag if the number
+            of background events should get drawn from a Poisson distribution
+            with the given mean number of background events as mean.
 
         Returns
         -------
-        bkg_events : numpy record array
-            The numpy record arrays holding the generated background events.
+        n_bkg : int
+            The number of generated background events.
+        bkg_events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the generated
+            background events. The number of events can be less than `n_bkg`
+            if an event selection method is used.
         """
         ds = self._dataset_list[dataset_idx]
         data = self._data_list[dataset_idx]
 
-        bkg_events = self._bkg_gen_method.generate_events(rss, ds, data, mean, **kwargs)
+        (n_bkg, bkg_events) = self._bkg_gen_method.generate_events(
+            rss, ds, data, **kwargs)
 
-        return bkg_events
+        return (n_bkg, bkg_events)
