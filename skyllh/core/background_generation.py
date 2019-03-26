@@ -77,7 +77,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         get_event_prob_func : callable
             The function to get the background probability of each monte-carlo
             event. The call signature of this function must be
-                `__call__(dataset, data, events)`,
+            `__call__(dataset, data, events)`,
             where `dataset` and `data` are `Dataset` and `DatasetData` instances
             of the data set for which background events needs to get generated.
             The `events` argument holds the actual set of events, for which the
@@ -85,7 +85,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         get_mean_func : callable | None
             The function to get the mean number of background events.
             The call signature of this function must be
-                `__call__(dataset, data, events)`,
+            `__call__(dataset, data, events)`,
             where `dataset` and `data` are `Dataset` and `DatasetData` instances
             of the data set for which background events needs to get generated.
             The `events` argument holds the actual set of events, for which the

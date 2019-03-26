@@ -308,10 +308,9 @@ class CombinedPDF(PDF):
         op : callable with two arguments
             The numeric operator function, which combines the PDF values of
             `pdf1` and `pdf2`. The function must have the following call
-            signature:
-                __call__(pdf1_values, pdf2_values),
-            where `pdf1_values` are the PDF values of `pdf1` and `pdf2_values`
-            the pdf values of `pdf2`.
+            signature: `__call__(pdf1_values, pdf2_values)`, where `pdf1_values`
+            are the PDF values of `pdf1` and `pdf2_values` the pdf values of
+            `pdf2`.
         op_kwargs : dict | None
             Possible additional keyword arguments that should be passed to the
             operator function.
