@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import abc
+import copy
 import pickle
 import os.path
 import numpy as np
@@ -542,7 +543,10 @@ class DataFieldRecordArray(object):
             raise TypeError('The keep_fields argument must be a sequence of '
                 'str!')
 
-        for fname in self._field_name_list:
+        # We need to make a copy of the field_name_list because that list will
+        # get changed by the `remove_field` method.
+        field_name_list = copy.copy(self._field_name_list)
+        for fname in field_name_list:
             if(fname not in keep_fields):
                 self.remove_field(fname)
 
