@@ -5,12 +5,18 @@ import copy
 import pickle
 import os.path
 import numpy as np
+import sys
 
 from skyllh.core.py import (
+    classname,
+    get_byte_size_prefix,
+    getsizeof,
     issequence,
     issequenceof,
     range
 )
+from skyllh.core import display as dsp
+
 
 # Define a file loader registry that holds the FileLoader classes for different
 # file formats.
@@ -352,6 +358,46 @@ class DataFieldRecordArray(object):
 
     def __len__(self):
         return self._len
+
+    def __sizeof__(self):
+        """Calculates the size in bytes of this DataFieldRecordArray instance
+        in memory.
+
+        Returns
+        -------
+        memsize : int
+            The memory size in bytes that this DataFieldRecordArray instance
+            has.
+        """
+        memsize = getsizeof([
+            self._data_fields,
+            self._len,
+            self._field_name_list,
+            self._indices
+        ])
+        return memsize
+
+    def __str__(self):
+        """Creates a pretty informative string representation of this
+        DataFieldRecordArray instance.
+        """
+        (size, prefix) = get_byte_size_prefix(sys.getsizeof(self))
+
+        # Generates a pretty string representation of the given field name.
+        _pretty_str_field = (lambda name:
+            '%s: %s'%(name, str(self._data_fields[name].dtype))
+        )
+        indent_str = ' '*dsp.INDENTATION_WIDTH
+        s = '%s: %d fields, %d entries, %.0f %sbytes '%(
+            classname(self), len(self._field_name_list), self.__len__(),
+            np.round(size, 0), prefix)
+        if(len(self._field_name_list) > 0):
+            s += '\n' + indent_str + 'fields = {'
+            s += '\n' + indent_str*2 + _pretty_str_field(self._field_name_list[0])
+            for fname in self._field_name_list[1:]:
+                s += '\n' + indent_str*2 + _pretty_str_field(fname)
+            s += '\n' + indent_str + '}'
+        return s
 
     @property
     def field_name_list(self):

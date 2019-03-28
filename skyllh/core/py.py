@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import division
+
 import copy
 import inspect
 import numpy as np
+import sys
 
 def typename(t):
     """Returns the name of the given type ``t``.
@@ -13,6 +16,63 @@ def classname(obj):
     """Returns the name of the class of the class instance ``obj``.
     """
     return typename(type(obj))
+
+def get_byte_size_prefix(size):
+    """Determines the biggest size prefix for the given size in bytes such that
+    the new size is still greater one.
+
+    Parameters
+    ----------
+    size : int
+        The size in bytes.
+
+    Returns
+    -------
+    newsize : float
+        The new byte size accounting for the byte prefix.
+    prefix : str
+        The biggest byte size prefix.
+    """
+    prefix_factor_list = [
+        ('', 1), ('K', 1024), ('M', 1024**2), ('G', 1024**3), ('T', 1024**4)]
+
+    prefix_idx = 0
+    for (prefix, factor) in prefix_factor_list[1:]:
+        if(size / factor < 1):
+            break
+        prefix_idx += 1
+
+    (prefix, factor) = prefix_factor_list[prefix_idx]
+    newsize = size / factor
+
+    return (newsize, prefix)
+
+def getsizeof(objects):
+    """Determines the size in bytes the given objects have in memory.
+    If an object is a sequence, the size of the elements of the sequence will
+    be estimated as well and added to the result. This does not account for the
+    multiple occurence of the same object.
+
+    Parameters
+    ----------
+    objects : sequence of instances of object | instance of object.
+
+    Returns
+    -------
+    memsize : int
+        The memory size in bytes of the given objects.
+    """
+    if(not issequence(objects)):
+        objects = [objects]
+
+    memsize = 0
+    for obj in objects:
+        if(issequence(obj)):
+            memsize += getsizeof(obj)
+        else:
+            memsize += sys.getsizeof(obj)
+
+    return memsize
 
 def issequence(obj):
     """Checks if the given object ``obj`` is a sequence or not. The definition of
