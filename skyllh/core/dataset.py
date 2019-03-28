@@ -573,12 +573,18 @@ class Dataset(object):
 
         # Drop unrequired data fields.
         with TaskTimer(tl, 'Cleaning exp data.'):
-            data.exp.tidy_up(keep_fields=(type(self)._EXP_FIELD_NAMES +
-                                          keep_fields))
+            keep_fields_exp = (
+                type(self)._EXP_FIELD_NAMES +
+                keep_fields
+            )
+            data.exp.tidy_up(keep_fields=keep_fields_exp)
         with TaskTimer(tl, 'Cleaning MC data.'):
-            data.mc.tidy_up(keep_fields=(type(self)._EXP_FIELD_NAMES +
-                                         type(self)._MC_FIELD_NAMES +
-                                         keep_fields))
+            keep_fields_mc = (
+                type(self)._EXP_FIELD_NAMES +
+                type(self)._MC_FIELD_NAMES +
+                keep_fields
+            )
+            data.mc.tidy_up(keep_fields=keep_fields_mc)
 
         # Convert float64 fields into float32 fields if requested.
         if(compress):
