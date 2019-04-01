@@ -13,6 +13,7 @@ from skyllh.core.pdf import (
     IsBackgroundPDF,
     SpatialPDF
 )
+from skyllh.core.py import issequenceof
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.i3.pdf import I3EnergyPDF
 
@@ -198,8 +199,8 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
             The array holding the monte-carlo data. The following data fields
             must exist:
 
-            - 'dec' : float
-                The declination of the data event.
+            - 'sin_dec' : float
+                The sine of the reconstructed declination of the data event.
 
         physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
@@ -223,13 +224,13 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
             raise TypeError('The physics_weight_field_names argument must be '
                 'of type str or a sequence of type str!')
 
-        data_sinDec = np.sin(data_mc['dec'])
+        data_sinDec = data_mc['sin_dec']
 
         # Calculate the event weights as the sum of all the given data fields
         # for each event.
         data_weights = np.zeros(len(data_mc), dtype=np.float64)
         for name in physics_weight_field_names:
-            if(name not in data_mc.dtype.names):
+            if(name not in data_mc.field_name_list):
                 raise KeyError('The field "%s" does not exist in the MC '
                     'data!'%(name))
             data_weights += data_mc[name]
@@ -238,6 +239,7 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
         super(MCBackgroundI3SpatialPDF, self).__init__(
             data_sinDec, data_weights, sinDec_binning, spline_order_sinDec
         )
+
 
 class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
@@ -257,8 +259,8 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             - 'log_energy' : float
                 The logarithm of the reconstructed energy value of the data
                 event.
-            - 'dec' : float
-                The declination of the data event.
+            - 'sin_dec' : float
+                The sine of the reconstructed declination of the data event.
 
         logE_binning : BinningDefinition
             The binning definition for the binning in log10(E).
@@ -273,7 +275,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
                 'DataFieldRecordArray!')
 
         data_logE = data_exp['log_energy']
-        data_sinDec = np.sin(data_exp['dec'])
+        data_sinDec = data_exp['sin_dec']
         # For experimental data, the MC and physics weight are unity.
         data_mcweight = np.ones((len(data_exp),))
         data_physicsweight = data_mcweight
@@ -305,8 +307,8 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             - 'log_energy' : float
                 The logarithm of the reconstructed energy value of the data
                 event.
-            - 'dec' : float
-                The declination of the data event.
+            - 'sin_dec' : float
+                The sine of the reconstructed declination of the data event.
             - 'mcweight': float
                 The monte-carlo weight of the event.
 
@@ -334,7 +336,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
                 'of type str or a sequence of type str!')
 
         data_logE = data_mc['log_energy']
-        data_sinDec = np.sin(data_mc['dec'])
+        data_sinDec = data_mc['sin_dec']
         data_mcweight = data_mc['mcweight']
 
         # Calculate the event weights as the sum of all the given data fields
