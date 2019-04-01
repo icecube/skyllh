@@ -223,9 +223,9 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                     'None, or an instance of SpatialEventSelectionMethod!')
         self._event_selection_method = method
 
-    def generate_events(self, rss, dataset, data, mean, poisson=True):
-        """Generates background events  a `mean` number of background
-        events for the given dataset and its data.
+    def generate_events(self, rss, dataset, data, mean=None, poisson=True):
+        """Generates a `mean` number of background events for the given dataset
+        and its data.
 
         Parameters
         ----------
