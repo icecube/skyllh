@@ -39,13 +39,27 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     with the data fields `ra` and `dec` holding the right-ascention and
     declination of the point-like sources, respectively.
     """
-    def __init__(self):
+    def __init__(self, ra_range=None, dec_range=None):
         """Creates a new spatial signal PDF for point-like sources with a
         gaussian point-spread-function (PSF).
+
+        Parameters
+        ----------
+        ra_range : 2-element tuple | None
+            The range in right-ascention this spatial PDF is valid for.
+            If set to None, the range (0, 2pi) is used.
+        dec_range : 2-element tuple | None
+            The range in declination this spatial PDF is valid for.
+            If set to None, the range (-pi/2, +pi/2) is used.
         """
+        if(ra_range is None):
+            ra_range = (0, 2*np.pi)
+        if(dec_range is None):
+            dec_range = (-np.pi/2, np.pi/2)
+
         super(GaussianPSFPointLikeSourceSignalSpatialPDF, self).__init__(
-            ra_range=(0, 2*np.pi),
-            dec_range=(-np.pi/2, np.pi/2))
+            ra_range=ra_range,
+            dec_range=dec_range)
 
     def get_prob(self, tdm, fitparams=None):
         """Calculates the spatial signal probability of each event for all given
