@@ -38,12 +38,8 @@ class TestParameters(unittest.TestCase):
         self.assertTrue(isAlmostEqual([ d['Ecut'] for d in perm_dict_list ], ECUT_GRID*len(GAMMA_GRID)))
 
     def test_MultiSourceFitParameterMapper(self):
-        from skyllh.core.random import RandomStateService
         from skyllh.physics.source import PointLikeSource
         from skyllh.core.parameters import MultiSourceFitParameterMapper, FitParameter
-
-        # Define a random state service.
-        rss = RandomStateService(seed=0)
 
         # Define a list of point-like sources.
         sources = [
@@ -53,7 +49,7 @@ class TestParameters(unittest.TestCase):
 
         # Define the fit parameters 'gamma1' and 'gamma2' which map to the
         # 'gamma' source parameter of the first and second source, respectively.
-        sfpm = MultiSourceFitParameterMapper(rss, sources)
+        sfpm = MultiSourceFitParameterMapper(sources)
         sfpm.def_fit_parameter(FitParameter('gamma1', 1, 4, 2.0), 'gamma', sources[0])
         sfpm.def_fit_parameter(FitParameter('gamma2', 1, 4, 2.1), 'gamma', sources[1])
 
