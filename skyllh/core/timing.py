@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import resource
 import time
 
 from skyllh.core import display
@@ -13,7 +14,7 @@ statement to time the execution of the code within the `with` block.
 """
 
 class TaskRecord(object):
-    def __init__(self, name, duration):
+    def __init__(self, name, duration, peak_mem_diff):
         """Creates a new TaskRecord instance.
 
         Parameters
@@ -22,9 +23,12 @@ class TaskRecord(object):
             The name of the task.
         duration : float
             The duration of the task in seconds.
+        peak_mem_diff : int
+            The difference in the process' peak memory due to the task.
         """
         self.name = name
         self.duration = duration
+        self.peak_mem_diff = peak_mem_diff
 
     def join(self, tr):
         """Joins this TaskRecord with the given TaskRecord instance.
@@ -36,6 +40,7 @@ class TaskRecord(object):
             TaskRecord instance.
         """
         self.duration += tr.duration
+        self.peak_mem_diff = max(self.peak_mem_diff, tr.peak_mem_diff)
 
 
 class TimeLord(object):
@@ -117,8 +122,9 @@ class TimeLord(object):
             tr = self._task_records[i]
             task_name = tr.name[0:max_task_name_len]
             task_duration = tr.duration
-            l = '\n[%'+str(max_task_name_len)+'s] %g sec'
-            s += l%(task_name, task_duration)
+            task_peak_mem_diff = tr.peak_mem_diff
+            l = '\n[%'+str(max_task_name_len)+'s] %g sec %g KB'
+            s += l%(task_name, task_duration, task_peak_mem_diff)
 
         return s
 
@@ -170,9 +176,16 @@ class TaskTimer(object):
         """
         return (self._end - self._start)
 
+    @property
+    def peak_mem_diff(self):
+        """The difference in the process' peak memory.
+        """
+        return self._ru_end.ru_maxrss - self._ru_start.ru_maxrss
+
     def __enter__(self):
         """This gets executed when entering the `with` block.
         """
+        self._ru_start = resource.getrusage(resource.RUSAGE_SELF)
         self._start = time.time()
         return self
 
@@ -180,8 +193,10 @@ class TaskTimer(object):
         """This gets executed when exiting the `with` block.
         """
         self._end = time.time()
+        self._ru_end = resource.getrusage(resource.RUSAGE_SELF)
 
         if(self._time_lord is None):
             return
 
-        self._time_lord.add_task_record(TaskRecord(self._name, self.duration))
+        self._time_lord.add_task_record(TaskRecord(
+            self._name, self.duration, self.peak_mem_diff))
