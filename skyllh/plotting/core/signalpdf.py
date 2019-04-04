@@ -6,19 +6,35 @@ import itertools
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
-from skyllh.core.py import classname, range
-from skyllh.core.pdf import SpatialPDF, IsSignalPDF
+from skyllh.core.py import (
+    classname,
+    range
+)
+from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.storage import DataFieldRecordArray
+from skyllh.core.trialdata import TrialDataManager
+from skyllh.core.pdf import (
+    IsSignalPDF,
+    SpatialPDF
+)
+
 
 class SignalSpatialPDFPlotter(object):
-    def __init__(self, pdf):
+    """Plotter class to plot spatial signal PDF object.
+    """
+    def __init__(self, tdm, pdf):
         """Creates a new plotter object for plotting a spatial signal PDF
         object.
 
         Parameters
         ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that provides the data for the
+            PDF evaluation.
         pdf : class instance derived from SpatialPDF and IsSignalPDF
             The PDF object to plot.
         """
+        self.tdm = tdm
         self.pdf = pdf
 
     @property
@@ -34,7 +50,20 @@ class SignalSpatialPDFPlotter(object):
             raise TypeError('The pdf property must be an object of instance IsSignalPDF!')
         self._pdf = pdf
 
-    def plot(self, axes, source_idx=None, sin_dec=True):
+    @property
+    def tdm(self):
+        """The TrialDataManager that provides the data for the PDF evaluation.
+        """
+        return self._tdm
+    @tdm.setter
+    def tdm(self, obj):
+        if(not isinstance(obj, TrialDataManager)):
+            raise TypeError('The tdm property must be an instance of '
+                'TrialDataManager!')
+        self._tdm = obj
+
+    def plot(self, src_hypo_group_manager, axes, source_idx=None, sin_dec=True,
+             log=True, **kwargs):
         """Plots the signal spatial PDF for the specified source.
 
         Parameters
@@ -49,9 +78,23 @@ class SignalSpatialPDFPlotter(object):
         sin_dec : bool
             Flag if the plot should be made in right-ascention vs. declination
             (False), or in right-ascention vs. sin(declination) (True).
+
+        Additional Keyword Arguments
+        ----------------------------
+        Any additional keyword arguments will be passed to the `mpl.imshow`
+        function.
+
+        Returns
+        -------
+        img : instance of mpl.AxesImage
+            The AxesImage instance showing the PDF ratio image.
         """
+        if(not isinstance(src_hypo_group_manager, SourceHypoGroupManager)):
+            raise TypeError('The src_hypo_group_manager argument must be an '
+                'instance of SourceHypoGroupManager!')
         if(not isinstance(axes, Axes)):
-            raise TypeError('The axes argument must be an instance of matplotlib.axes.Axes!')
+            raise TypeError('The axes argument must be an instance of '
+                'matplotlib.axes.Axes!')
 
         if(source_idx is None):
             source_idx = 0
@@ -84,13 +127,13 @@ class SignalSpatialPDFPlotter(object):
         probs = np.zeros((rabins,decbins), dtype=np.float)
 
         # Generate events that fall into the probability bins.
-        events = np.zeros((probs.size,),
-                          dtype=[('ira', np.int), ('ra', np.float),
-                                 ('idec', np.int), ('dec', np.float),
-                                 ('ang_err', np.float)])
+        events = DataFieldRecordArray(np.zeros((probs.size,),
+            dtype=[('ira', np.int), ('ra', np.float),
+                   ('idec', np.int), ('dec', np.float),
+                   ('ang_err', np.float)]))
         for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
-                                                enumerate(ra_bincenters),
-                                                enumerate(dec_bincenters))):
+                enumerate(ra_bincenters),
+                enumerate(dec_bincenters))):
             events['ira'][i] = ira
             events['ra'][i] = ra
             events['idec'][i] = idec
@@ -100,23 +143,29 @@ class SignalSpatialPDFPlotter(object):
                 events['dec'][i] = dec
             events['ang_err'][i] = np.deg2rad(sigma_deg)
 
-        event_probs = self.pdf.get_prob(events)
+        self._tdm.initialize_for_new_trial(src_hypo_group_manager, events)
+
+        event_probs = self._pdf.get_prob(self._tdm)
 
         # Select only the probabilities for the requested source.
         if(event_probs.ndim == 2):
             event_probs = event_probs[source_idx]
 
         # Fill the probs grid array.
-        for i in range(len(events)):
-            probs[events['ira'][i],events['idec'][i]] = event_probs[i]
+        probs[events['ira'],events['idec']] = event_probs
 
         (left, right, bottom, top) = (raaxis.vmin, raaxis.vmax,
                                       dec_min, dec_max)
-        axes.imshow(probs.T, extent=(left, right, bottom, top), origin='lower',
-                    norm=LogNorm(), interpolation='none')
+        norm = None
+        if(log):
+            norm = LogNorm()
+        img = axes.imshow(probs.T, extent=(left, right, bottom, top),
+            origin='lower', norm=norm, interpolation='none', **kwargs)
         axes.set_xlabel(raaxis.name)
         if(sin_dec is True):
             axes.set_ylabel('sin('+decaxis.name+')')
         else:
             axes.set_ylabel(decaxis.name)
-        axes.set_title(classname(self.pdf))
+        axes.set_title(classname(self._pdf))
+
+        return img

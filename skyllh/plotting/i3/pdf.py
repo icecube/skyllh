@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Plotting module to plot IceCube specific PDF ratio objects.
+"""Plotting module to plot IceCube specific PDF objects.
 """
 
 import numpy as np
@@ -16,37 +16,37 @@ from skyllh.core.py import (
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.trialdata import TrialDataManager
-from skyllh.i3.pdfratio import I3EnergySigSetOverBkgPDFRatioSpline
+from skyllh.i3.pdf import I3EnergyPDF
 
 
-class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
-    """Plotter class to plot an I3EnergySigSetOverBkgPDFRatioSpline object.
+class I3EnergyPDFPlotter(object):
+    """Plotter class to plot an I3EnergyPDF object.
     """
-    def __init__(self, tdm, pdfratio):
-        """Creates a new plotter object for plotting an
-        I3EnergySigSetOverBkgPDFRatioSpline object.
+    def __init__(self, tdm, pdf):
+        """Creates a new plotter object for plotting an I3EnergyPDF object.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
             The instance of TrialDataManager that provides the data for the
-            PDF ratio evaluation.
-        pdfratio : I3EnergySigSetOverBkgPDFRatioSpline
-            The PDF ratio object to plot.
+            PDF evaluation.
+        pdf : I3EnergyPDF
+            The PDF object to plot.
         """
         self.tdm = tdm
-        self.pdfratio = pdfratio
+        self.pdf = pdf
 
     @property
-    def pdfratio(self):
-        """The PDF ratio object to plot.
+    def pdf(self):
+        """The PDF object to plot.
         """
-        return self._pdfratio
-    @pdfratio.setter
-    def pdfratio(self, pdfratio):
-        if(not isinstance(pdfratio, I3EnergySigSetOverBkgPDFRatioSpline)):
-            raise TypeError('The pdfratio property must be an object of instance I3EnergySigSetOverBkgPDFRatioSpline!')
-        self._pdfratio = pdfratio
+        return self._pdf
+    @pdf.setter
+    def pdf(self, obj):
+        if(not isinstance(obj, I3EnergyPDF)):
+            raise TypeError('The pdf property must be an object of instance '
+                'I3EnergyPDF!')
+        self._pdf = obj
 
     @property
     def tdm(self):
@@ -60,8 +60,8 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
                 'TrialDataManager!')
         self._tdm = obj
 
-    def plot(self, src_hypo_group_manager, axes, fitparams, **kwargs):
-        """Plots the PDF ratio for the given set of fit paramater values.
+    def plot(self, src_hypo_group_manager, axes, **kwargs):
+        """Plots the PDF object.
 
         Parameters
         ----------
@@ -90,19 +90,12 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
         if(not isinstance(axes, Axes)):
             raise TypeError('The axes argument must be an instance of '
                 'matplotlib.axes.Axes!')
-        if(not isinstance(fitparams, dict)):
-            raise TypeError('The fitparams argument must be an instance of '
-                'dict!')
 
-        # Get the binning for the axes. We use the background PDF to get it
-        # from. By construction, all PDFs use the same binning. We know that
-        # the PDFs are 2-dimensional.
-        (xbinning, ybinning) = self._pdfratio.backgroundpdf.binnings
+        # The I3EnergyPDF object has two axes, one for log10_energy and sin_dec.
+        (xbinning, ybinning) = self._pdf.binnings
 
-        # Create a 2D array with the ratio values. We put one event into each
-        # bin.
-        ratios = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float)
-        events = DataFieldRecordArray(np.zeros((ratios.size,),
+        pdf_values = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float)
+        events = DataFieldRecordArray(np.zeros((pdf_values.size,),
             dtype=[('ix', np.int), (xbinning.name, np.float),
                    ('iy', np.int), (ybinning.name, np.float)]))
         for (i, ((ix,x),(iy,y))) in enumerate(itertools.product(
@@ -115,16 +108,15 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
 
         self._tdm.initialize_for_new_trial(src_hypo_group_manager, events)
 
-        event_ratios = self.pdfratio.get_ratio(self._tdm, fitparams)
-        for i in range(len(events)):
-            ratios[events['ix'][i],events['iy'][i]] = event_ratios[i]
+        event_pdf_values = self._pdf.get_prob(self._tdm)
+        pdf_values[events['ix'],events['iy']] = event_pdf_values
 
         (left, right, bottom, top) = (xbinning.lower_edge, xbinning.upper_edge,
                                       ybinning.lower_edge, ybinning.upper_edge)
-        img = axes.imshow(ratios.T, extent=(left, right, bottom, top),
+        img = axes.imshow(pdf_values.T, extent=(left, right, bottom, top),
             origin='lower', norm=LogNorm(), interpolation='none', **kwargs)
         axes.set_xlabel(xbinning.name)
         axes.set_ylabel(ybinning.name)
-        axes.set_title(classname(self._pdfratio))
+        axes.set_title(classname(self._pdf))
 
         return img
