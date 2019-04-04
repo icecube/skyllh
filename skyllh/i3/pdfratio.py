@@ -216,7 +216,6 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         ratio : 1d ndarray of float
             The PDF ratio value for each given event.
         """
-        print('get_ratio fitparams', fitparams)
         fitparams_hash = make_params_hash(fitparams)
 
         # Check if the ratio value is already cached.
