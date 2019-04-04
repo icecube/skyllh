@@ -184,8 +184,8 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         # Create a mapping of fit parameter index to pdfratio index. We
         # initialize the mapping with -1 first in order to be able to check in
         # the end if all fit parameters found a PDF ratio object.
-        self._fitparam_idx_2_pdfratio_idx = np.repeat(np.array([-1], dtype=np.int),
-                                                      len(self._fitparam_list))
+        self._fitparam_idx_2_pdfratio_idx = np.repeat(
+            np.array([-1], dtype=np.int), len(self._fitparam_list))
         for ((fpidx, fitparam), (pridx, pdfratio)) in itertools.product(
                 enumerate(self._fitparam_list), enumerate(self.pdfratio_list)):
             if(fitparam.name in pdfratio.fitparam_names):
@@ -228,7 +228,8 @@ class SingleSourcePDFRatioArrayArithmetic(object):
     @pdfratio_list.setter
     def pdfratio_list(self, seq):
         if(not issequenceof(seq, PDFRatio)):
-            raise TypeError('The pdfratio_list property must be a sequence of PDFRatio instances!')
+            raise TypeError('The pdfratio_list property must be a sequence of '
+                'PDFRatio instances!')
         self._pdfratio_list = list(seq)
 
     @property
@@ -239,7 +240,8 @@ class SingleSourcePDFRatioArrayArithmetic(object):
     @fitparam_list.setter
     def fitparam_list(self, seq):
         if(not issequenceof(seq, FitParameter)):
-            raise TypeError('The fitparam_list property must be a sequence of FitParameter instances!')
+            raise TypeError('The fitparam_list property must be a sequence of '
+                'FitParameter instances!')
         self._fitparam_list = list(seq)
 
     def initialize_for_new_trial(self, tdm):
