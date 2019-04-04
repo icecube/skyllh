@@ -383,10 +383,17 @@ class DataFieldRecordArray(object):
         """
         (size, prefix) = get_byte_size_prefix(sys.getsizeof(self))
 
+        max_field_name_len = np.max(
+            [len(fname) for fname in self._field_name_list])
+
         # Generates a pretty string representation of the given field name.
-        _pretty_str_field = (lambda name:
-            '%s: %s'%(name, str(self._data_fields[name].dtype))
-        )
+        def _pretty_str_field(name):
+            field = self._data_fields[name]
+            s = '%s: {dtype: %s, vmin: % .3e, vmax: % .3e}'%(
+                name.ljust(max_field_name_len), str(field.dtype), np.min(field),
+                np.max(field))
+            return s
+
         indent_str = ' '*dsp.INDENTATION_WIDTH
         s = '%s: %d fields, %d entries, %.0f %sbytes '%(
             classname(self), len(self._field_name_list), self.__len__(),
