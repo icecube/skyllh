@@ -344,7 +344,8 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         data_physicsweight = np.zeros(len(data_mc), dtype=np.float64)
         for name in physics_weight_field_names:
             if(name not in data_mc.field_name_list):
-                raise KeyError('The field "%s" does not exist in the MC data!'%(name))
+                raise KeyError('The field "%s" does not exist in the MC '
+                    'data!'%(name))
             data_physicsweight += data_mc[name]
 
         # Create the PDF using the base class.
