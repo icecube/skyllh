@@ -1089,15 +1089,14 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
 
 
 class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
-    r"""This class implements a profile log-likelihood ratio function that has
+    """This class implements a profile log-likelihood ratio function that has
     only ns as fit parameter. It uses a MultiDatasetTCLLHRatio instance as
     log-likelihood function. Hence, mathematically it is
 
-    .. math::
-
+    :math::
         \Lambda(n_s) = \frac{L(n_s)}{L(n_s=n_{s,0})},
 
-    where :math:`n_{s,0}` is the fixed mean number of signal events for the
+    where :math::`n_{s,0}` is the fixed mean number of signal events for the
     null-hypothesis.
     """
     def __init__(self, mean_n_sig_0, llhratio):
@@ -1206,30 +1205,3 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
         (logL, grads) = self._llhratio.evaluate(fitparam_values)
 
         return (logL - self._logL_0, grads)
-
-
-#class NestedProfileLLHRatio(LLHRatio):
-    #r"""This class provides the abstract base class for a nested profile
-    #log-likelihood ratio function, which is, by definition, of the form
-
-    #.. math::
-
-        #\Lambda = \frac{\sup_{\Theta_0} L(\theta|D)}{\sup_{\Theta} L(\theta|D)}
-
-    #where :math:`\theta` are the possible fit parameters, and :math:`\Theta`
-    #and :math:`\Theta_0` are the total and nested fit parameter spaces,
-    #respectively.
-    #"""
-    #__metaclass__ = abc.ABCMeta
-
-    #def __init__(self, ):
-        #super(NestedProfileLLHRatio, self).__init__()
-
-
-#class MultiDatasetNestedProfileLLHRatio(NestedProfileLLHRatio):
-    #"""This class provides a nested profile log-likelihood ratio function for
-    #multiple data sets.
-    #"""
-    #def __init__(self):
-        #super(MultiDatasetNestedProfileLLHRatio, self).__init__()
-
