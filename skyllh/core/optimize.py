@@ -277,7 +277,9 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
 
         # Calculate delta RA, which is a function of declination.
         # dRA is a (N_sources,)-shaped ndarray.
-        dRA = np.amin([np.repeat(2*np.pi, len(self._src_arr['ra'])), 2*self.delta_angle / cosfact], axis=0)
+        dRA = np.amin(
+            [np.repeat(2*np.pi, len(self._src_arr['ra'])),
+             np.fabs(2*self.delta_angle / cosfact)], axis=0)
 
         # Calculate the right-ascension distance of the events w.r.t. the
         # source. We make sure to use the smaller distance on the circle, thus
