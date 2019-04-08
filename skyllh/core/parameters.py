@@ -5,9 +5,19 @@ import itertools
 import numpy as np
 from copy import deepcopy
 
-from skyllh.physics.source import SourceModel, SourceCollection
-from skyllh.core.py import ObjectCollection, issequence, float_cast, range
+from skyllh.physics.source import (
+    SourceCollection,
+    SourceModel
+)
+from skyllh.core.py import (
+    ObjectCollection,
+    bool_cast,
+    float_cast,
+    issequence,
+    range
+)
 from skyllh.core.random import RandomStateService
+
 
 def make_linear_parameter_grid_1d(name, low, high, delta):
     """Utility function to create a ParameterGrid object for a 1-dimensional
@@ -56,11 +66,143 @@ def make_params_hash(params):
     # The hash will be the same for two dictionaries having the same items.
     return hash(tuple(params.items()))
 
+
+class Parameter(object):
+    """This class describes a parameter of a mathematical function, like a PDF,
+    or source flux function. A parameter has a name, a value range, and an
+    initial value. Furthermore, it has a flag that determines whether this
+    parameter has a fixed value or not.
+    """
+    def __init__(self, name, initial, isfixed=True, valmin=None, valmax=None):
+        """Creates a new Parameter instance.
+
+        Parameters
+        ----------
+        name : str
+            The name of the parameter.
+        initial : float
+            The initial value of the parameter.
+        isfixed : bool
+            Flag if the value of this parameter is mutable (False), or not
+            (True). If set to `True`, the value of the parameter will always be
+            the `initial` value.
+        valmin : float | None
+            The minimum value of the parameter in case this parameter is
+            mutable.
+        valmax : float | None
+            The maximum value of the parameter in case this parameter is
+            mutable.
+        """
+        self.name = name
+        self.initial = initial
+        self.isfixed = isfixed
+        if(self.isfixed):
+            self._valmin = None
+            self._valmax = None
+        else:
+            self.valmin = valmin
+            self.valmax = valmax
+
+        self._value = self.initial
+
+    @property
+    def name(self):
+        """The name of the parameter.
+        """
+        return self._name
+    @name.setter
+    def name(self, name):
+        if(not isinstance(name, str)):
+            raise TypeError('The name property must be of type str!')
+        self._name = name
+
+    @property
+    def initial(self):
+        """The initial value of the parameter.
+        """
+        return self._initial
+    @initial.setter
+    def initial(self, v):
+        v = float_cast(v, 'The initial property must be castable to type '
+            'float!')
+        self._initial = v
+
+    @property
+    def isfixed(self):
+        """The flag if the parameter is mutable (False) or not (True).
+        """
+        return self._isfixed
+    @isfixed.setter
+    def isfixed(self, b):
+        b = bool_cast(b, 'The isfixed property must be castable to type bool!')
+        self._isfixed = b
+
+    @property
+    def valmin(self):
+        """The minimum bound value of the parameter.
+        """
+        return self._valmin
+    @valmin.setter
+    def valmin(self, v):
+        v = float_cast(v, 'The valmin property must be castable to type float!')
+        self._valmin = v
+
+    @property
+    def valmax(self):
+        """The maximum bound value of the parameter.
+        """
+        return self._valmax
+    @valmax.setter
+    def valmax(self, v):
+        v = float_cast(v, 'The valmax property must be castable to type float!')
+        self._valmax = v
+
+    @property
+    def value(self):
+        """The current value of the parameter.
+        """
+        return self._value
+    @value.setter
+    def value(self, v):
+        if(self._isfixed):
+            raise RuntimeError('The parameter "%s" is fixed. Its value cannot '
+                'be changed!'%(self._name))
+
+        v = float_cast(v, 'The value property must be castable to type float!')
+        if((v < self._valmin) or (v > self._valmax)):
+            raise ValueError('The value (%f) of parameter "%s" must be within '
+                'the range (%f, %f)!'%(
+                    v, self._name, self._valmin, self._valmax))
+        self._value = v
+
+    def as_linear_grid(self, delta):
+        """Creates a ParameterGrid instance with a linear grid with constant
+        grid value distances delta.
+
+        Parameters
+        ----------
+        delta : float
+            The constant distance between the grid values. By definition this
+            defines also the precision of the parameter values.
+
+        Returns
+        -------
+        grid : ParameterGrid instance
+            The ParameterGrid instance holding the grid values.
+        """
+        delta = float_cast(delta, 'The delta argument must be castable to type float!')
+        grid = make_linear_parameter_grid_1d(
+            self._name, self._valmin, self._valmax, delta)
+        return grid
+
+
 class ParameterGrid(object):
     """This class provides a data holder for a parameter that has a set of
-    discrete values, i.e. has a value grid.
+    discrete values on a grid. Thus, the parameter has a value grid. By default
+    the grid is aligned with zero, but this can be changed by setting the offset
+    value to a value other than zero.
     """
-    def __init__(self, name, grid, precision):
+    def __init__(self, name, grid, delta, offset=0):
         """Creates a new parameter grid.
 
         Parameters
@@ -69,14 +211,20 @@ class ParameterGrid(object):
             The name of the parameter.
         grid : numpy.ndarray
             The numpy ndarray holding the discrete grid values of the parameter.
-        precision : float
-            The precision of the parameter values.
+        delta : float
+            The width between the grid values.
+        offset : float
+            The offset from zero to align the grid other than with zero.
+            By definition the absolute value of the offset must be smaller than
+            `delta`.
         """
         self.name = name
-        self.precision = precision
-        # Setting the grid, will automatically round the grid values to the
-        # precision of the grid. Hence, we need to set the grid property after
-        # setting the precision property.
+        self.delta = delta
+        self.offset = offset
+
+        # Setting the grid, will automatically round the grid values to their
+        # next nearest grid value. Hence, we need to set the grid property after
+        # setting the delta and offser properties.
         self.grid = grid
 
     @property
@@ -101,20 +249,33 @@ class ParameterGrid(object):
             raise TypeError('The grid property must be of type numpy.ndarray!')
         if(arr.ndim != 1):
             raise ValueError('The grid property must be a 1D numpy.ndarray!')
-        self._grid = self.round_to_precision(arr)
+        self._grid = self.round_to_nearest_grid_edge(arr)
 
     @property
-    def precision(self):
-        """The precision (float) of the parameter values.
+    def delta(self):
+        """The width (float) between the grid values.
         """
-        return self._precision
-    @precision.setter
-    def precision(self, value):
-        if(isinstance(value, int)):
-            value = float(value)
-        if(not isinstance(value, float)):
-            raise TypeError('The precision property must be of type float!')
-        self._precision = value
+        return self._delta
+    @delta.setter
+    def delta(self, v):
+        v = float_cast(v, 'The delta property must be castable to type float!')
+        self._delta = v
+
+    @property
+    def offset(self):
+        """The offset from zero to align the grid other than with zero.
+        By definition the absolute value of the offset must be smaller than
+        `delta`.
+        """
+        return self._offset
+    @offset.setter
+    def offset(self, v):
+        v = float_cast(v, 'The offset property must be castable to type float!')
+        if(np.abs(v) >= self._delta):
+            raise ValueError('The absolute value of the offset property (%f) '
+                'must be smaller than the value of the delta property (%f)'%(
+                v, self._delta))
+        self._offset = v
 
     @property
     def ndim(self):
@@ -129,8 +290,8 @@ class ParameterGrid(object):
         """
         newgrid = np.empty((self._grid.size+2,))
         newgrid[1:-1] = self._grid
-        newgrid[0] = newgrid[1] - self._precision
-        newgrid[-1] = newgrid[-2] + self._precision
+        newgrid[0] = newgrid[1] - self._delta
+        newgrid[-1] = newgrid[-2] + self._delta
         self.grid = newgrid
 
     def copy(self):
@@ -139,15 +300,16 @@ class ParameterGrid(object):
         copy = deepcopy(self)
         return copy
 
-    def round_to_precision(self, value):
-        """Rounds the given value to the precision of the parameter.
+    def round_to_nearest_grid_edge(self, value):
+        """Rounds the given value to the nearest grid edge.
 
         Parameters
         ----------
-        value : float | ndarray
+        value : float | ndarray of float
             The value(s) to round.
         """
-        return np.around(value / self._precision) * self._precision
+        return np.around(value / self._delta) * self._delta + self._offset
+
 
 class ParameterGridSet(ObjectCollection):
     """Describes a set of parameter grids.
@@ -206,7 +368,8 @@ class ParameterGridSet(ObjectCollection):
         copy = deepcopy(self)
         return copy
 
-class FitParameterManifoldGridInterpolationMethod(object):
+
+class ParameterManifoldGridInterpolationMethod(object):
     """This is an abstract base class for implementing a method to interpolate
     a set of fit parameters on a fit parameter manifold grid. In general the
     number of fit parameters can be arbitrary and hence the manifold's
@@ -217,30 +380,30 @@ class FitParameterManifoldGridInterpolationMethod(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, f, fitparams_grid_set):
-        """Constructor for a FitParameterManifoldGridInterpolationMethod object.
+    def __init__(self, f, param_grid_set):
+        """Constructor for a ParameterManifoldGridInterpolationMethod object.
         It must be called by the derived class.
 
         Parameters
         ----------
         f : callable R^d -> R
-            The function that takes d fit parameters as input and returns the
-            value of the manifold at this d-dimensional point for each given
+            The function that takes d parameters as input and returns the
+            value of the d-dimensional manifold at this point for each given
             event.
             The call signature of f must be:
 
-                ``__call__(gridfitparams, eventdata)``
+                ``__call__(gridparams, eventdata)``
 
-            where gridfitparams is the dictionary with the fit parameter values
+            where gridparams is the dictionary with the parameter values
             on the grid and ``eventdata`` is a 2-dimensional (N,V)-shaped numpy
             ndarray holding the event data, where N is the number of events, and
             V the dimensionality of the event data.
-        fitparams_grid_set : ParameterGridSet
-            The set of d fit parameter grids. This defines the grid of the
+        param_grid_set : instance of ParameterGridSet
+            The set of d parameter grids. This defines the grid of the
             manifold.
         """
         self.f = f
-        self.fitparams_grid_set = fitparams_grid_set
+        self.param_grid_set = param_grid_set
 
     @property
     def f(self):
@@ -254,27 +417,28 @@ class FitParameterManifoldGridInterpolationMethod(object):
         self._f = func
 
     @property
-    def fitparams_grid_set(self):
-        """The ParameterGridSet object defining the set of d fit parameter
-        grids. This defines the grid of the manifold.
+    def param_grid_set(self):
+        """The ParameterGridSet object defining the set of d parameter grids.
+        This defines the grid of the manifold.
         """
-        return self._fitparams_grid_set
-    @fitparams_grid_set.setter
-    def fitparams_grid_set(self, obj):
+        return self._param_grid_set
+    @param_grid_set.setter
+    def param_grid_set(self, obj):
         if(not isinstance(obj, ParameterGridSet)):
-            raise TypeError('The fitparams_grid_set property must be an instance of ParameterGridSet!')
-        self._fitparams_grid_set = obj
+            raise TypeError('The param_grid_set property must be an instance '
+                'of ParameterGridSet!')
+        self._param_grid_set = obj
 
     @property
     def ndim(self):
         """(read-only) The dimensionality of the manifold.
         """
-        return len(self.fitparams_grid_set)
+        return len(self.param_grid_set)
 
     @abc.abstractmethod
-    def get_value_and_gradients(self, eventdata, fitparams):
+    def get_value_and_gradients(self, eventdata, params):
         """Retrieves the interpolated value of the manifold at the d-dimensional
-        point ``fitparams`` for all given events, along with the d gradients,
+        point ``params`` for all given events, along with the d gradients,
         i.e. partial derivatives.
 
         Parameters
@@ -283,9 +447,9 @@ class FitParameterManifoldGridInterpolationMethod(object):
             The 2D (N_events,V)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
-        fitparams : dict
-            The dictionary with the fit parameter values, defining the point
-            on the manifold for which the value should get calculated.
+        params : dict
+            The dictionary with the parameter values, defining the point on the
+            manifold for which the value should get calculated.
 
         Returns
         -------
@@ -293,21 +457,41 @@ class FitParameterManifoldGridInterpolationMethod(object):
             The interpolated manifold value for the N given events.
         gradients : (D,N) ndarray of float
             The D manifold gradients for the N given events, where D is the
-            number of fit parameters. The order of the D parameters is defined
+            number of parameters. The order of the D parameters is defined
             by the ParameterGridSet that has been provided at construction time
             of this interpolation method object.
         """
         pass
 
 
-class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolationMethod):
-    """This fit parameter manifold grid interpolation method interpolates the
-    1-dimensional fit parameter manifold using a parabola.
+class ParabolaParameterInterpolationMethod(ParameterManifoldGridInterpolationMethod):
+    """This parameter manifold grid interpolation method interpolates the
+    1-dimensional parameter manifold using a parabola.
     """
-    def __init__(self, f, fitparams_grid_set):
-        super(ParabolaFitParameterInterpolationMethod, self).__init__(f, fitparams_grid_set)
+    def __init__(self, f, param_grid_set):
+        """Creates a new ParabolaParameterInterpolationMethod instance.
 
-        self.p_grid = self.fitparams_grid_set[0]
+        Parameters
+        ----------
+        f : callable R -> R
+            The function that takes the parameter value as input and returns the
+            value of the 1-dimensional manifold at this point for each given
+            event.
+            The call signature of f must be:
+
+                ``__call__(gridparams, eventdata)``
+
+            where gridparams is the dictionary with the parameter values
+            on the grid and ``eventdata`` is a 2-dimensional (N,V)-shaped numpy
+            ndarray holding the event data, where N is the number of events, and
+            V the dimensionality of the event data.
+        param_grid_set : instance of ParameterGridSet
+            The set of 1 parameter grids. This defines the grid of the
+            1-dimensional manifold.
+        """
+        super(ParabolaParameterInterpolationMethod, self).__init__(f, param_grid_set)
+
+        self.p_grid = self.param_grid_set[0]
 
         # Create a cache for the parabola parameterization for the last
         # manifold grid point for the different events.
@@ -331,9 +515,9 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
             'b': b
         }
 
-    def get_value_and_gradients(self, eventdata, fitparams):
-        """Calculates the interpolted manifold value and its gradient for each
-        given event at the point ``fitparams``.
+    def get_value_and_gradients(self, eventdata, params):
+        """Calculates the interpolated manifold value and its gradient for each
+        given event at the point ``params``.
 
         Parameters
         ----------
@@ -341,9 +525,9 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
             The 2D (N_events,V)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
-        fitparams : dict
-            The dictionary with the fit parameter values, defining the point
-            on the manifold for which the value should get calculated.
+        params : dict
+            The dictionary with the parameter values, defining the point on the
+            manifold for which the value should get calculated.
 
         Returns
         -------
@@ -351,13 +535,13 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
             The interpolated manifold value for the N given events.
         gradients : (D,N) ndarray of float
             The D manifold gradients for the N given events, where D is the
-            number of fit parameters.
+            number of parameters.
         """
-        (xname, x) = tuple(fitparams.items())[0]
+        (xname, x) = tuple(params.items())[0]
 
         # Determine the nearest grid point x1 and the grid precision.
-        x1 = self.p_grid.round_to_precision(x)
-        dx = self.p_grid.precision
+        x1 = self.p_grid.round_to_nearest_grid_edge(x)
+        dx = self.p_grid.delta
 
         # Check if the parabola parametrization for x1 is already cached.
         if((self._cache['x1'] == x1) and
@@ -368,8 +552,8 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
             b = self._cache['b']
         else:
             # Calculate the neighboring gridponts to x1: x0 and x2.
-            x0 = self.p_grid.round_to_precision(x1 - dx)
-            x2 = self.p_grid.round_to_precision(x1 + dx)
+            x0 = self.p_grid.round_to_nearest_grid_edge(x1 - dx)
+            x2 = self.p_grid.round_to_nearest_grid_edge(x1 + dx)
 
             # Parameterize the parabola with parameters a, b, and M1.
             M0 = self.f({xname:x0}, eventdata)
@@ -391,7 +575,9 @@ class ParabolaFitParameterInterpolationMethod(FitParameterManifoldGridInterpolat
 
 
 class FitParameter(object):
-    """This class describes a single fit parameter. A fit parameter has a name,
+    """This class is DEPRECATED! Use class Parameter instead!
+
+    This class describes a single fit parameter. A fit parameter has a name,
     a value range, an initial value, and a current value. The current value will
     be updated in the fitting process.
     """
