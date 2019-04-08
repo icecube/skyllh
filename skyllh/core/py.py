@@ -155,6 +155,16 @@ def func_has_n_args(func, n):
     check = (len(inspect.getargspec(func)[0]) == n)
     return check
 
+def bool_cast(v, errmsg):
+    """Casts the given value to a boolean value. If the cast is impossible, a
+    TypeError is raised with the given error message.
+    """
+    try:
+        v = bool(v)
+    except:
+        raise TypeError(errmsg)
+    return v
+
 def int_cast(v, errmsg):
     """Casts the given value to an integer value. If the cast is impossible, a
     TypeError is raised with the given error message.
