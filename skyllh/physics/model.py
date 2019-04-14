@@ -3,15 +3,50 @@
 """This module defines the base classes for any physics models used by SkyLLH.
 """
 
-from skyllh.core.py import ObjectCollection
+from skyllh.core.py import (
+    ObjectCollection,
+    issequence,
+    str_cast
+)
 
 
 class PhysicsModel(object):
     """This class provides a base class for all physics models like source
     models or background models.
     """
-    def __init__(self):
+    def __init__(self, name=None):
+        """Creates a new PhysicsModel instance.
+
+        Parameters
+        ----------
+        name : str | None
+            The name of the physics model. If set to `None`, the id of the
+            object is taken as name.
+        """
         super(PhysicsModel, self).__init__()
+
+        if(name is None):
+            name = self.id
+
+        self.name = name
+
+    @property
+    def name(self):
+        """The name of the physics model.
+        """
+        return self._name
+    @name.setter
+    def name(self, n):
+        n = str_cast(n, 'The name property must be castable to type str!')
+        self._name = n
+
+    @property
+    def id(self):
+        """(read-only) The ID of the physics model. It's an integer generated
+        with Python's `id` function. Hence, it's related to the memory address
+        of the object.
+        """
+        return id(self)
 
 
 class PhysicsModelCollection(ObjectCollection):
@@ -26,7 +61,7 @@ class PhysicsModelCollection(ObjectCollection):
         Parameters
         ----------
         obj : PhysicsModel instance | sequence of PhysicsModel instances |
-                PhysicsModelCollection
+                PhysicsModelCollection | None
             The object that should be casted to PhysicsModelCollection.
         errmsg : str
             The error message if the cast fails.
@@ -35,15 +70,29 @@ class PhysicsModelCollection(ObjectCollection):
         ------
         TypeError
             If the cast fails.
+
+        Returns
+        -------
+        physmodelcollection : instance of PhysicsModelCollection
+            The created PhysicsModelCollection instance. If `obj` is already a
+            PhysicsModelCollection instance, it will be returned.
         """
+        if(obj is None):
+            obj = PhysicsModelCollection(PhysicsModel, None)
+            return obj
+
         if(isinstance(obj, PhysicsModel)):
             obj = PhysicsModelCollection(PhysicsModel, [obj])
-        if(not isinstance(obj, PhysicsModelCollection)):
-            if(issequence(obj)):
-                obj = PhysicsModelCollection(PhysicsModel, obj)
-            else:
-                raise TypeError(errmsg)
-        return obj
+            return obj
+
+        if(isinstance(obj, PhysicsModelCollection)):
+            return obj
+
+        if(issequence(obj)):
+            obj = PhysicsModelCollection(PhysicsModel, obj)
+            return obj
+
+        raise TypeError(errmsg)
 
     def __init__(self, model_type=None, models=None):
         """Creates a new PhysicsModel collection. The type of the physics model
