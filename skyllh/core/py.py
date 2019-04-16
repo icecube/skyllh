@@ -165,14 +165,19 @@ def bool_cast(v, errmsg):
         raise TypeError(errmsg)
     return v
 
-def int_cast(v, errmsg):
+def int_cast(v, errmsg, allow_None=False):
     """Casts the given value to an integer value. If the cast is impossible, a
-    TypeError is raised with the given error message.
+    TypeError is raised with the given error message. If `allow_None` is set to
+    `True` the value `v` can also be `None`.
     """
+    if(allow_None and v is None):
+        return v
+
     try:
         v = int(v)
     except:
         raise TypeError(errmsg)
+
     return v
 
 def float_cast(v, errmsg):

@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from skyllh.core.py import int_cast
+
 class RandomStateService(object):
     """The RandomStateService class provides a container for a
     numpy.random.RandomState object, initialized with a given seed. This service
@@ -19,20 +21,16 @@ class RandomStateService(object):
             randomly. See the numpy documentation for numpy.random.RandomState
             what that means.
         """
-        self.seed = seed
-        self.random = np.random.RandomState(self.seed)
+        self._seed = int_cast(seed, 'The seed argument must be None, or '
+            'castable to type int!', allow_None=True)
+        self.random = np.random.RandomState(self._seed)
 
     @property
     def seed(self):
-        """The seed (int) of the random number generator. None, if not set.
+        """(read-only) The seed (int) of the random number generator.
+        None, if not set. To change the seed, use the `reseed` method.
         """
         return self._seed
-    @seed.setter
-    def seed(self, seed):
-        if(seed is not None):
-            if(not isinstance(seed, int)):
-                raise TypeError('The seed for the random number generator must be of type int!')
-        self._seed = seed
 
     @property
     def random(self):
@@ -55,5 +53,6 @@ class RandomStateService(object):
             randomly. See the numpy documentation for numpy.random.RandomState
             what that means.
         """
-        self.seed = seed
-        self.random.seed(self.seed)
+        self._seed = int_cast(seed, 'The seed argument must be None or '
+            'castable to type int!', allow_None=True)
+        self.random.seed(self._seed)
