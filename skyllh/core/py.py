@@ -180,14 +180,19 @@ def int_cast(v, errmsg, allow_None=False):
 
     return v
 
-def float_cast(v, errmsg):
+def float_cast(v, errmsg, allow_None=False):
     """Casts the given value to a float. If the cast is impossible, a TypeError
-    is raised with the given error message.
+    is raised with the given error message. If `allow_None` is set to `True`
+    the value `v` can also be `None`.
     """
+    if(allow_None and v is None):
+        return v
+
     try:
         v = float(v)
     except:
         raise TypeError(errmsg)
+
     return v
 
 def str_cast(v, errmsg):
