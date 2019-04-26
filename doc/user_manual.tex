@@ -1,0 +1,871 @@
+\documentclass{article}
+
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+\newcommand{\eq}[1]{(\ref{#1})}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\class}[1]{\colorbox{blue!30}{\code{#1}}}
+
+\newcommand{\ns}{n_{\mathrm{s}}}
+\newcommand{\nsj}{n_{\mathrm{s}_j}}
+\newcommand{\hatns}{\hat{n}_{\mathrm{s}}}
+\newcommand{\ps}{\vec{p}_{\mathrm{s}}}
+\newcommand{\psk}{\vec{p}_{\mathrm{s}_k}}
+\newcommand{\hatps}{\vec{\hat{p}}_{\mathrm{s}}}
+\newcommand{\xs}{\vec{x}_{\mathrm{s}}}
+\newcommand{\xsk}{\vec{x}_{\mathrm{s}_k}}
+
+\newcommand{\dPhisdE}{\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}}
+
+
+\begin{document}
+
+\section{The Hypotheses}
+
+Before performing a statistical test, is is important to formulate the exact
+hypotheses, which one wants to consider.
+
+For the log-likelihood ratio tests that are considered here, a null-hypothesis
+and an alternative hypothesis is required. As null-hypothesis a data set with
+no signal events, i.e. with only background events, is usuallly considered.
+As alternative hypothesis a data set including signal events from a given signal
+(source) hypothesis is usuallly considered.
+
+As general source hypothesis one could consider a source flux, $\Phi_{\mathrm{S}}$,
+for instance a neutrino or gamma-ray particle flux from a source. Such a general flux
+can be parameterized as
+\begin{equation}
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs, \ps),
+ \label{eq:PhiS-general}
+\end{equation}
+which is a function of the observed celestial coordinates right-ascension, $\alpha$, and
+declination, $\delta$, as well as the observed energy and time of the signal
+particle, given the source to be at location $\xs$ with source
+parameters $\ps$. At this stage $\xs$ doesn't have to be a single coordinate,
+but could also describe an extended source, e.g. the galactic plane.
+
+This flux is a differential flux, thus can be written as
+\begin{equation}
+ \frac{\mathrm{d}\Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs, \ps)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t},
+ \label{eq:differential-PhiS-general}
+\end{equation}
+where $A$ and $\Omega$ denotes area and solid-angle, respectively.
+
+\subsection{Flux Models}
+\label{sec:flux-models}
+
+SkyLLH implements several flux model classes for $\Phi_{\mathrm{S}}$. The most
+generic flux model class is \class{FluxModel}, which provides the abstract base
+class for all flux models given by the differential flux
+(\ref{eq:differential-PhiS-general}).
+
+\subsection{Factorized Flux Models}
+\label{sec:factorized-flux-models}
+
+The traditional point-like source searches in IceCube use a factorized flux
+model as signal hypothesis, where the spatial, energy, and time profiles of the
+source factorize, i.e. are independent of each other, and a constant $\Phi_0$
+provides the flux normalization. It should be noticed that such a
+flux model is already an assumption on the source. Such a factorized flux model
+is of the form
+\begin{equation}
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs,\ps) = \Phi_0 \Psi_{\mathrm{S}}(\alpha,\delta|\xs,\ps) \epsilon_{\mathrm{S}}(E|\ps) T_{\mathrm{S}}(t|\ps),
+\end{equation}
+where $\Phi_0$ is the flux normalization carrying the differential flux units,
+and $\Psi_{\mathrm{S}}$, $\epsilon_{\mathrm{S}}$, and $T_{\mathrm{S}}$ are the
+spatial, energy, and time profiles of the source, respectively.
+
+In SkyLLH the Python class \class{FactorizedFluxModel}, derived from class
+\class{FluxModel}, provides a base class for this mathematical class of flux models.
+
+\subsection{Point-like Source Factorized Flux Models}
+\label{sec:point-like-source-factorized-flux-models}
+
+In IceCube the traditional searches for astro-physical neutrinos were searches
+for neutrino emission from point-like objects in the sky, where a factorized
+flux model has been used as source hypothesis. Thus, the spatial profile is
+given by two delta functions:
+\begin{equation}
+ \Psi_{\mathrm{S}}(\alpha,\delta|\xs) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}),
+\end{equation}
+where the source location $\xs$ is given by a single point in the sky in
+equatorial coordinates: $\xs = (\alpha_{\mathrm{s}}, \delta_{\mathrm{s}})$.
+Hence, the flux model can be formulated as:
+\begin{equation}
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs,\ps) = \Phi_0 \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}) \epsilon_{\mathrm{S}}(E|\ps) T_{\mathrm{S}}(t|\ps).
+\end{equation}
+
+For such point-like source flux models SkyLLH provides the
+\class{PointlikeSourceFFM} class, which is derived from the \class{FactorizedFluxModel}
+class.
+
+The emission energy-profile of the source flux might be assumed to be a power-law:
+\begin{equation}
+ \epsilon_{\mathrm{S}}(E|\ps) \equiv \epsilon_{\mathrm{S}}(E|\gamma) = \left(\frac{E}{100\mathrm{TeV}}\right)^{-\gamma},
+\end{equation}
+where $\gamma$ is the spectral index of the source.
+
+As emission time-profile of the source, $T_{\mathrm{S}}(t|\ps)$, different functional
+forms could be imagined.
+A steady, i.e. time independent, source emission time profile would be
+\begin{equation}
+ T_{\mathrm{S}}(t|\ps) \equiv 1.
+\end{equation}
+
+In cases of a time variable source, $T_{\mathrm{S}}(t|\ps)$ could be a box
+profile of length $T_{\mathrm{W}}$ with the box's middle time position, $T_{0}$,
+\begin{equation}
+ T_{\mathrm{S}}(t|T_0,T_{\mathrm{W}}) =
+   \begin{cases}
+     1 & \forall t \in \left[T_0 - T_{\mathrm{W}}/2; T_0 + T_{\mathrm{W}}/2 \right]\\
+     0 & \mathrm{otherwise}
+   \end{cases},
+ \label{eq:Ts-box}
+\end{equation}
+or a Gaussian shaped time profile centered at $T_0$ with a time width of $\sigma_T$,
+\begin{equation}
+ T_{\mathrm{S}}(t|T_0,\sigma_T) \equiv \exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right).
+ \label{eq:Ts-gauss-non-truncated}
+\end{equation}
+For efficiency reasons, the Gaussian shape source time profile could also be
+truncated at a certain distance from $T_0$, \emph{e.g.} at $\pm\sigma_T$:
+\begin{equation}
+ T_{\mathrm{S}}(t|T_0,\sigma_T) \equiv
+   \begin{cases}
+     \exp\left(-\frac{(t - T_0)^2}{2\sigma_T^2}\right) & \left|t-T_0\right| \le \sigma_T\\
+     0 & \mathrm{otherwise}
+   \end{cases}.
+ \label{eq:Ts-gauss-truncated}
+\end{equation}
+
+
+\section{The Likelihood Formalism}
+
+This section describes the mathematical likelihood formalism used in SkyLLH.
+First it introduces the log-likelihood approach, second the likelihood ratio
+test and the used test statistic and then describes the used optimizations.
+
+\subsection{The Log-Likelihood Approach}
+
+SkyLLH implements the two-component likelihood approach with a likelihood
+function $\mathcal{L}(n_{\mathrm{s}},\vec{p}_{\mathrm{s}}~|D)$ of the form
+\begin{equation}
+ \mathcal{L}(\ns,\ps~|D) = \prod_{i=1}^{N}\left[ \frac{\ns}{N} S_{i}(\ps) + (1 - \frac{\ns}{N}) B_{i} \right],
+\label{eq:L}
+\end{equation}
+where $\ns$ is the number of signal events, hence, $(N-\ns)$ the number of
+background events in the data sample $D$ of $N$ total events.
+The set of source model parameters is denoted as $\ps$. For a point-like source
+model, the source model parameters include the source position $\xs$ and the
+spectral index $\gamma$ of the source flux.
+$S_i(\ps)$ and $B_i$ is the value of the signal and background PDF for the $i$th
+data event, respectively.
+
+The signal and background PDFs must incorporate the detector efficiency (yield),
+$\mathcal{Y}_i$, which, in general, depends on the celestial direction, the
+energy, and the observation time of the data event.
+
+For computational stability reasons the logarithm of the likelihood function of
+equation \ref{eq:L} is used in SkyLLH:
+\begin{equation}
+ \log \mathcal{L}(\ns,\ps~|D) = \sum_{i=1}^{N} \log (...)
+\end{equation}
+
+\subsection{Likelihood Ratio Test}
+
+For estimating the significance of an observation, the likelihood ratio
+$\Lambda$ with respect to a null hypothesis of no observation, i.e.
+equation \ref{eq:L} at $\ns=0$ is tested:
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \log \frac{\mathcal{L}(\ns,\ps)}{\mathcal{L}(\ns=0)} = \sum_{i=1}^{N} \log \left[ 1 + \frac{\ns}{N}\left( \frac{S_i(\ps)}{B_i} - 1 \right) \right]
+\label{eq:logLambda}
+\end{equation}
+By defining
+\begin{equation}
+\mathcal{X}_i(\ps) \equiv \frac{1}{N}\left( \mathcal{R}_i(\ps) - 1 \right),
+\label{eq:Xi}
+\end{equation}
+with the signal over background PDF ratio value, $\mathcal{R}_{i}(\ps)$, of the
+$i$th event,
+\begin{equation}
+ \mathcal{R}_i(\ps) \equiv \frac{S_i(\ps)}{B_i},
+\end{equation}
+this reads as:
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{i=1}^{N} \log (1 + \ns\mathcal{X}_i(\ps)).
+ \label{eq:logLambdaOfX}
+\end{equation}
+By defining
+\begin{equation}
+ \alpha_i(\ns,\ps) \equiv \ns \mathcal{X}_i(\ps)
+\end{equation}
+the log-likelihood ratio function of the $i$th event can be defined as
+\begin{equation}
+ \log \Lambda_i(\ns,\ps) \equiv \log(1 + \alpha_i(\ns, \ps)),
+ \label{eq:logLambdaiOfalphai}
+\end{equation}
+and the log-likelihood ratio function for all events can be written as
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{i=1}^{N} \log \Lambda_i(\ns,\ps).
+ \label{eq:logLambdaOflogLambdai}
+\end{equation}
+
+In general, the argument of the $\log$-function, $\Lambda_i$, might become close
+to zero, causing a divergence of the log-likelihood ratio function for a particular event.
+To circumvent this, a Taylor expansion of the
+log-likelihood ratio function of the $i$th event can be performed around a
+predefined threshold value $\alpha$.
+The event-based log-likelihood ratio function, $\log \Lambda_i$, is then
+approximated by a second-order Taylor expansion for events with $\alpha_i \leq \alpha$:
+\begin{equation}
+ \log\Lambda_i(\ns,\ps) \equiv \log(1 + \alpha) + \frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha} - \frac{1}{2} \left(\frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha}\right)^2
+ \label{eq:logLambdaiTaylor}
+\end{equation}
+By defining
+\begin{equation}
+ \tilde{\alpha}_i(\ns,\ps) \equiv \frac{\alpha_i(\ns,\ps) - \alpha}{1 + \alpha},
+\end{equation}
+the Taylor expanded log-likelihood ratio function reads more compactly:
+\begin{equation}
+ \log\Lambda_i(\ns,\ps) = \log(1 + \alpha) + \tilde{\alpha}_i(\ns,\ps) - \frac{1}{2} \tilde{\alpha}_i^2(\ns,\ps).
+ \label{eq:logLambdaiTaylorOfTildeAlpha}
+\end{equation}
+
+
+\subsection{Test Statistic}
+\label{sec:teststatistic}
+
+Assuming Wilks' theorem, a test statistic, TS, for the two-component log-likelihood
+ratio test can be formulated using the log-likelihood ratio function, $\log\Lambda$,
+at its maximum:
+\begin{equation}
+ \mathrm{TS} = 2\mathrm{sgn}(\hatns) \log \Lambda(\hatns, \hatps),
+ \label{eq:TS}
+\end{equation}
+where $\log \Lambda(\hatns,\hatps)$ is the maximum of the
+log-likelihood ratio function as defined by equation (\ref{eq:logLambda}),
+with separation of an over- ($\hatns > 0$) and under-fluctuation ($\hatns < 0$).
+In case the assumptions of Wilks' theorem are met within the analysis, the test
+statistic value distribution will follow a $\chi^2$-distribution with
+a degree-of-freedom equal to the number of fit parameters.
+
+For the case $\hatns=0$, the log-likelihood ratio function is zero
+with degenerate source fit parameter values $\hatps$.
+When calculating the sensitivity of the analysis, the median test-statistic value
+for background-only data is required. Hence, $\hatns$ is often zero in such cases.
+Having to deal with a delta-peak of the test-statistic distribution
+for $\mathrm{TS}=0$ is cumbersome. In order to resolve the delta-peak, the
+log-likelihood ratio function can be approximated with a second-order Taylor
+expansion around $\ns=0$, and the apex of that Taylor function defines the value of
+log-likelihood ratio function for $\hatns=0$. In this case the test-statistic
+function is given by
+\begin{equation}
+ \mathrm{TS} = -2\frac{\left(\frac{\mathrm{d}\log\Lambda(\ns=0,\ps=\hatps)}{\mathrm{d}\ns}\right)^2}{4\frac{\mathrm{d}^2\log\Lambda(\ns=0,\ps=\hatps)}{\mathrm{d}\ns^2}}.
+\end{equation}
+
+\subsection{Optimizations for Spatially Restricted Sources}
+
+For spatially restricted sources, e.g. point-like sources, most of the events in
+the data sample will be far away from the hypothesised source, hence, the value of the
+signal PDF, $S_i$, will be zero or very close to zero. By selecting only
+the signal-contributing $N'$ events from the sample, the log-likelihood ratio
+function, $\log \Lambda$, reads
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{i=1}^{N'} \log \Lambda_i(\ns,\ps) + (N - N')\log(1 - \frac{\ns}{N}),
+ \label{eq:logLambdaOfXOptimized}
+\end{equation}
+where for $N-N'$ events $\mathcal{R}_i(\ps)$ equals zero and hence
+$\alpha_i(\ns,\ps)$ becomes $-\ns/N$, and $\log \Lambda_i$ equals $\log(1 - \ns/N)$
+for all such pure background events.
+
+\subsection{Signal PDFs}
+
+The likelihood ratio function as given in equation \eq{eq:logLambda}
+incorporates a signal probability, $S_i$, for an individual event $i$, given a
+signal hypothesis.
+Without loss of generality it can be expressed as a joint probability of a
+spatial and an energy p.d.f. at the observation time $t_i$:
+\begin{equation}
+ S_i(\ps) \equiv S_i(\vec{x}_i, E_i, t_i|\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|t_i,\ps) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,t_i,\ps)
+\end{equation}
+It should be noted that at this stage the time-dependences of the spatial,
+$\mathcal{S}_{\mathrm{S}}$, and energy, $\mathcal{E}_{\mathrm{S}}$, p.d.f.s
+might still be different. In cases where the hypothesised source flux,
+$\Phi_{\mathrm{S}}$, has a spatial and energy independent time profile, i.e.
+usually named a ``flare'', the time-dependence factorizes:
+\begin{equation}
+ S_i(\ps) \equiv S_i(\vec{x}_i, E_i, t_i|\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\ps) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,\ps) \mathcal{T}_{\mathrm{S}}(t_i|\ps).
+\end{equation}
+In general, the signal model parameters $\ps$ can be divided into spatial,
+energy, and time parameters, i.e. $\ps = (\vec{p}_{\mathrm{s,spatial}},
+\vec{p}_{\mathrm{s,energy}}, \vec{p}_{\mathrm{s,time}})$:
+\begin{equation}
+ S_i(\ps) = \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \mathcal{E}_{\mathrm{S}}(E_i|\vec{x}_i,\vec{p}_{\mathrm{s,energy}}) \mathcal{T}_{\mathrm{S}}(t_i|\vec{p}_{\mathrm{s,time}}),
+ \label{eq:Si}
+\end{equation}
+The spatial component,
+$\mathcal{S}_{\mathrm{S}}$, can be identified as the convolution,
+$(\Psi \ast \mathrm{PSF})(\alpha,\delta)$\footnote{The 2D convolution on the sky
+is defined as
+$(f \ast g)(\alpha,\delta) = \int_{0}^{2\pi} \mathrm{d}\alpha' \int_{-\pi}^{\pi} \mathrm{d}\delta' f(\alpha',\delta')g(\alpha-\alpha',\delta-\delta')$.},
+of the spatial source extension, $\Psi(\alpha,\delta)$, and the point-spread-function,
+$\mathrm{PSF}(\alpha,\delta)$, of the detector.
+For a point-like spatial source extension at position
+$\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}})$, that is
+$\Psi(\alpha,\delta) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}})$,
+where $\delta(\cdot)$ is the delta-distribution, this convolution collapses to
+a single point in the sky. With a 2D Gaussian PSF
+$\mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}})$ is given as
+\begin{equation}
+ \mathcal{S}_{\mathrm{S}}(\vec{x}_i|\vec{p}_{\mathrm{s,spatial}}) \equiv \mathcal{S}_{\mathrm{S}}(r_i,\sigma_i|\xs) = \frac{1}{2\pi\sigma_i^2}\exp\left({-\frac{r_i^2}{2\sigma_i^2}}\right),
+\end{equation}
+where $r_i$ is the space angle between the source position and the recorded
+reconstructed event direction. In equatorial coordinates,
+$\vec{x} = (\alpha,\delta)$, the cosine of $r_i$ is given by
+\begin{equation}
+ \cos(r_i) = \cos(\alpha_{\mathrm{s}} - \alpha_i) \cos(\delta_{\mathrm{s}})\cos({\delta_i}) + \sin(\delta_{\mathrm{s}})\sin(\delta_i).
+\end{equation}
+The data quantity $\sigma_i$ describes the angular reconstruction uncertainty of
+the event, hence the PSF is narrower for well-reconstructed events, and wider
+for events which have a large reconstruction uncertainty.
+
+The energy signal PDF can be constructed from Monte-Carlo data using the assumed
+source energy spectrum.
+When considering a power law as source flux model, the energy source parameters,
+$\vec{p}_{\mathrm{s,energy}}$, consists of the spectral index $\gamma$ and possibly
+an energy cut-off parameter $E_{\mathrm{cut}}$.
+
+The source time PDF, $\mathcal{T}_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$,
+is the convolution of the source time profile,
+$T_{\mathrm{S}}(t|\vec{p}_{\mathrm{s},\mathrm{time}})$, as given in section
+\ref{sec:point-like-source-factorized-flux-models}, and the detector live-time function,
+\begin{equation}
+ T_{\mathrm{live}}(t) = \begin{cases}
+                         1 & \forall t \in \text{detector on-time window} \\
+                         0 & \text{otherwise}
+                        \end{cases},
+ \label{eq:Tlive}
+\end{equation}
+where the final result is normalized to unity.
+
+For the source time emission profiles given in section
+\ref{sec:point-like-source-factorized-flux-models} we here state their
+normalization factors, $\tilde{T}_{\mathrm{S}}$.
+
+For a steady source profile over the entire observation (live) time,
+$T_{\mathrm{obs}}$,
+\begin{equation}
+ \tilde{T}_{\mathrm{S}} \equiv \frac{1}{T_{\mathrm{obs}}},
+\end{equation}
+with
+\begin{equation}
+ T_{\mathrm{obs}} = \int T_{\mathrm{live}}(t) \mathrm{d}t,
+ \label{eq:Tobs}
+\end{equation}
+where $T_{\mathrm{live}}(t)$ is the detector live-time function as defined in
+equation (\ref{eq:Tlive}).
+
+For a box profile of length $T_{\mathrm{W}}$ with the box's middle time
+position, $T_{0}$, as given by equation (\ref{eq:Ts-box}), the normalization
+factor is given by
+\begin{equation}
+ \tilde{T}_{\mathrm{S}} \equiv
+   \begin{cases}
+     \frac{1}{T_{\mathrm{W}}} & \forall t \in \left[T_0 - T_{\mathrm{W}}/2; T_0 + T_{\mathrm{W}}/2 \right]\\
+     0 & \mathrm{otherwise}
+   \end{cases}.
+\end{equation}
+
+For a Gaussian shaped time profile centered at $T_0$ with a time width of $\sigma_T$,
+as given by equation (\ref{eq:Ts-gauss-non-truncated}),
+\begin{equation}
+ \tilde{T_{\mathrm{S}}} \equiv \frac{1}{\sqrt{2\pi}\sigma_T}.
+\end{equation}
+
+
+\subsection{Background PDFs}
+
+In analog to the signal PDF, the background PDF can be formulated as
+\begin{equation}
+ B_i \equiv \mathcal{S}_{\mathrm{B}}(\vec{x}_i|t_i) \mathcal{E}_{\mathrm{B}}(E_i|\vec{x}_i,t_i).
+ \label{eq:Bit}
+\end{equation}
+In cases where the background model has a spatial and energy independent
+time-profile, e.g. for a constant background flux, the time-dependence factorizes:
+\begin{equation}
+ B_i \equiv \mathcal{S}_{\mathrm{B}}(\vec{x}_i) \mathcal{E}_{\mathrm{B}}(E_i|\vec{x}_i) \mathcal{T}_{\mathrm{B}}(t_i).
+ \label{eq:Bi}
+\end{equation}
+All the background PDF components can either be determined from the data itself
+or by using Monte-Carlo simulation.
+
+For a background model of a constant background flux the background time profile,
+$T_{\mathrm{B}}(t)$, is given by
+\begin{equation}
+ T_{\mathrm{B}}(t) \equiv \frac{1}{T_{\mathrm{obs}}},
+\end{equation}
+where $T_{\mathrm{obs}}$ is given by equation (\ref{eq:Tobs}).
+
+In analog to the signal time PDF, the background time PDF, $\mathcal{T}_{\mathrm{B}}(t)$,
+is the convolution of the background time profile $T_{\mathrm{B}}(t)$ and the
+detector live-time function, $T_{\mathrm{live}}(t)$, where the final result is
+again normalized to unity.
+
+On short time-scales the uniform, time-independent, background hypothesis might
+not be a reasonable assumption possibly due to a varying event acceptance of the
+detector. In such cases the background time profile has to be determined from
+simulation or the experimental data itself.
+
+
+\subsection{Notes on the energy PDFs for Signal \& Background}
+
+In general, the energy PDFs are detector response dependent. That means they
+depend on the local direction of the detected events. Hence, the spatial and
+energy PDFs cannot be factorized entirely in space and energy.
+
+For IceCube the energy resolution mostly depends on the zenith angle, and hence
+on the declination, of the event. Thus, several energy PDFs are created for a
+set of (reconstructed) declination bands, both, for signal and background. At
+the data evaluation, the signal and background PDFs are selected corresponding
+to the declination band the event's declination is part of. Hence, for IceCube,
+the signal and background energy PDFs can be formulated as
+$\mathcal{E}_{\mathrm{S}}(E|\delta,\vec{p}_{\mathrm{s,energy}})$ and
+$\mathcal{E}_{\mathrm{B}}(E|\delta)$, respectively.
+
+A lengthly discussion has been conducted in the past to clarify whether the true or
+reconstructed direction of the Monte-Carlo events should be used to generate
+the several signal energy PDFs. Since, we mainly use experimental data as
+background estimation it as been concluded to use the reconstructed event
+direction in order to be consistent in the data evaluation for signal and
+background PDFs.
+
+\subsection{Stacking of Sources}
+
+In general a likelihood value can be calculated for a set of $K$ stacked
+sources in a weighted fashion. In this case the signal PDF expression of
+equation (\ref{eq:Si}) becomes a bit more complicated due to the relative
+source weighting. The sources must be weighted according to their signal detection
+efficiency, $\mathcal{Y}_{\mathrm{s},k}$, and a relative strength weight of the
+sources, $W_k$, with $\sum_{k=1}^{K} W_k = 1$. Hence, the combined signal PDF is
+given as
+\begin{equation}
+ \mathcal{S}_i(\ps) \equiv \frac{\sum_{k=1}^{K} W_k \mathcal{Y}_{\mathrm{s}}(\xsk,\psk) \mathcal{S}_{i}(\psk)}{\sum_{k=1}^{K}W_k\mathcal{Y}_{\mathrm{s}}(\xsk,\psk)}.
+ \label{eq:SiStacking}
+\end{equation}
+One should note that this formalism allows for different source properties, e.g.
+energy spectra, for the various sources.
+
+
+\subsection{Gradients of the Log-Likelihood Ratio}
+
+For maximizing the log-likelihood ratio function (equation (\ref{eq:logLambdaOflogLambdai})),
+or minimizing the negative of it, the minimizer algorithm requires the
+derivatives of the log-likelihood ratio function w.r.t. the fit parameters,
+$\ns$ and $\ps$.
+Hence, here we provide the expressions of these derivatives
+for the optimized log-likelihood ratio function as given by equation
+(\ref{eq:logLambdaOfXOptimized}).
+
+The derivative w.r.t. $\ns$ is given by
+\begin{equation}
+\frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} \ns} = \sum_{i=1}^{N'} \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} - \frac{N - N'}{N - \ns}.
+\end{equation}
+For the numerical stable case, where $\alpha_i > \alpha$, the derivative of the
+log-likelihood ratio function of the $i$th event w.r.t. $\ns$ is given by the
+derivative of equation (\ref{eq:logLambdaiOfalphai}) w.r.t. $\ns$:
+\begin{equation}
+ \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{\mathcal{X}_i(\ps)}{1+\alpha_i(\ns,\ps)}.
+ \label{eq:dlogLambdaidns-for-alphai-gt-alpha}
+\end{equation}
+For the numerical unstable case, where $\alpha_i \leq \alpha$, this derivative is
+given by the derivative of the Taylor expansion of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
+w.r.t. $\ns$:
+\begin{equation}
+ \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d} \ns} = \frac{1}{1+\alpha}\left(1 - \tilde{\alpha}_i(\ns,\ps)\right) \mathcal{X}_i(\ps)
+ \label{eq:dlogLambdaidns-for-alphai-le-alpha}
+\end{equation}
+
+For calculating the test-statistic, \emph{c.f.} section \ref{sec:teststatistic},
+the second derivative w.r.t. $\ns$ become in handy for the case $\ns=0$. Hence,
+it is provided here as well:
+\begin{equation}
+ \frac{\mathrm{d}^2\log\Lambda(\ns,\ps)}{\mathrm{d} \ns^2} = \sum_{i=1}^{N'} \frac{\mathrm{d}^2 \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns^2} - \frac{N-N'}{(N - \ns)^2}
+\end{equation}
+The second derivative w.r.t. $\ns$ of the log-likelihood ratio function for an
+individual event with $\alpha_i > \alpha$ is given by the derivative of equation
+(\ref{eq:dlogLambdaidns-for-alphai-gt-alpha}):
+\begin{equation}
+ \frac{\mathrm{d}^2\log\Lambda_i(\ns,\ps)}{\mathrm{d} \ns^2} = - \left(\frac{\mathcal{X}_i(\ps)}{1+\alpha_i(\ns,\ps)}\right)^2 = - \left( \frac{\mathrm{d} \log \Lambda_i(\ns,\ps)}{\mathrm{d} \ns} \right)^2
+ \label{eq:d2logLambdadns2-for-alphai-gt-alpha}
+\end{equation}
+For the event case $\alpha_i \le \alpha$ this second derivative would be a
+constant due to the second-order nature of the chosen Taylor expansion in that
+case. At the junction point $\alpha$ the second derivative would not be differentiable.
+Hence, equation (\ref{eq:d2logLambdadns2-for-alphai-gt-alpha}) is used as well
+in this case, with $\mathrm{d}\log\Lambda_i(\ns,\ps)/\mathrm{d}\ns$ given by
+equation (\ref{eq:dlogLambdaidns-for-alphai-le-alpha}). This provides a second
+derivative that is differentiable for all $(1 + \alpha_i)$ values, does not
+diverge for $(1 + \alpha_i) \rightarrow 0$, and is closer to the second
+derivative of $\log\Lambda_i(\ns,\ps)$ for the $\alpha_i > \alpha$ case.
+
+The derivative w.r.t. an individual signal parameter, $p_{\mathrm{s}}$, is given by
+\begin{equation}
+ \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{i=1}^{N'} \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}}
+\end{equation}
+Again, one needs to distinguish between the numerical stable ($\alpha_i > \alpha$)
+and unstable ($\alpha_i \leq \alpha$) case.
+For the stable case the event-based derivative w.r.t. $p_{\mathrm{s}}$ is given by
+\begin{equation}
+ \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\ns}{1+\alpha_i(\ns,\ps)} \frac{\mathrm{d}\mathcal{X}_i(\ps)}{\mathrm{d}p_{\mathrm{s}}}.
+\end{equation}
+For the numerical unstable case this derivative is
+given by the derivative of the Taylor expansion of equation (\ref{eq:logLambdaiTaylorOfTildeAlpha})
+w.r.t. $p_{\mathrm{s}}$:
+\begin{equation}
+ \frac{\mathrm{d}\log\Lambda_i(\ns,\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\ns}{1+\alpha}\left(1 - \tilde{\alpha}_i(\ns,\ps)\right) \frac{\mathrm{d}\mathcal{X}_i(\ps)}{\mathrm{d}p_{\mathrm{s}}}.
+\end{equation}
+
+The derivative of $\mathcal{X}_i$ can be calculated using
+equation \ref{eq:Xi} and the expressions for the signal and background PDFs as given
+in equation \ref{eq:Si} and \ref{eq:Bi}, respectively. Depending on the type of
+fit parameter, i.e. spatial, energy, or time, the derivative of the PDF ratio,
+$\mathcal{R}_i(\ps) = \mathcal{S}_i(\ps) / \mathcal{B}_i$, simplifies to the
+derivative of the respective type of PDF ratio:
+\begin{equation}
+ \frac{\mathrm{d} \mathcal{X}_i(\ps)}{\mathrm{d} p_{\mathrm{s}}} = \frac{1}{N}\frac{\mathrm{d} \mathcal{R}_i(\ps)}{\mathrm{d} p_{\mathrm{s}}},
+\end{equation}
+with
+\begin{equation}
+ \mathcal{R}_i(\ps) = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+ \label{eq:Ri}
+\end{equation}
+and
+\begin{equation}
+ \frac{\mathrm{d} \mathcal{R}_i(\ps)}{\mathrm{d} p_{\mathrm{s,spatial}}} = \frac{\mathrm{d} \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}})}{\mathrm{d} p_{\mathrm{s,spatial}}} \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+\end{equation}
+\begin{equation}
+ \frac{\mathrm{d} \mathcal{R}_i(\ps)}{\mathrm{d} p_{\mathrm{s,energy}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \frac{\mathrm{d} \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}})}{\mathrm{d} p_{\mathrm{s,energy}}} \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}}),
+\end{equation}
+\begin{equation}
+ \frac{\mathrm{d} \mathcal{R}_i(\ps)}{\mathrm{d} p_{\mathrm{s,time}}} = \mathcal{R}_{S,i}(\vec{p}_{s,\mathrm{spatial}}) \mathcal{R}_{\mathcal{E},i}(\vec{p}_{s,\mathrm{energy}}) \frac{\mathrm{d} \mathcal{R}_{\mathcal{T},i}(\vec{p}_{s,\mathrm{time}})}{\mathrm{d} p_{\mathrm{s,time}}}.
+\end{equation}
+
+For stacked sources the expression for $\mathcal{R}_i(\ps)$ in equation (\ref{eq:Ri})
+becomes slightly more complicated due to the source strength weighting.
+With equation (\ref{eq:SiStacking}) and the definitions
+\begin{equation}
+ a_k(\xsk,\psk) = W_k\mathcal{Y}_{\mathrm{s}}(\xsk,\psk),
+\end{equation}
+and
+\begin{equation}
+ A(\ps) = \sum_{k=1}^{K} a_k(\xsk,\psk),
+\end{equation}
+it is given by
+\begin{equation}
+\mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\xsk,\psk) \frac{\mathcal{S}_{i}(\psk)}{\mathcal{B}_{i}}.
+\label{eq:RiStacking}
+\end{equation}
+The signal over background ratio $\mathcal{S}_{i}(\psk) / \mathcal{B}_{i} \equiv \mathcal{R}_{k,i}(\psk)$
+for the single source $k$ is then given by equation (\ref{eq:Ri}).
+
+Using the same set of source fit parameters $\ps$ for all sources, i.e. called
+global source fit parameters, the derivative of $\mathcal{R}_i(\ps)$ for
+all stacked sources w.r.t. the single global source fit parameter,
+$p_{\mathrm{s}}$, is then given by
+\begin{equation}
+ \frac{\mathrm{d} \mathcal{R}_{i}(\ps)}{\mathrm{d} p_{\mathrm{s}}} = - \frac{1}{A^2} \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} \sum_{k=1}^{K} a_{k} \mathcal{R}_{k,i}(\psk) + \frac{1}{A}\sum_{k=1}^{K} \left( \frac{\mathrm{d} a_{k}}{\mathrm{d} p_{\mathrm{s}}}\mathcal{R}_{k,i}(\psk) + a_{k}\frac{\mathrm{d} \mathcal{R}_{k,i}(\psk)}{\mathrm{d} p_{\mathrm{s}}} \right).
+\end{equation}
+Using $\mathcal{R}_i(\ps)$ from equation (\ref{eq:RiStacking}) it simplifies to
+\begin{equation}
+ \frac{\mathrm{d} \mathcal{R}_{i}(\ps)}{\mathrm{d} p_{\mathrm{s}}} = \frac{1}{A(\ps)}\left[ -\mathcal{R}_i(\ps)\frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} + \sum_{k=1}^{K} \left( \frac{\mathrm{d} a_{k}}{\mathrm{d} p_{\mathrm{s}}}\mathcal{R}_{k,i}(\psk) + a_{k}\frac{\mathrm{d} \mathcal{R}_{k,i}(\psk)}{\mathrm{d} p_{\mathrm{s}}} \right) \right],
+ \label{eq:gradRi}
+\end{equation}
+with the derivative of $A(\ps)$ given by
+\begin{equation}
+ \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} = \sum_{k=1}^{K} \frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}}.
+\end{equation}
+
+In case one would fit each source individually with its own set of signal fit
+parameters, $\vec{p}_{\mathrm{s},k}$, $\ps$ would be a set of $K$ sets
+of source fit parameters $\vec{p}_{\mathrm{s},k}$, and a derivative for each
+individual source fit parameter $p_{\mathrm{s},k}$ would have to be calculated.
+The expression for such a derivative would be similar to equation (\ref{eq:gradRi}),
+but only the summand for the particular source, for which the fit parameter is for, would
+contribute.
+
+
+\subsection{Multiple Datasets}
+
+With SkyLLH a set of $J$ different data samples (datasets), $\mathrm{D}_j$, can be
+analyzed at once. Each data sample has its own detector signal yield,
+$\mathcal{Y}_{\mathrm{s}_j}$.
+
+The composite likelihood function is the product of the individual dataset
+likelihood functions:
+\begin{equation}
+ \log \Lambda = \sum_{j=1}^{J} \log \Lambda_j.
+ \label{eq:logLambdaComposite}
+\end{equation}
+
+The total number of signal events $\ns$ needs to get split-up into
+$n_{\mathrm{s}_j}$ for the individual datasets. The distribution of $\ns$
+along the different datasets is based on the detector signal yield,
+$\mathcal{Y}_{\mathrm{s}_j}$, of each dataset. For a single source it is given by:
+\begin{equation}
+ n_{\mathrm{s}_j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)},
+ \label{eq:nsjy}
+\end{equation}
+where $\xs$ and $\ps$ denote the source position and flux fit parameters, e.g.
+the spectral index $\gamma$, respectively. The detector signal yield can be
+calculated via the detector effective area and the source flux (\emph{c.f.} section
+\ref{sec:detsigyield}).
+
+By defining the dataset weight factor
+\begin{equation}
+ f_j(\ps) \equiv \frac{\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)}
+ \label{eq:dataset-weight-factor-single-source}
+\end{equation}
+with the property
+\begin{equation}
+ \sum_{j=1}^{J} f_j = 1
+\end{equation}
+equation \ref{eq:nsjy} reads
+\begin{equation}
+ n_{\mathrm{s}_j}(\ns,\ps) = \ns f_{j}(\ps)
+ \label{eq:ns-sample-weight-factor}
+\end{equation}
+
+Using the dataset weight factor $f_{j}(\ps)$ the likelihood ratio of
+equation \eq{eq:logLambdaComposite} with equation \eq{eq:logLambdaOfX} can now
+be written as
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \sum_{i=1}^{N} \log (1 + \ns f_{j}(\ps)\mathcal{X}_i(\ps)).
+\end{equation}
+From a reusability-of-software point of view it is advisable to be able to use
+the mathematical form of $\log \Lambda$ for the single dataset to calculate the
+combined $\log \Lambda$ value of the multiple dataset. This can be achieved by
+using the substitution of $\ns$ as given by equation (\ref{eq:ns-sample-weight-factor}).
+Hence,
+\begin{equation}
+ \log \Lambda(\ns,\ps) = \sum_{j=1}^{J} \log \Lambda_j(n_{\mathrm{s}_j}(\ns,\ps),\ps).
+ \label{eq:logLambdaOfLogLambdaj}
+\end{equation}
+
+For multiple point sources, i.e. a stacking of $K$ point sources with positions
+$\xsk$, the dataset weight factor of each single source needs
+to be taken into account via Bayes' theorem. Thus, $f_{j}(\ps)$ can be written
+as the sum of the products of the dataset weight factor $f_{j}(\psk)$ for
+source $k$, as given by equation (\ref{eq:dataset-weight-factor-single-source}),
+and the relative strength, $f_{k}(\psk)$, of the $k$th source in all datasets
+compared to all the other sources in all datasets:
+\begin{equation}
+ f_{j}(\ps) = \sum_{k=1}^{K} f_{k}(\psk) f_{j}(\psk).
+\end{equation}
+The relative strength of source $k$ can be written as
+\begin{equation}
+ f_{k}(\psk) = \frac{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}{\sum_{\kappa=1}^{K} \sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s}_{j,\kappa}}(\vec{x}_{\mathrm{s}_\kappa},\vec{p}_{\mathrm{s}_\kappa}) }
+ \label{eq:fk}
+\end{equation}
+By combining equation \ref{eq:dataset-weight-factor-single-source} with $\xs \equiv \xsk$
+and $\ps \equiv \psk$, and equation \ref{eq:fk}, the expression for
+$f_{j}(\ps)$ for multiple sources is given by:
+\begin{equation}
+ f_{j}(\ps) = \sum_{k=1}^{K}
+    \frac{\left(\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk)\right) \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}
+         {\left(\sum_{\kappa=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',\kappa}}(\vec{x}_{\mathrm{s}_\kappa},\vec{p}_{\mathrm{s}_\kappa})\right) \left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk) \right)}
+\end{equation}
+The sum over the datasets of the detector signal yield for source $k$ cancels
+out leaving the simplified equation
+\begin{equation}
+ f_{j}(\ps) = \frac{\sum_{k=1}^{K} \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}
+                   {\sum_{k=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk)}.
+ \label{eq:dataset-weight-factor-multiple-sources}
+\end{equation}
+
+\subsection{Gradients of the Multi-Dataset Log-Likelihood Ratio}
+
+By using equation (\ref{eq:logLambdaOfLogLambdaj}) for the combined log-likelihood
+ratio, its derivative w.r.t. $\ns$ is given by
+\begin{equation}
+ \frac{\mathrm{d}\log\Lambda(\ns,\ps)}{\mathrm{d}\ns} = \sum_{j=1}^{J} \frac{\mathrm{d}\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}} \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns},
+\end{equation}
+with
+\begin{equation}
+\frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns} = f_j(\ps).
+\end{equation}
+Its second derivative w.r.t. $\ns$ is given by
+\begin{align}
+ \frac{\mathrm{d}^2\log\Lambda(\ns,\ps)}{\mathrm{d}\ns^2} &= \sum_{j=1}^{J} \frac{\mathrm{d}}{\mathrm{d}\ns}\left( \frac{\mathrm{d}\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}} \right) \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns}\\
+							  &= \sum_{j=1}^{J} \frac{\mathrm{d}^2\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}^2} \left( \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns} \right)^2.
+\end{align}
+
+The derivative w.r.t. a single source fit parameter, $p_{\mathrm{s}}$, consists
+of the partial derivatives of $\log \Lambda_j$ w.r.t. $n_{\mathrm{s}_j}$ and
+$p_{\mathrm{s}}$:
+\begin{equation}
+ \frac{\mathrm{d} \log \Lambda(\ns,\ps)}{\mathrm{d} p_{\mathrm{s}}} = \sum_{j=1}^{J} \left( \frac{\partial \log \Lambda_j(\nsj,\ps)}{\partial \nsj} \frac{\mathrm{d} \nsj}{\mathrm{d} p_{\mathrm{s}}} + \frac{\partial \log \Lambda_j(\nsj,\ps)}{\partial p_{\mathrm{s}}} \right),
+\end{equation}
+with
+\begin{equation}
+ \frac{\mathrm{d} \nsj}{\mathrm{d} p_{\mathrm{s}}} = \ns \frac{\mathrm{d} f_j(\ps)}{\mathrm{d} p_{\mathrm{s}}}.
+\end{equation}
+In case of a single source, the expression for the derivative of the dataset
+weight factor, where $f_j(\ps)$ is given by equation (\ref{eq:dataset-weight-factor-single-source}),
+reads via the quotient rule of differentiation:
+\begin{equation}
+\frac{\mathrm{d}f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\mathrm{d}p_{\mathrm{s}}} \sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps) - \mathcal{Y}_{\mathrm{s}_j}(\xs,\ps) \sum_{j'=1}^{J} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)}{\mathrm{d}p_{\mathrm{s}}} }{\left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps) \right)^2}.
+\end{equation}
+In case of multiple sources (stacking), the expression for the derivative of the
+dataset weight factor, where $f_j(\ps)$ is given by equation
+(\ref{eq:dataset-weight-factor-multiple-sources}) reads via the quotient rule of
+differentiation:
+\begin{equation}
+ \frac{\mathrm{d} f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} =
+    \frac{\left(\sum_{k=1}^{K} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j,k}}}{\mathrm{d}p_{\mathrm{s}}}\right) \left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j',k}}\right) - \left(\sum_{k=1}^{K}\mathcal{Y}_{\mathrm{s}_{j,k}}\right)\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j',k}}}{\mathrm{d}p_{\mathrm{s}}}\right)}
+         {\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j',k}} \right)^2}
+\end{equation}
+
+\section{Detector Signal Yield}
+\label{sec:detsigyield}
+
+The detector signal yield, $\mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)$,
+is the mean number of expected signal events in the detector from a given
+source $k$ in a given data sample $j$. For a differential source flux,
+$\mathrm{d}\Phi_{\mathrm{s}}/(\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t)$,
+it is the integral of the product of the detector effective area and this
+differential flux over the solid-angle, energy, and time of the source:
+\begin{equation}
+ \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk) \equiv \int_{\Omega_{\mathrm{s}_k}} \mathrm{d}\Omega \int_0^\infty \mathrm{d}E \int_{t_{\mathrm{start}_j}}^{t_{\mathrm{end}_j}}\mathrm{d}t A_{\mathrm{eff}_j}(E,t|\xsk) \frac{\mathrm{d}\Phi_{\mathrm{s}}(E,t|\psk)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t}
+\label{eq:Ysj}
+\end{equation}
+In the most-general case, the source position $\xs$ consists of three
+quantities: right-ascension, declination, and observation time, i.e.
+$\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}},t_{\mathrm{obs}})$.
+
+The time-dependent effective area $A_{\mathrm{eff}_j}(E,t|\xsk)$ must account
+for the detector off-time intervals within the data sample $j$. In cases, where
+the effective area is constant within a data sample, it can be written as
+\begin{equation}
+ A_{\mathrm{eff}_j}(E,t|\xsk) = A_{\mathrm{eff}_j}(E|\xsk) T_{\mathrm{live}}(t)
+\end{equation}
+with $T_{\mathrm{live}}(t)$ is the detector live-time function as given by
+equation (\ref{eq:Tlive}).
+
+\subsection{Effective Area}
+
+In SkyLLH the effective area $A_{\mathrm{eff},j}$ of a data sample $j$ is not
+calculated separately in order to avoid binning effects. However, the effective
+area can be calculated using the Monte-Carlo weights, \code{mcweight}\footnote{In IceCube
+known as ``OneWeight'', but which already includes the number of used MC files.},
+of the simulation events.
+The Monte-Carlo weights have the unit GeV~cm$^2$~sr.
+Using the Monte-Carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$,
+that corresponds to a signal event, i.e. an event that has similar properties as
+a signal event (\emph{e.g.} same true direction), the effective area is given by
+the sum of the weights of those events, divided by the
+solid angle and the energy range $\Delta E$ of the summed selected events:
+\begin{equation}
+ A_{\mathrm{eff}_j}(E) = \frac{\sum_{m=1}^{M} w_{m,j}}{\Omega \Delta E}
+\end{equation}
+
+
+\subsection{The DetSigYield Class}
+
+\class{DetSigYield} provides an abstract base class for a detector signal yield
+class to compute the integral given in equation \eq{eq:Ysj}. The detector signal
+yield depends on the flux model and its source parameters, which might
+change during the likelihood maximization process. It is also dependent on the
+detector effective area, hence is detector dependent. Thus,
+\class{DetSigYield} must be provided with a detector signal
+yield implementation method derived from the \class{DetSigYieldImplMethod}
+class.
+
+Detector signal yield values can be retrieved via the call operator
+\code{\_\_call\_\_(src, src\_flux\_params)}, which takes the celestial source
+position(s), and the additional source flux parameters as arguments.
+
+\subsubsection{The DetSigYieldImplMethod Class}
+
+\class{DetSigYieldImplMethod} is an abstract base class and defines the interface
+between the detector signal yield implementation method and the
+\class{DetSigYield} class.
+
+% List of detector signal yield implementation methods.
+Table \ref{tbl:I3DetSigYieldImplMethod} lists all available IceCube specific
+detector signal yield implementation methods and their description.
+\begin{table}
+\caption{IceCube specific detector signal yield implementation methods.}
+\label{tbl:I3DetSigYieldImplMethod}
+
+\begin{tabular}{p{.95\textwidth}}
+\hline
+Name of Class \& Description \\
+\hline
+\textbf{FixedFluxPointLikeSourceI3DetSigYieldImplMethod}
+
+IceCube detector signal yield
+    implementation method for a fixed flux model and a point-like source.
+    The flux model might contain flux parameters, but these are not fit in the
+    likelihood maximization process.
+    This implementation assumes that the detector effective area depends solely
+    on the declination of the source. This method creates
+    a spline function of given order for the logarithmic values of the
+    $\sin(\delta)$-dependent detector signal yield.
+
+    The constructor of this implementation method requires a $\sin(\delta)$
+    binning definition for the Monte-Carlo events and the order of the spline
+    function.
+
+    This implementation method create a detector signal yield instance of class
+    \class{FixedFluxPointLikeSourceI3DetSigYield}.
+\\
+\hline
+\textbf{PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod}
+
+IceCube detector signal
+    yield implementation method for a
+    power law flux model, implemented by the \class{PowerLawFlux} class, an a
+    point-like source.
+    This method creates a 2D spline function of given orders for the logarithmic
+    values of the $\sin(\delta)$-dependent detector signal yield for a
+    range of $\gamma$ values. This implementation method supports
+    multi-processing.
+\end{tabular}
+\end{table}
+
+\section{The Concept of Source Hypothesis Groups}
+
+The analyses in SkyLLH rely heavily on the calculation of detector signal
+efficiencies. As seen in section \ref{sec:detsigyield}, the detector signal
+efficiency depends on the source hypothesis (spatial model and flux model)
+and the detector response (dataset). Hence, the analyses require detector signal
+efficiency instances for each combination of source and dataset.
+However, the sources might be of the same kind, i.e. having the same spatial
+model and the same flux model. For such sources detector signal efficiency
+instances are needed only for each dataset. Thus, we define a group
+of sources with the same spatial model and flux model as a \emph{source hypothesis group},
+$G_{\mathrm{s}}$.
+
+A source hypothesis group has a list of spatial source models, e.g. point-like source
+locations in case of point-like sources, a flux model, and a detection signal
+efficiency implementation method assigned.
+
+SkyLLH provides the \class{SourceHypoGroupManager} class to define the groups of
+source hypotheses.
+
+\section{Implemented Log-Likelihood Models}
+This section describes the implemented log-likelihood models. \cite{TimeDepPSSearchMethods2010}
+
+% \subsection{Time Dependent Point-Source Flare}
+%
+% The \class{TimeDepPSFlareLHModel} class provides the likelihood model for searching for a point source with unknown time-dependence.
+% The search is based on the formulism described in \cite{TimeDepPSSearchMethods2010}.
+%
+% The model utilizes a two-component likelihood function with signal and background events.
+
+\bibliographystyle{unsrt}
+\bibliography{biblio}
+
+\end{document}
