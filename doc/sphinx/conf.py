@@ -43,7 +43,8 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
-    'sphinx.ext.imgmath'
+    'sphinx.ext.imgmath',
+    'nbsphinx'
     #'sphinxcontrib.napoleon'
 ]
 
@@ -54,6 +55,8 @@ autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance']
 autosummary_generate = True
 
 napoleon_use_rtype = False
+
+nbsphinx_execute = 'never'
 
 todo_include_todos = True
 
@@ -79,7 +82,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = [u'_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = [u'_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
@@ -90,7 +93,7 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
