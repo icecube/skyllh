@@ -1,4 +1,4 @@
-.. Skyllh
+.. SkyLLH
 
 SkyLLH documentation
 ====================
@@ -11,12 +11,14 @@ Hence with SkyLLH it is supposed to be easy to perform an entire maximum
 likelihood ratio test once the user (likelihood developer) defined the
 mathematical likelihood function.
 
+.. _user-docs:
+
 .. toctree::
     :maxdepth: 3
-    :caption: Contents
+    :caption: User Documentation
 
-    analysis_creation
-    dataset_creation
+    analysis/index
+    hypothesis/index
     unit_tests
     reference/skyllh
     notes
