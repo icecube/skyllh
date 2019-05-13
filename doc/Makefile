@@ -1,9 +1,6 @@
 all: docs
 
-apidoc:
-	sphinx-apidoc -e -f -M -T -o sphinx/reference ../skyllh
-
-html: apidoc
+html:
 	cd sphinx && make html
 
 user_manual:
@@ -24,4 +21,3 @@ clean:
 	rm -f *.out
 	rm -f *.pdf
 	cd sphinx && make clean
-	rm -rf sphinx/reference
