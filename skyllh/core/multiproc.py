@@ -207,8 +207,6 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
 
         return result_list
 
-    logger = logging.getLogger(__name__)
-
     # Create the progress bar if we are in an interactive session.
     pbar = None
     if(is_interactive_session()):
@@ -293,6 +291,9 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
     result_list_0 = master_wrapper(
         pbar, sarr, func, sub_args_list_list[0], squeue=squeue, rss=rss_list[0],
         tl=tl_list[0])
+
+    # Initialize logger.
+    logger = logging.getLogger(__name__)
 
     # Gather len(processes) results from the rqueue and join the process's
     # TimeLord instance with the main TimeLord instance.
