@@ -14,16 +14,12 @@ try:
 except ImportError:
     import Queue as queue
 
+from skyllh.core.config import cfg
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import range
 from skyllh.core.random import RandomStateService
 from skyllh.core.session import is_interactive_session
 from skyllh.core.timing import TimeLord
-
-# Global setting for the number of CPUs to use for functions that allow
-# multi-processing. If this setting is set to an int value in the range [1, N]
-# this setting will be used if a function's local ncpu setting is not specified.
-NCPU = None
 
 def get_ncpu(local_ncpu):
     """Determines the number of CPUs to use for functions that support
@@ -44,7 +40,7 @@ def get_ncpu(local_ncpu):
     """
     ncpu = local_ncpu
     if(ncpu is None):
-        ncpu = NCPU
+        ncpu = cfg['mp']['ncpu']
     if(ncpu is None):
         ncpu = 1
     if(not isinstance(ncpu, int)):

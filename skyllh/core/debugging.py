@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import os.path
+from skyllh.core.config import cfg
 
 def setup_logger(name, logging_level):
     """Initializes logger with a given name and a logging level.
@@ -37,7 +39,7 @@ def setup_console_handler(name, handling_level, log_format, stream=None):
     sh.setFormatter(logging.Formatter(log_format))
     logger.addHandler(sh)
 
-def setup_file_handler(name, handling_level, log_format, pathfilename,
+def setup_file_handler(name, handling_level, log_format, filename,
                        mode='a'):
     """Initializes `FileHandler` for a logger with a given name and sets its
     handling level.
@@ -50,13 +52,16 @@ def setup_file_handler(name, handling_level, log_format, pathfilename,
         Handling level. There are predefined levels, e.g. ``logging.DEBUG``.
     log_format : str
         Specify the layout of log records in the final output.
-    pathfilename : str
-        File path including the filename to the specified file which is opened
-        and used as the stream for logging.
+    filename : str
+        Filename of the specified file which is opened and used as the stream
+        for logging.
     mode : str, optional
         File opening mode. Default is 'a' for appending.
     """
     logger = logging.getLogger(name)
+    # Generate pathfilename.
+    wd = cfg['dirs']['wd']
+    pathfilename = os.path.join(wd, filename)
     # Create and add `FileHandler` to the logger.
     fh = logging.FileHandler(pathfilename, mode=mode)
     fh.setLevel(handling_level)
