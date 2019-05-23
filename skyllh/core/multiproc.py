@@ -14,7 +14,7 @@ try:
 except ImportError:
     import Queue as queue
 
-from skyllh.core.config import cfg
+from skyllh.core.config import CFG
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import range
 from skyllh.core.random import RandomStateService
@@ -40,7 +40,7 @@ def get_ncpu(local_ncpu):
     """
     ncpu = local_ncpu
     if(ncpu is None):
-        ncpu = cfg['mp']['ncpu']
+        ncpu = CFG['multiproc']['ncpu']
     if(ncpu is None):
         ncpu = 1
     if(not isinstance(ncpu, int)):

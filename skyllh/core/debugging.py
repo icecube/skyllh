@@ -2,7 +2,7 @@
 
 import logging
 import os.path
-from skyllh.core.config import cfg
+from skyllh.core.config import CFG
 
 def setup_logger(name, logging_level):
     """Initializes logger with a given name and a logging level.
@@ -60,7 +60,7 @@ def setup_file_handler(name, handling_level, log_format, filename,
     """
     logger = logging.getLogger(name)
     # Generate pathfilename.
-    wd = cfg['dirs']['wd']
+    wd = CFG['dirs']['wd']
     pathfilename = os.path.join(wd, filename)
     # Create and add `FileHandler` to the logger.
     fh = logging.FileHandler(pathfilename, mode=mode)
