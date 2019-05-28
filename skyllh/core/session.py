@@ -6,7 +6,7 @@ import sys
 """
 
 # By default SkyLLH will not be in interactive session, i.e. will be in batch
-# mode. Hence, progress bars will not be displayed not not screw up the output.
+# mode. Hence, progress bars will not be displayed to not screw up the output.
 IS_INTERACTIVE_SESSION = False
 
 def enable_interactive_session():
