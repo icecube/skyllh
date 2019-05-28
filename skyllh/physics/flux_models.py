@@ -246,7 +246,7 @@ class FluxProfile(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
-        super(SpatialFluxProfile, self).__init__()
+        super(FluxProfile, self).__init__()
 
         self.parameter_names = ()
 
@@ -1175,7 +1175,7 @@ class SteadyPointlikeSourceFFM(PointlikeSourceFFM):
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
         """
-        super(PointlikeSourceFFM, self).__init__(
+        super(SteadyPointlikeSourceFFM, self).__init__(
             alpha_s=alpha_s,
             delta_s=delta_s,
             Phi0=Phi0,
