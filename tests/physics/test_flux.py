@@ -31,7 +31,7 @@ class TestPowerLawFlux(unittest.TestCase):
 
         self.assertEqual(self.power_law_flux.gamma, gamma)
 
-    def test_math_funciton_str(self):
+    def test_math_function_str(self):
         self.assertEqual(self.power_law_flux.math_function_str, "dN/dE = {:.2e} * (E / {:.2e} {})^-{:.2f}".format(self.Phi0, self.E0, self.energy_unit, self.gamma))
 
     def test_call(self):
@@ -59,7 +59,7 @@ class TestCutoffPowerLawFlux(unittest.TestCase):
 
         self.assertEqual(self.cutoff_power_law_flux.Ecut, Ecut)
 
-    def test_math_funciton_str(self):
+    def test_math_function_str(self):
         test_string = "dN/dE = {:.2e} * (E / {:.2e} {})^-{:.2f} * exp(-E / {:.2e} {})".format(self.Phi0, self.E0, self.energy_unit, self.gamma, self.Ecut, self.energy_unit)
 
         self.assertEqual(self.cutoff_power_law_flux.math_function_str, test_string)
