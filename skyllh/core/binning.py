@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from skyllh.core.py import classname
+
 class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
@@ -18,6 +20,13 @@ class BinningDefinition(object):
         """
         self.name = name
         self.binedges = binedges
+
+    def __str__(self):
+        """Pretty string representation.
+        """
+        s = '%s: %s\n'%(classname(self), self._name)
+        s += str(self._binedges)
+        return s
 
     def __eq__(self, other):
         """Checks if object ``other`` is equal to this BinningDefinition object.
@@ -99,6 +108,41 @@ class BinningDefinition(object):
         outofrange = np.any((data < self.lower_edge) |
                             (data > self.upper_edge))
         return outofrange
+
+    def get_subset(self, lower_edge, upper_edge):
+        """Creates a new BinningDefinition instance which contains only a subset
+        of the bins of this BinningDefinition instance. The range of the subset
+        is given by a lower and upper edge value.
+
+        Parameters
+        ----------
+        lower_edge : float
+            The lower edge value of the subset.
+        upper_edge : float
+            The upper edge value of the subset.
+
+        Returns
+        -------
+        new_binning : BinningDefinition instance
+            The new BinningDefinition instance holding the binning subset.
+        """
+
+        idxs = np.indices((len(self._binedges),))[0]
+        m = (self._binedges >= lower_edge) & (self._binedges <= upper_edge)
+
+        idx_lower = np.min(idxs[m])
+        # Include the lower edge of the bin the lower_edge value falls into.
+        if(self._binedges[idx_lower] > lower_edge):
+            idx_lower -= 1
+
+        idx_upper = np.max(idxs[m])
+        # Include the upper edge of the bin the upper_edge value falls into.
+        if(self._binedges[idx_upper] < upper_edge):
+            idx_upper += 1
+
+        new_binedges = self._binedges[idx_lower:idx_upper+1]
+
+        return BinningDefinition(self._name, new_binedges)
 
 
 class UsesBinning(object):
