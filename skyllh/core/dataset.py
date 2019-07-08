@@ -395,16 +395,31 @@ class Dataset(object):
         object.
         """
         s = 'Dataset "%s": v%s\n'%(self.name, self.version_str)
-        pad = ' '*4
-        s += '%s { livetime = %.3f days}\n'%(pad, self.livetime)
+
+        s1 = ''
+
+        if(self.livetime is None):
+            s1 += '{ livetime = UNKNOWN }'
+        else:
+            s1 += '{ livetime = %.3f days }'%(self.livetime)
+        s1 += '\n'
+
         if(self.description != ''):
-            s += '%s Description:\n'%(pad) + self.description + '\n'
-        s += '%s Experimental data:\n'%(pad)
-        for pathfilename in self.exp_pathfilename_list:
-            s += '%s%s\n'%(pad*2, pathfilename)
-        s += '%s MC data:\n'%(pad)
-        for pathfilename in self.mc_pathfilename_list:
-            s += '%s%s\n'%(pad*2, pathfilename)
+            s1 += 'Description:\n' + self.description + '\n'
+
+        s1 += 'Experimental data:\n'
+        s2 = '\n'.join(self.exp_pathfilename_list)
+        s1 += display.add_leading_text_line_padding(
+            display.INDENTATION_WIDTH, s2)
+        s1 += '\n'
+
+        s1 += 'MC data:\n'
+        s2 = '\n'.join(self.mc_pathfilename_list)
+        s1 += display.add_leading_text_line_padding(
+            display.INDENTATION_WIDTH, s2)
+
+        s += display.add_leading_text_line_padding(
+            display.INDENTATION_WIDTH, s1)
 
         return s
 
@@ -610,9 +625,11 @@ class Dataset(object):
             The BinningDefinition object holding the binning information.
         """
         if(not isinstance(binning, BinningDefinition)):
-            raise TypeError('The "binning" argument must be of type BinningDefinition!')
+            raise TypeError('The "binning" argument must be of type '
+                'BinningDefinition!')
         if(binning.name in self._binning_definitions):
-            raise KeyError('The binning definition "%s" is already defined for season "%s"!'%(binning.name, self._name))
+            raise KeyError('The binning definition "%s" is already defined for '
+                'dataset "%s"!'%(binning.name, self._name))
 
         self._binning_definitions[binning.name] = binning
 
@@ -630,7 +647,8 @@ class Dataset(object):
             The requested BinningDefinition instance.
         """
         if(name not in self._binning_definitions):
-            raise KeyError('The given binning name "%s" has not been added to the dataset yet!'%(name))
+            raise KeyError('The given binning name "%s" has not been added to '
+                'the dataset yet!'%(name))
         return self._binning_definitions[name]
 
     def has_binning_definition(self, name):
@@ -671,6 +689,25 @@ class Dataset(object):
         binning = BinningDefinition(name, binedges)
         self.add_binning_definition(binning)
         return binning
+
+    def replace_binning_definition(self, binning):
+        """Replaces an already defined binning definition of this dataset by
+        the given binning definition.
+
+        Parameters
+        ----------
+        binning : BinningDefinition instance
+            The instance of BinningDefinition that will replace the data set's
+            BinningDefinition instance of the same name.
+        """
+        if(not isinstance(binning, BinningDefinition)):
+            raise TypeError('The "binning" argument must be of type '
+                'BinningDefinition!')
+        if(binning.name not in self._binning_definitions):
+            raise KeyError('The given binning definition "%s" has not been '
+                'added to the dataset yet!'%(binning.name))
+
+        self._binning_definitions[binning.name] = binning
 
     def add_aux_data_definition(self, name, pathfilenames):
         """Adds the given data files as auxiliary data definition to the
@@ -826,13 +863,50 @@ class DatasetCollection(object):
 
         Returns
         -------
-        dataset : Dataset
+        dataset : Dataset instance
             The Dataset object holding all the information about the dataset.
+
+        Raises
+        ------
+        KeyError
+            If the data set of the given name is not present in this data set
+            collection.
         """
         if(name not in self._datasets):
             raise KeyError('The dataset "%s" is not part of the dataset '
                 'collection "%s"!'%(name, self.name))
         return self._datasets[name]
+
+    def get_datasets(self, names):
+        """Retrieves a list of Dataset objects from this dataset collection.
+
+        Parameters
+        ----------
+        names : str | sequence of str
+            The name or sequence of names of the datasets to retrieve.
+
+        Returns
+        -------
+        datasets : list of Dataset instances
+            The list of Dataset instances for the given list of data set names.
+
+        Raises
+        ------
+        KeyError
+            If one of the requested data sets is not present in this data set
+            collection.
+        """
+        if(not issequence(names)):
+            names = [names]
+        if(not issequenceof(names, str)):
+            raise TypeError('The names argument must be an instance of str or '
+                'a sequence of str instances!')
+
+        datasets = []
+        for name in names:
+            datasets.append(self.get_dataset(name))
+
+        return datasets
 
     def set_exp_field_name_renaming_dict(self, d):
         """Sets the dictionary with the data field names of the experimental
