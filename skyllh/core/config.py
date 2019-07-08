@@ -4,10 +4,6 @@
 """
 
 CFG = {
-    'dirs': {
-        # A working directory path to save created files.
-        'wd': '.'
-    },
     'multiproc': {
         # The number of CPUs to use for functions that allow multi-processing.
         # If this setting is set to an int value in the range [1, N] this
@@ -15,10 +11,12 @@ CFG = {
         # specified.
         'ncpu': None
     },
-    'project': {},
+    'project': {
+        # The project's working directory.
+        'working_directory': '.'
+    },
     'repository': {
         # A base path of repository datasets.
         'base_path': None
-    },
-    'user': {}
+    }
 }
