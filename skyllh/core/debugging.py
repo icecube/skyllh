@@ -39,7 +39,7 @@ def setup_console_handler(name, handling_level, log_format, stream=None):
     sh.setFormatter(logging.Formatter(log_format))
     logger.addHandler(sh)
 
-def setup_file_handler(name, handling_level, log_format, filename,
+def setup_file_handler(name, log_level, filename, path=None, log_format=None,
                        mode='a'):
     """Initializes `FileHandler` for a logger with a given name and sets its
     handling level.
@@ -48,23 +48,35 @@ def setup_file_handler(name, handling_level, log_format, filename,
     ----------
     name : str
         Logger name. Loggers hierarchy is defined using dots as separators.
-    handling_level : int
-        Handling level. There are predefined levels, e.g. ``logging.DEBUG``.
-    log_format : str
-        Specify the layout of log records in the final output.
+    log_level : int
+        The log level. There are predefined levels, e.g. ``logging.DEBUG``.
     filename : str
-        Filename of the specified file which is opened and used as the stream
-        for logging.
+        The filename of the specified file which is opened and used as the
+        stream for logging.
+    path : str | None
+        The path under which the log file should be stored.
+        If set to `None`, the project's working directory will be used.
+    log_format : str | None
+        The format of log records in the final output.
+        If set to `None`, the default
+        '%(asctime)s %(processName)s %(name)s %(levelname)s: %(message)s' is
+        used.
     mode : str, optional
         File opening mode. Default is 'a' for appending.
     """
+    if(log_format is None):
+        log_format = ('%(asctime)s %(processName)s %(name)s %(levelname)s: '
+            '%(message)s')
+    if(path is None):
+        path = CFG['project']['working_directory']
+
     logger = logging.getLogger(name)
-    # Generate pathfilename.
-    wd = CFG['dirs']['wd']
-    pathfilename = os.path.join(wd, filename)
+
+    pathfilename = os.path.join(path, filename)
+
     # Create and add `FileHandler` to the logger.
     fh = logging.FileHandler(pathfilename, mode=mode)
-    fh.setLevel(handling_level)
+    fh.setLevel(log_level)
     fh.setFormatter(logging.Formatter(log_format))
     logger.addHandler(fh)
 
