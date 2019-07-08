@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from skyllh.core import display
 from skyllh.core.py import issequenceof
 from skyllh.core.dataset import (
     Dataset,
@@ -87,14 +88,21 @@ class I3Dataset(Dataset):
         """Implementation of the pretty string representation of the I3Dataset
         object.
         """
-        pad = ' '*4
         s = super(I3Dataset, self).__str__()
-        s += '%s GRL data:\n'%(pad)
+        s += '\n'
+
+        s1 = ''
+        s1 += 'GRL data:\n'
         if(len(self.grl_pathfilename_list) > 0):
-            for pathfilename in self.grl_pathfilename_list:
-                s += '%s%s\n'%(pad*2, pathfilename)
+            s2 = '\n'.join(self.grl_pathfilename_list)
         else:
-            s += '%s None'%(pad*2)
+            s2 += 'None'
+        s1 += display.add_leading_text_line_padding(
+            display.INDENTATION_WIDTH, s2)
+
+        s += display.add_leading_text_line_padding(
+            display.INDENTATION_WIDTH, s1)
+
         return s
 
     def load_grl(self, tl=None):
