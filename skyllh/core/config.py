@@ -11,6 +11,11 @@ CFG = {
         # specified.
         'ncpu': None
     },
+    'debugging': {
+        # The default log format.
+        'log_format': ('%(asctime)s %(processName)s %(name)s %(levelname)s: '
+            '%(message)s')
+    },
     'project': {
         # The project's working directory.
         'working_directory': '.'
