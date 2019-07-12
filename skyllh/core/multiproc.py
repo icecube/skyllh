@@ -49,7 +49,7 @@ def get_ncpu(local_ncpu):
         raise ValueError('The ncpu setting must be >= 1!')
     return ncpu
 
-def parallelize(func, args_list, ncpu, rss=None, tl=None):
+def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
     """Parallelizes the execution of the given function for different arguments.
 
     Parameters
@@ -70,6 +70,8 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
         The RandomStateService instance to use for generating random numbers.
     tl : instance of TimeLord | None
         The instance of TimeLord that should be used to time individual tasks.
+    ppbar : instance of ProgressBar | None
+        The possible parent ProgressBar instance.
 
     Returns
     -------
@@ -206,8 +208,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None):
     # Create the progress bar if we are in an interactive session.
     pbar = None
     if(is_interactive_session()):
-        pbar = ProgressBar(maxval=len(args_list))
-        pbar.start()
+        pbar = ProgressBar(maxval=len(args_list), parent=ppbar).start()
 
     # Return result list if only one CPU is used.
     if(ncpu == 1):
