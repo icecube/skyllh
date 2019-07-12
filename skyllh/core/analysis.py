@@ -638,7 +638,7 @@ class Analysis(object):
 
     def do_trials(
             self, rss, n, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
-            bkg_kwargs=None, sig_kwargs=None, ncpu=None, tl=None):
+            bkg_kwargs=None, sig_kwargs=None, ncpu=None, tl=None, ppbar=None):
         """Executes `do_trial` method `N` times with possible multi-processing.
         One trial performs an analysis trial by generating a pseudo data sample
         with background events and possible signal events, and performs the LLH
@@ -680,6 +680,8 @@ class Analysis(object):
         tl : instance of TimeLord | None
             The instance of TimeLord that should be used to time individual
             tasks.
+        ppbar : instance of ProgressBar | None
+            The possible parent ProgressBar instance.
 
         Returns
         -------
@@ -704,7 +706,7 @@ class Analysis(object):
             }) for i in range(n)
         ]
         result_list = parallelize(
-            self.do_trial, args_list, ncpu, rss=rss, tl=tl)
+            self.do_trial, args_list, ncpu, rss=rss, tl=tl, ppbar=ppbar)
 
         result_dtype = result_list[0].dtype
         result = np.empty(n, dtype=result_dtype)
