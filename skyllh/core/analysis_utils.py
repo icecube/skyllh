@@ -7,6 +7,7 @@ import numpy as np
 from numpy.lib import recfunctions as np_rfn
 import itertools
 
+from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import issequenceof, range
 from skyllh.core.session import is_interactive_session
 from skyllh.core.storage import NPYFileLoader
@@ -17,7 +18,8 @@ from scipy.interpolate import interp1d
 """This module contains common utility functions useful for an analysis.
 """
 
-def pointlikesource_to_data_field_array(tdm, src_hypo_group_manager):
+def pointlikesource_to_data_field_array(
+        tdm, src_hypo_group_manager):
     """Function to transform a list of PointLikeSource sources into a numpy
     record ndarray. The resulting numpy record ndarray contains the following
     fields:
@@ -57,7 +59,8 @@ def pointlikesource_to_data_field_array(tdm, src_hypo_group_manager):
     return arr
 
 
-def calc_pval_from_trials(ts_vals, ts_threshold):
+def calculate_pval_from_trials(
+        ts_vals, ts_threshold):
     """Calculates the percentage (p-value) of test-statistic trials that are
     above the given test-statistic critical value.
     In addition it calculates the standard deviation of the p-value assuming
@@ -76,8 +79,8 @@ def calc_pval_from_trials(ts_vals, ts_threshold):
     return (p, p_sigma)
 
 
-def estimate_mean_nsignal_for_ts_quantile(ana, rss, h0_ts_vals, h0_ts_quantile,
-        p, eps_p, mu_range):
+def estimate_mean_nsignal_for_ts_quantile(
+        ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range):
     """Calculates the mean number of signal events needed to be injected to
     reach a test statistic distribution with defined properties for the given
     analysis.
@@ -147,7 +150,7 @@ def estimate_mean_nsignal_for_ts_quantile(ana, rss, h0_ts_vals, h0_ts_quantile,
         while (delta_p < p0_sigma*5) and (p0_sigma > eps_p):
             ts_vals0 = np.concatenate((
                 ts_vals0, ana.do_trials(rss, 100, mean_n_sig=ns0)['ts']))
-            (p0, p0_sigma) = calc_pval_from_trials(ts_vals0, c)
+            (p0, p0_sigma) = calculate_pval_from_trials(ts_vals0, c)
             n_total_generated_trials += 100
 
             delta_p = np.abs(p0 - p)
@@ -174,7 +177,7 @@ def estimate_mean_nsignal_for_ts_quantile(ana, rss, h0_ts_vals, h0_ts_quantile,
                     mean_n_sig=ns1)['ts']
                 n_total_generated_trials += ts_vals0.size
 
-                (p1, p1_sigma) = calc_pval_from_trials(ts_vals1, c)
+                (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
                 dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
 
                 logger.debug(
@@ -223,7 +226,7 @@ def estimate_mean_nsignal_for_ts_quantile(ana, rss, h0_ts_vals, h0_ts_quantile,
                 rss, ts_vals0.size, mean_n_sig=ns1)['ts']
             n_total_generated_trials += ts_vals0.size
 
-            (p1, p1_sigma) = calc_pval_from_trials(ts_vals1, c)
+            (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
             dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
 
             logger.debug('dns/dp = %.3f', dns_dp)
@@ -252,8 +255,9 @@ def estimate_mean_nsignal_for_ts_quantile(ana, rss, h0_ts_vals, h0_ts_quantile,
                 ns_range_[1] = ns0
 
 
-def estimate_sensitivity(ana, rss, h0_ts_vals=None, h0_ts_quantile=0.5, p=0.9,
-    eps_p=0.005, mu_range=None):
+def estimate_sensitivity(
+        ana, rss, h0_ts_vals=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
+        mu_range=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -308,8 +312,9 @@ def estimate_sensitivity(ana, rss, h0_ts_vals=None, h0_ts_quantile=0.5, p=0.9,
     return (mu, mu_err)
 
 
-def estimate_discovery_potential(ana, rss, h0_ts_vals=None,
-    h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005, mu_range=None):
+def estimate_discovery_potential(
+        ana, rss, h0_ts_vals=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
+        mu_range=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -365,8 +370,8 @@ def estimate_discovery_potential(ana, rss, h0_ts_vals=None,
 
 
 def generate_mu_of_p_spline_interpolation(
-    ana, rss, h0_ts_vals, h0_ts_quantile, eps_p, mu_range, mu_step,
-    kind='cubic', ppbar=None):
+        ana, rss, h0_ts_vals, h0_ts_quantile, eps_p, mu_range, mu_step,
+        kind='cubic', ppbar=None):
     """Generates a spline interpolation for mu(p) function for a pre-defined
     range of mu, where mu is the mean number of injected signal events and p the
     probability for the ts value larger than the ts value corresponding to the
@@ -421,15 +426,18 @@ def generate_mu_of_p_spline_interpolation(
         'Number of trials after finite cut: %d (%g%% of total)',
         len(h0_ts_vals), (len(h0_ts_vals)/n_h0_ts_vals)*100)
 
-    h0_ts_percentile = np.percentile(h0_ts_vals, (1 - h0_ts_quantile) * 100)
-    logger.debug('Bkg ts value for quantile %.3f: %.3f', h0_ts_quantile,
-        h0_ts_percentile)
+    c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile) * 100)
+    logger.debug(
+        'Critical ts value for bkg ts quantile %g: %g',
+        h0_ts_quantile, c)
 
     n_mu = int((mu_range[1]-mu_range[0])/mu_step) + 1
     mu_vals = np.linspace(mu_range[0], mu_range[1], n_mu)
     p_vals = np.empty_like(mu_vals)
 
-    logger.debug('Generate trials for %d mu values', n_mu)
+    logger.debug(
+        'Generate trials for %d mu values',
+        n_mu)
 
     # Create the progress bar if we are in an interactive session.
     pbar = None
@@ -440,9 +448,10 @@ def generate_mu_of_p_spline_interpolation(
         p = None
         (ts_vals, p_sigma) = ([], 2*eps_p)
         while (p_sigma > eps_p):
-            ts_vals = np.concatenate((
-                ts_vals, ana.do_trials(rss, 100, mean_n_sig=mu, ppbar=pbar)['ts']))
-            (p, p_sigma) = _calc_pval_from_trials(ts_vals, h0_ts_percentile)
+            ts_vals = np.concatenate(
+                (ts_vals,
+                 ana.do_trials(rss, 100, mean_n_sig=mu, ppbar=pbar)['ts']))
+            (p, p_sigma) = calculate_pval_from_trials(ts_vals, c)
             n_total_generated_trials += 100
         logger.debug(
             'mu: %g, n_trials: %d, p: %g, p_sigma: %g',
@@ -452,7 +461,18 @@ def generate_mu_of_p_spline_interpolation(
         if(pbar is not None):
             pbar.increment()
 
-    spline = interp1d(p_vals, mu_vals, kind=kind)
+    # Make a mu(p) spline via interp1d.
+    # The interp1d function requires unique x values. So we need to sort the
+    # p_vals in increasing order and mask out repeating p values.
+    p_mu_vals = np.array(sorted(zip(p_vals, mu_vals)), dtype=np.float)
+    p_vals = p_mu_vals[:,0]
+    unique_pval_mask = np.concatenate(([True], np.invert(
+        p_vals[1:] <= p_vals[:-1])))
+    p_vals = p_vals[unique_pval_mask]
+    mu_vals = p_mu_vals[:,1][unique_pval_mask]
+
+    spline = interp1d(p_vals, mu_vals, kind=kind, copy=False,
+        assume_sorted=True)
 
     if(pbar is not None):
         pbar.finish()
@@ -529,7 +549,8 @@ def create_trial_data_file(
     np.save(pathfilename, trial_data)
 
 
-def extend_trial_data_file(analysis, rss, pathfilename, ns_max=30, N=1000):
+def extend_trial_data_file(
+        analysis, rss, pathfilename, ns_max=30, N=1000):
     """Appends the trial data file with `N` generated trials for each mean
     number of injected signal events up to `ns_max` for a given analysis.
 
