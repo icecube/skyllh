@@ -218,6 +218,11 @@ class ProgressBar(object):
         If this progress bar has a parent, it adds itself to the parent's list
         of running sub progress bars. Otherwise it will render and print this
         progress bar for the first time.
+
+        Returns
+        -------
+        self : instance of ProgressBar
+            The instance of this ProgressBar.
         """
         self._start_time = time.time()
         self._val = self._startval
@@ -226,12 +231,14 @@ class ProgressBar(object):
         if(parent is not None):
             # Add this progress bar to the parent progress bar.
             parent.add_sub_progress_bar(self)
-            return
+            return self
 
         self._last_rendered_pbar_str = self._render_pbar_str()
 
         sys.stdout.write(self._last_rendered_pbar_str)
         sys.stdout.flush()
+
+        return self
 
     def finish(self):
         """Finishes this progress bar by setting the current progress value to
@@ -267,3 +274,14 @@ class ProgressBar(object):
         self._val = val
 
         self.trigger_rerendering()
+
+    def increment(self, dval=1):
+        """Updates the progress bar by incrementing the progress by the given
+        integral amount.
+
+        Parameters
+        ----------
+        dval : int
+            The amount of progress to increment the progress bar with.
+        """
+        self.update(self._val + dval)
