@@ -8,7 +8,12 @@ point-like source at a given location in the sky with a given flux model.
 
 import numpy as np
 
-from skyllh.core.py import ObjectCollection, issequence, float_cast
+from skyllh.core.py import (
+    ObjectCollection,
+    classname,
+    float_cast,
+    issequence
+)
 
 
 class SourceLocation(object):
@@ -182,6 +187,13 @@ class PointLikeSource(SourceModel):
         This is a short-cut for `self.loc.dec`.
         """
         return self._loc._dec
+
+    def __str__(self):
+        """Pretty string representation of this class instance.
+        """
+        s = classname(self) + ': { ra=%.3f deg, dec=%.3f deg }'%(
+            np.rad2deg(self.ra), np.rad2deg(self.dec))
+        return s
 
 
 class PointLikeSourceCollection(SourceCollection):
