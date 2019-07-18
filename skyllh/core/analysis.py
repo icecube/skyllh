@@ -976,6 +976,46 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         return (self._fitparamset, log_lambda_max, fitparam_values, status)
 
+    def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
+        """Calculates the factor the source's fluxmodel has to be scaled
+        in order to obtain the given mean number of signal events in the
+        detector.
+
+        Parameters
+        ----------
+        mean_ns : float
+            The mean number of signal events in the detector for which the
+            scaling factor is calculated.
+        fitparam_values : (N_fitparams,)-shaped 1D ndarray
+            The ndarray holding the fit parameter values that should be used for
+            the flux calculation.
+
+        Returns
+        -------
+        factor : float
+            The factor the given fluxmodel needs to be scaled in order to obtain
+            the given mean number of signal events in the detector.
+        """
+        fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(
+            fitparam_values)
+
+        # We use the DatasetSignalWeights class instance of this analysis to
+        # calculate the detector signal yield for all datasets.
+        dataset_signal_weights = self._llhratio.dataset_signal_weights
+
+        # Calculate the detector signal yield, i.e. the mean number of signal
+        # events in the detector, for the given reference flux model.
+        mean_ns_ref = 0
+        detsigyields = dataset_signal_weights.detsigyield_arr[0]
+        for detsigyield in detsigyields:
+            (Yj, Yj_grads) = detsigyield(
+                dataset_signal_weights._src_arr_list[0], fitparams_arr)
+            mean_ns_ref += Yj[0]
+
+        factor = mean_ns / mean_ns_ref
+
+        return factor
+
 
 class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
     TimeIntegratedMultiDatasetSingleSourceAnalysis):
