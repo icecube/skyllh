@@ -3,6 +3,8 @@
 """This file contains global configuration dictionary.
 """
 
+from astropy import units
+
 CFG = {
     'multiproc': {
         # The number of CPUs to use for functions that allow multi-processing.
@@ -23,5 +25,12 @@ CFG = {
     'repository': {
         # A base path of repository datasets.
         'base_path': None
+    },
+    'physics': {
+        'flux': {
+            # The internal flux unit to use for the calculation. This unit must
+            # match with the units used in the monte-carlo data.
+            'internal_unit': 1./units.GeV * 1./units.cm**2 * 1./units.s
+        }
     }
 }
