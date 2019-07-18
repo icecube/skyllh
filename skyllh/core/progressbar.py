@@ -137,20 +137,17 @@ class ProgressBar(object):
         # Calculate the elapsed time (ELT) for the first 10 seconds or if we
         # are at the end of the progress. Otherwise calculate the estimated
         # remaining time (ERT).
+        curr_time = time.time()
+        t_elapsed = curr_time - self._start_time
+
+        t_label = 'ELT'
+        t = t_elapsed
+
         progress = self.progress
-        if(progress > 0):
-            curr_time = time.time()
-            t_elapsed = curr_time - self._start_time
-            if((t_elapsed < 10) or (self._val == self._maxval)):
-                t_label = 'ELT'
-                t = t_elapsed
-            else:
-                t_label = 'ERT'
-                t_total = t_elapsed / progress
-                t = t_total - t_elapsed
-        else:
-            t_label = 'ELT'
-            t = 0
+        if(progress > 0 and (t_elapsed >= 10) and (self._val < self._maxval)):
+            t_label = 'ERT'
+            t_total = t_elapsed / progress
+            t = t_total - t_elapsed
 
         (t_h, t_m, t_s) = self._sec_to_hms(t)
 
