@@ -143,8 +143,8 @@ def estimate_mean_nsignal_for_ts_quantile(
     # Make sure ns_range is mutable.
     ns_range_ = list(mu_range)
 
-    ns_lower_bound = ns_range_[0]
-    ns_upper_bound = ns_range_[1]
+    ns_lower_bound = 0
+    ns_upper_bound = +np.inf
 
     # The number of required trials per mu point for the desired uncertainty in
     # probability can be estimated via binomial statistics.
@@ -255,9 +255,9 @@ def estimate_mean_nsignal_for_ts_quantile(
 
             # Store ns0 for the new lower or upper bound depending on where the
             # p0 lies.
-            if(p0+eps_p <= p):
+            if(p0+p0_sigma+eps_p <= p):
                 ns_lower_bound = ns0
-            elif(p0-eps_p >= p):
+            elif(p0-p0_sigma-eps_p >= p):
                 ns_upper_bound = ns0
 
             ns1 = ns0 * (1 - np.sign(p0 - p) * 0.05)
@@ -290,6 +290,13 @@ def estimate_mean_nsignal_for_ts_quantile(
             # Restrict the range to ns values we already know well.
             ns_range_[0] = np.max((ns_range_[0], ns_lower_bound))
             ns_range_[1] = np.min((ns_range_[1], ns_upper_bound))
+
+            # In case the new calculated mu range is smaller than the minimum
+            # delta mu, the mu range gets widened by half of the minimum delta
+            # mu on both sides.
+            if(np.abs(ns_range_[1] - ns_range_[0]) < min_dmu):
+                ns_range_[0] -= 0.5*min_dmu
+                ns_range_[1] += 0.5*min_dmu
         else:
             # The current ns corresponds to a probability p0 that is at least
             # 5 sigma away from the desired probability p, hence
@@ -299,9 +306,14 @@ def estimate_mean_nsignal_for_ts_quantile(
             else:
                 ns_range_[1] = ns0
 
-        if((ns_range_[1] - ns_range_[0]) <= 0):
-            raise ValueError('The initial mu range did not cover the '
-                'desired mu value!')
+            if(np.abs(ns_range_[1] - ns_range_[0]) < min_dmu):
+                # The mu range became smaller than the minimum delta mu and
+                # still beeing far away from the desired probability.
+                # So move the mu range towards the desired probability.
+                if(p0 < p):
+                    ns_range_[1] += 10*min_dmu
+                else:
+                    ns_range_[0] -= 10*min_dmu
 
 
 def estimate_sensitivity(
