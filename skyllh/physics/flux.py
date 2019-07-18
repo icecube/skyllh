@@ -17,6 +17,8 @@ from copy import deepcopy
 from astropy import units
 
 from skyllh.core.py import classname, isproperty, float_cast
+from skyllh.core.config import CFG
+
 
 def get_conversion_factor_to_internal_flux_unit(fluxmodel):
     """Calculates the unit conversion factor for converting the used flux
@@ -34,7 +36,7 @@ def get_conversion_factor_to_internal_flux_unit(fluxmodel):
     unit_conversion_factor : float
         The unit conversion factor.
     """
-    unit_conversion_factor = (1./fluxmodel.energy_unit * 1./fluxmodel.length_unit**2 * 1./fluxmodel.time_unit).to(1./units.GeV * 1./units.cm**2 * 1./units.s).value
+    unit_conversion_factor = (1./fluxmodel.energy_unit * 1./fluxmodel.length_unit**2 * 1./fluxmodel.time_unit).to(CFG['physics']['flux']['internal_unit']).value
     return unit_conversion_factor
 
 
@@ -97,7 +99,19 @@ class FluxModel(object):
 
     @property
     def unit_str(self):
-        return ' '.join((self.energy_unit.to_string()+'^-1', self.length_unit.to_string()+'^-2', self.time_unit.to_string()+'^-1'))
+        """The string representation of the flux unit.
+        """
+        return '1/(%s %s^2 %s)'%(
+            self.energy_unit.to_string(), self.length_unit.to_string(),
+            self.time_unit.to_string())
+
+    @property
+    def unit_latex_str(self):
+        """The latex string representation of the flux unit.
+        """
+        return r'%s$^{-1}$ %s$^{-2}$ %s$^{-1}$'%(
+            self.energy_unit.to_string(), self.length_unit.to_string(),
+            self.time_unit.to_string())
 
     @property
     @abc.abstractmethod
