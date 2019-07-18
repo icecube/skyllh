@@ -80,7 +80,8 @@ def calculate_pval_from_trials(
 
 
 def estimate_mean_nsignal_for_ts_quantile(
-        ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range):
+        ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
+        ppbar=None):
     """Calculates the mean number of signal events needed to be injected to
     reach a test statistic distribution with defined properties for the given
     analysis.
@@ -93,8 +94,9 @@ def estimate_mean_nsignal_for_ts_quantile(
         The RandomStateService instance to use for generating random numbers.
     h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
         The 1D ndarray holding the test-statistic values for the
-        null-hypothesis. If set to `None`, 1000/(1-h0_ts_quantile)
-        null-hypothesis trials will be generated.
+        null-hypothesis. If set to `None`, the number of trials is calculated
+        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
+        where `eps` is `min(5e-3, h0_ts_quantile/10)`.
     h0_ts_quantile : float
         Null-hypothesis test statistic quantile.
     p : float
@@ -105,6 +107,11 @@ def estimate_mean_nsignal_for_ts_quantile(
     mu_range : 2-element sequence
         The range of mu (lower,upper) to search for mean number of signal
         events.
+    min_dmu : float
+        The minimum delta mu to use for calculating the derivative dmu/dp.
+        The default is ``0.5``.
+    ppbar : instance of ProgressBar | None
+        The possible parent ProgressBar instance.
 
     Returns
     -------
@@ -118,10 +125,12 @@ def estimate_mean_nsignal_for_ts_quantile(
     n_total_generated_trials = 0
 
     if(h0_ts_vals is None):
-        n_bkg = int(1000/(1 - h0_ts_quantile))
-        logger.debug('Generate %d null-hypothesis trials', n_bkg)
-        h0_ts_vals = ana.do_trials(rss, n_bkg, mean_n_sig=0)['ts']
-        n_total_generated_trials += n_bkg
+        eps = min(0.005, h0_ts_quantile/10)
+        n_trials = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
+        logger.debug('Generate %d null-hypothesis trials', n_trials)
+        h0_ts_vals = ana.do_trials(
+            rss, n_trials, mean_n_sig=0, ppbar=ppbar)['ts']
+        n_total_generated_trials += n_trials
 
     h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
     logger.debug('Number of trials after finite cut: %d', len(h0_ts_vals))
@@ -137,6 +146,10 @@ def estimate_mean_nsignal_for_ts_quantile(
     ns_lower_bound = ns_range_[0]
     ns_upper_bound = ns_range_[1]
 
+    # The number of required trials per mu point for the desired uncertainty in
+    # probability can be estimated via binomial statistics.
+    n_trials = int(p*(1-p)/eps_p**2 + 0.5)
+
     while True:
         logger.debug(
             'Doing new loop for nsignal range %s',
@@ -145,13 +158,19 @@ def estimate_mean_nsignal_for_ts_quantile(
         ns0 = (ns_range_[1] + ns_range_[0]) / 2
 
         # Generate statistics (trials) for the current point ns0 as long as
-        #
+        # the we are only 5sigma away from the desired propability and the
+        # uncertainty of the probability is still larger than the desired
+        # uncertainty ``eps_p``.
+        # Initially generate trials for a 5-times larger uncertainty ``eps_p``
+        # to catch ns0 points far away from the desired propability quicker.
+        dn_trials = max(100, int(n_trials/5**2 + 0.5))
         (ts_vals0, p0_sigma, delta_p) = ([], 2*eps_p, 0)
         while (delta_p < p0_sigma*5) and (p0_sigma > eps_p):
             ts_vals0 = np.concatenate((
-                ts_vals0, ana.do_trials(rss, 100, mean_n_sig=ns0)['ts']))
+                ts_vals0, ana.do_trials(
+                    rss, dn_trials, mean_n_sig=ns0, ppbar=ppbar)['ts']))
             (p0, p0_sigma) = calculate_pval_from_trials(ts_vals0, c)
-            n_total_generated_trials += 100
+            n_total_generated_trials += dn_trials
 
             delta_p = np.abs(p0 - p)
 
@@ -159,6 +178,13 @@ def estimate_mean_nsignal_for_ts_quantile(
                 'n_trials: %d, ns0: %.6f, p0: %.6f, p0_sigma: %.6f, '
                 'delta_p: %.6f',
                 ts_vals0.size, ns0, p0, p0_sigma, delta_p)
+
+            # After the initial number of trials generated the number of trials
+            # to generate, dn_trials, for the next iteration of trial generation
+            # to decrease p0_sigma can be set to the number of remaining trials
+            # to reach n_trials. But do at least 100 trials more, in case the
+            # n_trials estimate was initially too low.
+            dn_trials = max(100, n_trials - ts_vals0.size)
 
             if((p0_sigma < eps_p) and (delta_p < eps_p)):
                 # We found the ns0 value that corresponds to the desired
@@ -170,35 +196,53 @@ def estimate_mean_nsignal_for_ts_quantile(
 
                 if(p0 > p):
                     ns1 = ns_range_[0]
+                    if(np.abs(ns0 - ns1) < min_dmu):
+                        ns1 = ns0 - min_dmu
                 else:
                     ns1 = ns_range_[1]
+                    if(np.abs(ns0 - ns1) < min_dmu):
+                        ns1 = ns0 + min_dmu
 
-                ts_vals1 = ana.do_trials(rss, ts_vals0.size,
-                    mean_n_sig=ns1)['ts']
+                ts_vals1 = ana.do_trials(
+                    rss, ts_vals0.size, mean_n_sig=ns1, ppbar=ppbar)['ts']
                 n_total_generated_trials += ts_vals0.size
 
                 (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
-                dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
-
                 logger.debug(
-                    'Estimated |dmu/dp| of %g within mu range (%g,%g) '
+                    'Final mu value is supposed to be within mu range (%g,%g) '
                     'corresponding to p=(%g +-%g, %g +-%g)',
-                    dns_dp, ns0, ns1, p0, p0_sigma, p1, p1_sigma)
+                    ns0, ns1, p0, p0_sigma, p1, p1_sigma)
 
+                # Check if p1 and p0 are equal, which would result in a divison
+                # by zero.
+                if(p0 == p1):
+                    mu = 0.5*(ns0 + ns1)
+                    mu_err = 0.5*np.abs(ns1 - ns0)
 
-                if(p0 > p):
-                    mu = ns0 - dns_dp * delta_p
+                    logger.debug(
+                        'Probability for mu=%g and mu=%g has the same value %g',
+                        ns0, ns1, p0)
                 else:
-                    mu = ns0 + dns_dp * delta_p
-                mu_err = dns_dp * delta_p
+                    dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
 
-                logger.debug(
-                    'Generated %d trials in total',
-                    n_total_generated_trials)
+                    logger.debug(
+                        'Estimated |dmu/dp| = %g within mu range (%g,%g) '
+                        'corresponding to p=(%g +-%g, %g +-%g)',
+                        dns_dp, ns0, ns1, p0, p0_sigma, p1, p1_sigma)
+
+                    if(p0 > p):
+                        mu = ns0 - dns_dp * delta_p
+                    else:
+                        mu = ns0 + dns_dp * delta_p
+                    mu_err = dns_dp * delta_p
 
                 logger.debug(
                     'Estimated final mu to be %g +- %g',
                     mu, mu_err)
+
+                logger.debug(
+                    'Generated %d trials in total',
+                    n_total_generated_trials)
 
                 return (mu, mu_err)
 
@@ -217,13 +261,18 @@ def estimate_mean_nsignal_for_ts_quantile(
                 ns_upper_bound = ns0
 
             ns1 = ns0 * (1 - np.sign(p0 - p) * 0.05)
+            if(np.abs(ns0 - ns1) < min_dmu):
+                if((p0 - p) < 0):
+                    ns1 = ns0 + min_dmu
+                else:
+                    ns1 = ns0 - min_dmu
 
             logger.debug(
                 'Do interpolation between ns=(%.3f, %.3f)',
                 ns0, ns1)
 
             ts_vals1 = ana.do_trials(
-                rss, ts_vals0.size, mean_n_sig=ns1)['ts']
+                rss, ts_vals0.size, mean_n_sig=ns1, ppbar=ppbar)['ts']
             n_total_generated_trials += ts_vals0.size
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
@@ -241,10 +290,6 @@ def estimate_mean_nsignal_for_ts_quantile(
             # Restrict the range to ns values we already know well.
             ns_range_[0] = np.max((ns_range_[0], ns_lower_bound))
             ns_range_[1] = np.min((ns_range_[1], ns_upper_bound))
-
-            if((ns_range_[1] - ns_range_[0]) <= 0):
-                raise ValueError('The initial mu range did not cover the '
-                    'desired mu value!')
         else:
             # The current ns corresponds to a probability p0 that is at least
             # 5 sigma away from the desired probability p, hence
@@ -254,10 +299,14 @@ def estimate_mean_nsignal_for_ts_quantile(
             else:
                 ns_range_[1] = ns0
 
+        if((ns_range_[1] - ns_range_[0]) <= 0):
+            raise ValueError('The initial mu range did not cover the '
+                'desired mu value!')
+
 
 def estimate_sensitivity(
         ana, rss, h0_ts_vals=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
-        mu_range=None):
+        mu_range=None, min_dmu=0.5, ppbar=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -276,8 +325,9 @@ def estimate_sensitivity(
         numbers.
     h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
         The 1D ndarray holding the test-statistic values for the
-        null-hypothesis. If set to `None`, 1000/(1-h0_ts_quantile)
-        null-hypothesis trials will be generated.
+        null-hypothesis. If set to `None`, the number of trials is calculated
+        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
+        where `eps` is `min(5e-3, h0_ts_quantile/10)`.
     h0_ts_quantile : float, optional
         Null-hypothesis test statistic quantile that defines the critical value.
     p : float, optional
@@ -289,6 +339,11 @@ def estimate_sensitivity(
     mu_range : 2-element sequence | None
         Range to search for the mean number of signal events.
         If set to None, the range (0, 10) will be used.
+    min_dmu : float
+        The minimum delta mu to use for calculating the derivative dmu/dp.
+        The default is ``0.5``.
+    ppbar : instance of ProgressBar | None
+        The possible parent ProgressBar instance.
 
     Returns
     -------
@@ -307,14 +362,16 @@ def estimate_sensitivity(
         h0_ts_quantile=h0_ts_quantile,
         p=p,
         eps_p=eps_p,
-        mu_range=mu_range)
+        mu_range=mu_range,
+        min_dmu=min_dmu,
+        ppbar=ppbar)
 
     return (mu, mu_err)
 
 
 def estimate_discovery_potential(
         ana, rss, h0_ts_vals=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
-        mu_range=None):
+        mu_range=None, min_dmu=0.5, ppbar=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -333,8 +390,9 @@ def estimate_discovery_potential(
         numbers.
     h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
         The 1D ndarray holding the test-statistic values for the
-        null-hypothesis. If set to `None`, 1000/(1-h0_ts_quantile)
-        null-hypothesis trials will be generated.
+        null-hypothesis. If set to `None`, the number of trials is calculated
+        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
+        where `eps` is `min(5e-3, h0_ts_quantile/10)`.
     h0_ts_quantile : float, optional
         Null-hypothesis test statistic quantile that defines the critical value.
     p : float, optional
@@ -345,6 +403,11 @@ def estimate_discovery_potential(
     mu_range : 2-element sequence | None
         Range to search for the mean number of signal events.
         If set to None, the range (0, 10) will be used.
+    min_dmu : float
+        The minimum delta mu to use for calculating the derivative dmu/dp.
+        The default is ``0.5``.
+    ppbar : instance of ProgressBar | None
+        The possible parent ProgressBar instance.
 
     Returns
     -------
@@ -364,7 +427,8 @@ def estimate_discovery_potential(
         h0_ts_quantile=h0_ts_quantile,
         p=p,
         eps_p=eps_p,
-        mu_range=mu_range)
+        mu_range=mu_range,
+        ppbar=ppbar)
 
     return (mu, mu_err)
 
