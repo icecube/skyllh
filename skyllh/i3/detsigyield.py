@@ -468,8 +468,9 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
     effective area depends soley on the zenith angle, and hence on the
     declination, of the source.
     """
-    def __init__(self, gamma_grid, sin_dec_binning=None,
-                 spline_order_sinDec=2, spline_order_gamma=2, ncpu=None):
+    def __init__(
+            self, gamma_grid, sin_dec_binning=None, spline_order_sinDec=2,
+            spline_order_gamma=2, ncpu=None):
         """Creates a new IceCube detector signal yield implementation
         method object for a power law flux model. It requires a sinDec binning
         definition to compute the sin(dec) dependency of the detector effective
@@ -550,7 +551,8 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         """
         return ['gamma']
 
-    def construct_detsigyield(self, dataset, data, fluxmodel, livetime):
+    def construct_detsigyield(
+            self, dataset, data, fluxmodel, livetime, ppbar=None):
         """Constructs a detector signal yield 2-dimensional log spline
         function for the given power law flux model with varying gamma values.
 
@@ -576,6 +578,8 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         livetime : float | Livetime instance
             The live-time in days or an instance of Livetime to use for the
             detector signal yield.
+        ppbar : ProgressBar instance | None
+            The instance of ProgressBar of the optional parent progress bar.
 
         Returns
         -------
@@ -647,11 +651,14 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
                         weights,
                         fluxmodel.copy({'gamma':gamma})), {})
                      for gamma in gamma_grid.grid ]
-        h = np.vstack(multiproc.parallelize(hist, args_list, self.ncpu)).T
+        h = np.vstack(
+            multiproc.parallelize(
+                hist, args_list, self.ncpu, ppbar=ppbar)).T
 
         # Normalize by solid angle of each bin along the sin(dec) axis.
         # The solid angle is given by 2*\pi*(\Delta sin(\delta))
-        h /= (2.*np.pi * np.diff(sin_dec_binning.binedges)).reshape((sin_dec_binning.nbins,1))
+        h /= (2.*np.pi * np.diff(sin_dec_binning.binedges)).reshape(
+            (sin_dec_binning.nbins,1))
 
         log_spl_sinDec_gamma = scipy.interpolate.RectBivariateSpline(
             sin_dec_binning.bincenters, gamma_grid.grid, np.log(h),

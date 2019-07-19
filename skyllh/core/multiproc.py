@@ -18,7 +18,6 @@ from skyllh.core.config import CFG
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import range
 from skyllh.core.random import RandomStateService
-from skyllh.core.session import is_interactive_session
 from skyllh.core.timing import TimeLord
 
 def get_ncpu(local_ncpu):
@@ -188,7 +187,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
 
             # Skip the rest, if we are not in an interactive session, hence
             # there is not progress bar.
-            if(pbar is None):
+            if(not pbar.gets_shown):
                 continue
 
             sarr[0]['n_finished_tasks'] = master_task_idx + 1
@@ -206,9 +205,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
         return result_list
 
     # Create the progress bar if we are in an interactive session.
-    pbar = None
-    if(is_interactive_session()):
-        pbar = ProgressBar(maxval=len(args_list), parent=ppbar).start()
+    pbar = ProgressBar(maxval=len(args_list), parent=ppbar).start()
 
     # Return result list if only one CPU is used.
     if(ncpu == 1):
@@ -216,8 +213,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
         result_list = master_wrapper(
             pbar, sarr, func, args_list, squeue=None, rss=rss, tl=tl)
 
-        if(pbar is not None):
-            pbar.finish()
+        pbar.finish()
 
         return result_list
 
@@ -225,7 +221,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
     # We will use our own process (pid = 0) as a worker too.
     rqueue = mp.Queue()
     squeue = None
-    if(is_interactive_session()):
+    if(pbar.gets_shown):
         squeue = mp.Queue()
     sub_args_list_list = np.array_split(args_list, ncpu)
 
@@ -321,8 +317,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
     for pid in range(len(pid_result_list_map)):
         result_list += pid_result_list_map[pid]
 
-    if(pbar is not None):
-        pbar.finish()
+    pbar.finish()
 
     return result_list
 

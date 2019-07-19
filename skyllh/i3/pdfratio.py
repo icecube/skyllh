@@ -20,8 +20,9 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
     the signal and background PDFs for a grid of different discrete energy
     signal fit parameters, which are defined by the signal PDF set.
     """
-    def __init__(self, signalpdfset, backgroundpdf,
-                 fillmethod=None, interpolmethod=None, ncpu=None):
+    def __init__(
+            self, signalpdfset, backgroundpdf,
+            fillmethod=None, interpolmethod=None, ncpu=None, ppbar=None):
         """Creates a new IceCube signal-over-background energy PDF ratio object.
 
         Parameters
@@ -44,6 +45,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         ncpu : int | None
             The number of CPUs to use to create the ratio splines for the
             different sets of signal parameters.
+        ppbar : ProgressBar instance | None
+            The instance of ProgressBar of the optional parent progress bar.
 
         Raises
         ------
@@ -115,7 +118,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         args_list = [ ((signalpdfset, backgroundpdf, self.fillmethod, gridfitparams),{})
                      for gridfitparams in gridfitparams_list ]
 
-        log_ratio_spline_list = parallelize(create_log_ratio_spline, args_list, self.ncpu)
+        log_ratio_spline_list = parallelize(
+            create_log_ratio_spline, args_list, self.ncpu, ppbar=ppbar)
 
         # Save all the log_ratio splines in a dictionary.
         self._gridfitparams_hash_log_ratio_spline_dict = dict()

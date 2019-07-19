@@ -823,12 +823,17 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         self._pdfratio_list_list.append(list(pdfratios))
 
-    def construct_llhratio(self):
+    def construct_llhratio(self, ppbar=None):
         """Constructs the log-likelihood-ratio (LLH-ratio) function of the
         analysis. This setups all the necessary analysis
         objects like detector signal efficiencies and dataset signal weights,
         constructs the log-likelihood ratio functions for each dataset and the
         final composite llh ratio function.
+
+        Parameters
+        ----------
+        ppbar : ProgressBar instance | None
+            The instance of ProgressBar of the optional parent progress bar.
 
         Returns
         -------
@@ -857,7 +862,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
                 detsigyield_implmethod = detsigyield_implmethod_list[j]
 
             detsigyield = detsigyield_implmethod.construct_detsigyield(
-                dataset, data, fluxmodel, data.livetime)
+                dataset, data, fluxmodel, data.livetime, ppbar=ppbar)
             detsigyield_list.append(detsigyield)
 
         # For multiple datasets we need a dataset signal weights instance in

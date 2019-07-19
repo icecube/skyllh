@@ -27,7 +27,8 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     signal parameters are the parameters that influence the source flux model.
     """
     def __init__(self, data_mc, logE_binning, sinDec_binning, fluxmodel,
-                 fitparam_grid_set, smoothing_filter=None, ncpu=None):
+                 fitparam_grid_set, smoothing_filter=None, ncpu=None,
+                 ppbar=None):
         """Creates a new IceCube energy signal PDF for a given flux model and
         a set of fit parameter grids for the flux model.
         It creates a set of I3EnergyPDF objects for each signal parameter value
@@ -67,6 +68,8 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         ncpu : int | None (default)
             The number of CPUs to use to create the different I3EnergyPDF
             objects for the different fit parameter grid values.
+        ppbar : ProgressBar instance | None
+            The instance of ProgressBar of the optional parent progress bar.
         """
         if(isinstance(fitparam_grid_set, ParameterGrid)):
             fitparam_grid_set = ParameterGridSet([fitparam_grid_set])
@@ -161,7 +164,8 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                         fluxmodel, gridfitparams), {})
                      for gridfitparams in self.gridfitparams_list ]
 
-        i3energypdf_list = parallelize(create_I3EnergyPDF, args_list, self.ncpu)
+        i3energypdf_list = parallelize(
+            create_I3EnergyPDF, args_list, self.ncpu, ppbar=ppbar)
 
         # Save all the I3EnergyPDF objects in the IsSignalPDF PDF registry with
         # the hash of the individual parameters as key.
