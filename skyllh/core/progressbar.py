@@ -7,7 +7,9 @@ import sys
 import time
 
 from skyllh.core import display
+from skyllh.core import session
 from skyllh.core.py import int_cast
+
 
 class ProgressBar(object):
     """This class implements a hierarchical progress bar that can serve as a
@@ -84,6 +86,13 @@ class ProgressBar(object):
         and 1.
         """
         return (self._val - self._startval) / (self._maxval - self._startval)
+
+    @property
+    def gets_shown(self):
+        """(read-only) Flag if the progress bar gets shown. This is ``True``
+        if the program is run in an interactive session, ``False`` otherwise.
+        """
+        return session.is_interactive_session()
 
     def add_sub_progress_bar(self, pbar):
         """Adds the given progress bar to the list of running sub progress bars
@@ -206,6 +215,9 @@ class ProgressBar(object):
             parent.trigger_rerendering()
             return
 
+        if(not session.is_interactive_session()):
+            return
+
         # We are the most top parent progress bar. So we need to get rerendered.
         self.rerender()
 
@@ -230,6 +242,9 @@ class ProgressBar(object):
             parent.add_sub_progress_bar(self)
             return self
 
+        if(not session.is_interactive_session()):
+            return self
+
         self._last_rendered_pbar_str = self._render_pbar_str()
 
         sys.stdout.write(self._last_rendered_pbar_str)
@@ -252,6 +267,9 @@ class ProgressBar(object):
             parent.trigger_rerendering()
             # Remove this progress bar from the parent progress bar.
             parent.remove_sub_progress_bar(self)
+            return
+
+        if(not session.is_interactive_session()):
             return
 
         self._last_rendered_pbar_str = self._render_pbar_str()
