@@ -25,6 +25,7 @@ from skyllh.core.pdf import (
     SpatialPDF
 )
 from skyllh.core.pdfratio import PDFRatio
+from skyllh.core.progressbar import ProgressBar
 from skyllh.core.random import RandomStateService
 from skyllh.core.llhratio import (
     LLHRatio,
@@ -852,6 +853,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             raise ValueError('The number of detector signal yield '
                 'implementation methods is not 1 and does not match the number '
                 'of used datasets in the analysis!')
+        pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
         for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
                                                   self.data_list)):
             if(len(detsigyield_implmethod_list) == 1):
@@ -862,8 +864,10 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
                 detsigyield_implmethod = detsigyield_implmethod_list[j]
 
             detsigyield = detsigyield_implmethod.construct_detsigyield(
-                dataset, data, fluxmodel, data.livetime, ppbar=ppbar)
+                dataset, data, fluxmodel, data.livetime, ppbar=pbar)
             detsigyield_list.append(detsigyield)
+            pbar.increment()
+        pbar.finish()
 
         # For multiple datasets we need a dataset signal weights instance in
         # order to distribute ns over the different datasets.
