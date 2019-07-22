@@ -145,7 +145,9 @@ class Dataset(object):
 
         return livetime
 
-    def __init__(self, name, exp_pathfilenames, mc_pathfilenames, livetime, version, verqualifiers=None):
+    def __init__(
+            self, name, exp_pathfilenames, mc_pathfilenames, livetime, version,
+            verqualifiers=None):
         """Creates a new dataset object that describes a self-consistent set of
         data.
 
@@ -935,6 +937,28 @@ class DatasetCollection(object):
         """
         for (dsname, dataset) in self._datasets.items():
             dataset.mc_field_name_renaming_dict = d
+
+    def set_dataset_prop(self, name, value):
+        """Sets the given property to the given name for all data sets of this
+        data set collection.
+
+        Parameters
+        ----------
+        name : str
+            The name of the property.
+        value : object
+            The value to set for the given property.
+
+        Raises
+        ------
+        KeyError
+            If the given property does not exist in the data sets.
+        """
+        for (dsname, dataset) in self._datasets.items():
+            if(not hasattr(dataset, name)):
+                raise KeyError('The data set "%s" does not have a property '
+                    'named "%s"!'%(dsname, name))
+            setattr(dataset, name, value)
 
     def define_binning(self, name, binedges):
         """Defines a binning definition and adds it to all the datasets of this
