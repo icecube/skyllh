@@ -60,6 +60,10 @@ class I3Dataset(Dataset):
 
         self.grl_pathfilename_list = grl_pathfilenames
 
+        self.grl_field_name_renaming_dict = dict()
+
+        self._grl_data = None
+
     @property
     def grl_pathfilename_list(self):
         """The list of fully qualified file names of the good-run-list
@@ -73,8 +77,23 @@ class I3Dataset(Dataset):
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
         if(not issequenceof(pathfilenames, str)):
-            raise TypeError('The grl_pathfilename_list property must be a sequence of str!')
+            raise TypeError('The grl_pathfilename_list property must be a '
+                'sequence of str!')
         self._grl_pathfilename_list = list(pathfilenames)
+
+    @property
+    def grl_field_name_renaming_dict(self):
+        """The dictionary specifying the field names of the good-run-list data
+        which need to get renamed just after loading the data. The dictionary
+        keys are the old names and their values are the new names.
+        """
+        return self._grl_field_name_renaming_dict
+    @grl_field_name_renaming_dict.setter
+    def grl_field_name_renaming_dict(self, d):
+        if(not isinstance(d, dict)):
+            raise TypeError('The grl_field_name_renaming_dict property must '
+                'be an instance of dict!')
+        self._grl_field_name_renaming_dict = d
 
     @property
     def grl_data(self):
@@ -135,6 +154,7 @@ class I3Dataset(Dataset):
             fileloader_grl = create_FileLoader(
                 self._grl_pathfilename_list)
             grl_data = DataFieldRecordArray(fileloader_grl.load_data())
+            grl_data.rename_fields(self._grl_field_name_renaming_dict)
 
         return grl_data
 
@@ -166,6 +186,9 @@ class I3Dataset(Dataset):
         lt = self.livetime
         if(len(self._grl_pathfilename_list) > 0):
             data_grl = self.load_grl(tl=tl)
+            if('livetime' not in data_grl.field_name_list):
+                raise KeyError('The GRL file(s) "%s" has no data field named '
+                    '"livetime"!'%(','.join(self._grl_pathfilename_list)))
             lt = np.sum(data_grl['livetime'])
 
         # Override the livetime if there is a user defined livetime.
