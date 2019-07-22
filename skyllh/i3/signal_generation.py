@@ -284,11 +284,11 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             The numpy record ndarray holding meta information about the
             generated signal events for the given source hypothesis group.
             The length of this array must be the same as shg_sig_events.
-            It needs to conatin the following data fields:
-                
+            It needs to contain the following data fields:
+
             - 'shg_src_idx': int
                 The source index within the source hypothesis group.
-                
+
         shg_sig_events : numpy record ndarray
             The numpy record ndarray holding the generated signal events for
             the given source hypothesis group and in the format of the original
