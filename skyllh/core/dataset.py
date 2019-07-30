@@ -16,6 +16,7 @@ from skyllh.core.py import (
     str_cast
 )
 from skyllh.core import display
+from skyllh.core.display import ANSIColors
 from skyllh.core.storage import (
     DataFieldRecordArray,
     create_FileLoader
@@ -316,6 +317,17 @@ class Dataset(object):
         self._mc_field_name_renaming_dict = d
 
     @property
+    def exists(self):
+        """(read-only) Flag if all the data files of this data set exists. It is
+        ``True`` if all data files exist and ``False`` otherwise.
+        """
+        for pathfilename in (self._exp_pathfilename_list +
+                             self._mc_pathfilename_list):
+            if(not os.path.exists(pathfilename)):
+                return False
+        return True
+
+    @property
     def exp_field_names(self):
         """(read-only) The tuple of numpy record ndarray field names for the
         experimental data.
@@ -345,6 +357,27 @@ class Dataset(object):
         data (experimental and monte-carlo).
         """
         return self._data_preparation_functions
+
+    def _gen_datafile_pathfilename_entry(self, pathfilename):
+        """Generates a string containing the given pathfilename and if it exists
+        (FOUND) or not (NOT FOUND).
+
+        Parameters
+        ----------
+        pathfilename : str
+            The fully qualified path and filename of the file.
+
+        Returns
+        -------
+        s : str
+            The generated string.
+        """
+        if(os.path.exists(pathfilename)):
+            s = '['+ANSIColors.OKGREEN+'FOUND'+ANSIColors.ENDC+']'
+        else:
+            s = '['+ANSIColors.FAIL+'NOT FOUND'+ANSIColors.ENDC+']'
+        s += ' ' + pathfilename
+        return s
 
     def __gt__(self, ds):
         """Implementation to support the operation ``b = self > ds``, where
@@ -401,7 +434,7 @@ class Dataset(object):
         s1 = ''
 
         if(self.livetime is None):
-            s1 += '{ livetime = UNKNOWN }'
+            s1 += '{ livetime = UNDEFINED }'
         else:
             s1 += '{ livetime = %.3f days }'%(self.livetime)
         s1 += '\n'
@@ -410,13 +443,21 @@ class Dataset(object):
             s1 += 'Description:\n' + self.description + '\n'
 
         s1 += 'Experimental data:\n'
-        s2 = '\n'.join(self.exp_pathfilename_list)
+        s2 = ''
+        for (idx, pathfilename) in enumerate(self.exp_pathfilename_list):
+            if(idx > 0):
+                s2 += '\n'
+            s2 += self._gen_datafile_pathfilename_entry(pathfilename)
         s1 += display.add_leading_text_line_padding(
             display.INDENTATION_WIDTH, s2)
         s1 += '\n'
 
         s1 += 'MC data:\n'
-        s2 = '\n'.join(self.mc_pathfilename_list)
+        s2 = ''
+        for (idx, pathfilename) in enumerate(self.mc_pathfilename_list):
+            if(idx > 0):
+                s2 += '\n'
+            s2 += self._gen_datafile_pathfilename_entry(pathfilename)
         s1 += display.add_leading_text_line_padding(
             display.INDENTATION_WIDTH, s2)
 

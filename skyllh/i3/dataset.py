@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import os.path
 
 from skyllh.core import display
 from skyllh.core.py import issequenceof
@@ -62,8 +63,6 @@ class I3Dataset(Dataset):
 
         self.grl_field_name_renaming_dict = dict()
 
-        self._grl_data = None
-
     @property
     def grl_pathfilename_list(self):
         """The list of fully qualified file names of the good-run-list
@@ -96,12 +95,18 @@ class I3Dataset(Dataset):
         self._grl_field_name_renaming_dict = d
 
     @property
-    def grl_data(self):
-        """(read-only) The numpy record ndarray holding the good-run-list (GRL)
-        data of the data set. It is None, if there is no GRL data available for
-        this data set.
+    def exists(self):
+        """(read-only) Flag if all the data files of this data set exists. It is
+        ``True`` if all data files exist and ``False`` otherwise.
         """
-        return self._grl_data
+        if(not super(I3Dataset,self).exists):
+            return False
+
+        for pathfilename in self._grl_pathfilename_list:
+            if(not os.path.exists(pathfilename)):
+                return False
+
+        return True
 
     def __str__(self):
         """Implementation of the pretty string representation of the I3Dataset
@@ -112,8 +117,12 @@ class I3Dataset(Dataset):
 
         s1 = ''
         s1 += 'GRL data:\n'
+        s2 = ''
         if(len(self.grl_pathfilename_list) > 0):
-            s2 = '\n'.join(self.grl_pathfilename_list)
+            for (idx, pathfilename) in enumerate(self.grl_pathfilename_list):
+                if(idx > 0):
+                    s2 += '\n'
+                s2 += self._gen_datafile_pathfilename_entry(pathfilename)
         else:
             s2 += 'None'
         s1 += display.add_leading_text_line_padding(
