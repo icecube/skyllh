@@ -1085,7 +1085,7 @@ class DatasetCollection(object):
                 'the dictionary has %d entries.'%(
                     len(self._datasets), len(livetime)))
 
-        pbar = ProgressBar(len(self._datasets)).start()
+        pbar = ProgressBar(len(self._datasets), parent=ppbar).start()
         data_dict = dict()
         for (dsname, dataset) in self._datasets.items():
             data_dict[dsname] = dataset.load_data(
