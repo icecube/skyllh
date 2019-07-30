@@ -8,6 +8,7 @@ from copy import deepcopy
 
 from skyllh.core.binning import BinningDefinition
 from skyllh.core.livetime import Livetime
+from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
     float_cast,
     issequence,
@@ -1049,6 +1050,50 @@ class DatasetCollection(object):
         """
         for (dsname, dataset) in self._datasets.items():
             dataset.update_version_qualifiers(verqualifiers)
+
+    def load_data(self, livetime=None, tl=None, ppbar=None):
+        """Loads the data of all data sets of this data set collection.
+
+        Parameters
+        ----------
+        livetime : float | dict of str => float | None
+            If not None, uses this livetime (in days) as livetime for (all) the
+            DatasetData instances, otherwise uses the live time from the Dataset
+            instance. If a dictionary of data set names and floats is given, it
+            defines the livetime for the individual data sets.
+        tl : TimeLord instance | None
+            The TimeLord instance that should be used to time the data load
+            operation.
+        ppbar : instance of ProgressBar | None
+            The optional parent progress bar.
+
+        Returns
+        -------
+        data_dict : dictionary str => instance of DatasetData
+            The dictionary with the DatasetData instance holding the data of
+            an individual data set as value and the data set's name as key.
+        """
+        if(not isinstance(livetime, dict)):
+            livetime_dict = dict()
+            for (dsname, dataset) in self._datasets.items():
+                livetime_dict[dsname] = livetime
+            livetime = livetime_dict
+
+        if(len(livetime) != len(self._datasets)):
+            raise ValueError('The livetime argument must be None, a single '
+                'float, or a dictionary with %d str:float entries! Currently '
+                'the dictionary has %d entries.'%(
+                    len(self._datasets), len(livetime)))
+
+        pbar = ProgressBar(len(self._datasets)).start()
+        data_dict = dict()
+        for (dsname, dataset) in self._datasets.items():
+            data_dict[dsname] = dataset.load_data(
+                livetime=livetime[dsname], tl=tl)
+            pbar.increment()
+        pbar.finish()
+
+        return data_dict
 
 
 class DatasetData(object):
