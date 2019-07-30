@@ -577,17 +577,30 @@ class DataFieldRecordArray(object):
         for fname in self._field_name_list:
             self._data_fields[fname][indices] = arr[fname]
 
-    def rename_fields(self, convertions):
+    def rename_fields(self, convertions, must_exist=False):
         """Renames the given fields of this array.
 
         Parameters
         ----------
         convertions : dict of `old_name` -> `new_name`
             The dictionary holding the old and new names of the data fields.
+        must_exist : bool
+            Flag if the given fields must exist. If set to ``True`` and a field
+            does not exist, a KeyError is raised.
+
+        Raises
+        ------
+        KeyError
+            If ``must_exist`` is set to ``True`` and a given field does not
+            exist.
         """
         for (old_fname, new_fname) in convertions.items():
-            self._data_fields[new_fname] = self._data_fields[old_fname]
-            self._data_fields.pop(old_fname)
+            if(old_fname in self.field_name_list):
+                self._data_fields[new_fname] = self._data_fields[old_fname]
+                self._data_fields.pop(old_fname)
+            elif(must_exist is True):
+                raise KeyError('The required field "%s" does not exist!'%(
+                    old_fname))
 
         self._field_name_list = list(self._data_fields.keys())
 
