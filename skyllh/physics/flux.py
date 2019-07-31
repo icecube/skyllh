@@ -8,6 +8,7 @@ The units are defined using the astropy.units module and can be set through
 the properties ``energy_unit``, ``length_unit``, and ``time_unit``.
 The default units are [energy] = GeV, [length] = cm, [time] = s.
 """
+from __future__ import division
 
 import abc
 import numpy as np
@@ -36,7 +37,15 @@ def get_conversion_factor_to_internal_flux_unit(fluxmodel):
     unit_conversion_factor : float
         The unit conversion factor.
     """
-    unit_conversion_factor = (1./fluxmodel.energy_unit * 1./fluxmodel.length_unit**2 * 1./fluxmodel.time_unit).to(CFG['physics']['flux']['internal_unit']).value
+    fluxmodel_flux_unit = 1/(
+        fluxmodel.energy_unit * fluxmodel.length_unit**2 * fluxmodel.time_unit)
+
+    internal_units = CFG['internal_units']
+    internal_flux_unit = 1/(
+        internal_units['energy'] * internal_units['length']**2 *
+        internal_units['time'])
+
+    unit_conversion_factor = (fluxmodel_flux_unit).to(internal_flux_unit).value
     return unit_conversion_factor
 
 
