@@ -127,17 +127,24 @@ def estimate_mean_nsignal_for_ts_quantile(
     if(h0_ts_vals is None):
         eps = min(0.005, h0_ts_quantile/10)
         n_trials = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
-        logger.debug('Generate %d null-hypothesis trials', n_trials)
+        logger.debug(
+            'Generate %d null-hypothesis trials',
+            n_trials)
         h0_ts_vals = ana.do_trials(
             rss, n_trials, mean_n_sig=0, ppbar=ppbar)['ts']
         n_total_generated_trials += n_trials
 
     h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
-    logger.debug('Number of trials after finite cut: %d', len(h0_ts_vals))
+    logger.debug(
+        'Number of trials after finite cut: %d',
+        len(h0_ts_vals))
+    logger.debug(
+        'Min / Max h0 TS value: %e / %e',
+        np.min(h0_ts_vals), np.max(h0_ts_vals))
 
     c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile) * 100)
     logger.debug(
-        'Critical ts value for bkg ts quantile %g: %g',
+        'Critical ts value for bkg ts quantile %g: %e',
         h0_ts_quantile, c)
 
     # Make sure ns_range is mutable.
@@ -276,9 +283,29 @@ def estimate_mean_nsignal_for_ts_quantile(
             n_total_generated_trials += ts_vals0.size
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
-            dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
 
-            logger.debug('dns/dp = %.3f', dns_dp)
+            # Check if p0 and p1 are equal, which would result into a division
+            # by zero.
+            if(p0 == p1):
+                dp = 0.5*(p0_sigma + p1_sigma)
+                logger.debug(
+                    'p1 and p0 are equal to %g, causing division by zero. '
+                    'p0_sigma=%g, p1_sigma=%g. Calculating dns/dp with dp=%g.',
+                    p0, p0_sigma, p1_sigma, dp)
+                dns_dp = np.abs((ns1 - ns0) / dp)
+            else:
+                dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
+                # p0 and p1 might be very similar, resulting into a numerically
+                # infitite slope.
+                if(np.isinf(dns_dp)):
+                    dp = 0.5*(p0_sigma + p1_sigma)
+                    logger.debug(
+                        'Infinite dns/dp dedected: ns0=%g, ns1=%g, p0=%g, '
+                        'p0_sigma=%g, p1=%g, p1_sigma=%g. Recalculating dns/dp '
+                        'with deviation %g.',
+                        ns0, ns1, p0, p0_sigma, p1, p1_sigma, dp)
+                    dns_dp = np.abs((ns1 - ns0) / dp)
+            logger.debug('dns/dp = %g', dns_dp)
 
             if(p0 > p):
                 ns_range_[0] = ns0 - dns_dp * (delta_p + p0_sigma)
