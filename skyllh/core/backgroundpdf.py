@@ -13,13 +13,14 @@ from skyllh.core.pdf import (
 class BackgroundMultiDimGridPDF(MultiDimGridPDF, IsBackgroundPDF):
     """This class provides a multi-dimensional background PDF. The PDF is
     created from pre-calculated PDF data on a grid. The grid data is
-    interpolated using a `scipy.interpolate.RegularGridInterpolator` instance.
+    interpolated using a :class:`scipy.interpolate.RegularGridInterpolator`
+    instance.
     """
     def __init__(self, axis_binnings, pdf_grid_data, norm_factor_func=None):
         """Creates a new background PDF instance for a multi-dimensional PDF
         given as PDF values on a grid. The grid data is interpolated with a
-        `scipy.interpolate.RegularGridInterpolator` instance. As grid points
-        the bin edges of the axis binning definitions are used.
+        :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
+        points the bin edges of the axis binning definitions are used.
 
         Parameters
         ----------
