@@ -44,6 +44,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
     'sphinx.ext.imgmath',
+    'sphinx.ext.intersphinx',
     'nbsphinx'
     #'sphinxcontrib.napoleon'
 ]
@@ -55,6 +56,10 @@ autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance']
 autosummary_generate = True
 
 napoleon_use_rtype = False
+
+intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+                       'scipy': ('https://docs.scipy.org/doc/scipy/reference',
+                                 None)}
 
 nbsphinx_execute = 'never'
 
