@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 
 def make_spline_1d(x, y, kind='linear', **kwargs):
     """Creates a 1D spline for the function y(x) using
-    ``scipy.interpolate.interp1d``.
+    :class:`scipy.interpolate.interp1d`.
 
     Parameters
     ----------
@@ -16,10 +16,10 @@ def make_spline_1d(x, y, kind='linear', **kwargs):
     y : array_like
         The y values.
     kind : str
-        The kind of the spline. See the ``scipy.interpolate.interp1d``
-        documentation for possible values. Default is ``"linear"``.
+        The kind of the spline. See the :class:`scipy.interpolate.interp1d`
+        documentation for possible values. Default is ``'linear'``.
     **kwargs
-        Additional keyword arguments are passed to the ``interp1d`` function.
+        Additional keyword arguments are passed to the :class:`~scipy.interpolate.interp1d` function.
 
     Returns
     -------

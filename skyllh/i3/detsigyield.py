@@ -202,7 +202,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
 
     @property
     def log_spl_sinDec(self):
-        """The scipy.interpolate.InterpolatedUnivariateSpline instance
+        """The :class:`scipy.interpolate.InterpolatedUnivariateSpline` instance
         representing the spline for the log value of the detector signal
         yield as a function of sin(dec).
         """
@@ -258,7 +258,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
     any source flux parameters, hence it is only dependent on the detector
     effective area.
     It constructs a one-dimensional spline function in sin(dec), using a
-    scipy.interpolate.InterpolatedUnivariateSpline.
+    :class:`scipy.interpolate.InterpolatedUnivariateSpline`.
 
     This detector signal yield implementation method works with all flux
     models.
@@ -397,7 +397,7 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
 
     @property
     def log_spl_sinDec_gamma(self):
-        """The scipy.interpolate.RectBivariateSpline instance
+        """The :class:`scipy.interpolate.RectBivariateSpline` instance
         representing the spline for the log value of the detector signal
         yield as a function of sin(dec) and gamma.
         """
@@ -458,7 +458,7 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
     detector signal yield for a variable power law flux model, which has
     the spectral index gamma as fit parameter, assuming a point-like source.
     It constructs a two-dimensional spline function in sin(dec) and gamma, using
-    a scipy.interpolate.RectBivariateSpline. Hence, the detector signal yield
+    a :class:`scipy.interpolate.RectBivariateSpline`. Hence, the detector signal yield
     can vary with the declination and the spectral index, gamma, of the source.
 
     This detector signal yield implementation method works with a

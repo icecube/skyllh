@@ -99,7 +99,7 @@ class MinimizerImpl(object):
 
 class LBFGSMinimizerImpl(MinimizerImpl):
     """The LBFGSMinimizerImpl class provides the minimizer implementation for
-    L-BFG-S minimizer used from the scipy.optimize module.
+    L-BFG-S minimizer used from the :mod:`scipy.optimize` module.
     """
     def __init__(self):
         """Creates a new L-BGF-S minimizer instance to minimize the given
@@ -139,7 +139,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             Default is True.
         kwargs : dict | None
             Optional additional keyword arguments for the underlaying
-            ``scipy.optimize.fmin_l_bfgs_b`` minimization function.
+            :func:`scipy.optimize.fmin_l_bfgs_b` minimization function.
 
         Returns
         -------
