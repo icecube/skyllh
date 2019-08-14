@@ -62,7 +62,7 @@ class DetSigYield(object):
             the used flux model.
         dataset : Dataset instance
             The Dataset instance holding the monte-carlo event data.
-        fluxmodel : FluxModel
+        fluxmodel : ~skyllh.physics.flux.FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime
             The live-time in days to use for the detector signal yield.
@@ -291,7 +291,7 @@ class DetSigYieldImplMethod(object):
             The Dataset instance holding possible dataset specific settings.
         data : DatasetData
             The DatasetData instance holding the monte-carlo event data.
-        fluxmodel : FluxModel
+        fluxmodel : ~skyllh.physics.flux.FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime
             The live-time in days to use for the detector signal yield.
