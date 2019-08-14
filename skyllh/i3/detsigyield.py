@@ -327,7 +327,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
                 The monte-carlo weight of the data event in the unit
                 GeV cm^2 sr.
 
-        fluxmodel : FluxModel
+        fluxmodel : ~skyllh.physics.flux.FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime
             The live-time in days to use for the detector signal yield.
@@ -573,7 +573,7 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
             - 'true_energy' : float
                 The true energy value of the data event.
 
-        fluxmodel : FluxModel
+        fluxmodel : ~skyllh.physics.flux.FluxModel
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime instance
             The live-time in days or an instance of Livetime to use for the

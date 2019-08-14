@@ -56,7 +56,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             The binning definition for the binning in log10(E).
         sinDec_binning : BinningDefinition
             The binning definition for the sin(declination).
-        fluxmodel : FluxModel
+        fluxmodel : ~skyllh.physics.flux.FluxModel
             The flux model to use to create the signal energy PDF.
         fitparam_grid_set : ParameterGridSet | ParameterGrid
             The set of parameter grids. A ParameterGrid object for each
