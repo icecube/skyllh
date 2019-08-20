@@ -28,7 +28,7 @@ def get_conversion_factor_to_internal_flux_unit(fluxmodel):
 
     Parameters
     ----------
-    fluxmodel : ~skyllh.physics.flux.FluxModel
+    fluxmodel : FluxModel
         The flux model instance for which to calculate the unit conversion
         factor.
 
