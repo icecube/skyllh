@@ -244,9 +244,10 @@ class I3Dataset(Dataset):
         # Execute all the data preparation functions for this dataset.
         super(I3Dataset, self).prepare_data(data, tl=tl)
 
-        task = 'Appending IceCube-specific data fields to exp data.'
-        with TaskTimer(tl, task):
-            data.exp.append_field('sin_dec', np.sin(data.exp['dec']))
+        if(data.exp is not None):
+            task = 'Appending IceCube-specific data fields to exp data.'
+            with TaskTimer(tl, task):
+                data.exp.append_field('sin_dec', np.sin(data.exp['dec']))
 
         # Append sin(dec) and sin(true_dec) to the MC data.
         task = 'Appending IceCube-specific data fields to MC data.'

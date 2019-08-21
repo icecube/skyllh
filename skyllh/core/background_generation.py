@@ -327,7 +327,13 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         bkg_events = data_mc_selected[bkg_event_indices]
 
         # Remove MC specific data fields from the background events record
-        # array. So the result contains only experimental data fields.
-        bkg_events.tidy_up(data.exp_field_names)
+        # array. So the result contains only experimental data fields. The list
+        # of experimental data fields is defined as the unique set of the
+        # required experimental data fields defined by the data set, and the
+        # actual experimental data fields (in case there are additional kept
+        # data fields by the user).
+        exp_field_names = list(set(
+            list(dataset.exp_field_names) + data.exp_field_names))
+        bkg_events.tidy_up(exp_field_names)
 
         return (n_bkg, bkg_events)
