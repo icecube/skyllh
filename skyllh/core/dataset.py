@@ -157,8 +157,9 @@ class Dataset(object):
         ----------
         name : str
             The name of the dataset.
-        exp_pathfilenames : str | sequence of str
+        exp_pathfilenames : str | sequence of str | None
             The file name(s), including paths, of the experimental data file(s).
+            This can be None, if a MC-only study is performed.
         mc_pathfilenames : str | sequence of str
             The file name(s), including paths, of the monte-carlo data file(s).
         livetime : float | None
@@ -219,6 +220,8 @@ class Dataset(object):
         return self._exp_pathfilename_list
     @exp_pathfilename_list.setter
     def exp_pathfilename_list(self, pathfilenames):
+        if(pathfilenames is None):
+            pathfilenames = []
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
         if(not issequenceof(pathfilenames, str)):
@@ -512,14 +515,18 @@ class Dataset(object):
             A DatasetData instance holding the experimental and monte-carlo
             data.
         """
-        fileloader_exp = create_FileLoader(self._exp_pathfilename_list)
-        fileloader_mc  = create_FileLoader(self._mc_pathfilename_list)
+        # Load the experimental data if there is any.
+        if(len(self._exp_pathfilename_list) > 0):
+            fileloader_exp = create_FileLoader(self._exp_pathfilename_list)
+            with TaskTimer(tl, 'Loading exp data from disk.'):
+                data_exp = DataFieldRecordArray(fileloader_exp.load_data())
+                data_exp.rename_fields(self._exp_field_name_renaming_dict)
+        else:
+            data_exp = None
 
-        with TaskTimer(tl, 'Loading exp data from disk.'):
-            data_exp = DataFieldRecordArray(fileloader_exp.load_data())
-            data_exp.rename_fields(self._exp_field_name_renaming_dict)
-
+        # Load the monte-carlo data.
         with TaskTimer(tl, 'Loading mc data from disk.'):
+            fileloader_mc = create_FileLoader(self._mc_pathfilename_list)
             data_mc = DataFieldRecordArray(fileloader_mc.load_data())
             data_mc.rename_fields(self._mc_field_name_renaming_dict)
 
@@ -631,12 +638,13 @@ class Dataset(object):
         self.prepare_data(data, tl=tl)
 
         # Drop unrequired data fields.
-        with TaskTimer(tl, 'Cleaning exp data.'):
-            keep_fields_exp = (
-                type(self)._EXP_FIELD_NAMES +
-                keep_fields
-            )
-            data.exp.tidy_up(keep_fields=keep_fields_exp)
+        if(data.exp is not None):
+            with TaskTimer(tl, 'Cleaning exp data.'):
+                keep_fields_exp = (
+                    type(self)._EXP_FIELD_NAMES +
+                    keep_fields
+                )
+                data.exp.tidy_up(keep_fields=keep_fields_exp)
         with TaskTimer(tl, 'Cleaning MC data.'):
             keep_fields_mc = (
                 type(self)._EXP_FIELD_NAMES +
@@ -648,8 +656,9 @@ class Dataset(object):
         # Convert float64 fields into float32 fields if requested.
         if(compress):
             dtype_convertions = { np.dtype(np.float64): np.dtype(np.float32) }
-            with TaskTimer(tl, 'Compressing exp data.'):
-                data.exp.convert_dtypes(dtype_convertions)
+            if(data.exp is not None):
+                with TaskTimer(tl, 'Compressing exp data.'):
+                    data.exp.convert_dtypes(dtype_convertions)
 
             with TaskTimer(tl, 'Compressing MC data.'):
                 data.mc.convert_dtypes(dtype_convertions,
@@ -1106,8 +1115,9 @@ class DatasetData(object):
 
         Parameters
         ----------
-        data_exp : instance of DataFieldRecordArray
+        data_exp : instance of DataFieldRecordArray | None
             The instance of DataFieldRecordArray holding the experimental data.
+            This can be None for a MC-only study.
         data_mc : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the monto-carlo data.
         data_aux : dict
@@ -1127,13 +1137,15 @@ class DatasetData(object):
     @property
     def exp(self):
         """The DataFieldRecordArray instance holding the experimental data.
+        This is None, if there is no experimental data available.
         """
         return self._exp
     @exp.setter
     def exp(self, data):
-        if(not isinstance(data, DataFieldRecordArray)):
-            raise TypeError('The exp property must be an instance of '
-                'DataFieldRecordArray!')
+        if(data is not None):
+            if(not isinstance(data, DataFieldRecordArray)):
+                raise TypeError('The exp property must be an instance of '
+                    'DataFieldRecordArray!')
         self._exp = data
 
     @property
@@ -1175,7 +1187,10 @@ class DatasetData(object):
     @property
     def exp_field_names(self):
         """(read-only) The list of field names present in the experimental data.
+        This is an empty list if there is no experimental data available.
         """
+        if(self._exp is None):
+            return []
         return self._exp.field_name_list
 
     @property
@@ -1202,11 +1217,14 @@ def assert_data_format(dataset, data):
 
     dataset_cls = type(dataset)
 
-    # Check experimental data keys.
-    missing_exp_keys = _get_missing_keys(data.exp.field_name_list,
-        dataset_cls._EXP_FIELD_NAMES)
-    if(len(missing_exp_keys) != 0):
-        raise KeyError('The following data fields are missing for the experimental data of dataset "%s": '%(dataset.name)+', '.join(missing_exp_keys))
+    if(data.exp is not None):
+        # Check experimental data keys.
+        missing_exp_keys = _get_missing_keys(data.exp.field_name_list,
+            dataset_cls._EXP_FIELD_NAMES)
+        if(len(missing_exp_keys) != 0):
+            raise KeyError('The following data fields are missing for the '
+                'experimental data of dataset "%s": '%(dataset.name)+
+                ', '.join(missing_exp_keys))
 
     # Check monte-carlo data keys.
     missing_mc_keys = _get_missing_keys(data.mc.field_name_list,
