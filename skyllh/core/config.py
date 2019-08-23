@@ -3,6 +3,9 @@
 """This file contains global configuration dictionary.
 """
 
+import os.path
+import sys
+
 from astropy import units
 
 CFG = {
@@ -35,3 +38,28 @@ CFG = {
         'time': units.s
     }
 }
+
+def set_wd(path):
+    """Sets the project's working directory configuration variable and adds it
+    to the Python path variable.
+
+    Parameters
+    ----------
+    path : str
+        The path of the project's working directory. This can be a path relative
+        to the path given by ``os.path.getcwd``, the current working directory
+        of the program.
+
+    Returns
+    -------
+    wd : str
+        The project's working directory.
+    """
+    if(CFG['project']['working_directory'] in sys.path):
+        sys.path.remove(CFG['project']['working_directory'])
+
+    wd = os.path.abspath(path)
+    CFG['project']['working_directory'] = wd
+    sys.path.insert(0, wd)
+
+    return wd
