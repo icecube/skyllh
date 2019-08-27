@@ -306,7 +306,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
                 'type int!')
         self._spline_order_sinDec = order
 
-    def construct_detsigyield(self, dataset, data, fluxmodel, livetime):
+    def construct_detsigyield(self, dataset, data, fluxmodel, livetime, ppbar=None):
         """Constructs a detector signal yield log spline function for the
         given fixed flux model.
 
@@ -331,6 +331,8 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
             The flux model instance. Must be an instance of FluxModel.
         livetime : float | Livetime
             The live-time in days to use for the detector signal yield.
+        ppbar : ProgressBar instance | None
+            The instance of ProgressBar of the optional parent progress bar.
 
         Returns
         -------
