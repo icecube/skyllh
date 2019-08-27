@@ -134,8 +134,14 @@ def isproperty(obj, name):
     -------
     check : bool
         True if the given attribute is of type property, False otherwise.
+
+    Raises
+    ------
+    AttributeError
+        If the given attribute is not an attribute of the class of ``obj``.
     """
-    return isinstance(type(obj).__dict__[name], property)
+    attr = type(obj).__class__.__getattribute__(type(obj), name)
+    return isinstance(attr, property)
 
 def func_has_n_args(func, n):
     """Checks if the given function `func` has `n` arguments.
