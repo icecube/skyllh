@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-"""This file contains global configuration dictionary.
+"""This file contains the global configuration dictionary, together with some
+convenience utility functions to set different configuration settings.
 """
 
 import os.path
@@ -38,6 +39,50 @@ CFG = {
         'time': units.s
     }
 }
+
+def set_internal_units(
+        angle_unit=None, energy_unit=None, length_unit=None, time_unit=None):
+    """Sets the units used internally to compute quantities. These units must
+    match the units used in the monte-carlo files.
+
+    Parameters
+    ----------
+    angle_unit : instance of astropy.units.UnitBase | None
+        The internal unit that should be used for angles.
+        If set to ``None``, the unit is not changed.
+    energy_unit : instance of astropy.units.UnitBase | None
+        The internal unit that should be used for energy.
+        If set to ``None``, the unit is not changed.
+    length_unit : instance of astropy.units.UnitBase | None
+        The internal unit that should be used for length.
+        If set to ``None``, the unit is not changed.
+    time_unit : instance of astropy.units.UnitBase | None
+        The internal unit that should be used for time.
+        If set to ``None``, the unit is not changed.
+    """
+    if(angle_unit is not None):
+        if(not isinstance(angle_unit, units.UnitBase)):
+            raise TypeError('The angle_unit argument must be an instance of '
+                'astropy.units.UnitBase!')
+        CFG['internal_units']['angle'] = angle_unit
+
+    if(energy_unit is not None):
+        if(not isinstance(energy_unit, units.UnitBase)):
+            raise TypeError('The energy_unit argument must be an instance of '
+                'astropy.units.UnitBase!')
+        CFG['internal_units']['energy'] = energy_unit
+
+    if(length_unit is not None):
+        if(not isinstance(length_unit, units.UnitBase)):
+            raise TypeError('The length_unit argument must be an instance of '
+                'astropy.units.UnitBase!')
+        CFG['internal_units']['length'] = length_unit
+
+    if(time_unit is not None):
+        if(not isinstance(time_unit, units.UnitBase)):
+            raise TypeError('The time_unit argument must be an instance of '
+                'astropy.units.UnitBase!')
+        CFG['internal_units']['time'] = time_unit
 
 def set_wd(path):
     """Sets the project's working directory configuration variable and adds it
