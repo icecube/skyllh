@@ -291,6 +291,15 @@ class Analysis(object):
         """
         return self._sig_generator
 
+    @property
+    def total_livetime(self):
+        """(read-only) The total live-time in days of the loaded data.
+        """
+        livetime = 0
+        for data in self._data_list:
+            livetime += data.livetime
+        return livetime
+
     def add_dataset(self, dataset, data, tdm=None):
         """Adds the given dataset to the list of datasets for this analysis.
 
