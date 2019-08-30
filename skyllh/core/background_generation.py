@@ -3,7 +3,10 @@
 import abc
 import numpy as np
 
-from skyllh.core.optimize import SpatialEventSelectionMethod
+from skyllh.core.optimize import (
+    AllEventSelectionMethod,
+    EventSelectionMethod
+)
 from skyllh.core.py import (
     float_cast,
     func_has_n_args
@@ -106,10 +109,10 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             Flag if the scrambling of the monte-carlo data should be done
             inplace, i.e. without creating a copy of the MC data first.
             Default is False.
-        event_selection_method : instance of SpatialEventSelectionMethod | None
-            If set to an instance of SpatialEventSelectionMethod background
-            events will get drawn only for areas on the sky where the event
-            selection method selects events from.
+        event_selection_method : instance of EventSelectionMethod | None
+            If set to an instance of EventSelectionMethod background
+            events will get selected from the MC only for events that pass the
+            event selection method.
         """
         super(MCDataSamplingBkgGenMethod, self).__init__()
 
@@ -213,14 +216,21 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         pure background events, background events for the analysis have to be
         drawn only for the spatial region where events are evaluated with the
         likelihood ratio function for the analysis.
+        This property can be ``None`` if set to ``None``, or set to the
+        ``AllEventSelectionMethod`` method.
         """
         return self._event_selection_method
     @event_selection_method.setter
     def event_selection_method(self, method):
         if(method is not None):
-            if(not isinstance(method, SpatialEventSelectionMethod)):
+            if(not isinstance(method, EventSelectionMethod)):
                 raise TypeError('The event_selection_method property must be '
-                    'None, or an instance of SpatialEventSelectionMethod!')
+                    'None, or an instance of EventSelectionMethod!')
+            # If the event selection method selects all events, it's equivalent
+            # to have it set to None, because then no operation has to be
+            # performed.
+            if(isinstance(method, AllEventSelectionMethod)):
+                method = None
         self._event_selection_method = method
 
     def generate_events(self, rss, dataset, data, mean=None, poisson=True):
@@ -294,15 +304,16 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             data_mc = data.mc
 
         # Select the significant events.
-        if(self._event_selection_method is None):
+        event_selection_method = self._event_selection_method
+        if(event_selection_method is None):
             data_mc_selected = data_mc
         else:
-            (data_mc_selected, mask) = self._event_selection_method.select_events(
+            (data_mc_selected, mask) = event_selection_method.select_events(
                 data_mc, retmask=True)
 
         # Calculate the mean number of background events for the selected
         # MC events.
-        if(self._event_selection_method is None):
+        if(event_selection_method is None):
             mean_selected = mean
         else:
             mean_selected = self._get_mean_func(dataset, data, data_mc_selected)
@@ -312,7 +323,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         p_binomial = mean_selected / mean
         n_bkg_selected = int(np.around(n_bkg * p_binomial, 0))
 
-        if(self._event_selection_method is None):
+        if(event_selection_method is None):
             p = self._cache_mc_event_bkg_prob
         else:
             p = self._cache_mc_event_bkg_prob[mask] / p_binomial
