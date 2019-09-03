@@ -10,7 +10,7 @@ from skyllh.physics.source import PointLikeSource
 def estimate_ps_sin_dec_sensitivity_curve(
         ana, rss, fitparam_values, sin_dec_min, sin_dec_max, sin_dec_step,
         n_bkg_trials=10000, eps_p=0.0075, mu_min=0, mu_max=20, n_iter=1,
-        ppbar=None):
+        bkg_kwargs=None, sig_kwargs=None, ppbar=None):
     """Estimates the point-source sensitivity of the given analysis as a
     function of sin(dec). This function creates a grid in sin(dec) from
     `sin_dec_min` to `sin_dec_max``in steps of `sin_dec_step`, and places a
@@ -54,6 +54,16 @@ def estimate_ps_sin_dec_sensitivity_curve(
         For each iteration the RandomStateService is re-seeded with a seed that
         is incremented by 1.
         Default is 1.
+    bkg_kwargs : dict | None
+        Additional keyword arguments for the `generate_events` method of the
+        background generation method class. An usual keyword argument is
+        `poisson`.
+    sig_kwargs : dict | None
+        Additional keyword arguments for the `generate_signal_events` method
+        of the `SignalGenerator` class. An usual keyword argument is
+        `poisson`. If `poisson` is set to True, the actual number of
+        generated signal events will be drawn from a Poisson distribution
+        with the given mean number of signal events.
     ppbar : ProgressBar instance | None
         The optional parent progress bar.
 
@@ -91,13 +101,16 @@ def estimate_ps_sin_dec_sensitivity_curve(
             ana.change_source(source)
 
             h0_ts_vals = ana.do_trials(
-                rss, n_bkg_trials, mean_n_sig=0, ppbar=pbar)['ts']
+                rss, n_bkg_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+                sig_kwargs=sig_kwargs, ppbar=pbar)['ts']
 
             mu_min = mu_min_arr[idx]
             mu_max = mu_max_arr[idx]
 
             (mean_ns, mean_ns_err) = estimate_sensitivity(
-                ana, rss, mu_range=(mu_min,mu_max), eps_p=eps_p, h0_ts_vals=h0_ts_vals, ppbar=pbar)
+                ana, rss, mu_range=(mu_min,mu_max), eps_p=eps_p,
+                h0_ts_vals=h0_ts_vals, bkg_kwargs=bkg_kwargs,
+                sig_kwargs=sig_kwargs, ppbar=pbar)
 
             mean_ns_arr[idx,iter_idx] = mean_ns
             mean_ns_err_arr[idx,iter_idx] = mean_ns_err
