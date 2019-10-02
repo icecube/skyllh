@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import logging
 import numpy as np
 
 from skyllh.core.analysis_utils import estimate_sensitivity
@@ -56,12 +57,20 @@ def generate_ps_sin_dec_h0_ts_values(
         The numpy ndarray holding the null-hypothesis ts values for all
         sin(dec) values and iterations.
     """
+    logger = logging.getLogger(__name__)
+
     sin_dec_arr = np.linspace(
         sin_dec_min, sin_dec_max,
         int((sin_dec_max-sin_dec_min)/sin_dec_step)+1, endpoint=True)
 
     h0_ts_vals_arr = np.empty(
         (len(sin_dec_arr), n_iter, n_bkg_trials), dtype=np.float)
+
+    logger.debug(
+        'Generating %d null-hypothesis trials for %d sin(dec) values, '
+        '%d times each, that is %d trials in total',
+        n_bkg_trials, len(sin_dec_arr), n_iter,
+        n_bkg_trials*len(sin_dec_arr)*n_iter)
 
     pbar_iter = ProgressBar(n_iter, parent=ppbar).start()
     for iter_idx in range(n_iter):
@@ -161,6 +170,8 @@ def estimate_ps_sin_dec_sensitivity_curve(
         The ndarray holding the scaling factor the reference flux needs to get
         scaled to obtain the flux for the estimated sensitivity.
     """
+    logger = logging.getLogger(__name__)
+
     mu_min_arr = np.repeat(mu_min, len(sin_dec_arr))
     mu_max_arr = np.repeat(mu_max, len(sin_dec_arr))
 
@@ -168,13 +179,16 @@ def estimate_ps_sin_dec_sensitivity_curve(
     mean_ns_err_arr = np.empty((len(sin_dec_arr), n_iter))
     flux_scaling_arr = np.empty((len(sin_dec_arr), n_iter))
 
-    pbar_iter = ProgressBar(n_iter, parent=ppbar).start()
-    for iter_idx in range(n_iter):
-        pbar = ProgressBar(len(sin_dec_arr), parent=pbar_iter).start()
-        for (sin_dec_idx,sin_dec) in enumerate(sin_dec_arr):
-            source = PointLikeSource(np.pi, np.arcsin(sin_dec))
-            ana.change_source(source)
+    pbar_sin_dec = ProgressBar(n_iter, parent=ppbar).start()
+    for (sin_dec_idx,sin_dec) in enumerate(sin_dec_arr):
+        logger.debug(
+            'Estimate point-source sensitivity for sin(dec) = %g, %d times',
+            sin_dec, n_iter)
+        source = PointLikeSource(np.pi, np.arcsin(sin_dec))
+        ana.change_source(source)
 
+        pbar_iter = ProgressBar(len(sin_dec_arr), parent=pbar_sin_dec).start()
+        for iter_idx in range(n_iter):
             h0_ts_vals = h0_ts_vals_arr[sin_dec_idx,iter_idx]
 
             mu_min = mu_min_arr[sin_dec_idx]
@@ -183,24 +197,56 @@ def estimate_ps_sin_dec_sensitivity_curve(
             (mean_ns, mean_ns_err) = estimate_sensitivity(
                 ana, rss, mu_range=(mu_min,mu_max), eps_p=eps_p,
                 h0_ts_vals=h0_ts_vals, bkg_kwargs=bkg_kwargs,
-                sig_kwargs=sig_kwargs, ppbar=pbar)
+                sig_kwargs=sig_kwargs, ppbar=pbar_iter)
 
             mean_ns_arr[sin_dec_idx,iter_idx] = mean_ns
             mean_ns_err_arr[sin_dec_idx,iter_idx] = mean_ns_err
             flux_scaling_arr[sin_dec_idx,iter_idx] = ana.calculate_fluxmodel_scaling_factor(
                 mean_ns=mean_ns, fitparam_values=np.array(fitparam_values))
 
-            pbar.increment()
-        pbar.finish()
+            # A new iteration is done, update the mu range using the previous
+            # results.
+            mu_min_arr = np.mean(mean_ns_arr[:,0:iter_idx+1]*0.8, axis=1)
+            mu_max_arr = np.mean(mean_ns_arr[:,0:iter_idx+1]*1.2, axis=1)
 
-        # One iteration is done, update the mu range using the previous results.
-        mu_min_arr = np.mean(mean_ns_arr[:,0:iter_idx+1]*0.8, axis=1)
-        mu_max_arr = np.mean(mean_ns_arr[:,0:iter_idx+1]*1.2, axis=1)
+            rss.reseed(rss.seed+1)
 
-        pbar_iter.increment()
+            pbar_iter.increment()
+        pbar_iter.finish()
 
-        rss.reseed(rss.seed+1)
-    pbar_iter.finish()
+        # It could happen that the first estimation wasn't very accurate due to
+        # the unknown seed range for mu. We check for that by calculating the
+        # variance of the further iterations and check if the first estimation
+        # deviates more than 2 times that variance. If so, recalculate the first
+        # estimation.
+        if(n_iter >= 5):
+            mean_ns = mean_ns_arr[sin_dec_idx,0]
+            mean_ns_mean = np.mean(mean_ns_arr[sin_dec_idx,1:])
+            mean_ns_std = np.std(mean_ns_arr[sin_dec_idx,1:])
+            if(np.abs(mean_ns - mean_ns_mean) >= 2*mean_ns_std):
+                logger.debug(
+                    'Detected unprecise estimate for first iteration (mu=%g) '
+                    'for sin(dec)=%g: (|%g - %g| >= 2*%g). Recalculating ...',
+                    mean_ns, sin_dec, mean_ns, mean_ns_mean, mean_ns_std)
+                iter_idx = 0
+
+                h0_ts_vals = h0_ts_vals_arr[sin_dec_idx,iter_idx]
+
+                mu_min = mu_min_arr[sin_dec_idx]
+                mu_max = mu_max_arr[sin_dec_idx]
+
+                (mean_ns, mean_ns_err) = estimate_sensitivity(
+                    ana, rss, mu_range=(mu_min,mu_max), eps_p=eps_p,
+                    h0_ts_vals=h0_ts_vals, bkg_kwargs=bkg_kwargs,
+                    sig_kwargs=sig_kwargs, ppbar=pbar_sin_dec)
+
+                mean_ns_arr[sin_dec_idx,iter_idx] = mean_ns
+                mean_ns_err_arr[sin_dec_idx,iter_idx] = mean_ns_err
+                flux_scaling_arr[sin_dec_idx,iter_idx] =   ana.calculate_fluxmodel_scaling_factor(
+                    mean_ns=mean_ns, fitparam_values=np.array(fitparam_values))
+
+        pbar_sin_dec.increment()
+    pbar_sin_dec.finish()
 
     return (sin_dec_arr, mean_ns_arr, mean_ns_err_arr, flux_scaling_arr)
 
