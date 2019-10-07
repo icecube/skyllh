@@ -239,7 +239,8 @@ class Minimizer(object):
     @minimizer_impl.setter
     def minimizer_impl(self, impl):
         if(not isinstance(impl, MinimizerImpl)):
-            raise TypeError('The minimizer_impl property must be an instance of MinimizerImpl!')
+            raise TypeError('The minimizer_impl property must be an instance '
+                'of MinimizerImpl!')
         self._minimizer_impl = impl
 
     @property
@@ -252,10 +253,13 @@ class Minimizer(object):
     @max_repetitions.setter
     def max_repetitions(self, n):
         if(not isinstance(n, int)):
-            raise TypeError('The maximal repetitions property must be of type int!')
+            raise TypeError('The maximal repetitions property must be of type '
+                'int!')
         self._max_repetitions = n
 
-    def minimize(self, rss, fitparamset, func, args=None, func_provides_grads=True, kwargs=None):
+    def minimize(
+            self, rss, fitparamset, func, args=None, func_provides_grads=True,
+            kwargs=None):
         """Minimizes the the given function ``func`` by calling the ``minimize``
         method of the minimizer implementation.
 
@@ -297,20 +301,22 @@ class Minimizer(object):
         minimizer method.
         """
         if(not isinstance(fitparamset, FitParameterSet)):
-            raise TypeError('The fitparamset argument must be an instance of FitParameterSet!')
+            raise TypeError('The fitparamset argument must be an instance of '
+                'FitParameterSet!')
 
         bounds = fitparamset.bounds
 
-        (xmin, fmin, status) = self.minimizer_impl.minimize(
-            fitparamset.initials, bounds, func, args, func_provides_grads, kwargs=kwargs)
+        (xmin, fmin, status) = self._minimizer_impl.minimize(
+            fitparamset.initials, bounds, func, args, func_provides_grads,
+            kwargs=kwargs)
 
         reps = 0
-        while((not self.minimizer_impl.has_converged(status)) and
-              self.minimizer_impl.is_repeatable(status) and
-              reps < self.max_repetitions
+        while((not self._minimizer_impl.has_converged(status)) and
+              self._minimizer_impl.is_repeatable(status) and
+              reps < self._max_repetitions
         ):
             # The minimizer did not converge at the first time, but it is
-            # possible to repeated the minimization process with different
+            # possible to repeat the minimization process with different
             # initials to obtain a better result.
 
             # Create a new set of random parameter initials based on the
@@ -318,8 +324,9 @@ class Minimizer(object):
             initials = fitparamset.generate_random_initials(rss)
 
             # Repeat the minimization process.
-            (xmin, fmin, status) = self.minimizer_impl.minimize(
-                initials, bounds, func, args, func_provides_grads, kwargs=kwargs)
+            (xmin, fmin, status) = self._minimizer_impl.minimize(
+                initials, bounds, func, args, func_provides_grads,
+                kwargs=kwargs)
 
             reps += 1
 
