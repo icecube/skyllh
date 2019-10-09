@@ -563,16 +563,41 @@ class Dataset(object):
             raise TypeError('The argument "func" must be a callable object with call signature __call__(data)!')
         self._data_preparation_functions.append(func)
 
-    def remove_data_preparation(self, index=-1):
-        """Removes data preparation function from the dataset.
+    def remove_data_preparation(self, key=-1):
+        """Removes a data preparation function from the dataset.
 
         Parameters
         ----------
-        index : int, optional
-            Index of which data preparation function to remove. Default value
-            is the last added function.
+        key : str, int, optional
+            The name or the index of the data preparation function that should
+            be remove. Default value is ``-1``, i.e. the last added function.
+
+        Raises
+        ------
+        TypeError
+            If the type of the key argument is invalid.
+        IndexError
+            If the given key is out of range.
+        KeyError
+            If the data preparation function cannot be found.
         """
-        del self._data_preparation_functions[index]
+        if(isinstance(key, int)):
+            n = len(self._data_preparation_functions)
+            if((key < -n) or (key >= n)):
+                raise IndexError('The given index (%d) for the data '
+                    'preparation function is out of range (%d,%d)!'%(
+                        key, -n, n-1))
+            del self._data_preparation_functions[key]
+            return
+        elif(isinstance(key, str)):
+            for (i,func) in enumerate(self._data_preparation_functions):
+                if(func.__name__ == key):
+                    del self._data_preparation_functions[i]
+                    return
+            raise KeyError('The data preparation function "%s" was not found '
+                'in the dataset "%s"!'%(key, self._name))
+
+        TypeError('The key argument must be and instance of int or str!')
 
     def prepare_data(self, data, tl=None):
         """Prepares the data by calling the data preparation callback functions
@@ -835,6 +860,22 @@ class DatasetCollection(object):
         """The list of names of the assigned datasets.
         """
         return sorted(self._datasets.keys())
+
+    @property
+    def version(self):
+        """(read-only) The version number of the datasets collected by this
+        dataset collection.
+        """
+        ds_name = list(self._datasets.keys())[0]
+        return self._datasets[ds_name].version
+
+    @property
+    def verqualifiers(self):
+        """(read-only) The dictionary holding the version qualifiers of the
+        datasets collected by this dataset collection.
+        """
+        ds_name = list(self._datasets.keys())[0]
+        return self._datasets[ds_name].verqualifiers
 
     def __iadd__(self, ds):
         """Implementation of the ``self += dataset`` operation to add a
