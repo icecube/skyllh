@@ -1207,6 +1207,24 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
 
         return (logL - self._logL_0, grads)
 
+    def calculate_ns_grad2(self, fitparam_values):
+        """Calculates the second derivative w.r.t. ns of the log-likelihood
+        ratio function.
+
+        Parameters
+        ----------
+        fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
+            The ndarray holding the current values of the fit parameters.
+            By definition, the first element is the fit parameter for the number
+            of signal events, ns.
+
+        Returns
+        -------
+        nsgrad2 : float
+            The second derivative w.r.t. ns of the log-likelihood ratio function
+            for the given fit parameter values.
+        """
+        return self._llhratio.calculate_ns_grad2(fitparam_values)
 
 #class NestedProfileLLHRatio(LLHRatio):
     #r"""This class provides the abstract base class for a nested profile
