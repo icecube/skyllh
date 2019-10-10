@@ -60,7 +60,7 @@ class MinimizerImpl(object):
     @abc.abstractmethod
     def has_converged(self, status):
         """This method is supposed to analyze the status information dictionary
-        if the last minimization process has convered.
+        if the last minimization process has converged.
 
         Parameters
         ----------
@@ -70,8 +70,8 @@ class MinimizerImpl(object):
 
         Returns
         -------
-        convered : bool
-            The flag if the minimization has convered (True), or not (False).
+        converged : bool
+            The flag if the minimization has converged (True), or not (False).
         """
         pass
 
@@ -173,8 +173,8 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
     def has_converged(self, status):
         """Analyzes the status information dictionary if the minimization
-        process has convered. By definition the minimization process has
-        convered if ``status['warnflag']`` equals 0.
+        process has converged. By definition the minimization process has
+        converged if ``status['warnflag']`` equals 0.
 
         Parameters
         ----------
@@ -184,8 +184,8 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
         Returns
         -------
-        convered : bool
-            The flag if the minimization has convered (True), or not (False).
+        converged : bool
+            The flag if the minimization has converged (True), or not (False).
         """
         if(status['warnflag'] == 0):
             return True
@@ -217,7 +217,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 class NR1dNsMinimizerImpl(MinimizerImpl):
     """The NR1dNsMinimizerImpl class provides a minimizer implementation for the
     Newton-Raphson method for finding the minimum of a one-dimensional R1->R1
-    function, i.e. a function that depends soley on one parameter, the number of
+    function, i.e. a function that depends solely on one parameter, the number of
     signal events ns.
     """
     def __init__(self, ns_tol=1e-4):
@@ -227,7 +227,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         Parameters
         ----------
         ns_tol : float
-            The tolerance / precission for the ns parameter value.
+            The tolerance / precision for the ns parameter value.
         """
         super(NR1dNsMinimizerImpl, self).__init__()
 
@@ -260,7 +260,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
         Additional Keyword Arguments
         ----------------------------
-        There no additional options defined for this minimization
+        There are no additional options defined for this minimization
         implementation.
 
         Returns
@@ -300,7 +300,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         (ns_min, ns_max) = bounds[0]
         if(ns_min > initials[0]):
             raise ValueError('The initial value for ns (%g) must be equal or '
-                'greater then the minimum bound value for ns (%g)'%(
+                'greater than the minimum bound value for ns (%g)'%(
                     initials[0], ns_min))
 
         ns_tol = self.ns_tol
@@ -312,7 +312,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         f = None
         fprime = 0
         x = np.empty((1,), dtype=np.float)
-        # We do the minimization process while the precission of ns is not
+        # We do the minimization process while the precision of ns is not
         # reached yet or the function is still rising or falling fast, i.e. the
         # minimum is in a deep well.
         while (ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1):
@@ -322,7 +322,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
             if(ns == ns_min and fprime >= 0):
                 # We found the function minimum to be below the minimum bound of
                 # the parameter value, but the function is rising. This can be
-                # considered as convered.
+                # considered as converged.
                 break
 
             step = -fprime / fprimeprime
@@ -356,8 +356,8 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
     def has_converged(self, status):
         """Analyzes the status information dictionary if the minimization
-        process has convered. By definition the minimization process has
-        convered if ``status['warnflag']`` equals 0.
+        process has converged. By definition the minimization process has
+        converged if ``status['warnflag']`` equals 0.
 
         Parameters
         ----------
@@ -367,8 +367,8 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
         Returns
         -------
-        convered : bool
-            The flag if the minimization has convered (True), or not (False).
+        converged : bool
+            The flag if the minimization has converged (True), or not (False).
         """
         return not status['warnflag']
 
