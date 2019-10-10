@@ -570,7 +570,7 @@ class Dataset(object):
         ----------
         key : str, int, optional
             The name or the index of the data preparation function that should
-            be remove. Default value is ``-1``, i.e. the last added function.
+            be removed. Default value is ``-1``, i.e. the last added function.
 
         Raises
         ------
@@ -597,7 +597,7 @@ class Dataset(object):
             raise KeyError('The data preparation function "%s" was not found '
                 'in the dataset "%s"!'%(key, self._name))
 
-        TypeError('The key argument must be and instance of int or str!')
+        TypeError('The key argument must be an instance of int or str!')
 
     def prepare_data(self, data, tl=None):
         """Prepares the data by calling the data preparation callback functions
