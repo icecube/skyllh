@@ -42,7 +42,10 @@ from skyllh.core.optimize import (
 )
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.test_statistic import TestStatistic
-from skyllh.core.minimizer import Minimizer
+from skyllh.core.minimizer import (
+    Minimizer,
+    NR1dNsMinimizerImpl
+)
 from skyllh.core.multiproc import get_ncpu, parallelize
 from skyllh.core.background_generation import BackgroundGenerationMethod
 from skyllh.core.background_generator import BackgroundGenerator
@@ -983,13 +986,29 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        # Define the negative llhratio function, that will get minimized.
-        def func(fitparam_values):
+        # Define the negative llhratio function, that will get minimized for
+        # the general case.
+        def func_general(fitparam_values):
             (f, grads) = self._llhratio.evaluate(fitparam_values)
             return (-f, -grads)
 
+        # Define the negative llhratio function, that will get minimized when
+        # using the Newton-Rapson 1D minimizer for llhratio functions depending
+        # solely on ns.
+        def func_nr1d_ns(fitparam_values):
+            (f, grads) = self._llhratio.evaluate(fitparam_values)
+            grad2_ns = self._llhratio.calculate_ns_grad2(fitparam_values)
+            return (-f, -grads[0], -grad2_ns)
+
+        # Select the right function.
+        func = func_general
+        minimize_kwargs = {'func_provides_grads': True}
+        if(isinstance(self._minimizer.minimizer_impl, NR1dNsMinimizerImpl)):
+            func = func_nr1d_ns
+            minimize_kwargs = {}
+
         (fitparam_values, fmin, status) = self._minimizer.minimize(
-            rss, self._fitparamset, func)
+            rss, self._fitparamset, func, kwargs=minimize_kwargs)
         log_lambda_max = -fmin
 
         return (self._fitparamset, log_lambda_max, fitparam_values, status)
