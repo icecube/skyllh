@@ -190,16 +190,43 @@ def float_cast(v, errmsg, allow_None=False):
     """Casts the given value to a float. If the cast is impossible, a TypeError
     is raised with the given error message. If `allow_None` is set to `True`
     the value `v` can also be `None`.
+
+    Parameters
+    ----------
+    v : to_float_castable object | sequence of to_float_castable objects
+        The object that should get casted to a float. This can also be a
+        sequence of objects that should get casted to floats.
+    errmsg : str
+        The error message in case the cast failed.
+    allow_None : bool
+        Flag if ``None`` is allowed as value for v. If yes, the casted result is
+        ``None``.
+
+    Returns
+    -------
+    float | None | list of float and or None
+        The float / ``None`` value casted from ``v``. If a sequence of objects
+        was provided, a list of casted values is returned.
     """
-    if(allow_None and v is None):
+    # Define cast function for a single object.
+    def _obj_float_cast(v, errmsg, allow_None):
+        if(allow_None and v is None):
+            return v
+
+        try:
+            v = float(v)
+        except:
+            raise TypeError(errmsg)
+
         return v
 
-    try:
-        v = float(v)
-    except:
-        raise TypeError(errmsg)
+    if(issequence(v)):
+        float_list = []
+        for el_v in v:
+            float_list.append(_obj_float_cast(el_v, errmsg, allow_None))
+        return float_list
 
-    return v
+    return _obj_float_cast(v, errmsg, allow_None)
 
 def str_cast(v, errmsg):
     """Casts the given value to a str object.
