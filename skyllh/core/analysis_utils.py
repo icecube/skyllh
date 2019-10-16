@@ -8,7 +8,13 @@ from numpy.lib import recfunctions as np_rfn
 import itertools
 
 from skyllh.core.progressbar import ProgressBar
-from skyllh.core.py import issequenceof, range
+from skyllh.core.py import (
+    float_cast,
+    int_cast,
+    issequence,
+    issequenceof,
+    range
+)
 from skyllh.core.session import is_interactive_session
 from skyllh.core.storage import NPYFileLoader
 from skyllh.physics.source import PointLikeSource
@@ -638,18 +644,17 @@ def generate_mu_of_p_spline_interpolation(
 
 
 def create_trial_data_file(
-        analysis, rss, pathfilename, n_trials, mean_n_sig_min=0,
-        mean_n_sig_max=10, mean_n_sig_0_min=0, mean_n_sig_0_max=10,
+        ana, rss, pathfilename, n_trials, mean_n_sig=0, mean_n_sig_null=0,
         mean_n_bkg_list=None, bkg_kwargs=None, sig_kwargs=None,
-        ncpu=None, tl=None):
+        ncpu=None, ppbar=None, tl=None):
     """Creates and fills a trial data file with `n_trials` generated trials for
     each mean number of injected signal events from `ns_min` up to `ns_max` for
     a given analysis.
 
     Parameters
     ----------
-    analysis : Analysis
-        The Analysis instance to use for sensitivity estimation.
+    ana : instance of Analysis
+        The Analysis instance to use for the trial generation.
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
@@ -657,14 +662,25 @@ def create_trial_data_file(
         Trial data file path including the filename.
     n_trials : int
         The number of trials to perform for each hypothesis test.
-    mean_n_sig_min : int
-        The minimum number of mean injected signal events.
-    mean_n_sig_max : int
-        The maximum number of mean injected signal events.
-    mean_n_sig_0_min : int
-        The minimum number of fixed mean signal events for the null-hypothesis.
-    mean_n_ns_0_max : int
-        The maximum number of fixed mean signal events for the null-hypothesis.
+    mean_n_sig : ndarray of float | float | 2- or 3-element sequence of float
+        The array of mean number of injected signal events (MNOISEs) for which
+        to generate trials. If this argument is not a ndarray, an array of
+        MNOISEs is generated based on this argument.
+        If a single float is given, only this given MNOISEs are injected.
+        If a 2-element sequence of floats is given, it specifies the range of
+        MNOISEs with a step size of one.
+        If a 3-element sequence of floats is given, it specifies the range plus
+        the step size of the MNOISEs.
+    mean_n_sig_null : ndarray of float | float | 2- or 3-element sequence of
+                      float
+        The array of the fixed mean number of signal events (FMNOSEs) for the
+        null-hypothesis for which to generate trials. If this argument is not a
+        ndarray, an array of FMNOSEs is generated based on this argument.
+        If a single float is given, only this given FMNOSEs are used.
+        If a 2-element sequence of floats is given, it specifies the range of
+        FMNOSEs with a step size of one.
+        If a 3-element sequence of floats is given, it specifies the range plus
+        the step size of the FMNOSEs.
     bkg_kwargs : dict | None
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
@@ -675,19 +691,81 @@ def create_trial_data_file(
         `poisson`.
     ncpu : int | None
         The number of CPUs to use.
+    ppbar : instance of ProgressBar | None
+        The optional instance of the parent progress bar.
     tl: instance of TimeLord | None
         The instance of TimeLord that should be used to measure individual
         tasks.
-    """
-    trial_data = None
-    for (mean_n_sig, mean_n_sig_0) in itertools.product(
-            range(mean_n_sig_min, mean_n_sig_max+1),
-            range(mean_n_sig_0_min, mean_n_sig_0_max+1)):
 
-        trials = analysis.do_trials(
+    Returns
+    -------
+    seed : int
+        The seed used to generate the trials.
+    mean_n_sig : 1d ndarray
+        The array holding the mean number of signal events used to generate the
+        trials.
+    mean_n_sig_null : 1d ndarray
+        The array holding the fixed mean number of signal events for the
+        null-hypothesis used to generate the trials.
+    trial_data : structured numpy ndarray
+        The trial data that has been written to file.
+    """
+    n_trials = int_cast(n_trials,
+        'The n_trials argument must be castable to type int!')
+
+    if(not isinstance(mean_n_sig, np.ndarray)):
+        if(not issequence(mean_n_sig)):
+            mean_n_sig = float_cast(mean_n_sig,
+                'The mean_n_sig argument must be castable to type float!')
+            mean_n_sig_min = mean_n_sig
+            mean_n_sig_max = mean_n_sig
+            mean_n_sig_step = 1
+        else:
+            mean_n_sig = float_cast(mean_n_sig,
+                'The sequence elements of the mean_n_sig argument must be '
+                'castable to float values!')
+            if(len(mean_n_sig) == 2):
+                (mean_n_sig_min, mean_n_sig_max) = mean_n_sig
+                mean_n_sig_step = 1
+            elif(len(mean_n_sig) == 3):
+                (mean_n_sig_min, mean_n_sig_max, mean_n_sig_step) = mean_n_sig
+
+        mean_n_sig = np.arange(
+            mean_n_sig_min, mean_n_sig_max+1, mean_n_sig_step,
+            dtype=np.float)
+
+    if(not isinstance(mean_n_sig_null, np.ndarray)):
+        if(not issequence(mean_n_sig_null)):
+            mean_n_sig_null = float_cast(mean_n_sig_null,
+                'The mean_n_sig_null argument must be castable to type float!')
+            mean_n_sig_null_min = mean_n_sig_null
+            mean_n_sig_null_max = mean_n_sig_null
+            mean_n_sig_null_step = 1
+        else:
+            mean_n_sig_null = float_cast(mean_n_sig_null,
+                'The sequence elements of the mean_n_sig_null argument must '
+                'be castable to float values!')
+            if(len(mean_n_sig_null) == 2):
+                (mean_n_sig_null_min, mean_n_sig_null_max) = mean_n_sig_null
+                mean_n_sig_null_step = 1
+            elif(len(mean_n_sig_null) == 3):
+                (mean_n_sig_null_min, mean_n_sig_null_max,
+                 mean_n_sig_null_step) = mean_n_sig_null
+
+        mean_n_sig_null = np.arange(
+            mean_n_sig_null_min, mean_n_sig_null_max+1, mean_n_sig_null_step,
+            dtype=np.float)
+
+    pbar = ProgressBar(
+        len(mean_n_sig)*len(mean_n_sig_null), parent=ppbar).start()
+    trial_data = None
+    for (mean_n_sig_, mean_n_sig_null_) in itertools.product(
+            mean_n_sig, mean_n_sig_null):
+
+        trials = ana.do_trials(
             rss, n=n_trials, mean_n_bkg_list=mean_n_bkg_list,
-            mean_n_sig=mean_n_sig, mean_n_sig_0=mean_n_sig_0,
-            bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, ncpu=ncpu)
+            mean_n_sig=mean_n_sig_, mean_n_sig_0=mean_n_sig_null_,
+            bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, ncpu=ncpu, ppbar=pbar)
 
         trials = np_rfn.append_fields(
             trials, 'seed', np.repeat(rss.seed, n_trials))
@@ -698,12 +776,17 @@ def create_trial_data_file(
             trial_data = np_rfn.stack_arrays(
                 [trial_data, trials], usemask=False, asrecarray=True)
 
+        pbar.increment()
+    pbar.finish()
+
     if(trial_data is None):
         raise RuntimeError('No trials have been generated! Check your '
             'generation boundaries!')
 
     # Save the trial data to file.
     np.save(pathfilename, trial_data)
+
+    return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data)
 
 
 def extend_trial_data_file(
