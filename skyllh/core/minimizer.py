@@ -158,6 +158,8 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         """
         if(func_args is None):
             func_args = tuple()
+        if(kwargs is None):
+            kwargs = {}
 
         func_provides_grads = kwargs.pop('func_provides_grads', True)
 
@@ -471,10 +473,13 @@ class Minimizer(object):
             raise TypeError('The fitparamset argument must be an instance of '
                 'FitParameterSet!')
 
+        if(kwargs is None):
+            kwargs = dict()
+
         bounds = fitparamset.bounds
 
         (xmin, fmin, status) = self._minimizer_impl.minimize(
-            fitparamset.initials, bounds, func, args, kwargs=kwargs)
+            fitparamset.initials, bounds, func, args, **kwargs)
 
         reps = 0
         while((not self._minimizer_impl.has_converged(status)) and
@@ -491,7 +496,7 @@ class Minimizer(object):
 
             # Repeat the minimization process.
             (xmin, fmin, status) = self._minimizer_impl.minimize(
-                initials, bounds, func, args, kwargs=kwargs)
+                initials, bounds, func, args, **kwargs)
 
             reps += 1
 
