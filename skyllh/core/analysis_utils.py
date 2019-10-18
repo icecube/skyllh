@@ -765,7 +765,8 @@ def create_trial_data_file(
         trials = ana.do_trials(
             rss, n=n_trials, mean_n_bkg_list=mean_n_bkg_list,
             mean_n_sig=mean_n_sig_, mean_n_sig_0=mean_n_sig_null_,
-            bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, ncpu=ncpu, ppbar=pbar)
+            bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, ncpu=ncpu, tl=tl,
+            ppbar=pbar)
 
         trials = np_rfn.append_fields(
             trials, 'seed', np.repeat(rss.seed, n_trials))
