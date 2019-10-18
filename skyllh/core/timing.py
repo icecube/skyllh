@@ -13,7 +13,7 @@ statement to time the execution of the code within the `with` block.
 """
 
 class TaskRecord(object):
-    def __init__(self, name, duration):
+    def __init__(self, name, duration, niter=1):
         """Creates a new TaskRecord instance.
 
         Parameters
@@ -22,9 +22,13 @@ class TaskRecord(object):
             The name of the task.
         duration : float
             The duration of the task in seconds.
+        niter : int
+            The number of iterations performed on this task.
+            The default is 1.
         """
         self.name = name
         self.duration = duration
+        self.niter = niter
 
     def join(self, tr):
         """Joins this TaskRecord with the given TaskRecord instance.
@@ -36,6 +40,7 @@ class TaskRecord(object):
             TaskRecord instance.
         """
         self.duration += tr.duration
+        self.niter += tr.niter
 
 
 class TimeLord(object):
@@ -110,15 +115,21 @@ class TimeLord(object):
         task_name_list = self.task_name_list
         task_name_len_list = [ len(task_name) for task_name in task_name_list ]
         max_task_name_len = np.minimum(
-            np.max(task_name_len_list), display.PAGE_WIDTH-16)
+            np.max(task_name_len_list), display.PAGE_WIDTH-25)
 
         n_tasks = len(task_name_list)
         for i in range(n_tasks):
             tr = self._task_records[i]
             task_name = tr.name[0:max_task_name_len]
-            task_duration = tr.duration
-            l = '\n[%'+str(max_task_name_len)+'s] %g sec'
-            s += l%(task_name, task_duration)
+            t = tr.duration / tr.niter
+            line = '\n[{task_name:'+str(max_task_name_len)+'s}] {t:7.{p}{c}} '\
+                'sec/iter ({niter:d})'
+            s += line.format(
+                task_name=task_name,
+                t=t,
+                p=1 if t>1e3 or t<1e-3 else 3,
+                c='e' if t > 1e3 or t < 1e-3 else 'f',
+                niter=tr.niter)
 
         return s
 
