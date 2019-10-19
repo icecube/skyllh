@@ -13,22 +13,72 @@ statement to time the execution of the code within the `with` block.
 """
 
 class TaskRecord(object):
-    def __init__(self, name, duration, niter=1):
+    def __init__(self, name, tstart, tend):
         """Creates a new TaskRecord instance.
 
         Parameters
         ----------
         name : str
             The name of the task.
-        duration : float
-            The duration of the task in seconds.
-        niter : int
-            The number of iterations performed on this task.
-            The default is 1.
+        tstart : float | 1d ndarray of float
+            The start time(s) of the task in seconds.
+        tend : float | 1d ndarray of float
+            The end time(s) of the task in seconds.
         """
         self.name = name
-        self.duration = duration
-        self.niter = niter
+
+        tstart = np.atleast_1d(tstart)
+        tend = np.atleast_1d(tend)
+
+        if(len(tstart) != len(tend)):
+            raise ValueError('The number of start and end time stamps must '
+                'be equal!')
+
+        # Create a (2,Niter)-shaped 2D ndarray holding the start and end time
+        # stamps of the task executions. This array must be sorted by the start
+        # time stamps.
+        self._tstart_tend_arr = np.sort(np.vstack((tstart, tend)), axis=1)
+
+    @property
+    def tstart(self):
+        """(read-only) The time stamps the execution of this task started.
+        """
+        return self._tstart_tend_arr[0,:]
+
+    @property
+    def tend(self):
+        """(read-only) The time stamps the execution of this task was stopped.
+        """
+        return self._tstart_tend_arr[1,:]
+
+    @property
+    def duration(self):
+        """(read-only) The total duration (without time overlap) the task was
+        executed.
+        """
+        arr = self._tstart_tend_arr
+
+        d = arr[1,0] - arr[0,0]
+        last_tend = arr[1,0]
+        n = self.niter
+        for idx in range(1, n):
+            tstart = arr[0,idx]
+            tend = arr[1,idx]
+            if(tend <= last_tend):
+                continue
+            if(tstart <= last_tend and tend > last_tend):
+                d += tend - last_tend
+            elif(tstart >= last_tend):
+                d += tend - tstart
+            last_tend = tend
+
+        return d
+
+    @property
+    def niter(self):
+        """(read-only) The number of times this task was executed.
+        """
+        return self._tstart_tend_arr.shape[1]
 
     def join(self, tr):
         """Joins this TaskRecord with the given TaskRecord instance.
@@ -39,8 +89,11 @@ class TaskRecord(object):
             The instance of TaskRecord that should be joined with this
             TaskRecord instance.
         """
-        self.duration += tr.duration
-        self.niter += tr.niter
+        self._tstart_tend_arr = np.sort(
+            np.append(
+                self._tstart_tend_arr, np.vstack((tr.tstart, tr.tend)),
+                axis=1),
+            axis=1)
 
 
 class TimeLord(object):
@@ -59,7 +112,7 @@ class TimeLord(object):
         """
         tname = tr.name
 
-        if(tname in self._task_records_name_idx_map):
+        if(self.has_task_record(tname)):
             # The TaskRecord already exists. Update the task record.
             self_tr = self.get_task_record(tname)
             self_tr.join(tr)
@@ -83,6 +136,22 @@ class TimeLord(object):
         """
         return self._task_records[self._task_records_name_idx_map[name]]
 
+    def has_task_record(self, name):
+        """Checks if this TimeLord instance has a task record of the given name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the task record.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if this TimeLord instance has a task record of the given
+            name, and ``False`` otherwise.
+        """
+        return name in self._task_records_name_idx_map
+
     def join(self, tl):
         """Joins a given TimeLord instance with this TimeLord instance. Tasks
         of the same name will be updated and new tasks will be added.
@@ -95,7 +164,7 @@ class TimeLord(object):
         """
         for tname in tl.task_name_list:
             other_tr = tl.get_task_record(tname)
-            if(tname in self._task_records_name_idx_map):
+            if(self.has_task_record(tname)):
                 # Update the task record.
                 tr = self.get_task_record(tname)
                 tr.join(other_tr)
@@ -195,4 +264,5 @@ class TaskTimer(object):
         if(self._time_lord is None):
             return
 
-        self._time_lord.add_task_record(TaskRecord(self._name, self.duration))
+        self._time_lord.add_task_record(TaskRecord(
+            self._name, self._start, self._end))
