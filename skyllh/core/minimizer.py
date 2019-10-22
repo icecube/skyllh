@@ -211,8 +211,14 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             The flag if the minimization process can be repeated to obtain a
             better minimum.
         """
-        if(status['warnflag'] == 2 and 'FACTR' in str(status['task'])):
-            return True
+        if(status['warnflag'] == 2):
+            task = str(status['task'])
+            if('FACTR' in task):
+                return True
+            if(task == 'ABNORMAL_TERMINATION_IN_LNSRCH'):
+                # This is causes most probably by starting the minimization at
+                # a parameter boundary.
+                return True
         return False
 
 
@@ -499,6 +505,12 @@ class Minimizer(object):
                 initials, bounds, func, args, **kwargs)
 
             reps += 1
+
+        if(not self._minimizer_impl.has_converged(status)):
+            raise ValueError('The minimizer did not converge after %d '
+                'repetitions! The maximum number of repetitions is %d. '
+                'The status dictionary is "%s".'%(
+                    reps, self._max_repetitions, str(status)))
 
         # Check if any fit value is outside its bounds due to rounding errors by
         # the minimizer. If so, set those fit values to their respective bound
