@@ -42,10 +42,6 @@ from skyllh.core.optimize import (
 )
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.test_statistic import TestStatistic
-from skyllh.core.minimizer import (
-    Minimizer,
-    NR1dNsMinimizerImpl
-)
 from skyllh.core.multiproc import get_ncpu, parallelize
 from skyllh.core.background_generation import BackgroundGenerationMethod
 from skyllh.core.background_generator import BackgroundGenerator
@@ -83,15 +79,12 @@ class Analysis(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+    def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
                  test_statistic, bkg_gen_method=None, event_selection_method=None):
         """Constructor of the analysis base class.
 
         Parameters
         ----------
-        minimizer : instance of Minimizer
-            The Minimizer instance that should be used to minimize the negative
-            of the log-likelihood ratio function.
         src_hypo_group_manager : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
@@ -120,7 +113,6 @@ class Analysis(object):
         if(event_selection_method is None):
             event_selection_method = AllEventSelectionMethod(src_hypo_group_manager)
 
-        self.minimizer = minimizer
         self.src_hypo_group_manager = src_hypo_group_manager
         self.src_fitparam_mapper = src_fitparam_mapper
         self.test_statistic = test_statistic
@@ -141,19 +133,6 @@ class Analysis(object):
         # Predefine the variable for the background and signal generators.
         self._bkg_generator = None
         self._sig_generator = None
-
-    @property
-    def minimizer(self):
-        """The Minimizer instance used to minimize the negative of the
-        log-likelihood ratio function.
-        """
-        return self._minimizer
-    @minimizer.setter
-    def minimizer(self, minimizer):
-        if(not isinstance(minimizer, Minimizer)):
-            raise TypeError('The minimizer property must be an instance '
-                'of Minimizer!')
-        self._minimizer = minimizer
 
     @property
     def src_hypo_group_manager(self):
@@ -336,7 +315,8 @@ class Analysis(object):
         self._data_list.append(data)
         self._tdm_list.append(tdm)
 
-    def calculate_test_statistic(self, log_lambda, fitparam_values, *args, **kwargs):
+    def calculate_test_statistic(
+            self, log_lambda, fitparam_values, *args, **kwargs):
         """Calculates the test statistic value by calling the ``evaluate``
         method of the TestStatistic class with the given log_lambda value and
         fit parameter values.
@@ -417,7 +397,7 @@ class Analysis(object):
     @abc.abstractmethod
     def maximize_llhratio(self, rss):
         """This method is supposed to maximize the log-likelihood ratio
-        function.
+        function, by calling the ``maximize`` method of the LLHRatio class.
 
         Parameters
         ----------
@@ -426,12 +406,18 @@ class Analysis(object):
 
         Returns
         -------
-        max_log_lambda : float
-            The (maximum) value of the log_lambda function for the best fit
-            parameter values.
-        best_fitparams : dict
-            The best fit parameters as a dictionary of fit parameter name and
-            value.
+        fitparamset : FitParameterSet instance
+            The instance of FitParameterSet holding the global fit parameter
+            definitions used in the maximization process.
+        log_lambda_max : float
+            The value of the log-likelihood ratio function at its maximum.
+        fitparam_values : (N_fitparam,)-shaped 1D ndarray
+            The ndarray holding the global fit parameter values.
+            By definition, the first element is the value of the fit parameter
+            ns.
+        status : dict
+            The dictionary with status information about the maximization
+            process, i.e. from the minimizer.
         """
         pass
 
@@ -742,7 +728,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
-    def __init__(self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+    def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
                  fitparam_ns,
                  test_statistic, bkg_gen_method=None, event_selection_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
@@ -750,9 +736,6 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         Parameters
         ----------
-        minimizer : instance of Minimizer
-            The Minimizer instance that should be used to minimize the negative
-            of the log-likelihood ratio function.
         src_hypo_group_manager : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
@@ -782,7 +765,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
                 'instance of SingleSourceFitParameterMapper!')
 
         super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
-            minimizer, src_hypo_group_manager, src_fitparam_mapper,
+            src_hypo_group_manager, src_fitparam_mapper,
             test_statistic, bkg_gen_method, event_selection_method)
 
         self.fitparam_ns = fitparam_ns
@@ -836,7 +819,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         self._pdfratio_list_list.append(list(pdfratios))
 
-    def construct_llhratio(self, ppbar=None):
+    def construct_llhratio(self, minimizer, ppbar=None):
         """Constructs the log-likelihood-ratio (LLH-ratio) function of the
         analysis. This setups all the necessary analysis
         objects like detector signal efficiencies and dataset signal weights,
@@ -845,6 +828,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         Parameters
         ----------
+        minimizer : instance of Minimizer
+            The instance of Minimizer that should be used to minimize the
+            negative of the log-likelihood ratio function.
         ppbar : ProgressBar instance | None
             The instance of ProgressBar of the optional parent progress bar.
 
@@ -894,6 +880,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             tdm = self._tdm_list[j]
             pdfratio_list = self._pdfratio_list_list[j]
             llhratio = SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
+                minimizer,
                 self._src_hypo_group_manager,
                 self._src_fitparam_mapper,
                 tdm,
@@ -903,7 +890,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
-            dataset_signal_weights, llhratio_list)
+            minimizer, dataset_signal_weights, llhratio_list)
 
         return llhratio
 
@@ -978,7 +965,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             definitions used in the maximization process.
         log_lambda_max : float
             The value of the log-likelihood ratio function at its maximum.
-        fitparam_values : (N_fitparam+1)-shaped 1D ndarray
+        fitparam_values : (N_fitparam,)-shaped 1D ndarray
             The ndarray holding the global fit parameter values.
             By definition, the first element is the value of the fit parameter
             ns.
@@ -986,31 +973,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        # Define the negative llhratio function, that will get minimized for
-        # the general case.
-        def func_general(fitparam_values):
-            (f, grads) = self._llhratio.evaluate(fitparam_values)
-            return (-f, -grads)
-
-        # Define the negative llhratio function, that will get minimized when
-        # using the Newton-Rapson 1D minimizer for llhratio functions depending
-        # solely on ns.
-        def func_nr1d_ns(fitparam_values):
-            (f, grads) = self._llhratio.evaluate(fitparam_values)
-            grad2_ns = self._llhratio.calculate_ns_grad2(fitparam_values)
-            return (-f, -grads[0], -grad2_ns)
-
-        # Select the right function.
-        func = func_general
-        minimize_kwargs = {'func_provides_grads': True}
-        if(isinstance(self._minimizer.minimizer_impl, NR1dNsMinimizerImpl)):
-            func = func_nr1d_ns
-            minimize_kwargs = {}
-
-        (fitparam_values, fmin, status) = self._minimizer.minimize(
-            rss, self._fitparamset, func, kwargs=minimize_kwargs)
-        log_lambda_max = -fmin
-
+        (log_lambda_max, fitparam_values, status) = self._llhratio.maximize(
+            rss, self._fitparamset)
         return (self._fitparamset, log_lambda_max, fitparam_values, status)
 
     def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
@@ -1071,7 +1035,7 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
            :meth:`maximize_llhratio` method.
     """
     def __init__(
-        self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+        self, src_hypo_group_manager, src_fitparam_mapper,
         fitparam_ns, test_statistic, bkg_gen_method=None,
         event_selection_method=None):
         """Creates a new time-integrated analysis with separate spatial and
@@ -1079,9 +1043,6 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
 
         Parameters
         ----------
-        minimizer : instance of Minimizer
-            The Minimizer instance that should be used to minimize the negative
-            of the log-likelihood ratio function.
         src_hypo_group_manager : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
@@ -1107,7 +1068,7 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
             that selects all events for the analysis.
         """
         super(SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
-            minimizer, src_hypo_group_manager, src_fitparam_mapper,
+            src_hypo_group_manager, src_fitparam_mapper,
             fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
 
     def add_dataset(self, dataset, data, spatial_pdfratio, energy_pdfratio,
@@ -1168,7 +1129,7 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
            :meth:`maximize_llhratio` method.
     """
     def __init__(
-        self, minimizer, src_hypo_group_manager, src_fitparam_mapper,
+        self, src_hypo_group_manager, src_fitparam_mapper,
         fitparam_ns, test_statistic, bkg_gen_method=None,
         event_selection_method=None):
         """Creates a new time-integrated analysis with a single
@@ -1176,9 +1137,6 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
 
         Parameters
         ----------
-        minimizer : instance of Minimizer
-            The Minimizer instance that should be used to minimize the negative
-            of the log-likelihood ratio function.
         src_hypo_group_manager : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
@@ -1204,7 +1162,7 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
             that selects all events for the analysis.
         """
         super(SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
-            minimizer, src_hypo_group_manager, src_fitparam_mapper,
+            src_hypo_group_manager, src_fitparam_mapper,
             fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
 
     def add_dataset(self, dataset, data, multidim_pdfratio, tdm=None):
