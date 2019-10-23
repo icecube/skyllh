@@ -19,6 +19,10 @@ from skyllh.core.py import (
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.detsigyield import DetSigYield
+from skyllh.core.minimizer import (
+    Minimizer,
+    NR1dNsMinimizerImpl
+)
 from skyllh.core.parameters import (
     SourceFitParameterMapper,
     SingleSourceFitParameterMapper,
@@ -36,10 +40,31 @@ class LLHRatio(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
+    def __init__(self, minimizer):
         """Creates a new LLH ratio function instance.
+
+        Parameters
+        ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of this log-likelihood ratio function.
         """
         super(LLHRatio, self).__init__()
+
+        self.minimizer = minimizer
+
+    @property
+    def minimizer(self):
+        """The Minimizer instance used to minimize the negative of the
+        log-likelihood ratio function.
+        """
+        return self._minimizer
+    @minimizer.setter
+    def minimizer(self, minimizer):
+        if(not isinstance(minimizer, Minimizer)):
+            raise TypeError('The minimizer property must be an instance '
+                'of Minimizer!')
+        self._minimizer = minimizer
 
     @abc.abstractmethod
     def evaluate(self, fitparam_values):
@@ -62,6 +87,44 @@ class LLHRatio(object):
         """
         pass
 
+    def maximize(self, rss, fitparamset):
+        """Maximize the log-likelihood ratio function, by using the ``evaluate``
+        method.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance to draw random numbers from.
+            This is needed to generate random parameter initial values.
+        fitparamset : FitParameterSet instance
+            The instance of FitParameterSet holding the global fit parameter
+            definitions used in the maximization process.
+
+        Returns
+        -------
+        log_lambda_max : float
+            The (maximum) value of the log-likelihood ratio (log_lambda)
+            function for the best fit parameter values.
+        fitparam_values : (N_fitparam)-shaped 1D ndarray
+            The ndarray holding the global fit parameter values.
+        status : dict
+            The dictionary with status information about the maximization
+            process, i.e. from the minimizer.
+        """
+        # Define the negative llhratio function, that will get minimized.
+        self_evaluate = self.evaluate
+        def negative_llhratio_func(fitparam_values):
+            (f, grads) = self_evaluate(fitparam_values)
+            return (-f, -grads)
+
+        minimize_kwargs = {'func_provides_grads': True}
+
+        (fitparam_values, fmin, status) = self._minimizer.minimize(
+            rss, fitparamset, negative_llhratio_func, kwargs=minimize_kwargs)
+        log_lambda_max = -fmin
+
+        return (log_lambda_max, fitparam_values, status)
+
 
 class TCLLHRatio(LLHRatio):
     """Abstract base class for a log-likelihood (LLH) ratio function with two
@@ -69,7 +132,7 @@ class TCLLHRatio(LLHRatio):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, mean_n_sig_0):
+    def __init__(self, minimizer, mean_n_sig_0):
         """Creates a new two-component LLH ratio function instance.
 
         Parameters
@@ -77,7 +140,7 @@ class TCLLHRatio(LLHRatio):
         mean_n_sig_0 : float
             The fixed mean number of signal events for the null-hypothesis.
         """
-        super(TCLLHRatio, self).__init__()
+        super(TCLLHRatio, self).__init__(minimizer)
 
         self.mean_n_sig_0 = mean_n_sig_0
 
@@ -93,6 +156,74 @@ class TCLLHRatio(LLHRatio):
             'float value!')
         self._mean_n_sig_0 = v
 
+    @abc.abstractmethod
+    def calculate_ns_grad2(self, fitparam_values):
+        """This method is supposed to calculate the second derivative of the
+        log-likelihood ratio function w.r.t. the fit parameter ns, the number
+        of signal events in the data set.
+
+        Parameters
+        ----------
+        fitparam_values : numpy (N_fitparams,)-shaped 1D ndarray
+            The ndarray holding the current values of the fit parameters.
+            By definition, the first element is the fit parameter for the number
+            of signal events, ns.
+
+        Returns
+        -------
+        nsgrad2 : float
+            The second derivative w.r.t. ns of the log-likelihood ratio function
+            for the given fit parameter values.
+        """
+        pass
+
+    def maximize(self, rss, fitparamset):
+        """Maximizes this log-likelihood ratio function, by minimizing its
+        negative.
+        This method has a special implementation when a 1D Newton-Rapson
+        minimizer is used. In that case only the first and second derivative
+        of the log-likelihood ratio function is calculated.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance that should be used to draw random
+            numbers from. It is used by the minimizer to generate random
+            fit parameter initial values.
+        fitparamset : FitParameterSet instance
+            The instance of FitParameterSet holding the global fit parameter
+            definitions used in the maximization process.
+
+        Returns
+        -------
+        log_lambda_max : float
+            The (maximum) value of the log-likelihood ratio (log_lambda)
+            function for the best fit parameter values.
+        fitparam_values : (N_fitparam)-shaped 1D ndarray
+            The ndarray holding the global fit parameter values.
+        status : dict
+            The dictionary with status information about the maximization
+            process, i.e. from the minimizer.
+        """
+        if(isinstance(self._minimizer.minimizer_impl, NR1dNsMinimizerImpl)):
+            # Define the negative llhratio function, that will get minimized
+            # when using the Newton-Rapson 1D minimizer for llhratio functions
+            # depending solely on ns.
+            self__evaluate = self.evaluate
+            self__calculate_ns_grad2 = self.calculate_ns_grad2
+            def negative_llhratio_func_nr1d_ns(fitparam_values):
+                (f, grads) = self__evaluate(fitparam_values)
+                grad2_ns = self__calculate_ns_grad2(fitparam_values)
+                return (-f, -grads[0], -grad2_ns)
+
+            (fitparam_values, fmin, status) = self._minimizer.minimize(
+                rss, fitparamset, negative_llhratio_func_nr1d_ns)
+            log_lambda_max = -fmin
+
+            return (log_lambda_max, fitparam_values, status)
+
+        return super(TCLLHRatio, self).maximize(rss, fitparamset)
+
 
 class SingleDatasetTCLLHRatio(TCLLHRatio):
     """Abstract base class for a log-likelihood (LLH) ratio function with two
@@ -101,13 +232,16 @@ class SingleDatasetTCLLHRatio(TCLLHRatio):
     __metaclass__ = abc.ABCMeta
 
     def __init__(
-            self, src_hypo_group_manager, src_fitparam_mapper, tdm,
+            self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
             mean_n_sig_0):
         """Creates a new two-component LLH ratio function instance for a single
         data set.
 
         Parameters
         ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of this log-likelihood ratio function.
         src_hypo_group_manager : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance that defines the source
             hypotheses.
@@ -124,7 +258,8 @@ class SingleDatasetTCLLHRatio(TCLLHRatio):
         mean_n_sig_0 : float
             The fixed mean number of signal events for the null-hypothesis.
         """
-        super(SingleDatasetTCLLHRatio, self).__init__(mean_n_sig_0)
+        super(SingleDatasetTCLLHRatio, self).__init__(
+            minimizer, mean_n_sig_0)
 
         self.src_hypo_group_manager = src_hypo_group_manager
         self.src_fitparam_mapper = src_fitparam_mapper
@@ -247,11 +382,15 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
     _one_plus_alpha = 1e-3
 
     def __init__(
-            self, src_hypo_group_manager, src_fitparam_mapper, tdm, pdfratios):
+            self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
+            pdfratios):
         """Constructor of the two-component log-likelihood ratio function.
 
         Parameters
         ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of this log-likelihood ratio function.
         src_hypo_group_manager : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance that defines the source
             hypotheses.
@@ -270,7 +409,8 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             on none, one, or several fit parameters.
         """
         super(ZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
-            src_hypo_group_manager, src_fitparam_mapper, tdm, mean_n_sig_0=0)
+            minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
+            mean_n_sig_0=0)
 
         self.pdfratio_list = pdfratios
 
@@ -431,12 +571,16 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
     a list of independent PDFRatio instances assuming a single source.
     """
     def __init__(
-            self, src_hypo_group_manager, src_fitparam_mapper, tdm, pdfratios):
+            self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
+            pdfratios):
         """Constructor for creating a 2-component, i.e. signal and background,
         log-likelihood ratio function assuming a single source.
 
         Parameters
         ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of this log-likelihood ratio function.
         src_hypo_group_manager : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance that defines the source
             hypotheses.
@@ -459,7 +603,8 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
                 'instance of SingleSourceFitParameterMapper!')
 
         super(SingleSourceZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
-            src_hypo_group_manager, src_fitparam_mapper, tdm, pdfratios)
+            minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
+            pdfratios)
 
         # Construct a PDFRatio array arithmetic object specialized for a single
         # source. This will pre-calculate the PDF ratio values for all PDF ratio
@@ -856,11 +1001,14 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
     By mathematical definition this class is suitable for single and multi
     source hypotheses.
     """
-    def __init__(self, dataset_signal_weights, llhratios):
+    def __init__(self, minimizer, dataset_signal_weights, llhratios):
         """Creates a new composite two-component log-likelihood ratio function.
 
         Parameters
         ----------
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of this log-likelihood ratio function.
         dataset_signal_weights : DatasetSignalWeights
             An instance of DatasetSignalWeights, which calculates the relative
             dataset weight factors.
@@ -871,13 +1019,15 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         self.dataset_signal_weights = dataset_signal_weights
         self.llhratio_list = llhratios
 
-        super(MultiDatasetTCLLHRatio,
-              self).__init__(self._llhratio_list[0].mean_n_sig_0)
+        super(MultiDatasetTCLLHRatio, self).__init__(
+            minimizer, self._llhratio_list[0].mean_n_sig_0)
 
         # Check if the number of datasets the DatasetSignalWeights instance is
         # made for equals the number of log-likelihood ratio functions.
         if(self.dataset_signal_weights.n_datasets != len(self._llhratio_list)):
-            raise ValueError('The number of datasets the DatasetSignalWeights instance is made for must be equal to the number of log-likelihood ratio functions!')
+            raise ValueError('The number of datasets the DatasetSignalWeights '
+                'instance is made for must be equal to the number of '
+                'log-likelihood ratio functions!')
 
         # Define cache variable for the dataset signal weight factors, which
         # will be needed when calculating the second derivative w.r.t. ns of the
@@ -894,7 +1044,8 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
     @dataset_signal_weights.setter
     def dataset_signal_weights(self, obj):
         if(not isinstance(obj, DatasetSignalWeights)):
-            raise TypeError('The dataset_signal_weights property must be an instance of DatasetSignalWeights!')
+            raise TypeError('The dataset_signal_weights property must be an '
+                'instance of DatasetSignalWeights!')
         self._dataset_signal_weights = obj
 
     @property
@@ -1100,20 +1251,24 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
     where :math:`n_{s,0}` is the fixed mean number of signal events for the
     null-hypothesis.
     """
-    def __init__(self, mean_n_sig_0, llhratio):
+    def __init__(self, minimizer, mean_n_sig_0, llhratio):
         """Creates a new ns-profile log-likelihood-ratio function with a
         null-hypothesis where ns is fixed to `mean_n_sig_0`.
 
         Parameters
         ----------
-        llhratio : instance of MultiDatasetTCLLHRatio
-            The instance of MultiDatasetTCLLHRatio, which should be used as
-            log-likelihood function.
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of this log-likelihood ratio function.
         mean_n_sig_0 : float
             The fixed parameter value for the mean number of signal events of
             the null-hypothesis.
+        llhratio : instance of MultiDatasetTCLLHRatio
+            The instance of MultiDatasetTCLLHRatio, which should be used as
+            log-likelihood function.
         """
-        super(NsProfileMultiDatasetTCLLHRatio, self).__init__(mean_n_sig_0)
+        super(NsProfileMultiDatasetTCLLHRatio, self).__init__(
+            minimizer, mean_n_sig_0)
 
         self.llhratio = llhratio
 
