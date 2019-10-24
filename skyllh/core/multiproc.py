@@ -12,8 +12,10 @@ except ImportError:
     from skyllh.core.debugging import QueueHandler
 
 try:
+    # For Python 3.
     import queue
 except ImportError:
+    # For Python 2.
     import Queue as queue
 
 import time
@@ -297,16 +299,26 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
     # Handle log records created by each process.
     pid_result_list_map = {0: result_list_0}
     for proc in processes:
-        # Wait until the process has finished. If the process did not return
-        # with exit code 0, an exception was thrown. In that case the main
-        # process has to raise a RuntimeError exception.
-        while proc.exitcode is None:
-            time.sleep(0.01)
-        if(proc.exitcode != 0):
+        # Get the result record from the result queue.
+        result_received = False
+        proc_died = False
+        while (result_received is False) and (proc_died is False):
+            try:
+                (pid, result_list, proc_tl) = rqueue.get(block=False)
+                result_received = True
+            except queue.Empty:
+                # If this exception is raised, either the child process isn't
+                # finished yet, or it dies due to an exception.
+                if(proc.exitcode is None):
+                    # Child process hasn't finish yet.
+                    # We'll wait a short moment.
+                    time.sleep(0.01)
+                elif(proc.exitcode != 0):
+                    proc_died = True
+        if(proc_died):
             raise RuntimeError('Child process %d did not return with 0! '
                 'Exit code was %d.'%(proc.pid, proc.exitcode))
 
-        (pid, result_list, proc_tl) = rqueue.get()
         pid_result_list_map[pid] = result_list
         if(tl is not None):
             tl.join(proc_tl)
