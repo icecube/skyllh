@@ -801,7 +801,7 @@ class FitParameterSet(object):
         """
         vb = self.bounds
         # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound)
-        ri = vb[:,0] + rss.uniform(size=vb.shape[0]) * (vb[:,1] - vb[:,0])
+        ri = vb[:,0] + rss.random.uniform(size=vb.shape[0])*(vb[:,1] - vb[:,0])
 
         return ri
 
