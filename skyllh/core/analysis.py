@@ -1018,7 +1018,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         return factor
 
 
-class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
+class SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
     TimeIntegratedMultiDatasetSingleSourceAnalysis):
     """This is an analysis class that implements a time-integrated LLH ratio
     analysis with separate spatial and energy PDFs for multiple datasets
@@ -1067,7 +1067,7 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
             If set to None (default), the AllEventSelectionMethod will be used,
             that selects all events for the analysis.
         """
-        super(SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
+        super(SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
             src_hypo_group_manager, src_fitparam_mapper,
             fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
 
@@ -1108,7 +1108,7 @@ class SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
 
         pdfratios = [spatial_pdfratio, energy_pdfratio]
 
-        super(SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis,
+        super(SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis,
             self).add_dataset(dataset, data, pdfratios, tdm)
 
 
