@@ -215,7 +215,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             task = str(status['task'])
             if('FACTR' in task):
                 return True
-            if(task == 'ABNORMAL_TERMINATION_IN_LNSRCH'):
+            if('ABNORMAL_TERMINATION_IN_LNSRCH' in task):
                 # This is causes most probably by starting the minimization at
                 # a parameter boundary.
                 return True
@@ -243,13 +243,14 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
     def minimize(self, initials, bounds, func, func_args=None, **kwargs):
         """Minimizes the given function ``func`` with the given initial function
-        argument values ``initials``.
+        argument values ``initials``. This minimizer implementation will only
+        vary the first parameter. All other parameters will be set to their
+        initial value.
 
         Parameters
         ----------
         initials : 1D numpy ndarray
             The ndarray holding the initial values of all the fit parameters.
-            By definition of this 1D minimizer, this array must be of length 1.
         bounds : 2D (N_fitparams,2)-shaped numpy ndarray
             The ndarray holding the boundary values (vmin, vmax) of the fit
             parameters.
@@ -319,7 +320,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         status = {'warnflag': 0, 'warnreason': ''}
         f = None
         fprime = 0
-        x = np.empty((1,), dtype=np.float)
+        x = np.copy(initials).astype(np.float)
         # We do the minimization process while the precision of ns is not
         # reached yet or the function is still rising or falling fast, i.e. the
         # minimum is in a deep well.
@@ -340,7 +341,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
                 # The function minimum is below the minimum bound of the
                 # parameter value.
                 ns = ns_min
-                if((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1)):
+                if((ns_tol > np.fabs(step)) or (np.fabs(fprime) > 1)):
                     status['warnflag'] = 1
                     status['warnreason'] = 'Function minimum is below the '\
                                            'minimum bound of the parameter '\
@@ -350,7 +351,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
                 # The function minimum is above the maximum bound of the
                 # parameter value.
                 ns = ns_max
-                if((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1)):
+                if((ns_tol > np.fabs(step)) or (np.fabs(fprime) > 1)):
                     status['warnflag'] = 2
                     status['warnreason'] = 'Function minimum is above the '\
                                            'maximum bound of the parameter '\
