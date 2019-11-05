@@ -65,8 +65,10 @@ class I3Dataset(Dataset):
 
     @property
     def grl_pathfilename_list(self):
-        """The list of fully qualified file names of the good-run-list
-        data files for this dataset.
+        """The list of file names of the good-run-list data files for this
+        dataset.
+        If a file name is given with a relative path, it will be relative to the
+        root_dir property of this Dataset instance.
         """
         return self._grl_pathfilename_list
     @grl_pathfilename_list.setter
@@ -79,6 +81,13 @@ class I3Dataset(Dataset):
             raise TypeError('The grl_pathfilename_list property must be a '
                 'sequence of str!')
         self._grl_pathfilename_list = list(pathfilenames)
+
+    @property
+    def grl_abs_pathfilename_list(self):
+        """(read-only) The list of absolute path file names of the good-run-list
+        data files.
+        """
+        return self._get_abs_pathfilename_list(self._grl_pathfilename_list)
 
     @property
     def grl_field_name_renaming_dict(self):
@@ -102,7 +111,7 @@ class I3Dataset(Dataset):
         if(not super(I3Dataset,self).exists):
             return False
 
-        for pathfilename in self._grl_pathfilename_list:
+        for pathfilename in self.grl_abs_pathfilename_list:
             if(not os.path.exists(pathfilename)):
                 return False
 
@@ -118,8 +127,8 @@ class I3Dataset(Dataset):
         s1 = ''
         s1 += 'GRL data:\n'
         s2 = ''
-        if(len(self.grl_pathfilename_list) > 0):
-            for (idx, pathfilename) in enumerate(self.grl_pathfilename_list):
+        if(len(self._grl_pathfilename_list) > 0):
+            for (idx, pathfilename) in enumerate(self.grl_abs_pathfilename_list):
                 if(idx > 0):
                     s2 += '\n'
                 s2 += self._gen_datafile_pathfilename_entry(pathfilename)
@@ -161,7 +170,7 @@ class I3Dataset(Dataset):
         """
         with TaskTimer(tl, 'Loading grl data from disk.'):
             fileloader_grl = create_FileLoader(
-                self._grl_pathfilename_list)
+                self.grl_abs_pathfilename_list)
             grl_data = DataFieldRecordArray(fileloader_grl.load_data())
             grl_data.rename_fields(self._grl_field_name_renaming_dict)
 
