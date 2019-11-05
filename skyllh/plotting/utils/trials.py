@@ -10,8 +10,10 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 def plot_ns_fit_vs_mean_ns_inj(
         trials,
         title='',
+        figsize=None,
         axis_fontsize=16,
         title_fontsize=16,
+        tick_fontsize=16,
         return_hist=False,
         mean_n_sig_key='mean_n_sig',
         ns_key='ns',
@@ -57,6 +59,8 @@ def plot_ns_fit_vs_mean_ns_inj(
         returned as well. It contains the histogram bin content.
 
     """
+    if(figsize is None):
+        figsize = (12,10)
     if(xlabel is None):
         xlabel = r'<n>_{\mathrm{sig,inj}}'
     if(ylabel is None):
@@ -89,7 +93,8 @@ def plot_ns_fit_vs_mean_ns_inj(
         ns_lq[idx] = np.percentile(trials[m][ns_key], 15.9)
 
     (fig, ax) = plt.subplots(
-        2, 1, gridspec_kw={'height_ratios': [3,1]}, sharex=True, figsize=(12,10))
+        2, 1, gridspec_kw={'height_ratios': [3,1]}, sharex=True,
+        figsize=figsize)
 
     ax_divider = make_axes_locatable(ax[0])
     # Add an axes above the main axes for the colorbar.
@@ -136,6 +141,13 @@ def plot_ns_fit_vs_mean_ns_inj(
     ax[1].set_ylabel(ratio_ylabel, fontsize=axis_fontsize)
     ax[1].set_xlim(x_bins[0], x_bins[-1])
     ax[1].set_ylim([-100, 100])
+
+    for tick in ax[0].yaxis.get_major_ticks():
+        tick.label.set_fontsize(tick_fontsize)
+    for tick in ax[1].xaxis.get_major_ticks():
+        tick.label.set_fontsize(tick_fontsize)
+    for tick in ax[1].yaxis.get_major_ticks():
+        tick.label.set_fontsize(tick_fontsize)
 
     plt.tight_layout()
 
