@@ -3,10 +3,10 @@
 import os
 import os.path
 import numpy as np
-from numpy.lib import recfunctions as np_rfn
 from copy import deepcopy
 
 from skyllh.core.binning import BinningDefinition
+from skyllh.core.config import CFG
 from skyllh.core.livetime import Livetime
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
@@ -148,8 +148,9 @@ class Dataset(object):
         return livetime
 
     def __init__(
-            self, name, exp_pathfilenames, mc_pathfilenames, livetime, version,
-            verqualifiers=None):
+            self, name, exp_pathfilenames, mc_pathfilenames, livetime,
+            default_sub_path_fmt, version, verqualifiers=None,
+            base_path=None, sub_path_fmt=None):
         """Creates a new dataset object that describes a self-consistent set of
         data.
 
@@ -166,20 +167,35 @@ class Dataset(object):
             The integrated live-time in days of the dataset. It can be None for
             cases where the live-time is retrieved directly from the data files
             uppon data loading.
-        version: int
+        default_sub_path_fmt : str
+            The default format of the sub path of the data set.
+            This must be a string that can be formatted via the ``format``
+            method of the ``str`` class.
+        version : int
             The version number of the dataset. Higher version numbers indicate
             newer datasets.
-        verqualifiers: dict | None
+        verqualifiers : dict | None
             If specified, this dictionary specifies version qualifiers. These
             can be interpreted as subversions of the dataset. The format of the
             dictionary must be 'qualifier (str): version (int)'.
+        base_path : str | None
+            The user-defined base path of the data set.
+            Usually, this is the path of the location of the data directory.
+            If set to ``None`` the configured repository base path
+            ``CFG['repository']['base_path']`` is used.
+        sub_path_fmt : str | None
+            The user-defined format of the sub path of the data set.
+            If set to ``None``, the ``default_sub_path_fmt`` will be used.
         """
         self.name = name
         self.exp_pathfilename_list = exp_pathfilenames
         self.mc_pathfilename_list = mc_pathfilenames
         self.livetime = livetime
+        self.default_sub_path_fmt = default_sub_path_fmt
         self.version = version
         self.verqualifiers = verqualifiers
+        self.base_path = base_path
+        self.sub_path_fmt = sub_path_fmt
 
         self.description = ''
 
@@ -214,8 +230,10 @@ class Dataset(object):
 
     @property
     def exp_pathfilename_list(self):
-        """The list of fully qualified file names of the data files that store
-        the experimental data for this dataset.
+        """The list of file names of the data files that store the experimental
+        data for this dataset.
+        If a file name is given with a relative path, it will be relative to the
+        root_dir property of this Dataset instance.
         """
         return self._exp_pathfilename_list
     @exp_pathfilename_list.setter
@@ -230,9 +248,18 @@ class Dataset(object):
         self._exp_pathfilename_list = list(pathfilenames)
 
     @property
+    def exp_abs_pathfilename_list(self):
+        """(read-only) The list of absolute path file names of the experimental
+        data files.
+        """
+        return self._get_abs_pathfilename_list(self._exp_pathfilename_list)
+
+    @property
     def mc_pathfilename_list(self):
-        """The list of fully qualified file names of the data files that store
-        the monte-carlo data for this dataset.
+        """The list of file names of the data files that store the monte-carlo
+        data for this dataset.
+        If a file name is given with a relative path, it will be relative to the
+        root_dir property of this Dataset instance.
         """
         return self._mc_pathfilename_list
     @mc_pathfilename_list.setter
@@ -243,6 +270,13 @@ class Dataset(object):
             raise TypeError('The mc_pathfilename_list property must be of '
                 'type str or a sequence of str!')
         self._mc_pathfilename_list = list(pathfilenames)
+
+    @property
+    def mc_abs_pathfilename_list(self):
+        """(read-only) The list of absolute path file names of the monte-carlo
+        data files.
+        """
+        return self._get_abs_pathfilename_list(self._mc_pathfilename_list)
 
     @property
     def livetime(self):
@@ -293,6 +327,66 @@ class Dataset(object):
         self._verqualifiers = deepcopy(verqualifiers)
 
     @property
+    def base_path(self):
+        """The base path of the data set. This can be ``None``.
+        """
+        return self._base_path
+    @base_path.setter
+    def base_path(self, path):
+        if(path is not None):
+            path = str_cast(path, 'The base_path property must be castable to '
+                'type str!')
+            if(not os.path.isabs(path)):
+                raise ValueError('The base_path property must be an absolute '
+                    'path!')
+        self._base_path = path
+
+    @property
+    def default_sub_path_fmt(self):
+        """The default format of the sub path of the data set. This must be a
+        string that can be formatted via the ``format`` method of the ``str``
+        class.
+        """
+        return self._default_sub_path_fmt
+    @default_sub_path_fmt.setter
+    def default_sub_path_fmt(self, fmt):
+        fmt = str_cast(fmt, 'The default_sub_path_fmt property must be '
+            'castable to type str!')
+        self._default_sub_path_fmt = fmt
+
+    @property
+    def sub_path_fmt(self):
+        """The format of the sub path of the data set. This must be a string
+        that can be formatted via the ``format`` method of the ``str`` class.
+        If set to ``None``, this property will return the
+        ``default_sub_path_fmt`` property.
+        """
+        if(self._sub_path_fmt is None):
+            return self._default_sub_path_fmt
+        return self._sub_path_fmt
+    @sub_path_fmt.setter
+    def sub_path_fmt(self, fmt):
+        if(fmt is not None):
+            fmt = str_cast(fmt, 'The sub_path_fmt property must be None, or '
+                'castable to type str!')
+        self._sub_path_fmt = fmt
+
+    @property
+    def root_dir(self):
+        """(read-only) The root directory to use when data files are specified
+        with relative paths. It is constructed from the ``base_path`` and the
+        ``sub_path_fmt`` properties via the ``generate_data_file_root_dir``
+        function.
+        """
+        return generate_data_file_root_dir(
+            default_base_path=CFG['repository']['base_path'],
+            default_sub_path_fmt=self._default_sub_path_fmt,
+            version=self._version,
+            verqualifiers=self._verqualifiers,
+            base_path=self._base_path,
+            sub_path_fmt=self._sub_path_fmt)
+
+    @property
     def exp_field_name_renaming_dict(self):
         """The dictionary specifying the field names of the experimental data
         which need to get renamed just after loading the data. The dictionary
@@ -325,8 +419,8 @@ class Dataset(object):
         """(read-only) Flag if all the data files of this data set exists. It is
         ``True`` if all data files exist and ``False`` otherwise.
         """
-        for pathfilename in (self._exp_pathfilename_list +
-                             self._mc_pathfilename_list):
+        for pathfilename in (self.exp_abs_pathfilename_list +
+                             self.mc_abs_pathfilename_list):
             if(not os.path.exists(pathfilename)):
                 return False
         return True
@@ -382,6 +476,24 @@ class Dataset(object):
             s = '['+ANSIColors.FAIL+'NOT FOUND'+ANSIColors.ENDC+']'
         s += ' ' + pathfilename
         return s
+
+    def _get_abs_pathfilename_list(self, pathfilename_list):
+        """Returns a list where each entry of the given pathfilename_list is
+        an absolute path. Relative paths will be prefixed with the root_dir
+        property of this Dataset instance.
+        """
+        root_dir = self.root_dir
+
+        abs_pathfilename_list = []
+        for pathfilename in pathfilename_list:
+            if(os.path.isabs(pathfilename)):
+                abs_pathfilename_list.append(
+                    pathfilename)
+            else:
+                abs_pathfilename_list.append(
+                    os.path.join(root_dir, pathfilename))
+
+        return abs_pathfilename_list
 
     def __gt__(self, ds):
         """Implementation to support the operation ``b = self > ds``, where
@@ -448,7 +560,7 @@ class Dataset(object):
 
         s1 += 'Experimental data:\n'
         s2 = ''
-        for (idx, pathfilename) in enumerate(self.exp_pathfilename_list):
+        for (idx, pathfilename) in enumerate(self.exp_abs_pathfilename_list):
             if(idx > 0):
                 s2 += '\n'
             s2 += self._gen_datafile_pathfilename_entry(pathfilename)
@@ -458,12 +570,32 @@ class Dataset(object):
 
         s1 += 'MC data:\n'
         s2 = ''
-        for (idx, pathfilename) in enumerate(self.mc_pathfilename_list):
+        for (idx, pathfilename) in enumerate(self.mc_abs_pathfilename_list):
             if(idx > 0):
                 s2 += '\n'
             s2 += self._gen_datafile_pathfilename_entry(pathfilename)
         s1 += display.add_leading_text_line_padding(
             display.INDENTATION_WIDTH, s2)
+        s1 += '\n'
+
+        if(len(self._aux_data_definitions) > 0):
+            s1 += 'Auxiliary data:\n'
+            s2 = ''
+            for (idx,(name, pathfilename_list)) in enumerate(
+                self._aux_data_definitions.items()):
+                if(idx > 0):
+                    s2 += '\n'
+
+                s2 += name+':'
+                s3 = ''
+                pathfilename_list = self._get_abs_pathfilename_list(
+                    pathfilename_list)
+                for pathfilename in pathfilename_list:
+                    s3 += '\n' + self._gen_datafile_pathfilename_entry(pathfilename)
+                s2 += display.add_leading_text_line_padding(
+                    display.INDENTATION_WIDTH, s3)
+            s1 += display.add_leading_text_line_padding(
+                display.INDENTATION_WIDTH, s2)
 
         s += display.add_leading_text_line_padding(
             display.INDENTATION_WIDTH, s1)
@@ -517,7 +649,7 @@ class Dataset(object):
         """
         # Load the experimental data if there is any.
         if(len(self._exp_pathfilename_list) > 0):
-            fileloader_exp = create_FileLoader(self._exp_pathfilename_list)
+            fileloader_exp = create_FileLoader(self.exp_abs_pathfilename_list)
             with TaskTimer(tl, 'Loading exp data from disk.'):
                 data_exp = DataFieldRecordArray(fileloader_exp.load_data())
                 data_exp.rename_fields(self._exp_field_name_renaming_dict)
@@ -526,7 +658,7 @@ class Dataset(object):
 
         # Load the monte-carlo data.
         with TaskTimer(tl, 'Loading mc data from disk.'):
-            fileloader_mc = create_FileLoader(self._mc_pathfilename_list)
+            fileloader_mc = create_FileLoader(self.mc_abs_pathfilename_list)
             data_mc = DataFieldRecordArray(fileloader_mc.load_data())
             data_mc.rename_fields(self._mc_field_name_renaming_dict)
 
@@ -540,7 +672,8 @@ class Dataset(object):
         data_aux = dict()
         for (aux_name, aux_pathfilename_list) in self._aux_data_definitions.items():
             with TaskTimer(tl, 'Loaded aux data "%s" from disk.'%(aux_name)):
-                fileloader_aux = create_FileLoader(aux_pathfilename_list)
+                fileloader_aux = create_FileLoader(self._get_abs_pathfilename_list(
+                    aux_pathfilename_list))
                 data_aux[aux_name] = fileloader_aux.load_data()
 
         data = DatasetData(data_exp, data_mc, data_aux, livetime)
@@ -1301,51 +1434,55 @@ def remove_events(data_exp, mjds):
 
     return data_exp
 
-def generate_data_file_path(
-    default_base_path, default_sub_path,
+def generate_data_file_root_dir(
+    default_base_path, default_sub_path_fmt,
     version, verqualifiers,
-    base_path=None, sub_path=None
+    base_path=None, sub_path_fmt=None
 ):
-    """Generates the path to the data files based on the given base path and
-    sub path. If base_path is None, default_base_path is used. If sub_path is
-    None, default_sub_path is used.
+    """Generates the root directory of the data files based on the given base
+    path and sub path format. If base_path is None, default_base_path is used.
+    If sub_path_fmt is None, default_sub_path_fmt is used.
 
-    The default_sub_path and sub_path can contain the following wildcards:
-        - '%(version)d'
-        - '%(<verqualifiers_key>)d'
+    The default_sub_path_fmt and sub_path_fmt arguments can contain the
+    following wildcards:
+        - '{version:d}'
+        - '{<verqualifiers_key>:d}'
 
     Parameters
     ----------
     default_base_path : str
         The default base path if base_path is None.
-    default_sub_path : str
-        The default sub path if sub_path is None.
+    default_sub_path_fmt : str
+        The default sub path format if sub_path_fmt is None.
     version : int
         The version of the data sample.
     verqualifiers : dict
         The dictionary holding the version qualifiers of the data sample.
     base_path : str | None
         The user-specified base path.
-    sub_path : str | None
-        The user-specified sub path.
+    sub_path_fmt : str | None
+        The user-specified sub path format.
 
     Returns
     -------
-    path : str
-        The generated data file path.
+    root_dir : str
+        The generated root directory of the data files.
     """
     if(base_path is None):
+        if(default_base_path is None):
+            raise ValueError('The default_base_path argument must not be None, '
+                'when the base_path argument is set to None!')
         base_path = default_base_path
 
-    if(sub_path is None):
-        sub_path = default_sub_path
+    if(sub_path_fmt is None):
+        sub_path_fmt = default_sub_path_fmt
 
-    subdict = dict( [('version', version)] + list(verqualifiers.items()) )
-    sub_path = sub_path%subdict
+    fmtdict = dict( [('version', version)] + list(verqualifiers.items()) )
+    sub_path = sub_path_fmt.format(**fmtdict)
 
-    path = os.path.join(base_path, sub_path)
+    root_dir = os.path.join(base_path, sub_path)
 
-    return path
+    return root_dir
 
 def get_data_subset(data, livetime, t_start, t_end):
     """Gets DatasetData and Livetime objects with data subsets between the given
