@@ -12,6 +12,7 @@ from skyllh.core.py import (
     func_has_n_args
 )
 from skyllh.core.scrambling import DataScrambler
+from skyllh.core.timing import TaskTimer
 
 
 class BackgroundGenerationMethod(object):
@@ -26,7 +27,7 @@ class BackgroundGenerationMethod(object):
         super(BackgroundGenerationMethod, self).__init__()
 
     @abc.abstractmethod
-    def generate_events(self, rss, dataset, data, mean, **kwargs):
+    def generate_events(self, rss, dataset, data, mean, tl=None, **kwargs):
         """This method is supposed to generate a `mean` number of background
         events for the given dataset and its data.
 
@@ -43,6 +44,9 @@ class BackgroundGenerationMethod(object):
             background events should get generated.
         mean : float
             The mean number of background events to generate.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
         **kwargs
             Additional keyword arguments, which might be required for a
             particular background generation method.
@@ -233,7 +237,8 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                 method = None
         self._event_selection_method = method
 
-    def generate_events(self, rss, dataset, data, mean=None, poisson=True):
+    def generate_events(
+            self, rss, dataset, data, mean=None, poisson=True, tl=None):
         """Generates a `mean` number of background events for the given dataset
         and its data.
 
@@ -258,6 +263,9 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             value of background events.
             If set to False, the argument ``mean`` specifies the actual number
             of generated background events.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
 
         Returns
         -------
@@ -274,11 +282,13 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             # for each monte-carlo event and a new mean number of background
             # events.
             self._cache_data_id = data_id
-            self._cache_mc_event_bkg_prob = self._get_event_prob_func(
-                dataset, data, data.mc)
-            if(self._get_mean_func is not None):
-                self._cache_mean = self._get_mean_func(
+            with TaskTimer(tl, 'Calculate MC background event probability cache.'):
+                self._cache_mc_event_bkg_prob = self._get_event_prob_func(
                     dataset, data, data.mc)
+            if(self._get_mean_func is not None):
+                with TaskTimer(tl, 'Calculate total MC background mean.'):
+                    self._cache_mean = self._get_mean_func(
+                        dataset, data, data.mc)
 
         if(mean is None):
             if(self._cache_mean is None):
@@ -298,8 +308,9 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
 
         # Scramble the MC events if requested.
         if(self._data_scrambler is not None):
-            data_mc = self._data_scrambler.scramble_data(
-                rss, data.mc, copy=(not self._mc_inplace_scrambling))
+            with TaskTimer(tl, 'Scramble MC background data.'):
+                data_mc = self._data_scrambler.scramble_data(
+                    rss, data.mc, copy=(not self._mc_inplace_scrambling))
         else:
             data_mc = data.mc
 
@@ -308,15 +319,18 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         if(event_selection_method is None):
             data_mc_selected = data_mc
         else:
-            (data_mc_selected, mask) = event_selection_method.select_events(
-                data_mc, retmask=True)
+            with TaskTimer(tl, 'Select the significant background events.'):
+                (data_mc_selected, mask) = event_selection_method.select_events(
+                    data_mc, retmask=True)
 
         # Calculate the mean number of background events for the selected
         # MC events.
         if(event_selection_method is None):
             mean_selected = mean
         else:
-            mean_selected = self._get_mean_func(dataset, data, data_mc_selected)
+            with TaskTimer(tl, 'Calculate selected MC background mean.'):
+                mean_selected = self._get_mean_func(
+                    dataset, data, data_mc_selected)
 
         # Calculate the actual number of background events for the selected
         # events.
@@ -330,12 +344,14 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
 
         # Draw the actual background events from the selected events of the
         # monto-carlo data set.
-        bkg_event_indices = rss.random.choice(
-            data_mc_selected.indices,
-            size=n_bkg_selected,
-            p=p,
-            replace=(not self._unique_events))
-        bkg_events = data_mc_selected[bkg_event_indices]
+        with TaskTimer(tl, 'Draw MC background indices.'):
+            bkg_event_indices = rss.random.choice(
+                data_mc_selected.indices,
+                size=n_bkg_selected,
+                p=p,
+                replace=(not self._unique_events))
+        with TaskTimer(tl, 'Select MC background events from indices.'):
+            bkg_events = data_mc_selected[bkg_event_indices]
 
         # Remove MC specific data fields from the background events record
         # array. So the result contains only experimental data fields. The list
@@ -343,8 +359,9 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # required experimental data fields defined by the data set, and the
         # actual experimental data fields (in case there are additional kept
         # data fields by the user).
-        exp_field_names = list(set(
-            list(dataset.exp_field_names) + data.exp_field_names))
-        bkg_events.tidy_up(exp_field_names)
+        with TaskTimer(tl, 'Remove MC specific data fields from background events.'):
+            exp_field_names = list(set(
+                list(dataset.exp_field_names) + data.exp_field_names))
+            bkg_events.tidy_up(exp_field_names)
 
         return (n_bkg, bkg_events)
