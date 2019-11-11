@@ -87,7 +87,7 @@ def calculate_pval_from_trials(
 
 def estimate_mean_nsignal_for_ts_quantile(
         ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
-        bkg_kwargs=None, sig_kwargs=None, ppbar=None):
+        bkg_kwargs=None, sig_kwargs=None, ppbar=None, tl=None):
     """Calculates the mean number of signal events needed to be injected to
     reach a test statistic distribution with defined properties for the given
     analysis.
@@ -128,6 +128,9 @@ def estimate_mean_nsignal_for_ts_quantile(
         with the mean number of signal events, mu.
     ppbar : instance of ProgressBar | None
         The possible parent ProgressBar instance.
+    tl: instance of TimeLord | None
+        The optional TimeLord instance that should be used to collect timing
+        information about this function.
 
     Returns
     -------
@@ -148,7 +151,7 @@ def estimate_mean_nsignal_for_ts_quantile(
             n_trials)
         h0_ts_vals = ana.do_trials(
             rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-            sig_kwargs=sig_kwargs, ppbar=ppbar)['ts']
+            sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
         n_total_generated_trials += n_trials
 
     h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
@@ -193,7 +196,7 @@ def estimate_mean_nsignal_for_ts_quantile(
             ts_vals0 = np.concatenate((
                 ts_vals0, ana.do_trials(
                     rss, dn_trials, mean_n_sig=ns0, bkg_kwargs=bkg_kwargs,
-                    sig_kwargs=sig_kwargs, ppbar=ppbar)['ts']))
+                    sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']))
             (p0, p0_sigma) = calculate_pval_from_trials(ts_vals0, c)
             n_total_generated_trials += dn_trials
 
@@ -230,7 +233,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
                 ts_vals1 = ana.do_trials(
                     rss, ts_vals0.size, mean_n_sig=ns1, bkg_kwargs=bkg_kwargs,
-                    sig_kwargs=sig_kwargs, ppbar=ppbar)['ts']
+                    sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
                 n_total_generated_trials += ts_vals0.size
 
                 (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
@@ -299,7 +302,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
             ts_vals1 = ana.do_trials(
                 rss, ts_vals0.size, mean_n_sig=ns1, bkg_kwargs=bkg_kwargs,
-                sig_kwargs=sig_kwargs, ppbar=ppbar)['ts']
+                sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
             n_total_generated_trials += ts_vals0.size
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
@@ -366,7 +369,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 def estimate_sensitivity(
         ana, rss, h0_ts_vals=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None):
+        ppbar=None, tl=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -414,6 +417,9 @@ def estimate_sensitivity(
         with the mean number of signal events, mu.
     ppbar : instance of ProgressBar | None
         The possible parent ProgressBar instance.
+    tl: instance of TimeLord | None
+        The optional TimeLord instance that should be used to collect timing
+        information about this function.
 
     Returns
     -------
@@ -436,7 +442,8 @@ def estimate_sensitivity(
         min_dmu=min_dmu,
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
-        ppbar=ppbar)
+        ppbar=ppbar,
+        tl=tl)
 
     return (mu, mu_err)
 
@@ -444,7 +451,7 @@ def estimate_sensitivity(
 def estimate_discovery_potential(
         ana, rss, h0_ts_vals=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None):
+        ppbar=None, tl=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -491,6 +498,9 @@ def estimate_discovery_potential(
         with the mean number of signal events, mu.
     ppbar : instance of ProgressBar | None
         The possible parent ProgressBar instance.
+    tl: instance of TimeLord | None
+        The optional TimeLord instance that should be used to collect timing
+        information about this function.
 
     Returns
     -------
@@ -513,14 +523,15 @@ def estimate_discovery_potential(
         mu_range=mu_range,
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
-        ppbar=ppbar)
+        ppbar=ppbar,
+        tl=tl)
 
     return (mu, mu_err)
 
 
 def generate_mu_of_p_spline_interpolation(
         ana, rss, h0_ts_vals, h0_ts_quantile, eps_p, mu_range, mu_step,
-        kind='cubic', bkg_kwargs=None, sig_kwargs=None, ppbar=None):
+        kind='cubic', bkg_kwargs=None, sig_kwargs=None, ppbar=None, tl=None):
     """Generates a spline interpolation for mu(p) function for a pre-defined
     range of mu, where mu is the mean number of injected signal events and p the
     probability for the ts value larger than the ts value corresponding to the
@@ -563,6 +574,9 @@ def generate_mu_of_p_spline_interpolation(
         with the mean number of signal events, mu.
     ppbar : instance of ProgressBar | None
         The possible parent ProgressBar instance.
+    tl: instance of TimeLord | None
+        The optional TimeLord instance that should be used to collect timing
+        information about this function.
 
     Returns
     -------
@@ -578,7 +592,7 @@ def generate_mu_of_p_spline_interpolation(
         logger.debug('Generate %d null-hypothesis trials', n_bkg)
         h0_ts_vals = ana.do_trials(
             rss, n_bkg, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-            sig_kwargs=sig_kwargs)['ts']
+            sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
         n_total_generated_trials += n_bkg
 
     n_h0_ts_vals = len(h0_ts_vals)
@@ -613,7 +627,7 @@ def generate_mu_of_p_spline_interpolation(
                 (ts_vals,
                  ana.do_trials(
                      rss, 100, mean_n_sig=mu, bkg_kwargs=bkg_kwargs,
-                     sig_kwargs=sig_kwargs, ppbar=pbar)['ts']))
+                     sig_kwargs=sig_kwargs, ppbar=pbar, tl=tl)['ts']))
             (p, p_sigma) = calculate_pval_from_trials(ts_vals, c)
             n_total_generated_trials += 100
         logger.debug(

@@ -73,7 +73,7 @@ class BackgroundGenerator(object):
                 'DatasetData instances!')
         self._data_list = datas
 
-    def generate_background_events(self, rss, dataset_idx, **kwargs):
+    def generate_background_events(self, rss, dataset_idx, tl=None, **kwargs):
         """Generates a mean number of background events for the given dataset.
 
         Parameters
@@ -84,6 +84,9 @@ class BackgroundGenerator(object):
         dataset_idx : int
             The index of the dataset for which background events should get
             generated for.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
         **kwargs
             Additional keyword arguments, which will be passed to the
             ``generate_events`` method of the background generation method
@@ -105,6 +108,6 @@ class BackgroundGenerator(object):
         data = self._data_list[dataset_idx]
 
         (n_bkg, bkg_events) = self._bkg_gen_method.generate_events(
-            rss, ds, data, **kwargs)
+            rss, ds, data, tl=tl, **kwargs)
 
         return (n_bkg, bkg_events)

@@ -453,7 +453,7 @@ class Analysis(object):
 
     def generate_pseudo_data(
             self, rss, mean_n_bkg_list=None, mean_n_sig=0, bkg_kwargs=None,
-            sig_kwargs=None):
+            sig_kwargs=None, tl=None):
         """Generates pseudo data with background and possible signal
         events for each data set using the background and signal generation
         methods of the analysis.
@@ -479,6 +479,9 @@ class Analysis(object):
             Additional keyword arguments for the `generate_signal_events` method
             of the `SignalGenerator` class. An usual keyword argument is
             `poisson`.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks of this method.
 
         Returns
         -------
@@ -521,8 +524,10 @@ class Analysis(object):
         events_list = []
         for ds_idx in range(self.n_datasets):
             bkg_kwargs.update(mean=mean_n_bkg_list[ds_idx])
-            (n_bkg, bkg_events) = self._bkg_generator.generate_background_events(
-                rss, ds_idx, **bkg_kwargs)
+            with TaskTimer(tl, 'Generating background events for data set '
+                '{:d}.'.format(ds_idx)):
+                (n_bkg, bkg_events) = self._bkg_generator.generate_background_events(
+                    rss, ds_idx, tl=tl, **bkg_kwargs)
             n_events_list.append(n_bkg)
             events_list.append(bkg_events)
 
@@ -534,8 +539,9 @@ class Analysis(object):
             # Generate signal events with the given mean number of signal
             # events.
             sig_kwargs.update(mean=mean_n_sig)
-            (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
-                rss, **sig_kwargs)
+            with TaskTimer(tl, 'Generating signal events.'):
+                (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
+                    rss, **sig_kwargs)
             # Inject the signal events to the generated background data.
             for (idx, sig_events) in ds_sig_events_dict.items():
                 n_events_list[idx] += len(sig_events)
@@ -604,7 +610,7 @@ class Analysis(object):
         with TaskTimer(tl, 'Generating pseudo data.'):
             (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
                 rss=rss, mean_n_bkg_list=mean_n_bkg_list, mean_n_sig=mean_n_sig,
-                bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs)
+                bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, tl=tl)
 
         with TaskTimer(tl, 'Initializing trial.'):
             self.initialize_trial(events_list, n_events_list)
