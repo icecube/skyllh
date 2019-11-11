@@ -11,6 +11,7 @@ import abc
 import numpy as np
 
 from skyllh.core.py import (
+    classname,
     int_cast,
     issequence,
     issequenceof,
