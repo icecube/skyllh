@@ -76,7 +76,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
     def __init__(
         self, get_event_prob_func, get_mean_func=None, unique_events=False,
         data_scrambler=None, mc_inplace_scrambling=False,
-        event_selection_method=None):
+        pre_event_selection_method=None, event_selection_method=None):
         """Creates a new instance of the MCDataSamplingBkgGenMethod class.
 
         Parameters
@@ -113,8 +113,13 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             Flag if the scrambling of the monte-carlo data should be done
             inplace, i.e. without creating a copy of the MC data first.
             Default is False.
+        pre_event_selection_method : instance of EventSelectionMethod | None
+            If set to an instance of EventSelectionMethod, this method will
+            pre-select the MC events that will be used for later background
+            event generation. Using this pre-selection a large portion of the
+            MC data can be reduced prior to background event generation.
         event_selection_method : instance of EventSelectionMethod | None
-            If set to an instance of EventSelectionMethod background
+            If set to an instance of EventSelectionMethod, background
             events will get selected from the MC only for events that pass the
             event selection method.
         """
@@ -125,6 +130,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         self.unique_events = unique_events
         self.data_scrambler = data_scrambler
         self.mc_inplace_scrambling = mc_inplace_scrambling
+        self.pre_event_selection_method = pre_event_selection_method
         self.event_selection_method = event_selection_method
 
         if((event_selection_method is not None) and (get_mean_func is None)):
@@ -134,6 +140,8 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # Define cache members to cache the background probabilities for each
         # monte-carlo event. The probabilities change only if the data changes.
         self._cache_data_id = None
+        self._cache_mc_pre_selected = None
+        self._cache_mc_pre_selected_mask = None
         self._cache_mc_event_bkg_prob = None
         self._cache_mean = None
 
@@ -214,6 +222,25 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         self._mc_inplace_scrambling = b
 
     @property
+    def pre_event_selection_method(self):
+        """The instance of EventSelectionMethod that pre-selects the MC events,
+        which can be considered for background event generation.
+        """
+        return self._pre_event_selection_method
+    @pre_event_selection_method.setter
+    def pre_event_selection_method(self, method):
+        if(method is not None):
+            if(not isinstance(method, EventSelectionMethod)):
+                raise TypeError('The pre_event_selection_method property must '
+                    'be None, or an instance of EventSelectionMethod!')
+            # If the event selection method selects all events, it's equivalent
+            # to have it set to None, because then no operation has to be
+            # performed.
+            if(isinstance(method, AllEventSelectionMethod)):
+                method = None
+        self._pre_event_selection_method = method
+
+    @property
     def event_selection_method(self):
         """The instance of EventSelectionMethod that selects events, which have
         potential to be signal. Since all non-selected events will be treated as
@@ -282,13 +309,30 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             # for each monte-carlo event and a new mean number of background
             # events.
             self._cache_data_id = data_id
-            with TaskTimer(tl, 'Calculate MC background event probability cache.'):
-                self._cache_mc_event_bkg_prob = self._get_event_prob_func(
-                    dataset, data, data.mc)
+
             if(self._get_mean_func is not None):
                 with TaskTimer(tl, 'Calculate total MC background mean.'):
                     self._cache_mean = self._get_mean_func(
                         dataset, data, data.mc)
+
+            with TaskTimer(tl, 'Calculate MC background event probability cache.'):
+                self._cache_mc_event_bkg_prob = self._get_event_prob_func(
+                    dataset, data, data.mc)
+
+            if(self._pre_event_selection_method is not None):
+                with TaskTimer(tl, 'Pre-select MC events.'):
+                    (self._cache_mc_pre_selected,
+                     self._cache_mc_pre_selected_mask) =\
+                    self._pre_event_selection_method.select_events(
+                        data.mc, retmask=True, tl=tl)
+            else:
+                self._cache_mc_pre_selected = data.mc
+
+            # Create a copy of the pre-selected MC events in case scambling is
+            # performed and in-place scrambling is disabled.
+            if((self._data_scrambler is not None) and
+               (not self._mc_inplace_scrambling)):
+                self._cache_mc_pre_selected = self._cache_mc_pre_selected.copy()
 
         if(mean is None):
             if(self._cache_mean is None):
@@ -306,26 +350,33 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         n_bkg = (int(rss.random.poisson(mean)) if poisson else
                  int(np.round(mean, 0)))
 
-        # Scramble the MC events if requested.
+        data_mc_pre_selected = self._cache_mc_pre_selected
+
+        # Scramble the pre-selected MC events if requested.
         if(self._data_scrambler is not None):
             with TaskTimer(tl, 'Scramble MC background data.'):
-                data_mc = self._data_scrambler.scramble_data(
-                    rss, data.mc, copy=(not self._mc_inplace_scrambling))
-        else:
-            data_mc = data.mc
+                data_mc_pre_selected = self._data_scrambler.scramble_data(
+                    rss, data_mc_pre_selected, copy=False)
 
-        # Select the significant events.
+        # Select the significant events from the pre-selection.
         event_selection_method = self._event_selection_method
         if(event_selection_method is None):
-            data_mc_selected = data_mc
+            data_mc_selected = data_mc_pre_selected
         else:
             with TaskTimer(tl, 'Select the significant background events.'):
                 (data_mc_selected, mask) = event_selection_method.select_events(
-                    data_mc, retmask=True)
+                    data_mc_pre_selected, retmask=True, tl=tl)
+
+        # Determine if there is an event selection at all.
+        no_selection = (
+            (self._pre_event_selection_method is None) and
+            (event_selection_method is None)
+        )
 
         # Calculate the mean number of background events for the selected
-        # MC events.
-        if(event_selection_method is None):
+        # MC events (including pre-selection and selection).
+        if(no_selection):
+            # No selection at all, use the total mean.
             mean_selected = mean
         else:
             with TaskTimer(tl, 'Calculate selected MC background mean.'):
@@ -335,12 +386,20 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # Calculate the actual number of background events for the selected
         # events.
         p_binomial = mean_selected / mean
-        n_bkg_selected = int(np.around(n_bkg * p_binomial, 0))
-
-        if(event_selection_method is None):
+        if(no_selection):
             p = self._cache_mc_event_bkg_prob
-        else:
+        elif(event_selection_method is None):
+            # Only pre-selection.
+            pre_mask = self._cache_mc_pre_selected_mask
+            p = self._cache_mc_event_bkg_prob[pre_mask] / p_binomial
+        elif(self._pre_event_selection_method is None):
+            # Only normal selection.
             p = self._cache_mc_event_bkg_prob[mask] / p_binomial
+        else:
+            # Pre-selection and normal selection.
+            pre_mask = self._cache_mc_pre_selected_mask
+            p = self._cache_mc_event_bkg_prob[pre_mask][mask] / p_binomial
+        n_bkg_selected = int(np.around(n_bkg * p_binomial, 0))
 
         # Draw the actual background events from the selected events of the
         # monto-carlo data set.
@@ -359,7 +418,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # required experimental data fields defined by the data set, and the
         # actual experimental data fields (in case there are additional kept
         # data fields by the user).
-        with TaskTimer(tl, 'Remove MC specific data fields from background events.'):
+        with TaskTimer(tl, 'Remove MC specific data fields from MC events.'):
             exp_field_names = list(set(
                 list(dataset.exp_field_names) + data.exp_field_names))
             bkg_events.tidy_up(exp_field_names)
