@@ -73,6 +73,18 @@ class BackgroundGenerator(object):
                 'DatasetData instances!')
         self._data_list = datas
 
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the SourceHypoGroupManager instance of the background
+        generation method.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : instance of SourceHypoGroupManager
+            The new SourceHypoGroupManager instance.
+        """
+        self._bkg_gen_method.change_source_hypo_group_manager(
+            src_hypo_group_manager)
+
     def generate_background_events(self, rss, dataset_idx, tl=None, **kwargs):
         """Generates a mean number of background events for the given dataset.
 
