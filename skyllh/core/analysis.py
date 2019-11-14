@@ -930,6 +930,12 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # instance.
         self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
 
+        # Change the source hypo group manager of the background generator
+        # instance.
+        if(self._bkg_generator is not None):
+            self._bkg_generator.change_source_hypo_group_manager(
+                self._src_hypo_group_manager)
+
         # Change the source hypo group manager of the signal generator instance.
         if(self._sig_generator is not None):
             self._sig_generator.change_source_hypo_group_manager(

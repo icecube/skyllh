@@ -26,6 +26,17 @@ class BackgroundGenerationMethod(object):
         """
         super(BackgroundGenerationMethod, self).__init__()
 
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Notifies the background generation method about an updated
+        SourceHypoGroupManager instance.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance.
+        """
+        pass
+
     @abc.abstractmethod
     def generate_events(self, rss, dataset, data, mean, tl=None, **kwargs):
         """This method is supposed to generate a `mean` number of background
@@ -263,6 +274,26 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             if(isinstance(method, AllEventSelectionMethod)):
                 method = None
         self._event_selection_method = method
+
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the SourceHypoGroupManager instance of the
+        pre-event-selection and event-selection method. Also it invalides the
+        data cache of this background generation method.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The new SourceHypoGroupManager instance.
+        """
+        if(self._pre_event_selection_method is not None):
+            self._pre_event_selection_method.change_source_hypo_group_manager(
+                src_hypo_group_manager)
+        if(self._event_selection_method is not None):
+            self._event_selection_method.change_source_hypo_group_manager(
+                src_hypo_group_manager)
+
+        # Invalidate the data cache.
+        self._cache_data_id = None
 
     def generate_events(
             self, rss, dataset, data, mean=None, poisson=True, tl=None):
