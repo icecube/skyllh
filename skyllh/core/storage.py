@@ -249,7 +249,7 @@ class DataFieldRecordArray(object):
     objects. Hence, access of single data fields is much faster compared to
     access on the record ndarray.
     """
-    def __init__(self, data, copy=True):
+    def __init__(self, data, keep_fields=None, copy=True):
         """Creates a DataFieldRecordArray from the given numpy record ndarray.
 
         Parameters
@@ -263,6 +263,9 @@ class DataFieldRecordArray(object):
             the provided DataFieldRecordArray instance.
             If set to `None`, the DataFieldRecordArray instance is initialized
             with no data and the length of the array is set to 0.
+        keep_fields : str | sequence of str | None
+            If not None (default), this specifies the data fields that should
+            get kept from the given data. Otherwise all data fields get kept.
         copy : bool
             Flag if the input data should get copied. Default is True. If a
             DataFieldRecordArray instance is provided, this option is set to
@@ -273,6 +276,14 @@ class DataFieldRecordArray(object):
 
         if(data is None):
             data = dict()
+
+        if(keep_fields is not None):
+            if(isinstance(keep_fields, str)):
+                keep_fields = [keep_fields]
+            elif(not issequenceof(keep_fields, str)):
+                raise TypeError('The keep_fields argument must be None, an '
+                    'instance of type str, or a sequence of instances of '
+                    'type str!')
 
         if(isinstance(data, np.ndarray)):
             field_names = data.dtype.names
@@ -286,6 +297,10 @@ class DataFieldRecordArray(object):
                 'dict, or DataFieldRecordArray!')
 
         for fname in field_names:
+            # Ignore fields that should not get kept.
+            if((keep_fields is not None) and (fname not in keep_fields)):
+                continue
+
             if(copy is True):
                 field_arr = np.copy(data[fname])
             else:
@@ -297,6 +312,7 @@ class DataFieldRecordArray(object):
                     'Field "%s" has length %d, but must be %d!'%(
                     fname, len(field_arr), self._len))
             self._data_fields[fname] = field_arr
+
         if(self._len is None):
             # The DataFieldRecordArray is initialized with no fields, i.e. also
             # also no data.
@@ -414,7 +430,8 @@ class DataFieldRecordArray(object):
 
     @property
     def indices(self):
-        """The numpy ndarray holding the indices of this DataFieldRecordArray.
+        """(read-only) The numpy ndarray holding the indices of this
+        DataFieldRecordArray.
         """
         return self._indices
 
@@ -480,11 +497,18 @@ class DataFieldRecordArray(object):
 
         return arr
 
-    def copy(self):
+    def copy(self, keep_fields=None):
         """Creates a new DataFieldRecordArray that is a copy of this
         DataFieldRecordArray instance.
+
+        Parameters
+        ----------
+        keep_fields : str | sequence of str | None
+            If not None (default), this specifies the data fields that should
+            get kept from this DataFieldRecordArray. Otherwise all data fields
+            get kept.
         """
-        return DataFieldRecordArray(self)
+        return DataFieldRecordArray(self, keep_fields=keep_fields)
 
     def remove_field(self, name):
         """Removes the given field from this array.

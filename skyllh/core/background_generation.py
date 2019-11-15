@@ -9,7 +9,8 @@ from skyllh.core.optimize import (
 )
 from skyllh.core.py import (
     float_cast,
-    func_has_n_args
+    func_has_n_args,
+    issequenceof
 )
 from skyllh.core.scrambling import DataScrambler
 from skyllh.core.timing import TaskTimer
@@ -87,7 +88,8 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
     def __init__(
         self, get_event_prob_func, get_mean_func=None, unique_events=False,
         data_scrambler=None, mc_inplace_scrambling=False,
-        pre_event_selection_method=None, event_selection_method=None):
+        keep_mc_data_fields=None, pre_event_selection_method=None,
+        event_selection_method=None):
         """Creates a new instance of the MCDataSamplingBkgGenMethod class.
 
         Parameters
@@ -124,6 +126,11 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             Flag if the scrambling of the monte-carlo data should be done
             inplace, i.e. without creating a copy of the MC data first.
             Default is False.
+        keep_mc_data_fields : str | list of str | None
+            The MC data field names that should be kept in order to be able to
+            calculate the background events rates by the functions
+            ``get_event_prob_func`` and ``get_mean_func``. All other MC fields
+            will get droped due to computational efficiency reasons.
         pre_event_selection_method : instance of EventSelectionMethod | None
             If set to an instance of EventSelectionMethod, this method will
             pre-select the MC events that will be used for later background
@@ -141,6 +148,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         self.unique_events = unique_events
         self.data_scrambler = data_scrambler
         self.mc_inplace_scrambling = mc_inplace_scrambling
+        self.keep_mc_data_field_names = keep_mc_data_fields
         self.pre_event_selection_method = pre_event_selection_method
         self.event_selection_method = event_selection_method
 
@@ -231,6 +239,25 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             raise TypeError('The mc_inplace_scrambling property must be of '
                 'type bool!')
         self._mc_inplace_scrambling = b
+
+    @property
+    def keep_mc_data_field_names(self):
+        """The MC data field names that should be kept in order to be able to
+        calculate the background events rates by the functions
+        ``get_event_prob_func`` and ``get_mean_func``. All other MC fields
+        will get droped due to computational efficiency reasons.
+        """
+        return self._keep_mc_data_field_names
+    @keep_mc_data_field_names.setter
+    def keep_mc_data_field_names(self, names):
+        if(names is None):
+            names = []
+        elif(isinstance(names, str)):
+            names = [ names ]
+        elif(not issequenceof(names, str)):
+            raise TypeError('The keep_mc_data_field_names must be None, an '
+                'instance of type str, or a sequence of objects of type str!')
+        self._keep_mc_data_field_names = names
 
     @property
     def pre_event_selection_method(self):
@@ -341,29 +368,31 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             # events.
             self._cache_data_id = data_id
 
+            # Create a copy of the MC data with all MC data fields removed,
+            # except the specified MC data fields to keep for the
+            # ``get_mean_func`` and ``get_event_prob_func`` functions.
+            keep_field_names = list(set(
+                list(dataset.exp_field_names) + data.exp_field_names +
+                self._keep_mc_data_field_names))
+            data_mc = data.mc.copy(keep_fields=keep_field_names)
+
             if(self._get_mean_func is not None):
                 with TaskTimer(tl, 'Calculate total MC background mean.'):
                     self._cache_mean = self._get_mean_func(
-                        dataset, data, data.mc)
+                        dataset, data, data_mc)
 
             with TaskTimer(tl, 'Calculate MC background event probability cache.'):
                 self._cache_mc_event_bkg_prob = self._get_event_prob_func(
-                    dataset, data, data.mc)
+                    dataset, data, data_mc)
 
             if(self._pre_event_selection_method is not None):
                 with TaskTimer(tl, 'Pre-select MC events.'):
                     (self._cache_mc_pre_selected,
                      self._cache_mc_pre_selected_mask) =\
                     self._pre_event_selection_method.select_events(
-                        data.mc, retmask=True, tl=tl)
+                        data_mc, retmask=True, tl=tl)
             else:
-                self._cache_mc_pre_selected = data.mc
-
-            # Create a copy of the pre-selected MC events in case scambling is
-            # performed and in-place scrambling is disabled.
-            if((self._data_scrambler is not None) and
-               (not self._mc_inplace_scrambling)):
-                self._cache_mc_pre_selected = self._cache_mc_pre_selected.copy()
+                self._cache_mc_pre_selected = data_mc
 
         if(mean is None):
             if(self._cache_mean is None):
