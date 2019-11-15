@@ -160,8 +160,8 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # monte-carlo event. The probabilities change only if the data changes.
         self._cache_data_id = None
         self._cache_mc_pre_selected = None
-        self._cache_mc_pre_selected_mask = None
         self._cache_mc_event_bkg_prob = None
+        self._cache_mc_event_bkg_prob_pre_selected = None
         self._cache_mean = None
 
     @property
@@ -361,11 +361,12 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             background events. The number of events can be less than `n_bkg`
             if an event selection method is used.
         """
+        # Check if the data set has changed. In that case need to get new
+        # background probabilities for each monte-carlo event and a new mean
+        # number of background events.
         data_id = id(data)
         if(self._cache_data_id != data_id):
-            # Dataset has changed. We need to get new background probabilities
-            # for each monte-carlo event and a new mean number of background
-            # events.
+            # Cache the current id of the data.
             self._cache_data_id = data_id
 
             # Create a copy of the MC data with all MC data fields removed,
@@ -388,11 +389,13 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             if(self._pre_event_selection_method is not None):
                 with TaskTimer(tl, 'Pre-select MC events.'):
                     (self._cache_mc_pre_selected,
-                     self._cache_mc_pre_selected_mask) =\
+                     mc_pre_selected_mask) =\
                     self._pre_event_selection_method.select_events(
                         data_mc, retmask=True, tl=tl)
+                self._cache_mc_event_bkg_prob_pre_selected = self._cache_mc_event_bkg_prob[mc_pre_selected_mask]
             else:
                 self._cache_mc_pre_selected = data_mc
+
 
         if(mean is None):
             if(self._cache_mean is None):
@@ -400,9 +403,9 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                     'get_mean_func were specified! One of the two must be '
                     'specified!')
             mean = self._cache_mean
-
-        mean = float_cast(mean, 'The mean number of background events must be '
-            'castable to type float!')
+        else:
+            mean = float_cast(mean, 'The mean number of background events must '
+                'be castable to type float!')
 
         # Draw the number of background events from a poisson distribution with
         # the given mean number of background events. This will be the number of
@@ -446,19 +449,18 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # Calculate the actual number of background events for the selected
         # events.
         p_binomial = mean_selected / mean
-        if(no_selection):
-            p = self._cache_mc_event_bkg_prob
-        elif(event_selection_method is None):
-            # Only pre-selection.
-            pre_mask = self._cache_mc_pre_selected_mask
-            p = self._cache_mc_event_bkg_prob[pre_mask] / p_binomial
-        elif(self._pre_event_selection_method is None):
-            # Only normal selection.
-            p = self._cache_mc_event_bkg_prob[mask] / p_binomial
-        else:
-            # Pre-selection and normal selection.
-            pre_mask = self._cache_mc_pre_selected_mask
-            p = self._cache_mc_event_bkg_prob[pre_mask][mask] / p_binomial
+        with TaskTimer(tl, 'Get p array.'):
+            if(no_selection):
+                p = self._cache_mc_event_bkg_prob
+            elif(event_selection_method is None):
+                # Only pre-selection.
+                p = self._cache_mc_event_bkg_prob_pre_selected / p_binomial
+            elif(self._pre_event_selection_method is None):
+                # Only normal selection.
+                p = self._cache_mc_event_bkg_prob[mask] / p_binomial
+            else:
+                # Pre-selection and normal selection.
+                p = self._cache_mc_event_bkg_prob_pre_selected[mask] / p_binomial
         n_bkg_selected = int(np.around(n_bkg * p_binomial, 0))
 
         # Draw the actual background events from the selected events of the
