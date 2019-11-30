@@ -39,7 +39,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
             the desired ratio fill method.
             If set to None (default), the default ratio fill method
             MostSignalLikePDFRatioFillMethod will be used.
-        interpolmethod : class of FitParameterManifoldGridInterpolationMethod
+        interpolmethod : class of GridManifoldInterpolationMethod
             The class implementing the fit parameter interpolation method for
             the PDF ratio manifold grid.
         ncpu : int | None

@@ -249,7 +249,7 @@ class ParameterGrid(object):
             raise TypeError('The grid property must be of type numpy.ndarray!')
         if(arr.ndim != 1):
             raise ValueError('The grid property must be a 1D numpy.ndarray!')
-        self._grid = self.round_to_nearest_grid_edge(arr)
+        self._grid = self.round_to_nearest_grid_point(arr)
 
     @property
     def delta(self):
@@ -300,15 +300,52 @@ class ParameterGrid(object):
         copy = deepcopy(self)
         return copy
 
-    def round_to_nearest_grid_edge(self, value):
-        """Rounds the given value to the nearest grid edge.
+    def round_to_nearest_grid_point(self, value):
+        """Rounds the given value to the nearest grid point.
 
         Parameters
         ----------
         value : float | ndarray of float
             The value(s) to round.
+
+        Returns
+        -------
+        grid_point : float | ndarray of float
+            The calculated grid point(s).
         """
         return np.around(value / self._delta) * self._delta + self._offset
+
+    def round_to_lower_grid_point(self, value):
+        """Rounds the given value to the nearest grid point that is lower than
+        the given value.
+
+        Parameters
+        ----------
+        value : float | ndarray of float
+            The value(s) to round.
+
+        Returns
+        -------
+        grid_point : float | ndarray of float
+            The calculated grid point(s).
+        """
+        return np.floor_divide(value, self._delta) * self._delta + self._offset
+
+    def round_to_upper_grid_point(self, value):
+        """Rounds the given value to the nearest grid point that is larger than
+        the given value.
+
+        Parameters
+        ----------
+        value : float | ndarray of float
+            The value(s) to round.
+
+        Returns
+        -------
+        grid_point : float | ndarray of float
+            The calculated grid point(s).
+        """
+        return np.ceil(value / self._delta) * self._delta + self._offset
 
 
 class ParameterGridSet(ObjectCollection):
@@ -323,7 +360,8 @@ class ParameterGridSet(ObjectCollection):
             The list of ParameterGrid objects with which this set should get
             initialized with.
         """
-        super(ParameterGridSet, self).__init__(obj_type=ParameterGrid, obj_list=param_grid_list)
+        super(ParameterGridSet, self).__init__(
+            obj_type=ParameterGrid, obj_list=param_grid_list)
 
     @property
     def ndim(self):
@@ -367,211 +405,6 @@ class ParameterGridSet(ObjectCollection):
         """
         copy = deepcopy(self)
         return copy
-
-
-class ParameterManifoldGridInterpolationMethod(object):
-    """This is an abstract base class for implementing a method to interpolate
-    a set of fit parameters on a fit parameter manifold grid. In general the
-    number of fit parameters can be arbitrary and hence the manifold's
-    dimensionality can be arbitrary too. However, in practice the interpolation
-    on a multi-dimensional manifold can be rather difficult.
-    Nevertheless, we provide this interface to allow for different kinds of
-    manifold grids with different dimensionality.
-    """
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, f, param_grid_set):
-        """Constructor for a ParameterManifoldGridInterpolationMethod object.
-        It must be called by the derived class.
-
-        Parameters
-        ----------
-        f : callable R^d -> R
-            The function that takes d parameters as input and returns the
-            value of the d-dimensional manifold at this point for each given
-            event.
-            The call signature of f must be:
-
-                ``__call__(gridparams, eventdata)``
-
-            where gridparams is the dictionary with the parameter values
-            on the grid and ``eventdata`` is a 2-dimensional (N,V)-shaped numpy
-            ndarray holding the event data, where N is the number of events, and
-            V the dimensionality of the event data.
-        param_grid_set : instance of ParameterGridSet
-            The set of d parameter grids. This defines the grid of the
-            manifold.
-        """
-        self.f = f
-        self.param_grid_set = param_grid_set
-
-    @property
-    def f(self):
-        """The R^d -> R manifold function.
-        """
-        return self._f
-    @f.setter
-    def f(self, func):
-        if(not callable(func)):
-            raise TypeError('The f property must be a callable object!')
-        self._f = func
-
-    @property
-    def param_grid_set(self):
-        """The ParameterGridSet object defining the set of d parameter grids.
-        This defines the grid of the manifold.
-        """
-        return self._param_grid_set
-    @param_grid_set.setter
-    def param_grid_set(self, obj):
-        if(not isinstance(obj, ParameterGridSet)):
-            raise TypeError('The param_grid_set property must be an instance '
-                'of ParameterGridSet!')
-        self._param_grid_set = obj
-
-    @property
-    def ndim(self):
-        """(read-only) The dimensionality of the manifold.
-        """
-        return len(self.param_grid_set)
-
-    @abc.abstractmethod
-    def get_value_and_gradients(self, eventdata, params):
-        """Retrieves the interpolated value of the manifold at the d-dimensional
-        point ``params`` for all given events, along with the d gradients,
-        i.e. partial derivatives.
-
-        Parameters
-        ----------
-        eventdata : numpy (N_events,V)-shaped 2D ndarray
-            The 2D (N_events,V)-shaped numpy ndarray holding the event data,
-            where N_events is the number of events, and V the dimensionality of
-            the event data.
-        params : dict
-            The dictionary with the parameter values, defining the point on the
-            manifold for which the value should get calculated.
-
-        Returns
-        -------
-        value : (N,) ndarray of float
-            The interpolated manifold value for the N given events.
-        gradients : (D,N) ndarray of float
-            The D manifold gradients for the N given events, where D is the
-            number of parameters. The order of the D parameters is defined
-            by the ParameterGridSet that has been provided at construction time
-            of this interpolation method object.
-        """
-        pass
-
-
-class ParabolaParameterInterpolationMethod(ParameterManifoldGridInterpolationMethod):
-    """This parameter manifold grid interpolation method interpolates the
-    1-dimensional parameter manifold using a parabola.
-    """
-    def __init__(self, f, param_grid_set):
-        """Creates a new ParabolaParameterInterpolationMethod instance.
-
-        Parameters
-        ----------
-        f : callable R -> R
-            The function that takes the parameter value as input and returns the
-            value of the 1-dimensional manifold at this point for each given
-            event.
-            The call signature of f must be:
-
-                ``__call__(gridparams, eventdata)``
-
-            where gridparams is the dictionary with the parameter values
-            on the grid and ``eventdata`` is a 2-dimensional (N,V)-shaped numpy
-            ndarray holding the event data, where N is the number of events, and
-            V the dimensionality of the event data.
-        param_grid_set : instance of ParameterGridSet
-            The set of 1 parameter grids. This defines the grid of the
-            1-dimensional manifold.
-        """
-        super(ParabolaParameterInterpolationMethod, self).__init__(f, param_grid_set)
-
-        self.p_grid = self.param_grid_set[0]
-
-        # Create a cache for the parabola parameterization for the last
-        # manifold grid point for the different events.
-        self._create_cache(None, np.array([]), np.array([]), np.array([]))
-
-    def _create_cache(self, x1, M1, a, b):
-        """Create a cache for the parabola parameterization for the last
-        manifold grid point p1 for the nevents different events.
-
-        Parameters
-        ----------
-        x1 : float | None
-        M1 : 1d ndarray
-        a : 1d ndarray
-        b : 1d ndarray
-        """
-        self._cache = {
-            'x1': x1,
-            'M1': M1,
-            'a': a,
-            'b': b
-        }
-
-    def get_value_and_gradients(self, eventdata, params):
-        """Calculates the interpolated manifold value and its gradient for each
-        given event at the point ``params``.
-
-        Parameters
-        ----------
-        eventdata : numpy (N_events,V)-shaped 2D ndarray
-            The 2D (N_events,V)-shaped numpy ndarray holding the event data,
-            where N_events is the number of events, and V the dimensionality of
-            the event data.
-        params : dict
-            The dictionary with the parameter values, defining the point on the
-            manifold for which the value should get calculated.
-
-        Returns
-        -------
-        value : (N,) ndarray of float
-            The interpolated manifold value for the N given events.
-        gradients : (D,N) ndarray of float
-            The D manifold gradients for the N given events, where D is the
-            number of parameters.
-        """
-        (xname, x) = tuple(params.items())[0]
-
-        # Determine the nearest grid point x1 and the grid precision.
-        x1 = self.p_grid.round_to_nearest_grid_edge(x)
-        dx = self.p_grid.delta
-
-        # Check if the parabola parametrization for x1 is already cached.
-        if((self._cache['x1'] == x1) and
-           (eventdata.shape[0] == len(self._cache['M1']))
-          ):
-            M1 = self._cache['M1']
-            a = self._cache['a']
-            b = self._cache['b']
-        else:
-            # Calculate the neighboring gridponts to x1: x0 and x2.
-            x0 = self.p_grid.round_to_nearest_grid_edge(x1 - dx)
-            x2 = self.p_grid.round_to_nearest_grid_edge(x1 + dx)
-
-            # Parameterize the parabola with parameters a, b, and M1.
-            M0 = self.f({xname:x0}, eventdata)
-            M1 = self.f({xname:x1}, eventdata)
-            M2 = self.f({xname:x2}, eventdata)
-
-            a = 0.5*(M0 - 2.*M1 + M2) / dx**2
-            b = 0.5*(M2 - M0) / dx
-
-            # Cache the parabola parametrization.
-            self._create_cache(x1, M1, a, b)
-
-        # Calculate the interpolated manifold value.
-        value = a * (x - x1)**2 + b * (x - x1) + M1
-        # Calculate the gradient of the manifold.
-        gradients = 2. * a * (x - x1) + b
-
-        return (value, np.atleast_2d(gradients))
 
 
 class FitParameter(object):
