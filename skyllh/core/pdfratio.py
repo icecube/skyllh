@@ -11,10 +11,10 @@ from skyllh.core.py import (
     range,
     typename
 )
-from skyllh.core.parameters import (
-    FitParameter,
-    ParameterManifoldGridInterpolationMethod,
-    ParabolaParameterInterpolationMethod
+from skyllh.core.parameters import FitParameter
+from skyllh.core.interpolate import (
+    GridManifoldInterpolationMethod,
+    Parabola1DGridManifoldInterpolationMethod
 )
 from skyllh.core.pdf import (
     PDFSet,
@@ -670,11 +670,12 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         backgroundpdf : class instance derived from ``pdf_type``, and
                         IsBackgroundPDF
             The background PDF instance.
-        interpolmethod : class of ParameterManifoldGridInterpolationMethod | None
+        interpolmethod : class of GridManifoldInterpolationMethod | None
             The class implementing the fit parameter interpolation method for
             the PDF ratio manifold grid.
-            If set to None (default), the ParabolaParameterInterpolationMethod
-            will be used for 1-dimensional fit parameter manifolds.
+            If set to None (default), the
+            Parabola1DGridManifoldInterpolationMethod will be used for
+            1-dimensional parameter manifolds.
         """
         # Call super to allow for multiple class inheritance.
         super(SigSetOverBkgPDFRatio, self).__init__(pdf_type, *args, **kwargs)
@@ -687,7 +688,7 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         if(interpolmethod is None):
             ndim = signalpdfset.fitparams_grid_set.ndim
             if(ndim == 1):
-                interpolmethod = ParabolaParameterInterpolationMethod
+                interpolmethod = Parabola1DGridManifoldInterpolationMethod
             else:
                 raise ValueError('There is no default fit parameter manifold grid interpolation method available for %d dimensions!'%(ndim))
         self.interpolmethod = interpolmethod
@@ -720,15 +721,15 @@ class SigSetOverBkgPDFRatio(PDFRatio):
 
     @property
     def interpolmethod(self):
-        """The class derived from ParameterManifoldGridInterpolationMethod
+        """The class derived from GridManifoldInterpolationMethod
         implementing the interpolation of the fit parameter manifold.
         """
         return self._interpolmethod
     @interpolmethod.setter
     def interpolmethod(self, cls):
-        if(not issubclass(cls, ParameterManifoldGridInterpolationMethod)):
+        if(not issubclass(cls, GridManifoldInterpolationMethod)):
             raise TypeError('The interpolmethod property must be a sub-class '
-                'of ParameterManifoldGridInterpolationMethod!')
+                'of GridManifoldInterpolationMethod!')
         self._interpolmethod = cls
 
     def _get_signal_fitparam_names(self):
