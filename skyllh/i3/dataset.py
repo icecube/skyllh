@@ -15,6 +15,9 @@ from skyllh.core.storage import (
 )
 from skyllh.core.timing import TaskTimer
 
+# Load the IceCube specific config defaults.
+# This will change the skyllh.core.config.CFG dictionary.
+from skyllh.i3 import config
 
 class I3Dataset(Dataset):
     """The I3Dataset class is an IceCube specific Dataset class that adds
@@ -263,10 +266,6 @@ class I3Dataset(Dataset):
         with TaskTimer(tl, task):
             data.mc.append_field('sin_dec', np.sin(data.mc['dec']))
             data.mc.append_field('sin_true_dec', np.sin(data.mc['true_dec']))
-
-
-I3Dataset.add_required_exp_field_names(I3Dataset, ['azi', 'zen', 'sin_dec'])
-I3Dataset.add_required_mc_field_names(I3Dataset, ['sin_true_dec'])
 
 
 class I3DatasetData(DatasetData):

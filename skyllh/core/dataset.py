@@ -28,56 +28,11 @@ from skyllh.core.timing import TaskTimer
 class Dataset(object):
     """The Dataset class describes a set of self-consistent experimental and
     simulated detector data. Usually this is for a certain time period, i.e.
-    season.
+    a season.
 
-    Independet dataset of the same kind, e.g. event selection, can be joined
+    Independet data sets of the same kind, e.g. event selection, can be joined
     through a DatasetCollection object.
     """
-    _EXP_FIELD_NAMES = ('ra', 'dec', 'ang_err', 'time', 'log_energy')
-    _MC_FIELD_NAMES = ('true_ra', 'true_dec', 'true_energy', 'mcweight')
-
-    @staticmethod
-    def add_required_exp_field_names(cls, fieldnames):
-        """Static method to add required experimental data field names to the
-        list of already required field names for experimental data.
-        This method is useful for derived dataset classes.
-
-        Parameters
-        ----------
-        cls : class object
-            The class object, for which the new set of required exp field names
-            should apply.
-        fieldnames : str | list of str
-            The field name or the list of field names to add.
-        """
-        if(not issequence(fieldnames)):
-            fieldnames = [fieldnames]
-        if(not issequenceof(fieldnames, str)):
-            raise TypeError('The fieldnames argument must be a sequence of str objects!')
-
-        cls._EXP_FIELD_NAMES = tuple(list(Dataset._EXP_FIELD_NAMES) + fieldnames)
-
-    @staticmethod
-    def add_required_mc_field_names(cls, fieldnames):
-        """Static method to add required monte-carlo field names to the list of
-        already required field names for the monte-carlo.
-        This method is useful for derived dataset classes.
-
-        Parameters
-        ----------
-        cls : class object
-            The class object, for which the new set of required mc field names
-            should apply.
-        fieldnames : str | list of str
-            The field name or the list of field names to add.
-        """
-        if(not issequence(fieldnames)):
-            fieldnames = [fieldnames]
-        if(not issequenceof(fieldnames, str)):
-            raise TypeError('The fieldnames argument must be a sequence of str objects!')
-
-        cls._MC_FIELD_NAMES = tuple(list(Dataset._MC_FIELD_NAMES) + fieldnames)
-
     @staticmethod
     def get_combined_exp_pathfilenames(datasets):
         """Creates the combined list of exp pathfilenames of all the given
@@ -199,8 +154,11 @@ class Dataset(object):
 
         self.description = ''
 
-        self.exp_field_name_renaming_dict = dict()
-        self.mc_field_name_renaming_dict = dict()
+        self._loading_extra_exp_field_name_list = list()
+        self._loading_extra_mc_field_name_list = list()
+
+        self._exp_field_name_renaming_dict = dict()
+        self._mc_field_name_renaming_dict = dict()
 
         self._data_preparation_functions = list()
         self._binning_definitions = dict()
@@ -387,6 +345,40 @@ class Dataset(object):
             sub_path_fmt=self._sub_path_fmt)
 
     @property
+    def loading_extra_exp_field_name_list(self):
+        """The list of extra field names that should get loaded when loading
+        experimental data. These should only be field names that are required
+        during the data preparation of this specific data set.
+        """
+        return self._loading_extra_exp_field_name_list
+    @loading_extra_exp_field_name_list.setter
+    def loading_extra_exp_field_name_list(self, fieldnames):
+        if(isinstance(fieldnames, str)):
+            fieldnames = [ fieldnames ]
+        elif(not issequenceof(fieldnames, str)):
+            raise TypeError('The loading_extra_exp_field_name_list property '
+                'must be an instance of str or a sequence of str type '
+                'instances!')
+        self._loading_extra_exp_field_name_list = list(fieldnames)
+
+    @property
+    def loading_extra_mc_field_name_list(self):
+        """The list of extra field names that should get loaded when loading
+        monte-carlo data. These should only be field names that are required
+        during the data preparation of this specific data set.
+        """
+        return self._loading_extra_mc_field_name_list
+    @loading_extra_mc_field_name_list.setter
+    def loading_extra_mc_field_name_list(self, fieldnames):
+        if(isinstance(fieldnames, str)):
+            fieldnames = [ fieldnames ]
+        elif(not issequenceof(fieldnames, str)):
+            raise TypeError('The loading_extra_mc_field_name_list property '
+                'must be an instance of str or a sequence of str type '
+                'instances!')
+        self._loading_extra_mc_field_name_list = list(fieldnames)
+
+    @property
     def exp_field_name_renaming_dict(self):
         """The dictionary specifying the field names of the experimental data
         which need to get renamed just after loading the data. The dictionary
@@ -424,20 +416,6 @@ class Dataset(object):
             if(not os.path.exists(pathfilename)):
                 return False
         return True
-
-    @property
-    def exp_field_names(self):
-        """(read-only) The tuple of numpy record ndarray field names for the
-        experimental data.
-        """
-        return self.__class__._EXP_FIELD_NAMES
-
-    @property
-    def mc_field_names(self):
-        """(read-only) The tuple of numpy record ndarray field names for the
-        monto-carlo data.
-        """
-        return self.__class__._MC_FIELD_NAMES
 
     @property
     def version_str(self):
@@ -647,11 +625,34 @@ class Dataset(object):
             A DatasetData instance holding the experimental and monte-carlo
             data.
         """
+        def _conv_new2orig_field_names(new_field_names, orig2new_renaming_dict):
+            """Converts the given ``new_field_names`` into their original name
+            given the original-to-new field name renaming dictionary.
+            """
+            new2orig_renaming_dict = dict()
+            for (k,v) in orig2new_renaming_dict.items():
+                new2orig_renaming_dict[v] = k
+
+            orig_field_names = [
+                new2orig_renaming_dict.get(new_field_name, new_field_name)
+                    for new_field_name in new_field_names
+            ]
+
+            return orig_field_names
+
         # Load the experimental data if there is any.
         if(len(self._exp_pathfilename_list) > 0):
             fileloader_exp = create_FileLoader(self.exp_abs_pathfilename_list)
             with TaskTimer(tl, 'Loading exp data from disk.'):
-                data_exp = DataFieldRecordArray(fileloader_exp.load_data())
+                # Create the list of field names that should get kept.
+                keep_fields = list(set(
+                    _conv_new2orig_field_names(
+                        CFG['dataset']['analysis_required_exp_field_names'],
+                        self._exp_field_name_renaming_dict
+                    ) +
+                    self._loading_extra_exp_field_name_list
+                ))
+                data_exp = fileloader_exp.load_data(keep_fields=keep_fields)
                 data_exp.rename_fields(self._exp_field_name_renaming_dict)
         else:
             data_exp = None
@@ -659,7 +660,17 @@ class Dataset(object):
         # Load the monte-carlo data.
         with TaskTimer(tl, 'Loading mc data from disk.'):
             fileloader_mc = create_FileLoader(self.mc_abs_pathfilename_list)
-            data_mc = DataFieldRecordArray(fileloader_mc.load_data())
+            keep_fields = list(set(
+                _conv_new2orig_field_names(
+                    CFG['dataset']['analysis_required_exp_field_names'],
+                    self._exp_field_name_renaming_dict) +
+                _conv_new2orig_field_names(
+                    CFG['dataset']['analysis_required_mc_field_names'],
+                    self._mc_field_name_renaming_dict) +
+                self._loading_extra_exp_field_name_list +
+                self._loading_extra_mc_field_name_list
+            ))
+            data_mc = fileloader_mc.load_data(keep_fields=keep_fields)
             data_mc.rename_fields(self._mc_field_name_renaming_dict)
 
         if(livetime is None):
@@ -786,11 +797,11 @@ class Dataset(object):
             data.
         """
         if(keep_fields is None):
-            keep_fields = tuple()
-        if(not issequenceof(keep_fields, str)):
+            keep_fields = list()
+        elif(not issequenceof(keep_fields, str)):
             raise TypeError('The keep_fields argument must be None, or a '
                 'sequence of str!')
-        keep_fields = tuple(keep_fields)
+        keep_fields = list(keep_fields)
 
         data = self.load_data(livetime=livetime, tl=tl)
         self.prepare_data(data, tl=tl)
@@ -799,14 +810,14 @@ class Dataset(object):
         if(data.exp is not None):
             with TaskTimer(tl, 'Cleaning exp data.'):
                 keep_fields_exp = (
-                    type(self)._EXP_FIELD_NAMES +
+                    CFG['dataset']['analysis_required_exp_field_names'] +
                     keep_fields
                 )
                 data.exp.tidy_up(keep_fields=keep_fields_exp)
         with TaskTimer(tl, 'Cleaning MC data.'):
             keep_fields_mc = (
-                type(self)._EXP_FIELD_NAMES +
-                type(self)._MC_FIELD_NAMES +
+                CFG['dataset']['analysis_required_exp_field_names'] +
+                CFG['dataset']['analysis_required_mc_field_names'] +
                 keep_fields
             )
             data.mc.tidy_up(keep_fields=keep_fields_mc)
@@ -1389,20 +1400,21 @@ def assert_data_format(dataset, data):
                 missing_keys.append(reqkey)
         return missing_keys
 
-    dataset_cls = type(dataset)
-
     if(data.exp is not None):
         # Check experimental data keys.
-        missing_exp_keys = _get_missing_keys(data.exp.field_name_list,
-            dataset_cls._EXP_FIELD_NAMES)
+        missing_exp_keys = _get_missing_keys(
+            data.exp.field_name_list,
+            CFG['dataset']['analysis_required_exp_field_names'])
         if(len(missing_exp_keys) != 0):
             raise KeyError('The following data fields are missing for the '
                 'experimental data of dataset "%s": '%(dataset.name)+
                 ', '.join(missing_exp_keys))
 
     # Check monte-carlo data keys.
-    missing_mc_keys = _get_missing_keys(data.mc.field_name_list,
-        dataset_cls._EXP_FIELD_NAMES + dataset_cls._MC_FIELD_NAMES)
+    missing_mc_keys = _get_missing_keys(
+        data.mc.field_name_list,
+        CFG['dataset']['analysis_required_exp_field_names'] +
+        CFG['dataset']['analysis_required_mc_field_names'])
     if(len(missing_mc_keys) != 0):
         raise KeyError('The following data fields are missing for the monte-carlo data of dataset "%s": '%(dataset.name)+', '.join(missing_mc_keys))
 
