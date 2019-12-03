@@ -134,26 +134,48 @@ class NPYFileLoader(FileLoader):
     def __init__(self, pathfilenames, **kwargs):
         super(NPYFileLoader, self).__init__(pathfilenames)
 
-    def load_data(self):
+    def load_data(self, keep_fields=None):
         """Loads the data from the files specified through their fully qualified
         file names.
 
+        Parameters
+        ----------
+        keep_fields : str | sequence of str | None
+            Load the data into memory only for these data fields. If set to
+            ``None``, all in-file-present data fields are loaded into memory.
+
         Returns
         -------
-        data : numpy.recarray
-            The numpy record array holding the loaded data.
+        data : DataFieldRecordArray
+            The DataFieldRecordArray holding the loaded data.
 
         Raises
         ------
         RuntimeError if a file does not exist.
         """
+        # Load the first data file.
         pathfilename = self.pathfilename_list[0]
         assert_file_exists(pathfilename)
-        data = np.load(pathfilename)
+        # Create a memory map into the data file. This loads the data only when
+        # accessing the data.
+        mmap_ndarray = np.load(pathfilename, mmap_mode='r')
+        # Load the data into memory by accessing only the data fields that are
+        # given by keep_fields.
+        data = DataFieldRecordArray(
+            mmap_ndarray, keep_fields=keep_fields, copy=True)
+        # Close the memory mapped file.
+        del mmap_ndarray
+
         for i in range(1, len(self.pathfilename_list)):
             pathfilename = self.pathfilename_list[i]
             assert_file_exists(pathfilename)
-            data = np.append(data, np.load(pathfilename))
+
+            mmap_ndarray = np.load(pathfilename, mmap_mode='r')
+            # We use copy=False, because the copy of the data will occur through
+            # the append method.
+            data.append(DataFieldRecordArray(
+                mmap_ndarray, keep_fields=keep_fields, copy=False))
+            del mmap_ndarray
 
         return data
 
@@ -279,7 +301,7 @@ class DataFieldRecordArray(object):
 
         if(keep_fields is not None):
             if(isinstance(keep_fields, str)):
-                keep_fields = [keep_fields]
+                keep_fields = [ keep_fields ]
             elif(not issequenceof(keep_fields, str)):
                 raise TypeError('The keep_fields argument must be None, an '
                     'instance of type str, or a sequence of instances of '
@@ -451,7 +473,8 @@ class DataFieldRecordArray(object):
                 'DataFieldRecordArray!')
 
         for fname in self._field_name_list:
-            self._data_fields[fname] = np.append(self._data_fields[fname], arr[fname])
+            self._data_fields[fname] = np.append(
+                self._data_fields[fname], arr[fname])
 
         self._len += len(arr)
         self._indices = np.indices((self._len,))[0]
