@@ -472,10 +472,21 @@ class DataFieldRecordArray(object):
 
         if(isinstance(data, np.ndarray)):
             field_names = data.dtype.names
+            fname2dtype = dict(
+                [(k,v[0]) for (k,v) in data.dtype.fields.items() ])
+            length = data.shape[0]
         elif(isinstance(data, dict)):
             field_names = list(data.keys())
+            fname2dtype = dict(
+                [ (fname, data[fname].dtype) for fname in field_names ])
+            length = 0
+            if(len(field_names) > 0):
+                length = data[field_names[0]].shape[0]
         elif(isinstance(data, DataFieldRecordArray)):
             field_names = data.field_name_list
+            fname2dtype = dict(
+                [ (fname, data[fname].dtype) for fname in field_names ])
+            length = len(data)
             copy = True
         else:
             raise TypeError('The data argument must be an instance of ndarray, '
@@ -486,8 +497,20 @@ class DataFieldRecordArray(object):
             if((keep_fields is not None) and (fname not in keep_fields)):
                 continue
 
-            if(copy is True):
-                field_arr = np.copy(data[fname])
+            copy_field = copy
+            dt = fname2dtype[fname]
+            if((fname not in dtype_convertion_except_fields) and
+               (dt in dtype_convertions)):
+                dt = dtype_convertions[dt]
+                # If a data type convertion is needed, the data of the field
+                # needs to get copied.
+                copy_field = True
+
+            if(copy_field is True):
+                # Create a ndarray with the final data type and then assign the
+                # values from the data, which technically is a copy.
+                field_arr = np.empty((length,), dtype=dt)
+                field_arr[:] = data[fname]
             else:
                 field_arr = data[fname]
             if(self._len is None):
@@ -496,11 +519,6 @@ class DataFieldRecordArray(object):
                 raise ValueError('All field arrays must have the same length. '
                     'Field "%s" has length %d, but must be %d!'%(
                     fname, len(field_arr), self._len))
-
-            # Convert the data type if requested.
-            if((fname not in dtype_convertion_except_fields) and
-               (field_arr.dtype in dtype_convertions)):
-                field_arr = field_arr.astype(dtype_convertions[field_arr.dtype])
 
             self._data_fields[fname] = field_arr
 
