@@ -604,7 +604,9 @@ class Dataset(object):
                 raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
             self._verqualifiers[q] = verqualifiers[q]
 
-    def load_data(self, livetime=None, tl=None):
+    def load_data(
+            self, livetime=None, dtc_dict=None, dtc_except_fields=None,
+            efficiency_mode=None, tl=None):
         """Loads the data, which is described by the dataset.
 
         Note: This does not call the ``prepare_data`` method! It only loads
@@ -616,6 +618,29 @@ class Dataset(object):
             If not None, uses this livetime (in days) for the DatasetData
             instance, otherwise uses the Dataset livetime property value for
             the DatasetData instance.
+        dtc_dict : dict | None
+            This dictionary defines how data fields of specific
+            data types should get converted into other data types.
+            This can be used to use less memory. If set to None, no data
+            convertion is performed.
+        dtc_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
+        efficiency_mode : str | None
+            The efficiency mode the data should get loaded with. Possible values
+            are:
+
+                - 'memory':
+                    The data will be load in a memory efficient way. This will
+                    require more time, because all data records of a file will
+                    be loaded sequentially.
+                - 'time'
+                    The data will be loaded in a time efficient way. This will
+                    require more memory, because each data file gets loaded in
+                    memory at once.
+
+            The default value is ``'time'``. If set to ``None``, the default
+            value will be used.
         tl : TimeLord instance | None
             The TimeLord instance to use to time the data loading procedure.
 
@@ -629,6 +654,9 @@ class Dataset(object):
             """Converts the given ``new_field_names`` into their original name
             given the original-to-new field name renaming dictionary.
             """
+            if(new_field_names is None):
+                return None
+
             new2orig_renaming_dict = dict()
             for (k,v) in orig2new_renaming_dict.items():
                 new2orig_renaming_dict[v] = k
@@ -647,12 +675,19 @@ class Dataset(object):
                 # Create the list of field names that should get kept.
                 keep_fields = list(set(
                     _conv_new2orig_field_names(
-                        CFG['dataset']['analysis_required_exp_field_names'],
+                        CFG['dataset']['analysis_required_exp_field_names'] +
+                        self._loading_extra_exp_field_name_list,
                         self._exp_field_name_renaming_dict
-                    ) +
-                    self._loading_extra_exp_field_name_list
+                    )
                 ))
-                data_exp = fileloader_exp.load_data(keep_fields=keep_fields)
+
+                data_exp = fileloader_exp.load_data(
+                    keep_fields=keep_fields,
+                    dtype_convertions=dtc_dict,
+                    dtype_convertion_except_fields=_conv_new2orig_field_names(
+                        dtc_except_fields,
+                        self._exp_field_name_renaming_dict),
+                    efficiency_mode=efficiency_mode)
                 data_exp.rename_fields(self._exp_field_name_renaming_dict)
         else:
             data_exp = None
@@ -662,15 +697,21 @@ class Dataset(object):
             fileloader_mc = create_FileLoader(self.mc_abs_pathfilename_list)
             keep_fields = list(set(
                 _conv_new2orig_field_names(
-                    CFG['dataset']['analysis_required_exp_field_names'],
+                    CFG['dataset']['analysis_required_exp_field_names'] +
+                    self._loading_extra_exp_field_name_list,
                     self._exp_field_name_renaming_dict) +
                 _conv_new2orig_field_names(
-                    CFG['dataset']['analysis_required_mc_field_names'],
-                    self._mc_field_name_renaming_dict) +
-                self._loading_extra_exp_field_name_list +
-                self._loading_extra_mc_field_name_list
+                    CFG['dataset']['analysis_required_mc_field_names'] +
+                    self._loading_extra_mc_field_name_list,
+                    self._mc_field_name_renaming_dict)
             ))
-            data_mc = fileloader_mc.load_data(keep_fields=keep_fields)
+            data_mc = fileloader_mc.load_data(
+                keep_fields=keep_fields,
+                dtype_convertions=dtc_dict,
+                dtype_convertion_except_fields=_conv_new2orig_field_names(
+                    dtc_except_fields,
+                    self._mc_field_name_renaming_dict),
+                efficiency_mode=efficiency_mode)
             data_mc.rename_fields(self._mc_field_name_renaming_dict)
 
         if(livetime is None):
@@ -762,7 +803,8 @@ class Dataset(object):
                 data_prep_func(data)
 
     def load_and_prepare_data(
-            self, livetime=None, keep_fields=None, compress=False, tl=None):
+            self, livetime=None, keep_fields=None, compress=False,
+            efficiency_mode=None, tl=None):
         """Loads and prepares the experimental and monte-carlo data of this
         dataset by calling its ``load_data`` and ``prepare_data`` methods.
         After loading the data it drops all unnecessary data fields if they are
@@ -786,6 +828,21 @@ class Dataset(object):
             The only field, which will not get converted is the 'mcweight'
             field, in order to ensure reliable calculations.
             Default is False.
+        efficiency_mode : str | None
+            The efficiency mode the data should get loaded with. Possible values
+            are:
+
+                - 'memory':
+                    The data will be load in a memory efficient way. This will
+                    require more time, because all data records of a file will
+                    be loaded sequentially.
+                - 'time'
+                    The data will be loaded in a time efficient way. This will
+                    require more memory, because each data file gets loaded in
+                    memory at once.
+
+            The default value is ``'time'``. If set to ``None``, the default
+            value will be used.
         tl : TimeLord instance | None
             The TimeLord instance that should be used to time the data loading
             and preparation.
@@ -803,7 +860,19 @@ class Dataset(object):
                 'sequence of str!')
         keep_fields = list(keep_fields)
 
-        data = self.load_data(livetime=livetime, tl=tl)
+        dtc_dict = None
+        dtc_except_fields = None
+        if(compress):
+            dtc_dict = { np.dtype(np.float64): np.dtype(np.float32) }
+            dtc_except_fields = [ 'mcweight' ]
+
+        data = self.load_data(
+            livetime=livetime,
+            dtc_dict=dtc_dict,
+            dtc_except_fields=dtc_except_fields,
+            efficiency_mode=efficiency_mode,
+            tl=tl)
+
         self.prepare_data(data, tl=tl)
 
         # Drop unrequired data fields.
@@ -821,17 +890,6 @@ class Dataset(object):
                 keep_fields
             )
             data.mc.tidy_up(keep_fields=keep_fields_mc)
-
-        # Convert float64 fields into float32 fields if requested.
-        if(compress):
-            dtype_convertions = { np.dtype(np.float64): np.dtype(np.float32) }
-            if(data.exp is not None):
-                with TaskTimer(tl, 'Compressing exp data.'):
-                    data.exp.convert_dtypes(dtype_convertions)
-
-            with TaskTimer(tl, 'Compressing MC data.'):
-                data.mc.convert_dtypes(dtype_convertions,
-                    except_fields=('mcweight',))
 
         with TaskTimer(tl, 'Asserting data format.'):
             assert_data_format(self, data)

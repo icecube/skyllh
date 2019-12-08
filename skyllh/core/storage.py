@@ -121,7 +121,9 @@ class FileLoader:
         self._pathfilename_list = list(pathfilenames)
 
     @abc.abstractmethod
-    def load_data(self):
+    def load_data(self, **kwargs):
+        """This method is supposed to load the data from the file.
+        """
         pass
 
 
@@ -134,7 +136,95 @@ class NPYFileLoader(FileLoader):
     def __init__(self, pathfilenames, **kwargs):
         super(NPYFileLoader, self).__init__(pathfilenames)
 
-    def load_data(self, keep_fields=None):
+    def _load_file_memory_efficiently(
+            self, pathfilename, keep_fields, dtype_convertions,
+            dtype_convertion_except_fields):
+        """Loads a single file in a memory efficient way.
+
+        Parameters
+        ----------
+        pathfilename : str
+            The fully qualified file name of the to-be-loaded file.
+
+        Returns
+        -------
+        data : DataFieldRecordArray instance
+            An instance of DataFieldRecordArray holding the data.
+        """
+        assert_file_exists(pathfilename)
+        # Create a memory map into the data file. This loads the data only when
+        # accessing the data.
+        mmap_ndarray = np.load(pathfilename, mmap_mode='r')
+        field_names = mmap_ndarray.dtype.names
+        fname_to_fidx = dict(
+            [ (fname,idx) for (idx,fname) in enumerate(field_names) ])
+        dt_fields = mmap_ndarray.dtype.fields
+        n_rows = mmap_ndarray.shape[0]
+
+        data = dict()
+
+        # Create empty arrays for each column of length n_rows.
+        for fname in field_names:
+            # Ignore fields that should not get kept.
+            if((keep_fields is not None) and (fname not in keep_fields)):
+                continue
+
+            # Get the original data type of the field.
+            dt = dt_fields[fname][0]
+            # Convert the data type if requested.
+            if((fname not in dtype_convertion_except_fields) and
+               (dt in dtype_convertions)):
+                dt = dtype_convertions[dt]
+
+            data[fname] = np.empty((n_rows,), dtype=dt)
+
+        # Loop through the rows of the recarray.
+        bs = 4096
+        for ridx in range(0, n_rows):
+            row = mmap_ndarray[ridx]
+            for fname in data.keys():
+                fidx = fname_to_fidx[fname]
+                data[fname][ridx] = row[fidx]
+
+            # Reopen the data file after each given blocksize.
+            if(ridx % bs == 0):
+                del mmap_ndarray
+                mmap_ndarray = np.load(pathfilename, mmap_mode='r')
+
+        # Close the memory map file.
+        del mmap_ndarray
+
+        # Create a DataFieldRecordArray out of the dictionary.
+        data = DataFieldRecordArray(data, copy=False)
+
+        return data
+
+    def _load_file_time_efficiently(
+            self, pathfilename, keep_fields, dtype_convertions,
+            dtype_convertion_except_fields):
+        """Loads a single file in a time efficient way. This will load the data
+        column-wise.
+        """
+        assert_file_exists(pathfilename)
+        # Create a memory map into the data file. This loads the data only when
+        # accessing the data.
+        mmap_ndarray = np.load(pathfilename, mmap_mode='r')
+
+        data = DataFieldRecordArray(
+            mmap_ndarray,
+            keep_fields=keep_fields,
+            dtype_convertions=dtype_convertions,
+            dtype_convertion_except_fields=dtype_convertion_except_fields,
+            copy=False)
+
+        # Close the memory map file.
+        del mmap_ndarray
+
+        return data
+
+    def load_data(
+            self, keep_fields=None, dtype_convertions=None,
+            dtype_convertion_except_fields=None, efficiency_mode=None):
         """Loads the data from the files specified through their fully qualified
         file names.
 
@@ -143,6 +233,28 @@ class NPYFileLoader(FileLoader):
         keep_fields : str | sequence of str | None
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
+        dtype_convertions : dict | None
+            If not None, this dictionary defines how data fields of specific
+            data types get converted into the specified data types.
+            This can be used to use less memory.
+        dtype_convertion_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
+        efficiency_mode : str | None
+            The efficiency mode the data should get loaded with. Possible values
+            are:
+
+                - 'memory':
+                    The data will be load in a memory efficient way. This will
+                    require more time, because all data records of a file will
+                    be loaded sequentially.
+                - 'time'
+                    The data will be loaded in a time efficient way. This will
+                    require more memory, because each data file gets loaded in
+                    memory at once.
+
+            The default value is ``'time'``. If set to ``None``, the default
+            value will be used.
 
         Returns
         -------
@@ -153,29 +265,58 @@ class NPYFileLoader(FileLoader):
         ------
         RuntimeError if a file does not exist.
         """
+        if(keep_fields is not None):
+            if(isinstance(keep_fields, str)):
+                keep_fields = [ keep_fields ]
+            elif(not issequenceof(keep_fields, str)):
+                raise TypeError('The keep_fields argument must be None, an '
+                    'instance of type str, or a sequence of instances of '
+                    'type str!')
+
+        if(dtype_convertions is None):
+            dtype_convertions = dict()
+        elif(not isinstance(dtype_convertions, dict)):
+            raise TypeError('The dtype_convertions argument must be None, '
+                'or an instance of dict!')
+
+        if(dtype_convertion_except_fields is None):
+            dtype_convertion_except_fields = []
+        elif(isinstance(dtype_convertion_except_fields, str)):
+            dtype_convertion_except_fields = [ dtype_convertion_except_fields ]
+        elif(not issequenceof(dtype_convertion_except_fields, str)):
+            raise TypeError('The dtype_convertion_except_fields argument '
+                'must be a sequence of str instances.')
+
+        efficiency_mode2func = {
+            'memory': self._load_file_memory_efficiently,
+            'time': self._load_file_time_efficiently
+        }
+        if(efficiency_mode is None):
+            efficiency_mode = 'time'
+        if(not isinstance(efficiency_mode, str)):
+            raise TypeError('The efficiency_mode argument must be an instance '
+                'of type str!')
+        if(efficiency_mode not in efficiency_mode2func):
+            raise ValueError('The efficiency_mode argument value must be one '
+                'of %s!'%(', '.join(efficiency_mode2func.keys())))
+        load_file_func = efficiency_mode2func[efficiency_mode]
+
         # Load the first data file.
-        pathfilename = self.pathfilename_list[0]
-        assert_file_exists(pathfilename)
-        # Create a memory map into the data file. This loads the data only when
-        # accessing the data.
-        mmap_ndarray = np.load(pathfilename, mmap_mode='r')
-        # Load the data into memory by accessing only the data fields that are
-        # given by keep_fields.
-        data = DataFieldRecordArray(
-            mmap_ndarray, keep_fields=keep_fields, copy=True)
-        # Close the memory mapped file.
-        del mmap_ndarray
+        data = load_file_func(
+            self._pathfilename_list[0],
+            keep_fields=keep_fields,
+            dtype_convertions=dtype_convertions,
+            dtype_convertion_except_fields=dtype_convertion_except_fields
+        )
 
-        for i in range(1, len(self.pathfilename_list)):
-            pathfilename = self.pathfilename_list[i]
-            assert_file_exists(pathfilename)
-
-            mmap_ndarray = np.load(pathfilename, mmap_mode='r')
-            # We use copy=False, because the copy of the data will occur through
-            # the append method.
-            data.append(DataFieldRecordArray(
-                mmap_ndarray, keep_fields=keep_fields, copy=False))
-            del mmap_ndarray
+        # Load possible subsequent data files by appending to the first data.
+        for i in range(1, len(self._pathfilename_list)):
+            data.append(load_file_func(
+                self._pathfilename_list[i],
+                keep_fields=keep_fields,
+                dtype_convertions=dtype_convertions,
+                dtype_convertion_except_fields=dtype_convertion_except_fields
+            ))
 
         return data
 
@@ -216,7 +357,7 @@ class PKLFileLoader(FileLoader):
                     'type str!')
         self._pkl_encoding = encoding
 
-    def load_data(self):
+    def load_data(self, **kwargs):
         """Loads the data from the files specified through their fully qualified
         file names.
 
@@ -271,7 +412,8 @@ class DataFieldRecordArray(object):
     objects. Hence, access of single data fields is much faster compared to
     access on the record ndarray.
     """
-    def __init__(self, data, keep_fields=None, copy=True):
+    def __init__(self, data, keep_fields=None, dtype_convertions=None,
+            dtype_convertion_except_fields=None, copy=True):
         """Creates a DataFieldRecordArray from the given numpy record ndarray.
 
         Parameters
@@ -288,6 +430,13 @@ class DataFieldRecordArray(object):
         keep_fields : str | sequence of str | None
             If not None (default), this specifies the data fields that should
             get kept from the given data. Otherwise all data fields get kept.
+        dtype_convertions : dict | None
+            If not None, this dictionary defines how data fields of specific
+            data types get converted into the specified data types.
+            This can be used to use less memory.
+        dtype_convertion_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
         copy : bool
             Flag if the input data should get copied. Default is True. If a
             DataFieldRecordArray instance is provided, this option is set to
@@ -306,6 +455,20 @@ class DataFieldRecordArray(object):
                 raise TypeError('The keep_fields argument must be None, an '
                     'instance of type str, or a sequence of instances of '
                     'type str!')
+
+        if(dtype_convertions is None):
+            dtype_convertions = dict()
+        elif(not isinstance(dtype_convertions, dict)):
+            raise TypeError('The dtype_convertions argument must be None, '
+                'or an instance of dict!')
+
+        if(dtype_convertion_except_fields is None):
+            dtype_convertion_except_fields = []
+        elif(isinstance(dtype_convertion_except_fields, str)):
+            dtype_convertion_except_fields = [ dtype_convertion_except_fields ]
+        elif(not issequenceof(dtype_convertion_except_fields, str)):
+            raise TypeError('The dtype_convertion_except_fields argument '
+                'must be a sequence of str instances.')
 
         if(isinstance(data, np.ndarray)):
             field_names = data.dtype.names
@@ -333,6 +496,12 @@ class DataFieldRecordArray(object):
                 raise ValueError('All field arrays must have the same length. '
                     'Field "%s" has length %d, but must be %d!'%(
                     fname, len(field_arr), self._len))
+
+            # Convert the data type if requested.
+            if((fname not in dtype_convertion_except_fields) and
+               (field_arr.dtype in dtype_convertions)):
+                field_arr = field_arr.astype(dtype_convertions[field_arr.dtype])
+
             self._data_fields[fname] = field_arr
 
         if(self._len is None):
@@ -341,7 +510,7 @@ class DataFieldRecordArray(object):
             self._len = 0
 
         self._field_name_list = list(self._data_fields.keys())
-        self._indices = np.indices((self._len,))[0]
+        self._indices = None
 
     def __getitem__(self, name):
         """Implements data field value access.
@@ -455,6 +624,8 @@ class DataFieldRecordArray(object):
         """(read-only) The numpy ndarray holding the indices of this
         DataFieldRecordArray.
         """
+        if(self._indices is None):
+            self._indices = np.indices((self._len,))[0]
         return self._indices
 
     def append(self, arr):
@@ -477,7 +648,7 @@ class DataFieldRecordArray(object):
                 self._data_fields[fname], arr[fname])
 
         self._len += len(arr)
-        self._indices = np.indices((self._len,))[0]
+        self._indices = None
 
     def append_field(self, name, data):
         """Appends a field and its data to this DataFieldRecordArray instance.

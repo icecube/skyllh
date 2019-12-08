@@ -145,7 +145,7 @@ class I3Dataset(Dataset):
 
         return s
 
-    def load_grl(self, tl=None):
+    def load_grl(self, efficiency_mode=None, tl=None):
         """Loads the good-run-list and returns a structured numpy ndarray with
         the following data fields:
 
@@ -162,6 +162,21 @@ class I3Dataset(Dataset):
 
         Parameters
         ----------
+        efficiency_mode : str | None
+            The efficiency mode the data should get loaded with. Possible values
+            are:
+
+                - 'memory':
+                    The data will be load in a memory efficient way. This will
+                    require more time, because all data records of a file will
+                    be loaded sequentially.
+                - 'time'
+                    The data will be loaded in a time efficient way. This will
+                    require more memory, because each data file gets loaded in
+                    memory at once.
+
+            The default value is ``'time'``. If set to ``None``, the default
+            value will be used.
         tl : TimeLord instance | None
             The TimeLord instance to use to time the data loading procedure.
 
@@ -174,12 +189,15 @@ class I3Dataset(Dataset):
         with TaskTimer(tl, 'Loading grl data from disk.'):
             fileloader_grl = create_FileLoader(
                 self.grl_abs_pathfilename_list)
-            grl_data = DataFieldRecordArray(fileloader_grl.load_data())
+            grl_data = fileloader_grl.load_data(
+                efficiency_mode=efficiency_mode)
             grl_data.rename_fields(self._grl_field_name_renaming_dict)
 
         return grl_data
 
-    def load_data(self, livetime=None, tl=None):
+    def load_data(
+            self, livetime=None, dtc_dict=None, dtc_except_fields=None,
+            efficiency_mode=None, tl=None):
         """Loads the data, which is described by the dataset. If a good-run-list
         (GRL) is provided for this dataset, only experimental data will be
         selected which matches the GRL.
@@ -191,6 +209,29 @@ class I3Dataset(Dataset):
             DatasetData instance, otherwise uses the live time from the Dataset
             instance or, if available, the livetime from the good-run-list
             (GRL).
+        dtc_dict : dict | None
+            This dictionary defines how data fields of specific
+            data types should get converted into other data types.
+            This can be used to use less memory. If set to None, no data
+            convertion is performed.
+        dtc_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
+        efficiency_mode : str | None
+            The efficiency mode the data should get loaded with. Possible values
+            are:
+
+                - 'memory':
+                    The data will be load in a memory efficient way. This will
+                    require more time, because all data records of a file will
+                    be loaded sequentially.
+                - 'time'
+                    The data will be loaded in a time efficient way. This will
+                    require more memory, because each data file gets loaded in
+                    memory at once.
+
+            The default value is ``'time'``. If set to ``None``, the default
+            value will be used.
         tl : TimeLord instance | None
             The TimeLord instance that should be used to time the data load
             operation.
@@ -206,7 +247,9 @@ class I3Dataset(Dataset):
         data_grl = None
         lt = self.livetime
         if(len(self._grl_pathfilename_list) > 0):
-            data_grl = self.load_grl(tl=tl)
+            data_grl = self.load_grl(
+                efficiency_mode=efficiency_mode,
+                tl=tl)
             if('livetime' not in data_grl.field_name_list):
                 raise KeyError('The GRL file(s) "%s" has no data field named '
                     '"livetime"!'%(','.join(self._grl_pathfilename_list)))
@@ -218,7 +261,12 @@ class I3Dataset(Dataset):
 
         # Load all the defined data.
         data = I3DatasetData(
-            super(I3Dataset, self).load_data(livetime=lt, tl=tl),
+            super(I3Dataset, self).load_data(
+                livetime=lt,
+                dtc_dict=dtc_dict,
+                dtc_except_fields=dtc_except_fields,
+                efficiency_mode=efficiency_mode,
+                tl=tl),
             data_grl)
 
         # Select only the experimental data which fits the good-run-list for
