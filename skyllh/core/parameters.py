@@ -14,6 +14,7 @@ from skyllh.core.py import (
     bool_cast,
     float_cast,
     issequence,
+    issequenceof,
     range
 )
 from skyllh.core.random import RandomStateService
@@ -96,14 +97,9 @@ class Parameter(object):
         self.name = name
         self.initial = initial
         self.isfixed = isfixed
-        if(self.isfixed):
-            self._valmin = None
-            self._valmax = None
-        else:
-            self.valmin = valmin
-            self.valmax = valmax
-
-        self._value = self.initial
+        self.valmin = valmin
+        self.valmax = valmax
+        self.value = self._initial
 
     @property
     def name(self):
@@ -144,7 +140,8 @@ class Parameter(object):
         return self._valmin
     @valmin.setter
     def valmin(self, v):
-        v = float_cast(v, 'The valmin property must be castable to type float!')
+        v = float_cast(v, 'The valmin property must be castable to type float!',
+            allow_None=True)
         self._valmin = v
 
     @property
@@ -154,7 +151,8 @@ class Parameter(object):
         return self._valmax
     @valmax.setter
     def valmax(self, v):
-        v = float_cast(v, 'The valmax property must be castable to type float!')
+        v = float_cast(v, 'The valmax property must be castable to type float!',
+            allow_None=True)
         self._valmax = v
 
     @property
@@ -164,16 +162,36 @@ class Parameter(object):
         return self._value
     @value.setter
     def value(self, v):
-        if(self._isfixed):
-            raise RuntimeError('The parameter "%s" is fixed. Its value cannot '
-                'be changed!'%(self._name))
-
         v = float_cast(v, 'The value property must be castable to type float!')
-        if((v < self._valmin) or (v > self._valmax)):
-            raise ValueError('The value (%f) of parameter "%s" must be within '
-                'the range (%f, %f)!'%(
+        if(self._isfixed):
+            if(v != self._initial):
+                raise ValueError('The value (%f) of the fixed parameter "%s" '
+                    'must to equal to the parameter\'s initial value (%f)!'%(
+                    v, self._initial))
+        else:
+            if((v < self._valmin) or (v > self._valmax)):
+                raise ValueError('The value (%f) of parameter "%s" must be '
+                    'within the range (%f, %f)!'%(
                     v, self._name, self._valmin, self._valmax))
         self._value = v
+
+    def __str__(self):
+        """Creates and returns a pretty string representation of this Parameter
+        instance.
+        """
+        indstr = ' ' * display.INDENTATION_WIDTH
+
+        s = 'Parameter: %s = %.3f '%(self._name, self._value)
+
+        if(self.isfixed):
+            s += '[fixed]'
+        else:
+            s += '[floating] {\n'
+            s += indstr + 'initial: %.3f\n'%(self._initial)
+            s += indstr + 'range: (%.3f, %.3f)\n'%(self._valmin, self._valmax)
+            s += '}'
+
+        return s
 
     def as_linear_grid(self, delta):
         """Creates a ParameterGrid instance with a linear grid with constant
@@ -190,10 +208,583 @@ class Parameter(object):
         grid : ParameterGrid instance
             The ParameterGrid instance holding the grid values.
         """
-        delta = float_cast(delta, 'The delta argument must be castable to type float!')
+        delta = float_cast(delta, 'The delta argument must be castable to type '
+            'float!')
         grid = make_linear_parameter_grid_1d(
             self._name, self._valmin, self._valmax, delta)
         return grid
+
+    def make_fixed(self, initial=None):
+        """Fixes this parameter to the given initial value.
+
+        Parameters
+        ----------
+        initial : float | None
+            The new fixed initial value of the Parameter. If set to None, the
+            parameter's current value will be used as initial value.
+
+        Returns
+        -------
+        value : float
+            The parameters new value.
+        """
+        self._isfixed = True
+
+        # Set the new initial value if requested.
+        if(initial is None):
+            self._initial = self._value
+            return self._value
+
+        self.initial = initial
+        self._value = self._initial
+
+        return self._value
+
+    def make_floating(self, initial=None, valmin=None, valmax=None):
+        """Defines this parameter as floating with the given initial, minimal,
+        and maximal value.
+
+        Parameters
+        ----------
+        initial : float | None
+            The initial value of the parameter. If set to `None`, the
+            parameter's current value will be used as initial value.
+        valmin : float | None
+            The minimal value the parameter's value can take.
+            If set to `None`, the parameter's current minimal value will be
+            used.
+        valmax : float | None
+            The maximal value the parameter's value can take.
+            If set to `None`, the parameter's current maximal value will be
+            used.
+
+        Returns
+        -------
+        value : float
+            The parameter's new value.
+        """
+        self._isfixed = False
+
+        if(initial is None):
+            initial = self._value
+        if(valmin is None):
+            if(self._valmin is None):
+                raise ValueError('The current minimal value of parameter "%s" '
+                    'is not set. So it must be defined through the valmin '
+                    'argument!'%(self._name))
+            valmin = self._valmin
+        if(valmax is None):
+            if(self._valmax is None):
+                raise ValueError('The current maximal value of parameter "%s" '
+                    'is not set. So it must be defined through the valmax '
+                    'argument!'%(self._name))
+            valmax = self._valmax
+
+        self.initial = initial
+        self.valmin = valmin
+        self.valmax = valmax
+        self.value = self._initial
+
+        return self._value
+
+
+class ParameterSet(object):
+    """This class holds a set of Parameter instances.
+    """
+    @staticmethod
+    def union(*paramsets):
+        """Creates a ParameterSet instance that is the union of the given
+        ParameterSet instances.
+
+        Parameters
+        ----------
+        *paramsets : ParameterSet instances
+            The sequence of ParameterSet instances.
+
+        Returns
+        -------
+        paramset : ParameterSet instance
+            The newly created ParameterSet instance that holds the union of the
+            parameters provided by all the ParameterSet instances.
+        """
+        if(not issequenceof(paramsets, ParameterSet)):
+            raise TypeError('The arguments of the union static function must '
+                'be instances of ParameterSet!')
+        if(not len(paramsets) >= 1):
+            raise ValueError('At least 1 ParameterSet instance must be '
+                'provided to the union static function!')
+
+        paramset = ParameterSet(params=paramsets[0])
+        for paramset_i in paramsets[1:]:
+            for param in paramset_i._params:
+                if(not paramset.has_param(param)):
+                    paramset.add_param(param)
+
+        return paramset
+
+    def __init__(self, params=None):
+        """Constructs a new ParameterSet instance.
+
+        Parameters
+        ----------
+        params : instance of Parameter | sequence of Parameter instances | None
+            The initial sequence of Parameter instances of this ParameterSet
+            instance.
+        """
+        # Define the list of parameters.
+        # Define the (n_params,)-shaped numpy array of Parameter objects.
+        self._params = np.empty((0,), dtype=np.object)
+        # Define the (n_params,)-shaped numpy mask array that masks the fixed
+        # parameters in the list of all parameters.
+        self._params_fixed_mask = np.empty((0,), dtype=np.bool)
+
+        # Define two lists for the parameter names. One for the fixed
+        # parameters, and one for the floating parameters.
+        # This is for optimization purpose only.
+        self._fixed_param_name_list = []
+        self._floating_param_name_list = []
+
+        # Define dictionaries to map parameter names to storage index of the
+        # parameter for fixed and floating parameters.
+        self._fixed_param_name_to_idx = dict()
+        self._floating_param_name_to_idx = dict()
+
+        # Define a (n_fixed_params,)-shaped ndarray holding the values of the
+        # fixed parameters. This is for optimization purpose only.
+        self._fixed_param_values = np.empty((0,), dtype=np.float)
+
+        # Add the initial Parameter instances.
+        if(params is not None):
+            if(isinstance(params, Parameter)):
+                params = [params]
+            if(not issequenceof(params, Parameter)):
+                raise TypeError('The params argument must be None, an instance '
+                    'of Parameter, or a sequence of Parameter instances!')
+            for param in params:
+                self.add_param(param)
+
+    @property
+    def params(self):
+        """(read-only) The 1D ndarray holding the Parameter instances.
+        """
+        return self._params
+
+    @property
+    def fixed_params(self):
+        """(read-only) The 1D ndarray holding the Parameter instances, whose
+        values are fixed.
+        """
+        return self._params[self._params_fixed_mask]
+
+    @property
+    def floating_params(self):
+        """(read-only) The 1D ndarray holding the Parameter instances,
+        whose values are floating.
+        """
+        return self._params[np.invert(self._params_fixed_mask)]
+
+    @property
+    def n_params(self):
+        """(read-only) The number of parameters this ParameterSet has.
+        """
+        return len(self._params)
+
+    @property
+    def n_fixed_params(self):
+        """(read-only) The number of fixed parameters defined in this parameter
+        set.
+        """
+        return len(self._fixed_param_name_list)
+
+    @property
+    def n_floating_params(self):
+        """(read-only) The number of floating parameters defined in this
+        parameter set.
+        """
+        return len(self._floating_param_name_list)
+
+    @property
+    def fixed_param_name_list(self):
+        """(read-only) The list of the fixed parameter names.
+        """
+        return self._fixed_param_name_list
+
+    @property
+    def floating_param_name_list(self):
+        """(read-only) The list of the floating parameter names.
+        """
+        return self._floating_param_name_list
+
+    @property
+    def fixed_param_values(self):
+        """(read-only) The (n_fixed_params,)-shaped ndarray holding values of
+        the fixed parameters.
+        """
+        return self._fixed_param_values
+
+    @property
+    def floating_param_initials(self):
+        """(read-only) The 1D (n_floating_params,)-shaped ndarray holding the
+        initial values of all the global floating parameters.
+        """
+        floating_params = self.floating_params
+        if(len(floating_params) == 0):
+            return np.empty((0,), dtype=np.float)
+        return np.array(
+            [ param.initial
+             for param in floating_params ], dtype=np.float)
+
+    @property
+    def floating_param_bounds(self):
+        """(read-only) The 2D (n_floating_params,2)-shaped ndarray holding the
+        boundaries for all the floating parameters.
+        """
+        floating_params = self.floating_params
+        if(len(floating_params) == 0):
+            return np.empty((0,2), dtype=np.float)
+        return np.array(
+            [ (param.valmin, param.valmax)
+             for param in floating_params ], dtype=np.float)
+
+    def __len__(self):
+        """The number of parameters this ParameterSet has.
+        """
+        return len(self._params)
+
+    def __str__(self):
+        """Creates and returns a pretty string representation of this
+        ParameterSet instance.
+        """
+        s = '%s: %d parameters (%d floating, %d fixed) {'%(
+            classname(self), self.n_params, self.n_floating_params,
+            self.n_fixed_params)
+        for param in self._params:
+            s += '\n'
+            s += display.add_leading_text_line_padding(
+                display.INDENTATION_WIDTH, str(param))
+        s += '\n}'
+        return s
+
+    def get_fixed_pidx(self, param_name):
+        """Returns the parameter index of the given fixed parameter.
+
+        Parameters
+        ----------
+        param_name : str
+            The name of the parameter.
+
+        Returns
+        -------
+        pidx : int
+            The index of the fixed parameter.
+
+        Raises
+        ------
+        KeyError
+            If the given parameter is not part of the set of fixed parameters.
+        """
+        return self._fixed_param_name_to_idx[param_name]
+
+    def get_floating_pidx(self, param_name):
+        """Returns the parameter index of the given floating parameter.
+
+        Parameters
+        ----------
+        param_name : str
+            The name of the parameter.
+
+        Returns
+        -------
+        pidx : int
+            The index of the floating parameter.
+
+        Raises
+        ------
+        KeyError
+            If the given parameter is not part of the set of floating
+            parameters.
+        """
+        return self._floating_param_name_to_idx[param_name]
+
+    def has_fixed_param(self, param_name):
+        """Checks if this ParameterSet instance has a fixed parameter named
+        ``param_name``.
+
+        Parameters
+        ----------
+        param_name : str
+            The name of the parameter.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if this ParameterSet instance has a fixed parameter
+            of the given name, ``False`` otherwise.
+        """
+        return (param_name in self._fixed_param_name_list)
+
+    def has_floating_param(self, param_name):
+        """Checks if this ParameterSet instance has a floating parameter named
+        ``param_name``.
+
+        Parameters
+        ----------
+        param_name : str
+            The name of the parameter.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if this ParameterSet instance has a floating parameter
+            of the given name, ``False`` otherwise.
+        """
+        return (param_name in self._floating_param_name_list)
+
+    def fix_params(self, fix_params):
+        """Fixes the given parameters to the given values.
+
+        Parameters
+        ----------
+        fix_params : dict
+            The dictionary defining the parameters that should get fixed to the
+            given dictionary entry values.
+        """
+        fix_params_keys = fix_params.keys()
+        self._fixed_param_name_list = []
+        self._floating_param_name_list = []
+        self._fixed_param_name_to_idx = dict()
+        self._floating_param_name_to_idx = dict()
+        self._fixed_param_values = np.empty((0,), dtype=np.float)
+        for (pidx, param) in enumerate(self._params):
+            pname = param.name
+            if(pname in fix_params_keys):
+                # The parameter of name `pname` should get fixed.
+                if(param.isfixed is True):
+                    raise ValueError('The parameter "%s" is already a fixed '
+                        'parameter!'%(pname))
+                initial = fix_params[pname]
+                param.make_fixed(initial)
+                self._params_fixed_mask[pidx] = True
+                self._fixed_param_name_list += [ pname ]
+                self._fixed_param_values = np.concatenate(
+                    (self._fixed_param_values, [param.value]))
+                self._fixed_param_name_to_idx[pname] = len(
+                    self._fixed_param_name_list) - 1
+            else:
+                if(param.isfixed):
+                    self._fixed_param_name_list += [ pname ]
+                    self._fixed_param_values = np.concatenate(
+                        (self._fixed_param_values, [param.value]))
+                    self._fixed_param_name_to_idx[pname] = len(
+                        self._fixed_param_name_list) - 1
+                else:
+                    self._floating_param_name_list += [ pname ]
+                    self._floating_param_name_to_idx[pname] = len(
+                        self._floating_param_name_list) - 1
+
+    def float_params(self, float_params):
+        """Makes the given parameters floating with the given initial value and
+        within the given bounds.
+
+        Parameters
+        ----------
+        float_params : dict
+            The dictionary defining the parameters that should get set to be
+            floating. The format of a dictionary's entry can be one of the
+            following formats:
+
+                - None
+                    The parameter's initial, minimal and maximal value should be
+                    taken from the parameter's current settings.
+                - initial : float
+                    The parameter's initial value should be set to the given
+                    value. The minimal and maximal values of the parameter will
+                    be taken from the parameter's current settings.
+                - (initial, valmin, valmax)
+                    The parameter's initial value, minimal and maximal value
+                    should be set to the given values. If `initial` is set to
+                    `None`, the parameter's current value will be used as
+                    initial value.
+        """
+        def _parse_float_param_dict_entry(e):
+            """Parses the given float_param dictionary entry into initial,
+            valmin, and valmax values.
+            """
+            if(e is None):
+                return (None, None, None)
+            if(issequence(e)):
+                return (e[0], e[1], e[2])
+            return (e, None, None)
+
+        float_params_keys = float_params.keys()
+        self._fixed_param_name_list = []
+        self._floating_param_name_list = []
+        self._fixed_param_name_to_idx = dict()
+        self._floating_param_name_to_idx = dict()
+        self._fixed_param_values = np.empty((0,), dtype=np.float)
+        for (pidx, param) in enumerate(self._params):
+            pname = param.name
+            if(pname in float_params_keys):
+                # The parameter of name `pname` should get set floating.
+                if(param.isfixed is False):
+                    raise ValueError('The parameter "%s" is already a floating '
+                        'parameter!'%(pname))
+                (initial, valmin, valmax) = _parse_float_param_dict_entry(
+                    float_params[pname])
+                param.make_floating(initial, valmin, valmax)
+                self._params_fixed_mask[pidx] = False
+                self._floating_param_name_list += [ pname ]
+                self._floating_param_name_to_idx[pname] = len(
+                    self._floating_param_name_list) - 1
+            else:
+                if(param.isfixed):
+                    self._fixed_param_name_list += [ pname ]
+                    self._fixed_param_values = np.concatenate(
+                        (self._fixed_param_values, [param.value]))
+                    self._fixed_param_name_to_idx[pname] = len(
+                        self._fixed_param_name_list) - 1
+                else:
+                    self._floating_param_name_list += [ pname ]
+                    self._floating_param_name_to_idx[pname] = len(
+                        self._floating_param_name_list) - 1
+
+    def update_fixed_param_value_cache(self):
+        """Updates the internal cache of the fixed parameter values. This method
+        has to be called whenever the values of the fixed Parameter instances
+        change.
+        """
+        for (i, param) in enumerate(self.fixed_params):
+            self._fixed_param_values[i] = param.value
+
+    def copy(self):
+        """Creates a deep copy of this ParameterSet instance.
+
+        Returns
+        -------
+        copy : ParameterSet instance
+            The copied instance of this ParameterSet instance.
+        """
+        copy = deepcopy(self)
+        return copy
+
+    def add_param(self, param, atfront=False):
+        """Adds the given Parameter instance to this set of parameters.
+
+        Parameters
+        ----------
+        param : instance of Parameter
+            The parameter, which should get added.
+        atfront : bool
+            Flag if the parameter should be added at the front of the parameter
+            list. If set to False (default), it will be added at the back.
+
+        Returns
+        -------
+        self : instance of ParameterSet
+            This ParameterSet instance so that multiple add_param calls can just
+            be concatenated.
+
+        Raises
+        ------
+        KeyError
+            If given parameter was already added to the set.
+        """
+        if(not isinstance(param, Parameter)):
+            raise TypeError('The param argument must be an instance of '
+                'Parameter!')
+
+        if(self.has_param(param)):
+            raise KeyError('The parameter named "%s" was already added to the '
+                'parameter set!'%(param.name))
+
+        param_fixed_mask = True if param.isfixed else False
+
+        if(atfront):
+            # Add parameter at front of parameter list.
+            self._params = np.concatenate(
+                ([param], self._params))
+            self._params_fixed_mask = np.concatenate(
+                ([param_fixed_mask], self._params_fixed_mask))
+            if(param.isfixed):
+                self._fixed_param_name_list = (
+                    [param.name] + self._fixed_param_name_list)
+                self._fixed_param_values = np.concatenate(
+                    ([param.value], self._fixed_param_values))
+                # Shift the index of all fixed parameters.
+                self._fixed_param_name_to_idx = dict([ (k,v+1)
+                    for (k,v) in self._fixed_param_name_to_idx.items() ])
+                self._fixed_param_name_to_idx[param.name] = 0
+            else:
+                self._floating_param_name_list = (
+                    [param.name] + self._floating_param_name_list)
+                # Shift the index of all floating parameters.
+                self._floating_param_name_to_idx = dict([ (k,v+1)
+                    for (k,v) in self._floating_param_name_to_idx.items() ])
+                self._floating_param_name_to_idx[param.name] = 0
+        else:
+            # Add parameter at back of parameter list.
+            self._params = np.concatenate(
+                (self._params, [param]))
+            self._params_fixed_mask = np.concatenate(
+                (self._params_fixed_mask, [param_fixed_mask]))
+            if(param.isfixed):
+                self._fixed_param_name_list = (
+                    self._fixed_param_name_list + [param.name])
+                self._fixed_param_values = np.concatenate(
+                    (self._fixed_param_values, [param.value]))
+                self._fixed_param_name_to_idx[param.name] = len(
+                    self._fixed_param_name_list) - 1
+            else:
+                self._floating_param_name_list = (
+                    self._floating_param_name_list + [param.name])
+                self._floating_param_name_list[param.name] = len(
+                    self._floating_param_name_list) - 1
+
+        return self
+
+    def has_param(self, param):
+        """Checks if the given Parameter is already present in this ParameterSet
+        instance. The check is performed based on the parameter name.
+
+        Parameters
+        ----------
+        param : Parameter instance
+            The Parameter instance that should be checked.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the given parameter is present in this parameter set,
+            ``False`` otherwise.
+        """
+        if((param.name in self._floating_param_name_list) or
+           (param.name in self._fixed_param_name_list)):
+            return True
+
+        return False
+
+    def floating_param_values_to_dict(self, floating_param_values):
+        """Converts the given floating parameter values into a dictionary with
+        the floating parameter names and values and also adds the fixed
+        parameter names and their values to this dictionary.
+
+        Parameters
+        ----------
+        floating_param_values : 1D ndarray
+            The ndarray holding the values of the floating parameters in the
+            order that the floating parameters are defined.
+
+        Returns
+        -------
+        param_dict : dict
+            The dictionary with the floating and fixed parameter names and
+            values.
+        """
+        param_dict = dict(
+            zip(self._floating_param_name_list, floating_param_values) +
+            zip(self._fixed_param_name_list, self._fixed_param_values))
+
+        return param_dict
 
 
 class ParameterGrid(object):
@@ -499,7 +1090,9 @@ class FitParameter(object):
 
 
 class FitParameterSet(object):
-    """This class describes a set of FitParameter instances.
+    """This class is DEPRECATED, use ParameterSet instead!
+
+    This class describes a set of FitParameter instances.
     """
     def __init__(self):
         """Constructs a fit parameter set instance.
