@@ -10,6 +10,7 @@ from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet
 )
+from skyllh.core.py import classname
 
 
 class GridManifoldInterpolationMethod(object):
@@ -80,7 +81,7 @@ class GridManifoldInterpolationMethod(object):
     def ndim(self):
         """(read-only) The dimensionality of the manifold.
         """
-        return len(self.param_grid_set)
+        return len(self._param_grid_set)
 
     @abc.abstractmethod
     def get_value_and_gradients(self, eventdata, params):
@@ -132,7 +133,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             (N,V)-shaped numpy ndarray holding the event data, where N is the
             number of events, and V the dimensionality of the event data.
             The return value of ``f`` must be a (N,)-shaped 1d ndarray of float.
-        param_grid_set : instance of ParameterGridSet
+        param_grid_set : ParameterGrid instance | ParameterGridSet instance
             The set of parameter grids. This defines the grid of the
             1-dimensional manifold. By definition, only the first parameter grid
             is considered.
@@ -140,7 +141,12 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         super(Linear1DGridManifoldInterpolationMethod, self).__init__(
             f, param_grid_set)
 
-        self.p_grid = self.param_grid_set[0]
+        if(len(self._param_grid_set) != 1):
+            raise ValueError('The %s class supports only 1D grid manifolds. '
+                'The param_grid_set argument must contain 1 ParameterGrid '
+                'instance! Currently it has %d!'%(
+                    classname(self), len(self._param_grid_set)))
+        self.p_grid = self._param_grid_set[0]
 
         # Create a cache for the line parameterization for the last
         # manifold grid point for the different events.
@@ -252,7 +258,12 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
         super(Parabola1DGridManifoldInterpolationMethod, self).__init__(
             f, param_grid_set)
 
-        self._p_grid = self.param_grid_set[0]
+        if(len(self._param_grid_set) != 1):
+            raise ValueError('The %s class supports only 1D grid manifolds. '
+                'The param_grid_set argument must contain 1 ParameterGrid '
+                'instance! Currently it has %d!'%(
+                    classname(self), len(self._param_grid_set)))
+        self._p_grid = self._param_grid_set[0]
 
         # Create a cache for the parabola parameterization for the last
         # manifold grid point for the different events.
