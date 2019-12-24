@@ -1,7 +1,24 @@
 # -*- coding: utf-8 -*-
 
+"""This test module tests classes, methods and functions of the core/parameters
+module.
+"""
+
 import numpy as np
 import unittest
+
+from skyllh.core.parameters import (
+    ParameterGrid,
+    ParameterGridSet
+)
+
+GAMMA_GRID = [
+    1. ,  1.1,  1.2,  1.3,  1.4,  1.5,  1.6,  1.7,  1.8,  1.9,  2.
+]
+
+ECUT_GRID = [
+    9., 9.1
+]
 
 def isAlmostEqual(a, b, decimals=9):
     a = np.atleast_1d(a)
@@ -9,37 +26,79 @@ def isAlmostEqual(a, b, decimals=9):
     return np.all(np.around(np.abs(a - b), decimals) == 0)
 
 
-class TestParameters(unittest.TestCase):
-    def test_ParameterGridSet_parameter_permutation_dict_list(self):
-        """Test the parameter_permutation_dict_list method of the
-        ParameterGridSet class.
+class ParameterGridSet_TestCase(unittest.TestCase):
+    """This test case tests the ParameterGridSet class.
+    """
+    def setUp(self):
+        """Setups this test case.
         """
-        from skyllh.core.parameters import make_linear_parameter_grid_1d, ParameterGridSet
+        self.paramgrid_gamma = ParameterGrid('gamma', GAMMA_GRID)
+        self.paramgrid_Ecut = ParameterGrid('Ecut', ECUT_GRID)
 
-        GAMMA_GRID = [ 1. ,  1.1,  1.2,  1.3,  1.4,  1.5,  1.6,  1.7,  1.8,  1.9,  2. ]
-        ECUT_GRID = [ 9., 9.1 ]
+        self.paramgridset = ParameterGridSet(
+            (self.paramgrid_gamma, self.paramgrid_Ecut))
 
-        paramgridset = ParameterGridSet()
+    def test_ndim(self):
+        self.assertEqual(
+            self.paramgridset.ndim, 2)
 
-        paramgrid = make_linear_parameter_grid_1d(name='gamma', low=1., high=2., delta=0.1)
-        self.assertTrue(isAlmostEqual(paramgrid.grid, GAMMA_GRID))
+    def test_parameter_names(self):
+        self.assertEqual(
+            self.paramgridset.parameter_names, ['gamma', 'Ecut'])
 
-        paramgridset += paramgrid
+    def test_parameter_permutation_dict_list(self):
+        perm_dict_list = self.paramgridset.parameter_permutation_dict_list
 
-        perm_dict_list = paramgridset.parameter_permutation_dict_list
-        self.assertTrue(isAlmostEqual([ d['gamma'] for d in perm_dict_list ], GAMMA_GRID))
+        self.assertTrue(isAlmostEqual(
+            [ d['gamma'] for d in perm_dict_list ],
+            np.repeat(np.array(GAMMA_GRID), len(ECUT_GRID))
+        ))
+        self.assertTrue(isAlmostEqual(
+            [ d['Ecut'] for d in perm_dict_list ],
+            list(ECUT_GRID)*len(GAMMA_GRID)
+        ))
 
-        paramgrid = make_linear_parameter_grid_1d(name='Ecut', low=9., high=9.1, delta=0.1)
-        self.assertTrue(isAlmostEqual(paramgrid.grid, ECUT_GRID))
+    def test_index(self):
+        self.assertEqual(
+            self.paramgridset.index(self.paramgrid_gamma), 0)
 
-        paramgridset += paramgrid
+        self.assertEqual(
+            self.paramgridset.index(self.paramgrid_Ecut), 1)
 
-        perm_dict_list = paramgridset.parameter_permutation_dict_list
-        self.assertTrue(isAlmostEqual([ d['Ecut'] for d in perm_dict_list ], ECUT_GRID*len(GAMMA_GRID)))
+    def test_index_by_name(self):
+        self.assertEqual(
+            self.paramgridset.index_by_name('gamma'), 0)
 
+        self.assertEqual(
+            self.paramgridset.index_by_name('Ecut'), 1)
+
+    def test_pop_and_add(self):
+        paramgrid_gamma = self.paramgridset.pop('gamma')
+        self.assertEqual(paramgrid_gamma.name, 'gamma')
+
+        paramgrid_Ecut = self.paramgridset.pop()
+        self.assertEqual(paramgrid_Ecut.name, 'Ecut')
+
+        self.paramgridset.add(paramgrid_gamma)
+        self.paramgridset.add(paramgrid_Ecut)
+
+        # The altered ParameterGridSet instance should be the same as the
+        # initial ParameterGridSet instance. So just run all the tests on that
+        # altered one.
+        self.test_ndim()
+        self.test_parameter_names()
+        self.test_parameter_permutation_dict_list()
+        self.test_index()
+        self.test_index_by_name()
+
+
+class TestParameters(unittest.TestCase):
     def test_MultiSourceFitParameterMapper(self):
         from skyllh.physics.source import PointLikeSource
-        from skyllh.core.parameters import MultiSourceFitParameterMapper, FitParameter
+        from skyllh.core.parameters import (
+            FitParameter,
+            MultiSourceFitParameterMapper
+        )
 
         # Define a list of point-like sources.
         sources = [
