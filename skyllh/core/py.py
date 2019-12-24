@@ -317,9 +317,9 @@ class ObjectCollection(object):
         ----------
         obj_type : type
             The type of the objects, which can be added to the collection.
-        obj_list : list of obj_t | None
-            The list of objects of type ``obj_t`` with which this collection
-            should get initialized with.
+        obj_list : sequence of obj_type instances | None
+            The sequence of objects of type ``obj_type`` with which this
+            collection should get initialized with.
         """
         if(not issubclass(obj_type, object)):
             raise TypeError('The obj_t argument must be a subclass of object!')
@@ -329,7 +329,7 @@ class ObjectCollection(object):
         # Add given list of objects.
         if(obj_list is not None):
             if(not issequence(obj_list)):
-                raise TypeError('The obj_list argument must be a sequence!')
+                obj_list = [ obj_list ]
             for obj in obj_list:
                 self.add(obj)
 
@@ -391,11 +391,11 @@ class ObjectCollection(object):
         return oc
 
     def add(self, obj):
-        """Adds the given object to the collection.
+        """Adds the given object to this object collection.
 
         Parameters
         ----------
-        obj : obj_type | ObjectCollection of obj_type
+        obj : obj_type instance | ObjectCollection of obj_type
             An instance of ``obj_type`` that should be added to the collection.
             If given an ObjectCollection for objects of type obj_type, it will
             add all objects of the given collection to this collection.
@@ -408,22 +408,40 @@ class ObjectCollection(object):
         """
         if(isinstance(obj, ObjectCollection)):
             if(typename(obj.obj_type) != typename(self._obj_type)):
-                raise TypeError('Cannot add objects from ObjectCollection for objects of type "%s" to this ObjectCollection for objects of type "%s"!'%(typename(obj.obj_type), typename(self._obj_type)))
+                raise TypeError('Cannot add objects from ObjectCollection for '
+                    'objects of type "%s" to this ObjectCollection for objects '
+                    'of type "%s"!'%(
+                        typename(obj.obj_type), typename(self._obj_type)))
             self._objects.extend(obj.objects)
             return self
 
         if(not isinstance(obj, self._obj_type)):
-            raise TypeError('The object of type "%s" cannot be added to the object collection for objects of type "%s"!'%(classname(obj), typename(self._obj_type)))
+            raise TypeError('The object of type "%s" cannot be added to the '
+                'object collection for objects of type "%s"!'%(
+                    classname(obj), typename(self._obj_type)))
 
         self._objects.append(obj)
         return self
     __iadd__ = add
 
     def index(self, obj):
+        """Gets the index of the given object instance within this object
+        collection.
+
+        Parameters
+        ----------
+        obj : obj_type instance
+            The instance of obj_type whose index should get retrieved.
+
+        Returns
+        -------
+        idx : int
+            The index of the object within this object collection.
+        """
         return self._objects.index(obj)
 
     def pop(self, index=None):
-        """Removes and returns object at given index (default last).
+        """Removes and returns the object at the given index (default last).
         Raises IndexError if the collection is empty or index is out of range.
 
         Parameters
@@ -440,4 +458,104 @@ class ObjectCollection(object):
         if(index is None):
             index = len(self._objects)-1
         obj = self._objects.pop(index)
+        return obj
+
+
+class NamedObjectCollection(ObjectCollection):
+    """This class provides a collection of objects, which have a name. Access
+    via the object name is efficient because the index of each object is
+    tracked w.r.t. its name.
+    """
+    def __init__(self, obj_type, obj_list=None):
+        """Creates a new NamedObjectCollection instance. Must be called by the
+        derived class.
+
+        Parameters
+        ----------
+        obj_type : type
+            The type of the objects, which can be added to the collection.
+            This type must have an attribute named ``name``.
+        obj_list : list of obj_t | None
+            The list of objects of type ``obj_type`` with which this collection
+            should get initialized with.
+        """
+        self._obj_name_to_idx = dict()
+
+        super(NamedObjectCollection, self).__init__(
+            obj_type=obj_type,
+            obj_list=obj_list)
+
+    def add(self, obj):
+        """Adds the given object to this named object collection.
+
+        Parameters
+        ----------
+        obj : obj_type instance | NamedObjectCollection of obj_type
+            An instance of ``obj_type`` that should be added to this named
+            object collection.
+            If a NamedObjectCollection instance for objects of type ``obj_type``
+            is given, all objects of that given collection will be added to this
+            named object collection.
+
+        Returns
+        -------
+        self : NamedObjectCollection
+            The instance of this NamedObjectCollection, in order to be able to
+            chain several ``add`` calls.
+        """
+        super(NamedObjectCollection, self).add(obj)
+
+        if(isinstance(obj, NamedObjectCollection)):
+            # Several objects have been added, so we recreate the name to index
+            # dictionary.
+            self._obj_name_to_idx = dict([
+                (o.name,idx) for (idx,o) in enumerate(self._objects) ])
+        else:
+            # Only a single object was added at the end.
+            self._obj_name_to_idx[obj.name] = len(self) - 1
+
+        return self
+
+    def index_by_name(self, name):
+        """Gets the index of the object with the given name within this named
+        object collection.
+
+        Parameters
+        ----------
+        name : str
+            The name of the object whose index should get retrieved.
+
+        Returns
+        -------
+        idx : int
+            The index of the object within this named object collection.
+        """
+        return self._obj_name_to_idx[name]
+
+    def pop(self, index=None):
+        """Removes and returns the object at the given index (default last).
+        Raises IndexError if the collection is empty or index is out of range.
+
+        Parameters
+        ----------
+        index : int | str | None
+            The index of the object to remove. If set to None, the index of the
+            last object is used.
+            If a str instance is given, it specifies the name of the object.
+
+        Returns
+        -------
+        obj : obj_type instance
+            The removed object.
+        """
+        if(isinstance(index, str)):
+            # Get the index of the object given its name.
+            index = self.index_by_name(index)
+
+        obj = super(NamedObjectCollection, self).pop(index)
+
+        # Recreate the object name to index dictionary.
+        self._obj_name_to_idx = dict([
+            (o.name,idx) for (idx,o) in enumerate(self._objects) ])
+
         return obj
