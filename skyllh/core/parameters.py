@@ -10,7 +10,7 @@ from skyllh.physics.source import (
     SourceModel
 )
 from skyllh.core.py import (
-    ObjectCollection,
+    NamedObjectCollection,
     bool_cast,
     float_cast,
     issequence,
@@ -792,23 +792,30 @@ class ParameterGrid(object):
     discrete values on a grid. Thus, the parameter has a value grid. By default
     the grid is aligned with zero, but this can be changed by setting the offset
     value to a value other than zero.
+    This class represents a one-dimensional grid.
     """
-    def __init__(self, name, grid, delta, offset=0):
+    def __init__(self, name, grid, delta=None, offset=0):
         """Creates a new parameter grid.
 
         Parameters
         ----------
         name : str
             The name of the parameter.
-        grid : numpy.ndarray
-            The numpy ndarray holding the discrete grid values of the parameter.
-        delta : float
+        grid : sequence of float
+            The sequence of float values defining the discrete grid values of
+            the parameter.
+        delta : float | None
             The width between the grid values.
+            If set to ``None``, the width is taken from the equal-distant
+            ``grid`` values.
         offset : float
             The offset from zero to align the grid other than with zero.
             By definition the absolute value of the offset must be smaller than
             `delta`.
         """
+        if(delta is None):
+            delta = np.diff(grid)[0]
+
         self.name = name
         self.delta = delta
         self.offset = offset
@@ -836,8 +843,10 @@ class ParameterGrid(object):
         return self._grid
     @grid.setter
     def grid(self, arr):
+        if(not issequence(arr)):
+            raise TypeError('The grid property must be a sequence!')
         if(not isinstance(arr, np.ndarray)):
-            raise TypeError('The grid property must be of type numpy.ndarray!')
+            arr = np.array(arr, dtype=np.float)
         if(arr.ndim != 1):
             raise ValueError('The grid property must be a 1D numpy.ndarray!')
         self._grid = self.round_to_nearest_grid_point(arr)
@@ -939,20 +948,21 @@ class ParameterGrid(object):
         return np.ceil(value / self._delta) * self._delta + self._offset
 
 
-class ParameterGridSet(ObjectCollection):
+class ParameterGridSet(NamedObjectCollection):
     """Describes a set of parameter grids.
     """
-    def __init__(self, param_grid_list=None):
+    def __init__(self, param_grids=None):
         """Constructs a new ParameterGridSet object.
 
         Parameters
         ----------
-        param_grid_list : list of ParameterGrid | ParameterGrid | None
-            The list of ParameterGrid objects with which this set should get
-            initialized with.
+        param_grids : sequence of ParameterGrid instances |
+                ParameterGrid instance | None
+            The ParameterGrid instances this ParameterGridSet instance should
+            get initialized with.
         """
         super(ParameterGridSet, self).__init__(
-            obj_type=ParameterGrid, obj_list=param_grid_list)
+            obj_type=ParameterGrid, obj_list=param_grids)
 
     @property
     def ndim(self):
