@@ -210,12 +210,14 @@ class NPYFileLoader(FileLoader):
         # accessing the data.
         mmap_ndarray = np.load(pathfilename, mmap_mode='r')
 
+        # Create a DataFieldRecordArray out of the memory mapped file. We need
+        # to copy the data, otherwise we get read-only numpy arrays.
         data = DataFieldRecordArray(
             mmap_ndarray,
             keep_fields=keep_fields,
             dtype_convertions=dtype_convertions,
             dtype_convertion_except_fields=dtype_convertion_except_fields,
-            copy=False)
+            copy=True)
 
         # Close the memory map file.
         del mmap_ndarray
