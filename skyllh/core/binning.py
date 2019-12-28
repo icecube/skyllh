@@ -32,7 +32,8 @@ class BinningDefinition(object):
         """Checks if object ``other`` is equal to this BinningDefinition object.
         """
         if(not isinstance(other, BinningDefinition)):
-            raise TypeError('The other object in the equal comparison must be an instance of BinningDefinition!')
+            raise TypeError('The other object in the equal comparison must be '
+                'an instance of BinningDefinition!')
         if(self.name != other.name):
             return False
         if(np.any(self.binedges != other.binedges)):
@@ -191,7 +192,8 @@ class UsesBinning(object):
             True if ``obj`` uses the same binning, False otherwise.
         """
         if(not isinstance(obj, UsesBinning)):
-            raise TypeError('The obj argument must be an instance of UsesBinning!')
+            raise TypeError('The obj argument must be an instance of '
+                'UsesBinning!')
 
         for (self_binning, obj_binning) in zip(self.binnings, obj.binnings):
             if(not (self_binning == obj_binning)):
@@ -211,7 +213,8 @@ class UsesBinning(object):
             BinningDefinition object is made and the new name is set.
         """
         if(not isinstance(binning, BinningDefinition)):
-            raise TypeError('The binning argument must be an instance of BinningDefinition!')
+            raise TypeError('The binning argument must be an instance of '
+                'BinningDefinition!')
 
         # Create a copy of the BinningDefinition object if the name differs.
         if(name is not None):
@@ -239,7 +242,8 @@ class UsesBinning(object):
         """
         if(isinstance(name, str)):
             if(name not in self._binning_name2idx):
-                raise KeyError('The binning definition "%s" is not defined!'%(name))
+                raise KeyError('The binning definition "%s" is not defined!'%(
+                    name))
             binning = self._binnings[self._binning_name2idx[name]]
         elif(isinstance(name, int)):
             binning = self._binnings[name]
