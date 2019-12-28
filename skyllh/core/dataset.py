@@ -163,6 +163,7 @@ class Dataset(object):
         self._data_preparation_functions = list()
         self._binning_definitions = dict()
         self._aux_data_definitions = dict()
+        self._aux_data = dict()
 
     @property
     def name(self):
@@ -1012,6 +1013,58 @@ class Dataset(object):
                 'defined for dataset "%s"!'%(name, self.name))
 
         self._aux_data_definitions[name] = pathfilenames
+
+    def add_aux_data(self, name, data):
+        """Adds the given data as auxiliary data to this data set.
+
+        Parameters
+        ----------
+        name : str
+            The name under which the auxiliary data will be stored.
+        data : unspecified
+            The data that should get stored. This can be of any data type.
+
+        Raises
+        ------
+        KeyError
+            If auxiliary data is already stored under the given name.
+        """
+        name = str_cast(name,
+            'The name argument must be castable to type str!')
+
+        if(name in self._aux_data):
+            raise KeyError('The auxiliary data "%s" is already defined for '
+                'dataset "%s"!'%(name, self.name))
+
+        self._aux_data[name] = data
+
+    def get_aux_data(self, name):
+        """Retrieves the auxiliary data that is stored in this data set under
+        the given name.
+
+        Parameters
+        ----------
+        name : str
+            The name under which the auxiliary data is stored.
+
+        Returns
+        -------
+        data : unspecified
+            The retrieved auxiliary data.
+
+        Raises
+        ------
+        KeyError
+            If no auxiliary data is stored with the given name.
+        """
+        name = str_cast(name,
+            'The name argument must be castable to type str!')
+
+        if(name not in self._aux_data):
+            raise KeyError('The auxiliary data "%s" is not defined for '
+                'dataset "%s"!'%(name, self.name))
+
+        return self._aux_data[name]
 
 
 class DatasetCollection(object):
