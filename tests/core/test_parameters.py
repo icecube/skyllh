@@ -5,12 +5,17 @@ module.
 """
 
 import numpy as np
+import sys
 import unittest
 
+from skyllh.core.binning import BinningDefinition
 from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet
 )
+
+sys.path.append('..')
+from utils import isAlmostEqual
 
 GAMMA_GRID = [
     1. ,  1.1,  1.2,  1.3,  1.4,  1.5,  1.6,  1.7,  1.8,  1.9,  2.
@@ -20,10 +25,16 @@ ECUT_GRID = [
     9., 9.1
 ]
 
-def isAlmostEqual(a, b, decimals=9):
-    a = np.atleast_1d(a)
-    b = np.atleast_1d(b)
-    return np.all(np.around(np.abs(a - b), decimals) == 0)
+
+class ParameterGrid_TestCase(unittest.TestCase):
+    """This test case tests the ParameterGrid class.
+    """
+    def test_from_BinningDefinition(self):
+        binning = BinningDefinition(name='gamma', binedges=GAMMA_GRID)
+        param_grid = ParameterGrid.from_BinningDefinition(binning)
+
+        self.assertEqual(param_grid.name, binning.name)
+        self.assertTrue(isAlmostEqual(param_grid.grid, GAMMA_GRID))
 
 
 class ParameterGridSet_TestCase(unittest.TestCase):
