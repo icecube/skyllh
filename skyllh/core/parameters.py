@@ -794,6 +794,25 @@ class ParameterGrid(object):
     value to a value other than zero.
     This class represents a one-dimensional grid.
     """
+    @staticmethod
+    def from_BinningDefinition(binning):
+        """Creates a ParameterGrid instance from a BinningDefinition instance.
+
+        Parameters
+        ----------
+        binning : BinningDefinition instance
+            The BinningDefinition instance that should be used to create the
+            ParameterGrid instance from.
+
+        Returns
+        -------
+        param_grid : ParameterGrid instance
+            The created ParameterGrid instance.
+        """
+        return ParameterGrid(
+            name=binning.name,
+            grid=binning.binedges)
+
     def __init__(self, name, grid, delta=None, offset=0):
         """Creates a new parameter grid.
 
