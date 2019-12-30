@@ -200,6 +200,12 @@ class TrialDataManager(object):
         # data fields get calculated.
         self._events = None
 
+        # We store an integer number for the trial data state and increase it
+        # whenever the state of the trial data changed. This way other code,
+        # e.g. PDFs, can determine when the data changed and internal caches
+        # must be flushed.
+        self._trial_data_state_id = -1
+
     @property
     def events(self):
         """The DataFieldRecordArray instance holding the data events, which
@@ -218,6 +224,13 @@ class TrialDataManager(object):
         """(read-only) The number of events which should get evaluated.
         """
         return len(self._events)
+
+    @property
+    def trial_data_state_id(self):
+        """(read-only) The integer ID number of the trial data. This ID number
+        can be used to determine when the trial data has changed its state.
+        """
+        return self._trial_data_state_id
 
     def __contains__(self, name):
         """Checks if the given data field is defined in this data field manager.
@@ -269,6 +282,9 @@ class TrialDataManager(object):
 
         # Now calculate all the static data fields.
         self.calculate_static_data_fields(src_hypo_group_manager)
+
+        # Increment the trial data state ID.
+        self._trial_data_state_id += 1
 
     def add_source_data_field(self, name, func):
         """Adds a new data field to the manager. The data field must depend
@@ -338,9 +354,14 @@ class TrialDataManager(object):
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses.
         """
+        if(len(self._source_data_fields) == 0):
+            return
+
         fitparams = None
         for data_field in self._source_data_fields:
             data_field.calculate(self, src_hypo_group_manager, fitparams)
+
+        self._trial_data_state_id += 1
 
     def calculate_static_data_fields(self, src_hypo_group_manager):
         """Calculates the data values of the data fields that do not depend on
@@ -352,9 +373,14 @@ class TrialDataManager(object):
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses.
         """
+        if(len(self._static_data_fields) == 0):
+            return
+
         fitparams = dict()
         for data_field in self._static_data_fields:
             data_field.calculate(self, src_hypo_group_manager, fitparams)
+
+        self._trial_data_state_id += 1
 
     def calculate_fitparam_data_fields(self, src_hypo_group_manager, fitparams):
         """Calculates the data values of the data fields that depend on fit
@@ -368,13 +394,13 @@ class TrialDataManager(object):
         fitparams : dict
             The dictionary holding the fit parameter names and values.
         """
-        # Do not do anything if there is no fit parameter depend data field
-        # defined.
         if(len(self._fitparam_data_fields) == 0):
             return
 
         for data_field in self._fitparam_data_fields:
             data_field.calculate(self, src_hypo_group_manager, fitparams)
+
+        self._trial_data_state_id += 1
 
     def get_data(self, name):
         """Gets the data for the given data field name. The data is stored
