@@ -446,6 +446,12 @@ class ParameterSet(object):
             [ (param.valmin, param.valmax)
              for param in floating_params ], dtype=np.float)
 
+    def __iter__(self):
+        """Returns an iterator over the Parameter instances of this ParameterSet
+        instance.
+        """
+        return iter(self._params)
+
     def __len__(self):
         """The number of parameters this ParameterSet has.
         """
@@ -737,7 +743,7 @@ class ParameterSet(object):
             else:
                 self._floating_param_name_list = (
                     self._floating_param_name_list + [param.name])
-                self._floating_param_name_list[param.name] = len(
+                self._floating_param_name_to_idx[param.name] = len(
                     self._floating_param_name_list) - 1
 
         return self
@@ -833,7 +839,9 @@ class ParameterGrid(object):
             `delta`.
         """
         if(delta is None):
-            delta = np.diff(grid)[0]
+            # We need to take the mean of all the "equal" differences in order
+            # to smooth out unlucky rounding issues of a particular difference.
+            delta = np.mean(np.diff(grid))
 
         self.name = name
         self.delta = delta
@@ -938,6 +946,9 @@ class ParameterGrid(object):
         """Rounds the given value to the nearest grid point that is lower than
         the given value.
 
+        Note: If the given value is a grid point, that grid point will be
+              returned!
+
         Parameters
         ----------
         value : float | ndarray of float
@@ -953,6 +964,9 @@ class ParameterGrid(object):
     def round_to_upper_grid_point(self, value):
         """Rounds the given value to the nearest grid point that is larger than
         the given value.
+
+        Note: If the given value is a grid point, that grid point will be
+              returned!
 
         Parameters
         ----------
