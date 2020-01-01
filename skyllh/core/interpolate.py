@@ -196,9 +196,11 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         """
         (xname, x) = tuple(params.items())[0]
 
+        self__p_grid = self.p_grid
+
         # Determine the nearest grid point that is lower than x and use that as
         # x0.
-        x0 = self.p_grid.round_to_lower_grid_point(x)
+        x0 = self__p_grid.round_to_lower_grid_point(x)
 
         # Check if the line parametrization for x0 is already cached.
         self__cache = self._cache
@@ -209,11 +211,26 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             b = self__cache['b']
         else:
             # Calculate the line parametrization for all the given events.
+            self__f = self.f
 
             # Calculate the upper grid point of x.
-            x1 = self.p_grid.round_to_upper_grid_point(x)
+            x1 = self__p_grid.round_to_upper_grid_point(x)
 
-            self__f = self.f
+            # Check if x was on a grid point. In that case x0 and x1 are equal.
+            # The value will be of that grid point x0, but the gradient is
+            # calculated based on the two neighboring grid points of x0.
+            if(x1 == x0):
+                value = self__f({xname:x0}, eventdata)
+                x0 = self__p_grid.round_to_nearest_grid_point(
+                    x0 - self__p_grid.delta)
+                x1 = self__p_grid.round_to_nearest_grid_point(
+                    x1 + self__p_grid.delta)
+
+                M0 = self__f({xname:x0}, eventdata)
+                M1 = self__f({xname:x1}, eventdata)
+                m = (M1 - M0) / (x1 - x0)
+                return (value, np.atleast_2d(m))
+
             M0 = self__f({xname:x0}, eventdata)
             M1 = self__f({xname:x1}, eventdata)
 
