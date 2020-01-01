@@ -1,0 +1,125 @@
+# -*- coding: utf-8 -*-
+
+"""This module contains utility functions for creating and managing
+MultiDimGridPDF instances.
+"""
+
+import numpy as np
+
+from skyllh.core.binning import BinningDefinition
+from skyllh.core.pdf import MultiDimGridPDF
+from skyllh.core.signalpdf import SignalMultiDimGridPDF
+from skyllh.core.backgroundpdf import BackgroundMultiDimGridPDF
+
+
+def kde_pdf_sig_spatial_norm_factor_func(pdf, tdm, fitparams):
+    """This is the standard normalization factor function for the spatial signal
+    MultiDimGridPDF, which is created from KDE PDF values.
+    It can be used for the ``norm_factor_func`` argument of the
+    ``create_MultiDimGridPDF_from_kde_pdf`` function.
+    """
+    psi = tdm.get_data('psi')
+    norm = 1. / (2 * np.pi * np.log(10) * psi * np.sin(psi))
+    return norm
+
+def kde_pdf_bkg_norm_factor_func(pdf, tdm, fitparams):
+    """This is the standard normalization factor function for the background
+    MultiDimGridPDF, which is created from KDE PDF values.
+    It can be used for the ``norm_factor_func`` argument of the
+    ``create_MultiDimGridPDF_from_kde_pdf`` function.
+    """
+    return 1. / (2 * np.pi)
+
+def create_MultiDimGridPDF_from_kde_pdf(
+        ds, data, numerator_key, denumerator_key=None, norm_factor_func=None,
+        kind=None):
+    """Creates a MultiDimGridPDF instance with pdf values taken from KDE PDF
+    values stored in the dataset's auxiliary data.
+
+    Parameters
+    ----------
+    ds : Dataset instance
+        The Dataset instance the PDF applies to.
+    data : DatasetData instance
+        The DatasetData instance that holds the auxiliary data of the data set.
+    numerator_key : str
+        The auxiliary data name for the PDF numerator array.
+    denumerator_key : str | None
+        The auxiliary data name for the PDF denumerator array.
+        This can be None, if no denumerator array is required.
+    norm_factor_func : callable | None
+        The normalization factor function. It must have the following call
+        signature:
+            __call__(pdf, tdm, fitparams)
+    kind : str | None
+        The kind of PDF to create. This is either ``'sig'`` for a
+        SignalMultiDimGridPDF or ``'bkg'`` for a BackgroundMultiDimGridPDF
+        instance. If set to None, a MultiDimGridPDF instance is created.
+
+    Returns
+    -------
+    pdf : SignalMultiDimGridPDF instance | BackgroundMultiDimGridPDF instance |
+          MultiDimGridPDF instance
+        The created PDF instance. Depending on the ``kind`` argument, this is
+        a SignalMultiDimGridPDF, a BackgroundMultiDimGridPDF, or a
+        MultiDimGridPDF instance.
+    """
+    if(kind is None):
+        pdf_type = MultiDimGridPDF
+    elif(kind == 'sig'):
+        pdf_type = SignalMultiDimGridPDF
+    elif(kind == 'bkg'):
+        pdf_type = BackgroundMultiDimGridPDF
+    else:
+        raise ValueError('The kind argument must be None, "sig", or "bkg"! '
+            'Currently it is '+str(kind)+'!')
+
+    # Get the PDF data from the auxilary files. Currently, all auxilary data is
+    # pre-loaded. This might change in the future to a load-on-demand scheme.
+    num_dict = data.aux[numerator_key]
+
+    denum_dict = None
+    if(denumerator_key is not None):
+        denum_dict = data.aux[denumerator_key]
+
+    kde_pdf_axis_name_map = ds.get_aux_data('KDE_PDF_axis_name_map')
+    kde_pdf_axis_name_map_inv = dict(
+        [(v,k) for (k,v) in kde_pdf_axis_name_map.items()])
+
+    axis_binnings = [
+        BinningDefinition(
+            kde_pdf_axis_name_map_inv[var], num_dict['bins'][idx])
+        for (idx,var) in enumerate(num_dict['vars'])
+    ]
+
+    vals = num_dict['pdf_vals']
+    if(denum_dict is not None):
+        # A denumerator is required, so we need to divide the numerator pdf
+        # values by the denumerator pdf values, by preserving the correct axis
+        # order.
+        # Construct the slicing selector for the denumerator pdf values array to
+        # match the axis order of the numerator pdf values array.
+        selector = []
+        for var in num_dict['vars']:
+            if(var in denum_dict['vars']):
+                # The variable is present in both pdf value arrays. So select
+                # all values of that dimension.
+                selector.append(slice(None, None))
+            else:
+                # The variable is not present in the normalization pdf value
+                # array, so we need to add a dimension for that variable.
+                selector.append(np.newaxis)
+
+        vals /= denum_dict['pdf_vals'][selector]
+
+    # Set infinite values to NaN.
+    vals[np.isinf(vals)] = np.nan
+    # Set NaN values to 0.
+    vals[np.isnan(vals)] = 0
+
+    pdf = pdf_type(
+        axis_binnings,
+        vals,
+        norm_factor_func)
+
+    return pdf
