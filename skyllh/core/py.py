@@ -165,15 +165,44 @@ def issequence(obj):
 
     return True
 
-def issequenceof(obj, T):
+def issequenceof(obj, T, pyqualifiers=None):
     """Checks if the given object ``obj`` is a sequence with items being
-    instances of type ``T``.
+    instances of type ``T``, possibly qualified with the given Python
+    qualifiers.
+
+    Parameters
+    ----------
+    obj : object
+        The Python object to check.
+    T : type | tuple of types
+        The type each item of the sequence should be. If a tuple of types is
+        given, each item can be one of the given types.
+    pyqualifiers : instance of PyQualifier |
+            sequence of instances of PyQualifier | None
+        One or more instances of PyQualifier. Each instance acts as a filter
+        for each item.
+        If any of the filters return `False` for any of the items, this check
+        returns `False`. If set to `Ǹone`, no filters are applied.
+
+    Returns
+    -------
+    check : bool
+        The result of the check.
     """
+    if(pyqualifiers is None):
+        pyqualifiers = tuple()
+    elif(not issequence(pyqualifiers)):
+        pyqualifiers = (pyqualifiers,)
+
     if(not issequence(obj)):
         return False
     for item in obj:
         if(not isinstance(item, T)):
             return False
+        for pyqualifier in pyqualifiers:
+            if(not pyqualifier.check(item)):
+                return False
+
     return True
 
 def issequenceofsubclass(obj, T):
