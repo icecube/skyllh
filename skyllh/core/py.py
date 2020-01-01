@@ -2,10 +2,78 @@
 
 from __future__ import division
 
+import abc
 import copy
 import inspect
 import numpy as np
 import sys
+
+
+class PyQualifier(object):
+    """This is the abstract base class for any Python qualifier class.
+    An object can get qualified by calling a PyQualifier instance with that
+    object. The PyQualifier class will be added to the ``__pyqualifiers__``
+    attribute of the object.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self):
+        super(PyQualifier, self).__init__()
+
+    def __call__(self, obj):
+        """Declares the given Python object to be qualified with the
+        PyQualifier class of `self`. It adds the class of `self` to the
+        `__pyqualifiers__` tuple of the given object.
+
+        Parameters
+        ----------
+        obj : object
+            The Python object that should get qualified.
+
+        Returns
+        -------
+        obj : object
+            The given object, but modified to be declared for this Python
+            qualifier.
+        """
+        if(not hasattr(obj, '__pyqualifiers__')):
+            setattr(obj, '__pyqualifiers__', ())
+
+        obj.__pyqualifiers__ += (self.__class__,)
+
+        return obj
+
+    def check(self, obj):
+        """Checks if the given Python object is declared with the PyQualifier
+        class of the `self` object.
+
+        Parameters
+        ----------
+        obj : object
+            The Python object to check.
+
+        Returns
+        -------
+        check : bool
+            The check result. `True` if the object is declared for this Python
+            qualifier, and `False` otherwise.
+        """
+        if(not hasattr(obj, '__pyqualifiers__')):
+            return False
+
+        if(self.__class__ in obj.__pyqualifiers__):
+            return True
+
+        return False
+
+class ConstPyQualifier(PyQualifier):
+    """This class defines a PyQualifier for constant Python objects.
+    """
+    def __init__(self):
+        super(ConstPyQualifier, self).__init__()
+
+const = ConstPyQualifier()
+
 
 def typename(t):
     """Returns the name of the given type ``t``.
