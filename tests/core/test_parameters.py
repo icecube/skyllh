@@ -5,6 +5,7 @@ module.
 """
 
 import numpy as np
+import os.path
 import sys
 import unittest
 
@@ -14,7 +15,7 @@ from skyllh.core.parameters import (
     ParameterGridSet
 )
 
-sys.path.append('..')
+sys.path.append(os.path.join(os.path.split(__file__)[0], '..'))
 from utils import isAlmostEqual
 
 GAMMA_GRID = [
@@ -29,12 +30,54 @@ ECUT_GRID = [
 class ParameterGrid_TestCase(unittest.TestCase):
     """This test case tests the ParameterGrid class.
     """
+    def setUp(self):
+        self.paramgrid_gamma1 = ParameterGrid('gamma1', [ 1.5, 2., 2.5, 3., 3.5])
+        self.paramgrid_gamma2 = ParameterGrid('gamma2', GAMMA_GRID)
+
     def test_from_BinningDefinition(self):
         binning = BinningDefinition(name='gamma', binedges=GAMMA_GRID)
         param_grid = ParameterGrid.from_BinningDefinition(binning)
 
         self.assertEqual(param_grid.name, binning.name)
         self.assertTrue(isAlmostEqual(param_grid.grid, GAMMA_GRID))
+
+    def test_delta(self):
+        self.assertTrue(isAlmostEqual(self.paramgrid_gamma1.delta, 0.5))
+        self.assertTrue(isAlmostEqual(self.paramgrid_gamma2.delta, 0.1))
+
+    def test_offset(self):
+        self.assertTrue(isAlmostEqual(self.paramgrid_gamma1.offset, 0.))
+        self.assertTrue(isAlmostEqual(self.paramgrid_gamma2.offset, 0.))
+
+    def test_round_to_lower_grid_point(self):
+        # Test a value between two grid points.
+        x = 2.43
+        gp = self.paramgrid_gamma1.round_to_lower_grid_point(x)
+        self.assertTrue(isAlmostEqual(gp, 2.))
+
+        # Test a value at a grid point.
+        x = 2.
+        gp = self.paramgrid_gamma1.round_to_lower_grid_point(x)
+        self.assertTrue(isAlmostEqual(gp, 2.))
+
+        x = 1.6
+        gp = self.paramgrid_gamma2.round_to_lower_grid_point(x)
+        self.assertTrue(isAlmostEqual(gp, 1.6))
+
+    def test_round_to_upper_grid_point(self):
+        # Test a value between two grid points.
+        x = 2.43
+        gp = self.paramgrid_gamma1.round_to_upper_grid_point(x)
+        self.assertTrue(isAlmostEqual(gp, 2.5))
+
+        # Test a value at a grid point.
+        x = 2.
+        gp = self.paramgrid_gamma1.round_to_upper_grid_point(x)
+        self.assertTrue(isAlmostEqual(gp, 2.))
+
+        x = 1.6
+        gp = self.paramgrid_gamma2.round_to_upper_grid_point(x)
+        self.assertTrue(isAlmostEqual(gp, 1.6))
 
 
 class ParameterGridSet_TestCase(unittest.TestCase):
