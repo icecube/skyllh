@@ -41,7 +41,7 @@ def make_linear_parameter_grid_1d(name, low, high, delta):
     obj : ParameterGrid
         The ParameterGrid object holding the discrete parameter grid values.
     """
-    grid = np.linspace(low, high, np.round((high-low)/delta)+1)
+    grid = np.linspace(low, high, int(np.round((high-low)/delta))+1)
     return ParameterGrid(name, grid, delta)
 
 def make_params_hash(params):
@@ -167,7 +167,7 @@ class Parameter(object):
             if(v != self._initial):
                 raise ValueError('The value (%f) of the fixed parameter "%s" '
                     'must to equal to the parameter\'s initial value (%f)!'%(
-                    v, self._initial))
+                    v, self.name, self._initial))
         else:
             if((v < self._valmin) or (v > self._valmax)):
                 raise ValueError('The value (%f) of parameter "%s" must be '
@@ -207,12 +207,46 @@ class Parameter(object):
         -------
         grid : ParameterGrid instance
             The ParameterGrid instance holding the grid values.
+
+        Raises
+        ------
+        ValueError
+            If this Parameter instance represents a fixed parameter.
         """
+        if(self.isfixed):
+            raise ValueError('Cannot create a linear grid from the fixed '
+                'parameter "%s". The parameter must be floating!'%(self.name))
+
         delta = float_cast(delta, 'The delta argument must be castable to type '
             'float!')
         grid = make_linear_parameter_grid_1d(
             self._name, self._valmin, self._valmax, delta)
         return grid
+
+    def change_fixed_value(self, value):
+        """Changes the value of this fixed parameter to the given value.
+
+        Parameters
+        ----------
+        value : float
+            The parameter's new value.
+
+        Returns
+        -------
+        value : float
+            The parameter's new value.
+
+        Raises
+        ------
+        ValueError
+            If this parameter is not a fixed parameter.
+        """
+        if(not self._isfixed):
+            raise ValueError('The parameter "%s" is not a fixed parameter!'%(
+                self.name))
+
+        self.initial = value
+        self.value = value
 
     def make_fixed(self, initial=None):
         """Fixes this parameter to the given initial value.
@@ -226,11 +260,11 @@ class Parameter(object):
         Returns
         -------
         value : float
-            The parameters new value.
+            The parameter's new value.
         """
         self._isfixed = True
 
-        # Set the new initial value if requested.
+        # If no new initial value is given, use the current value.
         if(initial is None):
             self._initial = self._value
             return self._value
@@ -262,6 +296,12 @@ class Parameter(object):
         -------
         value : float
             The parameter's new value.
+
+        Raises
+        ------
+        ValueError
+            If valmin is set to None and this parameter has no valmin defined.
+            If valmax is set to None and this parameter has no valmax defined.
         """
         self._isfixed = False
 
@@ -791,6 +831,188 @@ class ParameterSet(object):
             zip(self._fixed_param_name_list, self._fixed_param_values))
 
         return param_dict
+
+
+class ParameterSetArray(object):
+    """This class provides a data holder for an array of ParameterSet instances.
+    Given an array of global floating parameter values, it can split that array
+    into floating parameter value sub arrays, one for each ParameterSet instance
+    of this ParameterSetArray instance. This functionality is required in
+    order to be able to map the global floating parameter values from the
+    minimizer to their parameter names.
+    """
+    def __init__(self, paramsets):
+        """Creates a new ParameterSetArray instance, which will hold a list of
+        constant ParameterSet instances.
+
+        Parameters
+        ----------
+        paramsets : const instance of ParameterSet | sequence of const instances
+                of ParameterSet
+            The sequence of constant ParameterSet instances holding the global
+            parameters.
+        """
+        super(ParameterSetArray, self).__init__()
+
+        if(isinstance(paramsets, ParameterSet)):
+            paramsets = [paramsets]
+        if(not issequenceof(paramsets, ParameterSet, const)):
+            raise TypeError('The paramsets argument must be a constant '
+                'instance of ParameterSet or a sequence of constant '
+                'ParameterSet instances!')
+        self._paramset_list = list(paramsets)
+
+        # Calculate the total number of parameters hold by this
+        # ParameterSetArray instance.
+        self._n_params = np.sum([paramset.n_params
+            for paramset in self._paramset_list])
+
+        # Calculate the total number of fixed parameters hold by this
+        # ParameterSetArray instance.
+        self._n_fixed_params = np.sum([paramset.n_fixed_params
+            for paramset in self._paramset_list])
+
+        # Calculate the total number of floating parameters hold by this
+        # ParameterSetArray instance.
+        self._n_floating_params = np.sum([paramset.n_floating_params
+            for paramset in self._paramset_list])
+
+        # Determine the array of initial values of all floating parameters.
+        self._floating_param_initials = np.concatenate([
+            paramset.floating_param_initials
+            for paramset in self._paramset_list])
+
+        # Determine the array of bounds of all floating parameters.
+        self._floating_param_bounds = np.concatenate([
+            paramset.floating_param_bounds
+            for paramset in self._paramset_list])
+
+    @property
+    def paramset_list(self):
+        """(read-only) The list of ParameterSet instances holding the global
+        parameters.
+        """
+        return self._paramset_list
+
+    @property
+    def n_params(self):
+        """(read-only) The total number of parameters hold by this
+        ParameterSetArray instance.
+        """
+        return self._n_params
+
+    @property
+    def n_fixed_params(self):
+        """(read-only) The total number of fixed parameters hold by this
+        ParameterSetArray instance.
+        """
+        return self._n_fixed_params
+
+    @property
+    def n_floating_params(self):
+        """(read-only) The total number of floating parameters hold by this
+        ParameterSetArray instance.
+        """
+        return self._n_floating_params
+
+    @property
+    def floating_param_initials(self):
+        """(read-only) The 1D (n_floating_params,)-shaped ndarray holding the
+        initial values of all the floating parameters.
+        """
+        return self._floating_param_initials
+
+    @property
+    def floating_param_bounds(self):
+        """(read-only) The 2D (n_floating_params,2)-shaped ndarray holding the
+        boundaries for all the floating parameters.
+        """
+        return self._floating_param_bounds
+
+    def __str__(self):
+        """Creates and returns a pretty string representation of this
+        ParameterSetArray instance.
+        """
+        s = '%s: %d parameters (%d floating, %d fixed) {\n'%(
+            classname(self), self.n_params, self.n_floating_params,
+            self.n_fixed_params)
+
+        for (idx,paramset) in enumerate(self._paramset_list):
+            if(idx > 0):
+                s += '\n'
+            s += display.add_leading_text_line_padding(
+                display.INDENTATION_WIDTH,
+                str(paramset))
+
+        s += '\n}'
+
+        return s
+
+    def generate_random_initials(self, rss):
+        """Generates a set of random initials for all global floating
+        parameters.
+        A new random initial is defined as
+
+            lower_bound + RAND * (upper_bound - lower_bound),
+
+        where RAND is a uniform random variable between 0 and 1.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance that should be used for drawing
+            random numbers from.
+        """
+        vb = self.floating_param_bounds
+        # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound)
+        ri = vb[:,0] + rss.random.uniform(size=vb.shape[0])*(vb[:,1] - vb[:,0])
+
+        return ri
+
+    def split_floating_param_values(self, floating_param_values):
+        """Splits the given floating parameter values into their specific
+        ParameterSet part.
+
+        Parameters
+        ----------
+        floating_param_values : (n_floating_params,)-shaped 1D ndarray
+            The ndarray holding the values of all the floating parameters for
+            all ParameterSet instances. The order must match the order of
+            ParameterSet instances and their order of floating parameters.
+
+        Returns
+        -------
+        floating_param_values_list : list of (n_floating_params,)-shaped 1D
+                ndarray
+            The list of ndarray objects, where each ndarray holds only the
+            floating values of the particular ParameterSet instance. The order
+            matches the order of ParameterSet instances defined for this
+            ParameterSetArray.
+        """
+        if(len(floating_param_values) != self.n_floating_params):
+            raise ValueError('The number of given floating parameter values '
+                '(%d) does not match the total number of defined floating '
+                'parameters (%d)!'%(len(floating_param_values),
+                self.n_floating_params))
+
+        floating_param_values_list = []
+
+        offset = 0
+        for paramset in self._paramset_list:
+            n_floating_params = paramset.n_floating_params
+            floating_param_values_list.append(floating_param_values[
+                offset:offset+n_floating_params])
+            offset += n_floating_params
+
+        return floating_param_values_list
+
+    def update_fixed_param_value_cache(self):
+        """Updates the internal cache of the fixed parameter values. This method
+        has to be called whenever the values of the fixed Parameter instances
+        change.
+        """
+        for paramset in self._paramset_list:
+            paramset.update_fixed_param_value_cache()
 
 
 class ParameterGrid(object):
