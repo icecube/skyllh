@@ -11,6 +11,7 @@ import unittest
 
 from skyllh.core.binning import BinningDefinition
 from skyllh.core.parameters import (
+    Parameter,
     ParameterGrid,
     ParameterGridSet
 )
@@ -25,6 +26,118 @@ GAMMA_GRID = [
 ECUT_GRID = [
     9., 9.1
 ]
+
+
+class Parameter_TestCase(unittest.TestCase):
+    """This test case tests the Parameter class.
+    """
+    def setUp(self):
+        self.fixed_param_initial = 2.37
+        self.floating_param_initial = 7.32
+        self.floating_param_valmin = 7.1
+        self.floating_param_valmax = 8
+        self.floating_param_grid = np.array([
+            7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 8.])
+
+        self.fixed_param = Parameter(
+            'fixed_param', self.fixed_param_initial)
+        self.floating_param = Parameter(
+            'floating_param', self.floating_param_initial,
+            isfixed=False,
+            valmin=self.floating_param_valmin,
+            valmax=self.floating_param_valmax)
+
+    def test_name(self):
+        self.assertEqual(self.fixed_param.name, 'fixed_param')
+        self.assertEqual(self.floating_param.name, 'floating_param')
+
+    def test_initial(self):
+        self.assertTrue(isAlmostEqual(
+            self.fixed_param.initial, self.fixed_param_initial))
+        self.assertTrue(isAlmostEqual(
+            self.floating_param.initial, self.floating_param_initial))
+
+    def test_isfixed(self):
+        self.assertTrue(self.fixed_param.isfixed)
+        self.assertFalse(self.floating_param.isfixed)
+
+    def test_valmin(self):
+        self.assertEqual(self.fixed_param.valmin, None)
+        self.assertTrue(isAlmostEqual(
+            self.floating_param.valmin, self.floating_param_valmin))
+
+    def test_valmax(self):
+        self.assertEqual(self.fixed_param.valmax, None)
+        self.assertTrue(isAlmostEqual(
+            self.floating_param.valmax, self.floating_param_valmax))
+
+    def test_value(self):
+        self.assertTrue(isAlmostEqual(
+            self.fixed_param.value, self.fixed_param_initial))
+        self.assertTrue(isAlmostEqual(
+            self.floating_param.value, self.floating_param_initial))
+
+        # Try to change the value of a fixed parameter.
+        with self.assertRaises(ValueError):
+            self.fixed_param.value = self.floating_param_initial
+
+        # Try to set the value of a floating parameter to a value outside its
+        # value range.
+        with self.assertRaises(ValueError):
+            self.floating_param.value = self.fixed_param_initial
+
+    def test_as_linear_grid(self):
+        grid_delta = 0.1
+        with self.assertRaises(ValueError):
+            self.fixed_param.as_linear_grid(grid_delta)
+
+        param_grid = self.floating_param.as_linear_grid(grid_delta)
+        self.assertTrue(np.all(isAlmostEqual(
+            param_grid.grid, self.floating_param_grid)))
+
+    def test_change_fixed_value(self):
+        with self.assertRaises(ValueError):
+            self.floating_param.change_fixed_value(self.fixed_param_initial)
+
+        self.fixed_param.change_fixed_value(self.floating_param_initial)
+        self.assertTrue(isAlmostEqual(
+            self.fixed_param.initial, self.floating_param_initial))
+        self.assertTrue(isAlmostEqual(
+            self.fixed_param.value, self.floating_param_initial))
+
+    def test_make_fixed(self):
+        self.floating_param.make_fixed(self.fixed_param_initial)
+        self.assertTrue(isAlmostEqual(
+            self.floating_param.initial, self.fixed_param_initial))
+        self.assertTrue(isAlmostEqual(
+            self.floating_param.value, self.fixed_param_initial))
+
+    def test_make_floating(self):
+        with self.assertRaises(ValueError):
+            self.fixed_param.make_floating()
+        with self.assertRaises(ValueError):
+            self.fixed_param.make_floating(valmin=self.floating_param_valmin)
+
+        # The current value of fixed_param is outside the valmin and valmax
+        # range of the floating_param. This should raise an exception when no
+        # new initial value is specified.
+        with self.assertRaises(ValueError):
+            self.fixed_param.make_floating(
+                valmin=self.floating_param_valmin,
+                valmax=self.floating_param_valmax)
+
+        self.fixed_param.make_floating(
+            initial=self.floating_param_initial,
+            valmin=self.floating_param_valmin,
+            valmax=self.floating_param_valmax)
+        self.assertTrue(isAlmostEqual(
+            self.fixed_param.initial, self.floating_param_initial))
+        self.assertTrue(isAlmostEqual(
+            self.fixed_param.value, self.floating_param_initial))
+        self.assertTrue(isAlmostEqual(
+            self.fixed_param.valmin, self.floating_param_valmin))
+        self.assertTrue(isAlmostEqual(
+            self.fixed_param.valmax, self.floating_param_valmax))
 
 
 class ParameterGrid_TestCase(unittest.TestCase):
