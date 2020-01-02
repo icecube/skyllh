@@ -12,6 +12,7 @@ import unittest
 from skyllh.core.binning import BinningDefinition
 from skyllh.core.parameters import (
     Parameter,
+    ParameterSet,
     ParameterGrid,
     ParameterGridSet
 )
@@ -43,7 +44,6 @@ class Parameter_TestCase(unittest.TestCase):
             'fixed_param', self.fixed_param_initial)
         self.floating_param = Parameter(
             'floating_param', self.floating_param_initial,
-            isfixed=False,
             valmin=self.floating_param_valmin,
             valmax=self.floating_param_valmax)
 
@@ -85,6 +85,10 @@ class Parameter_TestCase(unittest.TestCase):
         # value range.
         with self.assertRaises(ValueError):
             self.floating_param.value = self.fixed_param_initial
+
+    def test_str(self):
+        str(self.fixed_param)
+        str(self.floating_param)
 
     def test_as_linear_grid(self):
         grid_delta = 0.1
@@ -138,6 +142,121 @@ class Parameter_TestCase(unittest.TestCase):
             self.fixed_param.valmin, self.floating_param_valmin))
         self.assertTrue(isAlmostEqual(
             self.fixed_param.valmax, self.floating_param_valmax))
+
+
+class ParameterSet_TestCase(unittest.TestCase):
+    """This test case tests the ParameterSet class.
+    """
+    def setUp(self):
+        self.fixed_param = Parameter('p0', 2.3)
+        self.floating_param = Parameter('p1', 1.1, valmin=0.5, valmax=1.6)
+        self.paramset = ParameterSet((self.fixed_param, self.floating_param))
+
+    def test_params(self):
+        params = self.paramset.params
+        self.assertEqual(len(params), 2)
+        self.assertEqual(params[0], self.fixed_param)
+        self.assertEqual(params[1], self.floating_param)
+
+    def test_fixed_params(self):
+        params = self.paramset.fixed_params
+        self.assertEqual(len(params), 1)
+        self.assertEqual(params[0], self.fixed_param)
+
+    def test_floating_params(self):
+        params = self.paramset.floating_params
+        self.assertEqual(len(params), 1)
+        self.assertEqual(params[0], self.floating_param)
+
+    def test_n_params(self):
+        self.assertEqual(self.paramset.n_params, 2)
+
+    def test_n_fixed_params(self):
+        self.assertEqual(self.paramset.n_fixed_params, 1)
+
+    def test_n_floating_params(self):
+        self.assertEqual(self.paramset.n_floating_params, 1)
+
+    def test_fixed_param_name_list(self):
+        names = self.paramset.fixed_param_name_list
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names, ['p0'])
+
+    def test_floating_param_name_list(self):
+        names = self.paramset.floating_param_name_list
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names, ['p1'])
+
+    def test_fixed_param_values(self):
+        values = self.paramset.fixed_param_values
+        self.assertTrue(isAlmostEqual(values, [2.3]))
+
+    def test_floating_param_initials(self):
+        initials = self.paramset.floating_param_initials
+        self.assertTrue(isAlmostEqual(initials, [1.1]))
+
+    def test_floating_param_bounds(self):
+        bounds = self.paramset.floating_param_bounds
+        self.assertTrue(isAlmostEqual(bounds[0], [0.5, 1.6]))
+
+    def test_len(self):
+        self.assertEqual(len(self.paramset), 2)
+
+    def test_iter(self):
+        for (i,param) in enumerate(self.paramset):
+            self.assertEqual(param.name, 'p%d'%(i))
+
+    def test_str(self):
+        str(self.paramset)
+
+    def test_get_fixed_pidx(self):
+        self.assertEqual(self.paramset.get_fixed_pidx('p0'), 0)
+
+        with self.assertRaises(KeyError):
+            self.paramset.get_fixed_pidx('p1')
+
+    def test_get_floating_pidx(self):
+        self.assertEqual(self.paramset.get_floating_pidx('p1'), 0)
+
+        with self.assertRaises(KeyError):
+            self.paramset.get_floating_pidx('p0')
+
+    def test_has_fixed_param(self):
+        self.assertTrue(self.paramset.has_fixed_param('p0'))
+        self.assertFalse(self.paramset.has_fixed_param('p1'))
+
+    def test_has_floating_param(self):
+        self.assertTrue(self.paramset.has_floating_param('p1'))
+        self.assertFalse(self.paramset.has_floating_param('p0'))
+
+    def test_fix_params(self):
+        # Already fixed parameters cannot be fixed.
+        with self.assertRaises(ValueError):
+            self.paramset.fix_params({'p0': 42})
+
+        # Fix the floating parameter outside its current range.
+        self.paramset.fix_params({'p1': 0.4})
+        self.assertTrue(self.paramset.has_fixed_param('p1'))
+        self.assertEqual(self.paramset.n_fixed_params, 2)
+        self.assertEqual(self.paramset.n_floating_params, 0)
+        self.test_params()
+        values = self.paramset.fixed_param_values
+        self.assertTrue(isAlmostEqual(values, [2.3, 0.4]))
+        self.assertEqual(self.paramset.params[1].valmin, None)
+        self.assertEqual(self.paramset.params[1].valmax, None)
+
+        self.setUp()
+
+        # Fix the floating parameter to its current value.
+        self.paramset.fix_params({'p1': None})
+        self.assertTrue(self.paramset.has_fixed_param('p1'))
+        self.assertEqual(self.paramset.n_fixed_params, 2)
+        self.assertEqual(self.paramset.n_floating_params, 0)
+        self.test_params()
+        values = self.paramset.fixed_param_values
+        self.assertTrue(isAlmostEqual(values, [2.3, 1.1]))
+        self.assertTrue(isAlmostEqual(self.paramset.params[1].valmin, 0.5))
+        self.assertTrue(isAlmostEqual(self.paramset.params[1].valmax, 1.6))
 
 
 class ParameterGrid_TestCase(unittest.TestCase):
