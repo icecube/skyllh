@@ -9,9 +9,11 @@ from skyllh.physics.source import (
     SourceCollection,
     SourceModel
 )
+from skyllh.core import display
 from skyllh.core.py import (
     NamedObjectCollection,
     bool_cast,
+    classname,
     float_cast,
     issequence,
     issequenceof,
@@ -280,6 +282,13 @@ class Parameter(object):
 
         self.initial = initial
         self._value = self._initial
+
+        # Undefine the valmin and valmax values if the parameter's new value is
+        # outside the valmin and valmax range.
+        if((self._valmin is not None) and (self._valmax is not None) and
+           ((self._value < self._valmin) or (self._value > self._valmax))):
+            self._valmin = None
+            self._valmax = None
 
         return self._value
 
@@ -603,6 +612,11 @@ class ParameterSet(object):
         fix_params : dict
             The dictionary defining the parameters that should get fixed to the
             given dictionary entry values.
+
+        Raises
+        ------
+        ValueError
+            If one of the given parameters is already a fixed parameter.
         """
         fix_params_keys = fix_params.keys()
         self._fixed_param_name_list = []
