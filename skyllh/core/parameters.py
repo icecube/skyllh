@@ -74,7 +74,7 @@ class Parameter(object):
     initial value. Furthermore, it has a flag that determines whether this
     parameter has a fixed value or not.
     """
-    def __init__(self, name, initial, isfixed=True, valmin=None, valmax=None):
+    def __init__(self, name, initial, valmin=None, valmax=None, isfixed=None):
         """Creates a new Parameter instance.
 
         Parameters
@@ -83,17 +83,26 @@ class Parameter(object):
             The name of the parameter.
         initial : float
             The initial value of the parameter.
-        isfixed : bool
-            Flag if the value of this parameter is mutable (False), or not
-            (True). If set to `True`, the value of the parameter will always be
-            the `initial` value.
         valmin : float | None
             The minimum value of the parameter in case this parameter is
             mutable.
         valmax : float | None
             The maximum value of the parameter in case this parameter is
             mutable.
+        isfixed : bool | None
+            Flag if the value of this parameter is mutable (False), or not
+            (True). If set to `True`, the value of the parameter will always be
+            the `initial` value.
+            If set to None, the parameter will be mutable if valmin and valmax
+            were specified. Otherwise, the parameter is fixed.
+            The default is None.
         """
+        if(isfixed is None):
+            if((valmin is not None) and (valmax is not None)):
+                isfixed = False
+            else:
+                isfixed = True
+
         self.name = name
         self.initial = initial
         self.isfixed = isfixed
