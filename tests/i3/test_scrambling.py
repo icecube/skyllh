@@ -44,8 +44,8 @@ class TestI3TimeScramblingMethod(unittest.TestCase):
         grl_data = grl_fileloader.load_data()
 
         uptime_mjd_intervals_arr = np.hstack((
-            grl_data['start'].reshape((grl_data.shape[0],1)),
-            grl_data['stop'].reshape((grl_data.shape[0],1))
+            grl_data['start'].reshape((len(grl_data),1)),
+            grl_data['stop'].reshape((len(grl_data),1))
         ))
 
         livetime = Livetime(uptime_mjd_intervals_arr)
