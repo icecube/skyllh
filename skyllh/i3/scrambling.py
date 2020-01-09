@@ -31,15 +31,16 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
         rss : RandomStateService
             The random state service providing the random number
             generator (RNG).
-        data : numpy.ndarray
-            The ndarray containing the to be scrambled data.
+        data : DataFieldRecordArray instance
+            The DataFieldRecordArray instance containing the to be scrambled
+            data.
 
         Returns
         -------
         data : numpy record ndarray
             The given numpy record ndarray holding the scrambled data.
         """
-        mjds = self._timegen.generate_times(rss, data.size)
+        mjds = self._timegen.generate_times(rss, len(data))
 
         data['time'] = mjds
         data['ra'] = azi_to_ra_transform(data['azi'], mjds)
