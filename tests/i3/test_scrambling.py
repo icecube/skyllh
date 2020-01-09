@@ -5,10 +5,11 @@ import unittest
 import numpy as np
 
 from skyllh.core import storage
-
 from skyllh.core.random import RandomStateService
-from skyllh.core.times import TimeGenerator, LivetimeTimeGenerationMethod
-
+from skyllh.core.times import (
+    LivetimeTimeGenerationMethod,
+    TimeGenerator
+)
 from skyllh.core.livetime import Livetime
 
 from skyllh.i3.coords import (
@@ -16,9 +17,7 @@ from skyllh.i3.coords import (
     ra_to_azi_transform,
     hor_to_equ_transform
 )
-
 from skyllh.i3.scrambling import I3TimeScramblingMethod
-
 from skyllh.i3.dataset import I3Dataset
 
 
