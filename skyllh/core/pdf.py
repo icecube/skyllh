@@ -6,6 +6,10 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
 from skyllh.core.binning import BinningDefinition
+from skyllh.core.interpolate import (
+    GridManifoldInterpolationMethod,
+    Linear1DGridManifoldInterpolationMethod
+)
 from skyllh.core.py import (
     ObjectCollection,
     func_has_n_args,
@@ -16,8 +20,11 @@ from skyllh.core.py import (
 from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet,
+    ParameterSet,
     make_params_hash
 )
+from skyllh.core.trialdata import TrialDataManager
+
 
 class PDFAxis(object):
     """This class describes an axis of a PDF. It's main purpose is to define
@@ -100,6 +107,37 @@ class PDFAxes(ObjectCollection):
     """This class describes the set of PDFAxis objects defining the
     dimensionality of a PDF.
     """
+    @staticmethod
+    def union(*axeses):
+        """Creates a PDFAxes instance that is the union of the given PDFAxes
+        instances.
+
+        Parameters
+        ----------
+        *axeses : PDFAxes instances
+            The sequence of PDFAxes instances.
+
+        Returns
+        -------
+        axes : PDFAxes instance
+            The newly created PDFAxes instance that holds the union of the
+            PDFAxis instances provided by all the PDFAxes instances.
+        """
+        if(not issequenceof(axeses, PDFAxes)):
+            raise TypeError('The arguments of the union static function must '
+                'be instances of PDFAxes!')
+        if(not len(axeses) >= 1):
+            raise ValueError('At least 1 PDFAxes instance must be provided to '
+                'the union static function!')
+
+        axes = PDFAxes(axes=axeses[0])
+        for axes_i in axeses[1:]:
+            for axis in axes_i:
+                if(not axes.has_axis(axis)):
+                    axes += axis
+
+        return axes
+
     def __init__(self, axes=None):
         super(PDFAxes, self).__init__(obj_type=PDFAxis, obj_list=axes)
 
@@ -131,6 +169,15 @@ class PDFAxes(ObjectCollection):
 
         raise KeyError('The PDFAxis with name "%s" could not be found!'%(name))
 
+    def has_axis(self, name):
+        """Checks if an axis of the given name is present in this PDFAxes
+        instance.
+        """
+        for axis in self:
+            if(axis.name == name):
+                return True
+        return False
+
     def is_same_as(self, axes):
         """Checks if this PDFAxes object has the same axes and range then the
         given PDFAxes object.
@@ -161,8 +208,8 @@ class IsBackgroundPDF(object):
         super(IsBackgroundPDF, self).__init__(*args, **kwargs)
 
     def __mul__(self, other):
-        """Creates a CombinedBackgroundPDF instance for the combination of this
-        background PDF and another background PDF.
+        """Creates a BackgroundPDFProduct instance for the multiplication of
+        this background PDF and another background PDF.
 
         Parameters
         ----------
@@ -173,7 +220,7 @@ class IsBackgroundPDF(object):
             raise TypeError('The other PDF must be an instance of '
                 'IsBackgroundPDF!')
 
-        return CombinedBackgroundPDF(self, other, op=np.multiply)
+        return BackgroundPDFProduct(self, other)
 
 
 class IsSignalPDF(object):
@@ -187,7 +234,7 @@ class IsSignalPDF(object):
         super(IsSignalPDF, self).__init__(*args, **kwargs)
 
     def __mul__(self, other):
-        """Creates a CombinedSignalPDF instance for the combination of this
+        """Creates a SignalPDFProduct instance for the multiplication of this
         signal PDF and another signal PDF.
 
         Parameters
@@ -199,21 +246,36 @@ class IsSignalPDF(object):
             raise TypeError('The other PDF must be an instance of '
                 'IsSignalPDF!')
 
-        return CombinedSignalPDF(self, other, op=np.multiply)
+        return SignalPDFProduct(self, other)
 
 
 class PDF(object):
-    """The abstract base class for all probability distribution functions (PDF)
-    models.
-    All PDF model classes must be derived from this class.
+    """This is the abstract base class for all probability distribution
+    function (PDF) models.
+    All PDF model classes must be derived from this class. Mathematically, it
+    represents :math::`f(\vec{x}|\vec{p})`, where :math::`\vec{x}` is the
+    event data and :math::`\vec{p}` is the set of parameters the PDF is given
+    for.
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, param_set=None, **kwargs):
+        """Creates a new PDF instance.
+
+        Parameters
+        ----------
+        param_set : Parameter instance | sequence of Parameter instances |
+                   ParameterSet instance | None
+            If this PDF depends on parameters, this set of parameters
+            defines them. If a single parameter instance is given a ParameterSet
+            instance will be created holding this single parameter.
+            If set to None, this PDF will not depend on any parameters.
+        """
         # Make sure that multiple inheritance can be used. This super call will
         # invoke the __init__ method of a possible second inheritance.
-        super(PDF, self).__init__(*args, **kwargs)
+        super(PDF, self).__init__(**kwargs)
 
+        self.param_set = param_set
         self._axes = PDFAxes()
 
     @property
@@ -231,6 +293,36 @@ class PDF(object):
         """
         return len(self._axes)
 
+    @property
+    def param_set(self):
+        """The ParameterSet instance defining the set of parameters this PDF
+        depends on. It is ``None``, if this PDF does not depend on any
+        parameters.
+        """
+        return self._param_set
+    @param_set.setter
+    def param_set(self, param_set):
+        if(param_set is None):
+            param_set = ParameterSet()
+        elif(not isinstance(param_set, ParameterSet)):
+            param_set = ParameterSet(param_set)
+        self._param_set = param_set
+
+    @property
+    def is_signal_pdf(self):
+        """(read-only) The flag if this PDF instance represents a signal PDF.
+        A PDF is a signal PDF if it derives from the ``IsSignalPDF`` class.
+        """
+        return isinstance(self, IsSignalPDF)
+
+    @property
+    def is_background_pdf(self):
+        """(read-only) The flag if this PDF instance represents a background
+        PDF. A PDF is a background PDF if it derives from the
+        ``IsBackgroundPDF``  class.
+        """
+        return isinstance(self, IsBackgroundPDF)
+
     def add_axis(self, axis):
         """Adds the given PDFAxis object to this PDF.
         """
@@ -238,65 +330,57 @@ class PDF(object):
             raise TypeError('The axis argument must be an instance of PDFAxis!')
         self._axes += axis
 
-    @abc.abstractmethod
-    def assert_is_valid_for_exp_data(self, data_exp):
-        """This abstract method is supposed to check if this PDF is valid for
-        all the given experimental data. This means, it needs to check if there
-        is a PDF value for each data event that will be used in the likelihood
-        evaluation. This is just a seatbelt. The method must raise a ValueError
-        if the PDF is not valid for the given experimental data.
-
-        Parameters
-        ----------
-        data_exp : numpy record ndarray
-            The array holding the experimental data to check for.
-
-        Raises
-        ------
-        ValueError
-            If the PDF is not valid for the given experimental data.
+    def assert_is_valid_for_trial_data(self, tdm):
+        """This method is supposed to check if this PDF is valid for
+        all the given trial data. This means, it needs to check if there
+        is a PDF value for each trial data event that will be used in the
+        likelihood evaluation. This is just a seatbelt.
+        The method must raise a ValueError if the PDF is not valid for the
+        given trial data.
         """
-        pass
+        raise NotImplementedError('The derived PDF class "%s" did not '
+            'implement the "assert_is_valid_for_trial_data" method!'%(
+                classname(self)))
 
     @abc.abstractmethod
-    def get_prob(self, trial_data_manager, fitparams):
-        """This abstract method is supposed to calculate the probability for
-        the specified events given the specified fit parameters.
+    def get_prob(self, tdm, params=None):
+        """This abstract method is supposed to calculate the probability density
+        for the specified events given the specified parameter values.
 
         Parameters
         ----------
-        trial_data_manager : TrialDataManager instance
+        tdm : TrialDataManager instance
             The TrialDataManager instance holding the data events for which the
             probability should be calculated for. What data fields are required
             is defined by the derived PDF class and depends on the application.
-        fitparams : dict
-            The dictionary containing the fit parameters for which the
-            probability should get calculated.
-            What fit parameters these are is defined by derived PDF class and
-            depends on the application.
+        params : dict | None
+            The dictionary containing the parameter names and values for which
+            the probability should get calculated.
+            This can be ``Ǹone`` for PDFs that do not depend on any parameters.
 
         Returns
         -------
-        prob : (N_events,) or (N_events,N_sources) shaped numpy ndarray
-            The 1D numpy ndarray with the probability for each event. If the PDF
-            is dependent on the source, it returns a 2D numpy ndarray with the
-            probability for each of the N_events events and each of the
-            N_sources sources. By definition the 2D case is applicable only for
-            signal PDFs.
+        prob : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
+        grads : (N_fitparams,N_events)-shaped ndarray | None
+            The 2D numpy ndarray holding the gradients of the PDF w.r.t.
+            each fit parameter for each event. The order of the gradients
+            is the same as the order of floating parameters specified through
+            the ``param_set`` property.
+            It is ``None``, if this PDF does not depend on any parameters.
         """
         pass
 
 
-class CombinedPDF(PDF):
-    """The CombinedPDF class describes a combination of two PDF instances. It
-    is derived from the PDF class and hence is a PDF itself. An operator defines
-    the type of combination of the two PDF instances.
+class PDFProduct(PDF):
+    """The PDFProduct class represents the product of two PDF instances. It
+    is derived from the PDF class and hence is a PDF itself.
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, pdf1, pdf2, op, op_kwargs):
-        """Creates a new CombinedPDF instance, which implements the operation
-        `pdf1 op pdf2`. The operation is defined by the operator function `op`.
+    def __init__(self, pdf1, pdf2):
+        """Creates a new PDFProduct instance, which implements the operation
+        `pdf1 * pdf2`.
         The axes of the two PDF instances will be merged.
 
         Parameters
@@ -305,24 +389,21 @@ class CombinedPDF(PDF):
             The left-hand-side PDF in the operation `pdf1 op pdf2`.
         pdf2 : instance of PDF
             The right-hand-side PDF in the operation `pdf1 op pdf2`.
-        op : callable with two arguments
-            The numeric operator function, which combines the PDF values of
-            `pdf1` and `pdf2`. The function must have the following call
-            signature: `__call__(pdf1_values, pdf2_values)`, where `pdf1_values`
-            are the PDF values of `pdf1` and `pdf2_values` the pdf values of
-            `pdf2`.
-        op_kwargs : dict | None
-            Possible additional keyword arguments that should be passed to the
-            operator function.
         """
-        super(CombinedPDF, self).__init__()
-
         self.pdf1 = pdf1
         self.pdf2 = pdf2
-        self.operator = op
-        self.operator_kwargs = op_kwargs
 
-        self._axes = pdf1.axes + pdf2.axes
+        # Create the ParameterSet instance that is the union of the ParameterSet
+        # instances of the two PDFs.
+        param_set = ParameterSet.union(
+            self._pdf1.param_set, self._pdf2.param_set)
+
+        super(PDFProduct, self).__init__(
+            param_set=param_set)
+
+        # The resulting PDFAxes object of this PDF instance is the union of the
+        # two PDFAxes instances of the two PDF instances.
+        self._axes = PDFAxes.union(pdf1.axes, pdf2.axes)
 
     @property
     def pdf1(self):
@@ -348,85 +429,107 @@ class CombinedPDF(PDF):
             raise TypeError('The pdf2 property must be an instance of PDF!')
         self._pdf2 = pdf
 
-    @property
-    def operator(self):
-        """The operator function that combines the PDF values of `pdf1` and
-        `pdf2`.
-        """
-        return self._operator
-    @operator.setter
-    def operator(self, op):
-        if(not callable(op)):
-            raise TypeError('The operator property must be callable!')
-        if(not isinstance(op, np.ufunc)):
-            # The func_has_n_args function works only on Python functions.
-            if(not func_has_n_args(op, 2)):
-                raise TypeError('The operator property must be a function with '
-                    '2 arguments!')
-        self._operator = op
+    def assert_is_valid_for_trial_data(self, tdm):
+        """Calls the ``assert_is_valid_for_trial_data`` method of ``pdf1`` and
+        ``pdf2``.
 
-    @property
-    def operator_kwargs(self):
-        """Additional keyword arguments that should be passed to the operator
-        function.
-        """
-        return self._operator_kwargs
-    @operator_kwargs.setter
-    def operator_kwargs(self, kwargs):
-        if(kwargs is None):
-            kwargs = dict()
-        if(not isinstance(kwargs, dict)):
-            raise TypeError('The operator_kwargs property must be None or an '
-                'instance of dict!')
-        self._operator_kwargs = kwargs
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The TrialDataManager instance that should be used to get the trial
+            data from.
 
-    def assert_is_valid_for_exp_data(self, data_exp):
-        """Calls the `assert_is_valid_for_exp_data` method of `pdf1` and `pdf2`.
+        Raises
+        ------
+        ValueError
+            If this PDF does not cover the trial data.
         """
-        self._pdf1.assert_is_valid_for_exp_data(data_exp)
-        self._pdf2.assert_is_valid_for_exp_data(data_exp)
+        self._pdf1.assert_is_valid_for_trial_data(tdm)
+        self._pdf2.assert_is_valid_for_trial_data(tdm)
 
-    def get_prob(self, tdm, fitparams=None):
-        """Calculates the probability for the trial events given the
-        specified fit parameters by calling the `get_prob` method of `pdf1`
-        and `pdf2` and combining the two properties using the defined operator
-        function `operator`.
+    def get_prob(self, tdm, params=None):
+        """Calculates the probability density for the trial events given the
+        specified parameters by calling the `get_prob` method of `pdf1`
+        and `pdf2` and combining the two property densities by multiplication.
+        The gradients will be calculated using the product rule of
+        differentiation.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial event data for which
             the PDF values should get calculated.
-        fitparams : dict | None
-            The dictionary containing the fit parameter names and values for
+        params : dict | None
+            The dictionary containing the parameter names and values for
             which the probability should get calculated.
 
         Returns
         -------
-        prob : (N_events,) shaped numpy ndarray
-            The 1D numpy ndarray with the probability for each event.
+        prob : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability for each trial event.
+        grads : (N_fitparams,N_events)-shaped numpy ndarray
+            The gradients of the PDF product w.r.t. the fit parameter of this
+            PDFProduct instance.
+
         """
-        prob = self._operator(
-            self._pdf1.get_prob(tdm, fitparams),
-            self._pdf2.get_prob(tdm, fitparams),
-            **self._operator_kwargs
-        )
+        pdf1 = self._pdf1
+        pdf2 = self._pdf2
 
-        return prob
+        (prob1, grads1) = pdf1.get_prob(tdm, params)
+        (prob2, grads2) = pdf2.get_prob(tdm, params)
+
+        prob = prob1 * prob2
+
+        pdf1_param_set = pdf1.param_set
+        pdf2_param_set = pdf2.param_set
+
+        N_events = prob.shape[0]
+        fitparam_names = self.param_set.floating_param_name_list
+        grads = np.zeros((len(fitparam_names), N_events), dtype=np.float)
+        for (pidx,fitparam_name) in enumerate(fitparam_names):
+            # Calculate the gradient w.r.t. fitparam.
+
+            # There are four possible cases to calculate the gradient for
+            # the parameter fitparam:
+            #     1. Both PDFs depend on this fit parameter, the gradient is
+            #        calculated through the product rule of differentiation.
+            #     2. Only PDF1 depends on this fit parameter.
+            #     3. Only PDF2 depends on this fit parameter.
+            #     4. Both PDFs are independ of this fit parameter, the gradient
+            #        is 0.
+            pdf1_has_fitparam = pdf1_param_set.has_floating_param(fitparam_name)
+            pdf2_has_fitparam = pdf2_param_set.has_floating_param(fitparam_name)
+            if(pdf1_has_fitparam and pdf2_has_fitparam):
+                # Case 1
+                grad1 = grads1[pdf1.param_set.get_floating_pidx(fitparam_name)]
+                grad2 = grads2[pdf2.param_set.get_floating_pidx(fitparam_name)]
+                grads[pidx] = prob2*grad1 + prob1*grad2
+            elif(pdf1_has_fitparam):
+                # Case 2
+                grad1 = grads1[pdf1.param_set.get_floating_pidx(fitparam_name)]
+                grads[pidx] = prob2*grad1
+            elif(pdf2_has_fitparam):
+                # Case 3
+                grad2 = grads2[pdf2.param_set.get_floating_pidx(fitparam_name)]
+                grads[pidx] = prob1*grad2
+
+        return (prob, grads)
 
 
-class CombinedSignalPDF(CombinedPDF, IsSignalPDF):
-    """This class provides a combined PDF for two signal PDF instances.
+class SignalPDFProduct(PDFProduct, IsSignalPDF):
+    """This class provides a signal PDF that is the product of two signal PDF
+    instances.
     """
-    def __init__(self, pdf1, pdf2, op, op_kwargs=None):
-        super(CombinedSignalPDF, self).__init__(pdf1, pdf2, op, op_kwargs)
+    def __init__(self, pdf1, pdf2):
+        super(SignalPDFProduct, self).__init__(pdf1, pdf2)
 
 
-class CombinedBackgroundPDF(CombinedPDF, IsBackgroundPDF):
-    """This class provides a combined PDF for two background PDF instances.
+class BackgroundPDFProduct(PDFProduct, IsBackgroundPDF):
+    """This class provides a background PDF that is the product of two
+    background PDF instances.
     """
-    def __init__(self, pdf1, pdf2, op, op_kwargs=None):
-        super(CombinedBackgroundPDF, self).__init__(pdf1, pdf2, op, op_kwargs)
+    def __init__(self, pdf1, pdf2):
+        super(BackgroundPDFProduct, self).__init__(pdf1, pdf2)
 
 
 class SpatialPDF(PDF):
@@ -536,10 +639,10 @@ class MultiDimGridPDF(PDF):
             The function that calculates a possible required normalization
             factor for the PDF value based on the event properties.
             The call signature of this function must be
-            `__call__(pdf, tdm, fitparams)`, where `pdf` is this PDF
+            `__call__(pdf, tdm, params)`, where `pdf` is this PDF
             instance, `tdm` is an instance of TrialDataManager holding the
-            events for which to calculate the PDF values, and `fitparams` is a
-            dictionary with the current fit parameter names and values.
+            event data for which to calculate the PDF values, and `params` is a
+            dictionary with the current parameter names and values.
         """
         super(MultiDimGridPDF, self).__init__()
 
@@ -603,20 +706,14 @@ class MultiDimGridPDF(PDF):
                 'with 3 arguments!')
         self._norm_factor_func = func
 
-    def assert_is_valid_for_exp_data(self, data_exp):
-        """Checks if the PDF is valid for all values of the given experimental
-        data. This method is deprecated!
-        """
-        pass
-
-    def assert_is_valid_for_trial_data(self, trial_data_manager):
+    def assert_is_valid_for_trial_data(self, tdm):
         """Checks if the PDF is valid for all values of the given evaluation
         data. The evaluation data values must be within the ranges of the PDF
         axes.
 
         Parameters
         ----------
-        trial_data_manager : TrialDataManager instance
+        tdm : TrialDataManager instance
             The instance of TrialDataManager that holds the data which is going
             to be evaluated.
 
@@ -626,7 +723,7 @@ class MultiDimGridPDF(PDF):
             If any of the evaluation data is out of its axis range.
         """
         for axis in self._axes:
-            data = trial_data_manager.get_data(axis.name)
+            data = tdm.get_data(axis.name)
             if(np.any(data < axis.vmin) or
                np.any(data > axis.vmax)
             ):
@@ -634,31 +731,65 @@ class MultiDimGridPDF(PDF):
                     '"%s" is out of range (%g,%g)!'%(
                     axis.name, axis.vmin, axis.vmax))
 
-    def get_prob(self, tdm, fitparams=None):
-        """Calculates the probability for the trial events given the
-        specified fit parameters.
+    def get_prob_with_eventdata(self, tdm, params, eventdata):
+        """Calculates the probability for the trial events given the specified
+        parameters. This method the additional argument ``eventdata`` which must
+        be a 2d ndarray containing the trial event data in the correct order for
+        for evaluation of the RegularGridInterpolator instance.
+        This method is usefull when PDF values for the same trial data need to
+        get evaluated.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm : TrialDataManager instance
             The TrialDataManager instance holding the trial event data for which
             the PDF values should get calculated.
-        fitparams : dict | None
-            The dictionary containing the fit parameters for which the
-            probability should get calculated.
+        params : dict | None
+            The dictionary containing the parameters the probability should get
+            calculated for. By definition, this PDF does not depend on any
+            parameters.
+        eventdata : 2D (N_events,V)-shaped ndarray
+            The 2D numpy ndarray holding the V data attributes for each event
+            needed for the evaluation of the PDF.
 
         Returns
         -------
-        prob : (N_events,) shaped numpy ndarray
+        prob : (N_events,)-shaped numpy ndarray
             The 1D numpy ndarray with the probability for each event.
         """
-        x = np.array([ tdm.get_data(axis.name) for axis in self._axes ]).T
-        prob = self._pdf(x)
+        prob = self._pdf(eventdata)
 
-        norm = self._norm_factor_func(self, tdm, fitparams)
+        norm = self._norm_factor_func(self, tdm, params)
         prob *= norm
 
         return prob
+
+    def get_prob(self, tdm, params=None):
+        """Calculates the probability for the trial events given the specified
+        parameters.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The TrialDataManager instance holding the trial event data for which
+            the PDF values should get calculated.
+        params : dict | None
+            The dictionary containing the parameter names and values the
+            probability should get calculated for. Since this PDF does not
+            depend on any parameters, this could be ``None``.
+
+        Returns
+        -------
+        prob : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability for each event.
+        grads : None
+            Because this PDF does not depend on any parameters, no gradients
+            w.r.t. the parameters are returned.
+        """
+        eventdata = np.array([ tdm.get_data(axis.name) for axis in self._axes ]).T
+        prob = self.get_prob_with_eventdata(tdm, params, eventdata)
+
+        return (prob, None)
 
 
 class PDFSet(object):
@@ -703,8 +834,9 @@ class PDFSet(object):
 
     @property
     def fitparams_grid_set(self):
-        """The ParameterGridSet object defining the value grids of the different
-        fit parameters.
+        """ DEPRECATED (Use param_grid_set instead!)
+        The ParameterGridSet object defining the value grids of
+        the different fit parameters.
         """
         return self._fitparams_grid_set
     @fitparams_grid_set.setter
@@ -712,21 +844,34 @@ class PDFSet(object):
         if(isinstance(obj, ParameterGrid)):
             obj = ParameterGridSet([obj])
         if(not isinstance(obj, ParameterGridSet)):
-            raise TypeError('The fitparams_grid_set property must be an object of type ParameterGridSet!')
+            raise TypeError('The fitparams_grid_set property must be an object '
+                'of type ParameterGridSet!')
         self._fitparams_grid_set = obj
+
+    @property
+    def param_grid_set(self):
+        return self._fitparams_grid_set
 
     @property
     def gridfitparams_list(self):
         """(read-only) The list of dictionaries of all the fit parameter
         permutations on the grid.
         """
-        return self.fitparams_grid_set.parameter_permutation_dict_list
+        return self._fitparams_grid_set.parameter_permutation_dict_list
 
     @property
     def pdf_keys(self):
         """(read-only) The list of stored PDF object keys.
         """
-        return self._gridfitparams_hash_pdf_dict.keys()
+        return list(self._gridfitparams_hash_pdf_dict.keys())
+
+    @property
+    def pdf_axes(self):
+        """(read-only) The PDFAxes object of one of the PDFs of this PDF set.
+        All PDFs of this set are supposed to have the same axes.
+        """
+        key = next(iter(self._gridfitparams_hash_pdf_dict.keys()))
+        return self._gridfitparams_hash_pdf_dict[key].axes
 
     def items(self):
         """Returns the list of 2-element tuples for the PDF stored in this
@@ -736,7 +881,8 @@ class PDFSet(object):
 
     def add_pdf(self, pdf, gridfitparams):
         """Adds the given PDF object for the given parameters to the internal
-        registry.
+        registry. If this PDF set is not empty, the to-be-added PDF must have
+        the same axes than the already added PDFs.
 
         Parameters
         ----------
@@ -750,15 +896,31 @@ class PDFSet(object):
         ------
         KeyError
             If the given PDF was already added for the given set of parameters.
+        TypeError
+            If any of the method's arguments has the wrong type.
+        ValueError
+            If the axes of the given PDFs are not the same as the axes of the
+            already added PDFs.
         """
         if(not isinstance(pdf, self.pdf_type)):
-            raise TypeError('The pdf argument must be an instance of %s!'%(typename(self.pdf_type)))
+            raise TypeError('The pdf argument must be an instance of %s!'%(
+                typename(self.pdf_type)))
         if(not isinstance(gridfitparams, dict)):
             raise TypeError('The fitparams argument must be of type dict!')
 
         gridfitparams_hash = make_params_hash(gridfitparams)
         if(gridfitparams_hash in self._gridfitparams_hash_pdf_dict):
-            raise KeyError('The PDF with grid fit parameters %s was already added!'%(str(gridfitparams)))
+            raise KeyError('The PDF with grid fit parameters %s was already '
+                'added!'%(str(gridfitparams)))
+
+        # Check that the new PDF has the same axes than the already added PDFs.
+        if(len(self._gridfitparams_hash_pdf_dict) > 0):
+            some_pdf = self._gridfitparams_hash_pdf_dict[
+                next(iter(self._gridfitparams_hash_pdf_dict.keys()))]
+            if(not pdf.axes.is_same_as(some_pdf.axes)):
+                raise ValueError('The given PDF does not have the same axes '
+                    'than the already added PDFs!')
+
         self._gridfitparams_hash_pdf_dict[gridfitparams_hash] = pdf
 
     def get_pdf(self, gridfitparams):
@@ -793,3 +955,170 @@ class PDFSet(object):
 
         pdf = self._gridfitparams_hash_pdf_dict[gridfitparams_hash]
         return pdf
+
+
+class MultiDimGridPDFSet(PDF, PDFSet):
+    def __init__(
+            self, param_set, param_grid_set, gridparams_pdfs, tdm,
+            interpolmethod=None, **kwargs):
+        """Creates a new MultiDimGridPDFSet instance, which holds a set of
+        MultiDimGridPDF instances, one for each point of a parameter grid set.
+
+        Parameters
+        ----------
+        param_set : Parameter instance | sequence of Parameter instances |
+                    ParameterSet instance
+            The set of parameters defining the model parameters of this PDF.
+        param_grid_set : ParameterGrid instance | ParameterGridSet instance
+            The set of ParameterGrid instances, which define the grid values of
+            the model parameters, the given MultiDimGridPDF instances belong to.
+        gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
+            The sequence of 2-element tuples which define the mapping of grid
+            values to PDF instances.
+        tdm : TrialDataManager instance
+            The instance of TrialDataManager that should be used to get the
+            data of the trial events.
+        interpolmethod : subclass of GridManifoldInterpolationMethod
+            The class specifying the interpolation method. This must be a
+            subclass of ``GridManifoldInterpolationMethod``.
+            If set to None, the default grid manifold interpolation method
+            ``Linear1DGridManifoldInterpolationMethod`` will be used.
+        """
+        super(MultiDimGridPDFSet, self).__init__(
+            param_set=param_set,
+            pdf_type=MultiDimGridPDF,
+            fitparams_grid_set=param_grid_set,
+            **kwargs)
+
+        if(not isinstance(tdm, TrialDataManager)):
+            raise TypeError('The tdm argument must be an instance of '
+                'TrialDataManager!')
+        self._tdm = tdm
+
+        if(interpolmethod is None):
+            interpolmethod = Linear1DGridManifoldInterpolationMethod
+        self.interpolmethod = interpolmethod
+
+        # Add the given MultiDimGridPDF instances to the PDF set.
+        for (gridparams, pdf) in gridparams_pdfs:
+            self.add_pdf(pdf, gridparams)
+
+        # Create the interpolation method instance.
+        self._interpolmethod_instance = self._interpolmethod(
+            self._get_prob_for_gridparams_with_eventdata_func(), param_grid_set)
+
+    @property
+    def interpolmethod(self):
+        """The class derived from GridManifoldInterpolationMethod
+        implementing the interpolation of the PDF grid manifold.
+        """
+        return self._interpolmethod
+    @interpolmethod.setter
+    def interpolmethod(self, cls):
+        if(not issubclass(cls, GridManifoldInterpolationMethod)):
+            raise TypeError('The interpolmethod property must be a sub-class '
+                'of GridManifoldInterpolationMethod!')
+        self._interpolmethod = cls
+
+    def _get_prob_for_gridparams_with_eventdata_func(self):
+        """Returns a function with call signature __call__(gridparms, eventdata)
+        that will return the probability for each event given by ``eventdata``
+        from the PDFs that is registered for the given gridparams parameter
+        values.
+        """
+        def _get_prob_for_gridparams_with_eventdata(gridparms, eventdata):
+            """Gets the probability for each event given by ``eventdata`` from
+            the PDFs that is registered for the given gridparams parameter
+            values.
+
+            Parameters
+            ----------
+            gridparams : dict
+                The dictionary with the grid parameter names and values, that
+                reference the registered PDF of interest.
+            eventdata : (N_events,V)-shaped numpy ndarray
+                The ndarray holding the data for the PDF evaluation.
+
+            Returns
+            -------
+            prob : (N_events,)-shaped ndarray
+                The ndarray holding the probability values for each event.
+            """
+            pdf = self.get_pdf(gridparms)
+            prob = pdf.get_prob_with_eventdata(self._tdm, gridparms, eventdata)
+            return prob
+
+        return _get_prob_for_gridparams_with_eventdata
+
+    def assert_is_valid_for_trial_data(self, tdm):
+        """Checks if this PDF set is valid for all the given trial data. Since
+        the PDFs have the same axes, we just need to check the first PDFs.
+        """
+        # Get one of the PDFs.
+        pdf = next(iter(self.items()))[1]
+        pdf.assert_is_valid_for_trial_data(tdm)
+
+    def get_prob(self, tdm, params):
+        """Calculates the probability density for each event, given the given
+        parameter values.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The TrialDataManager instance that will be used to get the data
+            from the trial events.
+        params : dict
+            The dictionary holding the parameter names and values for which the
+            probability should get calculated. Because this PDF is a PDFSet,
+            there should be at least one parameter.
+
+        Returns
+        -------
+        prob : (N_events,)-shaped 1D ndarray
+            The probability values for each event.
+        grads : (N_fitparams,N_events)-shaped 2D ndarray
+            The PDF gradients w.r.t. the PDF fit parameters for each event.
+        """
+        # Create the ndarray for the event data that is needed for the
+        # ``MultiDimGridPDF.get_prob_with_eventdata`` method.
+        # All PDFs of this PDFSet should have the same axes, so use the axes
+        # from any of the PDFs in this PDF set.
+        eventdata = np.array(
+            [ tdm.get_data(axis.name) for axis in self.pdf_axes ]).T
+
+        # Get the interpolated PDF values for the arbitrary parameter values.
+        # The (D,N_events)-shaped grads_ ndarray contains the gradient of the
+        # probability density w.r.t. each of the D parameters, which are defined
+        # by the param_grid_set. The order of the D gradients is the same as
+        # the parameter grids.
+        (prob, grads_) = self._interpolmethod_instance.get_value_and_gradients(
+            eventdata, params)
+
+        # Handle the special (common) case were there is only one fit parameter
+        # and it coincides with the only grid parameter of this PDFSet.
+        fitparams = self.param_set.floating_params
+        params_grid_set_pnames = self.param_grid_set.parameter_names
+
+        if((len(fitparams) == 1) and (len(params_grid_set_pnames) == 1) and
+           (params_grid_set_pnames[0] == fitparams[0].name)):
+            return (prob, grads_)
+
+        # Create an array for the gradients, which will only contain the
+        # gradients for the fit (floating) parameters.
+        grads = np.zeros((len(fitparams), prob.shape[0]), dtype=np.float)
+
+        # Create a dictionary to map the name of the grid parameter to its
+        # index.
+        paramgridset_pname_to_pidx = dict(
+            [ (pname,pidx) for (pidx,pname) in
+             enumerate(params_grid_set_pnames) ])
+
+        for (pidx,fitparam) in enumerate(fitparams):
+            pname = fitparam.name
+            # Check if the fit parameter is part of the PDFSet's grid
+            # parameters. If so, the gradient is provided by the interpolation
+            # method. If not, the gradient is zero for this fit parameter.
+            if(pname in paramgridset_pname_to_pidx):
+                grads[pidx] = grads_[paramgridset_pname_to_pidx[pname]]
+
+        return (prob, grads)

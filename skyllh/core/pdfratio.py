@@ -11,12 +11,16 @@ from skyllh.core.py import (
     range,
     typename
 )
-from skyllh.core.parameters import FitParameter
+from skyllh.core.parameters import (
+    FitParameter,
+    make_params_hash
+)
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
     Parabola1DGridManifoldInterpolationMethod
 )
 from skyllh.core.pdf import (
+    PDF,
     PDFSet,
     IsBackgroundPDF,
     IsSignalPDF,
@@ -99,7 +103,7 @@ class PDFRatio(object):
         return []
 
     @abc.abstractmethod
-    def get_ratio(self, tdm, fitparams=None):
+    def get_ratio(self, tdm, params=None):
         """Retrieves the PDF ratio value for each given trial data event, given
         the given set of fit parameters. This method is called during the
         likelihood maximization process.
@@ -109,22 +113,20 @@ class PDFRatio(object):
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should get calculated.
-        fitparams : dict | None
-            The dictionary with the fit parameter name-value pairs.
-            It's supposed to be set to None, if the PDF ratio does not depend
-            on any fit parameters.
+        params : dict | None
+            The dictionary with the parameter name-value pairs.
+            It can be ``None``, if the PDF ratio does not depend on any
+            parameters.
 
         Returns
         -------
-        ratios : (N_events,) or (N_events,N_sources) shaped ndarray
-            The PDF ratio value for each given event. If the signal PDF depends
-            on the source, a 2D ndarray is returned with the PDF ratio values
-            for each event and source.
+        ratios : (N_events,)-shaped 1d numpy ndarray of float
+            The PDF ratio value for each trial event.
         """
         pass
 
     @abc.abstractmethod
-    def get_gradient(self, tdm, fitparams, fitparam_name):
+    def get_gradient(self, tdm, params, fitparam_name):
         """Retrieves the PDF ratio gradient for the parameter ``fitparam_name``
         for each given trial event, given the given set of fit parameters.
         This method is called during the likelihood maximization process.
@@ -134,16 +136,16 @@ class PDFRatio(object):
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should get calculated.
-        fitparams : dict
-            The dictionary with the fit parameter values.
+        params : dict
+            The dictionary with the parameter names and values.
         fitparam_name : str
             The name of the fit parameter for which the gradient should
             get calculated.
 
         Returns
         -------
-        gradient : 1d ndarray of float
-            The PDF ratio gradient value for each given event.
+        gradient : (N_events,)-shaped 1d numpy ndarray of float
+            The PDF ratio gradient value for each trial event.
         """
         pass
 
@@ -532,18 +534,19 @@ class SigOverBkgPDFRatio(PDFRatio):
     fit parameters. Hence, calling the ``get_gradient`` method will result in
     throwing a RuntimeError exception.
     """
-    def __init__(self, pdf_type, signalpdf, backgroundpdf, same_axes=True,
+    def __init__(self, sig_pdf, bkg_pdf, pdf_type=None, same_axes=True,
         zero_bkg_ratio_value=1., *args, **kwargs):
         """Creates a new signal-over-background PDF ratio instance.
 
         Parameters
         ----------
-        pdf_type : type
-            The python type of the PDF object for which the PDF ratio is for.
-        signalpdf : class instance derived from `pdf_type`, IsSignalPDF
+        sig_pdf : class instance derived from `pdf_type`, IsSignalPDF
             The instance of the signal PDF.
-        backgroundpdf : class instance derived from `pdf_type`, IsBackgroundPDF
+        bkg_pdf : class instance derived from `pdf_type`, IsBackgroundPDF
             The instance of the background PDF.
+        pdf_type : type | None
+            The python type of the PDF object for which the PDF ratio is for.
+            If set to None, the default class ``PDF`` will be used.
         same_axes : bool
             Flag if the signal and background PDFs are supposed to have the
             same axes. Default is True.
@@ -551,44 +554,60 @@ class SigOverBkgPDFRatio(PDFRatio):
             The value of the PDF ratio to take when the background PDF value
             is zero. This is to avoid division by zero. Default is 1.
         """
-        super(SigOverBkgPDFRatio, self).__init__(pdf_type, *args, **kwargs)
+        if(pdf_type is None):
+            pdf_type = PDF
 
-        self.signalpdf = signalpdf
-        self.backgroundpdf = backgroundpdf
+        super(SigOverBkgPDFRatio, self).__init__(
+            pdf_type=pdf_type, *args, **kwargs)
+
+        self.sig_pdf = sig_pdf
+        self.bkg_pdf = bkg_pdf
 
         # Check that the PDF axes ranges are the same for the signal and
         # background PDFs.
-        if(same_axes and (not signalpdf.axes.is_same_as(backgroundpdf.axes))):
+        if(same_axes and (not sig_pdf.axes.is_same_as(bkg_pdf.axes))):
             raise ValueError('The signal and background PDFs do not have the '
                 'same axes.')
 
         self.zero_bkg_ratio_value = zero_bkg_ratio_value
 
-    @property
-    def signalpdf(self):
-        """The signal spatial PDF object used to create the PDF ratio.
-        """
-        return self._signalpdf
-    @signalpdf.setter
-    def signalpdf(self, pdf):
-        if(not isinstance(pdf, self.pdf_type)):
-            raise TypeError('The signalpdf property must be an instance of %s!'%(typename(self.pdf_type)))
-        if(not isinstance(pdf, IsSignalPDF)):
-            raise TypeError('The signalpdf property must be an instance of IsSignalPDF!')
-        self._signalpdf = pdf
+        # Define cache member variables to calculate gradients efficiently.
+        self._cache_trial_data_state_id = None
+        self._cache_params_hash = None
+        self._cache_sigprob = None
+        self._cache_bkgprob = None
+        self._cache_siggrads = None
+        self._cache_bkggrads = None
 
     @property
-    def backgroundpdf(self):
-        """The background spatial PDF object used to create the PDF ratio.
+    def sig_pdf(self):
+        """The signal PDF object used to create the PDF ratio.
         """
-        return self._backgroundpdf
-    @backgroundpdf.setter
-    def backgroundpdf(self, pdf):
+        return self._sig_pdf
+    @sig_pdf.setter
+    def sig_pdf(self, pdf):
         if(not isinstance(pdf, self.pdf_type)):
-            raise TypeError('The backgroundpdf property must be an instance of %s!'%(typename(self.pdf_type)))
+            raise TypeError('The sig_pdf property must be an instance of '
+                '%s!'%(typename(self.pdf_type)))
+        if(not isinstance(pdf, IsSignalPDF)):
+            raise TypeError('The sig_pdf property must be an instance of '
+                'IsSignalPDF!')
+        self._sig_pdf = pdf
+
+    @property
+    def bkg_pdf(self):
+        """The background PDF object used to create the PDF ratio.
+        """
+        return self._bkg_pdf
+    @bkg_pdf.setter
+    def bkg_pdf(self, pdf):
+        if(not isinstance(pdf, self.pdf_type)):
+            raise TypeError('The bkg_pdf property must be an instance of '
+                '%s!'%(typename(self.pdf_type)))
         if(not isinstance(pdf, IsBackgroundPDF)):
-            raise TypeError('The backgroundpdf property must be an instance of IsBackgroundPDF!')
-        self._backgroundpdf = pdf
+            raise TypeError('The bkg_pdf property must be an instance of '
+                'IsBackgroundPDF!')
+        self._bkg_pdf = pdf
 
     @property
     def zero_bkg_ratio_value(self):
@@ -602,7 +621,12 @@ class SigOverBkgPDFRatio(PDFRatio):
             'float!')
         self._zero_bkg_ratio_value = v
 
-    def get_ratio(self, tdm, fitparams=None):
+    def _get_signal_fitparam_names(self):
+        """Returns the list of fit parameter names the signal PDF depends on.
+        """
+        return self._sig_pdf.param_set.floating_param_name_list
+
+    def get_ratio(self, tdm, params=None):
         """Calculates the PDF ratio for the given trial events.
 
         Parameters
@@ -610,41 +634,137 @@ class SigOverBkgPDFRatio(PDFRatio):
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should be calculated.
-        fitparams : None
-            Unused interface argument.
+        params : dict | None
+            The dictionary holding the parameter names and values for which the
+            probability ratio should get calculated.
+            This can be ``None``, if the signal and background PDFs do not
+            depend on any parameters.
 
         Returns
         -------
-        ratios : (N_events) or (N_sources,N_events) shaped ndarray
+        ratios : (N_events)-shaped numpy ndarray
             The ndarray holding the probability ratio for each event (and each
             source). The dimensionality of the returned ndarray depends on the
             dimensionality of the probability ndarray returned by the
-            ``get_prob`` method of signal PDF object.
+            ``get_prob`` method of the signal PDF object.
         """
-        sigprob = self._signalpdf.get_prob(tdm)
-        bkgprob = self._backgroundpdf.get_prob(tdm)
+        (sigprob, self._cache_siggrads) = self._sig_pdf.get_prob(tdm, params)
+        (bkgprob, self._cache_bkggrads) = self._bkg_pdf.get_prob(tdm, params)
 
         # Select only the events, where background pdf is greater than zero.
-        m_bkg = (bkgprob > 0)
-        m_sig = m_bkg
-        if(bkgprob.ndim < sigprob.ndim):
-            n_dims_to_add = sigprob.ndim - bkgprob.ndim
-            for i in range(n_dims_to_add):
-                m_sig = np.expand_dims(m_sig, axis=0)
+        m = (bkgprob > 0)
 
-        ratios = np.empty_like(sigprob, dtype=np.float)
-        ratios[m_sig] = sigprob[m_sig] / bkgprob[m_bkg]
-        ratios[~m_sig] = self._zero_bkg_ratio_value
+        ratios = np.full_like(sigprob, self._zero_bkg_ratio_value)
+        ratios[m] = sigprob[m] / bkgprob[m]
+
+        # Store the current state of parameter values and trial data, so that
+        # the get_gradient method can verify the consistency of the signal and
+        # background probabilities and gradients.
+        self._cache_trial_data_state_id = tdm.trial_data_state_id
+        self._cache_params_hash = make_params_hash(params)
+        self._cache_sigprob = sigprob
+        self._cache_bkgprob = bkgprob
 
         return ratios
 
-    def get_gradient(self, tdm, fitparams, fitparam_name):
-        """Calling this method results in throwing a RuntimeError exception,
-        because this PDF ratio class handles only PDFs without any fit
-        parameters.
+    def get_gradient(self, tdm, params, fitparam_name):
+        """Retrieves the gradient of the PDF ratio w.r.t. the given fit
+        parameter. This method must be called after the ``get_ratio`` method.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The instance of TrialDataManager that should be used to get the
+            trial data from.
+        params : dict
+            The dictionary with the parameter names and values.
+        fitparam_name : str
+            The name of the fit parameter for which the gradient should
+            get calculated.
+
+        Returns
+        -------
+        gradient : (N_events,)-shaped 1d numpy ndarray of float
+            The PDF ratio gradient value for each trial event.
         """
-        raise RuntimeError('The SigOverBkgPDFRatio handles only PDFs with no '
-            'fit parameters! So calling get_gradient is meaningless!')
+        if((tdm.trial_data_state_id != self._cache_trial_data_state_id) or
+           (make_params_hash(params) != self._cache_params_hash)):
+            raise RuntimeError('The get_ratio method must be called prior to '
+                'the get_gradient method!')
+
+        # Create the 1D return array for the gradient.
+        grad = np.zeros((tdm.n_events,), dtype=np.float)
+
+        # Calculate the gradient for the given fit parameter.
+        # There are four cases:
+        #   1) Neither the signal nor the background PDF depend on the fit
+        #      parameter.
+        #   2) Only the signal PDF depends on the fit parameter.
+        #   3) Only the background PDF depends on the fit parameter.
+        #   4) Both, the signal and the background PDF depend on the fit
+        #      parameter.
+        sig_pdf_param_set = self._sig_pdf.param_set
+        bkg_pdf_param_set = self._bkg_pdf.param_set
+
+        sig_dep = sig_pdf_param_set.has_floating_param(fitparam_name)
+        bkg_dep = bkg_pdf_param_set.has_floating_param(fitparam_name)
+
+        if(sig_dep and (not bkg_dep)):
+            # Case 2, which should be the most common case.
+            # Get the signal grad idx for that fit parameter.
+            sig_pidx = sig_pdf_param_set.get_floating_pidx(fitparam_name)
+            bkgprob = self._cache_bkgprob
+            m = bkgprob > 0
+            grad[m] = self._cache_siggrads[sig_pidx][m] / bkgprob[m]
+            return grad
+        if((not sig_dep) and (not bkg_dep)):
+            # Case 1. Returns zeros.
+            return grad
+        if(sig_dep and bkg_dep):
+            # Case 4.
+            sig_pidx = sig_pdf_param_set.get_floating_pidx(fitparam_name)
+            bkg_pidx = bkg_pdf_param_set.get_floating_pidx(fitparam_name)
+            m = self._cache_bkgprob > 0
+            s = self._cache_sigprob[m]
+            b = self._cache_bkgprob[m]
+            sgrad = self._cache_siggrads[sig_pidx][m]
+            bgrad = self._cache_bkggrads[bkg_pidx][m]
+            # Make use of quotient rule of differentiation.
+            grad[m] = (sgrad * b - bgrad * s) / b**2
+            return grad
+
+        # Case 3.
+        bkg_pidx = bkg_pdf_param_set.get_floating_pidx(fitparam_name)
+        bkgprob = self._cache_bkgprob
+        m = bkgprob > 0
+        grad[m] = (-self._cache_sigprob[m] / bkgprob[m]**2 *
+            self._cache_bkggrads[bkg_pidx][m])
+        return grad
+
+
+class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
+    """This class implements a signal-over-background PDF ratio for spatial
+    PDFs. It takes a signal PDF of type SpatialPDF and a background PDF of type
+    SpatialPDF and calculates the PDF ratio.
+    """
+    def __init__(self, sig_pdf, bkg_pdf, *args, **kwargs):
+        """Creates a new signal-over-background PDF ratio instance for spatial
+        PDFs.
+
+        Parameters
+        ----------
+        sig_pdf : class instance derived from SpatialPDF, IsSignalPDF
+            The instance of the spatial signal PDF.
+        bkg_pdf : class instance derived from SpatialPDF, IsBackgroundPDF
+            The instance of the spatial background PDF.
+        """
+        super(SpatialSigOverBkgPDFRatio, self).__init__(pdf_type=SpatialPDF,
+            sig_pdf=sig_pdf, bkg_pdf=bkg_pdf, *args, **kwargs)
+
+        # Make sure that the PDFs have two dimensions, i.e. RA and Dec.
+        if(not sig_pdf.ndim == 2):
+            raise ValueError('The spatial signal PDF must have two dimensions! '
+                'Currently it has %d!'%(sig_pdf.ndim))
 
 
 class SigSetOverBkgPDFRatio(PDFRatio):
@@ -767,28 +887,3 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         # At this point there is no parameter defined.
         raise KeyError('The PDF ratio "%s" has no signal fit parameter named '
             '"%s"!'%(classname(self), signal_fitparam_name))
-
-
-class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
-    """This class implements a spatial signal-over-background PDF ratio for
-    PDFs without any fit parameter dependence.
-    It takes a signal PDF of type SpatialPDF and a background PDF of type
-    SpatialPDF and calculates the PDF ratio.
-    """
-    def __init__(self, signalpdf, backgroundpdf, *args, **kwargs):
-        """Creates a new signal-over-background PDF ratio instance for spatial
-        PDFs.
-
-        Parameters
-        ----------
-        signalpdf : class instance derived from SpatialPDF, IsSignalPDF
-            The instance of the spatial signal PDF.
-        backgroundpdf : class instance derived from SpatialPDF, IsBackgroundPDF
-            The instance of the spatial background PDF.
-        """
-        super(SpatialSigOverBkgPDFRatio, self).__init__(pdf_type=SpatialPDF,
-            signalpdf=signalpdf, backgroundpdf=backgroundpdf, *args, **kwargs)
-
-        # Make sure that the PDFs have two dimensions, i.e. RA and Dec.
-        if(not signalpdf.ndim == 2):
-            raise ValueError('The spatial signal PDF must have two dimensions! Currently it has %d!'%(signalpdf.ndim))
