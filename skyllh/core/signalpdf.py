@@ -16,6 +16,7 @@ from skyllh.core.pdf import (
     PDFAxis,
     IsSignalPDF,
     MultiDimGridPDF,
+    MultiDimGridPDFSet,
     SpatialPDF,
     TimePDF
 )
@@ -311,4 +312,45 @@ class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
             with the current fit parameter names and values.
         """
         super(SignalMultiDimGridPDF, self).__init__(
-            axis_binnings, pdf_grid_data, norm_factor_func)
+            axis_binnings=axis_binnings,
+            pdf_grid_data=pdf_grid_data,
+            norm_factor_func=norm_factor_func)
+
+
+class SignalMultiDimGridPDFSet(MultiDimGridPDFSet, IsSignalPDF):
+    """This class extends the MultiDimGridPDFSet PDF class to be a signal PDF.
+    See the documentation of the :class:`skyllh.core.pdf.MultiDimGridPDFSet`
+    class for what this PDF provides.
+    """
+    def __init__(self, param_set, param_grid_set, gridparams_pdfs, tdm,
+            interpolmethod=None, **kwargs):
+        """Creates a new SignalMultiDimGridPDFSet instance, which holds a set of
+        MultiDimGridPDF instances, one for each point of a parameter grid set.
+
+        Parameters
+        ----------
+        param_set : Parameter instance | sequence of Parameter instances |
+                    ParameterSet instance
+            The set of parameters defining the model parameters of this PDF.
+        param_grid_set : ParameterGrid instance | ParameterGridSet instance
+            The set of ParameterGrid instances, which define the grid values of
+            the model parameters, the given MultiDimGridPDF instances belong to.
+        gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
+            The sequence of 2-element tuples which define the mapping of grid
+            values to PDF instances.
+        tdm : TrialDataManager instance
+            The instance of TrialDataManager that should be used to get the
+            data of the trial events.
+        interpolmethod : subclass of GridManifoldInterpolationMethod
+            The class specifying the interpolation method. This must be a
+            subclass of ``GridManifoldInterpolationMethod``.
+            If set to None, the default grid manifold interpolation method
+            ``Linear1DGridManifoldInterpolationMethod`` will be used.
+        """
+        super(SignalMultiDimGridPDFSet, self).__init__(
+            param_set=param_set,
+            param_grid_set=param_grid_set,
+            gridparams_pdfs=gridparams_pdfs,
+            tdm=tdm,
+            interpolmethod=interpolmethod,
+            **kwargs)
