@@ -321,8 +321,6 @@ class Parameter(object):
             If valmin is set to None and this parameter has no valmin defined.
             If valmax is set to None and this parameter has no valmax defined.
         """
-        self._isfixed = False
-
         if(initial is None):
             initial = self._value
         if(valmin is None):
@@ -338,6 +336,7 @@ class Parameter(object):
                     'argument!'%(self._name))
             valmax = self._valmax
 
+        self._isfixed = False
         self.initial = initial
         self.valmin = valmin
         self.valmax = valmax
@@ -604,7 +603,7 @@ class ParameterSet(object):
         """
         return (param_name in self._floating_param_name_list)
 
-    def fix_params(self, fix_params):
+    def make_params_fixed(self, fix_params):
         """Fixes the given parameters to the given values.
 
         Parameters
@@ -651,7 +650,7 @@ class ParameterSet(object):
                     self._floating_param_name_to_idx[pname] = len(
                         self._floating_param_name_list) - 1
 
-    def float_params(self, float_params):
+    def make_params_floating(self, float_params):
         """Makes the given parameters floating with the given initial value and
         within the given bounds.
 
@@ -674,6 +673,11 @@ class ParameterSet(object):
                     should be set to the given values. If `initial` is set to
                     `None`, the parameter's current value will be used as
                     initial value.
+
+        Raises
+        ------
+        ValueError
+            If one of the given parameters is already a floating parameter.
         """
         def _parse_float_param_dict_entry(e):
             """Parses the given float_param dictionary entry into initial,
