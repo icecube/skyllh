@@ -152,7 +152,22 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.floating_param = Parameter('p1', 1.1, valmin=0.5, valmax=1.6)
         self.paramset = ParameterSet((self.fixed_param, self.floating_param))
 
-    def test_params(self):
+    def test_union(self):
+        p0 = Parameter('p0', 2.3)
+        p1 = Parameter('p1', 1.1, valmin=0.5, valmax=1.6)
+        p2 = Parameter('p2', 3.2, valmin=2.3, valmax=4.7)
+        paramset0 = ParameterSet((p0,p2))
+        paramset1 = ParameterSet((p1,p2))
+        paramset_union = ParameterSet.union(paramset0, paramset1)
+        params = paramset_union.params
+        self.assertEqual(len(params), 3)
+        self.assertEqual(params[0], p0)
+        self.assertEqual(params[1], p2)
+        self.assertEqual(params[2], p1)
+
+    def test_params(self, paramset=None):
+        if(paramset is None):
+            paramset = self.paramset
         params = self.paramset.params
         self.assertEqual(len(params), 2)
         self.assertEqual(params[0], self.fixed_param)
@@ -207,7 +222,10 @@ class ParameterSet_TestCase(unittest.TestCase):
             self.assertEqual(param.name, 'p%d'%(i))
 
     def test_str(self):
-        str(self.paramset)
+        try:
+            str(self.paramset)
+        except:
+            self.fail('The __str__ method raised exception!')
 
     def test_get_fixed_pidx(self):
         self.assertEqual(self.paramset.get_fixed_pidx('p0'), 0)
@@ -229,13 +247,13 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.assertTrue(self.paramset.has_floating_param('p1'))
         self.assertFalse(self.paramset.has_floating_param('p0'))
 
-    def test_fix_params(self):
+    def test_make_params_fixed(self):
         # Already fixed parameters cannot be fixed.
         with self.assertRaises(ValueError):
-            self.paramset.fix_params({'p0': 42})
+            self.paramset.make_params_fixed({'p0': 42})
 
         # Fix the floating parameter outside its current range.
-        self.paramset.fix_params({'p1': 0.4})
+        self.paramset.make_params_fixed({'p1': 0.4})
         self.assertTrue(self.paramset.has_fixed_param('p1'))
         self.assertEqual(self.paramset.n_fixed_params, 2)
         self.assertEqual(self.paramset.n_floating_params, 0)
@@ -248,7 +266,7 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.setUp()
 
         # Fix the floating parameter to its current value.
-        self.paramset.fix_params({'p1': None})
+        self.paramset.make_params_fixed({'p1': None})
         self.assertTrue(self.paramset.has_fixed_param('p1'))
         self.assertEqual(self.paramset.n_fixed_params, 2)
         self.assertEqual(self.paramset.n_floating_params, 0)
@@ -257,6 +275,40 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.assertTrue(isAlmostEqual(values, [2.3, 1.1]))
         self.assertTrue(isAlmostEqual(self.paramset.params[1].valmin, 0.5))
         self.assertTrue(isAlmostEqual(self.paramset.params[1].valmax, 1.6))
+
+    def test_make_params_floating(self):
+        # Already floating parameters cannot be made floating.
+        with self.assertRaises(ValueError):
+            self.paramset.make_params_floating({'p1': None})
+
+        # Make the fixed parameter floating.
+        with self.assertRaises(ValueError):
+            self.paramset.make_params_floating({'p0': None})
+        with self.assertRaises(ValueError):
+            self.paramset.make_params_floating({'p0': 1.2})
+        self.paramset.make_params_floating({'p0': (1.2, 1.0, 1.3)})
+        self.assertTrue(self.paramset.has_floating_param('p0'))
+        self.assertTrue(isAlmostEqual(self.paramset.params[0].initial, 1.2))
+        self.assertTrue(isAlmostEqual(self.paramset.params[0].valmin, 1.0))
+        self.assertTrue(isAlmostEqual(self.paramset.params[0].valmax, 1.3))
+
+    def test_update_fixed_param_value_cache(self):
+        self.assertAlmostEqual(self.paramset.params[0].value, 2.3)
+        self.fixed_param.change_fixed_value(3.1)
+        self.assertAlmostEqual(self.paramset.params[0].value, 3.1)
+        self.assertTrue(isAlmostEqual(self.paramset.fixed_param_values, [2.3]))
+        self.paramset.update_fixed_param_value_cache()
+        self.assertTrue(isAlmostEqual(self.paramset.fixed_param_values, [3.1]))
+
+    def test_copy(self):
+        new_paramset = self.paramset.copy()
+        self.assertFalse(new_paramset == self.paramset)
+        self.test_params(new_paramset)
+
+    def test_has_param(self):
+        self.assertTrue(self.paramset.has_param(self.fixed_param))
+        self.assertTrue(self.paramset.has_param(self.floating_param))
+        self.assertFalse(self.paramset.has_param(Parameter('p', 0.0)))
 
 
 class ParameterGrid_TestCase(unittest.TestCase):
