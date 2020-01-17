@@ -759,8 +759,11 @@ class ParameterSet(object):
 
         Raises
         ------
+        TypeError
+            If param is not an instance of Parameter.
         KeyError
-            If given parameter was already added to the set.
+            If given parameter is already present in the set. The check is
+            performed based on the parameter name.
         """
         if(not isinstance(param, Parameter)):
             raise TypeError('The param argument must be an instance of '
@@ -854,8 +857,8 @@ class ParameterSet(object):
             values.
         """
         param_dict = dict(
-            zip(self._floating_param_name_list, floating_param_values) +
-            zip(self._fixed_param_name_list, self._fixed_param_values))
+            list(zip(self._floating_param_name_list, floating_param_values)) +
+            list(zip(self._fixed_param_name_list, self._fixed_param_values)))
 
         return param_dict
 
