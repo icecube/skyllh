@@ -305,10 +305,38 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.assertFalse(new_paramset == self.paramset)
         self.test_params(new_paramset)
 
+    def test_add_param(self):
+        with self.assertRaises(TypeError):
+            self.paramset.add_param('p2')
+        with self.assertRaises(KeyError):
+            param = Parameter('p0', 42.)
+            self.paramset.add_param(param)
+
+        # Add parameter at front.
+        param = Parameter('p2', 42.)
+        self.paramset.add_param(param, atfront=True)
+        self.assertEqual(self.paramset.params[0], param)
+        self.assertEqual(self.paramset.params[1], self.fixed_param)
+        self.assertEqual(self.paramset.params[2], self.floating_param)
+
+        self.setUp()
+
+        # Add parameter at end.
+        param = Parameter('p2', 42.)
+        self.paramset.add_param(param)
+        self.assertEqual(self.paramset.params[0], self.fixed_param)
+        self.assertEqual(self.paramset.params[1], self.floating_param)
+        self.assertEqual(self.paramset.params[2], param)
+
     def test_has_param(self):
         self.assertTrue(self.paramset.has_param(self.fixed_param))
         self.assertTrue(self.paramset.has_param(self.floating_param))
         self.assertFalse(self.paramset.has_param(Parameter('p', 0.0)))
+
+    def test_floating_param_values_to_dict(self):
+        param_dict = self.paramset.floating_param_values_to_dict(np.array([1.3]))
+        self.assertAlmostEqual(param_dict['p0'], 2.3)
+        self.assertAlmostEqual(param_dict['p1'], 1.3)
 
 
 class ParameterGrid_TestCase(unittest.TestCase):
