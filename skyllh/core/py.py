@@ -406,28 +406,32 @@ class ObjectCollection(object):
     collection can be added to this object collection via the ``add`` method as
     well.
     """
-    def __init__(self, obj_type, obj_list=None):
+    def __init__(self, objs=None, obj_type=None):
         """Constructor of the ObjectCollection class. Must be called by the
         derived class.
 
         Parameters
         ----------
-        obj_type : type
-            The type of the objects, which can be added to the collection.
-        obj_list : sequence of obj_type instances | None
+        objs : instance of obj_type | sequence of obj_type instances | None
             The sequence of objects of type ``obj_type`` with which this
             collection should get initialized with.
+        obj_type : type
+            The type of the objects, which can be added to the collection.
         """
+        if(obj_type is None):
+            obj_type = object
         if(not issubclass(obj_type, object)):
-            raise TypeError('The obj_t argument must be a subclass of object!')
+            raise TypeError(
+                'The obj_type argument must be a subclass of object!')
+
         self._obj_type = obj_type
         self._objects = []
 
         # Add given list of objects.
-        if(obj_list is not None):
-            if(not issequence(obj_list)):
-                obj_list = [ obj_list ]
-            for obj in obj_list:
+        if(objs is not None):
+            if(not issequence(objs)):
+                objs = [ objs ]
+            for obj in objs:
                 self.add(obj)
 
     @property
@@ -563,24 +567,24 @@ class NamedObjectCollection(ObjectCollection):
     via the object name is efficient because the index of each object is
     tracked w.r.t. its name.
     """
-    def __init__(self, obj_type, obj_list=None):
+    def __init__(self, objs=None, obj_type=None):
         """Creates a new NamedObjectCollection instance. Must be called by the
         derived class.
 
         Parameters
         ----------
+        objs : instance of obj_type | sequence of instances of obj_type | None
+            The sequence of objects of type ``obj_type`` with which this collection
+            should get initialized with.
         obj_type : type
             The type of the objects, which can be added to the collection.
             This type must have an attribute named ``name``.
-        obj_list : list of obj_t | None
-            The list of objects of type ``obj_type`` with which this collection
-            should get initialized with.
         """
         self._obj_name_to_idx = dict()
 
         super(NamedObjectCollection, self).__init__(
-            obj_type=obj_type,
-            obj_list=obj_list)
+            objs=objs,
+            obj_type=obj_type)
 
     def add(self, obj):
         """Adds the given object to this named object collection.
