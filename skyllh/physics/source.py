@@ -113,7 +113,7 @@ class SourceCollection(ObjectCollection):
         """
         if(source_type is None):
             source_type = SourceModel
-        super(SourceCollection, self).__init__(obj_type=source_type, obj_list=sources)
+        super(SourceCollection, self).__init__(sources, obj_type=source_type)
 
     @property
     def source_type(self):
