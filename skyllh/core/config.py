@@ -140,7 +140,7 @@ def set_analysis_required_exp_data_field_names(fieldnames):
         raise TypeError('The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
 
-    CFG['dataset']['exp_field_names'] = list(set(fieldnames))
+    CFG['dataset']['analysis_required_exp_field_names'] = list(set(fieldnames))
 
 def set_analysis_required_mc_data_field_names(fieldnames):
     """Sets the data field names of the monte-carlo data that are required by
@@ -157,4 +157,4 @@ def set_analysis_required_mc_data_field_names(fieldnames):
         raise TypeError('The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
 
-    CFG['dataset']['mc_field_names'] = list(set(fieldnames))
+    CFG['dataset']['analysis_required_mc_field_names'] = list(set(fieldnames))
