@@ -10,11 +10,13 @@ import sys
 import unittest
 
 from skyllh.core.binning import BinningDefinition
+from skyllh.core.model import Model
 from skyllh.core.parameters import (
     Parameter,
     ParameterSet,
     ParameterGrid,
-    ParameterGridSet
+    ParameterGridSet,
+    SingleModelParameterMapper
 )
 
 sys.path.append(os.path.join(os.path.split(__file__)[0], '..'))
@@ -87,8 +89,11 @@ class Parameter_TestCase(unittest.TestCase):
             self.floating_param.value = self.fixed_param_initial
 
     def test_str(self):
-        str(self.fixed_param)
-        str(self.floating_param)
+        try:
+            str(self.fixed_param)
+            str(self.floating_param)
+        except:
+            self.fail('The __str__ method raised an exception!')
 
     def test_as_linear_grid(self):
         grid_delta = 0.1
@@ -456,6 +461,46 @@ class ParameterGridSet_TestCase(unittest.TestCase):
         self.test_parameter_permutation_dict_list()
         self.test_index()
         self.test_index_by_name()
+
+
+class SingleModelParameterMapperTestCase(unittest.TestCase):
+    def setUp(self):
+        self.fixed_param = Parameter('p1', 42)
+        self.floating_param = Parameter('p2', 4, 1, 6)
+        self.model = Model('the_src')
+        self.mpm = SingleModelParameterMapper('signal', self.model)
+
+    def test_name(self):
+        self.assertEqual(self.mpm.name, 'signal')
+
+    def test_models(self):
+        self.assertEqual(self.mpm.models[0], self.model)
+
+    def test_n_models(self):
+        self.assertEqual(self.mpm.n_models, 1)
+
+    def test_str(self):
+        try:
+            str(self.mpm)
+        except:
+            self.fail('The __str__ method raised an exception!')
+
+    def test_def_param(self):
+        self.mpm.def_param(self.fixed_param)
+        self.mpm.def_param(self.floating_param, 'fp')
+        self.assertEqual(self.mpm.n_global_params, 2)
+        self.assertEqual(self.mpm.n_global_fixed_params, 1)
+        self.assertEqual(self.mpm.n_global_floating_params, 1)
+
+    def test_get_model_param_dict(self):
+        # Add some parameters to the model parameter mapper.
+        self.test_def_param()
+        model_param_dict = self.mpm.get_model_param_dict(np.array([2.4]))
+        self.assertEqual(len(model_param_dict), 2)
+        self.assertTrue('p1' in model_param_dict)
+        self.assertTrue('fp' in model_param_dict)
+        self.assertAlmostEqual(model_param_dict['p1'], 42)
+        self.assertAlmostEqual(model_param_dict['fp'], 2.4)
 
 
 class TestParameters(unittest.TestCase):
