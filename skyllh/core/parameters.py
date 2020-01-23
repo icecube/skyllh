@@ -436,11 +436,25 @@ class ParameterSet(object):
         return self._params[self._params_fixed_mask]
 
     @property
+    def fixed_params_mask(self):
+        """(read-only) The 1D ndarray holding the mask for the fixed parameters
+        of this parameter set.
+        """
+        return self._params_fixed_mask
+
+    @property
     def floating_params(self):
         """(read-only) The 1D ndarray holding the Parameter instances,
         whose values are floating.
         """
         return self._params[np.invert(self._params_fixed_mask)]
+
+    @property
+    def floating_params_mask(self):
+        """(read-only) The 1D ndarray holding the mask for the floating
+        parameters of this parameter set.
+        """
+        return np.invert(self._params_fixed_mask)
 
     @property
     def n_params(self):
@@ -1325,16 +1339,13 @@ class ModelParameterMapper(object):
         # Create the parameter set for the global parameters.
         self._global_paramset = ParameterSet()
 
-        # Define a (n_fixed_params,)-shaped and a (n_floating_params,)-shaped
-        # numpy ndarray of str objects that will hold the local parameter names
-        # of the global parameters as defined by the models.
-        # The distiction of floating and fixed parameters is done in order to
-        # save time when constructing the parameter name-value dictionary.
+        # Define a (n_global_params,)-shaped numpy ndarray of str objects that
+        # will hold the local parameter names of the global parameters as
+        # defined by the models.
         # The local model parameter names are the names used by the internal
         # math objects, like PDFs. Thus, the global parameter names can be
         # aliases of such local model parameter names.
-        self._model_fixed_param_names = np.empty((0,), dtype=np.object)
-        self._model_floating_param_names = np.empty((0,), dtype=np.object)
+        self._model_param_names = np.empty((0,), dtype=np.object)
 
         # (N_params, N_models) shaped boolean ndarray defining what global
         # parameter maps to which model.
@@ -1420,24 +1431,19 @@ class ModelParameterMapper(object):
         s1 = 'Parameters:'
         s += '\n' + display.add_leading_text_line_padding(
             display.INDENTATION_WIDTH, s1)
-        fixed_pidx = 0
-        floating_pidx = 0
         for (pidx,param) in enumerate(self._global_paramset.params):
             model_names = [ self._models[model_idx].name
                 for model_idx in np.nonzero(
                     self._global_param_2_model_mask[pidx])[0]
             ]
             if(param.isfixed):
-                pname = self._model_fixed_param_names[fixed_pidx]
                 pstate = 'fixed (%.3f)'%(
                     param.initial)
-                fixed_pidx += 1
             else:
-                pname = self._model_floating_param_names[floating_pidx]
                 pstate = 'floating (%.3f <= %.3f <= %.3f)'%(
                     param.valmin, param.initial, param.valmax)
-                floating_pidx += 1
-            ps = '\n%s [%s] --> %s\n'%(param.name, pstate, pname)
+            ps = '\n%s [%s] --> %s\n'%(
+                param.name, pstate, self._model_param_names[pidx])
             ps1 = 'in models:\n'
             ps1 += '- '
             ps1 += '\n- '.join(model_names)
@@ -1552,18 +1558,13 @@ class SingleModelParameterMapper(ModelParameterMapper):
             raise TypeError('The model_param_name argument must be None or of '
                 'type str!')
 
-        if((model_param_name in self._model_fixed_param_names) or
-           (model_param_name in self._model_floating_param_names)):
+        if(model_param_name in self._model_param_names):
             raise KeyError('There is already a global parameter defined for '
                 'the model parameter name "%s"!'%(model_param_name))
 
         self._global_paramset.add_param(param)
-        if(param.isfixed):
-            self._model_fixed_param_names = np.concatenate(
-                (self._model_fixed_param_names, [model_param_name]))
-        else:
-            self._model_floating_param_names = np.concatenate(
-                (self._model_floating_param_names, [model_param_name]))
+        self._model_param_names = np.concatenate(
+            (self._model_param_names,[model_param_name]))
 
         mask = np.ones((1,), dtype=np.bool)
         self._global_param_2_model_mask = np.vstack(
@@ -1597,7 +1598,8 @@ class SingleModelParameterMapper(ModelParameterMapper):
         # Create the list of parameter names such that floating parameters are
         # before the fixed parameters.
         model_param_names = np.concatenate(
-            (self._model_floating_param_names, self._model_fixed_param_names))
+            (self._model_param_names[self._global_paramset.floating_params_mask],
+             self._model_param_names[self._global_paramset.fixed_params_mask]))
 
         # Create a 1D (n_global_params,)-shaped ndarray holding the values of
         # the floating and fixed parameters. Since we only have a single model,
@@ -1606,12 +1608,159 @@ class SingleModelParameterMapper(ModelParameterMapper):
             global_floating_param_values,
             self._global_paramset.fixed_param_values
         ))
-        if(len(model_param_values) != len(self._model_fixed_param_names) +
-                                      len(self._model_floating_param_names)):
+        if(len(model_param_values) != len(self._model_param_names)):
             raise ValueError('The number of parameter values (%d) does not '
                 'equal the number of parameter names (%d) for model "%s"!'%
                 (len(model_param_values), len(self._model_param_names),
                  self._models[0].name))
+
+        model_param_dict = dict(
+            zip(model_param_names, model_param_values))
+
+        return model_param_dict
+
+
+class MultiModelParameterMapper(ModelParameterMapper):
+    """This class provides a model parameter mapper for multiple models, like
+    multiple sources, or multiple background models.
+    """
+    def __init__(self, name, models):
+        """Constructs a new multi model parameter mapper for mapping global
+        parameters to the given models.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model parameter mapper. In practice this is a
+            representative name for the set of global parameters this model
+            parameter mapper holds. For a two-component signal-background
+            likelihood model, "signal", or "background" could be useful names.
+        models : sequence of Model instances.
+            The sequence of Model instances the parameter mapper can
+            map global parameters to.
+        """
+        super(MultiModelParameterMapper, self).__init__(
+            name=name, models=models)
+
+    def def_param(self, param, model_param_name=None, models=None):
+        """Adds the given Parameter instance to this parameter mapper and maps
+        the parameter to the given sequence of models this model parameter
+        mapper knows about.
+
+        Parameters
+        ----------
+        param : instance of Parameter
+            The global parameter which should get mapped to one or multiple
+            models.
+        model_param_name : str | None
+            The parameter name of the models. The parameter name of the models
+            must be the same for all the models this global parameter should get
+            mapped to. The global parameter name can be different to the
+            parameter name of the models.
+            If set to `None`, the name of the global parameter will be used as
+            model parameter name.
+        models : sequence of Model instances | None
+            The sequence of Model instances the parameter should get mapped to.
+            The instances in the sequence must match Model instances specified
+            at construction of this mapper.
+            If set to `None` the global parameter will be mapped to all known
+            models.
+
+        Returns
+        -------
+        self : MultiModelParameterMapper
+            The instance of this MultiModelParameterMapper, so that several
+            `def_param` calls can be concatenated.
+
+        Raises
+        ------
+        KeyError
+            If there is already a model parameter of the same name defined for
+            any of the given to-be-applied models.
+        """
+        if(model_param_name is None):
+            model_param_name = param.name
+        if(not isinstance(model_param_name, str)):
+            raise TypeError('The model_param_name argument must be None or of '
+                'type str!')
+
+        if(models is None):
+            models = self._models
+        models = ModelCollection.cast(models,
+            'The models argument must be castable to an instance of '
+            'ModelCollection!')
+        # Make sure that the user did not provide an empty sequence.
+        if(len(models) == 0):
+            raise ValueError('The sequence of models, to which the parameter '
+                'maps, cannot be empty!')
+
+        # Get the list of model indices to which the parameter maps.
+        mask = np.zeros((self.n_models,), dtype=np.bool)
+        for ((midx,model), applied_model) in itertools.product(
+                enumerate(self._models), models):
+            if(applied_model.id == model.id):
+                mask[midx] = True
+
+        # Check that the model parameter name is not already defined for any of
+        # the given to-be-mapped models.
+        model_indices = np.arange(self.n_models)[mask]
+        for midx in model_indices:
+            param_mask = self._global_param_2_model_mask[:,midx]
+            if(model_param_name in self._model_param_names[param_mask]):
+                raise KeyError('The model parameter "%s" is already defined '
+                    'for model "%s"!'%(model_param_name,
+                    self._models[midx].name))
+
+        self._global_paramset.add_param(param)
+        self._model_param_names = np.concatenate(
+            (self._model_param_names, [model_param_name]))
+
+        self._global_param_2_model_mask = np.vstack(
+            (self._global_param_2_model_mask, mask))
+
+        return self
+
+    def get_model_param_dict(
+            self, global_floating_param_values, model_idx):
+        """Creates a dictionary with the fixed and floating parameter names and
+        their values for the given model.
+
+        Parameters
+        ----------
+        global_floating_param_values : 1D ndarray instance
+            The ndarray instance holding the current values of the global
+            floating parameters.
+        model_idx : int
+            The index of the model as it was defined at construction
+            time of this ModelParameterMapper instance.
+
+        Returns
+        -------
+        model_param_dict : dict
+            The dictionary holding the fixed and floating parameter names and
+            values of the specified model.
+        """
+        # Get the model parameter mask that masks the global parameters for
+        # the requested model.
+        model_mask = self._global_param_2_model_mask[:,model_idx]
+
+        # Create the array of parameter names that belong to the requested
+        # model, where floating parameters are before the fixed parameters.
+        model_param_names = np.concatenate(
+            (self._model_param_names[
+                self._global_paramset.floating_params_mask & model_mask],
+             self._model_param_names[
+                self._global_paramset.fixed_params_mask & model_mask]
+            ))
+
+        # Create the array of parameter values that belong to the requested
+        # model, where floating parameters are before the fixed parameters.
+        model_param_values = np.concatenate((
+            global_floating_param_values[
+                model_mask[self._global_paramset.floating_params_mask]],
+            self._global_paramset.fixed_param_values[
+                model_mask[self._global_paramset.fixed_params_mask]]
+        ))
 
         model_param_dict = dict(
             zip(model_param_names, model_param_values))
