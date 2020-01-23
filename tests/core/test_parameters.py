@@ -16,7 +16,8 @@ from skyllh.core.parameters import (
     ParameterSet,
     ParameterGrid,
     ParameterGridSet,
-    SingleModelParameterMapper
+    SingleModelParameterMapper,
+    MultiModelParameterMapper
 )
 
 sys.path.append(os.path.join(os.path.split(__file__)[0], '..'))
@@ -183,10 +184,22 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.assertEqual(len(params), 1)
         self.assertEqual(params[0], self.fixed_param)
 
+    def test_fixed_params_mask(self):
+        mask = self.paramset.fixed_params_mask
+        self.assertTrue(len(mask), 2)
+        self.assertEqual(mask[0], True)
+        self.assertEqual(mask[1], False)
+
     def test_floating_params(self):
         params = self.paramset.floating_params
         self.assertEqual(len(params), 1)
         self.assertEqual(params[0], self.floating_param)
+
+    def test_floating_params_mask(self):
+        mask = self.paramset.floating_params_mask
+        self.assertTrue(len(mask), 2)
+        self.assertEqual(mask[0], False)
+        self.assertEqual(mask[1], True)
 
     def test_n_params(self):
         self.assertEqual(self.paramset.n_params, 2)
@@ -468,18 +481,22 @@ class SingleModelParameterMapperTestCase(unittest.TestCase):
         self.fixed_param = Parameter('p1', 42)
         self.floating_param = Parameter('p2', 4, 1, 6)
         self.model = Model('the_src')
-        self.mpm = SingleModelParameterMapper('signal', self.model)
+        self.mpm = SingleModelParameterMapper(
+            'signal', self.model)
 
     def test_name(self):
         self.assertEqual(self.mpm.name, 'signal')
 
     def test_models(self):
+        self.assertEqual(len(self.mpm.models), 1)
         self.assertEqual(self.mpm.models[0], self.model)
 
     def test_n_models(self):
         self.assertEqual(self.mpm.n_models, 1)
 
     def test_str(self):
+        # Add some parameters to the model parameter mapper.
+        self.test_def_param()
         try:
             str(self.mpm)
         except:
@@ -501,6 +518,71 @@ class SingleModelParameterMapperTestCase(unittest.TestCase):
         self.assertTrue('fp' in model_param_dict)
         self.assertAlmostEqual(model_param_dict['p1'], 42)
         self.assertAlmostEqual(model_param_dict['fp'], 2.4)
+
+
+class MultiModelParameterMapperTestCase(unittest.TestCase):
+    def setUp(self):
+        self.fixed_param0 = Parameter('p0', 42)
+        self.floating_param0 = Parameter('p1', 4, 1, 6)
+        self.floating_param1 = Parameter('p2', 13, 10, 15)
+        self.model0 = Model('m0')
+        self.model1 = Model('m1')
+        self.mpm = MultiModelParameterMapper(
+            'signal', (self.model0, self.model1))
+
+    def test_name(self):
+        self.assertEqual(self.mpm.name, 'signal')
+
+    def test_models(self):
+        self.assertEqual(len(self.mpm.models), 2)
+        self.assertEqual(self.mpm.models[0], self.model0)
+        self.assertEqual(self.mpm.models[1], self.model1)
+
+    def test_n_models(self):
+        self.assertEqual(self.mpm.n_models, 2)
+
+    def test_str(self):
+        # Add some parameters.
+        self.test_def_param()
+        try:
+            str(self.mpm)
+        except:
+            self.fail('The __str__ method raised an exception!')
+
+    def test_def_param(self):
+        self.mpm.def_param(self.fixed_param0, models=(self.model1,))
+        self.mpm.def_param(self.floating_param0, 'fp', models=(self.model0,self.model1))
+        self.mpm.def_param(self.floating_param1, models=(self.model1))
+        self.assertEqual(self.mpm.n_global_params, 3)
+        self.assertEqual(self.mpm.n_global_fixed_params, 1)
+        self.assertEqual(self.mpm.n_global_floating_params, 2)
+
+        # The models cannot be an empty set.
+        with self.assertRaises(ValueError):
+            self.mpm.def_param(self.fixed_param0, 'fp', models=())
+        # A model parameter can only be defined once for a given model.
+        with self.assertRaises(KeyError):
+            self.mpm.def_param(self.fixed_param0, 'fp', models=(self.model0))
+
+    def test_get_model_param_dict(self):
+        # Add some parameters to the model parameter mapper.
+        self.test_def_param()
+
+        m0_param_dict = self.mpm.get_model_param_dict(
+            np.array([2.4, 11.1]), model_idx=0)
+        self.assertEqual(len(m0_param_dict), 1)
+        self.assertTrue('fp' in m0_param_dict)
+        self.assertAlmostEqual(m0_param_dict['fp'], 2.4)
+
+        m1_param_dict = self.mpm.get_model_param_dict(
+            np.array([2.4, 11.1]), model_idx=1)
+        self.assertEqual(len(m1_param_dict), 3)
+        self.assertTrue('p0' in m1_param_dict)
+        self.assertTrue('fp' in m1_param_dict)
+        self.assertTrue('p2' in m1_param_dict)
+        self.assertAlmostEqual(m1_param_dict['fp'], 2.4)
+        self.assertAlmostEqual(m1_param_dict['p2'], 11.1)
+        self.assertAlmostEqual(m1_param_dict['p0'], 42)
 
 
 class TestParameters(unittest.TestCase):
