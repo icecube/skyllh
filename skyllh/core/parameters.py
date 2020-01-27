@@ -15,6 +15,7 @@ from skyllh.core.py import (
     NamedObjectCollection,
     bool_cast,
     classname,
+    const,
     float_cast,
     issequence,
     issequenceof,
@@ -897,6 +898,12 @@ class ParameterSetArray(object):
                 of ParameterSet
             The sequence of constant ParameterSet instances holding the global
             parameters.
+
+        Raises
+        ------
+        TypeError
+            If the given paramsets argument ist not a sequence of constant
+            instances of ParameterSet.
         """
         super(ParameterSetArray, self).__init__()
 

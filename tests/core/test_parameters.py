@@ -14,11 +14,14 @@ from skyllh.core.model import Model
 from skyllh.core.parameters import (
     Parameter,
     ParameterSet,
+    ParameterSetArray,
     ParameterGrid,
     ParameterGridSet,
     SingleModelParameterMapper,
     MultiModelParameterMapper
 )
+from skyllh.core.py import const
+from skyllh.core.random import RandomStateService
 
 sys.path.append(os.path.join(os.path.split(__file__)[0], '..'))
 from utils import isAlmostEqual
@@ -355,6 +358,85 @@ class ParameterSet_TestCase(unittest.TestCase):
         param_dict = self.paramset.floating_param_values_to_dict(np.array([1.3]))
         self.assertAlmostEqual(param_dict['p0'], 2.3)
         self.assertAlmostEqual(param_dict['p1'], 1.3)
+
+
+class ParameterSetArray_TestCase(unittest.TestCase):
+    """This test case tests the ParameterSetArray class.
+    """
+    def setUp(self):
+        self.fixed_param0 = Parameter(
+            'fixed_param0', 2.3)
+        self.fixed_param1 = Parameter(
+            'fixed_param1', 0.1)
+        self.floating_param0 = Parameter(
+            'floating_param0', 1.1, valmin=0.5, valmax=1.6)
+        self.floating_param1 = Parameter(
+            'floating_param1', 13.5, valmin=10.5, valmax=15)
+        self.paramset0 = ParameterSet((self.fixed_param0, self.floating_param0))
+        self.paramset1 = ParameterSet((self.floating_param1, self.fixed_param1))
+
+        self.paramsetarr = ParameterSetArray(
+            (const(self.paramset0), const(self.paramset1)))
+
+    def test__init__(self):
+        paramset0 = ParameterSet((self.fixed_param0, self.floating_param0))
+        paramset1 = ParameterSet((self.floating_param1, self.fixed_param1))
+        with self.assertRaises(TypeError):
+            paramsetarr = ParameterSetArray(
+                (paramset0, paramset1))
+
+    def test_paramset_list(self):
+        paramset_list = self.paramsetarr.paramset_list
+        self.assertEqual(len(paramset_list), 2)
+        self.assertEqual(paramset_list[0], self.paramset0)
+        self.assertEqual(paramset_list[1], self.paramset1)
+
+    def test_n_params(self):
+        self.assertEqual(self.paramsetarr.n_params, 4)
+
+    def test_n_fixed_params(self):
+        self.assertEqual(self.paramsetarr.n_fixed_params, 2)
+
+    def test_n_floating_params(self):
+        self.assertEqual(self.paramsetarr.n_floating_params, 2)
+
+    def test_floating_param_initials(self):
+        initials = self.paramsetarr.floating_param_initials
+        self.assertEqual(initials.shape, (2,))
+        self.assertAlmostEqual(initials[0], 1.1)
+        self.assertAlmostEqual(initials[1], 13.5)
+
+    def test_floating_param_bounds(self):
+        bounds = self.paramsetarr.floating_param_bounds
+        self.assertEqual(bounds.shape, (2,2))
+        np.testing.assert_almost_equal(bounds[0], (0.5, 1.6))
+        np.testing.assert_almost_equal(bounds[1], (10.5, 15))
+
+    def test__str__(self):
+        try:
+            str(self.paramsetarr)
+        except:
+            self.fail('The __str__ method raised exception!')
+
+    def test_generate_random_initials(self):
+        rss_ref = RandomStateService(42)
+        rn = rss_ref.random.uniform(size=2)
+
+        rss = RandomStateService(42)
+        initials = self.paramsetarr.generate_random_initials(rss)
+        np.testing.assert_almost_equal(initials,
+            (0.5+rn[0]*(1.6-0.5),
+            10.5+rn[1]*(15-10.5)))
+
+    def test_split_floating_param_values(self):
+        fl_param_values = np.array([0.9, 14.2])
+        fl_param_values_list = self.paramsetarr.split_floating_param_values(
+            fl_param_values)
+        self.assertEqual(len(fl_param_values_list), 2)
+        self.assertEqual(len(fl_param_values_list[0]), 1)
+        self.assertEqual(len(fl_param_values_list[1]), 1)
+        np.testing.assert_almost_equal(fl_param_values_list[0], [0.9])
+        np.testing.assert_almost_equal(fl_param_values_list[1], [14.2])
 
 
 class ParameterGrid_TestCase(unittest.TestCase):
