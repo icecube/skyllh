@@ -12,6 +12,7 @@ import unittest
 from skyllh.core.binning import BinningDefinition
 from skyllh.core.model import Model
 from skyllh.core.parameters import (
+    HypoParameterDefinition,
     Parameter,
     ParameterSet,
     ParameterSetArray,
@@ -52,6 +53,47 @@ class Parameter_TestCase(unittest.TestCase):
             'floating_param', self.floating_param_initial,
             valmin=self.floating_param_valmin,
             valmax=self.floating_param_valmax)
+
+    def test__eq__(self):
+        fixed_param = Parameter(
+            'fixed_param', self.fixed_param_initial)
+        floating_param = Parameter(
+            'floating_param', self.floating_param_initial,
+            valmin=self.floating_param_valmin,
+            valmax=self.floating_param_valmax)
+
+        self.assertTrue(self.fixed_param == fixed_param)
+        self.assertTrue(self.floating_param == floating_param)
+
+        # Change the parameter name.
+        fixed_param = Parameter(
+            'fixed_param1', self.fixed_param_initial)
+        self.assertFalse(self.fixed_param == fixed_param)
+
+        # Change the initial value.
+        fixed_param = Parameter(
+            'fixed_param', self.fixed_param_initial+1)
+        self.assertFalse(self.fixed_param == fixed_param)
+
+        floating_param = Parameter(
+            'floating_param', self.floating_param_initial+0.2,
+            valmin=self.floating_param_valmin,
+            valmax=self.floating_param_valmax)
+        self.assertFalse(self.floating_param == floating_param)
+
+        # Change the valmin.
+        floating_param = Parameter(
+            'floating_param', self.floating_param_initial,
+            valmin=self.floating_param_valmin-1,
+            valmax=self.floating_param_valmax)
+        self.assertFalse(self.floating_param == floating_param)
+
+        # Change the valmax.
+        floating_param = Parameter(
+            'floating_param', self.floating_param_initial,
+            valmin=self.floating_param_valmin,
+            valmax=self.floating_param_valmax+1)
+        self.assertFalse(self.floating_param == floating_param)
 
     def test_name(self):
         self.assertEqual(self.fixed_param.name, 'fixed_param')
@@ -665,6 +707,95 @@ class MultiModelParameterMapperTestCase(unittest.TestCase):
         self.assertAlmostEqual(m1_param_dict['fp'], 2.4)
         self.assertAlmostEqual(m1_param_dict['p2'], 11.1)
         self.assertAlmostEqual(m1_param_dict['p0'], 42)
+
+
+class HypoParameterDefinitionTestCase(unittest.TestCase):
+    def setUp(self):
+        self.fixed_param0 = Parameter('fixed_param0', 42)
+        self.fixed_param1 = Parameter('fixed_param1', 11)
+        self.floating_param0 = Parameter('floating_param0', 4, 1, 6)
+        self.floating_param1 = Parameter('floating_param1', 0.3, 0.1, 1)
+
+        self.model0 = Model('m0')
+        self.model1 = Model('m1')
+
+        self.mpm0 = SingleModelParameterMapper(
+            'mpm0', self.model0)
+        self.mpm0.def_param(self.fixed_param0)
+        self.mpm0.def_param(self.floating_param0, 'fp0')
+
+        self.mpm1 = SingleModelParameterMapper(
+            'mpm1', self.model1)
+        self.mpm1.def_param(self.fixed_param1)
+        self.mpm1.def_param(self.floating_param1, 'fp1')
+
+        self.hpdef = HypoParameterDefinition((self.mpm0, self.mpm1))
+
+    def test_model_param_mapper_list(self):
+        mpm_list = self.hpdef.model_param_mapper_list
+        self.assertEqual(len(mpm_list), 2)
+        self.assertEqual(mpm_list[0], self.mpm0)
+        self.assertEqual(mpm_list[1], self.mpm1)
+
+    def test__str__(self):
+        try:
+            str(self.hpdef)
+        except:
+            self.fail('The __str__ method raised an exception!')
+
+    def test_copy(self):
+        # Check to raise on bad input type.
+        with self.assertRaises(TypeError):
+            hpdef = self.hpdef.copy('not of type dict')
+
+        # Create an exact copy.
+        hpdef = self.hpdef.copy()
+        self.assertTrue(isinstance(hpdef, HypoParameterDefinition))
+        mpm0 = hpdef['mpm0']
+        mpm1 = hpdef['mpm1']
+        self.assertTrue((mpm0 is not self.mpm0) and (mpm0 is not self.mpm1))
+        self.assertTrue((mpm1 is not self.mpm0) and (mpm1 is not self.mpm1))
+
+        self.assertEqual(mpm0.global_paramset.n_params, 2)
+        self.assertEqual(mpm0.global_paramset.n_fixed_params, 1)
+        self.assertEqual(mpm0.global_paramset.n_floating_params, 1)
+        self.assertTrue(mpm0.global_paramset.params[0] == self.fixed_param0)
+        self.assertTrue(mpm0.global_paramset.params[1] == self.floating_param0)
+
+        self.assertEqual(mpm1.global_paramset.n_params, 2)
+        self.assertEqual(mpm1.global_paramset.n_fixed_params, 1)
+        self.assertEqual(mpm1.global_paramset.n_floating_params, 1)
+        self.assertTrue(mpm1.global_paramset.params[0] == self.fixed_param1)
+        self.assertTrue(mpm1.global_paramset.params[1] == self.floating_param1)
+
+        self.setUp()
+
+        # Create a copy where we fix one of the floating parameters.
+        hpdef = self.hpdef.copy({'floating_param1':2.3})
+        self.assertTrue(isinstance(hpdef, HypoParameterDefinition))
+        mpm0 = hpdef['mpm0']
+        mpm1 = hpdef['mpm1']
+        self.assertTrue((mpm0 is not self.mpm0) and (mpm0 is not self.mpm1))
+        self.assertTrue((mpm1 is not self.mpm0) and (mpm1 is not self.mpm1))
+
+        self.assertEqual(mpm0.global_paramset.n_params, 2)
+        self.assertEqual(mpm0.global_paramset.n_fixed_params, 1)
+        self.assertEqual(mpm0.global_paramset.n_floating_params, 1)
+        self.assertTrue(mpm0.global_paramset.params[0] == self.fixed_param0)
+        self.assertTrue(mpm0.global_paramset.params[1] == self.floating_param0)
+
+        self.assertEqual(mpm1.global_paramset.n_params, 2)
+        self.assertEqual(mpm1.global_paramset.n_fixed_params, 2)
+        self.assertEqual(mpm1.global_paramset.n_floating_params, 0)
+        self.assertTrue(mpm1.global_paramset.params[0] == self.fixed_param1)
+        self.assertFalse(mpm1.global_paramset.params[1] == self.floating_param1)
+        self.assertTrue(mpm1.global_paramset.params[1].isfixed)
+        self.assertAlmostEqual(mpm1.global_paramset.params[1].initial, 2.3)
+        self.assertAlmostEqual(mpm1.global_paramset.params[1].value, 2.3)
+
+    def test_create_ParameterSetArray(self):
+        paramsetarr = self.hpdef.create_ParameterSetArray()
+        self.assertTrue(isinstance(paramsetarr, ParameterSetArray))
 
 
 class TestParameters(unittest.TestCase):
