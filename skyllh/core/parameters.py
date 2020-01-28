@@ -189,6 +189,38 @@ class Parameter(object):
                     v, self._name, self._valmin, self._valmax))
         self._value = v
 
+    def __eq__(self, other):
+        """Implements the equal comparison operator (==).
+        By definition two parameters are equal if there property values are
+        equal.
+
+        Parameters
+        ----------
+        other : Parameter instance
+            The instance of Parameter which should be used to compare against
+            this Parameter instance.
+
+        Returns
+        -------
+        cmp : bool
+            True, if this Parameter instance and the other Parameter instance
+            have the same property values.
+        """
+        if((self.name != other.name) or
+           (self.value != other.value) or
+           (self.isfixed != other.isfixed)):
+            return False
+
+        # If both parameters are floating parameters, also their initial, min,
+        # and max values must match.
+        if(not self.isfixed):
+            if((self.initial != other.initial) or
+               (self.valmin != other.valmin) or
+               (self.valmax != other.valmax)):
+                return False
+
+        return True
+
     def __str__(self):
         """Creates and returns a pretty string representation of this Parameter
         instance.
@@ -1773,6 +1805,100 @@ class MultiModelParameterMapper(ModelParameterMapper):
             zip(model_param_names, model_param_values))
 
         return model_param_dict
+
+
+class HypoParameterDefinition(NamedObjectCollection):
+    """This class provides a data holder for a list of model parameter mappers,
+    where each parameter mapper defines a set of global parameters for the
+    likelihood function, and their mapping to local model parameters.
+    In addition this class provides a method to create a copy of itself, where
+    floating parameters can get fixed to a certain values.
+    """
+    def __init__(self, model_param_mappers):
+        """Creates a new instance of HypoParameterDefinition with the given list
+        of ModelParameterMapper instances.
+
+        Parameters
+        ----------
+        model_param_mappers : instance of ModelParameterMapper | sequence of
+                ModelParameterMapper instances
+            The list of ModelParameterMapper instances defining the global
+            parameters and their mapping to local parameters of individual
+            models.
+        """
+        super(HypoParameterDefinition, self).__init__(
+            model_param_mappers, obj_type=ModelParameterMapper)
+
+        # Finalize all ModelParameterMapper instances, hence no parameters can
+        # be added anymore.
+        for mapper in self._objects:
+            mapper.finalize()
+
+    @property
+    def model_param_mapper_list(self):
+        """(read-only) The list of ModelParameterMapper instances defining the
+        global parameters and their mapping to the individual local model
+        parameters.
+        """
+        return self._objects
+
+    def __str__(self):
+        """Creates a pretty string representation of this
+        HypoParameterDefinition instance.
+        """
+        s = '%s:\n'%(classname(self))
+
+        for (idx, mapper) in enumerate(self._objects):
+            if(idx > 0):
+                s += '\n'
+            s1 = str(mapper)
+            s += display.add_leading_text_line_padding(
+                display.INDENTATION_WIDTH, s1)
+
+        return s
+
+    def copy(self, fix_params=None):
+        """Creates a deep copy of this HypoParameterDefinition instance and
+        fixes the given global parameters to the given values.
+
+        Parameters
+        ----------
+        fix_params : dict | None
+            The dictionary defining the global parameters that should get fixed
+            in the copy.
+
+        Returns
+        -------
+        copy : instance of HypoParameterDefinition
+            The copy of this HypoParameterDefinition instance with the given
+            global parameters fixed to the given values.
+        """
+        copy = deepcopy(self)
+
+        if(fix_params is not None):
+            if(not isinstance(fix_params, dict)):
+                raise TypeError('The fix_params argument must be of type dict!')
+
+            for mp_mapper in copy.model_param_mapper_list:
+                mp_mapper.global_paramset.make_params_fixed(fix_params)
+
+        return copy
+
+    def create_ParameterSetArray(self):
+        """Creates a ParameterSetArray instance for all the ModelParameterMapper
+        instances of this HypoParameterDefinition instance.
+
+        Returns
+        -------
+        paramsetarray : ParameterSetArray
+            The instance of ParameterSetArray holding references to the
+            ParameterSet instances of all the ModelParameterMapper instances of
+            this HypoParameterDefinition instance.
+        """
+        paramsetarray = ParameterSetArray(
+            [mpmapper.global_paramset
+             for mpmapper in self._objects])
+        return paramsetarray
 
 
 class FitParameter(object):
