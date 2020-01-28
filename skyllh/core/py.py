@@ -586,6 +586,29 @@ class NamedObjectCollection(ObjectCollection):
             objs=objs,
             obj_type=obj_type)
 
+    def __getitem__(self, key):
+        """Returns an object based on its name or index.
+
+        Parameters
+        ----------
+        key : str | int
+            The object identification. Either its name or its index position
+            within the object collection.
+
+        Returns
+        -------
+        obj : instance of obj_type
+            The requested object.
+
+        Raises
+        ------
+        KeyError
+            If the given object is not found within this object collection.
+        """
+        if(isinstance(key, str)):
+            key = self.index_by_name(key)
+        return super(NamedObjectCollection, self).__getitem__(key)
+
     def add(self, obj):
         """Adds the given object to this named object collection.
 
