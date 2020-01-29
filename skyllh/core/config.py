@@ -41,6 +41,17 @@ CFG = {
         'length': units.cm,
         'time': units.s
     },
+    'units': {
+        'defaults': {
+            # Definition of default units used for fluxes.
+            'fluxes': {
+                'angle': units.radian,
+                'energy': units.GeV,
+                'length': units.cm,
+                'time': units.s
+            }
+        }
+    },
     'dataset': {
         # Define the data field names of the data set's experimental data,
         # that are required by the analysis.
