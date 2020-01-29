@@ -132,3 +132,18 @@ class ModelCollection(NamedObjectCollection):
         """(read-only) The list of models of type `model_type`.
         """
         return self.objects
+
+
+class DetectorModel(Model):
+    """This class provides a base class for a detector model. It can be used
+    in combination with the ModelParameterMapper class.
+    """
+    def __init__(self, name):
+        """Creates a new DetectorModel instance.
+
+        Parameters
+        ----------
+        name : str
+            The name of the detector model.
+        """
+        super().__init__(name=name)
