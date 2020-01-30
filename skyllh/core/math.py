@@ -19,27 +19,27 @@ class MathFunction(object):
     """This abstract base class provides an implementation for a mathematical
     function. Such a function has defined parameters, which are implemented as
     class properties. The tuple of parameter names is defined through the
-    `parameter_names` property.
+    `param_names` property.
     """
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, **kwargs):
         super(MathFunction, self).__init__(**kwargs)
 
-        self.parameter_names = ()
+        self.param_names = ()
 
     @property
-    def parameter_names(self):
+    def param_names(self):
         """The tuple holding the names of the math function's parameters.
         """
-        return self._parameter_names
-    @parameter_names.setter
-    def parameter_names(self, names):
+        return self._param_names
+    @param_names.setter
+    def param_names(self, names):
         if(not issequence(names)):
             names = (names,)
         if(not issequenceof(names, str)):
-            raise TypeError('The parameter_names property must be a sequence '
-                'of str!')
+            raise TypeError('The param_names property must be a sequence of '
+                'str!')
         names = tuple(names)
         # Check if all the given names are actual properties of this
         # MathFunction class.
@@ -50,7 +50,7 @@ class MathFunction(object):
             if(not isproperty(self, name)):
                 raise TypeError('The attribute "%s" of "%s" is not a '
                     'property!'%(classname(self), name))
-        self._parameter_names = names
+        self._param_names = names
 
     @property
     @abc.abstractmethod
@@ -79,11 +79,11 @@ class MathFunction(object):
 
         # Set the new parameter values.
         if(newparams is not None):
-            f.set_parameters(newparams)
+            f.set_params(newparams)
 
         return f
 
-    def set_parameters(self, pdict):
+    def set_params(self, pdict):
         """Sets the parameters of the math function to the given parameter
         values.
 
@@ -103,7 +103,7 @@ class MathFunction(object):
 
         updated = False
 
-        for pname in self._parameter_names:
+        for pname in self._param_names:
             current_value = getattr(self, pname)
             pvalue = pdict.get(pname, current_value)
             if(pvalue != current_value):
