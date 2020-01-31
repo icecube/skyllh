@@ -487,6 +487,7 @@ class ParameterGrid_TestCase(unittest.TestCase):
     def setUp(self):
         self.paramgrid_gamma1 = ParameterGrid('gamma1', [ 1.5, 2., 2.5, 3., 3.5])
         self.paramgrid_gamma2 = ParameterGrid('gamma2', GAMMA_GRID)
+        self.paramgrid_gamma3 = ParameterGrid('gamma3', [ 1.05, 1.15, 1.25, 1.35])
 
     def test_from_BinningDefinition(self):
         binning = BinningDefinition(name='gamma', binedges=GAMMA_GRID)
@@ -498,14 +499,34 @@ class ParameterGrid_TestCase(unittest.TestCase):
     def test_delta(self):
         self.assertTrue(isAlmostEqual(self.paramgrid_gamma1.delta, 0.5))
         self.assertTrue(isAlmostEqual(self.paramgrid_gamma2.delta, 0.1))
+        self.assertTrue(isAlmostEqual(self.paramgrid_gamma3.delta, 0.1))
 
-    def test_offset(self):
-        self.assertTrue(isAlmostEqual(self.paramgrid_gamma1.offset, 0.))
-        self.assertTrue(isAlmostEqual(self.paramgrid_gamma2.offset, 0.))
+    def test_round_to_nearest_grid_point(self):
+        # Test values outside the grid range.
+        x = 1.49999999999
+        with self.assertRaises(ValueError):
+            gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
+        x = 3.50000000001
+        with self.assertRaises(ValueError):
+            gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
+
+        # Test a value between two grid points.
+        x = [2.1, 2.4, 2.2, 2.3]
+        gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
+        np.testing.assert_almost_equal(gp, [2.0, 2.5, 2., 2.5])
+
+        x = [1.051, 1.14]
+        gp = self.paramgrid_gamma3.round_to_nearest_grid_point(x)
+        self.assertTrue(isAlmostEqual(gp, [1.05, 1.15]))
+
+        # Test a value on a grid point.
+        x = [1.05, 1.35]
+        gp = self.paramgrid_gamma3.round_to_nearest_grid_point(x)
+        self.assertTrue(isAlmostEqual(gp, [1.05, 1.35]))
 
     def test_round_to_lower_grid_point(self):
         # Test a value between two grid points.
-        x = 2.43
+        x = 2.4
         gp = self.paramgrid_gamma1.round_to_lower_grid_point(x)
         self.assertTrue(isAlmostEqual(gp, 2.))
 
@@ -518,20 +539,28 @@ class ParameterGrid_TestCase(unittest.TestCase):
         gp = self.paramgrid_gamma2.round_to_lower_grid_point(x)
         self.assertTrue(isAlmostEqual(gp, 1.6))
 
+        x = [1.05, 1.15, 1.25, 1.35]
+        gp = self.paramgrid_gamma3.round_to_lower_grid_point(x)
+        np.testing.assert_almost_equal(gp, [1.05, 1.15, 1.25, 1.35])
+
     def test_round_to_upper_grid_point(self):
         # Test a value between two grid points.
-        x = 2.43
+        x = 2.4
         gp = self.paramgrid_gamma1.round_to_upper_grid_point(x)
         self.assertTrue(isAlmostEqual(gp, 2.5))
 
         # Test a value at a grid point.
         x = 2.
         gp = self.paramgrid_gamma1.round_to_upper_grid_point(x)
-        self.assertTrue(isAlmostEqual(gp, 2.))
+        self.assertTrue(isAlmostEqual(gp, 2.5))
 
         x = 1.6
         gp = self.paramgrid_gamma2.round_to_upper_grid_point(x)
-        self.assertTrue(isAlmostEqual(gp, 1.6))
+        self.assertTrue(isAlmostEqual(gp, 1.7))
+
+        x = [1.05, 1.15, 1.25, 1.35]
+        gp = self.paramgrid_gamma3.round_to_upper_grid_point(x)
+        np.testing.assert_almost_equal(gp, [1.15, 1.25, 1.35, 1.45])
 
 
 class ParameterGridSet_TestCase(unittest.TestCase):

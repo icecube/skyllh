@@ -1102,9 +1102,7 @@ class ParameterSetArray(object):
 
 class ParameterGrid(object):
     """This class provides a data holder for a parameter that has a set of
-    discrete values on a grid. Thus, the parameter has a value grid. By default
-    the grid is aligned with zero, but this can be changed by setting the offset
-    value to a value other than zero.
+    discrete values on a grid. Thus, the parameter has a value grid.
     This class represents a one-dimensional grid.
     """
     @staticmethod
@@ -1126,7 +1124,7 @@ class ParameterGrid(object):
             name=binning.name,
             grid=binning.binedges)
 
-    def __init__(self, name, grid, delta=None, offset=0):
+    def __init__(self, name, grid, delta=None):
         """Creates a new parameter grid.
 
         Parameters
@@ -1140,10 +1138,6 @@ class ParameterGrid(object):
             The width between the grid values.
             If set to ``None``, the width is taken from the equal-distant
             ``grid`` values.
-        offset : float
-            The offset from zero to align the grid other than with zero.
-            By definition the absolute value of the offset must be smaller than
-            `delta`.
         """
         if(delta is None):
             # We need to take the mean of all the "equal" differences in order
@@ -1151,8 +1145,8 @@ class ParameterGrid(object):
             delta = np.mean(np.diff(grid))
 
         self.name = name
+        self.lower_bound = grid[0]
         self.delta = delta
-        self.offset = offset
 
         # Setting the grid, will automatically round the grid values to their
         # next nearest grid value. Hence, we need to set the grid property after
@@ -1193,29 +1187,50 @@ class ParameterGrid(object):
     @delta.setter
     def delta(self, v):
         v = float_cast(v, 'The delta property must be castable to type float!')
-        self._delta = v
+        self._delta = np.float64(v)
 
     @property
-    def offset(self):
-        """The offset from zero to align the grid other than with zero.
-        By definition the absolute value of the offset must be smaller than
-        `delta`.
+    def lower_bound(self):
+        """The lower bound of the parameter grid.
         """
-        return self._offset
-    @offset.setter
-    def offset(self, v):
-        v = float_cast(v, 'The offset property must be castable to type float!')
-        if(np.abs(v) >= self._delta):
-            raise ValueError('The absolute value of the offset property (%f) '
-                'must be smaller than the value of the delta property (%f)'%(
-                v, self._delta))
-        self._offset = v
+        return self._lower_bound
+    @lower_bound.setter
+    def lower_bound(self, v):
+        v = float_cast(v, 'The lower_bound property must be castable to type '
+            'float!')
+        self._lower_bound = np.float64(v)
 
     @property
     def ndim(self):
         """The dimensionality of the parameter grid.
         """
         return self._grid.ndim
+
+    def _calc_floatD_and_intD(self, value):
+        """Calculates the number of delta intervals of the given values counted
+        from the lower bound of the grid. It returns its float and integer
+        representation.
+
+        Raises
+        ------
+        ValueError
+            If one of the values are below or above the grid range.
+        """
+        value = np.atleast_1d(value).astype(np.float64)
+
+        if(hasattr(self, '_grid')):
+            m = (value >= self._lower_bound) & (value <= self._grid[-1])
+            if(not np.all(m)):
+                raise ValueError('The following values are outside the range '
+                    'of the parameter grid "%s": %s'%(
+                        self.name,
+                        ','.join(str(v) for v in value[np.invert(m)])))
+
+        floatD = value/self._delta - self._lower_bound/self._delta
+        floatD = np.around(floatD, 9)
+        intD = floatD.astype(np.int)
+
+        return (floatD, intD)
 
     def add_extra_lower_and_upper_bin(self):
         """Adds an extra lower and upper bin to this parameter grid. This is
@@ -1226,6 +1241,7 @@ class ParameterGrid(object):
         newgrid[1:-1] = self._grid
         newgrid[0] = newgrid[1] - self._delta
         newgrid[-1] = newgrid[-2] + self._delta
+        self._lower_bound = newgrid[0]
         self.grid = newgrid
 
     def copy(self):
@@ -1244,10 +1260,11 @@ class ParameterGrid(object):
 
         Returns
         -------
-        grid_point : float | ndarray of float
+        grid_point : ndarray of float
             The calculated grid point(s).
         """
-        return np.around(value / self._delta) * self._delta + self._offset
+        (floatD, intD) = self._calc_floatD_and_intD(value)
+        return self._lower_bound + (np.around(floatD % 1, 0) + intD)*self._delta
 
     def round_to_lower_grid_point(self, value):
         """Rounds the given value to the nearest grid point that is lower than
@@ -1263,16 +1280,17 @@ class ParameterGrid(object):
 
         Returns
         -------
-        grid_point : float | ndarray of float
+        grid_point : ndarray of float
             The calculated grid point(s).
         """
-        return np.floor_divide(value, self._delta) * self._delta + self._offset
+        (floatD, intD) = self._calc_floatD_and_intD(value)
+        return self._lower_bound + intD*self._delta
 
     def round_to_upper_grid_point(self, value):
         """Rounds the given value to the nearest grid point that is larger than
         the given value.
 
-        Note: If the given value is a grid point, that grid point will be
+        Note: If the given value is a grid point, the next grid point will be
               returned!
 
         Parameters
@@ -1282,10 +1300,11 @@ class ParameterGrid(object):
 
         Returns
         -------
-        grid_point : float | ndarray of float
+        grid_point : ndarray of float
             The calculated grid point(s).
         """
-        return np.ceil(value / self._delta) * self._delta + self._offset
+        (floatD, intD) = self._calc_floatD_and_intD(value)
+        return self._lower_bound + (intD + 1)*self._delta
 
 
 class ParameterGridSet(NamedObjectCollection):
