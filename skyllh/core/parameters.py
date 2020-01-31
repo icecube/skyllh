@@ -1242,6 +1242,7 @@ class ParameterGrid(object):
         newgrid[0] = newgrid[1] - self._delta
         newgrid[-1] = newgrid[-2] + self._delta
         self._lower_bound = newgrid[0]
+        del self._grid
         self.grid = newgrid
 
     def copy(self):
@@ -1260,11 +1261,17 @@ class ParameterGrid(object):
 
         Returns
         -------
-        grid_point : ndarray of float
+        grid_point : float | ndarray of float
             The calculated grid point(s).
         """
+        scalar_input = np.isscalar(value)
+
         (floatD, intD) = self._calc_floatD_and_intD(value)
-        return self._lower_bound + (np.around(floatD % 1, 0) + intD)*self._delta
+        gp = self._lower_bound + (np.around(floatD % 1, 0) + intD)*self._delta
+
+        if(scalar_input):
+            return np.asscalar(gp)
+        return gp
 
     def round_to_lower_grid_point(self, value):
         """Rounds the given value to the nearest grid point that is lower than
@@ -1280,11 +1287,17 @@ class ParameterGrid(object):
 
         Returns
         -------
-        grid_point : ndarray of float
+        grid_point : float | ndarray of float
             The calculated grid point(s).
         """
+        scalar_input = np.isscalar(value)
+
         (floatD, intD) = self._calc_floatD_and_intD(value)
-        return self._lower_bound + intD*self._delta
+        gp = self._lower_bound + intD*self._delta
+
+        if(scalar_input):
+            return np.asscalar(gp)
+        return gp
 
     def round_to_upper_grid_point(self, value):
         """Rounds the given value to the nearest grid point that is larger than
@@ -1303,8 +1316,14 @@ class ParameterGrid(object):
         grid_point : ndarray of float
             The calculated grid point(s).
         """
+        scalar_input = np.isscalar(value)
+
         (floatD, intD) = self._calc_floatD_and_intD(value)
-        return self._lower_bound + (intD + 1)*self._delta
+        gp = self._lower_bound + (intD + 1)*self._delta
+
+        if(scalar_input):
+            return np.asscalar(gp)
+        return gp
 
 
 class ParameterGridSet(NamedObjectCollection):
