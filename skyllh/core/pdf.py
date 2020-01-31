@@ -139,7 +139,7 @@ class PDFAxes(ObjectCollection):
         return axes
 
     def __init__(self, axes=None):
-        super(PDFAxes, self).__init__(obj_type=PDFAxis, obj_list=axes)
+        super(PDFAxes, self).__init__(objs=axes, obj_type=PDFAxis)
 
     def get_axis(self, name):
         """Retrieves the PDFAxis object with the given name.
