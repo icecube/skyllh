@@ -721,15 +721,43 @@ class Dataset(object):
             raise ValueError('No livetime was provided for dataset '
                 '"%s"!'%(self.name))
 
-        # Load all the auxiliary data for this dataset.
-        data_aux = dict()
-        for (aux_name, aux_pathfilename_list) in self._aux_data_definitions.items():
-            with TaskTimer(tl, 'Loaded aux data "%s" from disk.'%(aux_name)):
-                fileloader_aux = create_FileLoader(self._get_abs_pathfilename_list(
-                    aux_pathfilename_list))
-                data_aux[aux_name] = fileloader_aux.load_data()
+        data = DatasetData(data_exp, data_mc, livetime)
 
-        data = DatasetData(data_exp, data_mc, data_aux, livetime)
+        return data
+
+    def load_aux_data(self, name, tl=None):
+        """Loads the auxiliary data for the given auxiliary data definition.
+
+        Parameters
+        ----------
+        name : str
+            The name of the auxiliary data.
+        tl : TimeLord instance | None
+            The TimeLord instance to use to time the data loading procedure.
+
+        Returns
+        -------
+        data : unspecified
+            The loaded auxiliary data.
+        """
+        name = str_cast(name,
+            'The name argument must be castable to type str!')
+
+        # Check if the data was defined in memory.
+        if(name in self._aux_data):
+            with TaskTimer(tl, 'Loaded aux data "%s" from memory.'%(name)):
+                data = self._aux_data[name]
+            return data
+
+        if(name not in self._aux_data_definitions):
+            raise KeyError('The auxiliary data named "%s" does not exist!'%(
+                name))
+
+        aux_pathfilename_list = self._aux_data_definitions[name]
+        with TaskTimer(tl, 'Loaded aux data "%s" from disk.'%(name)):
+            fileloader_aux = create_FileLoader(self._get_abs_pathfilename_list(
+                    aux_pathfilename_list))
+            data = fileloader_aux.load_data()
 
         return data
 
@@ -1406,7 +1434,7 @@ class DatasetData(object):
     monto-carlo data. It also holds a reference to the Dataset instance, which
     holds the data's meta information.
     """
-    def __init__(self, data_exp, data_mc, data_aux, livetime):
+    def __init__(self, data_exp, data_mc, livetime):
         """Creates a new DatasetData instance.
 
         Parameters
@@ -1416,10 +1444,6 @@ class DatasetData(object):
             This can be None for a MC-only study.
         data_mc : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the monto-carlo data.
-        data_aux : dict
-            The dictionary holding the auxiliary data for the dataset. The key
-            of the dictionary identifies the auxiliary data. The value is the
-            data in any type and format.
         livetime : float
             The integrated livetime in days of the data.
         """
@@ -1427,7 +1451,6 @@ class DatasetData(object):
 
         self.exp = data_exp
         self.mc = data_mc
-        self.aux = data_aux
         self.livetime = livetime
 
     @property
@@ -1455,19 +1478,6 @@ class DatasetData(object):
             raise TypeError('The mc property must be an instance of '
                 'DataFieldRecordArray!')
         self._mc = data
-
-    @property
-    def aux(self):
-        """The dictionary holding the auxiliary data of the dataset. The key
-        of the dictionary identifies the auxiliary data. The value is the data
-        in any type and format.
-        """
-        return self._aux
-    @aux.setter
-    def aux(self, d):
-        if(not isinstance(d, dict)):
-            raise TypeError('The aux property must be an instance of dict!')
-        self._aux = d
 
     @property
     def livetime(self):
@@ -1647,6 +1657,6 @@ def get_data_subset(data, livetime, t_start, t_end):
     uptime_mjd_intervals_arr = livetime.get_ontime_intervals_between(t_start, t_end)
     livetime_subset = Livetime(uptime_mjd_intervals_arr)
 
-    dataset_data_subset = DatasetData(data_exp, data_mc, data.aux, livetime_subset.livetime)
+    dataset_data_subset = DatasetData(data_exp, data_mc, livetime_subset.livetime)
 
     return (dataset_data_subset, livetime_subset)
