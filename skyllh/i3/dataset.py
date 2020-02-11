@@ -323,7 +323,7 @@ class I3DatasetData(DatasetData):
     """
     def __init__(self, data, data_grl):
         super(I3DatasetData, self).__init__(
-            data._exp, data._mc, data._aux, data._livetime)
+            data._exp, data._mc, data._livetime)
 
         self.grl = data_grl
 

@@ -32,7 +32,7 @@ def kde_pdf_bkg_norm_factor_func(pdf, tdm, fitparams):
 
 def create_MultiDimGridPDF_from_kde_pdf(
         ds, data, numerator_key, denumerator_key=None, norm_factor_func=None,
-        kind=None):
+        kind=None, tl=None):
     """Creates a MultiDimGridPDF instance with pdf values taken from KDE PDF
     values stored in the dataset's auxiliary data.
 
@@ -55,6 +55,8 @@ def create_MultiDimGridPDF_from_kde_pdf(
         The kind of PDF to create. This is either ``'sig'`` for a
         SignalMultiDimGridPDF or ``'bkg'`` for a BackgroundMultiDimGridPDF
         instance. If set to None, a MultiDimGridPDF instance is created.
+    tl : TimeLord instance | None
+        The TimeLord instance to use for measuring timing information.
 
     Returns
     -------
@@ -74,15 +76,14 @@ def create_MultiDimGridPDF_from_kde_pdf(
         raise ValueError('The kind argument must be None, "sig", or "bkg"! '
             'Currently it is '+str(kind)+'!')
 
-    # Get the PDF data from the auxilary files. Currently, all auxilary data is
-    # pre-loaded. This might change in the future to a load-on-demand scheme.
-    num_dict = data.aux[numerator_key]
+    # Load the PDF data from the auxilary files.
+    num_dict = ds.load_aux_data(numerator_key, tl=tl)
 
     denum_dict = None
     if(denumerator_key is not None):
-        denum_dict = data.aux[denumerator_key]
+        denum_dict = ds.load_aux_data(denumerator_key, tl=tl)
 
-    kde_pdf_axis_name_map = ds.get_aux_data('KDE_PDF_axis_name_map')
+    kde_pdf_axis_name_map = ds.load_aux_data('KDE_PDF_axis_name_map', tl=tl)
     kde_pdf_axis_name_map_inv = dict(
         [(v,k) for (k,v) in kde_pdf_axis_name_map.items()])
 
