@@ -2,11 +2,14 @@
 a function.
 """
 import abc
+import logging
 import numpy as np
 
 import scipy.optimize
 
 from skyllh.core.parameters import FitParameterSet
+from skyllh.core.py import classname
+
 
 class MinimizerImpl(object):
     """Abstract base class for a minimizer implementation. It defines the
@@ -483,6 +486,8 @@ class Minimizer(object):
         if(kwargs is None):
             kwargs = dict()
 
+        logger = logging.getLogger(__name__)
+
         bounds = fitparamset.bounds
 
         (xmin, fmin, status) = self._minimizer_impl.minimize(
@@ -524,5 +529,9 @@ class Minimizer(object):
             if(args is None):
                 args = tuple()
             (fmin, grads) = func(xmin, *args)
+
+        logger.debug(
+            '%s (%s): Minimized function: %d repetitions'%(
+                classname(self), classname(self._minimizer_impl), reps))
 
         return (xmin, fmin, status)
