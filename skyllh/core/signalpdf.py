@@ -62,7 +62,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             ra_range=ra_range,
             dec_range=dec_range)
 
-    def get_prob(self, tdm, fitparams=None):
+    def get_prob(self, tdm, fitparams=None, tl=None):
         """Calculates the spatial signal probability of each event for all given
         sources.
 
@@ -89,6 +89,9 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                 The reconstruction uncertainty in radian of the data event.
         fitparams : None
             Unused interface argument.
+        tl : TimeLord instance | None
+            The optional TimeLord instance to use for measuring timing
+            information.
 
         Returns
         -------
@@ -119,7 +122,10 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
         prob = 0.5/(np.pi*sigma**2) * np.exp(-0.5*(r / sigma)**2)
 
-        return prob
+        grads = np.array([], dtype=np.float)
+
+        # The new interface returns the pdf only for a single source.
+        return (prob[0], grads)
 
 
 class SignalTimePDF(TimePDF, IsSignalPDF):
