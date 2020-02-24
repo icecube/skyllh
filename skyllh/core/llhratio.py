@@ -22,7 +22,8 @@ from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.detsigyield import DetSigYield
 from skyllh.core.minimizer import (
     Minimizer,
-    NR1dNsMinimizerImpl
+    NR1dNsMinimizerImpl,
+    NRNsScan2dMinimizerImpl
 )
 from skyllh.core.parameters import (
     SourceFitParameterMapper,
@@ -33,6 +34,7 @@ from skyllh.core.pdfratio import (
     PDFRatio,
     SingleSourcePDFRatioArrayArithmetic
 )
+from skyllh.core.timing import TaskTimer
 from skyllh.physics.source import SourceModel
 
 
@@ -68,7 +70,7 @@ class LLHRatio(object):
         self._minimizer = minimizer
 
     @abc.abstractmethod
-    def evaluate(self, fitparam_values):
+    def evaluate(self, fitparam_values, tl=None):
         """This method evaluates the LLH ratio function for the given set of
         fit parameter values.
 
@@ -77,6 +79,8 @@ class LLHRatio(object):
         fitparam_values : numpy 1D ndarray
             The ndarray holding the current values of the (global) fit
             parameters.
+        tl : TimeLord | None
+            The optional TimeLord instance to use for measuring timeing.
 
         Returns
         -------
@@ -88,7 +92,7 @@ class LLHRatio(object):
         """
         pass
 
-    def maximize(self, rss, fitparamset):
+    def maximize(self, rss, fitparamset, tl=None):
         """Maximize the log-likelihood ratio function, by using the ``evaluate``
         method.
 
@@ -100,6 +104,9 @@ class LLHRatio(object):
         fitparamset : FitParameterSet instance
             The instance of FitParameterSet holding the global fit parameter
             definitions used in the maximization process.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to time the
+            maximization process.
 
         Returns
         -------
@@ -114,14 +121,17 @@ class LLHRatio(object):
         """
         # Define the negative llhratio function, that will get minimized.
         self_evaluate = self.evaluate
-        def negative_llhratio_func(fitparam_values):
-            (f, grads) = self_evaluate(fitparam_values)
+        def negative_llhratio_func(fitparam_values, tl=None):
+            with TaskTimer(tl, 'Evaluate llh-ratio function.'):
+                (f, grads) = self_evaluate(fitparam_values, tl=tl)
             return (-f, -grads)
 
         minimize_kwargs = {'func_provides_grads': True}
 
-        (fitparam_values, fmin, status) = self._minimizer.minimize(
-            rss, fitparamset, negative_llhratio_func, kwargs=minimize_kwargs)
+        with TaskTimer(tl, 'Minimize -llhratio function.'):
+            (fitparam_values, fmin, status) = self._minimizer.minimize(
+                rss, fitparamset, negative_llhratio_func, args=(tl,),
+                kwargs=minimize_kwargs)
         log_lambda_max = -fmin
 
         return (log_lambda_max, fitparam_values, status)
@@ -178,7 +188,7 @@ class TCLLHRatio(LLHRatio):
         """
         pass
 
-    def maximize(self, rss, fitparamset):
+    def maximize(self, rss, fitparamset, tl=None):
         """Maximizes this log-likelihood ratio function, by minimizing its
         negative.
         This method has a special implementation when a 1D Newton-Rapson
@@ -194,6 +204,9 @@ class TCLLHRatio(LLHRatio):
         fitparamset : FitParameterSet instance
             The instance of FitParameterSet holding the global fit parameter
             definitions used in the maximization process.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to time the
+            maximization of the LLH-ratio function.
 
         Returns
         -------
@@ -206,24 +219,28 @@ class TCLLHRatio(LLHRatio):
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        if(isinstance(self._minimizer.minimizer_impl, NR1dNsMinimizerImpl)):
+        if(isinstance(self._minimizer.minimizer_impl, NR1dNsMinimizerImpl) or
+           isinstance(self._minimizer.minimizer_impl, NRNsScan2dMinimizerImpl)):
             # Define the negative llhratio function, that will get minimized
             # when using the Newton-Rapson 1D minimizer for llhratio functions
             # depending solely on ns.
             self__evaluate = self.evaluate
             self__calculate_ns_grad2 = self.calculate_ns_grad2
-            def negative_llhratio_func_nr1d_ns(fitparam_values):
-                (f, grads) = self__evaluate(fitparam_values)
-                grad2_ns = self__calculate_ns_grad2(fitparam_values)
+            def negative_llhratio_func_nr1d_ns(fitparam_values, tl):
+                with TaskTimer(tl, 'Evaluate llh-ratio function.'):
+                    (f, grads) = self__evaluate(fitparam_values, tl=tl)
+                with TaskTimer(tl, 'Calculate 2nd derivative of llh-ratio '
+                        'function w.r.t. ns'):
+                    grad2_ns = self__calculate_ns_grad2(fitparam_values)
                 return (-f, -grads[0], -grad2_ns)
 
             (fitparam_values, fmin, status) = self._minimizer.minimize(
-                rss, fitparamset, negative_llhratio_func_nr1d_ns)
+                rss, fitparamset, negative_llhratio_func_nr1d_ns, args=(tl,))
             log_lambda_max = -fmin
 
             return (log_lambda_max, fitparam_values, status)
 
-        return super(TCLLHRatio, self).maximize(rss, fitparamset)
+        return super(TCLLHRatio, self).maximize(rss, fitparamset, tl=tl)
 
 
 class SingleDatasetTCLLHRatio(TCLLHRatio):
@@ -633,7 +650,7 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
 
         self._pdfratioarray.initialize_for_new_trial(self._tdm)
 
-    def evaluate(self, fitparam_values):
+    def evaluate(self, fitparam_values, tl=None):
         """Evaluates the log-likelihood ratio function for the given set of
         data events.
 
@@ -643,6 +660,9 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
             The ndarray holding the current values of the fit parameters.
             By definition, the first element is the fit parameter for the number
             of signal events, ns.
+        tl : TimeLord instance | None
+            The optional TimeLord instance to measure the timing of evaluating
+            the LLH ratio function.
 
         Returns
         -------
@@ -653,7 +673,7 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
             parameter and ns.
             The first element is the gradient for ns.
         """
-        # Define local variables for avaid (.)-lookup procedure.
+        # Define local variables to avoid (.)-lookup procedure.
         tdm = self._tdm
         pdfratioarray = self._pdfratioarray
 
@@ -663,18 +683,24 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
 
         # Create the fitparams dictionary with the fit parameter names and
         # values.
-        fitparams = self._src_fitparam_mapper.get_src_fitparams(fitparam_values[1:])
+        with TaskTimer(tl, 'Create fitparams dictionary.'):
+            fitparams = self._src_fitparam_mapper.get_src_fitparams(
+                fitparam_values[1:])
 
         # Calculate the data fields that depend on fit parameter values.
-        tdm.calculate_fitparam_data_fields(self._src_hypo_group_manager, fitparams)
+        with TaskTimer(tl, 'Calc fit param dep data fields.'):
+            tdm.calculate_fitparam_data_fields(
+                self._src_hypo_group_manager, fitparams)
 
         # Calculate the PDF ratio values of all PDF ratio objects, which depend
         # on any fit parameter.
-        pdfratioarray.calculate_pdfratio_values(tdm, fitparams)
+        with TaskTimer(tl, 'Calc pdfratio values.'):
+            pdfratioarray.calculate_pdfratio_values(tdm, fitparams, tl=tl)
 
         # Calculate the product of all the PDF ratio values for each (selected)
         # event.
-        Ri = pdfratioarray.get_ratio_product()
+        with TaskTimer(tl, 'Calc pdfratio value product Ri'):
+            Ri = pdfratioarray.get_ratio_product()
 
         # Calculate Xi for each (selected) event.
         Xi = (Ri - 1.) / N
@@ -692,8 +718,9 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
             # Calculate the derivative of Xi w.r.t. the fit parameter.
             dXi_ps[idx] = dRi / N
 
-        (log_lambda, grads) = self.calculate_log_lambda_and_grads(
-            fitparam_values, N, ns, Xi, dXi_ps)
+        with TaskTimer(tl, 'Calc logLamds and grads'):
+            (log_lambda, grads) = self.calculate_log_lambda_and_grads(
+                fitparam_values, N, ns, Xi, dXi_ps)
 
         return (log_lambda, grads)
 
@@ -1129,7 +1156,7 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
             # the selected (scrambled) events.
             llhratio.initialize_for_new_trial(events, n_events)
 
-    def evaluate(self, fitparam_values):
+    def evaluate(self, fitparam_values, tl=None):
         """Evaluates the composite log-likelihood-ratio function and returns its
         value and global fit parameter gradients.
 
@@ -1182,7 +1209,8 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         for (j, llhratio) in enumerate(self._llhratio_list):
             llhratio_fitparam_values[0] = nsf[j]
             llhratio_fitparam_values[1:] = fitparam_values[1:]
-            (log_lambda_j, grads_j) = llhratio.evaluate(llhratio_fitparam_values)
+            (log_lambda_j, grads_j) = llhratio.evaluate(
+                llhratio_fitparam_values, tl=tl)
             log_lambda += log_lambda_j
             # Gradient for ns.
             grads[0] += grads_j[0] * f[j]
