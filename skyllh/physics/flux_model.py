@@ -170,7 +170,7 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
         self.delta_s = delta_s
 
         # Define the names of the parameters, which can be updated.
-        self.parameter_names = ('alpha_s', 'delta_s')
+        self.param_names = ('alpha_s', 'delta_s')
 
     @property
     def alpha_s(self):
@@ -198,8 +198,8 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
 
     @property
     def math_function_str(self):
-        """The string representation of the mathematical function of this
-        SpatialFluxProfile instance.
+        """(read-only) The string representation of the mathematical function of
+        this spatial flux profile instance.
         """
         return 'delta(alpha-%g%s)*delta(delta-%g%s)'%(
             self._alpha_s, self._angle_unit.to_string(), self._delta_s,
