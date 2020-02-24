@@ -200,7 +200,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         self._cache_ratio = ratio
         self._cache_gradients = gradients
 
-    def get_ratio(self, tdm, fitparams):
+    def get_ratio(self, tdm, fitparams, tl=None):
         """Retrieves the PDF ratio values for each given trial event data, given
         the given set of fit parameters. This method is called during the
         likelihood maximization process.
@@ -214,6 +214,9 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
             the PDF ratio values should get calculated.
         fitparams : dict
             The dictionary with the fit parameter values.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
