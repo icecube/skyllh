@@ -21,6 +21,7 @@ def plot_ns_fit_vs_mean_ns_inj(
         tick_fontsize=16,
         xlabel=None,
         ylabel=None,
+        ylim=None,
         ratio_ylim=None):
     """Creates a 2D histogram plot showing the fit number of signal events vs.
     the mean number of injected signal events.
@@ -58,6 +59,9 @@ def plot_ns_fit_vs_mean_ns_inj(
     ylabel : str | None
         The label of if y-axis in math syntax.
         Default is ``r'n_\mathrm{sig,fit}'``.
+    ylim : tuple | None
+        The (low,high)-two-element tuple specifying the y-axis limits of the
+        main plot.
     ratio_ylim : tuple | None
         The (low,high)-two-element tuple specifying the y-axis limits of the
         ratio plot in percentage.
@@ -148,6 +152,9 @@ def plot_ns_fit_vs_mean_ns_inj(
     ax[0].plot(
         mean_n_sig, ns_fit_median,
         color='orange', linestyle='--', linewidth=2)
+
+    if(ylim is not None):
+        ax[0].set_ylim(ylim)
 
     # Create the color bar.
     cb = fig.colorbar(image, cax=cax, orientation='horizontal')
