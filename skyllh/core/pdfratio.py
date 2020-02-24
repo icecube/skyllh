@@ -26,6 +26,7 @@ from skyllh.core.pdf import (
     IsSignalPDF,
     SpatialPDF
 )
+from skyllh.core.timing import TaskTimer
 
 
 class PDFRatio(object):
@@ -103,7 +104,7 @@ class PDFRatio(object):
         return []
 
     @abc.abstractmethod
-    def get_ratio(self, tdm, params=None):
+    def get_ratio(self, tdm, params=None, tl=None):
         """Retrieves the PDF ratio value for each given trial data event, given
         the given set of fit parameters. This method is called during the
         likelihood maximization process.
@@ -117,6 +118,9 @@ class PDFRatio(object):
             The dictionary with the parameter name-value pairs.
             It can be ``None``, if the PDF ratio does not depend on any
             parameters.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
@@ -289,7 +293,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         pdfratio_idx = self._fitparam_idx_2_pdfratio_idx[fitparam_idx]
         return self._pdfratio_list[pdfratio_idx]
 
-    def calculate_pdfratio_values(self, tdm, fitparams):
+    def calculate_pdfratio_values(self, tdm, fitparams, tl=None):
         """Calculates the PDF ratio values for the PDF ratio objects which
         depend on fit parameters.
 
@@ -300,6 +304,9 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             which the PDF ratio values should get calculated.
         fitparams : dict
             The dictionary with the fit parameter name-value pairs.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
         """
         for i in self._var_pdfratio_indices:
             # Since the get_ratio method of the PDFRatio class might return a 2D
@@ -307,7 +314,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             # we need to reshape the array, which does not involve any data
             # copying.
             self._ratio_values[i] = np.reshape(
-                self._pdfratio_list[i].get_ratio(tdm, fitparams),
+                self._pdfratio_list[i].get_ratio(tdm, fitparams, tl=tl),
                 (tdm.n_events,))
 
     def get_ratio_product(self, excluded_fitparam_idx=None):
@@ -626,7 +633,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         """
         return self._sig_pdf.param_set.floating_param_name_list
 
-    def get_ratio(self, tdm, params=None):
+    def get_ratio(self, tdm, params=None, tl=None):
         """Calculates the PDF ratio for the given trial events.
 
         Parameters
@@ -639,6 +646,9 @@ class SigOverBkgPDFRatio(PDFRatio):
             probability ratio should get calculated.
             This can be ``None``, if the signal and background PDFs do not
             depend on any parameters.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
@@ -648,14 +658,19 @@ class SigOverBkgPDFRatio(PDFRatio):
             dimensionality of the probability ndarray returned by the
             ``get_prob`` method of the signal PDF object.
         """
-        (sigprob, self._cache_siggrads) = self._sig_pdf.get_prob(tdm, params)
-        (bkgprob, self._cache_bkggrads) = self._bkg_pdf.get_prob(tdm, params)
+        with TaskTimer(tl, 'Get sig prob.'):
+            (sigprob, self._cache_siggrads) = self._sig_pdf.get_prob(
+                tdm, params, tl=tl)
+        with TaskTimer(tl, 'Get bkg prob.'):
+            (bkgprob, self._cache_bkggrads) = self._bkg_pdf.get_prob(
+                tdm, params, tl=tl)
 
-        # Select only the events, where background pdf is greater than zero.
-        m = (bkgprob > 0)
+        with TaskTimer(tl, 'Calc PDF ratios.'):
+            # Select only the events, where background pdf is greater than zero.
+            m = (bkgprob > 0)
 
-        ratios = np.full_like(sigprob, self._zero_bkg_ratio_value)
-        ratios[m] = sigprob[m] / bkgprob[m]
+            ratios = np.full_like(sigprob, self._zero_bkg_ratio_value)
+            ratios[m] = sigprob[m] / bkgprob[m]
 
         # Store the current state of parameter values and trial data, so that
         # the get_gradient method can verify the consistency of the signal and
