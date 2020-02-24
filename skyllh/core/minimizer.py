@@ -61,6 +61,24 @@ class MinimizerImpl(object):
         pass
 
     @abc.abstractmethod
+    def get_niter(self, status):
+        """This method is supposed to return the number of iterations that were
+        required to find the minimum.
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the last
+            minimization process.
+
+        Returns
+        -------
+        niter : int
+            The number of iterations needed to find the minimum.
+        """
+        pass
+
+    @abc.abstractmethod
     def has_converged(self, status):
         """This method is supposed to analyze the status information dictionary
         if the last minimization process has converged.
@@ -157,7 +175,15 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             The function value at its minimum.
         status : dict
             The status dictionary with information about the minimization
-            process.
+            process. The following information are provided:
+
+            niter : int
+                The number of iterations needed to find the minimum.
+            warnflag : int
+                The warning flag indicating if the minimization did converge.
+                The possible values are:
+
+                    0: The minimization converged.
         """
         if(func_args is None):
             func_args = tuple()
@@ -175,6 +201,22 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         )
 
         return (xmin, fmin, status)
+
+    def get_niter(self, status):
+        """Returns the number of iterations needed to find the minimum.
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the minimization
+            process.
+
+        Returns
+        -------
+        niter : int
+            The number of iterations needed to find the minimum.
+        """
+        return status['nit']
 
     def has_converged(self, status):
         """Analyzes the status information dictionary if the minimization
@@ -366,6 +408,22 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
         return (x, f, status)
 
+    def get_niter(self, status):
+        """Returns the number of iterations needed to find the minimum.
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the minimization
+            process.
+
+        Returns
+        -------
+        niter : int
+            The number of iterations needed to find the minimum.
+        """
+        return status['niter']
+
     def has_converged(self, status):
         """Analyzes the status information dictionary if the minimization
         process has converged. By definition the minimization process has
@@ -390,6 +448,121 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         always return ``False``.
         """
         return False
+
+
+class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
+    """The NRNsScan2dMinimizerImpl class provides a minimizer implementation for
+    the R2->R1 function where the first dimension is minimized using the
+    Newton-Raphson minimization method and the second dimension is scanned.
+    """
+    def __init__(self, p2_scan_step, ns_tol=1e-4):
+        """Creates a new minimizer implementation instance.
+
+        Parameters
+        ----------
+        p2_scan_step : float
+            The step size for the scan of the second parameter of the function
+            to minimize.
+        ns_tol : float
+            The tolerance / precision for the ns parameter value.
+        """
+        super().__init__(ns_tol=ns_tol)
+        self.p2_scan_step = p2_scan_step
+
+    def minimize(self, initials, bounds, func, func_args=None, **kwargs):
+        """Minimizes the given function ``func`` with the given initial function
+        argument values ``initials``. This minimizer implementation will only
+        vary the first two parameters. The first parameter is the number of
+        signal events, ns, and it is minimized using the Newton-Rapson method.
+        The second parameter is scanned through its boundaries in step sizes of
+        ``p2_scan_step``.
+
+        Parameters
+        ----------
+        initials : 1D numpy ndarray
+            The ndarray holding the initial values of all the fit parameters.
+        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+            The ndarray holding the boundary values (vmin, vmax) of the fit
+            parameters.
+        func : callable
+            The function that should get minimized.
+            The call signature must be
+
+                ``__call__(x, *args)``
+
+            The return value of ``func`` must be (f, grad, grad2), i.e. the
+            function value at the function arguments ``x``, the value of the
+            function first derivative for the first fit parameter, and the value
+            of the second derivative for the first fit parameter.
+        func_args : sequence | None
+            Optional sequence of arguments for ``func``.
+
+        Additional Keyword Arguments
+        ----------------------------
+        There are no additional options defined for this minimization
+        implementation.
+
+        Returns
+        -------
+        xmin : 1D ndarray
+            The array containing the function parameter values at the function's
+            minimum.
+        fmin : float
+            The function value at its minimum.
+        status : dict
+            The status dictionary with information about the minimization
+            process. The following information are provided:
+
+            niter : int
+                The number of iterations needed to find the minimum.
+            last_nr_step : float
+                The Newton-Raphson step size of the last iteration.
+            p2_n_steps : int
+                The number of scanning steps performed for the 2nd parameter.
+            warnflag : int
+                The warning flag indicating if the minimization did converge.
+                The possible values are:
+
+                    0: The minimization converged with a iteration step size
+                       smaller than the specified precision.
+                    1: The function minimum is below the minimum bound of the
+                       parameter value. The last iteration's step size did not
+                       achieve the specified precision.
+                    2: The function minimum is above the maximum bound of the
+                       parameter value. The last iteration's step size did not
+                       achieve the specified precision.
+            warnreason: str
+                The description for the set warn flag.
+        """
+        logger = logging.getLogger(__name__)
+
+        p2_low = bounds[1][0]
+        p2_high = bounds[1][1]
+        p2_scan_values = np.linspace(
+            p2_low, p2_high, int((p2_high-p2_low)/self.p2_scan_step)+1)
+
+        logger.debug('Minimize func by scanning 2nd parameter in {:d} steps '
+            'with a step size of {:g}'.format(
+                len(p2_scan_values), np.mean(np.diff(p2_scan_values))))
+
+        niter_total = 0
+        best_xmin = None
+        best_fmin = None
+        best_status = None
+        for p2_value in p2_scan_values:
+            initials[1] = p2_value
+            (xmin, fmin, status) = super().minimize(
+                initials, bounds, func, func_args, **kwargs)
+            niter_total += status['niter']
+            if((best_fmin is None) or (fmin < best_fmin)):
+                best_xmin = xmin
+                best_fmin = fmin
+                best_status = status
+
+        best_status['p2_n_steps'] = len(p2_scan_values)
+        best_status['niter'] = niter_total
+
+        return (best_xmin, best_fmin, best_status)
 
 
 class Minimizer(object):
@@ -531,7 +704,8 @@ class Minimizer(object):
             (fmin, grads) = func(xmin, *args)
 
         logger.debug(
-            '%s (%s): Minimized function: %d repetitions'%(
-                classname(self), classname(self._minimizer_impl), reps))
+            '%s (%s): Minimized function: %d iterations, %d repetitions'%(
+                classname(self), classname(self._minimizer_impl),
+                self._minimizer_impl.get_niter(status), reps))
 
         return (xmin, fmin, status)
