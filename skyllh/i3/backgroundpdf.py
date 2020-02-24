@@ -15,6 +15,7 @@ from skyllh.core.pdf import (
 )
 from skyllh.core.py import issequenceof
 from skyllh.core.storage import DataFieldRecordArray
+from skyllh.core.timing import TaskTimer
 from skyllh.i3.pdf import I3EnergyPDF
 
 
@@ -124,7 +125,7 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         """
         self._log_spline = self._orig_log_spline
 
-    def get_prob(self, tdm, fitparams=None):
+    def get_prob(self, tdm, fitparams=None, tl=None):
         """Calculates the spatial background probability on the sphere of each
         event.
 
@@ -138,14 +139,23 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
                 The sin(declination) value of the event.
         fitparams : None
             Unused interface parameter.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
         prob : 1d ndarray
             The spherical background probability of each data event.
         """
-        prob = 0.5 / np.pi * np.exp(self._log_spline(tdm.get_data('sin_dec')))
-        return prob
+        with TaskTimer(tl, 'Evaluating bkg log-spline.'):
+            log_spline_val = self._log_spline(tdm.get_data('sin_dec'))
+
+        prob = 0.5 / np.pi * np.exp(log_spline_val)
+
+        grads = np.array([], dtype=np.float)
+
+        return (prob, grads)
 
 
 class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):

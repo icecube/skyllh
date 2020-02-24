@@ -14,6 +14,7 @@ from skyllh.core.smoothing import (
     NoHistSmoothingMethod,
     NeighboringBinHistSmoothingMethod
 )
+from skyllh.core.timing import TaskTimer
 
 
 class I3EnergyPDF(EnergyPDF, UsesBinning):
@@ -197,7 +198,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         #if(sinDec_binning.any_data_out_of_binning_range(exp_sinDec)):
             #self.logger.warning('Some data is outside the sin(dec) range (%.3f, %.3f)', sinDec_binning.lower_edge, sinDec_binning.upper_edge)
 
-    def get_prob(self, tdm, fitparams=None):
+    def get_prob(self, tdm, fitparams=None, tl=None):
         """Calculates the energy probability (in logE) of each event.
 
         Parameters
@@ -214,6 +215,9 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
 
         fitparams : None
             Unused interface parameter.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
@@ -228,5 +232,6 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         logE_idx = np.digitize(get_data('log_energy'), logE_binning.binedges) - 1
         sinDec_idx = np.digitize(get_data('sin_dec'), sinDec_binning.binedges) - 1
 
-        prob = self._hist_logE_sinDec[(logE_idx,sinDec_idx)]
+        with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
+            prob = self._hist_logE_sinDec[(logE_idx,sinDec_idx)]
         return prob
