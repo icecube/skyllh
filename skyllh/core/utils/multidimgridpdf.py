@@ -56,7 +56,7 @@ def create_MultiDimGridPDF_from_kde_pdf(
         SignalMultiDimGridPDF or ``'bkg'`` for a BackgroundMultiDimGridPDF
         instance. If set to None, a MultiDimGridPDF instance is created.
     tl : TimeLord instance | None
-        The TimeLord instance to use for measuring timing information.
+        The optional TimeLord instance to use for measuring timing information.
 
     Returns
     -------
