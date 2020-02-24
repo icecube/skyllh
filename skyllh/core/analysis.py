@@ -395,7 +395,7 @@ class Analysis(object):
         pass
 
     @abc.abstractmethod
-    def maximize_llhratio(self, rss):
+    def maximize_llhratio(self, rss, tl=None):
         """This method is supposed to maximize the log-likelihood ratio
         function, by calling the ``maximize`` method of the LLHRatio class.
 
@@ -403,6 +403,9 @@ class Analysis(object):
         ----------
         rss : RandomStateService instance
             The RandomStateService instance to draw random numbers from.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to time the
+            maximization of the LLH ratio function.
 
         Returns
         -------
@@ -551,7 +554,8 @@ class Analysis(object):
 
     def do_trial(
             self, rss, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
-            bkg_kwargs=None, sig_kwargs=None, tl=None):
+            bkg_kwargs=None, sig_kwargs=None, tl=None,
+            minimizer_status_dict=None):
         """Performs an analysis trial by generating a pseudo data sample with
         background events and possible signal events, and performs the LLH
         analysis on that random pseudo data sample.
@@ -584,6 +588,9 @@ class Analysis(object):
         tl : instance of TimeLord | None
             The instance of TimeLord that should be used to time individual
             tasks.
+        minimizer_status_dict : dict | None
+            If a dictionary is provided, it will be updated with the minimizer
+            status dictionary.
 
         Returns
         -------
@@ -616,7 +623,9 @@ class Analysis(object):
             self.initialize_trial(events_list, n_events_list)
 
         with TaskTimer(tl, 'Maximizing LLH ratio function.'):
-            (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
+            (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss, tl=tl)
+        if(isinstance(minimizer_status_dict, dict)):
+            minimizer_status_dict.update(status)
 
         with TaskTimer(tl, 'Calculating test statistic.'):
             ts = self.calculate_test_statistic(log_lambda_max, fitparam_values)
@@ -959,7 +968,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         self._llhratio.initialize_for_new_trial(
             events_list, n_events_list, self._event_selection_method)
 
-    def maximize_llhratio(self, rss):
+    def maximize_llhratio(self, rss, tl=None):
         """Maximizes the log-likelihood ratio function, by minimizing its
         negative.
 
@@ -969,6 +978,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The RandomStateService instance that should be used to draw random
             numbers from. It is used by the minimizer to generate random
             fit parameter initial values.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to time the
+            maximization of the LLH ratio function.
 
         Returns
         -------
@@ -986,7 +998,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             process, i.e. from the minimizer.
         """
         (log_lambda_max, fitparam_values, status) = self._llhratio.maximize(
-            rss, self._fitparamset)
+            rss, self._fitparamset, tl=tl)
         return (self._fitparamset, log_lambda_max, fitparam_values, status)
 
     def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
