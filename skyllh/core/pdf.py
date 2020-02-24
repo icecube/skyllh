@@ -5,6 +5,13 @@ import numpy as np
 
 from scipy.interpolate import RegularGridInterpolator
 
+# Try to load the photospline tool.
+PHOTOSPLINE_LOADED = True
+try:
+    import photospline
+except ImportError:
+    PHOTOSPLINE_LOADED = False
+
 from skyllh.core.binning import BinningDefinition
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
@@ -23,6 +30,7 @@ from skyllh.core.parameters import (
     ParameterSet,
     make_params_hash
 )
+from skyllh.core.timing import TaskTimer
 from skyllh.core.trialdata import TrialDataManager
 
 
@@ -343,7 +351,7 @@ class PDF(object):
                 classname(self)))
 
     @abc.abstractmethod
-    def get_prob(self, tdm, params=None):
+    def get_prob(self, tdm, params=None, tl=None):
         """This abstract method is supposed to calculate the probability density
         for the specified events given the specified parameter values.
 
@@ -357,6 +365,9 @@ class PDF(object):
             The dictionary containing the parameter names and values for which
             the probability should get calculated.
             This can be ``Ǹone`` for PDFs that do not depend on any parameters.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
@@ -447,7 +458,7 @@ class PDFProduct(PDF):
         self._pdf1.assert_is_valid_for_trial_data(tdm)
         self._pdf2.assert_is_valid_for_trial_data(tdm)
 
-    def get_prob(self, tdm, params=None):
+    def get_prob(self, tdm, params=None, tl=None):
         """Calculates the probability density for the trial events given the
         specified parameters by calling the `get_prob` method of `pdf1`
         and `pdf2` and combining the two property densities by multiplication.
@@ -462,6 +473,9 @@ class PDFProduct(PDF):
         params : dict | None
             The dictionary containing the parameter names and values for
             which the probability should get calculated.
+        tl : TimeLord instance | None
+            The optional TimeLord instance to use for measuring timing
+            information.
 
         Returns
         -------
@@ -657,13 +671,26 @@ class MultiDimGridPDF(PDF):
                 vmax=axis_binning.upper_edge
             ))
 
-        self._pdf = RegularGridInterpolator(
-            tuple([ binning.binedges for binning in self._axis_binnning_list ]),
-            pdf_grid_data,
-            method='linear',
-            bounds_error=False,
-            fill_value=0
-        )
+        if(PHOTOSPLINE_LOADED):
+            print('Creating photospline bspline')
+            penalty_order = 2
+            self._pdf = photospline.glam_fit(
+                *photospline.ndsparse.from_data(
+                    pdf_grid_data, np.ones(pdf_grid_data.shape)),
+                [ binning.binedges for binning in self._axis_binnning_list ],
+                [ binning.binedges for binning in self._axis_binnning_list ],
+                [1]*len(self._axis_binnning_list),
+                [0]*len(self._axis_binnning_list),
+                [penalty_order]*len(self._axis_binnning_list)
+            )
+        else:
+            self._pdf = RegularGridInterpolator(
+                tuple([ binning.binedges for binning in self._axis_binnning_list ]),
+                pdf_grid_data,
+                method='linear',
+                bounds_error=False,
+                fill_value=0
+            )
 
     @property
     def axis_binning_list(self):
@@ -671,6 +698,7 @@ class MultiDimGridPDF(PDF):
         The name of each BinningDefinition instance defines the event field
         name that should be used for querying the PDF.
         """
+        return self._axis_binnning_list
     @axis_binning_list.setter
     def axis_binning_list(self, binnings):
         if(isinstance(binnings, BinningDefinition)):
@@ -731,7 +759,7 @@ class MultiDimGridPDF(PDF):
                     '"%s" is out of range (%g,%g)!'%(
                     axis.name, axis.vmin, axis.vmax))
 
-    def get_prob_with_eventdata(self, tdm, params, eventdata):
+    def get_prob_with_eventdata(self, tdm, params, eventdata, tl=None):
         """Calculates the probability for the trial events given the specified
         parameters. This method the additional argument ``eventdata`` which must
         be a 2d ndarray containing the trial event data in the correct order for
@@ -751,20 +779,30 @@ class MultiDimGridPDF(PDF):
         eventdata : 2D (N_events,V)-shaped ndarray
             The 2D numpy ndarray holding the V data attributes for each event
             needed for the evaluation of the PDF.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
         prob : (N_events,)-shaped numpy ndarray
             The 1D numpy ndarray with the probability for each event.
         """
-        prob = self._pdf(eventdata)
+        with TaskTimer(tl, 'Get prob from RegularGridInterpolator.'):
+            if(PHOTOSPLINE_LOADED):
+                V = eventdata.shape[1]
+                prob = self._pdf.evaluate_simple(
+                    [eventdata[:,i] for i in range(0, V)])
+            else:
+                prob = self._pdf(eventdata)
 
-        norm = self._norm_factor_func(self, tdm, params)
-        prob *= norm
+        with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
+            norm = self._norm_factor_func(self, tdm, params)
+            prob *= norm
 
         return prob
 
-    def get_prob(self, tdm, params=None):
+    def get_prob(self, tdm, params=None, tl=None):
         """Calculates the probability for the trial events given the specified
         parameters.
 
@@ -777,6 +815,9 @@ class MultiDimGridPDF(PDF):
             The dictionary containing the parameter names and values the
             probability should get calculated for. Since this PDF does not
             depend on any parameters, this could be ``None``.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
@@ -786,8 +827,9 @@ class MultiDimGridPDF(PDF):
             Because this PDF does not depend on any parameters, no gradients
             w.r.t. the parameters are returned.
         """
-        eventdata = np.array([ tdm.get_data(axis.name) for axis in self._axes ]).T
-        prob = self.get_prob_with_eventdata(tdm, params, eventdata)
+        with TaskTimer(tl, 'Get PDF axis data.'):
+            eventdata = np.array([ tdm.get_data(axis.name) for axis in self._axes ]).T
+        prob = self.get_prob_with_eventdata(tdm, params, eventdata, tl=tl)
 
         return (prob, None)
 
@@ -1058,7 +1100,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         pdf = next(iter(self.items()))[1]
         pdf.assert_is_valid_for_trial_data(tdm)
 
-    def get_prob(self, tdm, params):
+    def get_prob(self, tdm, params, tl=None):
         """Calculates the probability density for each event, given the given
         parameter values.
 
@@ -1071,6 +1113,9 @@ class MultiDimGridPDFSet(PDF, PDFSet):
             The dictionary holding the parameter names and values for which the
             probability should get calculated. Because this PDF is a PDFSet,
             there should be at least one parameter.
+        tl : TimeLord instance | None
+            The optional TimeLord instance to use for measuring timing
+            information.
 
         Returns
         -------
