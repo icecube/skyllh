@@ -54,14 +54,18 @@ def make_params_hash(params):
 
     Parameters
     ----------
-    params : dict
+    params : dict | None
         The dictionary holding the parameter (name: value) pairs.
+        If set to None, an empty dictionary is used.
 
     Returns
     -------
     hash : int
         The hash of the parameter dictionary.
     """
+    if(params is None):
+        params = {}
+
     if(not isinstance(params, dict)):
         raise TypeError('The params argument must be of type dict!')
 
