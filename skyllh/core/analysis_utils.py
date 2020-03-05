@@ -783,7 +783,7 @@ def create_trial_data_file(
             ppbar=pbar)
 
         trials = np_rfn.append_fields(
-            trials, 'seed', np.repeat(rss.seed, n_trials))
+            trials, 'seed', np.repeat(rss.seed, n_trials), usemask=False, asrecarray=True)
 
         if(trial_data is None):
             trial_data = trials
