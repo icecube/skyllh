@@ -46,7 +46,7 @@ def make_linear_parameter_grid_1d(name, low, high, delta):
     obj : ParameterGrid
         The ParameterGrid object holding the discrete parameter grid values.
     """
-    grid = np.linspace(low, high, int(np.round((high-low)/delta))+1)
+    grid = np.arange(low, high+delta, delta)
     return ParameterGrid(name, grid, delta)
 
 def make_params_hash(params):
