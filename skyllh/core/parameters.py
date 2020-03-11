@@ -1272,6 +1272,7 @@ class ParameterGrid(object):
 
         (floatD, intD) = self._calc_floatD_and_intD(value)
         gp = self._lower_bound + (np.around(floatD % 1, 0) + intD)*self._delta
+        gp = np.around(gp, 2) # FIXME: Make number of decimals configurable!
 
         if(scalar_input):
             return np.asscalar(gp)
@@ -1298,6 +1299,7 @@ class ParameterGrid(object):
 
         (floatD, intD) = self._calc_floatD_and_intD(value)
         gp = self._lower_bound + intD*self._delta
+        gp = np.around(gp, 2) # FIXME: Make number of decimals configurable!
 
         if(scalar_input):
             return np.asscalar(gp)
@@ -1324,6 +1326,7 @@ class ParameterGrid(object):
 
         (floatD, intD) = self._calc_floatD_and_intD(value)
         gp = self._lower_bound + (intD + 1)*self._delta
+        gp = np.around(gp, 2) # FIXME: Make number of decimals configurable!
 
         if(scalar_input):
             return np.asscalar(gp)
