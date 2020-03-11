@@ -854,6 +854,28 @@ class DataFieldRecordArray(object):
             if(fname not in keep_fields):
                 self.remove_field(fname)
 
+    def sort_by_field(self, name):
+        """Sorts the data along the given field name is ascending order.
+
+        Parameters
+        ----------
+        name : str
+            The name of the field along the events should get sorted.
+
+        Raises
+        ------
+        KeyError
+            If the given data field does not exist.
+        """
+        if(name not in self._data_fields):
+            raise KeyError('The data field "{}" does not exist in this '
+                'DataFieldRecordArray instance!'.format(name))
+
+        sorted_idxs = np.argsort(self._data_fields[name])
+
+        for fname in self.field_name_list:
+            self._data_fields[fname] = self._data_fields[fname][sorted_idxs]
+
 
 register_FileLoader(['.npy'], NPYFileLoader)
 register_FileLoader(['.pkl'], PKLFileLoader)
