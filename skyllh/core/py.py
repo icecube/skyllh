@@ -380,6 +380,28 @@ def get_smallest_numpy_int_type(values):
 
     raise ValueError("No integer type spans [%d, %d]!"%(vmin, vmax))
 
+def get_number_of_float_decimals(value):
+    """Determines the number of significant decimals the given float number has.
+    The maximum number of supported decimals is 16.
+
+    Parameters
+    ----------
+    value : float
+        The float value whose number of significant decimals should get
+        determined.
+
+    Returns
+    -------
+    decimals : int
+        The number of decimals of value which are non-zero.
+    """
+    val_str = '{:.16f}'.format(value)
+    (val_num_str, val_decs_str) = val_str.split('.', 1)
+    for idx in range(len(val_decs_str)-1, -1, -1):
+        if(int(val_decs_str[idx]) != 0):
+            return idx+1
+    return 0
+
 def _get_func_range():
     """Returns a lazy iterable `range` function to be consistent with Python 3.
 

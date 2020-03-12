@@ -17,6 +17,7 @@ from skyllh.core.py import (
     classname,
     const,
     float_cast,
+    get_number_of_float_decimals,
     issequence,
     issequenceof,
     range,
@@ -1128,7 +1129,7 @@ class ParameterGrid(object):
             name=binning.name,
             grid=binning.binedges)
 
-    def __init__(self, name, grid, delta=None):
+    def __init__(self, name, grid, delta=None, decimals=None):
         """Creates a new parameter grid.
 
         Parameters
@@ -1142,15 +1143,38 @@ class ParameterGrid(object):
             The width between the grid values.
             If set to ``None``, the width is taken from the equal-distant
             ``grid`` values.
+        decimals : int | None
+            The number of decimals the grid values should get rounded to.
+            The maximal number of decimals is 16.
+            If set to None, the number of decimals will be the maximum of the
+            number of decimals of the first grid value and the number of
+            decimals of the delta value.
         """
         if(delta is None):
             # We need to take the mean of all the "equal" differences in order
             # to smooth out unlucky rounding issues of a particular difference.
             delta = np.mean(np.diff(grid))
 
+        delta = float_cast(delta, 'The delta argument must be castable to '
+            'type float!')
+        self._delta = np.float64(delta)
+
+        # Determine the number of decimals of delta.
+        if(decimals is None):
+            decimals_value = get_number_of_float_decimals(grid[0])
+            decimals_delta = get_number_of_float_decimals(delta)
+            decimals = int(np.max((decimals_value, decimals_delta)))
+        if(not isinstance(decimals, int)):
+            raise TypeError('The decimals argument must be an instance of '
+                'type int!')
+        if(decimals > 16):
+            raise ValueError('The maximal number of decimals is 16! Maybe you '
+                'should consider log-space!?')
+
         self.name = name
+        self._decimals = decimals
+        self._delta = np.around(self._delta, self._decimals)
         self.lower_bound = grid[0]
-        self.delta = delta
 
         # Setting the grid, will automatically round the grid values to their
         # next nearest grid value. Hence, we need to set the grid property after
@@ -1169,6 +1193,12 @@ class ParameterGrid(object):
         self._name = name
 
     @property
+    def decimals(self):
+        """(read-only) The number of significant decimals of the grid values.
+        """
+        return self._decimals
+
+    @property
     def grid(self):
         """The numpy.ndarray with the grid values of the parameter.
         """
@@ -1185,13 +1215,9 @@ class ParameterGrid(object):
 
     @property
     def delta(self):
-        """The width (float) between the grid values.
+        """(read-only) The width (float) between the grid values.
         """
         return self._delta
-    @delta.setter
-    def delta(self, v):
-        v = float_cast(v, 'The delta property must be castable to type float!')
-        self._delta = np.float64(v)
 
     @property
     def lower_bound(self):
@@ -1202,7 +1228,7 @@ class ParameterGrid(object):
     def lower_bound(self, v):
         v = float_cast(v, 'The lower_bound property must be castable to type '
             'float!')
-        self._lower_bound = np.float64(v)
+        self._lower_bound = np.around(np.float64(v), self._decimals)
 
     @property
     def ndim(self):
@@ -1272,7 +1298,7 @@ class ParameterGrid(object):
 
         (floatD, intD) = self._calc_floatD_and_intD(value)
         gp = self._lower_bound + (np.around(floatD % 1, 0) + intD)*self._delta
-        gp = np.around(gp, 2) # FIXME: Make number of decimals configurable!
+        gp = np.around(gp, self._decimals)
 
         if(scalar_input):
             return np.asscalar(gp)
@@ -1299,7 +1325,7 @@ class ParameterGrid(object):
 
         (floatD, intD) = self._calc_floatD_and_intD(value)
         gp = self._lower_bound + intD*self._delta
-        gp = np.around(gp, 2) # FIXME: Make number of decimals configurable!
+        gp = np.around(gp, self._decimals)
 
         if(scalar_input):
             return np.asscalar(gp)
@@ -1326,7 +1352,7 @@ class ParameterGrid(object):
 
         (floatD, intD) = self._calc_floatD_and_intD(value)
         gp = self._lower_bound + (intD + 1)*self._delta
-        gp = np.around(gp, 2) # FIXME: Make number of decimals configurable!
+        gp = np.around(gp, self._decimals)
 
         if(scalar_input):
             return np.asscalar(gp)
