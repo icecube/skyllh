@@ -111,7 +111,11 @@ def create_MultiDimGridPDF_from_kde_pdf(
                 # array, so we need to add a dimension for that variable.
                 selector.append(np.newaxis)
 
-        vals /= denum_dict['pdf_vals'][selector]
+        denum = denum_dict['pdf_vals'][selector]
+        denum_nonzero_mask = denum != 0
+        out = np.zeros_like(vals)
+        np.divide(vals, denum, where=denum_nonzero_mask, out=out)
+        vals = out
 
     # Set infinite values to NaN.
     vals[np.isinf(vals)] = np.nan
