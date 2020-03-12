@@ -174,10 +174,19 @@ class TrialDataManager(object):
     manager is provided to the PDF evaluation method. Hence, data fields are
     calculated only once.
     """
-    def __init__(self):
+    def __init__(self, index_field_name=None):
         """Creates a new TrialDataManager instance.
+
+        Parameters
+        ----------
+        index_field_name : str | None
+            The name of the field that should be used as primary index field.
+            If provided, the events will be sorted along this data field. This
+            might be useful for run-time performance.
         """
         super(TrialDataManager, self).__init__()
+
+        self.index_field_name = index_field_name
 
         # Define the list of data fields that depend only on the source
         # parameters.
@@ -205,6 +214,20 @@ class TrialDataManager(object):
         # e.g. PDFs, can determine when the data changed and internal caches
         # must be flushed.
         self._trial_data_state_id = -1
+
+    @property
+    def index_field_name(self):
+        """The name of the primary index data field. If not None, events will
+        be sorted by this data field.
+        """
+        return self._index_field_name
+    @index_field_name.setter
+    def index_field_name(self, name):
+        if(name is not None):
+            if(not isinstance(name, str)):
+                raise TypeError('The index_field_name property must be an '
+                    'instance of type str!')
+        self._index_field_name = name
 
     @property
     def events(self):
@@ -273,9 +296,13 @@ class TrialDataManager(object):
         src_hypo_group_manager : SourceHypoGroupManager instance
             The instance of SourceHypoGroupManager that defines the source
             hypothesis groups.
-        events : numpy record ndarray
-            The numpy record ndarray holding the raw events.
+        events : DataFieldRecordArray instance
+            The DataFieldRecordArray instance holding the raw events.
         """
+        # Sort the events by the index field, if a field was provided.
+        if(self._index_field_name is not None):
+            events.sort_by_field(self._index_field_name)
+
         # Set the events property, so that the calculation functions of the data
         # fields can access them.
         self.events = events
