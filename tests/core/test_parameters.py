@@ -501,6 +501,11 @@ class ParameterGrid_TestCase(unittest.TestCase):
         self.assertTrue(isAlmostEqual(self.paramgrid_gamma2.delta, 0.1))
         self.assertTrue(isAlmostEqual(self.paramgrid_gamma3.delta, 0.1))
 
+    def test_decimals(self):
+        self.assertTrue(self.paramgrid_gamma1.decimals >= 1)
+        self.assertTrue(self.paramgrid_gamma2.decimals >= 1)
+        self.assertTrue(self.paramgrid_gamma3.decimals >= 2)
+
     def test_round_to_nearest_grid_point(self):
         # Test values outside the grid range.
         x = 1.49999999999
