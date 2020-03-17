@@ -16,6 +16,7 @@ def plot_ns_fit_vs_mean_ns_inj(
         rethist=False,
         title='',
         figsize=None,
+        line_color=None,
         axis_fontsize=16,
         title_fontsize=16,
         tick_fontsize=16,
@@ -47,6 +48,9 @@ def plot_ns_fit_vs_mean_ns_inj(
     figsize : tuple | None
         The two-element tuple (width,height) specifying the size of the figure.
         If set to None, the default size (12,10) will be used.
+    line_color : str | None
+        The color of the lines.
+        The default is '#E37222'.
     axis_fontsize : float
         The font size of the axis labels.
     title_fontsize : float
@@ -86,6 +90,8 @@ def plot_ns_fit_vs_mean_ns_inj(
     """
     if(figsize is None):
         figsize = (12,10)
+    if(line_color is None):
+        line_color = '#E37222'
     if(xlabel is None):
         xlabel = r'<n>_{\mathrm{sig,inj}}'
     if(ylabel is None):
@@ -148,10 +154,24 @@ def plot_ns_fit_vs_mean_ns_inj(
         x_bins, x_bins,
         color='black', alpha=0.4, linestyle='-', linewidth=2)
 
+    # Plot the lower quantile.
+    ax[0].plot(
+        mean_n_sig, ns_fit_lq,
+         color=line_color, linestyle='-.', linewidth=2)
+
     # Plot the median fitted ns.
     ax[0].plot(
         mean_n_sig, ns_fit_median,
-        color='orange', linestyle='--', linewidth=2)
+        color=line_color, linestyle='-', linewidth=2,
+        label=r'median')
+
+    # Plot the upper quantile.
+    ax[0].plot(
+        mean_n_sig, ns_fit_uq,
+         color=line_color, linestyle='-.', linewidth=2,
+         label=r'$1\sigma$')
+
+    ax[0].legend()
 
     if(ylim is not None):
         ax[0].set_ylim(ylim)
@@ -168,7 +188,7 @@ def plot_ns_fit_vs_mean_ns_inj(
     m = mean_n_sig != 0
     ax[1].plot(
         mean_n_sig[m], (ns_fit_median[m]-mean_n_sig[m])/mean_n_sig[m]*100,
-        linewidth=2)
+        color=line_color, linewidth=2, label=r'median')
     ax[1].fill_between(
         mean_n_sig[m],
         (ns_fit_uq[m]-mean_n_sig[m])/mean_n_sig[m]*100,
@@ -239,6 +259,9 @@ def plot_gamma_fit_vs_mean_ns_inj(
     figsize : tuple | None
         The two-element tuple (width,height) specifying the size of the figure.
         If set to None, the default size (12,10) will be used.
+    line_color : str | None
+        The color of the lines.
+        The default is '#E37222'.
     axis_fontsize : float
         The font size of the axis labels.
     title_fontsize : float
