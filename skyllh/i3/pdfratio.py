@@ -6,7 +6,7 @@ import scipy.interpolate
 
 from skyllh.core.parameters import make_params_hash
 from skyllh.core.multiproc import IsParallelizable, parallelize
-from skyllh.core.pdfratio import SigSetOverBkgPDFRatio, PDFRatioFillMethod
+from skyllh.core.pdfratio import SigSetOverBkgPDFRatio, PDFRatioFillMethod, MostSignalLikePDFRatioFillMethod
 
 from skyllh.i3.pdf import I3EnergyPDF
 
