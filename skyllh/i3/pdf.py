@@ -54,7 +54,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         """
         super(I3EnergyPDF, self).__init__()
 
-        #self.logger = logging.getLogger(__name__)
+        # self.logger = logging.getLogger(__name__)
 
         # Define the PDF axes.
         self.add_axis(PDFAxis(name='log_energy',
