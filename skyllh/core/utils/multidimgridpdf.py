@@ -92,9 +92,9 @@ def create_MultiDimGridPDF_from_photosplinetable(
     ]
  
     # get splinetable file
-    splinetable_files = ds.get_aux_data_definition(splinetable_key)
-    assert(len(splinetable_files)==1)
-    splinetable_file = os.path.join(ds.root_dir, splinetable_files[0])
+    splinetable_file_list = ds.get_aux_data_definition(splinetable_key) 
+    # this is a list with only one element
+    splinetable_file = os.path.join(ds.root_dir, splinetable_file_list[0])
 
     pdf = pdf_type(
         axis_binnings,
