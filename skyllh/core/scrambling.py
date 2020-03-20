@@ -43,6 +43,7 @@ class UniformRAScramblingMethod(DataScramblingMethod):
 
     Note: This alters only the ``ra`` values of the data!
     """
+
     def __init__(self, ra_range=None):
         """Initializes a new RAScramblingMethod instance.
 
@@ -63,6 +64,7 @@ class UniformRAScramblingMethod(DataScramblingMethod):
         should get drawn from.
         """
         return self._ra_range
+
     @ra_range.setter
     def ra_range(self, ra_range):
         if(ra_range is None):
@@ -103,6 +105,7 @@ class TimeScramblingMethod(DataScramblingMethod):
     coordinates into equatorial coordinates using a specified transformation
     function.
     """
+
     def __init__(self, timegen, hor_to_equ_transform):
         """Initializes a new time scramling method instance.
 
@@ -132,10 +135,12 @@ class TimeScramblingMethod(DataScramblingMethod):
         times.
         """
         return self._timegen
+
     @timegen.setter
     def timegen(self, timegen):
         if(not isinstance(timegen, TimeGenerator)):
-            raise TypeError('The timegen property must be an instance of TimeGenerator!')
+            raise TypeError(
+                'The timegen property must be an instance of TimeGenerator!')
         self._timegen = timegen
 
     @property
@@ -144,10 +149,12 @@ class TimeScramblingMethod(DataScramblingMethod):
         horizontal system into the equatorial system.
         """
         return self._hor_to_equ_transform
+
     @hor_to_equ_transform.setter
     def hor_to_equ_transform(self, transform):
         if(not callable(transform)):
-            raise TypeError('The hor_to_equ_transform property must be a callable object!')
+            raise TypeError(
+                'The hor_to_equ_transform property must be a callable object!')
         self._hor_to_equ_transform = transform
 
     def scramble(self, rss, data):
@@ -196,11 +203,12 @@ class DataScrambler(object):
         the data. This must be an instance of the DataScramblingMethod class.
         """
         return self._method
+
     @method.setter
     def method(self, method):
         if(not isinstance(method, DataScramblingMethod)):
             raise TypeError('The data scrambling method must be an instance '
-                'of DataScramblingMethod!')
+                            'of DataScramblingMethod!')
         self._method = method
 
     def scramble_data(self, rss, data, copy=False):

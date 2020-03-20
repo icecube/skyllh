@@ -61,22 +61,24 @@ class TestTimeProfile(unittest.TestCase):
         t1 = self.T0
         t2 = self.T0 + self.Tw/2
         times1 = np.array([self.T0 - self.Tw,
-                          self.T0 - self.Tw/2,
-                          self.T0])
+                           self.T0 - self.Tw/2,
+                           self.T0])
         times2 = np.array([self.T0 + self.Tw,
-                          self.T0 + self.Tw/2,
-                          self.T0 + self.Tw/2])
+                           self.T0 + self.Tw/2,
+                           self.T0 + self.Tw/2])
         values = np.array([1,
                            1,
                            0.5])
 
         self.assertEqual(self.box_time_profile.get_integral(t1, t1), 0)
         self.assertEqual(self.box_time_profile.get_integral(t1, t2), 0.5)
-        np.testing.assert_array_equal(self.box_time_profile.get_integral(times1, times2), values)
+        np.testing.assert_array_equal(
+            self.box_time_profile.get_integral(times1, times2), values)
 
         # Test cases when t1 > t2
         self.assertEqual(self.box_time_profile.get_integral(t2, t1), 0)
-        np.testing.assert_array_equal(self.box_time_profile.get_integral(times2, times1), np.zeros_like(values))
+        np.testing.assert_array_equal(self.box_time_profile.get_integral(
+            times2, times1), np.zeros_like(values))
 
     def test_get_total_integral(self):
         self.assertEqual(self.box_time_profile.get_total_integral(), 1)
@@ -93,7 +95,8 @@ class TestTimeProfile(unittest.TestCase):
         self.assertEqual(self.box_time_profile.get_value(self.T0 - self.Tw), 0)
         self.assertEqual(self.box_time_profile.get_value(self.T0), value)
         self.assertEqual(self.box_time_profile.get_value(self.T0 + self.Tw), 0)
-        np.testing.assert_array_equal(self.box_time_profile.get_value(times), values)
+        np.testing.assert_array_equal(
+            self.box_time_profile.get_value(times), values)
 
 
 if(__name__ == '__main__'):

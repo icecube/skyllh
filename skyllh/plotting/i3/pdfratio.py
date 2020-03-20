@@ -22,6 +22,7 @@ from skyllh.i3.pdfratio import I3EnergySigSetOverBkgPDFRatioSpline
 class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
     """Plotter class to plot an I3EnergySigSetOverBkgPDFRatioSpline object.
     """
+
     def __init__(self, tdm, pdfratio):
         """Creates a new plotter object for plotting an
         I3EnergySigSetOverBkgPDFRatioSpline object.
@@ -42,10 +43,12 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
         """The PDF ratio object to plot.
         """
         return self._pdfratio
+
     @pdfratio.setter
     def pdfratio(self, pdfratio):
         if(not isinstance(pdfratio, I3EnergySigSetOverBkgPDFRatioSpline)):
-            raise TypeError('The pdfratio property must be an object of instance I3EnergySigSetOverBkgPDFRatioSpline!')
+            raise TypeError(
+                'The pdfratio property must be an object of instance I3EnergySigSetOverBkgPDFRatioSpline!')
         self._pdfratio = pdfratio
 
     @property
@@ -53,11 +56,12 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
         """The TrialDataManager that provides the data for the PDF evaluation.
         """
         return self._tdm
+
     @tdm.setter
     def tdm(self, obj):
         if(not isinstance(obj, TrialDataManager)):
             raise TypeError('The tdm property must be an instance of '
-                'TrialDataManager!')
+                            'TrialDataManager!')
         self._tdm = obj
 
     def plot(self, src_hypo_group_manager, axes, fitparams, **kwargs):
@@ -86,13 +90,13 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
         """
         if(not isinstance(src_hypo_group_manager, SourceHypoGroupManager)):
             raise TypeError('The src_hypo_group_manager argument must be an '
-                'instance of SourceHypoGroupManager!')
+                            'instance of SourceHypoGroupManager!')
         if(not isinstance(axes, Axes)):
             raise TypeError('The axes argument must be an instance of '
-                'matplotlib.axes.Axes!')
+                            'matplotlib.axes.Axes!')
         if(not isinstance(fitparams, dict)):
             raise TypeError('The fitparams argument must be an instance of '
-                'dict!')
+                            'dict!')
 
         # Get the binning for the axes. We use the background PDF to get it
         # from. By construction, all PDFs use the same binning. We know that
@@ -103,9 +107,9 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
         # bin.
         ratios = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float)
         events = DataFieldRecordArray(np.zeros((ratios.size,),
-            dtype=[('ix', np.int), (xbinning.name, np.float),
-                   ('iy', np.int), (ybinning.name, np.float)]))
-        for (i, ((ix,x),(iy,y))) in enumerate(itertools.product(
+                                               dtype=[('ix', np.int), (xbinning.name, np.float),
+                                                      ('iy', np.int), (ybinning.name, np.float)]))
+        for (i, ((ix, x), (iy, y))) in enumerate(itertools.product(
                 enumerate(xbinning.bincenters),
                 enumerate(ybinning.bincenters))):
             events['ix'][i] = ix
@@ -117,12 +121,12 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
 
         event_ratios = self.pdfratio.get_ratio(self._tdm, fitparams)
         for i in range(len(events)):
-            ratios[events['ix'][i],events['iy'][i]] = event_ratios[i]
+            ratios[events['ix'][i], events['iy'][i]] = event_ratios[i]
 
         (left, right, bottom, top) = (xbinning.lower_edge, xbinning.upper_edge,
                                       ybinning.lower_edge, ybinning.upper_edge)
         img = axes.imshow(ratios.T, extent=(left, right, bottom, top),
-            origin='lower', norm=LogNorm(), interpolation='none', **kwargs)
+                          origin='lower', norm=LogNorm(), interpolation='none', **kwargs)
         axes.set_xlabel(xbinning.name)
         axes.set_ylabel(ybinning.name)
         axes.set_title(classname(self._pdfratio))

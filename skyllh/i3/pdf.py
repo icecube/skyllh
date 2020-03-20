@@ -25,6 +25,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
     The IceCube energy PDF is modeled as a 1d histogram in energy,
     but for different sin(declination) bins, hence, stored as a 2d histogram.
     """
+
     def __init__(self, data_logE, data_sinDec, data_mcweight, data_physicsweight,
                  logE_binning, sinDec_binning, smoothing_filter):
         """Creates a new IceCube energy PDF object.
@@ -70,7 +71,8 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         # We will smooth only the first axis (logE).
         if((smoothing_filter is not None) and
            (not isinstance(smoothing_filter, SmoothingFilter))):
-            raise TypeError('The smoothing_filter argument must be None or an instance of SmoothingFilter!')
+            raise TypeError(
+                'The smoothing_filter argument must be None or an instance of SmoothingFilter!')
         if(smoothing_filter is None):
             self.hist_smoothing_method = NoHistSmoothingMethod()
         else:
@@ -84,9 +86,11 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         # Create a 2D histogram with only the MC events to determine the MC
         # coverage.
         (h, bins_logE, bins_sinDec) = np.histogram2d(data_logE, data_sinDec,
-            bins = [logE_binning.binedges, sinDec_binning.binedges],
-            range = [logE_binning.range, sinDec_binning.range],
-            normed = False)
+                                                     bins=[
+                                                         logE_binning.binedges, sinDec_binning.binedges],
+                                                     range=[
+                                                         logE_binning.range, sinDec_binning.range],
+                                                     normed=False)
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered = h > 0
 
@@ -98,9 +102,11 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         # contribution. Note: By construction the zero physics contribution bins
         # are a subset of the MC covered bins.
         (h, bins_logE, bins_sinDec) = np.histogram2d(data_logE[mask], data_sinDec[mask],
-            bins = [logE_binning.binedges, sinDec_binning.binedges],
-            range = [logE_binning.range, sinDec_binning.range],
-            normed = False)
+                                                     bins=[
+                                                         logE_binning.binedges, sinDec_binning.binedges],
+                                                     range=[
+                                                         logE_binning.range, sinDec_binning.range],
+                                                     normed=False)
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered_zero_physics = h > 0
 
@@ -109,16 +115,19 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         # axis manually.
         data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
         (h, bins_logE, bins_sinDec) = np.histogram2d(data_logE[~mask], data_sinDec[~mask],
-            bins = [logE_binning.binedges, sinDec_binning.binedges],
-            weights = data_weights,
-            range = [logE_binning.range, sinDec_binning.range],
-            normed = False)
+                                                     bins=[
+                                                         logE_binning.binedges, sinDec_binning.binedges],
+                                                     weights=data_weights,
+                                                     range=[
+                                                         logE_binning.range, sinDec_binning.range],
+                                                     normed=False)
 
         # Calculate the normalization for each logE bin. Hence we need to sum
         # over the logE bins (axis 0) for each sin(dec) bin and need to divide
         # by the logE bin widths along the sin(dec) bins. The result array norm
         # is a 2D array of the same shape as h.
-        norms = np.sum(h, axis=(0,))[np.newaxis,...] * np.diff(logE_binning.binedges)[...,np.newaxis]
+        norms = np.sum(h, axis=(0,))[np.newaxis, ...] * \
+            np.diff(logE_binning.binedges)[..., np.newaxis]
         h /= norms
         h = self._hist_smoothing_method.smooth(h)
 
@@ -130,10 +139,12 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         energy PDF histogram.
         """
         return self._hist_smoothing_method
+
     @hist_smoothing_method.setter
     def hist_smoothing_method(self, method):
         if(not isinstance(method, HistSmoothingMethod)):
-            raise TypeError('The hist_smoothing_method property must be an instance of HistSmoothingMethod!')
+            raise TypeError(
+                'The hist_smoothing_method property must be an instance of HistSmoothingMethod!')
         self._hist_smoothing_method = method
 
     @property
@@ -193,10 +204,10 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         exp_sinDec = np.sin(data_exp['dec'])
 
         # Check if all the data is within the binning range.
-        #if(logE_binning.any_data_out_of_binning_range(exp_logE)):
-            #self.logger.warning('Some data is outside the logE range (%.3f, %.3f)', logE_binning.lower_edge, logE_binning.upper_edge)
-        #if(sinDec_binning.any_data_out_of_binning_range(exp_sinDec)):
-            #self.logger.warning('Some data is outside the sin(dec) range (%.3f, %.3f)', sinDec_binning.lower_edge, sinDec_binning.upper_edge)
+        # if(logE_binning.any_data_out_of_binning_range(exp_logE)):
+        #self.logger.warning('Some data is outside the logE range (%.3f, %.3f)', logE_binning.lower_edge, logE_binning.upper_edge)
+        # if(sinDec_binning.any_data_out_of_binning_range(exp_sinDec)):
+        #self.logger.warning('Some data is outside the sin(dec) range (%.3f, %.3f)', sinDec_binning.lower_edge, sinDec_binning.upper_edge)
 
     def get_prob(self, tdm, fitparams=None, tl=None):
         """Calculates the energy probability (in logE) of each event.
@@ -229,9 +240,11 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         logE_binning = self.get_binning('log_energy')
         sinDec_binning = self.get_binning('sin_dec')
 
-        logE_idx = np.digitize(get_data('log_energy'), logE_binning.binedges) - 1
-        sinDec_idx = np.digitize(get_data('sin_dec'), sinDec_binning.binedges) - 1
+        logE_idx = np.digitize(get_data('log_energy'),
+                               logE_binning.binedges) - 1
+        sinDec_idx = np.digitize(
+            get_data('sin_dec'), sinDec_binning.binedges) - 1
 
         with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
-            prob = self._hist_logE_sinDec[(logE_idx,sinDec_idx)]
+            prob = self._hist_logE_sinDec[(logE_idx, sinDec_idx)]
         return prob

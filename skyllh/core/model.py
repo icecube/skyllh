@@ -10,10 +10,12 @@ from skyllh.core.py import (
     str_cast
 )
 
+
 class Model(object):
     """This class provides a base class for all model classes used in SkyLLH.
     Models could be for instance source models or background models.
     """
+
     def __init__(self, name=None):
         """Creates a new Model instance.
 
@@ -35,9 +37,11 @@ class Model(object):
         """The name of the model.
         """
         return self._name
+
     @name.setter
     def name(self, name):
-        name = str_cast(name, 'The name property must be castable to type str!')
+        name = str_cast(
+            name, 'The name property must be castable to type str!')
         self._name = name
 
     @property
@@ -95,7 +99,8 @@ class ModelCollection(NamedObjectCollection):
             return obj
 
         if(errmsg is None):
-            errmsg = 'Cast of object "%s" to ModelCollection failed!'%(str(obj))
+            errmsg = 'Cast of object "%s" to ModelCollection failed!' % (
+                str(obj))
         raise TypeError(errmsg)
 
     def __init__(self, models=None, model_type=None):
@@ -115,7 +120,7 @@ class ModelCollection(NamedObjectCollection):
 
         if(not issubclass(model_type, Model)):
             raise TypeError('The model_type argument must be a subclass of '
-                'class Model!')
+                            'class Model!')
 
         super(ModelCollection, self).__init__(
             objs=models,
@@ -138,6 +143,7 @@ class DetectorModel(Model):
     """This class provides a base class for a detector model. It can be used
     in combination with the ModelParameterMapper class.
     """
+
     def __init__(self, name):
         """Creates a new DetectorModel instance.
 

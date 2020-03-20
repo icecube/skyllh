@@ -6,6 +6,7 @@ from skyllh.core.livetime import Livetime
 from skyllh.core import storage
 from skyllh.i3.dataset import I3Dataset
 
+
 class I3Livetime(Livetime):
     """The I3Livetime class provides the functionality to load a Livetime object
     from a good-run-list data file.
@@ -33,8 +34,8 @@ class I3Livetime(Livetime):
         grl_data = storage.create_FileLoader(pathfilenames).load_data()
 
         uptime_mjd_intervals_arr = np.hstack((
-            grl_data['start'].reshape((grl_data.shape[0],1)),
-            grl_data['stop'].reshape((grl_data.shape[0],1))
+            grl_data['start'].reshape((grl_data.shape[0], 1)),
+            grl_data['stop'].reshape((grl_data.shape[0], 1))
         ))
 
         return I3Livetime(uptime_mjd_intervals_arr)
@@ -57,9 +58,11 @@ class I3Livetime(Livetime):
             dataset.
         """
         if(not isinstance(ds, I3Dataset)):
-            raise TypeError('The ds argument must be an instance of I3Dataset!')
+            raise TypeError(
+                'The ds argument must be an instance of I3Dataset!')
         if(len(ds.grl_pathfilename_list) == 0):
-            raise ValueError('No GRL files have been defined for the given dataset!')
+            raise ValueError(
+                'No GRL files have been defined for the given dataset!')
         return I3Livetime.from_GRL_files(ds.grl_pathfilename_list)
 
     def __init__(self, uptime_mjd_intervals_arr):

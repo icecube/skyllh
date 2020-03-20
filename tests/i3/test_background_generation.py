@@ -15,7 +15,6 @@ class TestFixedScrambledExpDataI3BkgGenMethod(unittest.TestCase):
 
         self.assertIsInstance(test_object.data_scrambler, DataScrambler)
 
-
     def test_generate_events(self):
         pass
 

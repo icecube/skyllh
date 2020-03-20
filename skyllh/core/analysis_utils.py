@@ -24,6 +24,7 @@ from scipy.interpolate import interp1d
 """This module contains common utility functions useful for an analysis.
 """
 
+
 def pointlikesource_to_data_field_array(
         tdm, src_hypo_group_manager):
     """Function to transform a list of PointLikeSource sources into a numpy
@@ -51,7 +52,7 @@ def pointlikesource_to_data_field_array(
 
     if(not issequenceof(sources, PointLikeSource)):
         raise TypeError('The sources of the SourceHypoGroupManager must be '
-            'PointLikeSource instances!')
+                        'PointLikeSource instances!')
 
     arr = np.empty(
         (len(sources),),
@@ -619,7 +620,7 @@ def generate_mu_of_p_spline_interpolation(
     if(is_interactive_session()):
         pbar = ProgressBar(len(mu_vals), parent=ppbar).start()
 
-    for (idx,mu) in enumerate(mu_vals):
+    for (idx, mu) in enumerate(mu_vals):
         p = None
         (ts_vals, p_sigma) = ([], 2*eps_p)
         while (p_sigma > eps_p):
@@ -642,14 +643,14 @@ def generate_mu_of_p_spline_interpolation(
     # The interp1d function requires unique x values. So we need to sort the
     # p_vals in increasing order and mask out repeating p values.
     p_mu_vals = np.array(sorted(zip(p_vals, mu_vals)), dtype=np.float)
-    p_vals = p_mu_vals[:,0]
+    p_vals = p_mu_vals[:, 0]
     unique_pval_mask = np.concatenate(([True], np.invert(
         p_vals[1:] <= p_vals[:-1])))
     p_vals = p_vals[unique_pval_mask]
-    mu_vals = p_mu_vals[:,1][unique_pval_mask]
+    mu_vals = p_mu_vals[:, 1][unique_pval_mask]
 
     spline = interp1d(p_vals, mu_vals, kind=kind, copy=False,
-        assume_sorted=True)
+                      assume_sorted=True)
 
     if(pbar is not None):
         pbar.finish()
@@ -725,19 +726,19 @@ def create_trial_data_file(
         The trial data that has been written to file.
     """
     n_trials = int_cast(n_trials,
-        'The n_trials argument must be castable to type int!')
+                        'The n_trials argument must be castable to type int!')
 
     if(not isinstance(mean_n_sig, np.ndarray)):
         if(not issequence(mean_n_sig)):
             mean_n_sig = float_cast(mean_n_sig,
-                'The mean_n_sig argument must be castable to type float!')
+                                    'The mean_n_sig argument must be castable to type float!')
             mean_n_sig_min = mean_n_sig
             mean_n_sig_max = mean_n_sig
             mean_n_sig_step = 1
         else:
             mean_n_sig = float_cast(mean_n_sig,
-                'The sequence elements of the mean_n_sig argument must be '
-                'castable to float values!')
+                                    'The sequence elements of the mean_n_sig argument must be '
+                                    'castable to float values!')
             if(len(mean_n_sig) == 2):
                 (mean_n_sig_min, mean_n_sig_max) = mean_n_sig
                 mean_n_sig_step = 1
@@ -751,14 +752,14 @@ def create_trial_data_file(
     if(not isinstance(mean_n_sig_null, np.ndarray)):
         if(not issequence(mean_n_sig_null)):
             mean_n_sig_null = float_cast(mean_n_sig_null,
-                'The mean_n_sig_null argument must be castable to type float!')
+                                         'The mean_n_sig_null argument must be castable to type float!')
             mean_n_sig_null_min = mean_n_sig_null
             mean_n_sig_null_max = mean_n_sig_null
             mean_n_sig_null_step = 1
         else:
             mean_n_sig_null = float_cast(mean_n_sig_null,
-                'The sequence elements of the mean_n_sig_null argument must '
-                'be castable to float values!')
+                                         'The sequence elements of the mean_n_sig_null argument must '
+                                         'be castable to float values!')
             if(len(mean_n_sig_null) == 2):
                 (mean_n_sig_null_min, mean_n_sig_null_max) = mean_n_sig_null
                 mean_n_sig_null_step = 1
@@ -796,7 +797,7 @@ def create_trial_data_file(
 
     if(trial_data is None):
         raise RuntimeError('No trials have been generated! Check your '
-            'generation boundaries!')
+                           'generation boundaries!')
 
     # Save the trial data to file.
     np.save(pathfilename, trial_data)
@@ -829,7 +830,7 @@ def extend_trial_data_file(
     # Use unique seed to generate non identical trials.
     if rss.seed in trial_data['seed']:
         seed = next(i for i, e in enumerate(sorted(trial_data['seed']) + [None],
-                    1) if i != e)
+                                            1) if i != e)
         rss.reseed(seed)
     for ns in range(0, ns_max):
         trials = analysis.do_trials(rss, N, sig_mean=ns)
@@ -890,7 +891,7 @@ def calculate_upper_limit_distribution(
     ns_max = max(trial_data['sig_mean']) + 1
     ts_bins_range = (min(trial_data['TS']), max(trial_data['TS']))
 
-    q = 10 # Upper limit criterion.
+    q = 10  # Upper limit criterion.
     trial_data_q_values = np.empty((ns_max,))
     trial_data_ts_hist = np.empty((ns_max, n_bins))
     for ns in range(ns_max):

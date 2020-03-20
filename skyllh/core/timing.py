@@ -12,6 +12,7 @@ called "tasks". The TaskTimer class can be used within a `with`
 statement to time the execution of the code within the `with` block.
 """
 
+
 class TaskRecord(object):
     def __init__(self, name, tstart, tend):
         """Creates a new TaskRecord instance.
@@ -32,7 +33,7 @@ class TaskRecord(object):
 
         if(len(tstart) != len(tend)):
             raise ValueError('The number of start and end time stamps must '
-                'be equal!')
+                             'be equal!')
 
         # Create a (2,Niter)-shaped 2D ndarray holding the start and end time
         # stamps of the task executions. This array must be sorted by the start
@@ -43,13 +44,13 @@ class TaskRecord(object):
     def tstart(self):
         """(read-only) The time stamps the execution of this task started.
         """
-        return self._tstart_tend_arr[0,:]
+        return self._tstart_tend_arr[0, :]
 
     @property
     def tend(self):
         """(read-only) The time stamps the execution of this task was stopped.
         """
-        return self._tstart_tend_arr[1,:]
+        return self._tstart_tend_arr[1, :]
 
     @property
     def duration(self):
@@ -58,12 +59,12 @@ class TaskRecord(object):
         """
         arr = self._tstart_tend_arr
 
-        d = arr[1,0] - arr[0,0]
-        last_tend = arr[1,0]
+        d = arr[1, 0] - arr[0, 0]
+        last_tend = arr[1, 0]
         n = self.niter
         for idx in range(1, n):
-            tstart = arr[0,idx]
-            tend = arr[1,idx]
+            tstart = arr[0, idx]
+            tend = arr[1, idx]
             if(tend <= last_tend):
                 continue
             if(tstart <= last_tend and tend > last_tend):
@@ -182,7 +183,7 @@ class TimeLord(object):
         """
         s = 'Executed tasks:'
         task_name_list = self.task_name_list
-        task_name_len_list = [ len(task_name) for task_name in task_name_list ]
+        task_name_len_list = [len(task_name) for task_name in task_name_list]
         max_task_name_len = np.minimum(
             np.max(task_name_len_list), display.PAGE_WIDTH-25)
 
@@ -196,7 +197,7 @@ class TimeLord(object):
             s += line.format(
                 task_name=task_name,
                 t=t,
-                p=1 if t>1e3 or t<1e-3 else 3,
+                p=1 if t > 1e3 or t < 1e-3 else 3,
                 c='e' if t > 1e3 or t < 1e-3 else 'f',
                 niter=tr.niter)
 
@@ -225,12 +226,13 @@ class TaskTimer(object):
         can be None, which means that the task should not get recorded.
         """
         return self._time_lord
+
     @time_lord.setter
     def time_lord(self, lord):
         if(lord is not None):
             if(not isinstance(lord, TimeLord)):
                 raise TypeError('The time_lord property must be None or an '
-                    'instance of TimeLord!')
+                                'instance of TimeLord!')
         self._time_lord = lord
 
     @property
@@ -238,6 +240,7 @@ class TaskTimer(object):
         """The name if the task.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         if(not isinstance(name, str)):

@@ -62,11 +62,12 @@ class LLHRatio(object):
         log-likelihood ratio function.
         """
         return self._minimizer
+
     @minimizer.setter
     def minimizer(self, minimizer):
         if(not isinstance(minimizer, Minimizer)):
             raise TypeError('The minimizer property must be an instance '
-                'of Minimizer!')
+                            'of Minimizer!')
         self._minimizer = minimizer
 
     @abc.abstractmethod
@@ -121,6 +122,7 @@ class LLHRatio(object):
         """
         # Define the negative llhratio function, that will get minimized.
         self_evaluate = self.evaluate
+
         def negative_llhratio_func(fitparam_values, tl=None):
             with TaskTimer(tl, 'Evaluate llh-ratio function.'):
                 (f, grads) = self_evaluate(fitparam_values, tl=tl)
@@ -161,10 +163,11 @@ class TCLLHRatio(LLHRatio):
         null-hypothesis.
         """
         return self._mean_n_sig_0
+
     @mean_n_sig_0.setter
     def mean_n_sig_0(self, v):
         v = float_cast(v, 'The mean_n_sig_0 property must be castable to a '
-            'float value!')
+                       'float value!')
         self._mean_n_sig_0 = v
 
     @abc.abstractmethod
@@ -226,11 +229,12 @@ class TCLLHRatio(LLHRatio):
             # depending solely on ns.
             self__evaluate = self.evaluate
             self__calculate_ns_grad2 = self.calculate_ns_grad2
+
             def negative_llhratio_func_nr1d_ns(fitparam_values, tl):
                 with TaskTimer(tl, 'Evaluate llh-ratio function.'):
                     (f, grads) = self__evaluate(fitparam_values, tl=tl)
                 with TaskTimer(tl, 'Calculate 2nd derivative of llh-ratio '
-                        'function w.r.t. ns'):
+                               'function w.r.t. ns'):
                     grad2_ns = self__calculate_ns_grad2(fitparam_values)
                 return (-f, -grads[0], -grad2_ns)
 
@@ -292,11 +296,12 @@ class SingleDatasetTCLLHRatio(TCLLHRatio):
         hypotheses.
         """
         return self._src_hypo_group_manager
+
     @src_hypo_group_manager.setter
     def src_hypo_group_manager(self, manager):
         if(not isinstance(manager, SourceHypoGroupManager)):
             raise TypeError('The src_hypo_group_manager property must be an '
-                'instance of SourceHypoGroupManager!')
+                            'instance of SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
 
     @property
@@ -305,11 +310,12 @@ class SingleDatasetTCLLHRatio(TCLLHRatio):
         parameters and their mapping to the source fit parameters.
         """
         return self._src_fitparam_mapper
+
     @src_fitparam_mapper.setter
     def src_fitparam_mapper(self, mapper):
         if(not isinstance(mapper, SourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper property must be an '
-                'instance of SourceFitParameterMapper!')
+                            'instance of SourceFitParameterMapper!')
         self._src_fitparam_mapper = mapper
 
     @property
@@ -318,11 +324,12 @@ class SingleDatasetTCLLHRatio(TCLLHRatio):
         additional data fields for this LLH ratio function.
         """
         return self._tdm
+
     @tdm.setter
     def tdm(self, manager):
         if(not isinstance(manager, TrialDataManager)):
             raise TypeError('The tdm property must be an instance of '
-                'TrialDataManager!')
+                            'TrialDataManager!')
         self._tdm = manager
 
     @property
@@ -330,10 +337,11 @@ class SingleDatasetTCLLHRatio(TCLLHRatio):
         """The total number of events of the trial data.
         """
         return self._n_events
+
     @n_events.setter
     def n_events(self, n):
         n = int_cast(n, 'The n_events property must be castable to an integer '
-            'value!')
+                     'value!')
         self._n_events = n
 
     @property
@@ -443,18 +451,19 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
         SingleDatasetTCLLHRatio.mean_n_sig_0.fset(self, v)
         if(self._mean_n_sig_0 != 0):
             raise ValueError('The %s class is only valid for '
-                'mean_n_sig_0 = 0!'%(classname(self)))
+                             'mean_n_sig_0 = 0!' % (classname(self)))
 
     @property
     def pdfratio_list(self):
         """The list of PDFRatio instances.
         """
         return self._pdfratio_list
+
     @pdfratio_list.setter
     def pdfratio_list(self, seq):
         if(not issequenceof(seq, PDFRatio)):
             raise TypeError('The pdfratio_list property must be a sequence of '
-                'PDFRatio instances!')
+                            'PDFRatio instances!')
         self._pdfratio_list = list(seq)
 
     def calculate_log_lambda_and_grads(self, fitparam_values, N, ns, Xi, dXi_ps):
@@ -509,7 +518,8 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
         log_lambda_i[stablemask] = np.log1p(alpha_i[stablemask])
         # Calculate the log_lambda_i value for the numerical unstable events.
         tildealpha_i = (alpha_i[unstablemask] - alpha) / one_plus_alpha
-        log_lambda_i[unstablemask] = np.log1p(alpha) + tildealpha_i - 0.5*tildealpha_i**2
+        log_lambda_i[unstablemask] = np.log1p(
+            alpha) + tildealpha_i - 0.5*tildealpha_i**2
 
         # Calculate the log_lambda value and account for pure background events.
         log_lambda = np.sum(log_lambda_i) + (N - Nprime)*np.log1p(-ns/N)
@@ -523,8 +533,10 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
         # For ns.
         nsgrad_i = np.empty_like(alpha_i, dtype=np.float)
-        nsgrad_i[stablemask] = Xi[stablemask] * one_over_one_plus_alpha_i_stablemask
-        nsgrad_i[unstablemask] = (1 - tildealpha_i)*Xi[unstablemask] / one_plus_alpha
+        nsgrad_i[stablemask] = Xi[stablemask] * \
+            one_over_one_plus_alpha_i_stablemask
+        nsgrad_i[unstablemask] = (1 - tildealpha_i) * \
+            Xi[unstablemask] / one_plus_alpha
         # Cache the nsgrad_i values for a possible later calculation of the
         # second derivative w.r.t. ns of the log-likelihood ratio function.
         # Note: We create a copy of the fitparam_values array here to make sure
@@ -537,9 +549,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
         # For each other fit parameter.
         # For all numerical stable events.
-        grads[1:] = np.sum(ns * one_over_one_plus_alpha_i_stablemask * dXi_ps[:,stablemask], axis=1)
+        grads[1:] = np.sum(
+            ns * one_over_one_plus_alpha_i_stablemask * dXi_ps[:, stablemask], axis=1)
         # For all numerical unstable events.
-        grads[1:] += np.sum(ns*(1 - tildealpha_i)*dXi_ps[:,unstablemask] / one_plus_alpha, axis=1)
+        grads[1:] += np.sum(ns*(1 - tildealpha_i) *
+                            dXi_ps[:, unstablemask] / one_plus_alpha, axis=1)
 
         return (log_lambda, grads)
 
@@ -588,6 +602,7 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
     log-likelihood-ratio function assumes a zero signal null-hypothesis and uses
     a list of independent PDFRatio instances assuming a single source.
     """
+
     def __init__(
             self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
             pdfratios):
@@ -618,7 +633,7 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
         """
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an '
-                'instance of SingleSourceFitParameterMapper!')
+                            'instance of SingleSourceFitParameterMapper!')
 
         super(SingleSourceZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
             minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
@@ -706,14 +721,16 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
         Xi = (Ri - 1.) / N
 
         # Calculate the gradients of Xi for each fit parameter (without ns).
-        dXi_ps = np.empty((len(fitparam_values)-1,len(Xi)), dtype=np.float)
+        dXi_ps = np.empty((len(fitparam_values)-1, len(Xi)), dtype=np.float)
         for (idx, fitparam_value) in enumerate(fitparam_values[1:]):
-            fitparam_name = self._src_fitparam_mapper.get_src_fitparam_name(idx)
+            fitparam_name = self._src_fitparam_mapper.get_src_fitparam_name(
+                idx)
             # Get the PDFRatio instance from which we need the derivative from.
             pdfratio = pdfratioarray.get_pdfratio(idx)
 
             # Calculate the derivative of Ri.
-            dRi = pdfratio.get_gradient(tdm, fitparams, fitparam_name) * pdfratioarray.get_ratio_product(excluded_fitparam_idx=idx)
+            dRi = pdfratio.get_gradient(
+                tdm, fitparams, fitparam_name) * pdfratioarray.get_ratio_product(excluded_fitparam_idx=idx)
 
             # Calculate the derivative of Xi w.r.t. the fit parameter.
             dXi_ps[idx] = dRi / N
@@ -725,40 +742,40 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
         return (log_lambda, grads)
 
 
-#class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
-        #ZeroSigH0SingleDatasetTCLLHRatio):
-    #"""This class implements a 2-component, i.e. signal and background,
-    #log-likelihood ratio function for a single data set assuming zero signal for
-    #the null-hypothesis. It uses a list of independent PDFRatio instances
-    #assuming multiple sources (stacking).
-    #"""
-    #def __init__(
-            #self, events, n_pure_bkg_events, pdfratios, src_fitparam_mapper):
-        #"""
-        #Parameters
-        #----------
-        #events : numpy record array
-            #The numpy record array holding the data events which should get
-            #evaluated.
+# class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
+        # ZeroSigH0SingleDatasetTCLLHRatio):
+    # """This class implements a 2-component, i.e. signal and background,
+    # log-likelihood ratio function for a single data set assuming zero signal for
+    # the null-hypothesis. It uses a list of independent PDFRatio instances
+    # assuming multiple sources (stacking).
+    # """
+    # def __init__(
+        # self, events, n_pure_bkg_events, pdfratios, src_fitparam_mapper):
+        # """
+        # Parameters
+        # ----------
+        # events : numpy record array
+        # The numpy record array holding the data events which should get
+        # evaluated.
         #n_pure_bkg_events : int
-            #The number of pure background events, which are not part of
-            #`events`, but must be considered for the log_lambda value.
-        #pdfratios : sequence of PDFRatio
-            #The sequence of PDFRatio instances. A PDFRatio instance might depend
-            #on none, one, or several fit parameters.
+        # The number of pure background events, which are not part of
+        # `events`, but must be considered for the log_lambda value.
+        # pdfratios : sequence of PDFRatio
+        # The sequence of PDFRatio instances. A PDFRatio instance might depend
+        # on none, one, or several fit parameters.
         #src_fitparam_mapper : MultiSourceFitParameterMapper
-            #The multi source fit parameter mapper that defines the fit
-            #parameters and their relation to the source fit parameters of the
-            #individual sources.
-        #"""
-        #if(not isinstance(src_fitparam_mapper, MultiSourceFitParameterMapper)):
-            #raise TypeError('The src_fitparam_mapper argument must be an '
-                #'instance of MultiSourceFitParameterMapper!')
+        # The multi source fit parameter mapper that defines the fit
+        # parameters and their relation to the source fit parameters of the
+        # individual sources.
+        # """
+        # if(not isinstance(src_fitparam_mapper, MultiSourceFitParameterMapper)):
+        # raise TypeError('The src_fitparam_mapper argument must be an '
+        # 'instance of MultiSourceFitParameterMapper!')
 
-        #super(MultiSourceZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
-            #events, n_pure_bkg_events, pdfratios, src_fitparam_mapper)
+        # super(MultiSourceZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
+        # events, n_pure_bkg_events, pdfratios, src_fitparam_mapper)
 
-    ## TODO: Implement this class!!
+    # TODO: Implement this class!!
 
 
 class DatasetSignalWeights(object):
@@ -794,8 +811,8 @@ class DatasetSignalWeights(object):
 
         if(self._detsigyield_arr.shape[0] != self._src_hypo_group_manager.n_src_hypo_groups):
             raise ValueError('The detsigyields array must have the same number '
-                'of source hypothesis groups as the source hypothesis group '
-                'manager defines!')
+                             'of source hypothesis groups as the source hypothesis group '
+                             'manager defines!')
 
         # Pre-convert the source list of each source hypothesis group into a
         # source array needed for the detector signal yield evaluation.
@@ -831,7 +848,8 @@ class DatasetSignalWeights(object):
         src_arr_list = []
         for (gidx, src_hypo_group) in enumerate(src_hypo_group_manager.src_hypo_group_list):
             src_arr_list.append(
-                detsigyield_arr[gidx,0].source_to_array(src_hypo_group.source_list)
+                detsigyield_arr[gidx, 0].source_to_array(
+                    src_hypo_group.source_list)
             )
 
         return src_arr_list
@@ -842,11 +860,12 @@ class DatasetSignalWeights(object):
         hypothesis groups.
         """
         return self._src_hypo_group_manager
+
     @src_hypo_group_manager.setter
     def src_hypo_group_manager(self, manager):
         if(not isinstance(manager, SourceHypoGroupManager)):
             raise TypeError('The src_hypo_group_manager property must be an '
-                'instance of SourceHypoGroupManager!')
+                            'instance of SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
 
     @property
@@ -855,11 +874,12 @@ class DatasetSignalWeights(object):
         parameters and their mapping to the source fit parameters.
         """
         return self._src_fitparam_mapper
+
     @src_fitparam_mapper.setter
     def src_fitparam_mapper(self, mapper):
         if(not isinstance(mapper, SourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper property must be an '
-                'instance of SourceFitParameterMapper!')
+                            'instance of SourceFitParameterMapper!')
         self._src_fitparam_mapper = mapper
 
     @property
@@ -868,18 +888,19 @@ class DatasetSignalWeights(object):
         DetSigYield instances.
         """
         return self._detsigyield_arr
+
     @detsigyield_arr.setter
     def detsigyield_arr(self, detsigyields):
         if(not isinstance(detsigyields, np.ndarray)):
             raise TypeError('The detsigyield_arr property must be an instance '
-                'of numpy.ndarray!')
+                            'of numpy.ndarray!')
         if(detsigyields.ndim != 2):
             raise ValueError('The detsigyield_arr property must be a '
-                'numpy.ndarray with 2 dimensions!')
+                             'numpy.ndarray with 2 dimensions!')
         if(not issequenceof(detsigyields.flat, DetSigYield)):
             raise TypeError('The detsigyield_arr property must contain '
-                'DetSigYield instances, one for each source hypothesis group '
-                'and dataset combination!')
+                            'DetSigYield instances, one for each source hypothesis group '
+                            'and dataset combination!')
         self._detsigyield_arr = detsigyields
 
     @property
@@ -932,6 +953,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
     """This class calculates the dataset signal weight factors for each dataset
     assuming a single source.
     """
+
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
         """Constructs a new DatasetSignalWeights instance assuming a single
@@ -951,7 +973,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
 
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an '
-                'instance of SingleSourceFitParameterMapper!')
+                            'instance of SingleSourceFitParameterMapper!')
 
         # Convert sequence into a 2D numpy array.
         detsigyields = np.atleast_2d(detsigyields)
@@ -979,7 +1001,8 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
             fit parameter. None is returned if there are no fit parameters
             beside ns.
         """
-        fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(fitparam_values[1:])
+        fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(
+            fitparam_values[1:])
 
         N_datasets = self.n_datasets
         N_fitparams = self._src_fitparam_mapper.n_global_fitparams
@@ -1007,13 +1030,14 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         if(N_fitparams > 0):
             # sumj_Y_grads is a (N_fitparams,)-shaped 1D array.
             sumj_Y_grads = np.sum(Y_grads, axis=0)
-            f_grads = (Y_grads*sumj_Y - Y[...,np.newaxis]*sumj_Y_grads) / sumj_Y**2
+            f_grads = (Y_grads*sumj_Y -
+                       Y[..., np.newaxis]*sumj_Y_grads) / sumj_Y**2
         else:
             f_grads = None
 
         return (f, f_grads)
 
-#TODO: Implement MultiSourceDatasetSignalWeights class!
+# TODO: Implement MultiSourceDatasetSignalWeights class!
 
 
 class MultiDatasetTCLLHRatio(TCLLHRatio):
@@ -1029,6 +1053,7 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
     By mathematical definition this class is suitable for single and multi
     source hypotheses.
     """
+
     def __init__(self, minimizer, dataset_signal_weights, llhratios):
         """Creates a new composite two-component log-likelihood ratio function.
 
@@ -1054,8 +1079,8 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         # made for equals the number of log-likelihood ratio functions.
         if(self.dataset_signal_weights.n_datasets != len(self._llhratio_list)):
             raise ValueError('The number of datasets the DatasetSignalWeights '
-                'instance is made for must be equal to the number of '
-                'log-likelihood ratio functions!')
+                             'instance is made for must be equal to the number of '
+                             'log-likelihood ratio functions!')
 
         # Define cache variable for the dataset signal weight factors, which
         # will be needed when calculating the second derivative w.r.t. ns of the
@@ -1069,11 +1094,12 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         weight factors.
         """
         return self._dataset_signal_weights
+
     @dataset_signal_weights.setter
     def dataset_signal_weights(self, obj):
         if(not isinstance(obj, DatasetSignalWeights)):
             raise TypeError('The dataset_signal_weights property must be an '
-                'instance of DatasetSignalWeights!')
+                            'instance of DatasetSignalWeights!')
         self._dataset_signal_weights = obj
 
     @property
@@ -1082,11 +1108,12 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         composite log-likelihood-ratio function.
         """
         return self._llhratio_list
+
     @llhratio_list.setter
     def llhratio_list(self, llhratios):
         if(not issequenceof(llhratios, SingleDatasetTCLLHRatio)):
             raise TypeError('The llhratio_list property must be a sequence of '
-                'SingleDatasetTCLLHRatio instances!')
+                            'SingleDatasetTCLLHRatio instances!')
         self._llhratio_list = list(llhratios)
 
     @property
@@ -1141,7 +1168,7 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
             events will be evaluated.
         """
         if(n_events_list is None):
-            n_events_list = [ len(events) for events in events_list ]
+            n_events_list = [len(events) for events in events_list]
 
         for (n_events, events, llhratio) in zip(
                 n_events_list, events_list, self._llhratio_list):
@@ -1204,7 +1231,8 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         # llh ratio function. Since we need to adjust ns with nsj it's more
         # efficient to create this array once and use it within the for loop
         # over the llh ratio functions.
-        llhratio_fitparam_values = np.empty((len(fitparam_values),), dtype=np.float)
+        llhratio_fitparam_values = np.empty(
+            (len(fitparam_values),), dtype=np.float)
         # Loop over the llh ratio functions.
         for (j, llhratio) in enumerate(self._llhratio_list):
             llhratio_fitparam_values[0] = nsf[j]
@@ -1257,7 +1285,8 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
 
         nsgrad2j = np.empty((len(self._llhratio_list),), dtype=np.float)
         # Loop over the llh ratio functions and their second derivative.
-        llhratio_fitparam_values = np.empty((len(fitparam_values),), dtype=np.float)
+        llhratio_fitparam_values = np.empty(
+            (len(fitparam_values),), dtype=np.float)
         for (j, llhratio) in enumerate(self._llhratio_list):
             llhratio_fitparam_values[0] = nsf[j]
             llhratio_fitparam_values[1:] = fitparam_values[1:]
@@ -1280,6 +1309,7 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
     where :math:`n_{s,0}` is the fixed mean number of signal events for the
     null-hypothesis.
     """
+
     def __init__(self, minimizer, mean_n_sig_0, llhratio):
         """Creates a new ns-profile log-likelihood-ratio function with a
         null-hypothesis where ns is fixed to `mean_n_sig_0`.
@@ -1307,9 +1337,9 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
             n_global_fitparams = sub_llhratio.src_fitparam_mapper.n_global_fitparams
             if(n_global_fitparams != 0):
                 raise ValueError('The log-likelihood-ratio functions of the '
-                    'MultiDatasetTCLLHRatio instance must have no global fit '
-                    'parameters, i.e. only ns in the end! Currently it has %d '
-                    'global fit parameters'%(n_global_fitparams))
+                                 'MultiDatasetTCLLHRatio instance must have no global fit '
+                                 'parameters, i.e. only ns in the end! Currently it has %d '
+                                 'global fit parameters' % (n_global_fitparams))
 
         # Define a member to hold the constant null-hypothesis log-likelihood
         # function value for ns=mean_n_sig_0.
@@ -1321,11 +1351,12 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
         log-likelihood function.
         """
         return self._llhratio
+
     @llhratio.setter
     def llhratio(self, obj):
         if(not isinstance(obj, MultiDatasetTCLLHRatio)):
             raise TypeError('The llhratio property must be an instance of '
-                'MultiDatasetTCLLHRatio!')
+                            'MultiDatasetTCLLHRatio!')
         self._llhratio = obj
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
@@ -1410,28 +1441,27 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
         """
         return self._llhratio.calculate_ns_grad2(fitparam_values)
 
-#class NestedProfileLLHRatio(LLHRatio):
-    #r"""This class provides the abstract base class for a nested profile
-    #log-likelihood ratio function, which is, by definition, of the form
+# class NestedProfileLLHRatio(LLHRatio):
+    # r"""This class provides the abstract base class for a nested profile
+    # log-likelihood ratio function, which is, by definition, of the form
 
-    #.. math::
+    # .. math::
 
-        #\Lambda = \frac{\sup_{\Theta_0} L(\theta|D)}{\sup_{\Theta} L(\theta|D)}
+        # \Lambda = \frac{\sup_{\Theta_0} L(\theta|D)}{\sup_{\Theta} L(\theta|D)}
 
-    #where :math:`\theta` are the possible fit parameters, and :math:`\Theta`
-    #and :math:`\Theta_0` are the total and nested fit parameter spaces,
-    #respectively.
-    #"""
+    # where :math:`\theta` are the possible fit parameters, and :math:`\Theta`
+    # and :math:`\Theta_0` are the total and nested fit parameter spaces,
+    # respectively.
+    # """
     #__metaclass__ = abc.ABCMeta
 
-    #def __init__(self, ):
+    # def __init__(self, ):
         #super(NestedProfileLLHRatio, self).__init__()
 
 
-#class MultiDatasetNestedProfileLLHRatio(NestedProfileLLHRatio):
-    #"""This class provides a nested profile log-likelihood ratio function for
-    #multiple data sets.
-    #"""
-    #def __init__(self):
+# class MultiDatasetNestedProfileLLHRatio(NestedProfileLLHRatio):
+    # """This class provides a nested profile log-likelihood ratio function for
+    # multiple data sets.
+    # """
+    # def __init__(self):
         #super(MultiDatasetNestedProfileLLHRatio, self).__init__()
-

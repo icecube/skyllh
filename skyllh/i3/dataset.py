@@ -19,6 +19,7 @@ from skyllh.core.timing import TaskTimer
 # This will change the skyllh.core.config.CFG dictionary.
 from skyllh.i3 import config
 
+
 class I3Dataset(Dataset):
     """The I3Dataset class is an IceCube specific Dataset class that adds
     IceCube specific properties to the Dataset class. These additional
@@ -43,7 +44,8 @@ class I3Dataset(Dataset):
             The combined list of grl pathfilenames.
         """
         if(not issequenceof(datasets, I3Dataset)):
-            raise TypeError('The datasets argument must be a sequence of I3Dataset instances!')
+            raise TypeError(
+                'The datasets argument must be a sequence of I3Dataset instances!')
 
         grl_pathfilenames = []
         for ds in datasets:
@@ -74,6 +76,7 @@ class I3Dataset(Dataset):
         root_dir property of this Dataset instance.
         """
         return self._grl_pathfilename_list
+
     @grl_pathfilename_list.setter
     def grl_pathfilename_list(self, pathfilenames):
         if(pathfilenames is None):
@@ -82,7 +85,7 @@ class I3Dataset(Dataset):
             pathfilenames = [pathfilenames]
         if(not issequenceof(pathfilenames, str)):
             raise TypeError('The grl_pathfilename_list property must be a '
-                'sequence of str!')
+                            'sequence of str!')
         self._grl_pathfilename_list = list(pathfilenames)
 
     @property
@@ -99,11 +102,12 @@ class I3Dataset(Dataset):
         keys are the old names and their values are the new names.
         """
         return self._grl_field_name_renaming_dict
+
     @grl_field_name_renaming_dict.setter
     def grl_field_name_renaming_dict(self, d):
         if(not isinstance(d, dict)):
             raise TypeError('The grl_field_name_renaming_dict property must '
-                'be an instance of dict!')
+                            'be an instance of dict!')
         self._grl_field_name_renaming_dict = d
 
     @property
@@ -111,7 +115,7 @@ class I3Dataset(Dataset):
         """(read-only) Flag if all the data files of this data set exists. It is
         ``True`` if all data files exist and ``False`` otherwise.
         """
-        if(not super(I3Dataset,self).exists):
+        if(not super(I3Dataset, self).exists):
             return False
 
         for pathfilename in self.grl_abs_pathfilename_list:
@@ -252,7 +256,7 @@ class I3Dataset(Dataset):
                 tl=tl)
             if('livetime' not in data_grl.field_name_list):
                 raise KeyError('The GRL file(s) "%s" has no data field named '
-                    '"livetime"!'%(','.join(self._grl_pathfilename_list)))
+                               '"livetime"!' % (','.join(self._grl_pathfilename_list)))
             lt = np.sum(data_grl['livetime'])
 
         # Override the livetime if there is a user defined livetime.
@@ -273,7 +277,7 @@ class I3Dataset(Dataset):
         # this dataset.
         if(data_grl is not None):
             task = 'Selected only the experimental data that matches the GRL '\
-                'for dataset "%s".'%(self.name)
+                'for dataset "%s".' % (self.name)
             with TaskTimer(tl, task):
                 runs = np.unique(data_grl['run'])
                 mask = np.isin(data.exp['run'], runs)
@@ -321,6 +325,7 @@ class I3DatasetData(DatasetData):
     monto-carlo data of a data set. It's the IceCube specific class that also
     holds the good-run-list (GRL) data.
     """
+
     def __init__(self, data, data_grl):
         super(I3DatasetData, self).__init__(
             data._exp, data._mc, data._livetime)
@@ -334,10 +339,11 @@ class I3DatasetData(DatasetData):
         available for this IceCube data set.
         """
         return self._grl
+
     @grl.setter
     def grl(self, data):
         if(data is not None):
             if(not isinstance(data, DataFieldRecordArray)):
                 raise TypeError('The grl property must be an instance of '
-                    'DataFieldRecordArray!')
+                                'DataFieldRecordArray!')
         self._grl = data

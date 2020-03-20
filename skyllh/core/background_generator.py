@@ -12,6 +12,7 @@ class BackgroundGenerator(object):
     background hypothesis. These dependencies are out-sourced to a class derived
     from the BackgroundGenerationMethod class.
     """
+
     def __init__(self, bkg_gen_method, dataset_list, data_list):
         """Constructs a new background generator instance.
 
@@ -39,11 +40,12 @@ class BackgroundGenerator(object):
         generate background events.
         """
         return self._bkg_gen_method
+
     @bkg_gen_method.setter
     def bkg_gen_method(self, method):
         if(not isinstance(method, BackgroundGenerationMethod)):
             raise TypeError('The bkg_gen_method property must be an instance '
-                'of BackgroundGenerationMethod!')
+                            'of BackgroundGenerationMethod!')
         self._bkg_gen_method = method
 
     @property
@@ -52,11 +54,12 @@ class BackgroundGenerator(object):
         generated for.
         """
         return self._dataset_list
+
     @dataset_list.setter
     def dataset_list(self, datasets):
         if(not issequenceof(datasets, Dataset)):
             raise TypeError('The dataset_list property must be a sequence of '
-                'Dataset instances!')
+                            'Dataset instances!')
         self._dataset_list = list(datasets)
 
     @property
@@ -66,11 +69,12 @@ class BackgroundGenerator(object):
         property.
         """
         return self._data_list
+
     @data_list.setter
     def data_list(self, datas):
         if(not issequenceof(datas, DatasetData)):
             raise TypeError('The data_list property must be a sequence of '
-                'DatasetData instances!')
+                            'DatasetData instances!')
         self._data_list = datas
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):

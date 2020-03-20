@@ -38,7 +38,8 @@ class I3DetSigYield(DetSigYield):
         """Constructor of the IceCube specific detector signal yield base
         class.
         """
-        super(I3DetSigYield, self).__init__(implmethod, dataset, fluxmodel, livetime)
+        super(I3DetSigYield, self).__init__(
+            implmethod, dataset, fluxmodel, livetime)
 
         self.sin_dec_binning = sin_dec_binning
 
@@ -48,11 +49,12 @@ class I3DetSigYield(DetSigYield):
         definition.
         """
         return self._sin_dec_binning
+
     @sin_dec_binning.setter
     def sin_dec_binning(self, bd):
         if(not isinstance(bd, BinningDefinition)):
             raise TypeError('The sin_dec_binning property must be an instance '
-                'of BinningDefinition!')
+                            'of BinningDefinition!')
         self._sin_dec_binning = bd
 
 
@@ -83,12 +85,13 @@ class I3DetSigYieldImplMethod(DetSigYieldImplMethod):
         binning definitions.
         """
         return self._sin_dec_binning
+
     @sin_dec_binning.setter
     def sin_dec_binning(self, binning):
         if((binning is not None) and
            (not isinstance(binning, BinningDefinition))):
             raise TypeError('The sin_dec_binning property must be None, or '
-                'an instance of BinningDefinition!')
+                            'an instance of BinningDefinition!')
         self._sin_dec_binning = binning
 
     def get_sin_dec_binning(self, dataset):
@@ -100,9 +103,9 @@ class I3DetSigYieldImplMethod(DetSigYieldImplMethod):
         if(sin_dec_binning is None):
             if(not dataset.has_binning_definition('sin_dec')):
                 raise KeyError('No binning definition named "sin_dec" is '
-                    'defined in the dataset and no user defined binning '
-                    'definition was provided to this detector signal yield '
-                    'implementation method!')
+                               'defined in the dataset and no user defined binning '
+                               'definition was provided to this detector signal yield '
+                               'implementation method!')
             sin_dec_binning = dataset.get_binning_definition('sin_dec')
         return sin_dec_binning
 
@@ -152,9 +155,10 @@ class PointLikeSourceI3DetSigYieldImplMethod(I3DetSigYieldImplMethod):
             for each source.
         """
         if(isinstance(sources, PointLikeSource)):
-            sources = [ sources ]
+            sources = [sources]
         if(not issequenceof(sources, PointLikeSource)):
-            raise TypeError('The source argument must be an instance of PointLikeSource!')
+            raise TypeError(
+                'The source argument must be an instance of PointLikeSource!')
 
         arr = np.empty((len(sources),), dtype=[('dec', np.float)])
         for (i, src) in enumerate(sources):
@@ -168,6 +172,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
     FixedFluxPointLikeSourceI3DetSigYieldImplMethod detector signal yield
     implementation method.
     """
+
     def __init__(self, implmethod, dataset, fluxmodel, livetime, sin_dec_binning, log_spl_sinDec):
         """Constructs an IceCube detector signal yield instance for a
         point-like source with a fixed flux.
@@ -193,7 +198,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         """
         if(not isinstance(implmethod, FixedFluxPointLikeSourceI3DetSigYieldImplMethod)):
             raise TypeError('The implmethod argument must be an instance of '
-                'FixedFluxPointLikeSourceI3DetSigYieldImplMethod!')
+                            'FixedFluxPointLikeSourceI3DetSigYieldImplMethod!')
 
         super(FixedFluxPointLikeSourceI3DetSigYield, self).__init__(
             implmethod, dataset, fluxmodel, livetime, sin_dec_binning)
@@ -207,11 +212,12 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         yield as a function of sin(dec).
         """
         return self._log_spl_sinDec
+
     @log_spl_sinDec.setter
     def log_spl_sinDec(self, spl):
         if(not isinstance(spl, scipy.interpolate.InterpolatedUnivariateSpline)):
             raise TypeError('The log_spl_sinDec property must be an instance '
-                'of scipy.interpolate.InterpolatedUnivariateSpline!')
+                            'of scipy.interpolate.InterpolatedUnivariateSpline!')
         self._log_spl_sinDec = spl
 
     def __call__(self, src, src_flux_params=None):
@@ -243,7 +249,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         # Create mask for all source declinations which are inside the
         # declination range.
         mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge)\
-              &(np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
+            & (np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
 
         values[mask] = np.exp(self._log_spl_sinDec(np.sin(src_dec[mask])))
 
@@ -251,7 +257,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
 
 
 class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
-    PointLikeSourceI3DetSigYieldImplMethod):
+        PointLikeSourceI3DetSigYieldImplMethod):
     """This detector signal yield implementation method constructs a
     detector signal yield for a fixed flux model, assuming a point-like
     source. This means that the detector signal yield does not depend on
@@ -267,6 +273,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
     effective area depends soley on the zenith angle, and hence on the
     declination, of the source.
     """
+
     def __init__(self, sin_dec_binning=None, spline_order_sinDec=2, **kwargs):
         """Creates a new IceCube detector signal yield implementation
         method object for a fixed flux model. It requires a sinDec binning
@@ -299,11 +306,12 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
         detector signal yield, along the sin(dec) axis.
         """
         return self._spline_order_sinDec
+
     @spline_order_sinDec.setter
     def spline_order_sinDec(self, order):
         if(not isinstance(order, int)):
             raise TypeError('The spline_order_sinDec property must be of '
-                'type int!')
+                            'type int!')
         self._spline_order_sinDec = order
 
     def construct_detsigyield(self, dataset, data, fluxmodel, livetime, ppbar=None):
@@ -356,13 +364,15 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
 
         # Calculate the detector signal yield contribution of each event.
         # The unit of mcweight is assumed to be GeV cm^2 sr.
-        w = data.mc["mcweight"] * fluxmodel(data.mc["true_energy"])*toGeVcm2s * livetime_days * 86400.
+        w = data.mc["mcweight"] * \
+            fluxmodel(data.mc["true_energy"])*toGeVcm2s * livetime_days * \
+            86400.
 
         # Create a histogram along sin(true_dec).
         (h, bins) = np.histogram(np.sin(data.mc["true_dec"]),
-                                 weights = w,
-                                 bins = sin_dec_binning.binedges,
-                                 density = False)
+                                 weights=w,
+                                 bins=sin_dec_binning.binedges,
+                                 density=False)
 
         # Normalize by solid angle of each bin which is
         # 2*\pi*(\Delta sin(\delta)).
@@ -383,6 +393,7 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
     PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod detector signal yield
     implementation method.
     """
+
     def __init__(self, implmethod, dataset, fluxmodel, livetime,
                  sin_dec_binning, log_spl_sinDec_gamma):
         """Constructs the detector signal yield instance.
@@ -390,7 +401,7 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         """
         if(not isinstance(implmethod, PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod)):
             raise TypeError('The implmethod argument must be an instance of '
-                'PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod!')
+                            'PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod!')
 
         super(PowerLawFluxPointLikeSourceI3DetSigYield, self).__init__(
             implmethod, dataset, fluxmodel, livetime, sin_dec_binning)
@@ -404,11 +415,12 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         yield as a function of sin(dec) and gamma.
         """
         return self._log_spl_sinDec_gamma
+
     @log_spl_sinDec_gamma.setter
     def log_spl_sinDec_gamma(self, spl):
         if(not isinstance(spl, scipy.interpolate.RectBivariateSpline)):
             raise TypeError('The log_spl_sinDec_gamma property must be an '
-                'instance of scipy.interpolate.RectBivariateSpline!')
+                            'instance of scipy.interpolate.RectBivariateSpline!')
         self._log_spl_sinDec_gamma = spl
 
     def __call__(self, src, src_flux_params):
@@ -444,7 +456,7 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         # which we actually have detector acceptance. For the other sources,
         # the detector signal yield is zero.
         mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge)\
-              &(np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
+            & (np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
 
         values[mask] = np.exp(self._log_spl_sinDec_gamma(
             np.sin(src_dec[mask]), src_gamma[mask], grid=False))
@@ -455,7 +467,7 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
 
 
 class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
-    PointLikeSourceI3DetSigYieldImplMethod, multiproc.IsParallelizable):
+        PointLikeSourceI3DetSigYieldImplMethod, multiproc.IsParallelizable):
     """This detector signal yield implementation method constructs a
     detector signal yield for a variable power law flux model, which has
     the spectral index gamma as fit parameter, assuming a point-like source.
@@ -470,6 +482,7 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
     effective area depends soley on the zenith angle, and hence on the
     declination, of the source.
     """
+
     def __init__(
             self, gamma_grid, sin_dec_binning=None, spline_order_sinDec=2,
             spline_order_gamma=2, ncpu=None):
@@ -514,11 +527,12 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         computing the gamma dependency of the detector signal yield.
         """
         return self._gamma_grid
+
     @gamma_grid.setter
     def gamma_grid(self, grid):
         if(not isinstance(grid, ParameterGrid)):
             raise TypeError('The gamma_grid property must be an instance of '
-                'ParameterGrid!')
+                            'ParameterGrid!')
         self._gamma_grid = grid
 
     @property
@@ -527,11 +541,12 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         detector signal yield, along the sin(dec) axis.
         """
         return self._spline_order_sinDec
+
     @spline_order_sinDec.setter
     def spline_order_sinDec(self, order):
         if(not isinstance(order, int)):
             raise TypeError('The spline_order_sinDec property must be of '
-                'type int!')
+                            'type int!')
         self._spline_order_sinDec = order
 
     @property
@@ -540,11 +555,12 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         detector signal yield, along the gamma axis.
         """
         return self._spline_order_gamma
+
     @spline_order_gamma.setter
     def spline_order_gamma(self, order):
         if(not isinstance(order, int)):
             raise TypeError('The spline_order_gamma property must be of '
-                'type int!')
+                            'type int!')
         self._spline_order_gamma = order
 
     def _get_signal_fitparam_names(self):
@@ -632,9 +648,10 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
                 The numpy array containing the histogram values.
             """
             (h, edges) = np.histogram(data_sin_true_dec,
-                                      bins = sin_dec_binning.binedges,
-                                      weights = weights * fluxmodel(data_true_energy),
-                                      density = False)
+                                      bins=sin_dec_binning.binedges,
+                                      weights=weights *
+                                      fluxmodel(data_true_energy),
+                                      density=False)
             return h
 
         data_sin_true_dec = np.sin(data.mc["true_dec"])
@@ -647,12 +664,12 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
 
         # Construct the arguments for the hist function to be used in the
         # multiproc.parallelize function.
-        args_list = [ ((data_sin_true_dec,
-                        data.mc['true_energy'],
-                        sin_dec_binning,
-                        weights,
-                        fluxmodel.copy({'gamma':gamma})), {})
-                     for gamma in gamma_grid.grid ]
+        args_list = [((data_sin_true_dec,
+                       data.mc['true_energy'],
+                       sin_dec_binning,
+                       weights,
+                       fluxmodel.copy({'gamma': gamma})), {})
+                     for gamma in gamma_grid.grid]
         h = np.vstack(
             multiproc.parallelize(
                 hist, args_list, self.ncpu, ppbar=ppbar)).T
@@ -660,11 +677,11 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         # Normalize by solid angle of each bin along the sin(dec) axis.
         # The solid angle is given by 2*\pi*(\Delta sin(\delta))
         h /= (2.*np.pi * np.diff(sin_dec_binning.binedges)).reshape(
-            (sin_dec_binning.nbins,1))
+            (sin_dec_binning.nbins, 1))
 
         log_spl_sinDec_gamma = scipy.interpolate.RectBivariateSpline(
             sin_dec_binning.bincenters, gamma_grid.grid, np.log(h),
-            kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
+            kx=self.spline_order_sinDec, ky=self.spline_order_gamma, s=0)
 
         detsigyield = PowerLawFluxPointLikeSourceI3DetSigYield(
             self, dataset, fluxmodel, livetime, sin_dec_binning, log_spl_sinDec_gamma)

@@ -2,7 +2,8 @@
 
 import numpy as np
 
-from skyllh.core.py import range 
+from skyllh.core.py import range
+
 
 def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     """Calculates the rotation matrix R to rotate the spherical vector
@@ -25,7 +26,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     assert (len(ra1) == len(dec1) ==
             len(ra2) == len(dec2) ==
             len(ra3) == len(dec3)
-           ), 'All input argument arrays must be of the same length!'
+            ), 'All input argument arrays must be of the same length!'
 
     N_event = len(ra1)
 
@@ -33,7 +34,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     # correct for possible rounding erros.
     cos_alpha = (np.cos(ra2 - ra1) * np.cos(dec1) * np.cos(dec2)
                  + np.sin(dec1) * np.sin(dec2))
-    cos_alpha[cos_alpha >  1] =  1
+    cos_alpha[cos_alpha > 1] = 1
     cos_alpha[cos_alpha < -1] = -1
     alpha = np.arccos(cos_alpha)
 
@@ -60,13 +61,13 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
 
     # Calculate the rotation matrix R_i for each event i and perform the
     # rotation on vector 3 for each event.
-    vec = np.empty((N_event,3), dtype=np.float)
+    vec = np.empty((N_event, 3), dtype=np.float)
 
     sin_alpha = np.sin(alpha)
     twopi = 2*np.pi
     # Remap functions to avoid Python's (.)-resolution millions of times.
     (np_outer, np_dot, np_roll, np_diag, np_T) = (
-     np.outer, np.dot, np.roll, np.diag, np.transpose)
+        np.outer, np.dot, np.roll, np.diag, np.transpose)
     for i in range(N_event):
         cos_alpha_i = cos_alpha[i]
         nrot_i = nrot[i]
@@ -74,7 +75,8 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
 
         # Calculate cross product matrix, nrotx_i:
         # A[ij] = x_i * y_j - y_i * x_j
-        skv = np_roll(np_roll(np_diag(nrot_i), shift=1, axis=1), shift=-1, axis=0)
+        skv = np_roll(np_roll(np_diag(nrot_i), shift=1, axis=1),
+                      shift=-1, axis=0)
         nrotx_i = skv - np_T(skv)
 
         # Calculate rotation matrix, R_i.

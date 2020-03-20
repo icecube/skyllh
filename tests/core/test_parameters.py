@@ -4,6 +4,7 @@
 module.
 """
 
+from utils import isAlmostEqual
 import numpy as np
 import os.path
 import sys
@@ -25,10 +26,9 @@ from skyllh.core.py import const
 from skyllh.core.random import RandomStateService
 
 sys.path.append(os.path.join(os.path.split(__file__)[0], '..'))
-from utils import isAlmostEqual
 
 GAMMA_GRID = [
-    1. ,  1.1,  1.2,  1.3,  1.4,  1.5,  1.6,  1.7,  1.8,  1.9,  2.
+    1.,  1.1,  1.2,  1.3,  1.4,  1.5,  1.6,  1.7,  1.8,  1.9,  2.
 ]
 
 ECUT_GRID = [
@@ -39,6 +39,7 @@ ECUT_GRID = [
 class Parameter_TestCase(unittest.TestCase):
     """This test case tests the Parameter class.
     """
+
     def setUp(self):
         self.fixed_param_initial = 2.37
         self.floating_param_initial = 7.32
@@ -198,6 +199,7 @@ class Parameter_TestCase(unittest.TestCase):
 class ParameterSet_TestCase(unittest.TestCase):
     """This test case tests the ParameterSet class.
     """
+
     def setUp(self):
         self.fixed_param = Parameter('p0', 2.3)
         self.floating_param = Parameter('p1', 1.1, valmin=0.5, valmax=1.6)
@@ -207,8 +209,8 @@ class ParameterSet_TestCase(unittest.TestCase):
         p0 = Parameter('p0', 2.3)
         p1 = Parameter('p1', 1.1, valmin=0.5, valmax=1.6)
         p2 = Parameter('p2', 3.2, valmin=2.3, valmax=4.7)
-        paramset0 = ParameterSet((p0,p2))
-        paramset1 = ParameterSet((p1,p2))
+        paramset0 = ParameterSet((p0, p2))
+        paramset1 = ParameterSet((p1, p2))
         paramset_union = ParameterSet.union(paramset0, paramset1)
         params = paramset_union.params
         self.assertEqual(len(params), 3)
@@ -281,8 +283,8 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.assertEqual(len(self.paramset), 2)
 
     def test_iter(self):
-        for (i,param) in enumerate(self.paramset):
-            self.assertEqual(param.name, 'p%d'%(i))
+        for (i, param) in enumerate(self.paramset):
+            self.assertEqual(param.name, 'p%d' % (i))
 
     def test_str(self):
         try:
@@ -397,7 +399,8 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.assertFalse(self.paramset.has_param(Parameter('p', 0.0)))
 
     def test_floating_param_values_to_dict(self):
-        param_dict = self.paramset.floating_param_values_to_dict(np.array([1.3]))
+        param_dict = self.paramset.floating_param_values_to_dict(
+            np.array([1.3]))
         self.assertAlmostEqual(param_dict['p0'], 2.3)
         self.assertAlmostEqual(param_dict['p1'], 1.3)
 
@@ -405,6 +408,7 @@ class ParameterSet_TestCase(unittest.TestCase):
 class ParameterSetArray_TestCase(unittest.TestCase):
     """This test case tests the ParameterSetArray class.
     """
+
     def setUp(self):
         self.fixed_param0 = Parameter(
             'fixed_param0', 2.3)
@@ -414,8 +418,10 @@ class ParameterSetArray_TestCase(unittest.TestCase):
             'floating_param0', 1.1, valmin=0.5, valmax=1.6)
         self.floating_param1 = Parameter(
             'floating_param1', 13.5, valmin=10.5, valmax=15)
-        self.paramset0 = ParameterSet((self.fixed_param0, self.floating_param0))
-        self.paramset1 = ParameterSet((self.floating_param1, self.fixed_param1))
+        self.paramset0 = ParameterSet(
+            (self.fixed_param0, self.floating_param0))
+        self.paramset1 = ParameterSet(
+            (self.floating_param1, self.fixed_param1))
 
         self.paramsetarr = ParameterSetArray(
             (const(self.paramset0), const(self.paramset1)))
@@ -450,7 +456,7 @@ class ParameterSetArray_TestCase(unittest.TestCase):
 
     def test_floating_param_bounds(self):
         bounds = self.paramsetarr.floating_param_bounds
-        self.assertEqual(bounds.shape, (2,2))
+        self.assertEqual(bounds.shape, (2, 2))
         np.testing.assert_almost_equal(bounds[0], (0.5, 1.6))
         np.testing.assert_almost_equal(bounds[1], (10.5, 15))
 
@@ -467,8 +473,8 @@ class ParameterSetArray_TestCase(unittest.TestCase):
         rss = RandomStateService(42)
         initials = self.paramsetarr.generate_random_initials(rss)
         np.testing.assert_almost_equal(initials,
-            (0.5+rn[0]*(1.6-0.5),
-            10.5+rn[1]*(15-10.5)))
+                                       (0.5+rn[0]*(1.6-0.5),
+                                        10.5+rn[1]*(15-10.5)))
 
     def test_split_floating_param_values(self):
         fl_param_values = np.array([0.9, 14.2])
@@ -484,10 +490,13 @@ class ParameterSetArray_TestCase(unittest.TestCase):
 class ParameterGrid_TestCase(unittest.TestCase):
     """This test case tests the ParameterGrid class.
     """
+
     def setUp(self):
-        self.paramgrid_gamma1 = ParameterGrid('gamma1', [ 1.5, 2., 2.5, 3., 3.5])
+        self.paramgrid_gamma1 = ParameterGrid(
+            'gamma1', [1.5, 2., 2.5, 3., 3.5])
         self.paramgrid_gamma2 = ParameterGrid('gamma2', GAMMA_GRID)
-        self.paramgrid_gamma3 = ParameterGrid('gamma3', [ 1.05, 1.15, 1.25, 1.35])
+        self.paramgrid_gamma3 = ParameterGrid(
+            'gamma3', [1.05, 1.15, 1.25, 1.35])
 
     def test_from_BinningDefinition(self):
         binning = BinningDefinition(name='gamma', binedges=GAMMA_GRID)
@@ -571,6 +580,7 @@ class ParameterGrid_TestCase(unittest.TestCase):
 class ParameterGridSet_TestCase(unittest.TestCase):
     """This test case tests the ParameterGridSet class.
     """
+
     def setUp(self):
         """Setups this test case.
         """
@@ -592,11 +602,11 @@ class ParameterGridSet_TestCase(unittest.TestCase):
         perm_dict_list = self.paramgridset.parameter_permutation_dict_list
 
         self.assertTrue(isAlmostEqual(
-            [ d['gamma'] for d in perm_dict_list ],
+            [d['gamma'] for d in perm_dict_list],
             np.repeat(np.array(GAMMA_GRID), len(ECUT_GRID))
         ))
         self.assertTrue(isAlmostEqual(
-            [ d['Ecut'] for d in perm_dict_list ],
+            [d['Ecut'] for d in perm_dict_list],
             list(ECUT_GRID)*len(GAMMA_GRID)
         ))
 
@@ -709,7 +719,8 @@ class MultiModelParameterMapperTestCase(unittest.TestCase):
 
     def test_def_param(self):
         self.mpm.def_param(self.fixed_param0, models=(self.model1,))
-        self.mpm.def_param(self.floating_param0, 'fp', models=(self.model0,self.model1))
+        self.mpm.def_param(self.floating_param0, 'fp',
+                           models=(self.model0, self.model1))
         self.mpm.def_param(self.floating_param1, models=(self.model1))
         self.assertEqual(self.mpm.n_global_params, 3)
         self.assertEqual(self.mpm.n_global_fixed_params, 1)
@@ -805,7 +816,7 @@ class HypoParameterDefinitionTestCase(unittest.TestCase):
         self.setUp()
 
         # Create a copy where we fix one of the floating parameters.
-        hpdef = self.hpdef.copy({'floating_param1':2.3})
+        hpdef = self.hpdef.copy({'floating_param1': 2.3})
         self.assertTrue(isinstance(hpdef, HypoParameterDefinition))
         mpm0 = hpdef['mpm0']
         mpm1 = hpdef['mpm1']
@@ -822,7 +833,8 @@ class HypoParameterDefinitionTestCase(unittest.TestCase):
         self.assertEqual(mpm1.global_paramset.n_fixed_params, 2)
         self.assertEqual(mpm1.global_paramset.n_floating_params, 0)
         self.assertTrue(mpm1.global_paramset.params[0] == self.fixed_param1)
-        self.assertFalse(mpm1.global_paramset.params[1] == self.floating_param1)
+        self.assertFalse(
+            mpm1.global_paramset.params[1] == self.floating_param1)
         self.assertTrue(mpm1.global_paramset.params[1].isfixed)
         self.assertAlmostEqual(mpm1.global_paramset.params[1].initial, 2.3)
         self.assertAlmostEqual(mpm1.global_paramset.params[1].value, 2.3)
@@ -849,11 +861,14 @@ class TestParameters(unittest.TestCase):
         # Define the fit parameters 'gamma1' and 'gamma2' which map to the
         # 'gamma' source parameter of the first and second source, respectively.
         sfpm = MultiSourceFitParameterMapper(sources)
-        sfpm.def_fit_parameter(FitParameter('gamma1', 1, 4, 2.0), 'gamma', sources[0])
-        sfpm.def_fit_parameter(FitParameter('gamma2', 1, 4, 2.1), 'gamma', sources[1])
+        sfpm.def_fit_parameter(FitParameter(
+            'gamma1', 1, 4, 2.0), 'gamma', sources[0])
+        sfpm.def_fit_parameter(FitParameter(
+            'gamma2', 1, 4, 2.1), 'gamma', sources[1])
 
         # Check the initial values.
-        self.assertTrue(np.all(sfpm.fitparamset.initials == np.array([2.0, 2.1])))
+        self.assertTrue(
+            np.all(sfpm.fitparamset.initials == np.array([2.0, 2.1])))
 
         # Get the source parameters for the first source (feed it with the
         # initials).
@@ -864,6 +879,7 @@ class TestParameters(unittest.TestCase):
         # initials).
         fitparams = sfpm.get_src_fitparams(sfpm.fitparamset.initials, 1)
         self.assertEqual(fitparams, {'gamma': 2.1})
+
 
 if(__name__ == '__main__'):
     unittest.main()

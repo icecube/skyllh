@@ -22,6 +22,7 @@ from skyllh.core.pdfratio import SpatialSigOverBkgPDFRatio
 class SpatialSigOverBkgPDFRatioPlotter(object):
     """Plotter class to plot a SpatialSigOverBkgPDFRatio object.
     """
+
     def __init__(self, tdm, pdfratio):
         """Creates a new plotter object for plotting a
         SpatialSigOverBkgPDFRatio object.
@@ -42,10 +43,12 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         """The PDF ratio object to plot.
         """
         return self._pdfratio
+
     @pdfratio.setter
     def pdfratio(self, pdfratio):
         if(not isinstance(pdfratio, SpatialSigOverBkgPDFRatio)):
-            raise TypeError('The pdfratio property must be an object of instance SpatialSigOverBkgPDFRatio!')
+            raise TypeError(
+                'The pdfratio property must be an object of instance SpatialSigOverBkgPDFRatio!')
         self._pdfratio = pdfratio
 
     @property
@@ -53,15 +56,16 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         """The TrialDataManager that provides the data for the PDF evaluation.
         """
         return self._tdm
+
     @tdm.setter
     def tdm(self, obj):
         if(not isinstance(obj, TrialDataManager)):
             raise TypeError('The tdm property must be an instance of '
-                'TrialDataManager!')
+                            'TrialDataManager!')
         self._tdm = obj
 
     def plot(self, src_hypo_group_manager, axes, source_idx=None, log=True,
-            **kwargs):
+             **kwargs):
         """Plots the spatial PDF ratio. If the signal PDF depends on the source,
         source_idx specifies the index of the source for which the PDF should
         get plotted.
@@ -90,7 +94,8 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
             The AxesImage instance showing the PDF ratio image.
         """
         if(not isinstance(axes, Axes)):
-            raise TypeError('The axes argument must be an instance of matplotlib.axes.Axes!')
+            raise TypeError(
+                'The axes argument must be an instance of matplotlib.axes.Axes!')
 
         if(source_idx is None):
             source_idx = 0
@@ -108,7 +113,7 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         rabins = int(np.ceil(raaxis.length / np.deg2rad(delta_ra_deg)))
         decbins = int(np.ceil(decaxis.length / np.deg2rad(delta_dec_deg)))
 
-        ratios = np.zeros((rabins,decbins), dtype=np.float)
+        ratios = np.zeros((rabins, decbins), dtype=np.float)
 
         ra_binedges = np.linspace(raaxis.vmin, raaxis.vmax, rabins+1)
         ra_bincenters = 0.5*(ra_binedges[:-1] + ra_binedges[1:])
@@ -123,9 +128,9 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
                 dtype=[('ira', np.int), ('ra', np.float),
                        ('idec', np.int), ('dec', np.float), ('sin_dec', np.float),
                        ('ang_err', np.float)]))
-        for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
-                                                enumerate(ra_bincenters),
-                                                enumerate(dec_bincenters))):
+        for (i, ((ira, ra), (idec, dec))) in enumerate(itertools.product(
+            enumerate(ra_bincenters),
+                enumerate(dec_bincenters))):
             events['ira'][i] = ira
             events['ra'][i] = ra
             events['idec'][i] = idec
@@ -141,16 +146,16 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         if(event_ratios.ndim == 2):
             event_ratios = event_ratios[source_idx]
 
-        ratios[events['ira'],events['idec']] = event_ratios
+        ratios[events['ira'], events['idec']] = event_ratios
 
         (left, right, bottom, top) = (raaxis.vmin, raaxis.vmax,
                                       decaxis.vmin, decaxis.vmax)
         norm = LogNorm() if log else None
         img = axes.imshow(ratios.T,
-            extent=(left, right, bottom, top),
-            origin='lower',
-            norm=norm,
-            interpolation='none', **kwargs)
+                          extent=(left, right, bottom, top),
+                          origin='lower',
+                          norm=norm,
+                          interpolation='none', **kwargs)
         axes.set_xlabel(raaxis.name)
         axes.set_ylabel(decaxis.name)
         axes.set_title(classname(self._pdfratio))

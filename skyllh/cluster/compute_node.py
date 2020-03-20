@@ -1,14 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import sys
-sys.path.insert(0, '/home/mwolf/software/_skyllh/skyllh/trunk')
-
-import argparse
-import json
-import socket
-import time
-
-from skyllh.core.py import int_cast
 from skyllh.cluster.commands import (
     ACK,
     MSG,
@@ -16,13 +7,20 @@ from skyllh.cluster.commands import (
     ShutdownCN,
     receive_command_from_socket
 )
-
+from skyllh.core.py import int_cast
+import time
+import socket
+import json
+import argparse
+import sys
+sys.path.insert(0, '/home/mwolf/software/_skyllh/skyllh/trunk')
 
 
 class ComputeNode(object):
     """The ComputeNode class provides an entity for stand-alone program running
     on a dedicated compute node host.
     """
+
     def __init__(self, live_time, master_addr, master_port):
         super(ComputeNode, self).__init__()
 
@@ -41,10 +39,11 @@ class ComputeNode(object):
         reply = receive_command_from_socket(self.sock)
         if(not reply.is_same_as(ACK)):
             raise RuntimeError('The master node did not reply with an ACK '
-                'command!')
+                               'command!')
 
-        print('Registered to master %s:%d'%(self._master_addr, self._master_port))
-        print('Runtime set to %d seconds'%(self._live_time))
+        print('Registered to master %s:%d' %
+              (self._master_addr, self._master_port))
+        print('Runtime set to %d seconds' % (self._live_time))
 
     def __del__(self):
         self.sock.close()
@@ -55,6 +54,7 @@ class ComputeNode(object):
         requests.
         """
         return self._live_time
+
     @live_time.setter
     def live_time(self, t):
         t = int_cast(t, 'The live_time property must be castable to type int!')
@@ -65,6 +65,7 @@ class ComputeNode(object):
         """The address of the SkyLLH master program.
         """
         return self._master_addr
+
     @master_addr.setter
     def master_addr(self, addr):
         if(not isinstance(addr, str)):
@@ -76,10 +77,11 @@ class ComputeNode(object):
         """The port number of the SkyLLH master program.
         """
         return self._master_port
+
     @master_port.setter
     def master_port(self, p):
         p = int_cast(p,
-            'The master_port property must be castable to type int!')
+                     'The master_port property must be castable to type int!')
         self._master_port = p
 
     def handle_requests(self):
@@ -90,7 +92,7 @@ class ComputeNode(object):
             # Receive a command.
             cmd = receive_command_from_socket(self.sock)
             if(cmd.is_same_as(MSG)):
-                print('Received general message: %s'%(cmd.msg))
+                print('Received general message: %s' % (cmd.msg))
             elif(cmd.is_same_as(ShutdownCN)):
                 print('Received shutdown command. Shutting down.')
                 self.sock.close()

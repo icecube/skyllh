@@ -164,6 +164,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
     PDF ratio values of the PDF ratio objects which do not depend on that fit
     parameter is needed.
     """
+
     def __init__(self, pdfratios, fitparams):
         """Constructs a PDFRatio array arithmetic object assuming a single
         source.
@@ -199,11 +200,12 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         check_mask = (self._fitparam_idx_2_pdfratio_idx == -1)
         if(np.any(check_mask)):
             raise KeyError('%d fit parameters are not defined in any of the '
-                'PDF ratio instances!'%(np.sum(check_mask)))
+                           'PDF ratio instances!' % (np.sum(check_mask)))
 
         # Create the list of indices of the PDFRatio instances, which depend on
         # at least one fit parameter.
-        self._var_pdfratio_indices = np.unique(self._fitparam_idx_2_pdfratio_idx)
+        self._var_pdfratio_indices = np.unique(
+            self._fitparam_idx_2_pdfratio_idx)
 
     def _precompute_static_pdfratio_values(self, tdm):
         """Pre-compute the PDF ratio values for the PDF ratios that do not
@@ -231,11 +233,12 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         """The list of PDFRatio objects.
         """
         return self._pdfratio_list
+
     @pdfratio_list.setter
     def pdfratio_list(self, seq):
         if(not issequenceof(seq, PDFRatio)):
             raise TypeError('The pdfratio_list property must be a sequence of '
-                'PDFRatio instances!')
+                            'PDFRatio instances!')
         self._pdfratio_list = list(seq)
 
     @property
@@ -243,11 +246,12 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         """The list of FitParameter instances.
         """
         return self._fitparam_list
+
     @fitparam_list.setter
     def fitparam_list(self, seq):
         if(not issequenceof(seq, FitParameter)):
             raise TypeError('The fitparam_list property must be a sequence of '
-                'FitParameter instances!')
+                            'FitParameter instances!')
         self._fitparam_list = list(seq)
 
     def initialize_for_new_trial(self, tdm):
@@ -404,6 +408,7 @@ class PDFRatioFillMethod(object):
         """
         return ratios
 
+
 class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
     """This PDF ratio fill method implements the exact same fill method as in
     the skylab2 software named "skylab". It exists just for comparsion and
@@ -411,6 +416,7 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
     it does not distinguish between bins with MC converage and physics model
     contribution, and those with MC coverage and no physics model contribution!
     """
+
     def __init__(self):
         super(Skylab2SkylabPDFRatioFillMethod, self).__init__()
         self.signallike_percentile = 99.
@@ -423,23 +429,28 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
         # Check if we have predicted background for the entire background MC
         # range.
         if(np.any(bkg_mask_mc_covered_zero_physics)):
-            raise ValueError('Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
+            raise ValueError(
+                'Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
 
         sig_domain = sig_prob_h > 0
         bkg_domain = bkg_prob_h > 0
 
-        ratio[sig_domain & bkg_domain] = sig_prob_h[sig_domain & bkg_domain] / bkg_prob_h[sig_domain & bkg_domain]
+        ratio[sig_domain & bkg_domain] = sig_prob_h[sig_domain &
+                                                    bkg_domain] / bkg_prob_h[sig_domain & bkg_domain]
 
-        ratio_value = np.percentile(ratio[ratio > 1.], self.signallike_percentile)
+        ratio_value = np.percentile(
+            ratio[ratio > 1.], self.signallike_percentile)
         np.copyto(ratio, ratio_value, where=sig_domain & ~bkg_domain)
 
         return ratio
+
 
 class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
     """PDF ratio fill method to set the PDF ratio to the most signal like PDF
     ratio for bins, where there is signal MC coverage but no background (MC)
     coverage.
     """
+
     def __init__(self, signallike_percentile=99.):
         """Creates the PDF ratio fill method object for filling PDF ratio bins,
         where there is signal MC coverage but no background (MC) coverage
@@ -462,12 +473,15 @@ class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
         must be given as a float value in the range [0, 100] inclusively.
         """
         return self._signallike_percentile
+
     @signallike_percentile.setter
     def signallike_percentile(self, value):
         if(not isinstance(value, float)):
-            raise TypeError('The signallike_percentile property must be of type float!')
+            raise TypeError(
+                'The signallike_percentile property must be of type float!')
         if(value < 0. or value > 100.):
-            raise ValueError('The value of the signallike_percentile property must be in the range [0, 100]!')
+            raise ValueError(
+                'The value of the signallike_percentile property must be in the range [0, 100]!')
         self._signallike_percentile = value
 
     def fill_ratios(self, ratio, sig_prob_h, bkg_prob_h,
@@ -478,15 +492,18 @@ class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
         # Check if we have predicted background for the entire background MC
         # range.
         if(np.any(bkg_mask_mc_covered_zero_physics)):
-            raise ValueError('Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
+            raise ValueError(
+                'Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
 
         # Fill the bins where we have signal and background MC coverage.
         mask_sig_and_bkg_mc_covered = sig_mask_mc_covered & bkg_mask_mc_covered
-        ratio[mask_sig_and_bkg_mc_covered] = sig_prob_h[mask_sig_and_bkg_mc_covered] / bkg_prob_h[mask_sig_and_bkg_mc_covered]
+        ratio[mask_sig_and_bkg_mc_covered] = sig_prob_h[mask_sig_and_bkg_mc_covered] / \
+            bkg_prob_h[mask_sig_and_bkg_mc_covered]
 
         # Calculate the ratio value, which should be used for ratio bins, where
         # we have signal MC coverage but no background MC coverage.
-        ratio_value = np.percentile(ratio[ratio > 1.], self.signallike_percentile)
+        ratio_value = np.percentile(
+            ratio[ratio > 1.], self.signallike_percentile)
         mask_sig_but_notbkg_mc_covered = sig_mask_mc_covered & ~bkg_mask_mc_covered
         np.copyto(ratio, ratio_value, where=mask_sig_but_notbkg_mc_covered)
 
@@ -498,6 +515,7 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
     value for bins, where there is signal MC coverage but no background (MC)
     coverage.
     """
+
     def __init__(self):
         """Creates the PDF ratio fill method object for filling PDF ratio bins,
         where there is signal MC coverage but no background (MC) coverage
@@ -513,11 +531,13 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
         # Check if we have predicted background for the entire background MC
         # range.
         if(np.any(bkg_mask_mc_covered_zero_physics)):
-            raise ValueError('Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
+            raise ValueError(
+                'Some of the background bins have MC coverage but no physics background prediction. I don\'t know what to do in this case!')
 
         # Fill the bins where we have signal and background MC coverage.
         mask_sig_and_bkg_mc_covered = sig_mask_mc_covered & bkg_mask_mc_covered
-        ratio[mask_sig_and_bkg_mc_covered] = sig_prob_h[mask_sig_and_bkg_mc_covered] / bkg_prob_h[mask_sig_and_bkg_mc_covered]
+        ratio[mask_sig_and_bkg_mc_covered] = sig_prob_h[mask_sig_and_bkg_mc_covered] / \
+            bkg_prob_h[mask_sig_and_bkg_mc_covered]
 
         # Calculate the minimal background-like value.
         min_bkg_prob = np.min(bkg_prob_h[bkg_mask_mc_covered])
@@ -541,8 +561,9 @@ class SigOverBkgPDFRatio(PDFRatio):
     fit parameters. Hence, calling the ``get_gradient`` method will result in
     throwing a RuntimeError exception.
     """
+
     def __init__(self, sig_pdf, bkg_pdf, pdf_type=None, same_axes=True,
-        zero_bkg_ratio_value=1., *args, **kwargs):
+                 zero_bkg_ratio_value=1., *args, **kwargs):
         """Creates a new signal-over-background PDF ratio instance.
 
         Parameters
@@ -574,7 +595,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         # background PDFs.
         if(same_axes and (not sig_pdf.axes.is_same_as(bkg_pdf.axes))):
             raise ValueError('The signal and background PDFs do not have the '
-                'same axes.')
+                             'same axes.')
 
         self.zero_bkg_ratio_value = zero_bkg_ratio_value
 
@@ -591,14 +612,15 @@ class SigOverBkgPDFRatio(PDFRatio):
         """The signal PDF object used to create the PDF ratio.
         """
         return self._sig_pdf
+
     @sig_pdf.setter
     def sig_pdf(self, pdf):
         if(not isinstance(pdf, self.pdf_type)):
             raise TypeError('The sig_pdf property must be an instance of '
-                '%s!'%(typename(self.pdf_type)))
+                            '%s!' % (typename(self.pdf_type)))
         if(not isinstance(pdf, IsSignalPDF)):
             raise TypeError('The sig_pdf property must be an instance of '
-                'IsSignalPDF!')
+                            'IsSignalPDF!')
         self._sig_pdf = pdf
 
     @property
@@ -606,14 +628,15 @@ class SigOverBkgPDFRatio(PDFRatio):
         """The background PDF object used to create the PDF ratio.
         """
         return self._bkg_pdf
+
     @bkg_pdf.setter
     def bkg_pdf(self, pdf):
         if(not isinstance(pdf, self.pdf_type)):
             raise TypeError('The bkg_pdf property must be an instance of '
-                '%s!'%(typename(self.pdf_type)))
+                            '%s!' % (typename(self.pdf_type)))
         if(not isinstance(pdf, IsBackgroundPDF)):
             raise TypeError('The bkg_pdf property must be an instance of '
-                'IsBackgroundPDF!')
+                            'IsBackgroundPDF!')
         self._bkg_pdf = pdf
 
     @property
@@ -622,10 +645,11 @@ class SigOverBkgPDFRatio(PDFRatio):
         is zero. This is to avoid division by zero.
         """
         return self._zero_bkg_ratio_value
+
     @zero_bkg_ratio_value.setter
     def zero_bkg_ratio_value(self, v):
         v = float_cast(v, 'The zero_bkg_ratio_value must be castable into a '
-            'float!')
+                       'float!')
         self._zero_bkg_ratio_value = v
 
     def _get_signal_fitparam_names(self):
@@ -705,7 +729,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         if((tdm.trial_data_state_id != self._cache_trial_data_state_id) or
            (make_params_hash(params) != self._cache_params_hash)):
             raise RuntimeError('The get_ratio method must be called prior to '
-                'the get_gradient method!')
+                               'the get_gradient method!')
 
         # Create the 1D return array for the gradient.
         grad = np.zeros((tdm.n_events,), dtype=np.float)
@@ -753,7 +777,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         bkgprob = self._cache_bkgprob
         m = bkgprob > 0
         grad[m] = (-self._cache_sigprob[m] / bkgprob[m]**2 *
-            self._cache_bkggrads[bkg_pidx][m])
+                   self._cache_bkggrads[bkg_pidx][m])
         return grad
 
 
@@ -762,6 +786,7 @@ class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
     PDFs. It takes a signal PDF of type SpatialPDF and a background PDF of type
     SpatialPDF and calculates the PDF ratio.
     """
+
     def __init__(self, sig_pdf, bkg_pdf, *args, **kwargs):
         """Creates a new signal-over-background PDF ratio instance for spatial
         PDFs.
@@ -774,12 +799,12 @@ class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
             The instance of the spatial background PDF.
         """
         super(SpatialSigOverBkgPDFRatio, self).__init__(pdf_type=SpatialPDF,
-            sig_pdf=sig_pdf, bkg_pdf=bkg_pdf, *args, **kwargs)
+                                                        sig_pdf=sig_pdf, bkg_pdf=bkg_pdf, *args, **kwargs)
 
         # Make sure that the PDFs have two dimensions, i.e. RA and Dec.
         if(not sig_pdf.ndim == 2):
             raise ValueError('The spatial signal PDF must have two dimensions! '
-                'Currently it has %d!'%(sig_pdf.ndim))
+                             'Currently it has %d!' % (sig_pdf.ndim))
 
 
 class SigSetOverBkgPDFRatio(PDFRatio):
@@ -789,6 +814,7 @@ class SigSetOverBkgPDFRatio(PDFRatio):
     defines how the PDF ratio gets interpolated between the fit parameter
     values.
     """
+
     def __init__(self, pdf_type, signalpdfset, backgroundpdf,
                  interpolmethod=None, *args, **kwargs):
         """Constructor called by creating an instance of a class which is
@@ -825,7 +851,8 @@ class SigSetOverBkgPDFRatio(PDFRatio):
             if(ndim == 1):
                 interpolmethod = Parabola1DGridManifoldInterpolationMethod
             else:
-                raise ValueError('There is no default fit parameter manifold grid interpolation method available for %d dimensions!'%(ndim))
+                raise ValueError(
+                    'There is no default fit parameter manifold grid interpolation method available for %d dimensions!' % (ndim))
         self.interpolmethod = interpolmethod
 
         # Generate the list of signal fit parameter names once here.
@@ -837,10 +864,12 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         IsBackgroundPDF.
         """
         return self._bkgpdf
+
     @backgroundpdf.setter
     def backgroundpdf(self, pdf):
         if(not (isinstance(pdf, self.pdf_type) and isinstance(pdf, IsBackgroundPDF))):
-            raise TypeError('The backgroundpdf property must be an object which is derived from %s and IsBackgroundPDF!'%(typename(self.pdf_type)))
+            raise TypeError('The backgroundpdf property must be an object which is derived from %s and IsBackgroundPDF!' % (
+                typename(self.pdf_type)))
         self._bkgpdf = pdf
 
     @property
@@ -848,10 +877,12 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         """The signal PDFSet object for ``pdf_type`` PDF objects.
         """
         return self._sigpdfset
+
     @signalpdfset.setter
     def signalpdfset(self, pdfset):
         if(not (isinstance(pdfset, PDFSet) and isinstance(pdfset, IsSignalPDF) and issubclass(pdfset.pdf_type, self.pdf_type))):
-            raise TypeError('The signalpdfset property must be an object which is derived from PDFSet and IsSignalPDF and whose pdf_type property is a subclass of %s!'%(typename(self.pdf_type)))
+            raise TypeError('The signalpdfset property must be an object which is derived from PDFSet and IsSignalPDF and whose pdf_type property is a subclass of %s!' % (
+                typename(self.pdf_type)))
         self._sigpdfset = pdfset
 
     @property
@@ -860,11 +891,12 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         implementing the interpolation of the fit parameter manifold.
         """
         return self._interpolmethod
+
     @interpolmethod.setter
     def interpolmethod(self, cls):
         if(not issubclass(cls, GridManifoldInterpolationMethod)):
             raise TypeError('The interpolmethod property must be a sub-class '
-                'of GridManifoldInterpolationMethod!')
+                            'of GridManifoldInterpolationMethod!')
         self._interpolmethod = cls
 
     def _get_signal_fitparam_names(self):
@@ -901,4 +933,4 @@ class SigSetOverBkgPDFRatio(PDFRatio):
 
         # At this point there is no parameter defined.
         raise KeyError('The PDF ratio "%s" has no signal fit parameter named '
-            '"%s"!'%(classname(self), signal_fitparam_name))
+                       '"%s"!' % (classname(self), signal_fitparam_name))

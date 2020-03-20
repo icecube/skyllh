@@ -76,10 +76,11 @@ class RegisterCN(Command):
         """The CN's start time as unix time stamp.
         """
         return self._cn_start_time
+
     @cn_start_time.setter
     def cn_start_time(self, t):
         t = int_cast(t,
-            'The cn_start_time property must be castable to type int!')
+                     'The cn_start_time property must be castable to type int!')
         self._cn_start_time = t
 
     @property
@@ -87,10 +88,11 @@ class RegisterCN(Command):
         """The CN's live time in seconds.
         """
         return self._cn_live_time
+
     @cn_live_time.setter
     def cn_live_time(self, t):
         t = int_cast(t,
-            'The cn_live_time property must be castable to type int!')
+                     'The cn_live_time property must be castable to type int!')
         self._cn_live_time = t
 
 

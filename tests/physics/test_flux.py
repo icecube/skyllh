@@ -32,7 +32,8 @@ class TestPowerLawFlux(unittest.TestCase):
         self.assertEqual(self.power_law_flux.gamma, gamma)
 
     def test_math_function_str(self):
-        self.assertEqual(self.power_law_flux.math_function_str, "dN/dE = {:.2e} * (E / {:.2e} {})^-{:.2f}".format(self.Phi0, self.E0, self.energy_unit, self.gamma))
+        self.assertEqual(self.power_law_flux.math_function_str,
+                         "dN/dE = {:.2e} * (E / {:.2e} {})^-{:.2f}".format(self.Phi0, self.E0, self.energy_unit, self.gamma))
 
     def test_call(self):
         E = 5
@@ -48,7 +49,8 @@ class TestCutoffPowerLawFlux(unittest.TestCase):
         self.gamma = 2.7
         self.Ecut = 2
         self.energy_unit = "GeV"
-        self.cutoff_power_law_flux = CutoffPowerLawFlux(self.Phi0, self.E0, self.gamma, self.Ecut)
+        self.cutoff_power_law_flux = CutoffPowerLawFlux(
+            self.Phi0, self.E0, self.gamma, self.Ecut)
 
     def test_Ecut(self):
         Ecut = 2.5
@@ -60,13 +62,16 @@ class TestCutoffPowerLawFlux(unittest.TestCase):
         self.assertEqual(self.cutoff_power_law_flux.Ecut, Ecut)
 
     def test_math_function_str(self):
-        test_string = "dN/dE = {:.2e} * (E / {:.2e} {})^-{:.2f} * exp(-E / {:.2e} {})".format(self.Phi0, self.E0, self.energy_unit, self.gamma, self.Ecut, self.energy_unit)
+        test_string = "dN/dE = {:.2e} * (E / {:.2e} {})^-{:.2f} * exp(-E / {:.2e} {})".format(
+            self.Phi0, self.E0, self.energy_unit, self.gamma, self.Ecut, self.energy_unit)
 
-        self.assertEqual(self.cutoff_power_law_flux.math_function_str, test_string)
+        self.assertEqual(
+            self.cutoff_power_law_flux.math_function_str, test_string)
 
     def test_call(self):
         E = 5
-        flux = self.Phi0 * np.power(E / self.E0, -self.gamma) * np.exp(-E / self.Ecut)
+        flux = self.Phi0 * \
+            np.power(E / self.E0, -self.gamma) * np.exp(-E / self.Ecut)
 
         self.assertEqual(self.cutoff_power_law_flux(E), flux)
 
@@ -78,7 +83,8 @@ class TestLogParabolaPowerLawFlux(unittest.TestCase):
         self.alpha = 1
         self.beta = 2
         self.energy_unit = "GeV"
-        self.log_parabola_power_law_flux = LogParabolaPowerLawFlux(self.Phi0, self.E0, self.alpha, self.beta)
+        self.log_parabola_power_law_flux = LogParabolaPowerLawFlux(
+            self.Phi0, self.E0, self.alpha, self.beta)
 
     def test_alpha(self):
         self.assertEqual(self.log_parabola_power_law_flux.alpha, self.alpha)
@@ -97,13 +103,17 @@ class TestLogParabolaPowerLawFlux(unittest.TestCase):
         self.assertEqual(self.log_parabola_power_law_flux.beta, beta)
 
     def test_math_funciton_str(self):
-        test_string = 'dN/dE = {:.2e} * (E / {:.2e} {})^(-({:.2e} + {:.2e} * log(E / {:.2e} {})))'.format(self.Phi0, self.E0, self.energy_unit, self.alpha, self.beta, self.E0, self.energy_unit)
+        test_string = 'dN/dE = {:.2e} * (E / {:.2e} {})^(-({:.2e} + {:.2e} * log(E / {:.2e} {})))'.format(
+            self.Phi0, self.E0, self.energy_unit, self.alpha, self.beta, self.E0, self.energy_unit)
 
-        self.assertEqual(self.log_parabola_power_law_flux.math_function_str, test_string)
+        self.assertEqual(
+            self.log_parabola_power_law_flux.math_function_str, test_string)
 
     def test_call(self):
         E = 5
-        flux = self.Phi0 * np.power(E / self.E0, -self.alpha - self.beta * np.log(E / self.E0))
+        flux = self.Phi0 * \
+            np.power(E / self.E0, -self.alpha -
+                     self.beta * np.log(E / self.E0))
 
         self.assertEqual(self.log_parabola_power_law_flux(E), flux)
 

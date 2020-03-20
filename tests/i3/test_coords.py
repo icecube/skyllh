@@ -13,6 +13,7 @@ from skyllh.i3.coords import (
 class TestCoords(unittest.TestCase):
     """Test IceCube specific coordinate utility functions.
     """
+
     def setUp(self):
         self.mjd = 58457
         self.azi = 0.5

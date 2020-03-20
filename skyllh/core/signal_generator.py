@@ -17,11 +17,13 @@ from skyllh.physics.flux import (
     get_conversion_factor_to_internal_flux_unit
 )
 
+
 class SignalGenerator(object):
     """This is the general signal generator class. It does not depend on the
     detector or source hypothesis, because these dependencies are factored out
     into the signal generation method.
     """
+
     def __init__(self, src_hypo_group_manager, dataset_list, data_list):
         """Constructs a new signal generator instance.
 
@@ -67,12 +69,12 @@ class SignalGenerator(object):
 
         # Go through the source hypothesis groups to get the signal event
         # candidates.
-        for ((shg_idx,shg), (j,(ds,data))) in itertools.product(
-            enumerate(shg_list), enumerate(zip(self._dataset_list, self._data_list))):
+        for ((shg_idx, shg), (j, (ds, data))) in itertools.product(
+                enumerate(shg_list), enumerate(zip(self._dataset_list, self._data_list))):
             sig_gen_method = shg.sig_gen_method
             if(sig_gen_method is None):
                 raise ValueError('No signal generation method has been '
-                    'specified for the %dth source hypothesis group!'%(shg_idx))
+                                 'specified for the %dth source hypothesis group!' % (shg_idx))
             data_mc = data.mc
             (ev_indices_list, flux_list) = sig_gen_method.calc_source_signal_mc_event_flux(
                 data_mc, shg
@@ -93,10 +95,12 @@ class SignalGenerator(object):
                 sig_candidates['shg_src_idx'] = k
                 sig_candidates['weight'] = weight
 
-                self._sig_candidates = np.append(self._sig_candidates, sig_candidates)
+                self._sig_candidates = np.append(
+                    self._sig_candidates, sig_candidates)
 
         # Normalize the signal candidate weights.
-        self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
+        self._sig_candidates_weight_sum = np.sum(
+            self._sig_candidates['weight'])
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
 
     @property
@@ -105,6 +109,7 @@ class SignalGenerator(object):
         their spectra.
         """
         return self._src_hypo_group_manager
+
     @src_hypo_group_manager.setter
     def src_hypo_group_manager(self, manager):
         if(not isinstance(manager, SourceHypoGroupManager)):
@@ -118,11 +123,12 @@ class SignalGenerator(object):
         generated for.
         """
         return self._dataset_list
+
     @dataset_list.setter
     def dataset_list(self, datasets):
         if(not issequenceof(datasets, Dataset)):
             raise TypeError('The dataset_list property must be a sequence of '
-                'Dataset instances!')
+                            'Dataset instances!')
         self._dataset_list = list(datasets)
 
     @property
@@ -132,11 +138,12 @@ class SignalGenerator(object):
         property.
         """
         return self._data_list
+
     @data_list.setter
     def data_list(self, datas):
         if(not issequenceof(datas, DatasetData)):
             raise TypeError('The data_list property must be a sequence of '
-                'DatasetData instances!')
+                            'DatasetData instances!')
         self._data_list = datas
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
@@ -182,7 +189,7 @@ class SignalGenerator(object):
         mu_fluxes = np.empty((n_sources,), dtype=np.float)
 
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
-        for (shg_idx,shg) in enumerate(shg_list):
+        for (shg_idx, shg) in enumerate(shg_list):
             fluxmodel = shg.fluxmodel
             # Calculate conversion factor from the flux model unit into the
             # internal flux unit GeV^-1 cm^-2 s^-1.
@@ -191,7 +198,8 @@ class SignalGenerator(object):
                 mask = ((self._sig_candidates['shg_idx'] == shg_idx) &
                         (self._sig_candidates['shg_src_idx'] == k))
                 ref_N_k = np.sum(self._sig_candidates[mask]['weight']) * ref_N
-                mu_flux_k = mu / ref_N * (ref_N_k / ref_N) * fluxmodel.Phi0*toGeVcm2s
+                mu_flux_k = mu / ref_N * \
+                    (ref_N_k / ref_N) * fluxmodel.Phi0*toGeVcm2s
                 mu_fluxes[shg_idx*k] = mu_flux_k
 
         if(per_source):
@@ -262,7 +270,7 @@ class SignalGenerator(object):
                 [(fname, np.empty(
                     (n_sig_events_ds,),
                     dtype=mc.get_field_dtype(fname))
-                 ) for fname in mc.field_name_list])
+                  ) for fname in mc.field_name_list])
             sig_events = DataFieldRecordArray(data, copy=False)
 
             fill_start_idx = 0

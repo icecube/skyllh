@@ -12,6 +12,7 @@ from skyllh.core.py import issequenceof, range
 # unsmooth, i.e. no smoothing should be applied along that axis.
 UNSMOOTH_AXIS = np.ones(1)
 
+
 class HistSmoothingMethod(object):
     """Abstract base class for implementing a histogram smoothing method.
     """
@@ -40,6 +41,7 @@ class HistSmoothingMethod(object):
 class NoHistSmoothingMethod(HistSmoothingMethod):
     """This class implements a no-shoothing histogram method.
     """
+
     def __init__(self):
         super(NoHistSmoothingMethod, self).__init__()
 
@@ -62,6 +64,7 @@ class NoHistSmoothingMethod(HistSmoothingMethod):
 class NeighboringBinHistSmoothingMethod(HistSmoothingMethod):
     """This class implements
     """
+
     def __init__(self, axis_kernel_arrays):
         """Constructs a new neighboring bin histogram smoothing method.
 
@@ -75,14 +78,16 @@ class NeighboringBinHistSmoothingMethod(HistSmoothingMethod):
         super(NeighboringBinHistSmoothingMethod, self).__init__()
 
         if(not issequenceof(axis_kernel_arrays, np.ndarray)):
-            raise TypeError('The axis_kernel_arrays argument must be a sequence of numpy.ndarray instances!')
+            raise TypeError(
+                'The axis_kernel_arrays argument must be a sequence of numpy.ndarray instances!')
 
         self._ndim = len(axis_kernel_arrays)
 
         # Construct the smoothing kernel k used by the smooth method.
         # k is a N-dimensional ndarray. It defines which neighboring bin values
         # of the histogram will contribute how much to the central bin value.
-        self._k = np.product(np.meshgrid(*axis_kernel_arrays, indexing='ij'), axis=0)
+        self._k = np.product(np.meshgrid(
+            *axis_kernel_arrays, indexing='ij'), axis=0)
 
     @property
     def ndim(self):
@@ -105,10 +110,12 @@ class NeighboringBinHistSmoothingMethod(HistSmoothingMethod):
         smoothed_h : N-dimensional ndarray.
         """
         if(h.ndim != self._ndim):
-            raise ValueError('The ndarrays of argument h and k must have the same dimensionality! Currently they are %d and %d, respectively.'%(h.ndim, self._ndim))
+            raise ValueError('The ndarrays of argument h and k must have the same dimensionality! Currently they are %d and %d, respectively.' % (
+                h.ndim, self._ndim))
         for d in range(h.ndim):
             if(self._k.shape[d] > h.shape[d]):
-                raise ValueError('The shape value (%d) of dimension %d of ndarray k must be smaller than or equal to the shape value (%d) of dimension %d of ndarray h!'%(self._k.shape[d], d, h.shape[d], d))
+                raise ValueError('The shape value (%d) of dimension %d of ndarray k must be smaller than or equal to the shape value (%d) of dimension %d of ndarray h!' % (
+                    self._k.shape[d], d, h.shape[d], d))
 
         norm = scipy.signal.convolve(np.ones_like(h), self._k, mode="same")
         smoothed_h = scipy.signal.convolve(h, self._k, mode="same") / norm
@@ -121,6 +128,7 @@ class SmoothingFilter(object):
     provides an axis kernel array that defines how many neighboring bins of a
     histogram bin should be used to smooth that histogram bin.
     """
+
     def __init__(self, axis_kernel_array):
         super(SmoothingFilter, self).__init__()
 
@@ -131,10 +139,12 @@ class SmoothingFilter(object):
         """The kernel array for a histogram axis.
         """
         return self._axis_kernel_array
+
     @axis_kernel_array.setter
     def axis_kernel_array(self, arr):
         if(not isinstance(arr, np.ndarray)):
-            raise TypeError('The axis_kernel_array property must be an instance of numpy.ndarray!')
+            raise TypeError(
+                'The axis_kernel_array property must be an instance of numpy.ndarray!')
         self._axis_kernel_array = arr
 
 
@@ -143,6 +153,7 @@ class BlockSmoothingFilter(SmoothingFilter):
     histogram via a block kernel function. The half-width of that
     block is specified via the nbins argument.
     """
+
     def __init__(self, nbins):
         """
         Parameters
@@ -167,6 +178,7 @@ class GaussianSmoothingFilter(SmoothingFilter):
     approximately one standard deviation, spread over nbins on each side of the
     central histogram bin.
     """
+
     def __init__(self, nbins):
         """
         Parameters

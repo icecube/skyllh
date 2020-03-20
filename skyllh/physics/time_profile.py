@@ -7,6 +7,7 @@ import numpy as np
 
 from skyllh.core.py import float_cast, classname
 
+
 class TimeProfileModel(object):
     """Abstract base class for an emission time profile of a source.
     """
@@ -32,11 +33,12 @@ class TimeProfileModel(object):
         """The MJD start time of the box profile.
         """
         return self._t_start
+
     @t_start.setter
     def t_start(self, t):
         t = float_cast(t,
-            'The t_start property must be castable to type float!'
-        )
+                       'The t_start property must be castable to type float!'
+                       )
         self._t_start = t
 
     @property
@@ -44,11 +46,12 @@ class TimeProfileModel(object):
         """The MJD end time of the box profile.
         """
         return self._t_end
+
     @t_end.setter
     def t_end(self, t):
         t = float_cast(t,
-            'The t_end property must be castable to type float!'
-        )
+                       'The t_end property must be castable to type float!'
+                       )
         self._t_end = t
 
     @property
@@ -140,6 +143,7 @@ class BoxTimeProfile(TimeProfileModel):
         Tw : float
             The width (days) of the box profile.
     """
+
     def __init__(self, T0, Tw):
         """Creates a new box-shaped time profile instance.
 
@@ -172,6 +176,7 @@ class BoxTimeProfile(TimeProfileModel):
         """The time of the mid point of the box.
         """
         return 0.5*(self._t_start + self._t_end)
+
     @T0.setter
     def T0(self, t):
         old_T0 = self.T0
@@ -183,6 +188,7 @@ class BoxTimeProfile(TimeProfileModel):
         """The time width (in days) of the box.
         """
         return self._t_end - self._t_start
+
     @Tw.setter
     def Tw(self, w):
         T0 = self.T0
@@ -192,7 +198,7 @@ class BoxTimeProfile(TimeProfileModel):
     def __str__(self):
         """Pretty string representation of the BoxTimeProfile class instance.
         """
-        s = '%s(T0=%.6f, Tw=%.6f)'%(classname(self), self.T0, self.Tw)
+        s = '%s(T0=%.6f, Tw=%.6f)' % (classname(self), self.T0, self.Tw)
         return s
 
     def update(self, fitparams):

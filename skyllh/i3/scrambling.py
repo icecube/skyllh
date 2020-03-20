@@ -9,6 +9,7 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
     perform time scrambling of the data,
     by drawing a MJD time from a given time generator.
     """
+
     def __init__(self, timegen):
         """Initializes a new I3 time scrambling instance.
 
@@ -17,7 +18,8 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
         timegen : TimeGenerator
             The time generator that should be used to generate random MJD times.
         """
-        super(I3TimeScramblingMethod, self).__init__(timegen, hor_to_equ_transform)
+        super(I3TimeScramblingMethod, self).__init__(
+            timegen, hor_to_equ_transform)
 
     # We override the scramble method because for IceCube we only need to change
     # the ``ra`` field.

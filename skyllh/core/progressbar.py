@@ -15,6 +15,7 @@ class ProgressBar(object):
     """This class implements a hierarchical progress bar that can serve as a
     parent for child progress bars to display different levels of processing.
     """
+
     def __init__(self, maxval, startval=0, parent=None):
         """Creates a new ProgressBar instance.
 
@@ -44,10 +45,11 @@ class ProgressBar(object):
         """The maximal integer value the progress can reach.
         """
         return self._maxval
+
     @maxval.setter
     def maxval(self, v):
         v = int_cast(v, 'The maxval property must be castable to an integer '
-            'value!')
+                     'value!')
         self._maxval = v
 
     @property
@@ -56,14 +58,15 @@ class ProgressBar(object):
         `maxval`.
         """
         return self._startval
+
     @startval.setter
     def startval(self, v):
         v = int_cast(v, 'The startval property must be castable to an integer '
-            ' value!')
+                     ' value!')
         if(v >= self._maxval):
             raise ValueError('The startval value (%d) must be smaller than the '
-                'value of the `maxval` property (%d)!',
-                v, self._maxval)
+                             'value of the `maxval` property (%d)!',
+                             v, self._maxval)
         self._startval = v
 
     @property
@@ -72,12 +75,13 @@ class ProgressBar(object):
         no parent exist.
         """
         return self._parent
+
     @parent.setter
     def parent(self, pbar):
         if(pbar is not None):
             if(not isinstance(pbar, ProgressBar)):
                 raise TypeError('The parent property must be None, or an '
-                    'instance of ProgressBar!')
+                                'instance of ProgressBar!')
         self._parent = pbar
 
     @property
@@ -100,7 +104,7 @@ class ProgressBar(object):
         """
         if(not isinstance(pbar, ProgressBar)):
             raise TypeError('The pbar argument must be an instance of '
-                'ProgressBar!')
+                            'ProgressBar!')
         self._sub_pbar_list.append(pbar)
 
     def remove_sub_progress_bar(self, pbar):
@@ -167,7 +171,7 @@ class ProgressBar(object):
         sub_pbar_str = ''
         for p in p_list[:-1]:
             if(p != 1):
-                sub_pbar_str += '%d '%(int(p*10))
+                sub_pbar_str += '%d ' % (int(p*10))
             else:
                 sub_pbar_str += '# '
 
@@ -175,7 +179,7 @@ class ProgressBar(object):
         nchar = int(np.round(p_list[-1] * barwidth, 0))
 
         fmt = "%s[%-"+str(barwidth)+"s] %3d%% %s %dh:%02dm:%02ds"
-        pbar_str = fmt%(
+        pbar_str = fmt % (
             sub_pbar_str,
             '='*nchar,
             int(np.round(p_list[-1]*100, 0)),

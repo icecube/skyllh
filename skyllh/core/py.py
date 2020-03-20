@@ -66,11 +66,14 @@ class PyQualifier(object):
 
         return False
 
+
 class ConstPyQualifier(PyQualifier):
     """This class defines a PyQualifier for constant Python objects.
     """
+
     def __init__(self):
         super(ConstPyQualifier, self).__init__()
+
 
 const = ConstPyQualifier()
 
@@ -80,10 +83,12 @@ def typename(t):
     """
     return t.__name__
 
+
 def classname(obj):
     """Returns the name of the class of the class instance ``obj``.
     """
     return typename(type(obj))
+
 
 def get_byte_size_prefix(size):
     """Determines the biggest size prefix for the given size in bytes such that
@@ -115,6 +120,7 @@ def get_byte_size_prefix(size):
 
     return (newsize, prefix)
 
+
 def getsizeof(objects):
     """Determines the size in bytes the given objects have in memory.
     If an object is a sequence, the size of the elements of the sequence will
@@ -142,6 +148,7 @@ def getsizeof(objects):
 
     return memsize
 
+
 def issequence(obj):
     """Checks if the given object ``obj`` is a sequence or not. The definition of
     a sequence in this case is, that the function ``len`` is defined for the
@@ -164,6 +171,7 @@ def issequence(obj):
         return False
 
     return True
+
 
 def issequenceof(obj, T, pyqualifiers=None):
     """Checks if the given object ``obj`` is a sequence with items being
@@ -205,6 +213,7 @@ def issequenceof(obj, T, pyqualifiers=None):
 
     return True
 
+
 def issequenceofsubclass(obj, T):
     """Checks if the given object ``obj`` is a sequence with items being
     sub-classes of class T.
@@ -215,6 +224,7 @@ def issequenceofsubclass(obj, T):
         if(not issubclass(item, T)):
             return False
     return True
+
 
 def isproperty(obj, name):
     """Checks if the given attribute is of type property. The attribute must
@@ -240,6 +250,7 @@ def isproperty(obj, name):
     attr = type(obj).__class__.__getattribute__(type(obj), name)
     return isinstance(attr, property)
 
+
 def func_has_n_args(func, n):
     """Checks if the given function `func` has `n` arguments.
 
@@ -258,6 +269,7 @@ def func_has_n_args(func, n):
     check = (len(inspect.getargspec(func)[0]) == n)
     return check
 
+
 def bool_cast(v, errmsg):
     """Casts the given value to a boolean value. If the cast is impossible, a
     TypeError is raised with the given error message.
@@ -267,6 +279,7 @@ def bool_cast(v, errmsg):
     except:
         raise TypeError(errmsg)
     return v
+
 
 def int_cast(v, errmsg, allow_None=False):
     """Casts the given value to an integer value. If the cast is impossible, a
@@ -282,6 +295,7 @@ def int_cast(v, errmsg, allow_None=False):
         raise TypeError(errmsg)
 
     return v
+
 
 def float_cast(v, errmsg, allow_None=False):
     """Casts the given value to a float. If the cast is impossible, a TypeError
@@ -325,6 +339,7 @@ def float_cast(v, errmsg, allow_None=False):
 
     return _obj_float_cast(v, errmsg, allow_None)
 
+
 def str_cast(v, errmsg):
     """Casts the given value to a str object.
     If the cast is impossible, a TypeError is raised with the given error
@@ -335,6 +350,7 @@ def str_cast(v, errmsg):
     except:
         raise TypeError(errmsg)
     return v
+
 
 def list_of_cast(t, v, errmsg):
     """Casts the given value `v` to a list of items of type `t`.
@@ -347,6 +363,7 @@ def list_of_cast(t, v, errmsg):
         raise TypeError(errmsg)
     v = list(v)
     return v
+
 
 def get_smallest_numpy_int_type(values):
     """Returns the smallest numpy integer type that can represent the given
@@ -378,7 +395,8 @@ def get_smallest_numpy_int_type(values):
         if(vmin >= ii.min and vmax <= ii.max):
             return inttype
 
-    raise ValueError("No integer type spans [%d, %d]!"%(vmin, vmax))
+    raise ValueError("No integer type spans [%d, %d]!" % (vmin, vmax))
+
 
 def get_number_of_float_decimals(value):
     """Determines the number of significant decimals the given float number has.
@@ -402,6 +420,7 @@ def get_number_of_float_decimals(value):
             return idx+1
     return 0
 
+
 def _get_func_range():
     """Returns a lazy iterable `range` function to be consistent with Python 3.
 
@@ -417,6 +436,7 @@ def _get_func_range():
 
     return func
 
+
 # Overwrite of built-in `range` function to be consistent with Python 3.
 range = _get_func_range()
 
@@ -428,6 +448,7 @@ class ObjectCollection(object):
     collection can be added to this object collection via the ``add`` method as
     well.
     """
+
     def __init__(self, objs=None, obj_type=None):
         """Constructor of the ObjectCollection class. Must be called by the
         derived class.
@@ -452,7 +473,7 @@ class ObjectCollection(object):
         # Add given list of objects.
         if(objs is not None):
             if(not issequence(objs)):
-                objs = [ objs ]
+                objs = [objs]
             for obj in objs:
                 self.add(obj)
 
@@ -503,7 +524,7 @@ class ObjectCollection(object):
     def __str__(self):
         """Pretty string representation of this object collection.
         """
-        return classname(self)+ ': ' + str(self._objects)
+        return classname(self) + ': ' + str(self._objects)
 
     def copy(self):
         """Creates a copy of this ObjectCollection. The objects of the
@@ -532,16 +553,16 @@ class ObjectCollection(object):
         if(isinstance(obj, ObjectCollection)):
             if(typename(obj.obj_type) != typename(self._obj_type)):
                 raise TypeError('Cannot add objects from ObjectCollection for '
-                    'objects of type "%s" to this ObjectCollection for objects '
-                    'of type "%s"!'%(
-                        typename(obj.obj_type), typename(self._obj_type)))
+                                'objects of type "%s" to this ObjectCollection for objects '
+                                'of type "%s"!' % (
+                                    typename(obj.obj_type), typename(self._obj_type)))
             self._objects.extend(obj.objects)
             return self
 
         if(not isinstance(obj, self._obj_type)):
             raise TypeError('The object of type "%s" cannot be added to the '
-                'object collection for objects of type "%s"!'%(
-                    classname(obj), typename(self._obj_type)))
+                            'object collection for objects of type "%s"!' % (
+                                classname(obj), typename(self._obj_type)))
 
         self._objects.append(obj)
         return self
@@ -589,6 +610,7 @@ class NamedObjectCollection(ObjectCollection):
     via the object name is efficient because the index of each object is
     tracked w.r.t. its name.
     """
+
     def __init__(self, objs=None, obj_type=None):
         """Creates a new NamedObjectCollection instance. Must be called by the
         derived class.
@@ -655,7 +677,7 @@ class NamedObjectCollection(ObjectCollection):
             # Several objects have been added, so we recreate the name to index
             # dictionary.
             self._obj_name_to_idx = dict([
-                (o.name,idx) for (idx,o) in enumerate(self._objects) ])
+                (o.name, idx) for (idx, o) in enumerate(self._objects)])
         else:
             # Only a single object was added at the end.
             self._obj_name_to_idx[obj.name] = len(self) - 1
@@ -702,6 +724,6 @@ class NamedObjectCollection(ObjectCollection):
 
         # Recreate the object name to index dictionary.
         self._obj_name_to_idx = dict([
-            (o.name,idx) for (idx,o) in enumerate(self._objects) ])
+            (o.name, idx) for (idx, o) in enumerate(self._objects)])
 
         return obj

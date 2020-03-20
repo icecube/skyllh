@@ -4,10 +4,12 @@ import numpy as np
 
 from skyllh.core.py import classname
 
+
 class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
     """
+
     def __init__(self, name, binedges):
         """Creates a new binning definition object.
 
@@ -24,7 +26,7 @@ class BinningDefinition(object):
     def __str__(self):
         """Pretty string representation.
         """
-        s = '%s: %s\n'%(classname(self), self._name)
+        s = '%s: %s\n' % (classname(self), self._name)
         s += str(self._binedges)
         return s
 
@@ -33,7 +35,7 @@ class BinningDefinition(object):
         """
         if(not isinstance(other, BinningDefinition)):
             raise TypeError('The other object in the equal comparison must be '
-                'an instance of BinningDefinition!')
+                            'an instance of BinningDefinition!')
         if(self.name != other.name):
             return False
         if(np.any(self.binedges != other.binedges)):
@@ -46,6 +48,7 @@ class BinningDefinition(object):
         for all the different binning settings used within a season.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         if(not isinstance(name, str)):
@@ -57,6 +60,7 @@ class BinningDefinition(object):
         """The numpy.ndarray holding the bin edges.
         """
         return self._binedges
+
     @binedges.setter
     def binedges(self, arr):
         arr = np.atleast_1d(arr)
@@ -156,6 +160,7 @@ class UsesBinning(object):
     This class provides the method ``has_same_binning_as(obj)`` to determine if
     a given object (that also uses binning) has the same binning.
     """
+
     def __init__(self, *args, **kwargs):
         # Make sure that multiple inheritance can be used.
         super(UsesBinning, self).__init__(*args, **kwargs)
@@ -193,7 +198,7 @@ class UsesBinning(object):
         """
         if(not isinstance(obj, UsesBinning)):
             raise TypeError('The obj argument must be an instance of '
-                'UsesBinning!')
+                            'UsesBinning!')
 
         for (self_binning, obj_binning) in zip(self.binnings, obj.binnings):
             if(not (self_binning == obj_binning)):
@@ -214,7 +219,7 @@ class UsesBinning(object):
         """
         if(not isinstance(binning, BinningDefinition)):
             raise TypeError('The binning argument must be an instance of '
-                'BinningDefinition!')
+                            'BinningDefinition!')
 
         # Create a copy of the BinningDefinition object if the name differs.
         if(name is not None):
@@ -242,7 +247,7 @@ class UsesBinning(object):
         """
         if(isinstance(name, str)):
             if(name not in self._binning_name2idx):
-                raise KeyError('The binning definition "%s" is not defined!'%(
+                raise KeyError('The binning definition "%s" is not defined!' % (
                     name))
             binning = self._binnings[self._binning_name2idx[name]]
         elif(isinstance(name, int)):

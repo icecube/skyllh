@@ -75,11 +75,12 @@ class DetSigYield(object):
     @property
     def implmethod(self):
         return self._implmethod
+
     @implmethod.setter
     def implmethod(self, method):
         if(not isinstance(method, DetSigYieldImplMethod)):
             raise TypeError('The implmethod property must be an instance of '
-                'DetSigYieldImplMethod!')
+                            'DetSigYieldImplMethod!')
         self._implmethod = method
 
     @property
@@ -88,11 +89,12 @@ class DetSigYield(object):
         for.
         """
         return self._dataset
+
     @dataset.setter
     def dataset(self, ds):
         if(not isinstance(ds, Dataset)):
             raise TypeError('The dataset property must be an instance of '
-                'Dataset!')
+                            'Dataset!')
         self._dataset = ds
 
     @property
@@ -101,11 +103,12 @@ class DetSigYield(object):
         signal yield.
         """
         return self._fluxmodel
+
     @fluxmodel.setter
     def fluxmodel(self, model):
         if(not isinstance(model, FluxModel)):
-           raise TypeError('The fluxmodel property must be an instance of '
-               'FluxModel!')
+            raise TypeError('The fluxmodel property must be an instance of '
+                            'FluxModel!')
         self._fluxmodel = model
 
     @property
@@ -113,11 +116,12 @@ class DetSigYield(object):
         """The live-time in days.
         """
         return self._livetime
+
     @livetime.setter
     def livetime(self, lt):
         if(not (isinstance(lt, float) or isinstance(lt, Livetime))):
             raise TypeError('The livetime property must be of type float or '
-                'an instance of Livetime!')
+                            'an instance of Livetime!')
         self._livetime = lt
 
     @property
@@ -203,14 +207,15 @@ class DetSigYieldImplMethod(object):
         detector signal yield implementation method.
         """
         return self._supported_sourcemodels
+
     @supported_sourcemodels.setter
     def supported_sourcemodels(self, models):
         if(not isinstance(models, tuple)):
             raise TypeError('The supported_sourcemodels property must be of '
-                'type tuple!')
+                            'type tuple!')
         if(not issequenceofsubclass(models, SourceModel)):
             raise TypeError('The supported_sourcemodels property must be a '
-                'sequence of SourceModel classes!')
+                            'sequence of SourceModel classes!')
         self._supported_sourcemodels = models
 
     @property
@@ -219,14 +224,15 @@ class DetSigYieldImplMethod(object):
         detector signal yield implementation method.
         """
         return self._supported_fluxmodels
+
     @supported_fluxmodels.setter
     def supported_fluxmodels(self, models):
         if(not isinstance(models, tuple)):
             raise TypeError('The supported_fluxmodels property must be of '
-                'type tuple!')
+                            'type tuple!')
         if(not issequenceofsubclass(models, FluxModel)):
             raise TypeError('The supported_fluxmodels property must be a '
-                'sequence of FluxModel instances!')
+                            'sequence of FluxModel instances!')
         self._supported_fluxmodels = models
 
     @property
@@ -303,19 +309,19 @@ class DetSigYieldImplMethod(object):
         """
         if(not isinstance(dataset, Dataset)):
             raise TypeError('The dataset argument must be an instance of '
-                'Dataset!')
+                            'Dataset!')
         if(not isinstance(data, DatasetData)):
             raise TypeError('The data argument must be an instance of '
-                'DatasetData!')
+                            'DatasetData!')
         if(not self.supports_fluxmodel(fluxmodel)):
             raise TypeError('The DetSigYieldImplMethod "%s" does not support '
-                'the flux model "%s"!'%(
-                    self.__class__.__name__,
-                    fluxmodel.__class__.__name__))
+                            'the flux model "%s"!' % (
+                                self.__class__.__name__,
+                                fluxmodel.__class__.__name__))
         if((not isinstance(livetime, float)) and
            (not isinstance(livetime, Livetime))):
             raise TypeError('The livetime argument must be an instance of '
-                'float or Livetime!')
+                            'float or Livetime!')
 
     @abc.abstractmethod
     def source_to_array(self, source):

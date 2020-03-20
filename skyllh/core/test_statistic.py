@@ -49,6 +49,7 @@ class TestStatisticWilks(TestStatistic):
 
     where the sign(ns_best) is negative for ns_best < 0, and positive otherwise.
     """
+
     def __init__(self):
         """Constructs the test-statistic function instance.
         """
@@ -106,9 +107,10 @@ class TestStatisticWilksZeroNsTaylor(TestStatistic):
     being the derivative w.r.t. ns of the log-likelihood ratio function, and
 
         b = d/dns ( a )
-        
+
     being its second derivative w.r.t. ns.
     """
+
     def __init__(self):
         """Constructs the test-statistic function instance.
         """

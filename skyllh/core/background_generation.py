@@ -86,11 +86,12 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
     mean number of background events and the probability of each monte-carlo
     event.
     """
+
     def __init__(
-        self, get_event_prob_func, get_mean_func=None, unique_events=False,
-        data_scrambler=None, mc_inplace_scrambling=False,
-        keep_mc_data_fields=None, pre_event_selection_method=None,
-        event_selection_method=None):
+            self, get_event_prob_func, get_mean_func=None, unique_events=False,
+            data_scrambler=None, mc_inplace_scrambling=False,
+            keep_mc_data_fields=None, pre_event_selection_method=None,
+            event_selection_method=None):
         """Creates a new instance of the MCDataSamplingBkgGenMethod class.
 
         Parameters
@@ -155,7 +156,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
 
         if((event_selection_method is not None) and (get_mean_func is None)):
             raise ValueError('If an event selection method is provided, a '
-                'get_mean_func needs to be provided as well!')
+                             'get_mean_func needs to be provided as well!')
 
         # Define cache members to cache the background probabilities for each
         # monte-carlo event. The probabilities change only if the data changes.
@@ -171,14 +172,15 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         monte-carlo event of the data set.
         """
         return self._get_event_prob_func
+
     @get_event_prob_func.setter
     def get_event_prob_func(self, func):
         if(not callable(func)):
             raise TypeError('The get_event_prob_func property must be a '
-                'callable!')
+                            'callable!')
         if(not func_has_n_args(func, 3)):
             raise TypeError('The function provided for the get_event_prob_func '
-                'property must have 3 arguments!')
+                            'property must have 3 arguments!')
         self._get_event_prob_func = func
 
     @property
@@ -189,15 +191,16 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         `generate_events` method.
         """
         return self._get_mean_func
+
     @get_mean_func.setter
     def get_mean_func(self, func):
         if(func is not None):
             if(not callable(func)):
                 raise TypeError('The get_mean_func property must be a '
-                    'callable!')
+                                'callable!')
             if(not func_has_n_args(func, 3)):
                 raise TypeError('The function provided for the get_mean_func '
-                    'property must have 3 arguments!')
+                                'property must have 3 arguments!')
         self._get_mean_func = func
 
     @property
@@ -206,6 +209,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         or if the same event can be drawn multiple times from the monte-carlo.
         """
         return self._unique_events
+
     @unique_events.setter
     def unique_events(self, b):
         if(not isinstance(b, bool)):
@@ -220,12 +224,13 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         `None`, if no data scrambling should be used.
         """
         return self._data_scrambler
+
     @data_scrambler.setter
     def data_scrambler(self, scrambler):
         if(scrambler is not None):
             if(not isinstance(scrambler, DataScrambler)):
                 raise TypeError('The data_scrambler property must be an instance '
-                    'of DataScrambler!')
+                                'of DataScrambler!')
         self._data_scrambler = scrambler
 
     @property
@@ -234,11 +239,12 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         inplace, i.e. without creating a copy of the MC data first.
         """
         return self._mc_inplace_scrambling
+
     @mc_inplace_scrambling.setter
     def mc_inplace_scrambling(self, b):
         if(not isinstance(b, bool)):
             raise TypeError('The mc_inplace_scrambling property must be of '
-                'type bool!')
+                            'type bool!')
         self._mc_inplace_scrambling = b
 
     @property
@@ -249,15 +255,16 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         will get droped due to computational efficiency reasons.
         """
         return self._keep_mc_data_field_names
+
     @keep_mc_data_field_names.setter
     def keep_mc_data_field_names(self, names):
         if(names is None):
             names = []
         elif(isinstance(names, str)):
-            names = [ names ]
+            names = [names]
         elif(not issequenceof(names, str)):
             raise TypeError('The keep_mc_data_field_names must be None, an '
-                'instance of type str, or a sequence of objects of type str!')
+                            'instance of type str, or a sequence of objects of type str!')
         self._keep_mc_data_field_names = names
 
     @property
@@ -266,12 +273,13 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         which can be considered for background event generation.
         """
         return self._pre_event_selection_method
+
     @pre_event_selection_method.setter
     def pre_event_selection_method(self, method):
         if(method is not None):
             if(not isinstance(method, EventSelectionMethod)):
                 raise TypeError('The pre_event_selection_method property must '
-                    'be None, or an instance of EventSelectionMethod!')
+                                'be None, or an instance of EventSelectionMethod!')
             # If the event selection method selects all events, it's equivalent
             # to have it set to None, because then no operation has to be
             # performed.
@@ -290,12 +298,13 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         ``AllEventSelectionMethod`` method.
         """
         return self._event_selection_method
+
     @event_selection_method.setter
     def event_selection_method(self, method):
         if(method is not None):
             if(not isinstance(method, EventSelectionMethod)):
                 raise TypeError('The event_selection_method property must be '
-                    'None, or an instance of EventSelectionMethod!')
+                                'None, or an instance of EventSelectionMethod!')
             # If the event selection method selects all events, it's equivalent
             # to have it set to None, because then no operation has to be
             # performed.
@@ -391,22 +400,22 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                 with TaskTimer(tl, 'Pre-select MC events.'):
                     (self._cache_mc_pre_selected,
                      mc_pre_selected_mask) =\
-                    self._pre_event_selection_method.select_events(
+                        self._pre_event_selection_method.select_events(
                         data_mc, retmask=True, tl=tl)
-                self._cache_mc_event_bkg_prob_pre_selected = self._cache_mc_event_bkg_prob[mc_pre_selected_mask]
+                self._cache_mc_event_bkg_prob_pre_selected = self._cache_mc_event_bkg_prob[
+                    mc_pre_selected_mask]
             else:
                 self._cache_mc_pre_selected = data_mc
-
 
         if(mean is None):
             if(self._cache_mean is None):
                 raise ValueError('No mean number of background events and no '
-                    'get_mean_func were specified! One of the two must be '
-                    'specified!')
+                                 'get_mean_func were specified! One of the two must be '
+                                 'specified!')
             mean = self._cache_mean
         else:
             mean = float_cast(mean, 'The mean number of background events must '
-                'be castable to type float!')
+                              'be castable to type float!')
 
         # Draw the number of background events from a poisson distribution with
         # the given mean number of background events. This will be the number of

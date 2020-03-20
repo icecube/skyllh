@@ -5,7 +5,8 @@ import numpy as np
 from skyllh.core.random import RandomStateService
 from skyllh.core.scrambling import DataScrambler, RAScramblingMethod
 
-def gen_data(rss, N=100, window=(0,365)):
+
+def gen_data(rss, N=100, window=(0, 365)):
     """Create uniformly distributed data on sphere. """
     arr = np.empty((N,), dtype=[("ra", np.float), ("dec", np.float)])
 
@@ -13,6 +14,7 @@ def gen_data(rss, N=100, window=(0,365)):
     arr["dec"] = rss.random.uniform(-np.pi, np.pi, N)
 
     return arr
+
 
 rss = RandomStateService(seed=1)
 

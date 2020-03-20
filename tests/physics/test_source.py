@@ -35,8 +35,10 @@ class TestSource(unittest.TestCase):
         source_model1 = SourceModel(self.ra, self.dec)
         source_model2 = SourceModel(self.ra, self.dec)
 
-        source_collection_casted = SourceCollection.cast(source_model1, "Could not cast SourceModel to SourceCollection")
-        source_collection = SourceCollection(source_type=SourceModel, sources=[source_model1, source_model2])
+        source_collection_casted = SourceCollection.cast(
+            source_model1, "Could not cast SourceModel to SourceCollection")
+        source_collection = SourceCollection(source_type=SourceModel, sources=[
+                                             source_model1, source_model2])
 
         self.assertIsInstance(source_collection_casted, SourceCollection)
         self.assertEqual(source_collection.source_type, SourceModel)
@@ -48,7 +50,8 @@ class TestSource(unittest.TestCase):
         source_model1 = SourceModel(self.ra, self.dec)
         source_model2 = SourceModel(self.ra, self.dec)
 
-        catalog = Catalog(name, source_type=SourceModel, sources=[source_model1, source_model2])
+        catalog = Catalog(name, source_type=SourceModel,
+                          sources=[source_model1, source_model2])
         source_collection_from_catalog = catalog.as_source_collection()
 
         self.assertEqual(catalog.name, name)
@@ -64,26 +67,35 @@ class TestSource(unittest.TestCase):
         point_like_source1 = PointLikeSource(self.ra, self.dec)
         point_like_source2 = PointLikeSource(self.ra, self.dec)
 
-        point_like_source_collection = PointLikeSourceCollection(sources=[point_like_source1, point_like_source2])
+        point_like_source_collection = PointLikeSourceCollection(
+            sources=[point_like_source1, point_like_source2])
         ra_array = np.array([self.ra, self.ra])
         dec_array = np.array([self.dec, self.dec])
 
-        self.assertIsInstance(point_like_source_collection.sources[0], SourceModel)
-        self.assertIsInstance(point_like_source_collection.sources[1], SourceModel)
-        np.testing.assert_array_equal(point_like_source_collection.ra, ra_array)
-        np.testing.assert_array_equal(point_like_source_collection.dec, dec_array)
+        self.assertIsInstance(
+            point_like_source_collection.sources[0], SourceModel)
+        self.assertIsInstance(
+            point_like_source_collection.sources[1], SourceModel)
+        np.testing.assert_array_equal(
+            point_like_source_collection.ra, ra_array)
+        np.testing.assert_array_equal(
+            point_like_source_collection.dec, dec_array)
 
     def test_PointLikeSourceCatalog(self):
         name = "Point like source catalog test"
         point_like_source1 = PointLikeSource(self.ra, self.dec)
         point_like_source2 = PointLikeSource(self.ra, self.dec)
 
-        point_like_source_catalog = PointLikeSourceCatalog(name, sources=[point_like_source1, point_like_source2])
+        point_like_source_catalog = PointLikeSourceCatalog(
+            name, sources=[point_like_source1, point_like_source2])
 
         self.assertEqual(point_like_source_catalog.name, name)
-        self.assertEqual(point_like_source_catalog.source_type, PointLikeSource)
-        self.assertIsInstance(point_like_source_catalog.sources[0], PointLikeSource)
-        self.assertIsInstance(point_like_source_catalog.sources[1], PointLikeSource)
+        self.assertEqual(
+            point_like_source_catalog.source_type, PointLikeSource)
+        self.assertIsInstance(
+            point_like_source_catalog.sources[0], PointLikeSource)
+        self.assertIsInstance(
+            point_like_source_catalog.sources[1], PointLikeSource)
 
 
 if(__name__ == '__main__'):

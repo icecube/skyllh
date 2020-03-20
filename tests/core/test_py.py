@@ -16,6 +16,7 @@ class A(object):
 
         self.name = name
 
+
 class B(object):
     def __init__(self, name=None):
         super(B, self).__init__()

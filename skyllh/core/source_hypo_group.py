@@ -12,6 +12,7 @@ class SourceHypoGroup(object):
     a group of sources that share the same flux model, detector signal yield,
     and signal generation implementation methods.
     """
+
     def __init__(
             self, sources, fluxmodel, detsigyield_implmethods,
             sig_gen_method=None):
@@ -48,12 +49,14 @@ class SourceHypoGroup(object):
         """The list of SourceModel instances for which the group is defined.
         """
         return self._source_list
+
     @source_list.setter
     def source_list(self, sources):
         if(isinstance(sources, SourceModel)):
-            sources = [ sources ]
+            sources = [sources]
         if(not issequenceof(sources, SourceModel)):
-            raise TypeError('The source_list property must be an instance of SourceModel or a sequence of SourceModel instances!')
+            raise TypeError(
+                'The source_list property must be an instance of SourceModel or a sequence of SourceModel instances!')
         self._source_list = list(sources)
 
     @property
@@ -62,11 +65,12 @@ class SourceHypoGroup(object):
         source group.
         """
         return self._fluxmodel
+
     @fluxmodel.setter
     def fluxmodel(self, fluxmodel):
         if(not isinstance(fluxmodel, FluxModel)):
             raise TypeError('The fluxmodel property must be an instance of '
-                'FluxModel!')
+                            'FluxModel!')
         self._fluxmodel = fluxmodel
 
     @property
@@ -79,13 +83,14 @@ class SourceHypoGroup(object):
         datasets.
         """
         return self._detsigyield_implmethod_list
+
     @detsigyield_implmethod_list.setter
     def detsigyield_implmethod_list(self, methods):
         if(isinstance(methods, DetSigYieldImplMethod)):
-            methods = [ methods ]
+            methods = [methods]
         if(not issequenceof(methods, DetSigYieldImplMethod)):
             raise TypeError('The detsigyield_implmethod_list property must be '
-                'a sequence of DetSigYieldImplMethod instances!')
+                            'a sequence of DetSigYieldImplMethod instances!')
         self._detsigyield_implmethod_list = methods
 
     @property
@@ -97,12 +102,13 @@ class SourceHypoGroup(object):
         required.
         """
         return self._sig_gen_method
+
     @sig_gen_method.setter
     def sig_gen_method(self, method):
         if(method is not None):
             if(not isinstance(method, SignalGenerationMethod)):
                 raise TypeError('The sig_gen_method property must be an '
-                    'instance of SignalGenerationMethod!')
+                                'instance of SignalGenerationMethod!')
         self._sig_gen_method = method
 
     @property

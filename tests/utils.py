@@ -3,6 +3,7 @@
 
 import numpy as np
 
+
 def isAlmostEqual(a, b, decimals=9):
     a = np.atleast_1d(a)
     b = np.atleast_1d(b)

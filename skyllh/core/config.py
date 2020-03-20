@@ -23,7 +23,7 @@ CFG = {
     'debugging': {
         # The default log format.
         'log_format': ('%(asctime)s %(processName)s %(name)s %(levelname)s: '
-            '%(message)s')
+                       '%(message)s')
     },
     'project': {
         # The project's working directory.
@@ -90,26 +90,27 @@ def set_internal_units(
     if(angle_unit is not None):
         if(not isinstance(angle_unit, units.UnitBase)):
             raise TypeError('The angle_unit argument must be an instance of '
-                'astropy.units.UnitBase!')
+                            'astropy.units.UnitBase!')
         CFG['internal_units']['angle'] = angle_unit
 
     if(energy_unit is not None):
         if(not isinstance(energy_unit, units.UnitBase)):
             raise TypeError('The energy_unit argument must be an instance of '
-                'astropy.units.UnitBase!')
+                            'astropy.units.UnitBase!')
         CFG['internal_units']['energy'] = energy_unit
 
     if(length_unit is not None):
         if(not isinstance(length_unit, units.UnitBase)):
             raise TypeError('The length_unit argument must be an instance of '
-                'astropy.units.UnitBase!')
+                            'astropy.units.UnitBase!')
         CFG['internal_units']['length'] = length_unit
 
     if(time_unit is not None):
         if(not isinstance(time_unit, units.UnitBase)):
             raise TypeError('The time_unit argument must be an instance of '
-                'astropy.units.UnitBase!')
+                            'astropy.units.UnitBase!')
         CFG['internal_units']['time'] = time_unit
+
 
 def set_wd(path):
     """Sets the project's working directory configuration variable and adds it
@@ -136,6 +137,7 @@ def set_wd(path):
 
     return wd
 
+
 def set_analysis_required_exp_data_field_names(fieldnames):
     """Sets the data field names of the experimental data that are required by
     the analysis.
@@ -146,12 +148,13 @@ def set_analysis_required_exp_data_field_names(fieldnames):
         The field name or sequence of field names for the experimental data.
     """
     if(isinstance(fieldnames, str)):
-        fieldnames = [ fieldnames ]
+        fieldnames = [fieldnames]
     elif(not issequenceof(fieldnames, str)):
         raise TypeError('The fieldnames argument must be an instance of str '
-            'or a sequence of type str instances!')
+                        'or a sequence of type str instances!')
 
     CFG['dataset']['analysis_required_exp_field_names'] = list(set(fieldnames))
+
 
 def set_analysis_required_mc_data_field_names(fieldnames):
     """Sets the data field names of the monte-carlo data that are required by
@@ -163,9 +166,9 @@ def set_analysis_required_mc_data_field_names(fieldnames):
         The field name or sequence of field names for the monte-carlo data.
     """
     if(isinstance(fieldnames, str)):
-        fieldnames = [ fieldnames ]
+        fieldnames = [fieldnames]
     elif(not issequenceof(fieldnames, str)):
         raise TypeError('The fieldnames argument must be an instance of str '
-            'or a sequence of type str instances!')
+                        'or a sequence of type str instances!')
 
     CFG['dataset']['analysis_required_mc_field_names'] = list(set(fieldnames))

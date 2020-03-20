@@ -78,7 +78,7 @@ class TestDatasetFunctions(unittest.TestCase):
         self.assertAlmostEqual(livetime_subset.livetime, 0.9)
 
         # Cutting last livetime interval.
-        t_start = 58443.0   
+        t_start = 58443.0
         t_end = 58444.6
         (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data,
                                                                  livetime_data,
@@ -90,7 +90,7 @@ class TestDatasetFunctions(unittest.TestCase):
         self.assertAlmostEqual(livetime_subset.livetime, 0.85)
 
         # Cutting first and last livetime interval.
-        t_start = 58443.1   
+        t_start = 58443.1
         t_end = 58444.6
         (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data,
                                                                  livetime_data,
@@ -100,6 +100,7 @@ class TestDatasetFunctions(unittest.TestCase):
         self.assertEqual(len(dataset_data_subset.exp), 3)
         self.assertEqual(len(dataset_data_subset.mc), 3)
         self.assertAlmostEqual(livetime_subset.livetime, 0.75)
+
 
 if(__name__ == '__main__'):
     unittest.main()

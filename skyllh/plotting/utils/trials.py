@@ -89,7 +89,7 @@ def plot_ns_fit_vs_mean_ns_inj(
         ``True``.
     """
     if(figsize is None):
-        figsize = (12,10)
+        figsize = (12, 10)
     if(line_color is None):
         line_color = '#E37222'
     if(xlabel is None):
@@ -123,7 +123,7 @@ def plot_ns_fit_vs_mean_ns_inj(
     ns_fit_median = np.empty_like(mean_n_sig, dtype=np.float)
     ns_fit_uq = np.empty_like(mean_n_sig, dtype=np.float)
     ns_fit_lq = np.empty_like(mean_n_sig, dtype=np.float)
-    for (idx, (mean_n_sig_,n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
+    for (idx, (mean_n_sig_, n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
         m = trials[mean_n_sig_key] == mean_n_sig_
         hist_weights[m] /= n_trials_
         ns_fit_median[idx] = np.median(trials[m][ns_fit_key])
@@ -132,7 +132,7 @@ def plot_ns_fit_vs_mean_ns_inj(
 
     # Create two Axes objects, one for the histogram and one for the ratio.
     (fig, ax) = plt.subplots(
-        2, 1, gridspec_kw={'height_ratios': [3,1]}, sharex=True,
+        2, 1, gridspec_kw={'height_ratios': [3, 1]}, sharex=True,
         figsize=figsize)
 
     # Add an axes above the main axes for the colorbar.
@@ -157,7 +157,7 @@ def plot_ns_fit_vs_mean_ns_inj(
     # Plot the lower quantile.
     ax[0].plot(
         mean_n_sig, ns_fit_lq,
-         color=line_color, linestyle='-.', linewidth=2)
+        color=line_color, linestyle='-.', linewidth=2)
 
     # Plot the median fitted ns.
     ax[0].plot(
@@ -168,8 +168,8 @@ def plot_ns_fit_vs_mean_ns_inj(
     # Plot the upper quantile.
     ax[0].plot(
         mean_n_sig, ns_fit_uq,
-         color=line_color, linestyle='-.', linewidth=2,
-         label=r'$1\sigma$')
+        color=line_color, linestyle='-.', linewidth=2,
+        label=r'$1\sigma$')
 
     ax[0].legend()
 
@@ -198,7 +198,7 @@ def plot_ns_fit_vs_mean_ns_inj(
     ax[1].legend()
 
     ax[1].set_xlabel('$'+xlabel+'$', fontsize=axis_fontsize)
-    ratio_ylabel = r'$\frac{%s - %s}{%s}$'%(ylabel, xlabel, xlabel)+' [%]'
+    ratio_ylabel = r'$\frac{%s - %s}{%s}$' % (ylabel, xlabel, xlabel)+' [%]'
     ax[1].set_ylabel(ratio_ylabel, fontsize=axis_fontsize)
     ax[1].set_xlim(x_bins[0], x_bins[-1])
     ax[1].set_ylim(ratio_ylim)
@@ -217,6 +217,7 @@ def plot_ns_fit_vs_mean_ns_inj(
         return (fig, hist, xedges, yedges)
 
     return fig
+
 
 def plot_gamma_fit_vs_mean_ns_inj(
         trials,
@@ -297,7 +298,7 @@ def plot_gamma_fit_vs_mean_ns_inj(
         ``True``.
     """
     if(figsize is None):
-        figsize = (12,10)
+        figsize = (12, 10)
     if(xlabel is None):
         xlabel = r'<n>_{\mathrm{sig,inj}}'
     if(ylabel is None):
@@ -329,7 +330,7 @@ def plot_gamma_fit_vs_mean_ns_inj(
     gamma_fit_median = np.empty_like(mean_n_sig, dtype=np.float)
     gamma_fit_uq = np.empty_like(mean_n_sig, dtype=np.float)
     gamma_fit_lq = np.empty_like(mean_n_sig, dtype=np.float)
-    for (idx, (mean_n_sig_,n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
+    for (idx, (mean_n_sig_, n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
         m = trials[mean_n_sig_key] == mean_n_sig_
         hist_weights[m] /= n_trials_
         gamma_fit_median[idx] = np.median(trials[m][gamma_fit_key])
@@ -338,7 +339,7 @@ def plot_gamma_fit_vs_mean_ns_inj(
 
     # Create two Axes objects, one for the histogram and one for the ratio.
     (fig, ax) = plt.subplots(
-        2, 1, gridspec_kw={'height_ratios': [3,1]}, sharex=True,
+        2, 1, gridspec_kw={'height_ratios': [3, 1]}, sharex=True,
         figsize=figsize)
 
     # Add an axes above the main axes for the colorbar.
@@ -388,7 +389,7 @@ def plot_gamma_fit_vs_mean_ns_inj(
 
     ax[1].set_xlabel('$'+xlabel+'$', fontsize=axis_fontsize)
     gamma_inj_label = r'\gamma_{\mathrm{inj}}'
-    ratio_ylabel = r'$\frac{<%s> - %s}{%s}$'%(
+    ratio_ylabel = r'$\frac{<%s> - %s}{%s}$' % (
         ylabel, gamma_inj_label, gamma_inj_label)+' [%]'
     ax[1].set_ylabel(ratio_ylabel, fontsize=axis_fontsize)
     ax[1].set_xlim(x_bins[0], x_bins[-1])

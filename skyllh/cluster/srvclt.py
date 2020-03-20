@@ -4,6 +4,7 @@ import pickle
 
 from skyllh.core.py import str_cast
 
+
 class Message(object):
     @staticmethod
     def receive(sock, blocksize=2048, as_bytes=False):
@@ -52,12 +53,13 @@ class Message(object):
         instance.
         """
         return self._msg
+
     @msg.setter
     def msg(self, m):
         if(not isinstance(m, bytes)):
             m = str_cast(m,
-                'The msg property must be of type bytes or castable to type '
-                'str!')
+                         'The msg property must be of type bytes or castable to type '
+                         'str!')
         self._msg = m
 
     @property
@@ -91,6 +93,7 @@ def send_to_socket(sock, msg):
             raise RuntimeError('Socket connection broken!')
         n_bytes_sent += sent
 
+
 def read_from_socket(sock, size, blocksize=2048):
     """Reads ``size`` bytes from the socket ``sock``.
     """
@@ -103,6 +106,7 @@ def read_from_socket(sock, size, blocksize=2048):
         chunks.append(chunk)
         n_bytes_recd += len(chunk)
     return b''.join(chunks)
+
 
 def receive_object_from_socket(sock, blocksize=2048):
     """Receives a pickled Python object from the given socket.

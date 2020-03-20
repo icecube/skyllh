@@ -78,10 +78,12 @@ class FluxModel(object):
         """The unit of energy used for the flux calculation.
         """
         return self._energy_unit
+
     @energy_unit.setter
     def energy_unit(self, unit):
         if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property energy_unit must be of type astropy.units.UnitBase!')
+            raise TypeError(
+                'The property energy_unit must be of type astropy.units.UnitBase!')
         self._energy_unit = unit
 
     @property
@@ -89,10 +91,12 @@ class FluxModel(object):
         """The unit of length used for the flux calculation.
         """
         return self._length_unit
+
     @length_unit.setter
     def length_unit(self, unit):
         if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property length_unit must be of type astropy.units.UnitBase!')
+            raise TypeError(
+                'The property length_unit must be of type astropy.units.UnitBase!')
         self._length_unit = unit
 
     @property
@@ -100,17 +104,19 @@ class FluxModel(object):
         """The unit of length used for the flux calculation.
         """
         return self._time_unit
+
     @time_unit.setter
     def time_unit(self, unit):
         if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property time_unit must be of type astropy.units.UnitBase!')
+            raise TypeError(
+                'The property time_unit must be of type astropy.units.UnitBase!')
         self._time_unit = unit
 
     @property
     def unit_str(self):
         """The string representation of the flux unit.
         """
-        return '1/(%s %s^2 %s)'%(
+        return '1/(%s %s^2 %s)' % (
             self.energy_unit.to_string(), self.length_unit.to_string(),
             self.time_unit.to_string())
 
@@ -118,7 +124,7 @@ class FluxModel(object):
     def unit_latex_str(self):
         """The latex string representation of the flux unit.
         """
-        return r'%s$^{-1}$ %s$^{-2}$ %s$^{-1}$'%(
+        return r'%s$^{-1}$ %s$^{-2}$ %s$^{-1}$' % (
             self.energy_unit.to_string(), self.length_unit.to_string(),
             self.time_unit.to_string())
 
@@ -183,10 +189,13 @@ class FluxModel(object):
             raise TypeError('The propdict argument must be of type dict!')
         for (prop, val) in propdict.items():
             if(not hasattr(self, prop)):
-                raise KeyError('The flux model "%s" does not have a property named "%s"!'%(classname(self), prop))
+                raise KeyError('The flux model "%s" does not have a property named "%s"!' % (
+                    classname(self), prop))
             if(not isproperty(self, prop)):
-                raise TypeError('The attribute "%s" of flux model "%s" is no property!'%(classname(self), prop))
+                raise TypeError('The attribute "%s" of flux model "%s" is no property!' % (
+                    classname(self), prop))
             setattr(self, prop, val)
+
 
 class NormedFluxModel(FluxModel):
     """Abstract base class for all normalized flux models of the form
@@ -222,6 +231,7 @@ class NormedFluxModel(FluxModel):
         [energy]^-1 [length]^-2 [time]^-1.
         """
         return self._Phi0
+
     @Phi0.setter
     def Phi0(self, v):
         v = float_cast(v, 'Property Phi0 must be castable to type float!')
@@ -232,10 +242,12 @@ class NormedFluxModel(FluxModel):
         """The normalization energy.
         """
         return self._E0
+
     @E0.setter
     def E0(self, v):
         v = float_cast(v, 'Property E0 must be castable to type float!')
         self._E0 = v
+
 
 class PowerLawFlux(NormedFluxModel):
     """Power law flux of the form
@@ -245,6 +257,7 @@ class PowerLawFlux(NormedFluxModel):
     The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
     """
+
     def __init__(self, Phi0, E0, gamma):
         """Creates a new power law flux object.
 
@@ -265,6 +278,7 @@ class PowerLawFlux(NormedFluxModel):
     @property
     def gamma(self):
         return self._gamma
+
     @gamma.setter
     def gamma(self, v):
         v = float_cast(v, 'Property gamma must be castable to type float!')
@@ -292,6 +306,7 @@ class PowerLawFlux(NormedFluxModel):
         flux = self.Phi0 * np.power(E / self.E0, -self.gamma)
         return flux
 
+
 class CutoffPowerLawFlux(PowerLawFlux):
     """Cut-off power law flux of the form
 
@@ -300,6 +315,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
     The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
     """
+
     def __init__(self, Phi0, E0, gamma, Ecut):
         """Creates a new cut-off power law flux object.
 
@@ -322,6 +338,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
     @property
     def Ecut(self):
         return self._Ecut
+
     @Ecut.setter
     def Ecut(self, val):
         val = float_cast(val, 'Property val must be castable to type float!')
@@ -329,7 +346,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
 
     @property
     def math_function_str(self):
-        return super(CutoffPowerLawFlux, self).math_function_str + ' * exp(-E / %.2e %s)'%(self.Ecut, self.energy_unit)
+        return super(CutoffPowerLawFlux, self).math_function_str + ' * exp(-E / %.2e %s)' % (self.Ecut, self.energy_unit)
 
     def __call__(self, E):
         """The flux value dN/(dEdAdt) at energy E.
@@ -345,8 +362,10 @@ class CutoffPowerLawFlux(PowerLawFlux):
             Flux at energy E in unit [energy]^-1 [length]^-2 [time]^-1.
             By default that is GeV^-1 cm^-2 s^-1.
         """
-        flux = super(CutoffPowerLawFlux, self).__call__(E) * np.exp(-E / self.Ecut)
+        flux = super(CutoffPowerLawFlux, self).__call__(
+            E) * np.exp(-E / self.Ecut)
         return flux
+
 
 class LogParabolaPowerLawFlux(NormedFluxModel):
     """Power law flux with an index which varies as a log parabola in energy of
@@ -357,6 +376,7 @@ class LogParabolaPowerLawFlux(NormedFluxModel):
     The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
     """
+
     def __init__(self, Phi0, E0, alpha, beta):
         super(LogParabolaPowerLawFlux, self).__init__(Phi0, E0)
         self.alpha = alpha
@@ -365,6 +385,7 @@ class LogParabolaPowerLawFlux(NormedFluxModel):
     @property
     def alpha(self):
         return self._alpha
+
     @alpha.setter
     def alpha(self, v):
         v = float_cast(v, 'Property alpha must be castable to type float!')
@@ -373,6 +394,7 @@ class LogParabolaPowerLawFlux(NormedFluxModel):
     @property
     def beta(self):
         return self._beta
+
     @beta.setter
     def beta(self, v):
         v = float_cast(v, 'Property beta must be castable to type float!')
@@ -380,7 +402,7 @@ class LogParabolaPowerLawFlux(NormedFluxModel):
 
     @property
     def math_function_str(self):
-        return 'dN/dE = %.2e * (E / %.2e %s)^(-(%.2e + %.2e * log(E / %.2e %s)))'%(self.Phi0, self.E0, self.energy_unit, self.alpha, self.beta, self.E0, self.energy_unit)
+        return 'dN/dE = %.2e * (E / %.2e %s)^(-(%.2e + %.2e * log(E / %.2e %s)))' % (self.Phi0, self.E0, self.energy_unit, self.alpha, self.beta, self.E0, self.energy_unit)
 
     def __call__(self, E):
         """The flux value dN/(dEdAdt) at energy E.
@@ -396,5 +418,7 @@ class LogParabolaPowerLawFlux(NormedFluxModel):
             Flux at energy E in unit [energy]^-1 [length]^-2 [time]^-1.
             By default that is GeV^-1 cm^-2 s^-1.
         """
-        flux = self.Phi0 * np.power(E / self.E0, -self.alpha - self.beta * np.log(E / self.E0))
+        flux = self.Phi0 * \
+            np.power(E / self.E0, -self.alpha -
+                     self.beta * np.log(E / self.E0))
         return flux

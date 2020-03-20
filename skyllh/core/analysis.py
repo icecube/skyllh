@@ -111,7 +111,8 @@ class Analysis(object):
         super(Analysis, self).__init__()
 
         if(event_selection_method is None):
-            event_selection_method = AllEventSelectionMethod(src_hypo_group_manager)
+            event_selection_method = AllEventSelectionMethod(
+                src_hypo_group_manager)
 
         self.src_hypo_group_manager = src_hypo_group_manager
         self.src_fitparam_mapper = src_fitparam_mapper
@@ -141,11 +142,12 @@ class Analysis(object):
         efficiency implementation method.
         """
         return self._src_hypo_group_manager
+
     @src_hypo_group_manager.setter
     def src_hypo_group_manager(self, manager):
         if(not isinstance(manager, SourceHypoGroupManager)):
             raise TypeError('The src_hypo_group_manager property must be an '
-                'instance of SourceHypoGroupManager!')
+                            'instance of SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
 
     @property
@@ -154,11 +156,12 @@ class Analysis(object):
         parameters and their relation to the sources.
         """
         return self._src_fitparam_mapper
+
     @src_fitparam_mapper.setter
     def src_fitparam_mapper(self, mapper):
         if(not isinstance(mapper, SourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper property must be an '
-                'instance of SourceFitParameterMapper!')
+                            'instance of SourceFitParameterMapper!')
         self._src_fitparam_mapper = mapper
 
     @property
@@ -167,11 +170,12 @@ class Analysis(object):
         of the analysis.
         """
         return self._test_statistic
+
     @test_statistic.setter
     def test_statistic(self, ts):
         if(not isinstance(ts, TestStatistic)):
             raise TypeError('The test_statistic property must be an instance '
-                'of TestStatistic, but is %s!'%(classname(ts)))
+                            'of TestStatistic, but is %s!' % (classname(ts)))
         self._test_statistic = ts
 
     @property
@@ -181,12 +185,13 @@ class Analysis(object):
         generation method has been defined.
         """
         return self._bkg_gen_method
+
     @bkg_gen_method.setter
     def bkg_gen_method(self, method):
         if(method is not None):
             if(not isinstance(method, BackgroundGenerationMethod)):
                 raise TypeError('The bkg_gen_method property must be an '
-                    'instance of BackgroundGenerationMethod!')
+                                'instance of BackgroundGenerationMethod!')
         self._bkg_gen_method = method
 
     @property
@@ -196,11 +201,12 @@ class Analysis(object):
         background events.
         """
         return self._event_selection_method
+
     @event_selection_method.setter
     def event_selection_method(self, method):
         if(not isinstance(method, EventSelectionMethod)):
             raise TypeError('The event_selection_method property must be an '
-                'instance of EventSelectionMethod!')
+                            'instance of EventSelectionMethod!')
         self._event_selection_method = method
 
     @property
@@ -208,11 +214,12 @@ class Analysis(object):
         """The list of Dataset instances.
         """
         return self._dataset_list
+
     @dataset_list.setter
     def dataset_list(self, datasets):
         if(not issequenceof(datasets, Dataset)):
             raise TypeError('The dataset_list property must be a sequence '
-                'of Dataset instances!')
+                            'of Dataset instances!')
         self._dataset_list = list(datasets)
 
     @property
@@ -221,11 +228,12 @@ class Analysis(object):
         dataset.
         """
         return self._data_list
+
     @data_list.setter
     def data_list(self, datas):
         if(not issequenceof(datas, DatasetData)):
             raise TypeError('The data_list property must be a sequence '
-                'of DatasetData instances!')
+                            'of DatasetData instances!')
         self._data_list = list(datas)
 
     @property
@@ -248,13 +256,14 @@ class Analysis(object):
         """
         if(self._llhratio is None):
             raise RuntimeError('The log-likelihood ratio function is not '
-                'defined yet. Call the construct_analysis method first!')
+                               'defined yet. Call the construct_analysis method first!')
         return self._llhratio
+
     @llhratio.setter
     def llhratio(self, obj):
         if(not isinstance(obj, LLHRatio)):
             raise TypeError('The llhratio property must be an instance of '
-                'LLHRatio!')
+                            'LLHRatio!')
         self._llhratio = obj
 
     @property
@@ -299,17 +308,17 @@ class Analysis(object):
         """
         if(not isinstance(dataset, Dataset)):
             raise TypeError('The dataset argument must be an instance '
-                'of Dataset!')
+                            'of Dataset!')
 
         if(not isinstance(data, DatasetData)):
             raise TypeError('The data argument must be an instance '
-                'of DatasetData!')
+                            'of DatasetData!')
 
         if(tdm is None):
             tdm = TrialDataManager()
         if(not isinstance(tdm, TrialDataManager)):
             raise TypeError('The tdm argument must be None or an instance of '
-                'TrialDataManager!')
+                            'TrialDataManager!')
 
         self._dataset_list.append(dataset)
         self._data_list.append(data)
@@ -358,7 +367,7 @@ class Analysis(object):
         """
         if(self._bkg_gen_method is None):
             raise RuntimeError('No background generation method has been '
-                'defined for this analysis!')
+                               'defined for this analysis!')
 
         self._bkg_generator = BackgroundGenerator(
             self._bkg_gen_method, self._dataset_list, self._data_list)
@@ -445,9 +454,10 @@ class Analysis(object):
             minimization process of the negative of the log-likelihood ratio
             function.
         """
-        events_list = [ data.exp for data in self._data_list ]
+        events_list = [data.exp for data in self._data_list]
         self.initialize_trial(events_list)
-        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
+        (fitparamset, log_lambda_max, fitparam_values,
+         status) = self.maximize_llhratio(rss)
         TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
 
         fitparam_dict = fitparamset.fitparam_values_to_dict(fitparam_values)
@@ -502,13 +512,13 @@ class Analysis(object):
         """
         if(not isinstance(rss, RandomStateService)):
             raise TypeError('The rss argument must be an instance of '
-                'RandomStateService!')
+                            'RandomStateService!')
 
         if(mean_n_bkg_list is None):
-            mean_n_bkg_list = [ None ]*self.n_datasets
+            mean_n_bkg_list = [None]*self.n_datasets
         if(not issequenceof(mean_n_bkg_list, (type(None), float))):
             raise TypeError('The mean_n_bkg_list argument must be a sequence '
-                'of None and/or floats!')
+                            'of None and/or floats!')
 
         if(bkg_kwargs is None):
             bkg_kwargs = dict()
@@ -528,7 +538,7 @@ class Analysis(object):
         for ds_idx in range(self.n_datasets):
             bkg_kwargs.update(mean=mean_n_bkg_list[ds_idx])
             with TaskTimer(tl, 'Generating background events for data set '
-                '{:d}.'.format(ds_idx)):
+                           '{:d}.'.format(ds_idx)):
                 (n_bkg, bkg_events) = self._bkg_generator.generate_background_events(
                     rss, ds_idx, tl=tl, **bkg_kwargs)
             n_events_list.append(n_bkg)
@@ -623,7 +633,8 @@ class Analysis(object):
             self.initialize_trial(events_list, n_events_list)
 
         with TaskTimer(tl, 'Maximizing LLH ratio function.'):
-            (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss, tl=tl)
+            (fitparamset, log_lambda_max, fitparam_values,
+             status) = self.maximize_llhratio(rss, tl=tl)
         if(isinstance(minimizer_status_dict, dict)):
             minimizer_status_dict.update(status)
 
@@ -638,7 +649,7 @@ class Analysis(object):
             ('ts', np.float)
         ] + [
             (fitparam_name, np.float)
-                for fitparam_name in fitparamset.fitparam_name_list
+            for fitparam_name in fitparamset.fitparam_name_list
         ]
         result = np.empty((1,), dtype=result_dtype)
         result['mean_n_sig'] = mean_n_sig
@@ -717,7 +728,7 @@ class Analysis(object):
             'mean_n_sig_0': mean_n_sig_0,
             'bkg_kwargs': bkg_kwargs,
             'sig_kwargs': sig_kwargs
-            }) for i in range(n)
+        }) for i in range(n)
         ]
         result_list = parallelize(
             self.do_trial, args_list, ncpu, rss=rss, tl=tl, ppbar=ppbar)
@@ -743,6 +754,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
+
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
                  fitparam_ns,
                  test_statistic, bkg_gen_method=None, event_selection_method=None):
@@ -777,7 +789,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         """
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an '
-                'instance of SingleSourceFitParameterMapper!')
+                            'instance of SingleSourceFitParameterMapper!')
 
         super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
             src_hypo_group_manager, src_fitparam_mapper,
@@ -800,10 +812,12 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         """The FitParameter instance for the fit parameter ns.
         """
         return self._fitparam_ns
+
     @fitparam_ns.setter
     def fitparam_ns(self, fitparam):
         if(not isinstance(fitparam, FitParameter)):
-            raise TypeError('The fitparam_ns property must be an instance of FitParameter!')
+            raise TypeError(
+                'The fitparam_ns property must be an instance of FitParameter!')
         self._fitparam_ns = fitparam
 
     def add_dataset(self, dataset, data, pdfratios, tdm=None):
@@ -830,7 +844,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             pdfratios = [pdfratios]
         if(not issequenceof(pdfratios, PDFRatio)):
             raise TypeError('The pdfratios argument must be an instance of '
-                'PDFRatio or a sequence of PDFRatio!')
+                            'PDFRatio or a sequence of PDFRatio!')
 
         self._pdfratio_list_list.append(list(pdfratios))
 
@@ -860,12 +874,13 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # detector signal yield instances for each source as well.
         detsigyield_list = []
         fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
-        detsigyield_implmethod_list = self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
+        detsigyield_implmethod_list = self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(
+            0)
         if((len(detsigyield_implmethod_list) != 1) and
            (len(detsigyield_implmethod_list) != self.n_datasets)):
             raise ValueError('The number of detector signal yield '
-                'implementation methods is not 1 and does not match the number '
-                'of used datasets in the analysis!')
+                             'implementation methods is not 1 and does not match the number '
+                             'of used datasets in the analysis!')
         pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
         for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
                                                   self.data_list)):
@@ -919,11 +934,12 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The SourceModel instance describing the new source.
         """
         if(not isinstance(source, SourceModel)):
-            raise TypeError('The source argument must be an instance of SourceModel')
+            raise TypeError(
+                'The source argument must be an instance of SourceModel')
 
         if(self._llhratio is None):
             raise RuntimeError('The LLH ratio function has to be constructed, '
-                'before the `change_source` method can be called!')
+                               'before the `change_source` method can be called!')
 
         # Change the source in the SourceHypoGroupManager instance.
         # Because this is a single source analysis, there can only be one source
@@ -937,7 +953,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         # Change the source hypo group manager of the LLH ratio function
         # instance.
-        self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
+        self._llhratio.change_source_hypo_group_manager(
+            self._src_hypo_group_manager)
 
         # Change the source hypo group manager of the background generator
         # instance.
@@ -1043,7 +1060,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
 
 class SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
-    TimeIntegratedMultiDatasetSingleSourceAnalysis):
+        TimeIntegratedMultiDatasetSingleSourceAnalysis):
     """This is an analysis class that implements a time-integrated LLH ratio
     analysis with separate spatial and energy PDFs for multiple datasets
     assuming a single source.
@@ -1058,10 +1075,11 @@ class SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
+
     def __init__(
-        self, src_hypo_group_manager, src_fitparam_mapper,
-        fitparam_ns, test_statistic, bkg_gen_method=None,
-        event_selection_method=None):
+            self, src_hypo_group_manager, src_fitparam_mapper,
+            fitparam_ns, test_statistic, bkg_gen_method=None,
+            event_selection_method=None):
         """Creates a new time-integrated analysis with separate spatial and
         energy PDFs for multiple datasets assuming a single source.
 
@@ -1118,26 +1136,26 @@ class SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
         """
         if(not isinstance(spatial_pdfratio, PDFRatio)):
             raise TypeError('The spatial_pdfratio argument must be an instance '
-                'of PDFRatio!')
+                            'of PDFRatio!')
         if(not issubclass(spatial_pdfratio.pdf_type, SpatialPDF)):
             raise TypeError('The PDF type of the PDFRatio instance of argument '
-                'spatial_pdfratio must be SpatialPDF!')
+                            'spatial_pdfratio must be SpatialPDF!')
 
         if(not isinstance(energy_pdfratio, PDFRatio)):
             raise TypeError('The energy_pdfratio argument must be an instance '
-                'of PDFRatio!')
+                            'of PDFRatio!')
         if(not issubclass(energy_pdfratio.pdf_type, EnergyPDF)):
             raise TypeError('The PDF type of the PDFRatio instance of argument '
-                'energy_pdfratio must be EnergyPDF!')
+                            'energy_pdfratio must be EnergyPDF!')
 
         pdfratios = [spatial_pdfratio, energy_pdfratio]
 
         super(SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis,
-            self).add_dataset(dataset, data, pdfratios, tdm)
+              self).add_dataset(dataset, data, pdfratios, tdm)
 
 
 class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
-    TimeIntegratedMultiDatasetSingleSourceAnalysis):
+        TimeIntegratedMultiDatasetSingleSourceAnalysis):
     """This is an analysis class that implements a time-integrated LLH ratio
     analysis with a single multi-dimensional PDF for multiple datasets
     assuming a single source.
@@ -1152,10 +1170,11 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
+
     def __init__(
-        self, src_hypo_group_manager, src_fitparam_mapper,
-        fitparam_ns, test_statistic, bkg_gen_method=None,
-        event_selection_method=None):
+            self, src_hypo_group_manager, src_fitparam_mapper,
+            fitparam_ns, test_statistic, bkg_gen_method=None,
+            event_selection_method=None):
         """Creates a new time-integrated analysis with a single
         multi-dimensional PDF for multiple datasets assuming a single source.
 
@@ -1209,9 +1228,9 @@ class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
         """
         if(not isinstance(multidim_pdfratio, PDFRatio)):
             raise TypeError('The multidim_pdfratio argument must be an '
-                'instance of PDFRatio!')
+                            'instance of PDFRatio!')
 
         pdfratios = [multidim_pdfratio]
 
         super(SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis,
-            self).add_dataset(dataset, data, pdfratios, tdm)
+              self).add_dataset(dataset, data, pdfratios, tdm)

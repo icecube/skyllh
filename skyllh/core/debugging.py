@@ -54,7 +54,7 @@ def setup_console_handler(name, log_level, log_format=None, stream=None):
 
 
 def setup_file_handler(name, log_level, filename, path=None, log_format=None,
-        mode='a'):
+                       mode='a'):
     """Initializes `FileHandler` for a logger with a given name and sets its
     handling level.
 
@@ -102,6 +102,7 @@ class QueueHandler(logging.Handler):
     This code is new in Python 3.2, but this class can be copy pasted into
     user code for use with earlier Python versions.
     """
+
     def __init__(self, queue):
         """
         Initialise an instance, using the passed queue.

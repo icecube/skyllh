@@ -47,6 +47,7 @@ class UnitySpatialFluxProfileTestCase(unittest.TestCase):
         np.testing.assert_array_equal(self.fluxprofile(alpha, delta),
                                       np.array([1, 1]))
 
+
 class PointSpatialFluxProfileTestCase(unittest.TestCase):
     def setUp(self):
         self.alpha_s = 1.5
@@ -96,6 +97,7 @@ class PointSpatialFluxProfileTestCase(unittest.TestCase):
 
         np.testing.assert_array_equal(self.fluxprofile(alpha, delta),
                                       np.array([1, 0]))
+
 
 @unittest.skip("Skip")
 class TestFactorizedFluxModel(unittest.TestCase):

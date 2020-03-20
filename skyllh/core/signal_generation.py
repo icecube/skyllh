@@ -7,6 +7,7 @@ from skyllh.core.py import (
     float_cast
 )
 
+
 class SignalGenerationMethod(object):
     """This is a base class for a source and detector specific signal generation
     method, that calculates the source flux for a given monte-carlo event, which
@@ -34,14 +35,16 @@ class SignalGenerationMethod(object):
         take MC events into account for signal event generation.
         """
         return self._energy_range
+
     @energy_range.setter
     def energy_range(self, r):
         if(r is not None):
             if(not issequence(r)):
-                raise TypeError('The energy_range property must be a sequence!')
+                raise TypeError(
+                    'The energy_range property must be a sequence!')
             if(len(r) != 2):
                 raise ValueError('The energy_range property must be a sequence '
-                    'of 2 elements!')
+                                 'of 2 elements!')
             r = tuple(
                 float_cast(r[0], 'The first element of the energy_range '
                                  'sequence must be castable to type float!'),

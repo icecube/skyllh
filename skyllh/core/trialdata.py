@@ -21,6 +21,7 @@ class DataField(object):
     Analysis class instance. The calculation is defined through an external
     function.
     """
+
     def __init__(self, name, func, fitparam_names=None):
         """Creates a new instance of DataField that might depend on fit
         parameters.
@@ -54,7 +55,7 @@ class DataField(object):
             fitparam_names = []
         if(not issequenceof(fitparam_names, str)):
             raise TypeError('The fitparam_names argument must be None or a '
-                'sequence of str instances!')
+                            'sequence of str instances!')
         self._fitparam_name_list = list(fitparam_names)
 
         # Define the list of fit parameter values for which the fit parameter
@@ -79,6 +80,7 @@ class DataField(object):
         """The name of the data field.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         if(not isinstance(name, str)):
@@ -90,6 +92,7 @@ class DataField(object):
         """The function that calculates the data field values.
         """
         return self._func
+
     @func.setter
     def func(self, f):
         if(not callable(f)):
@@ -97,7 +100,7 @@ class DataField(object):
         if((not func_has_n_args(f, 2)) and
            (not func_has_n_args(f, 3))):
             raise TypeError('The func property must be a function with 2 or 3 '
-                'arguments!')
+                            'arguments!')
         self._func = f
 
     @property
@@ -107,14 +110,14 @@ class DataField(object):
         return self._values
 
     def _calc_source_values(
-        self, tdm, src_hypo_group_manager, fitparams):
+            self, tdm, src_hypo_group_manager, fitparams):
         """Calculates the data field values utilizing the defined external
         function. The data field values solely depend on source parameters.
         """
         self._values = self._func(tdm, src_hypo_group_manager)
 
     def _calc_static_values(
-        self, tdm, src_hypo_group_manager, fitparams):
+            self, tdm, src_hypo_group_manager, fitparams):
         """Calculates the data field values utilizing the defined external
         function, that are static and only depend on source parameters.
 
@@ -133,7 +136,7 @@ class DataField(object):
         self._values = self._func(tdm, src_hypo_group_manager, fitparams)
 
     def _calc_fitparam_dependent_values(
-        self, tdm, src_hypo_group_manager, fitparams):
+            self, tdm, src_hypo_group_manager, fitparams):
         """Calculate data field values utilizing the defined external
         function, that depend on fit parameter values. We check if the fit
         parameter values have changed.
@@ -174,6 +177,7 @@ class TrialDataManager(object):
     manager is provided to the PDF evaluation method. Hence, data fields are
     calculated only once.
     """
+
     def __init__(self, index_field_name=None):
         """Creates a new TrialDataManager instance.
 
@@ -221,12 +225,13 @@ class TrialDataManager(object):
         be sorted by this data field.
         """
         return self._index_field_name
+
     @index_field_name.setter
     def index_field_name(self, name):
         if(name is not None):
             if(not isinstance(name, str)):
                 raise TypeError('The index_field_name property must be an '
-                    'instance of type str!')
+                                'instance of type str!')
         self._index_field_name = name
 
     @property
@@ -235,11 +240,12 @@ class TrialDataManager(object):
         should get evaluated.
         """
         return self._events
+
     @events.setter
     def events(self, arr):
         if(not isinstance(arr, DataFieldRecordArray)):
             raise TypeError('The events property must be an instance of '
-                'DataFieldRecordArray!')
+                            'DataFieldRecordArray!')
         self._events = arr
 
     @property
@@ -331,7 +337,7 @@ class TrialDataManager(object):
             and `fitparams` is an unused interface argument.
         """
         if(name in self):
-            raise KeyError('The data field "%s" is already defined!'%(name))
+            raise KeyError('The data field "%s" is already defined!' % (name))
 
         data_field = DataField(name, func)
 
@@ -360,7 +366,7 @@ class TrialDataManager(object):
             the data field does not depend on any fit parameters.
         """
         if(name in self):
-            raise KeyError('The data field "%s" is already defined!'%(name))
+            raise KeyError('The data field "%s" is already defined!' % (name))
 
         data_field = DataField(name, func, fitparam_names)
 
@@ -459,4 +465,4 @@ class TrialDataManager(object):
         if(name in self._fitparam_data_field_reg):
             return self._fitparam_data_field_reg[name].values
 
-        raise KeyError('The data field "%s" is not defined!'%(name))
+        raise KeyError('The data field "%s" is not defined!' % (name))

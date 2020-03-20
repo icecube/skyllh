@@ -8,6 +8,7 @@ from numpy.lib import recfunctions as np_rfn
 from skyllh.core.dataset import DatasetCollection, generate_data_file_path
 from skyllh.i3.dataset import I3Dataset
 
+
 def create_dataset_collection(base_path=None, sub_path=None):
     """Defines the dataset collection for the GFU sample.
 
@@ -59,46 +60,46 @@ def create_dataset_collection(base_path=None, sub_path=None):
 
     # Add the seasons to the dataset collection. Each season is an own dataset.
     IC86_2015 = I3Dataset(
-        name = 'IC86, 2015',
-        livetime = 364.684, # days
-        exp_pathfilenames = os.path.join(path, "IC86_2015_data.npy"),
-        mc_pathfilenames  = os.path.join(path, "IC86_2015_MC.npy"),
-        grl_pathfilenames = os.path.join(path, "GRL/IC86_2015_data.npy"),
-        version = version,
-        verqualifiers = verqualifiers
+        name='IC86, 2015',
+        livetime=364.684,  # days
+        exp_pathfilenames=os.path.join(path, "IC86_2015_data.npy"),
+        mc_pathfilenames=os.path.join(path, "IC86_2015_MC.npy"),
+        grl_pathfilenames=os.path.join(path, "GRL/IC86_2015_data.npy"),
+        version=version,
+        verqualifiers=verqualifiers
     )
 
     IC86_2016 = I3Dataset(
-        name = 'IC86, 2016',
-        livetime = 356.198, # days
-        exp_pathfilenames = os.path.join(path, "IC86_2016_data.npy"),
-        mc_pathfilenames  = IC86_2015.mc_pathfilename_list,
-        grl_pathfilenames = os.path.join(path, "GRL/IC86_2016_data.npy"),
-        version = version,
-        verqualifiers = verqualifiers
+        name='IC86, 2016',
+        livetime=356.198,  # days
+        exp_pathfilenames=os.path.join(path, "IC86_2016_data.npy"),
+        mc_pathfilenames=IC86_2015.mc_pathfilename_list,
+        grl_pathfilenames=os.path.join(path, "GRL/IC86_2016_data.npy"),
+        version=version,
+        verqualifiers=verqualifiers
     )
 
     IC86_2017 = I3Dataset(
-        name = 'IC86, 2017',
-        livetime = 165.443, # days
-        exp_pathfilenames = os.path.join(path, "IC86_2017_data.npy"),
-        mc_pathfilenames  = IC86_2015.mc_pathfilename_list,
-        grl_pathfilenames = os.path.join(path, "GRL/IC86_2017_data.npy"),
-        version = version,
-        verqualifiers = verqualifiers
+        name='IC86, 2017',
+        livetime=165.443,  # days
+        exp_pathfilenames=os.path.join(path, "IC86_2017_data.npy"),
+        mc_pathfilenames=IC86_2015.mc_pathfilename_list,
+        grl_pathfilenames=os.path.join(path, "GRL/IC86_2017_data.npy"),
+        version=version,
+        verqualifiers=verqualifiers
     )
 
     seasons = [IC86_2015, IC86_2016, IC86_2017]
     IC86_2015_to_2017 = I3Dataset(
-        name = "IC86, 2015-2017",
-        livetime = np.sum([s.livetime for s in seasons]), # days
-        exp_pathfilenames = [s.exp_pathfilename_list[0] for s in seasons],
-        mc_pathfilenames  = IC86_2015.mc_pathfilename_list,
-        grl_pathfilenames = [os.path.join(path, "GRL/IC86_2015_data.npy"),
-                             os.path.join(path, "GRL/IC86_2016_data.npy"),
-                             os.path.join(path, "GRL/IC86_2017_data.npy")],
-        version = version,
-        verqualifiers = verqualifiers
+        name="IC86, 2015-2017",
+        livetime=np.sum([s.livetime for s in seasons]),  # days
+        exp_pathfilenames=[s.exp_pathfilename_list[0] for s in seasons],
+        mc_pathfilenames=IC86_2015.mc_pathfilename_list,
+        grl_pathfilenames=[os.path.join(path, "GRL/IC86_2015_data.npy"),
+                           os.path.join(path, "GRL/IC86_2016_data.npy"),
+                           os.path.join(path, "GRL/IC86_2017_data.npy")],
+        version=version,
+        verqualifiers=verqualifiers
     )
 
     # Add all the datasets of the different seasons to the dataset collection.
@@ -112,8 +113,8 @@ def create_dataset_collection(base_path=None, sub_path=None):
     # Define the data preparation function and add it to all datasets.
     def data_prep(exp, mc):
         # Remove events with very large uncertainties.
-        exp = exp[ exp['angErr'] < np.radians(15) ]
-        mc  = mc[ mc['angErr'] < np.radians(15) ]
+        exp = exp[exp['angErr'] < np.radians(15)]
+        mc = mc[mc['angErr'] < np.radians(15)]
         return (exp, mc)
     dsc.add_data_preparation(data_prep)
 

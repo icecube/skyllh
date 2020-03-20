@@ -14,6 +14,7 @@ class PhysicsModel(object):
     """This class provides a base class for all physics models like source
     models or background models.
     """
+
     def __init__(self, name=None):
         """Creates a new PhysicsModel instance.
 
@@ -35,6 +36,7 @@ class PhysicsModel(object):
         """The name of the physics model.
         """
         return self._name
+
     @name.setter
     def name(self, n):
         n = str_cast(n, 'The name property must be castable to type str!')

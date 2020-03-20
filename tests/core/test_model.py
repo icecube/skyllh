@@ -57,7 +57,7 @@ class ModelCollection_TestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             modelcoll = ModelCollection.cast('A str instance.')
         with self.assertRaises(TypeError):
-            modelcoll = ModelCollection.cast(('str1','str2'))
+            modelcoll = ModelCollection.cast(('str1', 'str2'))
 
     def test_model_type(self):
         self.assertTrue(issubclass(self.modelcoll.model_type, Model))

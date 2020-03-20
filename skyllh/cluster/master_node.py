@@ -18,6 +18,7 @@ class CNRegistryEntry(object):
     """This class provides an registry entry for a compute node. It holds the
     socket to the compute node.
     """
+
     def __init__(self, sock, addr, port, cn_start_time, cn_live_time):
         super(CNRegistryEntry, self).__init__()
 
@@ -34,7 +35,7 @@ class CNRegistryEntry(object):
     def key(self):
         """(read-only) The CN's identification key.
         """
-        return '%s:%d'%(self.addr, self.port)
+        return '%s:%d' % (self.addr, self.port)
 
     def send_command(self, cmd):
         if(not isinstance(cmd, Command)):
@@ -48,6 +49,7 @@ class MasterNode(object):
     distribute work to the compute nodes. The work distribution is handled
     through the MasterNode instance.
     """
+
     def __init__(self):
         super(MasterNode, self).__init__()
 
@@ -58,6 +60,7 @@ class MasterNode(object):
         """The dictionary with the registered compute nodes.
         """
         return self._cn_registry
+
     @cn_registry.setter
     def cn_registry(self, d):
         if(not isinstance(d, dict)):
@@ -102,7 +105,7 @@ class MasterNode(object):
                     clientsock, blocksize=blocksize)
                 if(not cmd.is_same_as(RegisterCN)):
                     raise RuntimeError('The compute node provided an unknown '
-                        'command "%s"!'%(cmd.as_message().msg))
+                                       'command "%s"!' % (cmd.as_message().msg))
                 ACK().send(clientsock)
 
                 cn = CNRegistryEntry(
@@ -120,4 +123,3 @@ class MasterNode(object):
         """
         for (cn_key, cn) in self._cn_registry.items():
             cn.send_command(ShutdownCN())
-

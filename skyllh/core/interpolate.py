@@ -56,6 +56,7 @@ class GridManifoldInterpolationMethod(object):
         """The R^d -> R manifold function.
         """
         return self._f
+
     @f.setter
     def f(self, func):
         if(not callable(func)):
@@ -68,13 +69,14 @@ class GridManifoldInterpolationMethod(object):
         This defines the grid of the manifold.
         """
         return self._param_grid_set
+
     @param_grid_set.setter
     def param_grid_set(self, obj):
         if(isinstance(obj, ParameterGrid)):
             obj = ParameterGridSet([obj])
         elif(not isinstance(obj, ParameterGridSet)):
             raise TypeError('The param_grid_set property must be an instance '
-                'of ParameterGridSet!')
+                            'of ParameterGridSet!')
         self._param_grid_set = obj
 
     @property
@@ -116,6 +118,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
     """This grid manifold interpolation method interpolates the 1-dimensional
     grid manifold using a line.
     """
+
     def __init__(self, f, param_grid_set):
         """Creates a new Linear1DGridManifoldInterpolationMethod instance.
 
@@ -143,9 +146,9 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
 
         if(len(self._param_grid_set) != 1):
             raise ValueError('The %s class supports only 1D grid manifolds. '
-                'The param_grid_set argument must contain 1 ParameterGrid '
-                'instance! Currently it has %d!'%(
-                    classname(self), len(self._param_grid_set)))
+                             'The param_grid_set argument must contain 1 ParameterGrid '
+                             'instance! Currently it has %d!' % (
+                                 classname(self), len(self._param_grid_set)))
         self.p_grid = self._param_grid_set[0]
 
         # Create a cache for the line parameterization for the last
@@ -206,7 +209,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         self__cache = self._cache
         if((self__cache['x0'] == x0) and
            (eventdata.shape[0] == len(self__cache['m']))
-          ):
+           ):
             m = self__cache['m']
             b = self__cache['b']
         else:
@@ -220,19 +223,19 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             # The value will be of that grid point x0, but the gradient is
             # calculated based on the two neighboring grid points of x0.
             if(x1 == x0):
-                value = self__f({xname:x0}, eventdata)
+                value = self__f({xname: x0}, eventdata)
                 x0 = self__p_grid.round_to_nearest_grid_point(
                     x0 - self__p_grid.delta)
                 x1 = self__p_grid.round_to_nearest_grid_point(
                     x1 + self__p_grid.delta)
 
-                M0 = self__f({xname:x0}, eventdata)
-                M1 = self__f({xname:x1}, eventdata)
+                M0 = self__f({xname: x0}, eventdata)
+                M1 = self__f({xname: x1}, eventdata)
                 m = (M1 - M0) / (x1 - x0)
                 return (value, np.atleast_2d(m))
 
-            M0 = self__f({xname:x0}, eventdata)
-            M1 = self__f({xname:x1}, eventdata)
+            M0 = self__f({xname: x0}, eventdata)
+            M1 = self__f({xname: x1}, eventdata)
 
             m = (M1 - M0) / (x1 - x0)
             b = M0 - m*x0
@@ -250,6 +253,7 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
     """This grid manifold interpolation method interpolates the 1-dimensional
     grid manifold using a parabola.
     """
+
     def __init__(self, f, param_grid_set):
         """Creates a new Parabola1DGridManifoldInterpolationMethod instance.
 
@@ -277,9 +281,9 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
 
         if(len(self._param_grid_set) != 1):
             raise ValueError('The %s class supports only 1D grid manifolds. '
-                'The param_grid_set argument must contain 1 ParameterGrid '
-                'instance! Currently it has %d!'%(
-                    classname(self), len(self._param_grid_set)))
+                             'The param_grid_set argument must contain 1 ParameterGrid '
+                             'instance! Currently it has %d!' % (
+                                 classname(self), len(self._param_grid_set)))
         self._p_grid = self._param_grid_set[0]
 
         # Create a cache for the parabola parameterization for the last
@@ -345,7 +349,7 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
         # Check if the parabola parametrization for x1 is already cached.
         if((self__cache['x1'] == x1) and
            (eventdata.shape[0] == len(self__cache['M1']))
-          ):
+           ):
             M1 = self__cache['M1']
             a = self__cache['a']
             b = self__cache['b']
@@ -358,9 +362,9 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
 
             # Parameterize the parabola with parameters a, b, and M1.
             self__f = self.f
-            M0 = self__f({xname:x0}, eventdata)
-            M1 = self__f({xname:x1}, eventdata)
-            M2 = self__f({xname:x2}, eventdata)
+            M0 = self__f({xname: x0}, eventdata)
+            M1 = self__f({xname: x1}, eventdata)
+            M2 = self__f({xname: x2}, eventdata)
 
             a = 0.5*(M0 - 2.*M1 + M2) / dx**2
             b = 0.5*(M2 - M0) / dx
@@ -374,4 +378,3 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
         gradients = 2. * a * (x - x1) + b
 
         return (value, np.atleast_2d(gradients))
-

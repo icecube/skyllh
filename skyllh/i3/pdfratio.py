@@ -20,6 +20,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
     the signal and background PDFs for a grid of different discrete energy
     signal fit parameters, which are defined by the signal PDF set.
     """
+
     def __init__(
             self, signalpdfset, backgroundpdf,
             fillmethod=None, interpolmethod=None, ncpu=None, ppbar=None):
@@ -67,7 +68,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         # Ensure same binning of signal and background PDFs.
         for (sigpdf_hash, sigpdf) in self.signalpdfset.items():
             if(not sigpdf.has_same_binning_as(self.backgroundpdf)):
-                raise ValueError('At least one signal PDF does not have the same binning as the background PDF!')
+                raise ValueError(
+                    'At least one signal PDF does not have the same binning as the background PDF!')
 
         def create_log_ratio_spline(sigpdfset, bkgpdf, fillmethod, gridfitparams):
             """Creates the signal/background ratio spline for the given signal
@@ -87,9 +89,9 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
 
             # Fill the ratio array.
             ratio = fillmethod.fill_ratios(ratio,
-                sigpdf.hist, bkgpdf.hist,
-                sigpdf.hist_mask_mc_covered, sigpdf.hist_mask_mc_covered_zero_physics,
-                bkgpdf.hist_mask_mc_covered, bkgpdf.hist_mask_mc_covered_zero_physics)
+                                           sigpdf.hist, bkgpdf.hist,
+                                           sigpdf.hist_mask_mc_covered, sigpdf.hist_mask_mc_covered_zero_physics,
+                                           bkgpdf.hist_mask_mc_covered, bkgpdf.hist_mask_mc_covered_zero_physics)
 
             # Define the grid points for the spline. In general, we use the bin
             # centers of the binning, but for the first and last point of each
@@ -98,7 +100,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
             points_list = []
             for binning in sigpdf.binnings:
                 points = binning.bincenters
-                (points[0], points[-1]) = (binning.lower_edge, binning.upper_edge)
+                (points[0], points[-1]
+                 ) = (binning.lower_edge, binning.upper_edge)
                 points_list.append(points)
 
             # Create the spline for the ratio values.
@@ -115,8 +118,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         # need to create PDF ratio arrays.
         gridfitparams_list = self.signalpdfset.gridfitparams_list
 
-        args_list = [ ((signalpdfset, backgroundpdf, self.fillmethod, gridfitparams),{})
-                     for gridfitparams in gridfitparams_list ]
+        args_list = [((signalpdfset, backgroundpdf, self.fillmethod, gridfitparams), {})
+                     for gridfitparams in gridfitparams_list]
 
         log_ratio_spline_list = parallelize(
             create_log_ratio_spline, args_list, self.ncpu, ppbar=ppbar)
@@ -128,11 +131,12 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
             self._gridfitparams_hash_log_ratio_spline_dict[gridfitparams_hash] = log_ratio_spline
 
         # Save the list of data field names.
-        self._data_field_names = [ binning.name
-                                  for binning in self.backgroundpdf.binnings ]
+        self._data_field_names = [binning.name
+                                  for binning in self.backgroundpdf.binnings]
 
         # Construct the instance for the fit parameter interpolation method.
-        self._interpolmethod_instance = self.interpolmethod(self._get_spline_value, signalpdfset.fitparams_grid_set)
+        self._interpolmethod_instance = self.interpolmethod(
+            self._get_spline_value, signalpdfset.fitparams_grid_set)
 
         # Create cache variables for the last ratio value and gradients in order
         # to avoid the recalculation of the ratio value when the
@@ -148,10 +152,12 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         PDF ratio bins.
         """
         return self._fillmethod
+
     @fillmethod.setter
     def fillmethod(self, obj):
         if(not isinstance(obj, PDFRatioFillMethod)):
-            raise TypeError('The fillmethod property must be an instance of PDFRatioFillMethod!')
+            raise TypeError(
+                'The fillmethod property must be an instance of PDFRatioFillMethod!')
         self._fillmethod = obj
 
     def _get_spline_value(self, gridfitparams, eventdata):
@@ -173,7 +179,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         """
         if((self._cache_fitparams_hash == fitparams_hash) and
            (len(self._cache_ratio) == tdm.n_events)
-          ):
+           ):
             return True
         return False
 
@@ -185,7 +191,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
 
         # Create a 2D event data array holding only the needed event data fields
         # for the PDF ratio spline evaluation.
-        eventdata = np.vstack([get_data(fn) for fn in self._data_field_names]).T
+        eventdata = np.vstack([get_data(fn)
+                               for fn in self._data_field_names]).T
 
         (ratio, gradients) = self._interpolmethod_instance.get_value_and_gradients(
             eventdata, fitparams)

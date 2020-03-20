@@ -19,6 +19,7 @@ from skyllh.core.py import (
 class SourceLocation(object):
     """Stores the location of a source, i.e. right-ascention and declination.
     """
+
     def __init__(self, ra, dec):
         self.ra = ra
         self.dec = dec
@@ -28,6 +29,7 @@ class SourceLocation(object):
         """The right-ascention angle in radian of the source position.
         """
         return self._ra
+
     @ra.setter
     def ra(self, v):
         v = float_cast(v, 'The ra property must be castable to type float!')
@@ -38,6 +40,7 @@ class SourceLocation(object):
         """The declination angle in radian of the source position.
         """
         return self._dec
+
     @dec.setter
     def dec(self, v):
         v = float_cast(v, 'The dec property must be castable to type float!')
@@ -48,6 +51,7 @@ class SourceModel(object):
     """The base class for all source models in Skyllh. Each source has a central
     location given by a right-ascention and declination location.
     """
+
     def __init__(self, ra, dec):
         self.loc = SourceLocation(ra, dec)
 
@@ -56,10 +60,12 @@ class SourceModel(object):
         """The location of the source.
         """
         return self._loc
+
     @loc.setter
     def loc(self, srcloc):
         if(not isinstance(srcloc, SourceLocation)):
-            raise TypeError('The loc property must be an instance of SourceLocation!')
+            raise TypeError(
+                'The loc property must be an instance of SourceLocation!')
         self._loc = srcloc
 
     @property
@@ -132,6 +138,7 @@ class Catalog(SourceCollection):
     """This class describes a catalog of sources. It is derived from
     SourceCollection. A catalog has a name.
     """
+
     def __init__(self, name, source_type=None, sources=None):
         """Creates a new source catalog.
 
@@ -153,6 +160,7 @@ class Catalog(SourceCollection):
         """The name of the catalog.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         if(not isinstance(name, str)):
@@ -162,7 +170,8 @@ class Catalog(SourceCollection):
     def as_source_collection(self):
         """Creates a SourceCollection object for this catalog and returns it.
         """
-        source_collection = SourceCollection(source_type=self.source_type, sources=self.sources)
+        source_collection = SourceCollection(
+            source_type=self.source_type, sources=self.sources)
         return source_collection
 
 
@@ -170,6 +179,7 @@ class PointLikeSource(SourceModel):
     """The PointLikeSource class is a source model for a point-like source
     object in the sky at a given location (right-ascention and declination).
     """
+
     def __init__(self, ra, dec):
         super(PointLikeSource, self).__init__(ra, dec)
 
@@ -191,7 +201,7 @@ class PointLikeSource(SourceModel):
     def __str__(self):
         """Pretty string representation of this class instance.
         """
-        s = classname(self) + ': { ra=%.3f deg, dec=%.3f deg }'%(
+        s = classname(self) + ': { ra=%.3f deg, dec=%.3f deg }' % (
             np.rad2deg(self.ra), np.rad2deg(self.dec))
         return s
 
@@ -199,6 +209,7 @@ class PointLikeSource(SourceModel):
 class PointLikeSourceCollection(SourceCollection):
     """Describes a collection of point-like sources.
     """
+
     def __init__(self, sources=None):
         """Creates a new collection of PointLikeSource objects.
 
@@ -215,13 +226,13 @@ class PointLikeSourceCollection(SourceCollection):
     def ra(self):
         """(read-only) The ndarray with the right-ascention of all the sources.
         """
-        return np.array([ src.ra for src in self ])
+        return np.array([src.ra for src in self])
 
     @property
     def dec(self):
         """(read-only) The ndarray with the declination of all the sources.
         """
-        return np.array([ src.dec for src in self ])
+        return np.array([src.dec for src in self])
 
 
 class PointLikeSourceCatalog(Catalog):
@@ -229,6 +240,7 @@ class PointLikeSourceCatalog(Catalog):
     PointLikeSourceCollection is the additional properties of a catalog, e.g.
     the name.
     """
+
     def __init__(self, name, sources=None):
         """Creates a new point source catalog of the given name.
 

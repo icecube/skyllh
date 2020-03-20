@@ -34,23 +34,24 @@ class MathFunction(object):
         """The tuple holding the names of the math function's parameters.
         """
         return self._param_names
+
     @param_names.setter
     def param_names(self, names):
         if(not issequence(names)):
             names = (names,)
         if(not issequenceof(names, str)):
             raise TypeError('The param_names property must be a sequence of '
-                'str!')
+                            'str!')
         names = tuple(names)
         # Check if all the given names are actual properties of this
         # MathFunction class.
         for name in names:
             if(not hasattr(self, name)):
                 raise KeyError('The "%s" class does not have an attribute '
-                    'named "%s"!'%(classname(self), name))
+                               'named "%s"!' % (classname(self), name))
             if(not isproperty(self, name)):
                 raise TypeError('The attribute "%s" of "%s" is not a '
-                    'property!'%(classname(self), name))
+                                'property!' % (classname(self), name))
         self._param_names = names
 
     @property

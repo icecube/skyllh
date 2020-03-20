@@ -40,6 +40,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     with the data fields `ra` and `dec` holding the right-ascention and
     declination of the point-like sources, respectively.
     """
+
     def __init__(self, ra_range=None, dec_range=None):
         """Creates a new spatial signal PDF for point-like sources with a
         gaussian point-spread-function (PSF).
@@ -108,12 +109,13 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         # Make the source position angles two-dimensional so the PDF value can
         # be calculated via numpy broadcasting automatically for several
         # sources. This is useful for stacking analyses.
-        src_ra = get_data('src_array')['ra'][:,np.newaxis]
-        src_dec = get_data('src_array')['dec'][:,np.newaxis]
+        src_ra = get_data('src_array')['ra'][:, np.newaxis]
+        src_dec = get_data('src_array')['dec'][:, np.newaxis]
 
         # Calculate the cosine of the distance of the source and the event on
         # the sphere.
-        cos_r = np.cos(src_ra - ra) * np.cos(src_dec) * np.cos(dec) + np.sin(src_dec) * np.sin(dec)
+        cos_r = np.cos(src_ra - ra) * np.cos(src_dec) * \
+            np.cos(dec) + np.sin(src_dec) * np.sin(dec)
 
         # Handle possible floating precision errors.
         cos_r[cos_r < -1.] = -1.
@@ -134,6 +136,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
     the actual signal time PDF, which has detector down-time taking into
     account.
     """
+
     def __init__(self, livetime, time_profile):
         """Creates a new signal time PDF instance for a given time profile of
         the source.
@@ -169,6 +172,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         information.
         """
         return self._livetime
+
     @livetime.setter
     def livetime(self, lt):
         if(not isinstance(lt, Livetime)):
@@ -182,6 +186,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         time profile of the source.
         """
         return self._time_profile
+
     @time_profile.setter
     def time_profile(self, tp):
         if(not isinstance(tp, TimeProfileModel)):
@@ -193,9 +198,11 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
     def __str__(self):
         """Pretty string representation of the signal time PDF.
         """
-        s = '%s(\n'%(classname(self))
-        s += ' '*display.INDENTATION_WIDTH + 'livetime = %s,\n'%(str(self._livetime))
-        s += ' '*display.INDENTATION_WIDTH + 'time_profile = %s\n'%(str(self._time_profile))
+        s = '%s(\n' % (classname(self))
+        s += ' '*display.INDENTATION_WIDTH + \
+            'livetime = %s,\n' % (str(self._livetime))
+        s += ' '*display.INDENTATION_WIDTH + \
+            'time_profile = %s\n' % (str(self._time_profile))
         s += ')'
         return s
 
@@ -215,7 +222,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
             self._time_profile.t_start, self._time_profile.t_end)
         I = self._time_profile.get_total_integral()
         S = np.sum(self._time_profile.get_integral(
-            ontime_intervals[:,0], ontime_intervals[:,1]))
+            ontime_intervals[:, 0], ontime_intervals[:, 1]))
         return (I, S)
 
     def assert_is_valid_for_exp_data(self, data_exp):
@@ -241,7 +248,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
         if(np.any((data_exp['time'] < time_axis.vmin) |
                   (data_exp['time'] > time_axis.vmax))):
-            raise ValueError('Some data is outside the time range (%.3f, %.3f)!'%(
+            raise ValueError('Some data is outside the time range (%.3f, %.3f)!' % (
                 time_axis.vmin, time_axis.vmax))
 
     def get_prob(self, tdm, fitparams):
@@ -282,7 +289,8 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         # if the time profile is entirly during detector off-time.
         prob = np.zeros((tdm.n_events,), dtype=np.float)
         if(self._S > 0):
-            prob[on] = self._time_profile.get_value(events_time[on]) / (self._I * self._S)
+            prob[on] = self._time_profile.get_value(
+                events_time[on]) / (self._I * self._S)
 
         return prob
 
@@ -292,6 +300,7 @@ class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
     from pre-calculated PDF data on a grid. The grid data is interpolated using
     a :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
+
     def __init__(self, axis_binnings, pdf_path_to_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
         """Creates a new signal PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
@@ -332,8 +341,9 @@ class SignalMultiDimGridPDFSet(MultiDimGridPDFSet, IsSignalPDF):
     See the documentation of the :class:`skyllh.core.pdf.MultiDimGridPDFSet`
     class for what this PDF provides.
     """
+
     def __init__(self, param_set, param_grid_set, gridparams_pdfs, tdm,
-            interpolmethod=None, **kwargs):
+                 interpolmethod=None, **kwargs):
         """Creates a new SignalMultiDimGridPDFSet instance, which holds a set of
         MultiDimGridPDF instances, one for each point of a parameter grid set.
 

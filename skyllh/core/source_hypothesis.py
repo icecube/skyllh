@@ -18,6 +18,7 @@ class SourceHypoGroupManager(object):
     This helps to evaluate the log-likelihood ratio function in an efficient
     way.
     """
+
     def __init__(self, src_hypo_groups=None):
         """Creates a new source hypothesis group manager instance.
 
@@ -33,16 +34,16 @@ class SourceHypoGroupManager(object):
         # Define a 2D numpy array of shape (N_sources,2) that maps the source
         # index (0 to N_sources-1) to the index of the group and the source
         # index within the group for fast access.
-        self._sidx_to_gidx_gsidx_map_arr = np.empty((0,2), dtype=np.int)
+        self._sidx_to_gidx_gsidx_map_arr = np.empty((0, 2), dtype=np.int)
 
         # Add source hypo groups if specified.
         if(src_hypo_groups is not None):
             if(isinstance(src_hypo_groups, SourceHypoGroup)):
-                src_hypo_groups = [ src_hypo_groups ]
+                src_hypo_groups = [src_hypo_groups]
             if(not issequenceof(src_hypo_groups, SourceHypoGroup)):
                 raise TypeError('The src_hypo_groups argument must be an '
-                    'instance of SourceHypoGroup, or a sequence of '
-                    'SourceHypoGroup instances!')
+                                'instance of SourceHypoGroup, or a sequence of '
+                                'SourceHypoGroup instances!')
             for shg in src_hypo_groups:
                 self._src_hypo_group_list.append(shg)
                 self._extend_sidx_to_gidx_gsidx_map_arr(shg)
@@ -85,9 +86,9 @@ class SourceHypoGroupManager(object):
             The SourceHypoGroup instance for which the map array should get
             extented.
         """
-        arr = np.empty((shg.n_sources,2), dtype=np.int)
-        arr[:,0] = self.n_src_hypo_groups-1 # Group index.
-        arr[:,1] = np.arange(shg.n_sources) # Group source index.
+        arr = np.empty((shg.n_sources, 2), dtype=np.int)
+        arr[:, 0] = self.n_src_hypo_groups-1  # Group index.
+        arr[:, 1] = np.arange(shg.n_sources)  # Group source index.
         self._sidx_to_gidx_gsidx_map_arr = np.vstack(
             (self._sidx_to_gidx_gsidx_map_arr, arr))
 
@@ -119,7 +120,8 @@ class SourceHypoGroupManager(object):
             It can be set to None which means no signal can be generated.
         """
         # Create the source group.
-        group = SourceHypoGroup(sources, fluxmodel, detsigyield_implmethods, sig_gen_method)
+        group = SourceHypoGroup(
+            sources, fluxmodel, detsigyield_implmethods, sig_gen_method)
 
         # Add the group.
         self._src_hypo_group_list.append(group)
@@ -143,7 +145,7 @@ class SourceHypoGroupManager(object):
         fluxmodel : instance of FluxModel
             The FluxModel instance that applies to the specified source.
         """
-        gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
+        gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx, 0]
         return self._src_hypo_group_list[gidx]._fluxmodel
 
     def get_detsigyield_implmethod_list_by_src_idx(self, src_idx):
@@ -162,5 +164,5 @@ class SourceHypoGroupManager(object):
             The list of DetSigYieldImplMethod instances that apply to the
             specified source.
         """
-        gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
+        gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx, 0]
         return self._src_hypo_group_list[gidx]._detsigyield_implmethod_list

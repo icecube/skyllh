@@ -16,6 +16,7 @@ from skyllh.physics.flux import (
     get_conversion_factor_to_internal_flux_unit
 )
 
+
 def source_sin_dec_shift_linear(x, w, L, U):
     """Calculates the shift of the sine of the source declination, in order to
     allow the construction of the source sine declination band with
@@ -52,6 +53,7 @@ def source_sin_dec_shift_linear(x, w, L, U):
 
     return S
 
+
 def source_sin_dec_shift_cubic(x, w, L, U):
     """Calculates the shift of the sine of the source declination, in order to
     allow the construction of the source sine declination band with
@@ -84,7 +86,7 @@ def source_sin_dec_shift_cubic(x, w, L, U):
     x = np.atleast_1d(x)
 
     m = w / (x - 0.5*(L+U))**3
-    S = m * np.power(x-0.5*(L+U),3)
+    S = m * np.power(x-0.5*(L+U), 3)
 
     return S
 
@@ -93,11 +95,12 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
     """This class provides a signal generation method for a point-like source
     seen in the IceCube detector.
     """
+
     def __init__(self,
-        src_sin_dec_half_bandwidth=np.sin(np.radians(1)),
-        src_sin_dec_shift_func=None,
-        energy_range=None
-    ):
+                 src_sin_dec_half_bandwidth=np.sin(np.radians(1)),
+                 src_sin_dec_shift_func=None,
+                 energy_range=None
+                 ):
         """Constructs a new signal generation method instance for a point-like
         source detected with IceCube.
 
@@ -131,10 +134,11 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         source.
         """
         return self._src_sin_dec_half_bandwidth
+
     @src_sin_dec_half_bandwidth.setter
     def src_sin_dec_half_bandwidth(self, v):
         v = float_cast(v, 'The src_sin_dec_half_bandwidth property must be '
-            'castable to a float type!')
+                       'castable to a float type!')
         self._src_sin_dec_half_bandwidth = v
 
     @property
@@ -144,11 +148,12 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         monte-carlo events from.
         """
         return self._src_sin_dec_shift_func
+
     @src_sin_dec_shift_func.setter
     def src_sin_dec_shift_func(self, func):
         if(not callable(func)):
             raise TypeError('The src_sin_dec_shift_func property must be a '
-                'callable object!')
+                            'callable object!')
         self._src_sin_dec_shift_func = func
 
     def _get_src_dec_bands(self, src_dec, max_sin_dec_range):
@@ -184,7 +189,8 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         src_sin_dec_band_max = src_sin_dec + self._src_sin_dec_half_bandwidth
 
         # Calculate the solid angle of the declination band.
-        src_dec_band_omega = 2*np.pi*(src_sin_dec_band_max - src_sin_dec_band_min)
+        src_dec_band_omega = 2*np.pi * \
+            (src_sin_dec_band_max - src_sin_dec_band_min)
 
         return (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega)
 
@@ -227,7 +233,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         for (k, source) in enumerate(shg.source_list):
             if(not isinstance(source, PointLikeSource)):
                 raise TypeError('The source instance must be an instance of '
-                    'PointLikeSource!')
+                                'PointLikeSource!')
             src_dec[k] = source.dec
 
         data_mc_sin_true_dec = data_mc['sin_true_dec']
@@ -238,7 +244,8 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             np.min(data_mc_sin_true_dec),
             np.max(data_mc_sin_true_dec)
         )
-        (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega) = self._get_src_dec_bands(src_dec, max_sin_dec_range)
+        (src_sin_dec_band_min, src_sin_dec_band_max,
+         src_dec_band_omega) = self._get_src_dec_bands(src_dec, max_sin_dec_range)
 
         # Get the flux model of this source hypo group.
         fluxmodel = shg.fluxmodel
@@ -265,7 +272,8 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
                 )
 
             indices_list.append(indices[src_event_mask])
-            flux = fluxmodel(data_mc_true_energy[src_event_mask])*toGeVcm2s / src_dec_band_omega[k]
+            flux = fluxmodel(
+                data_mc_true_energy[src_event_mask])*toGeVcm2s / src_dec_band_omega[k]
             flux_list.append(flux)
 
         return (indices_list, flux_list)

@@ -26,6 +26,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     I3EnergyPDF objects for a discrete set of energy signal parameters. Energy
     signal parameters are the parameters that influence the source flux model.
     """
+
     def __init__(self, data_mc, logE_binning, sinDec_binning, fluxmodel,
                  fitparam_grid_set, smoothing_filter=None, ncpu=None,
                  ppbar=None):
@@ -75,7 +76,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             fitparam_grid_set = ParameterGridSet([fitparam_grid_set])
         if(not isinstance(fitparam_grid_set, ParameterGridSet)):
             raise TypeError('The fitparam_grid_set argument must be an '
-                'instance of ParameterGrid or ParameterGridSet!')
+                            'instance of ParameterGrid or ParameterGridSet!')
 
         # We need to extend the fit parameter grids on the lower and upper end
         # by one bin to allow for the calculation of the interpolation. But we
@@ -84,28 +85,28 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         fitparam_grid_set.add_extra_lower_and_upper_bin()
 
         super(SignalI3EnergyPDFSet, self).__init__(pdf_type=I3EnergyPDF,
-            fitparams_grid_set=fitparam_grid_set, ncpu=ncpu)
+                                                   fitparams_grid_set=fitparam_grid_set, ncpu=ncpu)
 
         if(not isinstance(logE_binning, BinningDefinition)):
             raise TypeError('The logE_binning argument must be an instance of '
-                'BinningDefinition!')
+                            'BinningDefinition!')
         if(not isinstance(sinDec_binning, BinningDefinition)):
             raise TypeError('The sinDec_binning argument must be an instance '
-                'of BinningDefinition!')
+                            'of BinningDefinition!')
         if(not isinstance(fluxmodel, FluxModel)):
             raise TypeError('The fluxmodel argument must be an instance of '
-                'FluxModel!')
+                            'FluxModel!')
         if((smoothing_filter is not None) and
            (not isinstance(smoothing_filter, SmoothingFilter))):
             raise TypeError('The smoothing_filter argument must be None or '
-                'an instance of SmoothingFilter!')
+                            'an instance of SmoothingFilter!')
 
         # Create I3EnergyPDF objects for all permutations of the fit parameter
         # grid values.
         def create_I3EnergyPDF(
-            data_logE, data_sinDec, data_mcweight, data_true_energy,
-            logE_binning, sinDec_binning, smoothing_filter, fluxmodel,
-            gridfitparams):
+                data_logE, data_sinDec, data_mcweight, data_true_energy,
+                logE_binning, sinDec_binning, smoothing_filter, fluxmodel,
+                gridfitparams):
             """Creates an I3EnergyPDF object for the given flux model and flux
             parameters.
 
@@ -159,10 +160,10 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         data_mcweight = data_mc['mcweight']
         data_true_energy = data_mc['true_energy']
 
-        args_list = [ ((data_logE, data_sinDec, data_mcweight, data_true_energy,
-                        logE_binning, sinDec_binning, smoothing_filter,
-                        fluxmodel, gridfitparams), {})
-                     for gridfitparams in self.gridfitparams_list ]
+        args_list = [((data_logE, data_sinDec, data_mcweight, data_true_energy,
+                       logE_binning, sinDec_binning, smoothing_filter,
+                       fluxmodel, gridfitparams), {})
+                     for gridfitparams in self.gridfitparams_list]
 
         i3energypdf_list = parallelize(
             create_I3EnergyPDF, args_list, self.ncpu, ppbar=ppbar)

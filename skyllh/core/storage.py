@@ -22,6 +22,7 @@ from skyllh.core import display as dsp
 # file formats.
 _FILE_LOADER_REG = dict()
 
+
 def register_FileLoader(formats, fileloader_cls):
     """Registers the given file formats (file extensions) to the given
     FileLoader class.
@@ -36,16 +37,18 @@ def register_FileLoader(formats, fileloader_cls):
         formats.
     """
     if(isinstance(formats, str)):
-        formats = [ formats ]
+        formats = [formats]
     if(not issequence(formats)):
         raise TypeError('The "formats" argument must be a sequence!')
     if(not issubclass(fileloader_cls, FileLoader)):
-        raise TypeError('The "fileloader_cls" argument must be a subclass of FileLoader!')
+        raise TypeError(
+            'The "fileloader_cls" argument must be a subclass of FileLoader!')
 
     for fmt in formats:
         if(fmt in _FILE_LOADER_REG.keys()):
-            raise KeyError('The format "%s" is already registered!'%(fmt))
+            raise KeyError('The format "%s" is already registered!' % (fmt))
         _FILE_LOADER_REG[fmt] = fileloader_cls
+
 
 def create_FileLoader(pathfilenames, **kwargs):
     """Creates the appropriate FileLoader object for the given file names.
@@ -71,7 +74,8 @@ def create_FileLoader(pathfilenames, **kwargs):
     if(isinstance(pathfilenames, str)):
         pathfilenames = [pathfilenames]
     if(not issequenceof(pathfilenames, str)):
-        raise TypeError('The pathfilenames argument must be a sequence of str!')
+        raise TypeError(
+            'The pathfilenames argument must be a sequence of str!')
 
     # Sort the file names extensions with shorter extensions before longer ones
     # to support a format that is sub-string of another format.
@@ -82,14 +86,17 @@ def create_FileLoader(pathfilenames, **kwargs):
             cls = _FILE_LOADER_REG[fmt]
             return cls(pathfilenames, **kwargs)
 
-    raise RuntimeError('No FileLoader class is suitable to load the data file "%s"!'%(pathfilenames[0]))
+    raise RuntimeError(
+        'No FileLoader class is suitable to load the data file "%s"!' % (pathfilenames[0]))
+
 
 def assert_file_exists(pathfilename):
     """Checks if the given file exists and raises a RuntimeError if it does
     not exist.
     """
     if(not os.path.isfile(pathfilename)):
-        raise RuntimeError('The data file "%s" does not exist!'%(pathfilename))
+        raise RuntimeError(
+            'The data file "%s" does not exist!' % (pathfilename))
 
 
 class FileLoader:
@@ -111,13 +118,14 @@ class FileLoader:
         """The list of fully qualified file names of the data files.
         """
         return self._pathfilename_list
+
     @pathfilename_list.setter
     def pathfilename_list(self, pathfilenames):
         if(isinstance(pathfilenames, str)):
-            pathfilenames = [ pathfilenames ]
+            pathfilenames = [pathfilenames]
         if(not issequence(pathfilenames)):
             raise TypeError('The pathfilename_list property must be of type '
-                'str or a sequence of type str!')
+                            'str or a sequence of type str!')
         self._pathfilename_list = list(pathfilenames)
 
     @abc.abstractmethod
@@ -133,6 +141,7 @@ class NPYFileLoader(FileLoader):
     function for loading the data and the numpy.append function to concatenate
     several data files.
     """
+
     def __init__(self, pathfilenames, **kwargs):
         super(NPYFileLoader, self).__init__(pathfilenames)
 
@@ -157,7 +166,7 @@ class NPYFileLoader(FileLoader):
         mmap_ndarray = np.load(pathfilename, mmap_mode='r')
         field_names = mmap_ndarray.dtype.names
         fname_to_fidx = dict(
-            [ (fname,idx) for (idx,fname) in enumerate(field_names) ])
+            [(fname, idx) for (idx, fname) in enumerate(field_names)])
         dt_fields = mmap_ndarray.dtype.fields
         n_rows = mmap_ndarray.shape[0]
 
@@ -269,25 +278,25 @@ class NPYFileLoader(FileLoader):
         """
         if(keep_fields is not None):
             if(isinstance(keep_fields, str)):
-                keep_fields = [ keep_fields ]
+                keep_fields = [keep_fields]
             elif(not issequenceof(keep_fields, str)):
                 raise TypeError('The keep_fields argument must be None, an '
-                    'instance of type str, or a sequence of instances of '
-                    'type str!')
+                                'instance of type str, or a sequence of instances of '
+                                'type str!')
 
         if(dtype_convertions is None):
             dtype_convertions = dict()
         elif(not isinstance(dtype_convertions, dict)):
             raise TypeError('The dtype_convertions argument must be None, '
-                'or an instance of dict!')
+                            'or an instance of dict!')
 
         if(dtype_convertion_except_fields is None):
             dtype_convertion_except_fields = []
         elif(isinstance(dtype_convertion_except_fields, str)):
-            dtype_convertion_except_fields = [ dtype_convertion_except_fields ]
+            dtype_convertion_except_fields = [dtype_convertion_except_fields]
         elif(not issequenceof(dtype_convertion_except_fields, str)):
             raise TypeError('The dtype_convertion_except_fields argument '
-                'must be a sequence of str instances.')
+                            'must be a sequence of str instances.')
 
         efficiency_mode2func = {
             'memory': self._load_file_memory_efficiently,
@@ -297,10 +306,10 @@ class NPYFileLoader(FileLoader):
             efficiency_mode = 'time'
         if(not isinstance(efficiency_mode, str)):
             raise TypeError('The efficiency_mode argument must be an instance '
-                'of type str!')
+                            'of type str!')
         if(efficiency_mode not in efficiency_mode2func):
             raise ValueError('The efficiency_mode argument value must be one '
-                'of %s!'%(', '.join(efficiency_mode2func.keys())))
+                             'of %s!' % (', '.join(efficiency_mode2func.keys())))
         load_file_func = efficiency_mode2func[efficiency_mode]
 
         # Load the first data file.
@@ -328,6 +337,7 @@ class PKLFileLoader(FileLoader):
     pickled Python data files containing Python data structures. It uses the
     `pickle.load` function for loading the data from the file.
     """
+
     def __init__(self, pathfilenames, pkl_encoding=None, **kwargs):
         """Creates a new file loader instance for a pickled data file.
 
@@ -351,12 +361,13 @@ class PKLFileLoader(FileLoader):
         load the data.
         """
         return self._pkl_encoding
+
     @pkl_encoding.setter
     def pkl_encoding(self, encoding):
         if(encoding is not None):
             if(not isinstance(encoding, str)):
                 raise TypeError('The pkl_encoding property must be None or of '
-                    'type str!')
+                                'type str!')
         self._pkl_encoding = encoding
 
     def load_data(self, **kwargs):
@@ -399,7 +410,7 @@ class PKLFileLoader(FileLoader):
                         load_ok = True
                 if(obj is None):
                     raise RuntimeError('The file "%s" could not get unpickled! '
-                        'No correct encoding available!'%(pathfilename))
+                                       'No correct encoding available!' % (pathfilename))
                 data.append(obj)
 
         if(len(data) == 1):
@@ -414,8 +425,9 @@ class DataFieldRecordArray(object):
     objects. Hence, access of single data fields is much faster compared to
     access on the record ndarray.
     """
+
     def __init__(self, data, keep_fields=None, dtype_convertions=None,
-            dtype_convertion_except_fields=None, copy=True):
+                 dtype_convertion_except_fields=None, copy=True):
         """Creates a DataFieldRecordArray from the given numpy record ndarray.
 
         Parameters
@@ -452,47 +464,47 @@ class DataFieldRecordArray(object):
 
         if(keep_fields is not None):
             if(isinstance(keep_fields, str)):
-                keep_fields = [ keep_fields ]
+                keep_fields = [keep_fields]
             elif(not issequenceof(keep_fields, str)):
                 raise TypeError('The keep_fields argument must be None, an '
-                    'instance of type str, or a sequence of instances of '
-                    'type str!')
+                                'instance of type str, or a sequence of instances of '
+                                'type str!')
 
         if(dtype_convertions is None):
             dtype_convertions = dict()
         elif(not isinstance(dtype_convertions, dict)):
             raise TypeError('The dtype_convertions argument must be None, '
-                'or an instance of dict!')
+                            'or an instance of dict!')
 
         if(dtype_convertion_except_fields is None):
             dtype_convertion_except_fields = []
         elif(isinstance(dtype_convertion_except_fields, str)):
-            dtype_convertion_except_fields = [ dtype_convertion_except_fields ]
+            dtype_convertion_except_fields = [dtype_convertion_except_fields]
         elif(not issequenceof(dtype_convertion_except_fields, str)):
             raise TypeError('The dtype_convertion_except_fields argument '
-                'must be a sequence of str instances.')
+                            'must be a sequence of str instances.')
 
         if(isinstance(data, np.ndarray)):
             field_names = data.dtype.names
             fname2dtype = dict(
-                [(k,v[0]) for (k,v) in data.dtype.fields.items() ])
+                [(k, v[0]) for (k, v) in data.dtype.fields.items()])
             length = data.shape[0]
         elif(isinstance(data, dict)):
             field_names = list(data.keys())
             fname2dtype = dict(
-                [ (fname, data[fname].dtype) for fname in field_names ])
+                [(fname, data[fname].dtype) for fname in field_names])
             length = 0
             if(len(field_names) > 0):
                 length = data[field_names[0]].shape[0]
         elif(isinstance(data, DataFieldRecordArray)):
             field_names = data.field_name_list
             fname2dtype = dict(
-                [ (fname, data[fname].dtype) for fname in field_names ])
+                [(fname, data[fname].dtype) for fname in field_names])
             length = len(data)
             copy = True
         else:
             raise TypeError('The data argument must be an instance of ndarray, '
-                'dict, or DataFieldRecordArray!')
+                            'dict, or DataFieldRecordArray!')
 
         for fname in field_names:
             # Ignore fields that should not get kept.
@@ -519,8 +531,8 @@ class DataFieldRecordArray(object):
                 self._len = len(field_arr)
             elif(len(field_arr) != self._len):
                 raise ValueError('All field arrays must have the same length. '
-                    'Field "%s" has length %d, but must be %d!'%(
-                    fname, len(field_arr), self._len))
+                                 'Field "%s" has length %d, but must be %d!' % (
+                                     fname, len(field_arr), self._len))
 
             self._data_fields[fname] = field_arr
 
@@ -554,7 +566,7 @@ class DataFieldRecordArray(object):
 
         if(name not in self._data_fields):
             raise KeyError('The data field "%s" is not present in the '
-                'DataFieldRecordArray instance.'%(name))
+                           'DataFieldRecordArray instance.' % (name))
 
         return self._data_fields[name]
 
@@ -578,8 +590,8 @@ class DataFieldRecordArray(object):
         # We set a particular data field.
         if(len(arr) != self._len):
             raise ValueError('The length of the to-be-set data (%d) must '
-                'match the length (%d) of the DataFieldRecordArray instance!'%(
-                len(arr), self._len))
+                             'match the length (%d) of the DataFieldRecordArray instance!' % (
+                                 len(arr), self._len))
 
         self._data_fields[name] = arr
 
@@ -616,18 +628,20 @@ class DataFieldRecordArray(object):
         # Generates a pretty string representation of the given field name.
         def _pretty_str_field(name):
             field = self._data_fields[name]
-            s = '%s: {dtype: %s, vmin: % .3e, vmax: % .3e}'%(
-                name.ljust(max_field_name_len), str(field.dtype), np.min(field),
+            s = '%s: {dtype: %s, vmin: % .3e, vmax: % .3e}' % (
+                name.ljust(max_field_name_len), str(
+                    field.dtype), np.min(field),
                 np.max(field))
             return s
 
         indent_str = ' '*dsp.INDENTATION_WIDTH
-        s = '%s: %d fields, %d entries, %.0f %sbytes '%(
+        s = '%s: %d fields, %d entries, %.0f %sbytes ' % (
             classname(self), len(self._field_name_list), self.__len__(),
             np.round(size, 0), prefix)
         if(len(self._field_name_list) > 0):
             s += '\n' + indent_str + 'fields = {'
-            s += '\n' + indent_str*2 + _pretty_str_field(self._field_name_list[0])
+            s += '\n' + indent_str*2 + \
+                _pretty_str_field(self._field_name_list[0])
             for fname in self._field_name_list[1:]:
                 s += '\n' + indent_str*2 + _pretty_str_field(fname)
             s += '\n' + indent_str + '}'
@@ -661,7 +675,7 @@ class DataFieldRecordArray(object):
         """
         if(not isinstance(arr, DataFieldRecordArray)):
             raise TypeError('The arr argument must be an instance of '
-                'DataFieldRecordArray!')
+                            'DataFieldRecordArray!')
 
         for fname in self._field_name_list:
             self._data_fields[fname] = np.append(
@@ -683,10 +697,11 @@ class DataFieldRecordArray(object):
         if(not isinstance(name, str)):
             raise TypeError('The name argument must be an instance of str!')
         if(not isinstance(data, np.ndarray)):
-            raise TypeError('The data argument must be an instance of ndarray!')
+            raise TypeError(
+                'The data argument must be an instance of ndarray!')
         if(len(data) != self._len):
             raise ValueError('The length of the given data is %d, but must '
-                'be %d!'%(len(data), self._len))
+                             'be %d!' % (len(data), self._len))
 
         self._data_fields[name] = data
         self._field_name_list.append(name)
@@ -754,13 +769,13 @@ class DataFieldRecordArray(object):
         """
         if(not isinstance(convertions, dict)):
             raise TypeError('The convertions argument must be an instance of '
-                'dict!')
+                            'dict!')
 
         if(except_fields is None):
             except_fields = []
         if(not issequenceof(except_fields, str)):
             raise TypeError('The except_fields argument must be a sequence '
-                'of str!')
+                            'of str!')
 
         _data_fields = self._data_fields
         for fname in self._field_name_list:
@@ -810,7 +825,7 @@ class DataFieldRecordArray(object):
         """
         if(not isinstance(arr, DataFieldRecordArray)):
             raise TypeError('The arr argument must be an instance of '
-                'DataFieldRecordArray!')
+                            'DataFieldRecordArray!')
 
         for fname in self._field_name_list:
             self._data_fields[fname][indices] = arr[fname]
@@ -837,7 +852,7 @@ class DataFieldRecordArray(object):
                 self._data_fields[new_fname] = self._data_fields[old_fname]
                 self._data_fields.pop(old_fname)
             elif(must_exist is True):
-                raise KeyError('The required field "%s" does not exist!'%(
+                raise KeyError('The required field "%s" does not exist!' % (
                     old_fname))
 
         self._field_name_list = list(self._data_fields.keys())
@@ -845,7 +860,7 @@ class DataFieldRecordArray(object):
     def tidy_up(self, keep_fields):
         if(not issequenceof(keep_fields, str)):
             raise TypeError('The keep_fields argument must be a sequence of '
-                'str!')
+                            'str!')
 
         # We need to make a copy of the field_name_list because that list will
         # get changed by the `remove_field` method.
@@ -869,7 +884,7 @@ class DataFieldRecordArray(object):
         """
         if(name not in self._data_fields):
             raise KeyError('The data field "{}" does not exist in this '
-                'DataFieldRecordArray instance!'.format(name))
+                           'DataFieldRecordArray instance!'.format(name))
 
         sorted_idxs = np.argsort(self._data_fields[name])
 

@@ -22,6 +22,7 @@ from skyllh.core.pdf import (
 class SignalSpatialPDFPlotter(object):
     """Plotter class to plot spatial signal PDF object.
     """
+
     def __init__(self, tdm, pdf):
         """Creates a new plotter object for plotting a spatial signal PDF
         object.
@@ -42,12 +43,15 @@ class SignalSpatialPDFPlotter(object):
         """The PDF object to plot.
         """
         return self._pdf
+
     @pdf.setter
     def pdf(self, pdf):
         if(not isinstance(pdf, SpatialPDF)):
-            raise TypeError('The pdf property must be an object of instance SpatialPDF!')
+            raise TypeError(
+                'The pdf property must be an object of instance SpatialPDF!')
         if(not isinstance(pdf, IsSignalPDF)):
-            raise TypeError('The pdf property must be an object of instance IsSignalPDF!')
+            raise TypeError(
+                'The pdf property must be an object of instance IsSignalPDF!')
         self._pdf = pdf
 
     @property
@@ -55,11 +59,12 @@ class SignalSpatialPDFPlotter(object):
         """The TrialDataManager that provides the data for the PDF evaluation.
         """
         return self._tdm
+
     @tdm.setter
     def tdm(self, obj):
         if(not isinstance(obj, TrialDataManager)):
             raise TypeError('The tdm property must be an instance of '
-                'TrialDataManager!')
+                            'TrialDataManager!')
         self._tdm = obj
 
     def plot(self, src_hypo_group_manager, axes, source_idx=None, sin_dec=True,
@@ -91,10 +96,10 @@ class SignalSpatialPDFPlotter(object):
         """
         if(not isinstance(src_hypo_group_manager, SourceHypoGroupManager)):
             raise TypeError('The src_hypo_group_manager argument must be an '
-                'instance of SourceHypoGroupManager!')
+                            'instance of SourceHypoGroupManager!')
         if(not isinstance(axes, Axes)):
             raise TypeError('The axes argument must be an instance of '
-                'matplotlib.axes.Axes!')
+                            'matplotlib.axes.Axes!')
 
         if(source_idx is None):
             source_idx = 0
@@ -124,14 +129,15 @@ class SignalSpatialPDFPlotter(object):
         dec_binedges = np.linspace(dec_min, dec_max, decbins+1)
         dec_bincenters = 0.5*(dec_binedges[:-1] + dec_binedges[1:])
 
-        probs = np.zeros((rabins,decbins), dtype=np.float)
+        probs = np.zeros((rabins, decbins), dtype=np.float)
 
         # Generate events that fall into the probability bins.
         events = DataFieldRecordArray(np.zeros((probs.size,),
-            dtype=[('ira', np.int), ('ra', np.float),
-                   ('idec', np.int), ('dec', np.float),
-                   ('ang_err', np.float)]))
-        for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
+                                               dtype=[('ira', np.int), ('ra', np.float),
+                                                      ('idec', np.int), ('dec',
+                                                                         np.float),
+                                                      ('ang_err', np.float)]))
+        for (i, ((ira, ra), (idec, dec))) in enumerate(itertools.product(
                 enumerate(ra_bincenters),
                 enumerate(dec_bincenters))):
             events['ira'][i] = ira
@@ -152,7 +158,7 @@ class SignalSpatialPDFPlotter(object):
             event_probs = event_probs[source_idx]
 
         # Fill the probs grid array.
-        probs[events['ira'],events['idec']] = event_probs
+        probs[events['ira'], events['idec']] = event_probs
 
         (left, right, bottom, top) = (raaxis.vmin, raaxis.vmax,
                                       dec_min, dec_max)
@@ -160,7 +166,7 @@ class SignalSpatialPDFPlotter(object):
         if(log):
             norm = LogNorm()
         img = axes.imshow(probs.T, extent=(left, right, bottom, top),
-            origin='lower', norm=norm, interpolation='none', **kwargs)
+                          origin='lower', norm=norm, interpolation='none', **kwargs)
         axes.set_xlabel(raaxis.name)
         if(sin_dec is True):
             axes.set_ylabel('sin('+decaxis.name+')')

@@ -55,7 +55,7 @@ class TestAnalysis(unittest.TestCase):
 
         self.analysis = Analysis()
         self.rss = RandomStateService(seed=0)
-    
+
         # Define the data scrambler with its data scrambling method, which is used
         # for background generation.
         data_scrambler = DataScrambler(UniformRAScramblingMethod(),

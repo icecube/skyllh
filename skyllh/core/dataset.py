@@ -49,7 +49,8 @@ class Dataset(object):
             The combined list of exp pathfilenames.
         """
         if(not issequenceof(datasets, Dataset)):
-            raise TypeError('The datasets argument must be a sequence of Dataset instances!')
+            raise TypeError(
+                'The datasets argument must be a sequence of Dataset instances!')
 
         exp_pathfilenames = []
         for ds in datasets:
@@ -73,7 +74,8 @@ class Dataset(object):
             The combined list of mc pathfilenames.
         """
         if(not issequenceof(datasets, Dataset)):
-            raise TypeError('The datasets argument must be a sequence of Dataset instances!')
+            raise TypeError(
+                'The datasets argument must be a sequence of Dataset instances!')
 
         mc_pathfilenames = []
         for ds in datasets:
@@ -96,9 +98,10 @@ class Dataset(object):
             The sum of all the individual live-times.
         """
         if(not issequenceof(datasets, Dataset)):
-            raise TypeError('The datasets argument must be a sequence of Dataset instances!')
+            raise TypeError(
+                'The datasets argument must be a sequence of Dataset instances!')
 
-        livetime = np.sum([ ds.livetime for ds in datasets ])
+        livetime = np.sum([ds.livetime for ds in datasets])
 
         return livetime
 
@@ -171,6 +174,7 @@ class Dataset(object):
         all the different datasets.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         self._name = name
@@ -180,11 +184,12 @@ class Dataset(object):
         """The (longer) description of the dataset.
         """
         return self._description
+
     @description.setter
     def description(self, description):
         if(not isinstance(description, str)):
             raise TypeError('The description of the dataset must be of '
-                'type str!')
+                            'type str!')
         self._description = description
 
     @property
@@ -195,6 +200,7 @@ class Dataset(object):
         root_dir property of this Dataset instance.
         """
         return self._exp_pathfilename_list
+
     @exp_pathfilename_list.setter
     def exp_pathfilename_list(self, pathfilenames):
         if(pathfilenames is None):
@@ -203,7 +209,7 @@ class Dataset(object):
             pathfilenames = [pathfilenames]
         if(not issequenceof(pathfilenames, str)):
             raise TypeError('The exp_pathfilename_list property must be of '
-                'type str or a sequence of str!')
+                            'type str or a sequence of str!')
         self._exp_pathfilename_list = list(pathfilenames)
 
     @property
@@ -221,13 +227,14 @@ class Dataset(object):
         root_dir property of this Dataset instance.
         """
         return self._mc_pathfilename_list
+
     @mc_pathfilename_list.setter
     def mc_pathfilename_list(self, pathfilenames):
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
         if(not issequenceof(pathfilenames, str)):
             raise TypeError('The mc_pathfilename_list property must be of '
-                'type str or a sequence of str!')
+                            'type str or a sequence of str!')
         self._mc_pathfilename_list = list(pathfilenames)
 
     @property
@@ -243,12 +250,13 @@ class Dataset(object):
         cases where the livetime is retrieved directly from the data files.
         """
         return self._lifetime
+
     @livetime.setter
     def livetime(self, lt):
         if(lt is not None):
             lt = float_cast(lt,
-                'The lifetime property of the dataset must be castable to '
-                'type float!')
+                            'The lifetime property of the dataset must be castable to '
+                            'type float!')
         self._lifetime = lt
 
     @property
@@ -256,6 +264,7 @@ class Dataset(object):
         """The main version (int) of the dataset.
         """
         return self._version
+
     @version.setter
     def version(self, version):
         if(not isinstance(version, int)):
@@ -269,6 +278,7 @@ class Dataset(object):
         The dictionary must have the type form of str:int.
         """
         return self._verqualifiers
+
     @verqualifiers.setter
     def verqualifiers(self, verqualifiers):
         if(verqualifiers is None):
@@ -276,11 +286,13 @@ class Dataset(object):
         if(not isinstance(verqualifiers, dict)):
             raise TypeError('The version qualifiers must be of type dict!')
         # Check if the dictionary has format str:int.
-        for (q,v) in verqualifiers.items():
+        for (q, v) in verqualifiers.items():
             if(not isinstance(q, str)):
-                raise TypeError('The version qualifier "%s" must be of type str!'%(q))
+                raise TypeError(
+                    'The version qualifier "%s" must be of type str!' % (q))
             if(not isinstance(v, int)):
-                raise TypeError('The version for the qualifier "%s" must be of type int!'%(q))
+                raise TypeError(
+                    'The version for the qualifier "%s" must be of type int!' % (q))
         # We need to take a deep copy in order to make sure that two datasets
         # don't share the same version qualifier dictionary.
         self._verqualifiers = deepcopy(verqualifiers)
@@ -290,14 +302,15 @@ class Dataset(object):
         """The base path of the data set. This can be ``None``.
         """
         return self._base_path
+
     @base_path.setter
     def base_path(self, path):
         if(path is not None):
             path = str_cast(path, 'The base_path property must be castable to '
-                'type str!')
+                            'type str!')
             if(not os.path.isabs(path)):
                 raise ValueError('The base_path property must be an absolute '
-                    'path!')
+                                 'path!')
         self._base_path = path
 
     @property
@@ -307,10 +320,11 @@ class Dataset(object):
         class.
         """
         return self._default_sub_path_fmt
+
     @default_sub_path_fmt.setter
     def default_sub_path_fmt(self, fmt):
         fmt = str_cast(fmt, 'The default_sub_path_fmt property must be '
-            'castable to type str!')
+                       'castable to type str!')
         self._default_sub_path_fmt = fmt
 
     @property
@@ -323,11 +337,12 @@ class Dataset(object):
         if(self._sub_path_fmt is None):
             return self._default_sub_path_fmt
         return self._sub_path_fmt
+
     @sub_path_fmt.setter
     def sub_path_fmt(self, fmt):
         if(fmt is not None):
             fmt = str_cast(fmt, 'The sub_path_fmt property must be None, or '
-                'castable to type str!')
+                           'castable to type str!')
         self._sub_path_fmt = fmt
 
     @property
@@ -352,14 +367,15 @@ class Dataset(object):
         during the data preparation of this specific data set.
         """
         return self._loading_extra_exp_field_name_list
+
     @loading_extra_exp_field_name_list.setter
     def loading_extra_exp_field_name_list(self, fieldnames):
         if(isinstance(fieldnames, str)):
-            fieldnames = [ fieldnames ]
+            fieldnames = [fieldnames]
         elif(not issequenceof(fieldnames, str)):
             raise TypeError('The loading_extra_exp_field_name_list property '
-                'must be an instance of str or a sequence of str type '
-                'instances!')
+                            'must be an instance of str or a sequence of str type '
+                            'instances!')
         self._loading_extra_exp_field_name_list = list(fieldnames)
 
     @property
@@ -369,14 +385,15 @@ class Dataset(object):
         during the data preparation of this specific data set.
         """
         return self._loading_extra_mc_field_name_list
+
     @loading_extra_mc_field_name_list.setter
     def loading_extra_mc_field_name_list(self, fieldnames):
         if(isinstance(fieldnames, str)):
-            fieldnames = [ fieldnames ]
+            fieldnames = [fieldnames]
         elif(not issequenceof(fieldnames, str)):
             raise TypeError('The loading_extra_mc_field_name_list property '
-                'must be an instance of str or a sequence of str type '
-                'instances!')
+                            'must be an instance of str or a sequence of str type '
+                            'instances!')
         self._loading_extra_mc_field_name_list = list(fieldnames)
 
     @property
@@ -386,11 +403,12 @@ class Dataset(object):
         values are the new names.
         """
         return self._exp_field_name_renaming_dict
+
     @exp_field_name_renaming_dict.setter
     def exp_field_name_renaming_dict(self, d):
         if(not isinstance(d, dict)):
             raise TypeError('The exp_field_name_renaming_dict property must '
-                'be an instance of dict!')
+                            'be an instance of dict!')
         self._exp_field_name_renaming_dict = d
 
     @property
@@ -400,11 +418,12 @@ class Dataset(object):
         values are the new names.
         """
         return self._mc_field_name_renaming_dict
+
     @mc_field_name_renaming_dict.setter
     def mc_field_name_renaming_dict(self, d):
         if(not isinstance(d, dict)):
             raise TypeError('The mc_field_name_renaming_dict property must '
-                'be an instance of dict!')
+                            'be an instance of dict!')
         self._mc_field_name_renaming_dict = d
 
     @property
@@ -423,9 +442,9 @@ class Dataset(object):
         """The version string of the dataset. This combines all the version
         information about the dataset.
         """
-        s = '%03d'%(self._version)
-        for (q,v) in self._verqualifiers.items():
-            s += q+'%02d'%(v)
+        s = '%03d' % (self._version)
+        for (q, v) in self._verqualifiers.items():
+            s += q+'%02d' % (v)
         return s
 
     @property
@@ -524,14 +543,14 @@ class Dataset(object):
         """Implementation of the pretty string representation of the Dataset
         object.
         """
-        s = 'Dataset "%s": v%s\n'%(self.name, self.version_str)
+        s = 'Dataset "%s": v%s\n' % (self.name, self.version_str)
 
         s1 = ''
 
         if(self.livetime is None):
             s1 += '{ livetime = UNDEFINED }'
         else:
-            s1 += '{ livetime = %.3f days }'%(self.livetime)
+            s1 += '{ livetime = %.3f days }' % (self.livetime)
         s1 += '\n'
 
         if(self.description != ''):
@@ -560,8 +579,8 @@ class Dataset(object):
         if(len(self._aux_data_definitions) > 0):
             s1 += 'Auxiliary data:\n'
             s2 = ''
-            for (idx,(name, pathfilename_list)) in enumerate(
-                self._aux_data_definitions.items()):
+            for (idx, (name, pathfilename_list)) in enumerate(
+                    self._aux_data_definitions.items()):
                 if(idx > 0):
                     s2 += '\n'
 
@@ -570,7 +589,8 @@ class Dataset(object):
                 pathfilename_list = self._get_abs_pathfilename_list(
                     pathfilename_list)
                 for pathfilename in pathfilename_list:
-                    s3 += '\n' + self._gen_datafile_pathfilename_entry(pathfilename)
+                    s3 += '\n' + \
+                        self._gen_datafile_pathfilename_entry(pathfilename)
                 s2 += display.add_leading_text_line_padding(
                     display.INDENTATION_WIDTH, s3)
             s1 += display.add_leading_text_line_padding(
@@ -602,7 +622,8 @@ class Dataset(object):
             # number.
             if((q in self._verqualifiers) and
                (verqualifiers[q] <= self._verqualifiers[q])):
-                raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
+                raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)' % (
+                    verqualifiers[q], q, self._verqualifiers[q]))
             self._verqualifiers[q] = verqualifiers[q]
 
     def load_data(
@@ -659,12 +680,12 @@ class Dataset(object):
                 return None
 
             new2orig_renaming_dict = dict()
-            for (k,v) in orig2new_renaming_dict.items():
+            for (k, v) in orig2new_renaming_dict.items():
                 new2orig_renaming_dict[v] = k
 
             orig_field_names = [
                 new2orig_renaming_dict.get(new_field_name, new_field_name)
-                    for new_field_name in new_field_names
+                for new_field_name in new_field_names
             ]
 
             return orig_field_names
@@ -719,7 +740,7 @@ class Dataset(object):
             livetime = self.livetime
         if(livetime is None):
             raise ValueError('No livetime was provided for dataset '
-                '"%s"!'%(self.name))
+                             '"%s"!' % (self.name))
 
         data = DatasetData(data_exp, data_mc, livetime)
 
@@ -741,22 +762,22 @@ class Dataset(object):
             The loaded auxiliary data.
         """
         name = str_cast(name,
-            'The name argument must be castable to type str!')
+                        'The name argument must be castable to type str!')
 
         # Check if the data was defined in memory.
         if(name in self._aux_data):
-            with TaskTimer(tl, 'Loaded aux data "%s" from memory.'%(name)):
+            with TaskTimer(tl, 'Loaded aux data "%s" from memory.' % (name)):
                 data = self._aux_data[name]
             return data
 
         if(name not in self._aux_data_definitions):
-            raise KeyError('The auxiliary data named "%s" does not exist!'%(
+            raise KeyError('The auxiliary data named "%s" does not exist!' % (
                 name))
 
         aux_pathfilename_list = self._aux_data_definitions[name]
-        with TaskTimer(tl, 'Loaded aux data "%s" from disk.'%(name)):
+        with TaskTimer(tl, 'Loaded aux data "%s" from disk.' % (name)):
             fileloader_aux = create_FileLoader(self._get_abs_pathfilename_list(
-                    aux_pathfilename_list))
+                aux_pathfilename_list))
             data = fileloader_aux.load_data()
 
         return data
@@ -774,7 +795,8 @@ class Dataset(object):
 
         """
         if(not callable(func)):
-            raise TypeError('The argument "func" must be a callable object with call signature __call__(data)!')
+            raise TypeError(
+                'The argument "func" must be a callable object with call signature __call__(data)!')
         self._data_preparation_functions.append(func)
 
     def remove_data_preparation(self, key=-1):
@@ -799,17 +821,17 @@ class Dataset(object):
             n = len(self._data_preparation_functions)
             if((key < -n) or (key >= n)):
                 raise IndexError('The given index (%d) for the data '
-                    'preparation function is out of range (%d,%d)!'%(
-                        key, -n, n-1))
+                                 'preparation function is out of range (%d,%d)!' % (
+                                     key, -n, n-1))
             del self._data_preparation_functions[key]
             return
         elif(isinstance(key, str)):
-            for (i,func) in enumerate(self._data_preparation_functions):
+            for (i, func) in enumerate(self._data_preparation_functions):
                 if(func.__name__ == key):
                     del self._data_preparation_functions[i]
                     return
             raise KeyError('The data preparation function "%s" was not found '
-                'in the dataset "%s"!'%(key, self._name))
+                           'in the dataset "%s"!' % (key, self._name))
 
         TypeError('The key argument must be an instance of int or str!')
 
@@ -886,14 +908,14 @@ class Dataset(object):
             keep_fields = list()
         elif(not issequenceof(keep_fields, str)):
             raise TypeError('The keep_fields argument must be None, or a '
-                'sequence of str!')
+                            'sequence of str!')
         keep_fields = list(keep_fields)
 
         dtc_dict = None
         dtc_except_fields = None
         if(compress):
-            dtc_dict = { np.dtype(np.float64): np.dtype(np.float32) }
-            dtc_except_fields = [ 'mcweight' ]
+            dtc_dict = {np.dtype(np.float64): np.dtype(np.float32)}
+            dtc_except_fields = ['mcweight']
 
         data = self.load_data(
             livetime=livetime,
@@ -935,10 +957,10 @@ class Dataset(object):
         """
         if(not isinstance(binning, BinningDefinition)):
             raise TypeError('The "binning" argument must be of type '
-                'BinningDefinition!')
+                            'BinningDefinition!')
         if(binning.name in self._binning_definitions):
             raise KeyError('The binning definition "%s" is already defined for '
-                'dataset "%s"!'%(binning.name, self._name))
+                           'dataset "%s"!' % (binning.name, self._name))
 
         self._binning_definitions[binning.name] = binning
 
@@ -957,7 +979,7 @@ class Dataset(object):
         """
         if(name not in self._binning_definitions):
             raise KeyError('The given binning name "%s" has not been added to '
-                'the dataset yet!'%(name))
+                           'the dataset yet!' % (name))
         return self._binning_definitions[name]
 
     def has_binning_definition(self, name):
@@ -1011,10 +1033,10 @@ class Dataset(object):
         """
         if(not isinstance(binning, BinningDefinition)):
             raise TypeError('The "binning" argument must be of type '
-                'BinningDefinition!')
+                            'BinningDefinition!')
         if(binning.name not in self._binning_definitions):
             raise KeyError('The given binning definition "%s" has not been '
-                'added to the dataset yet!'%(binning.name))
+                           'added to the dataset yet!' % (binning.name))
 
         self._binning_definitions[binning.name] = binning
 
@@ -1031,14 +1053,14 @@ class Dataset(object):
             The file name(s) (including paths) of the data file(s).
         """
         name = str_cast(name,
-            'The name argument must be castable to type str!')
+                        'The name argument must be castable to type str!')
         pathfilenames = list_of_cast(str, pathfilenames,
-            'The pathfilenames argument must be of type str or a sequence '
-            'of str!')
+                                     'The pathfilenames argument must be of type str or a sequence '
+                                     'of str!')
 
         if(name in self._aux_data_definitions):
             raise KeyError('The auxiliary data definition "%s" is already '
-                'defined for dataset "%s"!'%(name, self.name))
+                           'defined for dataset "%s"!' % (name, self.name))
 
         self._aux_data_definitions[name] = pathfilenames
 
@@ -1051,7 +1073,7 @@ class Dataset(object):
         name : str
             The name of the auxiliary data. The name is used as identifier for
             the data within SkyLLH.
-       
+
         Raises
         ------
         KeyError
@@ -1063,13 +1085,12 @@ class Dataset(object):
         _aux_data[name] : list of strings
             The locations of the files defined in the auxiliary data
         """
-        
+
         if(not name in self._aux_data_definitions):
             raise KeyError('The auxiliary data definition "%s" does not '
-                'exist in dataset "%s"!'%(name, self.name))
+                           'exist in dataset "%s"!' % (name, self.name))
 
         return self._aux_data_definitions[name]
-
 
     def add_aux_data(self, name, data):
         """Adds the given data as auxiliary data to this data set.
@@ -1087,11 +1108,11 @@ class Dataset(object):
             If auxiliary data is already stored under the given name.
         """
         name = str_cast(name,
-            'The name argument must be castable to type str!')
+                        'The name argument must be castable to type str!')
 
         if(name in self._aux_data):
             raise KeyError('The auxiliary data "%s" is already defined for '
-                'dataset "%s"!'%(name, self.name))
+                           'dataset "%s"!' % (name, self.name))
 
         self._aux_data[name] = data
 
@@ -1115,11 +1136,11 @@ class Dataset(object):
             If no auxiliary data is stored with the given name.
         """
         name = str_cast(name,
-            'The name argument must be castable to type str!')
+                        'The name argument must be castable to type str!')
 
         if(name not in self._aux_data):
             raise KeyError('The auxiliary data "%s" is not defined for '
-                'dataset "%s"!'%(name, self.name))
+                           'dataset "%s"!' % (name, self.name))
 
         return self._aux_data[name]
 
@@ -1130,6 +1151,7 @@ class DatasetCollection(object):
     New datasets can be added via the add-assign operator (+=), which calls
     the ``add_datasets`` method.
     """
+
     def __init__(self, name, description=''):
         """Creates a new DatasetCollection instance.
 
@@ -1150,10 +1172,12 @@ class DatasetCollection(object):
         """The name (str) of the dataset collection.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         if(not isinstance(name, str)):
-            raise TypeError('The name of the dataset collection must be of type str!')
+            raise TypeError(
+                'The name of the dataset collection must be of type str!')
         self._name = name
 
     @property
@@ -1161,10 +1185,12 @@ class DatasetCollection(object):
         """The (longer) description of the dataset collection.
         """
         return self._description
+
     @description.setter
     def description(self, description):
         if(not isinstance(description, str)):
-            raise TypeError('The description of the dataset collection must be of type str!')
+            raise TypeError(
+                'The description of the dataset collection must be of type str!')
         self._description = description
 
     @property
@@ -1194,7 +1220,8 @@ class DatasetCollection(object):
         Dataset object to this dataset collection.
         """
         if(not isinstance(ds, Dataset)):
-            raise TypeError('The dataset object must be a subclass of Dataset!')
+            raise TypeError(
+                'The dataset object must be a subclass of Dataset!')
 
         self.add_datasets(ds)
 
@@ -1204,14 +1231,15 @@ class DatasetCollection(object):
         """Implementation of the pretty string representation of the
         DatasetCollection instance. It shows the available datasets.
         """
-        lines  = 'DatasetCollection "%s"\n'%(self.name)
+        lines = 'DatasetCollection "%s"\n' % (self.name)
         lines += "-"*display.PAGE_WIDTH + "\n"
         lines += "Description:\n" + self.description + "\n"
         lines += "Available datasets:\n"
 
         for name in self.dataset_names:
             lines += '\n'
-            lines += display.add_leading_text_line_padding(2, str(self._datasets[name]))
+            lines += display.add_leading_text_line_padding(
+                2, str(self._datasets[name]))
 
         return lines
 
@@ -1236,10 +1264,10 @@ class DatasetCollection(object):
         for dataset in datasets:
             if(not isinstance(dataset, Dataset)):
                 raise TypeError('The dataset object must be a sub-class of '
-                    'Dataset!')
+                                'Dataset!')
 
             if(dataset.name in self._datasets):
-                raise KeyError('Dataset "%s" already exists!'%(dataset.name))
+                raise KeyError('Dataset "%s" already exists!' % (dataset.name))
 
             self._datasets[dataset.name] = dataset
 
@@ -1255,7 +1283,7 @@ class DatasetCollection(object):
         """
         if(name not in self._datasets):
             raise KeyError('Dataset "%s" is not part of the dataset '
-                'collection "%s", nothing to remove!'%(name, self.name))
+                           'collection "%s", nothing to remove!' % (name, self.name))
 
         self._datasets.pop(name)
 
@@ -1280,7 +1308,7 @@ class DatasetCollection(object):
         """
         if(name not in self._datasets):
             raise KeyError('The dataset "%s" is not part of the dataset '
-                'collection "%s"!'%(name, self.name))
+                           'collection "%s"!' % (name, self.name))
         return self._datasets[name]
 
     def get_datasets(self, names):
@@ -1306,7 +1334,7 @@ class DatasetCollection(object):
             names = [names]
         if(not issequenceof(names, str)):
             raise TypeError('The names argument must be an instance of str or '
-                'a sequence of str instances!')
+                            'a sequence of str instances!')
 
         datasets = []
         for name in names:
@@ -1361,7 +1389,7 @@ class DatasetCollection(object):
         for (dsname, dataset) in self._datasets.items():
             if(not hasattr(dataset, name)):
                 raise KeyError('The data set "%s" does not have a property '
-                    'named "%s"!'%(dsname, name))
+                               'named "%s"!' % (dsname, name))
             setattr(dataset, name, value)
 
     def define_binning(self, name, binedges):
@@ -1443,9 +1471,9 @@ class DatasetCollection(object):
 
         if(len(livetime) != len(self._datasets)):
             raise ValueError('The livetime argument must be None, a single '
-                'float, or a dictionary with %d str:float entries! Currently '
-                'the dictionary has %d entries.'%(
-                    len(self._datasets), len(livetime)))
+                             'float, or a dictionary with %d str:float entries! Currently '
+                             'the dictionary has %d entries.' % (
+                                 len(self._datasets), len(livetime)))
 
         pbar = ProgressBar(len(self._datasets), parent=ppbar).start()
         data_dict = dict()
@@ -1463,6 +1491,7 @@ class DatasetData(object):
     monto-carlo data. It also holds a reference to the Dataset instance, which
     holds the data's meta information.
     """
+
     def __init__(self, data_exp, data_mc, livetime):
         """Creates a new DatasetData instance.
 
@@ -1488,12 +1517,13 @@ class DatasetData(object):
         This is None, if there is no experimental data available.
         """
         return self._exp
+
     @exp.setter
     def exp(self, data):
         if(data is not None):
             if(not isinstance(data, DataFieldRecordArray)):
                 raise TypeError('The exp property must be an instance of '
-                    'DataFieldRecordArray!')
+                                'DataFieldRecordArray!')
         self._exp = data
 
     @property
@@ -1501,11 +1531,12 @@ class DatasetData(object):
         """The DataFieldRecordArray instance holding the monte-carlo data.
         """
         return self._mc
+
     @mc.setter
     def mc(self, data):
         if(not isinstance(data, DataFieldRecordArray)):
             raise TypeError('The mc property must be an instance of '
-                'DataFieldRecordArray!')
+                            'DataFieldRecordArray!')
         self._mc = data
 
     @property
@@ -1513,10 +1544,11 @@ class DatasetData(object):
         """The integrated livetime in days of the data.
         """
         return self._livetime
+
     @livetime.setter
     def livetime(self, lt):
         lt = float_cast(lt,
-            'The livetime property must be castable to type float!')
+                        'The livetime property must be castable to type float!')
         self._livetime = lt
 
     @property
@@ -1557,8 +1589,8 @@ def assert_data_format(dataset, data):
             CFG['dataset']['analysis_required_exp_field_names'])
         if(len(missing_exp_keys) != 0):
             raise KeyError('The following data fields are missing for the '
-                'experimental data of dataset "%s": '%(dataset.name)+
-                ', '.join(missing_exp_keys))
+                           'experimental data of dataset "%s": ' % (dataset.name) +
+                           ', '.join(missing_exp_keys))
 
     # Check monte-carlo data keys.
     missing_mc_keys = _get_missing_keys(
@@ -1566,7 +1598,8 @@ def assert_data_format(dataset, data):
         CFG['dataset']['analysis_required_exp_field_names'] +
         CFG['dataset']['analysis_required_mc_field_names'])
     if(len(missing_mc_keys) != 0):
-        raise KeyError('The following data fields are missing for the monte-carlo data of dataset "%s": '%(dataset.name)+', '.join(missing_mc_keys))
+        raise KeyError('The following data fields are missing for the monte-carlo data of dataset "%s": ' %
+                       (dataset.name)+', '.join(missing_mc_keys))
 
 
 def remove_events(data_exp, mjds):
@@ -1591,10 +1624,11 @@ def remove_events(data_exp, mjds):
     for time in mjds:
         mask = data_exp['time'] == time
         if(np.sum(mask) > 1):
-            raise LookupError('The MJD time stamp %f is not unique!'%(time))
+            raise LookupError('The MJD time stamp %f is not unique!' % (time))
         data_exp = data_exp[~mask]
 
     return data_exp
+
 
 def generate_data_file_root_dir(
     default_base_path, default_sub_path_fmt,
@@ -1633,18 +1667,19 @@ def generate_data_file_root_dir(
     if(base_path is None):
         if(default_base_path is None):
             raise ValueError('The default_base_path argument must not be None, '
-                'when the base_path argument is set to None!')
+                             'when the base_path argument is set to None!')
         base_path = default_base_path
 
     if(sub_path_fmt is None):
         sub_path_fmt = default_sub_path_fmt
 
-    fmtdict = dict( [('version', version)] + list(verqualifiers.items()) )
+    fmtdict = dict([('version', version)] + list(verqualifiers.items()))
     sub_path = sub_path_fmt.format(**fmtdict)
 
     root_dir = os.path.join(base_path, sub_path)
 
     return root_dir
+
 
 def get_data_subset(data, livetime, t_start, t_end):
     """Gets DatasetData and Livetime objects with data subsets between the given
@@ -1683,9 +1718,11 @@ def get_data_subset(data, livetime, t_start, t_end):
     data_exp = data.exp[exp_slice]
     data_mc = data.mc[mc_slice]
 
-    uptime_mjd_intervals_arr = livetime.get_ontime_intervals_between(t_start, t_end)
+    uptime_mjd_intervals_arr = livetime.get_ontime_intervals_between(
+        t_start, t_end)
     livetime_subset = Livetime(uptime_mjd_intervals_arr)
 
-    dataset_data_subset = DatasetData(data_exp, data_mc, livetime_subset.livetime)
+    dataset_data_subset = DatasetData(
+        data_exp, data_mc, livetime_subset.livetime)
 
     return (dataset_data_subset, livetime_subset)

@@ -32,12 +32,13 @@ def make_spline_1d(x, y, kind='linear', **kwargs):
     # The interp1d function requires unique x values. So we need to sort x in
     # increasing order and mask out repeating x values.
     xy = np.array(sorted(zip(x, y)), dtype=y.dtype)
-    x = xy[:,0]
+    x = xy[:, 0]
     unique_x_mask = np.concatenate(([True], np.invert(
         x[1:] <= x[:-1])))
     x = x[unique_x_mask]
-    y = xy[:,1][unique_x_mask]
+    y = xy[:, 1][unique_x_mask]
 
-    spline = interp1d(x, y, kind=kind, copy=False, assume_sorted=True, **kwargs)
+    spline = interp1d(x, y, kind=kind, copy=False,
+                      assume_sorted=True, **kwargs)
 
     return spline

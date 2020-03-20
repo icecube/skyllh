@@ -40,10 +40,12 @@ class EventSelectionMethod(object):
         sources.
         """
         return self._src_hypo_group_manager
+
     @src_hypo_group_manager.setter
     def src_hypo_group_manager(self, manager):
         if(not isinstance(manager, SourceHypoGroupManager)):
-            raise TypeError('The src_hypo_group_manager property must be an instance of SourceHypoGroupManager!')
+            raise TypeError(
+                'The src_hypo_group_manager property must be an instance of SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
@@ -57,7 +59,8 @@ class EventSelectionMethod(object):
             this event selection method.
         """
         self.src_hypo_group_manager = src_hypo_group_manager
-        self._src_arr = self.source_to_array(self._src_hypo_group_manager.source_list)
+        self._src_arr = self.source_to_array(
+            self._src_hypo_group_manager.source_list)
 
     @abc.abstractmethod
     def source_to_array(self, sources):
@@ -108,6 +111,7 @@ class EventSelectionMethod(object):
 class AllEventSelectionMethod(EventSelectionMethod):
     """This event selection method selects all events.
     """
+
     def __init__(self, src_hypo_group_manager):
         """Creates a new event selection method instance.
 
@@ -173,6 +177,7 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
     """This event selection method selects events within a declination band
     around a list of point-like source positions.
     """
+
     def __init__(self, src_hypo_group_manager, delta_angle):
         """Creates and configures a spatial declination band event selection
         method object.
@@ -200,10 +205,11 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         right-ascention for which events should get selected.
         """
         return self._delta_angle
+
     @delta_angle.setter
     def delta_angle(self, angle):
         angle = float_cast(angle, 'The delta_angle property must be castable '
-            'to type float!')
+                           'to type float!')
         self._delta_angle = angle
 
     def source_to_array(self, sources):
@@ -225,7 +231,7 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         """
         if(not issequenceof(sources, SourceModel)):
             raise TypeError('The sources argument must be a sequence of '
-                'SourceModel instances!')
+                            'SourceModel instances!')
 
         arr = np.empty(
             (len(sources),),
@@ -276,8 +282,8 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         # window.
         # mask_dec is a (N_sources,N_events)-shaped ndarray.
         with TaskTimer(tl, 'ESM-DecBand: Calculate mask_dec'):
-            mask_dec = ((events['dec'] > src_dec_minus[:,np.newaxis]) &
-                        (events['dec'] < src_dec_plus[:,np.newaxis]))
+            mask_dec = ((events['dec'] > src_dec_minus[:, np.newaxis]) &
+                        (events['dec'] < src_dec_plus[:, np.newaxis]))
 
         # Determine the mask for the events that fall inside at least one
         # source declination band.
@@ -299,6 +305,7 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
     """This event selection method selects events within a right-ascension band
     around a list of point-like source positions.
     """
+
     def __init__(self, src_hypo_group_manager, delta_angle):
         """Creates and configures a right-ascension band event selection
         method object.
@@ -326,10 +333,11 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         right-ascention for which events should get selected.
         """
         return self._delta_angle
+
     @delta_angle.setter
     def delta_angle(self, angle):
         angle = float_cast(angle,
-            'The delta_angle property must be castable to type float!')
+                           'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
     def source_to_array(self, sources):
@@ -351,7 +359,7 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         """
         if(not issequenceof(sources, SourceModel)):
             raise TypeError('The sources argument must be a sequence of '
-                'SourceModel instances!')
+                            'SourceModel instances!')
 
         arr = np.empty(
             (len(sources),),
@@ -421,13 +429,13 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         # ra_dist is a (N_sources,N_events)-shaped 2D ndarray.
         with TaskTimer(tl, 'ESM-RaBand: Calculate ra_dist.'):
             ra_dist = np.fabs(
-                np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi)
+                np.mod(events['ra'] - src_arr['ra'][:, np.newaxis] + np.pi, 2*np.pi) - np.pi)
 
         # Determine the mask for the events which fall inside the
         # right-ascention window.
         # mask_ra is a (N_sources,N_events)-shaped ndarray.
         with TaskTimer(tl, 'ESM-RaBand: Calculate mask_ra.'):
-            mask_ra = ra_dist < dRA_half[:,np.newaxis]
+            mask_ra = ra_dist < dRA_half[:, np.newaxis]
 
         # Determine the mask for the events that fall inside at least one
         # source sky window.
@@ -452,6 +460,7 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
     right-ascention and declination around a list of point-like source
     positions.
     """
+
     def __init__(self, src_hypo_group_manager, delta_angle):
         """Creates and configures a spatial box event selection method object.
 
@@ -478,10 +487,11 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         right-ascention for which events should get selected.
         """
         return self._delta_angle
+
     @delta_angle.setter
     def delta_angle(self, angle):
         angle = float_cast(angle,
-            'The delta_angle property must be castable to type float!')
+                           'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
     def source_to_array(self, sources):
@@ -503,7 +513,7 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         """
         if(not issequenceof(sources, SourceModel)):
             raise TypeError('The sources argument must be a sequence of '
-                'SourceModel instances!')
+                            'SourceModel instances!')
 
         arr = np.empty(
             (len(sources),),
@@ -574,20 +584,20 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         # ra_dist is a (N_sources,N_events)-shaped 2D ndarray.
         with TaskTimer(tl, 'ESM: Calculate ra_dist.'):
             ra_dist = np.fabs(
-                np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi)
+                np.mod(events['ra'] - src_arr['ra'][:, np.newaxis] + np.pi, 2*np.pi) - np.pi)
 
         # Determine the mask for the events which fall inside the
         # right-ascention window.
         # mask_ra is a (N_sources,N_events)-shaped ndarray.
         with TaskTimer(tl, 'ESM: Calculate mask_ra.'):
-            mask_ra = ra_dist < dRA_half[:,np.newaxis]
+            mask_ra = ra_dist < dRA_half[:, np.newaxis]
 
         # Determine the mask for the events which fall inside the declination
         # window.
         # mask_dec is a (N_sources,N_events)-shaped ndarray.
         with TaskTimer(tl, 'ESM: Calculate mask_dec'):
-            mask_dec = ((events['dec'] > src_dec_minus[:,np.newaxis]) &
-                        (events['dec'] < src_dec_plus[:,np.newaxis]))
+            mask_dec = ((events['dec'] > src_dec_minus[:, np.newaxis]) &
+                        (events['dec'] < src_dec_plus[:, np.newaxis]))
 
         # Determine the mask for the events which fall inside the
         # right-ascension and declination window.

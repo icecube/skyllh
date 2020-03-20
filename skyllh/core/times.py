@@ -40,6 +40,7 @@ class LivetimeTimeGenerationMethod(TimeGenerationMethod):
     with the on-time intervals of the detector, by calling the `draw_ontimes`
     method of the Livetime class.
     """
+
     def __init__(self, livetime):
         """Creates a new LivetimeTimeGeneration instance.
 
@@ -55,10 +56,12 @@ class LivetimeTimeGenerationMethod(TimeGenerationMethod):
         """The Livetime instance used to draw times from.
         """
         return self._livetime
+
     @livetime.setter
     def livetime(self, livetime):
         if(not isinstance(livetime, Livetime)):
-            raise TypeError('The livetime property must be an instance of Livetime!')
+            raise TypeError(
+                'The livetime property must be an instance of Livetime!')
         self._livetime = livetime
 
     def generate_times(self, rss, size):
@@ -100,10 +103,12 @@ class TimeGenerator(object):
         the times.
         """
         return self._method
+
     @method.setter
     def method(self, method):
         if(not isinstance(method, TimeGenerationMethod)):
-            raise TypeError('The time generation method must be an instance of TimeGenerationMethod!')
+            raise TypeError(
+                'The time generation method must be an instance of TimeGenerationMethod!')
         self._method = method
 
     def generate_times(self, rss, size):
