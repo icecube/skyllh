@@ -80,9 +80,10 @@ def source_sin_dec_shift_cubic(x, w, L, U):
         that ``sin(dec_src) + S`` is the new sin(dec) of the source, and
         ``sin(dec_src) + S +/- w`` is always within the sin(dec) range [L, U].
     """
+    # TODO: Make sure that this function does what it's supposed to do
     x = np.atleast_1d(x)
 
-    m = w / (A - 0.5*(L+U))**3
+    m = w / (x - 0.5*(L+U))**3
     S = m * np.power(x-0.5*(L+U),3)
 
     return S
