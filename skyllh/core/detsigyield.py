@@ -27,7 +27,7 @@ def get_integrated_livetime_in_days(livetime):
     """
     livetime_days = livetime
     if(isinstance(livetime, Livetime)):
-        livetime_days = lt.livetime
+        livetime_days = livetime.livetime
     return livetime_days
 
 
