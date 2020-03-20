@@ -37,4 +37,5 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
-        ./tests/run.sh
+        cd tests
+        ./run.sh
