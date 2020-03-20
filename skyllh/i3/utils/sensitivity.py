@@ -3,7 +3,7 @@
 import logging
 import numpy as np
 
-from skyllh.core.analysis_utils import estimate_sensitivity
+from skyllh.core.analysis_utils import estimate_sensitivity, estimate_discovery_potential
 from skyllh.core.progressbar import ProgressBar
 from skyllh.physics.source import PointLikeSource
 
