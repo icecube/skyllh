@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# TODO: File out of date, tell flake8 to ignore
+# flake8: noqa
 
 from __future__ import division
 
