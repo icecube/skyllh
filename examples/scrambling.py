@@ -25,4 +25,4 @@ scr = DataScrambler(method=RAScramblingMethod(rss=rss))
 
 # Scramble the data.
 scr.scramble_data(data)
-print data['ra']
+print(data['ra'])
