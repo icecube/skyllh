@@ -23,7 +23,7 @@ from skyllh.core.py import (
     func_has_n_args,
     issequenceof,
     range,
-    typename    
+    typename
 )
 from skyllh.core.parameters import (
     ParameterGrid,
