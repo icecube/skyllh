@@ -79,6 +79,9 @@ class CFG:
 
     __config = dict(_BASECONFIG)
 
+    def __init__(self):
+        raise NotImplementedError("This class shouldn't be instantiated")
+
     @classmethod
     def from_yaml(cls, yaml_file: str) -> None:
         """
