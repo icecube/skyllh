@@ -68,7 +68,6 @@ _BASECONFIG = {
     }
 }
 
-
 class CFG:
     """
     This class holds the global config state
