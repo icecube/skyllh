@@ -633,7 +633,7 @@ class MultiDimGridPDF(PDF):
     PDF data on a grid. The grid data is interpolated using a
     :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
-    def __init__(self, axis_binnings, pdf_grid_data, norm_factor_func=None):
+    def __init__(self, axis_binnings, pdf_path_to_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
         :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
@@ -645,6 +645,9 @@ class MultiDimGridPDF(PDF):
             The sequence of BinningDefinition instances defining the binning of
             the PDF axes. The name of each BinningDefinition instance defines
             the event field name that should be used for querying the PDF.
+        pdf_path_to_splinetable : str
+            The path to the file that contains the spline table
+            (a pre-computed fit to pdf_grid_data)
         pdf_grid_data : n-dimensional numpy ndarray
             The n-dimensional numpy ndarray holding the PDF values at given grid
             points. The grid points must match the bin edges of the given
@@ -662,6 +665,7 @@ class MultiDimGridPDF(PDF):
 
         self.axis_binning_list = axis_binnings
         self.norm_factor_func = norm_factor_func
+        self._photospline = False
 
         # Define the PDF axes.
         for axis_binning in self._axis_binnning_list:
@@ -671,19 +675,18 @@ class MultiDimGridPDF(PDF):
                 vmax=axis_binning.upper_edge
             ))
 
-        if(PHOTOSPLINE_LOADED):
-            print('Creating photospline bspline')
-            penalty_order = 2
-            self._pdf = photospline.glam_fit(
-                *photospline.ndsparse.from_data(
-                    pdf_grid_data, np.ones(pdf_grid_data.shape)),
-                [ binning.binedges for binning in self._axis_binnning_list ],
-                [ binning.binedges for binning in self._axis_binnning_list ],
-                [1]*len(self._axis_binnning_list),
-                [0]*len(self._axis_binnning_list),
-                [penalty_order]*len(self._axis_binnning_list)
-            )
-        else:
+       
+        pdf_loaded = False
+
+        # if available prefer to work with photosplines
+        if(isinstance(pdf_path_to_splinetable, str)):
+            if(PHOTOSPLINE_LOADED):
+                self._pdf = photospline.SplineTable(pdf_path_to_splinetable)
+                pdf_loaded = True
+                self._photospline = True
+
+
+        if(isinstance(pdf_grid_data, np.ndarray) and not pdf_loaded): 
             self._pdf = RegularGridInterpolator(
                 tuple([ binning.binedges for binning in self._axis_binnning_list ]),
                 pdf_grid_data,
@@ -691,6 +694,7 @@ class MultiDimGridPDF(PDF):
                 bounds_error=False,
                 fill_value=0
             )
+            pdf_loaded = True
 
     @property
     def axis_binning_list(self):
@@ -789,7 +793,7 @@ class MultiDimGridPDF(PDF):
             The 1D numpy ndarray with the probability for each event.
         """
         with TaskTimer(tl, 'Get prob from RegularGridInterpolator.'):
-            if(PHOTOSPLINE_LOADED):
+            if(self._photospline):
                 V = eventdata.shape[1]
                 prob = self._pdf.evaluate_simple(
                     [eventdata[:,i] for i in range(0, V)])
