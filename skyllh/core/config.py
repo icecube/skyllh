@@ -74,7 +74,7 @@ class CFG:
     This class holds the global config state
 
     The class behaves like a dict, delegating all methods of the dict
-    interface to the underlying config dictionary.
+    interface to the underlying config dictionary
     """
 
     __config = dict(_BASECONFIG)
