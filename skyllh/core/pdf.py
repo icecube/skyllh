@@ -1,5 +1,25 @@
 # -*- coding: utf-8 -*-
 
+from skyllh.core.trialdata import TrialDataManager
+from skyllh.core.timing import TaskTimer
+from skyllh.core.parameters import (
+    ParameterGrid,
+    ParameterGridSet,
+    ParameterSet,
+    make_params_hash
+)
+from skyllh.core.py import (
+    ObjectCollection,
+    func_has_n_args,
+    issequenceof,
+    range,
+    typename
+)
+from skyllh.core.interpolate import (
+    GridManifoldInterpolationMethod,
+    Linear1DGridManifoldInterpolationMethod
+)
+from skyllh.core.binning import BinningDefinition
 import abc
 import numpy as np
 
@@ -12,34 +32,13 @@ try:
 except ImportError:
     PHOTOSPLINE_LOADED = False
 
-from skyllh.core.binning import BinningDefinition
-from skyllh.core.interpolate import (
-    GridManifoldInterpolationMethod,
-    Linear1DGridManifoldInterpolationMethod
-)
-from skyllh.core.py import (
-    ObjectCollection,
-    classname,
-    func_has_n_args,
-    issequenceof,
-    range,
-    typename
-)
-from skyllh.core.parameters import (
-    ParameterGrid,
-    ParameterGridSet,
-    ParameterSet,
-    make_params_hash
-)
-from skyllh.core.timing import TaskTimer
-from skyllh.core.trialdata import TrialDataManager
-
 
 class PDFAxis(object):
     """This class describes an axis of a PDF. It's main purpose is to define
     the allowed variable space of the PDF. So this information can be used to
     plot a PDF or a PDF ratio.
     """
+
     def __init__(self, name, vmin, vmax):
         """Creates a new axis for a PDF.
 
@@ -63,6 +62,7 @@ class PDFAxis(object):
         """The name of the axis.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         if(not isinstance(name, str)):
@@ -74,6 +74,7 @@ class PDFAxis(object):
         """The minimal value of the axis.
         """
         return self._vmin
+
     @vmin.setter
     def vmin(self, v):
         self._vmin = float(v)
@@ -83,6 +84,7 @@ class PDFAxis(object):
         """The maximal value of the axis.
         """
         return self._vmax
+
     @vmax.setter
     def vmax(self, v):
         self._vmax = float(v)
@@ -107,7 +109,7 @@ class PDFAxis(object):
         if((self.name == other.name) and
            (self.vmin == other.vmin) and
            (self.vmax == other.vmax)
-          ):
+           ):
             return True
         return False
 
@@ -134,10 +136,10 @@ class PDFAxes(ObjectCollection):
         """
         if(not issequenceof(axeses, PDFAxes)):
             raise TypeError('The arguments of the union static function must '
-                'be instances of PDFAxes!')
+                            'be instances of PDFAxes!')
         if(not len(axeses) >= 1):
             raise ValueError('At least 1 PDFAxes instance must be provided to '
-                'the union static function!')
+                             'the union static function!')
 
         axes = PDFAxes(axes=axeses[0])
         for axes_i in axeses[1:]:
@@ -176,7 +178,8 @@ class PDFAxes(ObjectCollection):
             if(axis.name == name):
                 return axis
 
-        raise KeyError('The PDFAxis with name "%s" could not be found!'%(name))
+        raise KeyError(
+            'The PDFAxis with name "%s" could not be found!' % (name))
 
     def has_axis(self, name):
         """Checks if an axis of the given name is present in this PDFAxes
@@ -210,6 +213,7 @@ class IsBackgroundPDF(object):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a background PDF. This is useful for type checking.
     """
+
     def __init__(self, *args, **kwargs):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsBackgroundPDF class.
@@ -227,7 +231,7 @@ class IsBackgroundPDF(object):
         """
         if(not isinstance(other, IsBackgroundPDF)):
             raise TypeError('The other PDF must be an instance of '
-                'IsBackgroundPDF!')
+                            'IsBackgroundPDF!')
 
         return BackgroundPDFProduct(self, other)
 
@@ -236,6 +240,7 @@ class IsSignalPDF(object):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a signal PDF.
     """
+
     def __init__(self, *args, **kwargs):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsSignalPDF class.
@@ -253,7 +258,7 @@ class IsSignalPDF(object):
         """
         if(not isinstance(other, IsSignalPDF)):
             raise TypeError('The other PDF must be an instance of '
-                'IsSignalPDF!')
+                            'IsSignalPDF!')
 
         return SignalPDFProduct(self, other)
 
@@ -309,6 +314,7 @@ class PDF(object):
         parameters.
         """
         return self._param_set
+
     @param_set.setter
     def param_set(self, param_set):
         if(param_set is None):
@@ -336,7 +342,8 @@ class PDF(object):
         """Adds the given PDFAxis object to this PDF.
         """
         if(not isinstance(axis, PDFAxis)):
-            raise TypeError('The axis argument must be an instance of PDFAxis!')
+            raise TypeError(
+                'The axis argument must be an instance of PDFAxis!')
         self._axes += axis
 
     def assert_is_valid_for_trial_data(self, tdm):
@@ -348,8 +355,8 @@ class PDF(object):
         given trial data.
         """
         raise NotImplementedError('The derived PDF class "%s" did not '
-            'implement the "assert_is_valid_for_trial_data" method!'%(
-                classname(self)))
+                                  'implement the "assert_is_valid_for_trial_data" method!' % (
+                                      classname(self)))
 
     @abc.abstractmethod
     def get_prob(self, tdm, params=None, tl=None):
@@ -423,6 +430,7 @@ class PDFProduct(PDF):
         instance of PDF.
         """
         return self._pdf1
+
     @pdf1.setter
     def pdf1(self, pdf):
         if(not isinstance(pdf, PDF)):
@@ -435,6 +443,7 @@ class PDFProduct(PDF):
         an instance of PDF.
         """
         return self._pdf2
+
     @pdf2.setter
     def pdf2(self, pdf):
         if(not isinstance(pdf, PDF)):
@@ -501,7 +510,7 @@ class PDFProduct(PDF):
         N_events = prob.shape[0]
         fitparam_names = self.param_set.floating_param_name_list
         grads = np.zeros((len(fitparam_names), N_events), dtype=np.float)
-        for (pidx,fitparam_name) in enumerate(fitparam_names):
+        for (pidx, fitparam_name) in enumerate(fitparam_names):
             # Calculate the gradient w.r.t. fitparam.
 
             # There are four possible cases to calculate the gradient for
@@ -512,8 +521,10 @@ class PDFProduct(PDF):
             #     3. Only PDF2 depends on this fit parameter.
             #     4. Both PDFs are independ of this fit parameter, the gradient
             #        is 0.
-            pdf1_has_fitparam = pdf1_param_set.has_floating_param(fitparam_name)
-            pdf2_has_fitparam = pdf2_param_set.has_floating_param(fitparam_name)
+            pdf1_has_fitparam = pdf1_param_set.has_floating_param(
+                fitparam_name)
+            pdf2_has_fitparam = pdf2_param_set.has_floating_param(
+                fitparam_name)
             if(pdf1_has_fitparam and pdf2_has_fitparam):
                 # Case 1
                 grad1 = grads1[pdf1.param_set.get_floating_pidx(fitparam_name)]
@@ -535,6 +546,7 @@ class SignalPDFProduct(PDFProduct, IsSignalPDF):
     """This class provides a signal PDF that is the product of two signal PDF
     instances.
     """
+
     def __init__(self, pdf1, pdf2):
         super(SignalPDFProduct, self).__init__(pdf1, pdf2)
 
@@ -543,6 +555,7 @@ class BackgroundPDFProduct(PDFProduct, IsBackgroundPDF):
     """This class provides a background PDF that is the product of two
     background PDF instances.
     """
+
     def __init__(self, pdf1, pdf2):
         super(BackgroundPDFProduct, self).__init__(pdf1, pdf2)
 
@@ -567,9 +580,9 @@ class SpatialPDF(PDF):
         super(SpatialPDF, self).__init__(*args, **kwargs)
 
         self.add_axis(PDFAxis(name='ra',
-            vmin=ra_range[0], vmax=ra_range[1]))
+                              vmin=ra_range[0], vmax=ra_range[1]))
         self.add_axis(PDFAxis(name='dec',
-            vmin=dec_range[0], vmax=dec_range[1]))
+                              vmin=dec_range[0], vmax=dec_range[1]))
 
     def assert_is_valid_for_exp_data(self, data_exp):
         """Checks if this spatial PDF is valid for all the given experimental
@@ -603,12 +616,14 @@ class SpatialPDF(PDF):
         # Check if all the data is within the right-ascention range.
         if(np.any((data_exp['ra'] < ra_axis.vmin) |
                   (data_exp['ra'] > ra_axis.vmax))):
-            raise ValueError('Some data is outside the right-ascention range (%.3f, %.3f)!'%(ra_axis.vmin, ra_axis.vmax))
+            raise ValueError(
+                'Some data is outside the right-ascention range (%.3f, %.3f)!' % (ra_axis.vmin, ra_axis.vmax))
 
         # Check if all the data is within the declination range.
         if(np.any((data_exp['dec'] < dec_axis.vmin) |
                   (data_exp['dec'] > dec_axis.vmax))):
-            raise ValueError('Some data is outside the declination range (%.3f, %.3f)!'%(dec_axis.vmin, dec_axis.vmax))
+            raise ValueError('Some data is outside the declination range (%.3f, %.3f)!' % (
+                dec_axis.vmin, dec_axis.vmax))
 
 
 class EnergyPDF(PDF):
@@ -634,6 +649,7 @@ class MultiDimGridPDF(PDF):
     PDF data on a grid. The grid data is interpolated using a
     :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
+
     def __init__(self, axis_binnings, pdf_path_to_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
@@ -666,7 +682,6 @@ class MultiDimGridPDF(PDF):
 
         self.axis_binning_list = axis_binnings
         self.norm_factor_func = norm_factor_func
-        self._photospline = False
 
         # Define the PDF axes.
         for axis_binning in self._axis_binnning_list:
@@ -676,26 +691,31 @@ class MultiDimGridPDF(PDF):
                 vmax=axis_binning.upper_edge
             ))
 
-       
-        pdf_loaded = False
+        # need either splinetable or value grid
+        if((pdf_path_to_splinetable is None) and (pdf_grid_data is None)):
+            raise TypeError(
+                "missing input. need at least one of the following: path to splinetable or grid data!")
 
         # if available prefer to work with photosplines
-        if(isinstance(pdf_path_to_splinetable, str)):
-            if(PHOTOSPLINE_LOADED):
-                self._pdf = photospline.SplineTable(pdf_path_to_splinetable)
-                pdf_loaded = True
-                self._photospline = True
+        if(isinstance(pdf_path_to_splinetable, str) and PHOTOSPLINE_LOADED):
+            self._pdf = photospline.SplineTable(pdf_path_to_splinetable)
 
+        else:
+            if(isinstance(pdf_path_to_splinetable, str) and not PHOTOSPLINE_LOADED):
+                raise ImportError(
+                    "missing library: can not find photosplines.")
 
-        if(isinstance(pdf_grid_data, np.ndarray) and not pdf_loaded): 
+            if not isinstance(pdf_grid_data, np.ndarray):
+                raise TypeError("missing or wrong input: can not create RegularGridInterpolator from type {}".format(
+                    type(pdf_grid_data)))
+
             self._pdf = RegularGridInterpolator(
-                tuple([ binning.binedges for binning in self._axis_binnning_list ]),
+                tuple([binning.binedges for binning in self._axis_binnning_list]),
                 pdf_grid_data,
                 method='linear',
                 bounds_error=False,
                 fill_value=0
             )
-            pdf_loaded = True
 
     @property
     def axis_binning_list(self):
@@ -704,14 +724,15 @@ class MultiDimGridPDF(PDF):
         name that should be used for querying the PDF.
         """
         return self._axis_binnning_list
+
     @axis_binning_list.setter
     def axis_binning_list(self, binnings):
         if(isinstance(binnings, BinningDefinition)):
             binnings = [binnings]
         if(not issequenceof(binnings, BinningDefinition)):
             raise TypeError('The axis_binning_list property must be an '
-                'instance of BinningDefinition or a sequence of '
-                'BinningDefinition instances!')
+                            'instance of BinningDefinition or a sequence of '
+                            'BinningDefinition instances!')
         self._axis_binnning_list = list(binnings)
 
     @property
@@ -725,18 +746,20 @@ class MultiDimGridPDF(PDF):
         set to `None`. In that case a unity returning function is used.
         """
         return self._norm_factor_func
+
     @norm_factor_func.setter
     def norm_factor_func(self, func):
         if(func is None):
             # Define a normalization function that just returns 1 for each
             # event.
-            func = lambda pdf, tdm, fitparams: np.ones((tdm.n_events,), dtype=np.float)
+            def func(pdf, tdm, fitparams): return np.ones(
+                (tdm.n_events,), dtype=np.float)
         if(not callable(func)):
             raise TypeError('The norm_factor_func property must be a callable '
-                'object!')
+                            'object!')
         if(not func_has_n_args(func, 3)):
             raise TypeError('The norm_factor_func property must be a function '
-                'with 3 arguments!')
+                            'with 3 arguments!')
         self._norm_factor_func = func
 
     def assert_is_valid_for_trial_data(self, tdm):
@@ -759,10 +782,10 @@ class MultiDimGridPDF(PDF):
             data = tdm.get_data(axis.name)
             if(np.any(data < axis.vmin) or
                np.any(data > axis.vmax)
-            ):
+               ):
                 raise ValueError('Some of the trial data for PDF axis '
-                    '"%s" is out of range (%g,%g)!'%(
-                    axis.name, axis.vmin, axis.vmax))
+                                 '"%s" is out of range (%g,%g)!' % (
+                                     axis.name, axis.vmin, axis.vmax))
 
     def get_prob_with_eventdata(self, tdm, params, eventdata, tl=None):
         """Calculates the probability for the trial events given the specified
@@ -794,12 +817,12 @@ class MultiDimGridPDF(PDF):
             The 1D numpy ndarray with the probability for each event.
         """
         with TaskTimer(tl, 'Get prob from RegularGridInterpolator.'):
-            if(self._photospline):
+            if(isinstance(self._pdf, RegularGridInterpolator)):
+                prob = self._pdf(eventdata)
+            else:
                 V = eventdata.shape[1]
                 prob = self._pdf.evaluate_simple(
-                    [eventdata[:,i] for i in range(0, V)])
-            else:
-                prob = self._pdf(eventdata)
+                    [eventdata[:, i] for i in range(0, V)])
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(self, tdm, params)
@@ -833,7 +856,8 @@ class MultiDimGridPDF(PDF):
             w.r.t. the parameters are returned.
         """
         with TaskTimer(tl, 'Get PDF axis data.'):
-            eventdata = np.array([ tdm.get_data(axis.name) for axis in self._axes ]).T
+            eventdata = np.array([tdm.get_data(axis.name)
+                                  for axis in self._axes]).T
         prob = self.get_prob_with_eventdata(tdm, params, eventdata, tl=tl)
 
         return (prob, None)
@@ -851,6 +875,7 @@ class PDFSet(object):
     the ``pdf_type`` property. PDF objects of type ``pdf_type`` can be added
     via the ``add_pdf`` method and retrieved via the ``get_pdf`` method.
     """
+
     def __init__(self, pdf_type, fitparams_grid_set, *args, **kwargs):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this PDFSet class.
@@ -886,13 +911,14 @@ class PDFSet(object):
         the different fit parameters.
         """
         return self._fitparams_grid_set
+
     @fitparams_grid_set.setter
     def fitparams_grid_set(self, obj):
         if(isinstance(obj, ParameterGrid)):
             obj = ParameterGridSet([obj])
         if(not isinstance(obj, ParameterGridSet)):
             raise TypeError('The fitparams_grid_set property must be an object '
-                'of type ParameterGridSet!')
+                            'of type ParameterGridSet!')
         self._fitparams_grid_set = obj
 
     @property
@@ -950,7 +976,7 @@ class PDFSet(object):
             already added PDFs.
         """
         if(not isinstance(pdf, self.pdf_type)):
-            raise TypeError('The pdf argument must be an instance of %s!'%(
+            raise TypeError('The pdf argument must be an instance of %s!' % (
                 typename(self.pdf_type)))
         if(not isinstance(gridfitparams, dict)):
             raise TypeError('The fitparams argument must be of type dict!')
@@ -958,7 +984,7 @@ class PDFSet(object):
         gridfitparams_hash = make_params_hash(gridfitparams)
         if(gridfitparams_hash in self._gridfitparams_hash_pdf_dict):
             raise KeyError('The PDF with grid fit parameters %s was already '
-                'added!'%(str(gridfitparams)))
+                           'added!' % (str(gridfitparams)))
 
         # Check that the new PDF has the same axes than the already added PDFs.
         if(len(self._gridfitparams_hash_pdf_dict) > 0):
@@ -966,7 +992,7 @@ class PDFSet(object):
                 next(iter(self._gridfitparams_hash_pdf_dict.keys()))]
             if(not pdf.axes.is_same_as(some_pdf.axes)):
                 raise ValueError('The given PDF does not have the same axes '
-                    'than the already added PDFs!')
+                                 'than the already added PDFs!')
 
         self._gridfitparams_hash_pdf_dict[gridfitparams_hash] = pdf
 
@@ -995,10 +1021,12 @@ class PDFSet(object):
         elif(isinstance(gridfitparams, dict)):
             gridfitparams_hash = make_params_hash(gridfitparams)
         else:
-            raise TypeError('The gridfitparams argument must be of type dict or int!')
+            raise TypeError(
+                'The gridfitparams argument must be of type dict or int!')
 
         if(gridfitparams_hash not in self._gridfitparams_hash_pdf_dict):
-            raise KeyError('No PDF was created for the parameter set "%s"!'%(str(gridfitparams)))
+            raise KeyError(
+                'No PDF was created for the parameter set "%s"!' % (str(gridfitparams)))
 
         pdf = self._gridfitparams_hash_pdf_dict[gridfitparams_hash]
         return pdf
@@ -1039,7 +1067,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
 
         if(not isinstance(tdm, TrialDataManager)):
             raise TypeError('The tdm argument must be an instance of '
-                'TrialDataManager!')
+                            'TrialDataManager!')
         self._tdm = tdm
 
         if(interpolmethod is None):
@@ -1060,11 +1088,12 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         implementing the interpolation of the PDF grid manifold.
         """
         return self._interpolmethod
+
     @interpolmethod.setter
     def interpolmethod(self, cls):
         if(not issubclass(cls, GridManifoldInterpolationMethod)):
             raise TypeError('The interpolmethod property must be a sub-class '
-                'of GridManifoldInterpolationMethod!')
+                            'of GridManifoldInterpolationMethod!')
         self._interpolmethod = cls
 
     def _get_prob_for_gridparams_with_eventdata_func(self):
@@ -1134,7 +1163,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         # All PDFs of this PDFSet should have the same axes, so use the axes
         # from any of the PDFs in this PDF set.
         eventdata = np.array(
-            [ tdm.get_data(axis.name) for axis in self.pdf_axes ]).T
+            [tdm.get_data(axis.name) for axis in self.pdf_axes]).T
 
         # Get the interpolated PDF values for the arbitrary parameter values.
         # The (D,N_events)-shaped grads_ ndarray contains the gradient of the
@@ -1160,10 +1189,10 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         # Create a dictionary to map the name of the grid parameter to its
         # index.
         paramgridset_pname_to_pidx = dict(
-            [ (pname,pidx) for (pidx,pname) in
-             enumerate(params_grid_set_pnames) ])
+            [(pname, pidx) for (pidx, pname) in
+             enumerate(params_grid_set_pnames)])
 
-        for (pidx,fitparam) in enumerate(fitparams):
+        for (pidx, fitparam) in enumerate(fitparams):
             pname = fitparam.name
             # Check if the fit parameter is part of the PDFSet's grid
             # parameters. If so, the gradient is provided by the interpolation
