@@ -5,8 +5,8 @@
 
 from __future__ import division
 
-from copy import deepcopy
 import abc
+from copy import deepcopy
 
 from skyllh.core.py import (
     classname,
