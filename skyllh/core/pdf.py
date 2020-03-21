@@ -663,8 +663,8 @@ class MultiDimGridPDF(PDF):
             the PDF axes. The name of each BinningDefinition instance defines
             the event field name that should be used for querying the PDF.
         pdf_path_to_splinetable : str
-            The path to the file that contains the spline table
-            (a pre-computed fit to pdf_grid_data)
+            The path to the file containing the spline table.
+            The spline table contains a  pre-computed fit to pdf_grid_data.
         pdf_grid_data : n-dimensional numpy ndarray
             The n-dimensional numpy ndarray holding the PDF values at given grid
             points. The grid points must match the bin edges of the given
@@ -696,7 +696,7 @@ class MultiDimGridPDF(PDF):
             raise TypeError(
                 "missing input. need at least one of the following: path to splinetable or grid data!")
 
-        # if available prefer to work with photosplines
+        # if available prefer to work with photosplines otherwise use gridinterpolator
         if(isinstance(pdf_path_to_splinetable, str) and PHOTOSPLINE_LOADED):
             self._pdf = photospline.SplineTable(pdf_path_to_splinetable)
 
