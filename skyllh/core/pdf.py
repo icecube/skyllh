@@ -19,11 +19,11 @@ from skyllh.core.interpolate import (
 )
 from skyllh.core.py import (
     ObjectCollection,
+    classname,
     func_has_n_args,
     issequenceof,
     range,
-    typename,
-    classname
+    typename    
 )
 from skyllh.core.parameters import (
     ParameterGrid,
