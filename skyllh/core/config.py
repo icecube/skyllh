@@ -69,7 +69,8 @@ _BASECONFIG = {
 }
 
 
-class CFG:
+class CFGClass(object):
+
     """
     This class holds the global config state
 
@@ -77,13 +78,43 @@ class CFG:
     interface to the underlying config dictionary.
     """
 
-    __config = dict(_BASECONFIG)
+    _is_instantiated = False
 
-    def __init__(self):
-        raise NotImplementedError("This class shouldn't be instantiated")
+    def __init__(self) -> None:
+        if CFGClass._is_instantiated:
+            raise RuntimeError("Can only instantiate CFGClass once")
+        self.__config = dict(_BASECONFIG)
+        CFGClass._is_instantiated = True
+
+    def __getitem__(self, key: Any) -> Any:
+        """Get a config value"""
+        if key not in self.__config:
+            raise KeyError("Key {} not in config".format(key))
+        return self.__config[key]
+
+    def __setitem__(self, key: Any, val: Any) -> None:
+        """Set a config value"""
+        self.__config[key] = val
+
+    def __iter__(self) -> Iterator[Any]:
+        """Get the underlying dicts iterator"""
+        return self.__config.__iter__()
+
+    def __contains__(self, key: Any) -> bool:
+        """Check if key is in underlying dict"""
+        return key in self.__config
 
     @classmethod
-    def from_yaml(cls, yaml_file: str) -> None:
+    def __eq__(self, other: Any) -> bool:
+        """Check if underlying dict is equal to `other`"""
+        return self.__eq__(other)
+
+    @classmethod
+    def __ne__(self, other: Any) -> bool:
+        """Check if underlying dict is not equal to `other`"""
+        return self.__ne__(other)
+
+    def from_yaml(self, yaml_file: str) -> None:
         """
         Update config with yaml file
 
@@ -93,10 +124,9 @@ class CFG:
         """
 
         yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
-        cls.__config.update(yaml_config)
+        self.__config.update(yaml_config)
 
-    @classmethod
-    def from_dict(cls, user_dict: Dict[Any, Any]) -> None:
+    def from_dict(self, user_dict: Dict[Any, Any]) -> None:
         """
         Creates a config from dictionary
 
@@ -106,59 +136,25 @@ class CFG:
         Returns:
             dict
         """
-        cls.__config.update(user_dict)
+        self.__config.update(user_dict)
 
-    @classmethod
-    def __getitem__(cls, key: Any) -> Any:
-        """Get a config value"""
-        if key not in cls.__config:
-            raise KeyError("Key {} not in config".format(key))
-        return cls.__config[key]
-
-    @classmethod
-    def __setitem__(cls, key: Any, val: Any) -> None:
-        """Set a config value"""
-        cls.__config[key] = val
-
-    @classmethod
-    def __iter__(cls) -> Iterator[Any]:
-        """Get the underlying dicts iterator"""
-        return cls.__config.__iter__()
-
-    @classmethod
-    def __contains__(cls, key: Any) -> bool:
-        """Check if key is in underlying dict"""
-        return key in cls.__config
-
-    @classmethod
-    def keys(cls) -> KeysView[Any]:
+    def keys(self) -> KeysView[Any]:
         """Get the underlying keys view"""
-        return cls.__config.keys()
+        return self.__config.keys()
 
-    @classmethod
-    def items(cls) -> ItemsView[Any, Any]:
+    def items(self) -> ItemsView[Any, Any]:
         """Get the underlying items view"""
-        return cls.__config.items()
+        return self.__config.items()
 
-    @classmethod
-    def values(cls) -> ValuesView[Any]:
+    def values(self) -> ValuesView[Any]:
         """Get the underlying values view"""
-        return cls.__config.values()
+        return self.__config.values()
 
-    @classmethod
-    def get(cls, key: Any) -> Any:
+    def get(self, key: Any) -> Any:
         """Delegates get call to the underlying dict"""
-        return cls.__config.get(key)
+        return self.__config.get(key)
 
-    @classmethod
-    def __eq__(cls, other: Any) -> bool:
-        """Check if underlying dict is equal to `other`"""
-        return cls.__eq__(other)
-
-    @classmethod
-    def __ne__(cls, other: Any) -> bool:
-        """Check if underlying dict is not equal to `other`"""
-        return cls.__ne__(other)
+CFG = CFGClass()
 
 
 def set_internal_units(
