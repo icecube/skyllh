@@ -1,14 +1,18 @@
-"""The minimizer module provides functionality for the minimization process of
+"""
+The minimizer module provides functionality for the minimization process of
 a function.
 """
 import abc
 import logging
+from typing import Optional, Dict, Any, List
 import numpy as np
 
 import scipy.optimize
 
 from skyllh.core.parameters import FitParameterSet
 from skyllh.core.py import classname
+
+logger = logging.getLogger(__name__)
 
 
 class MinimizerImpl(object):
@@ -115,6 +119,118 @@ class MinimizerImpl(object):
             better minimum.
         """
         pass
+
+
+class ScipyMinimizerImpl(MinimizerImpl):
+    """Wrapper for `scipy.optimize.minimize`"""
+
+    def __init__(self, method: str) -> None:
+        super().__init__()
+        self._method = method
+
+    def minimize(self, initials, bounds, func, func_args=None, **kwargs):
+        """Minimizes the given function ``func`` with the given initial function
+        argument values ``initials``.
+
+        Parameters
+        ----------
+        initials : 1D numpy ndarray
+            The ndarray holding the initial values of all the fit parameters.
+        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+            The ndarray holding the boundary values (vmin, vmax) of the fit
+            parameters.
+        func : callable
+            The function that should get minimized.
+            The call signature must be
+
+                ``__call__(x, *args)``
+
+            The return value of ``func`` must be (f, grads), the function value
+            at the function arguments ``x`` and the ndarray with the values of
+            the function gradient for each fit parameter, if the
+            ``func_provides_grads`` keyword argument option is set to True.
+            If set to False, ``func`` must return only the function value.
+        func_args : sequence | None
+            Optional sequence of arguments for ``func``.
+
+        Additional Keyword Arguments
+        ----------------------------
+        Additional keyword arguments include options for this minimizer
+        implementation. Possible options are:
+
+            func_provides_grads : bool
+                Flag if the function ``func`` also returns its gradients.
+                Default is ``True``.
+
+        Any additional keyword arguments are passed on to the underlaying
+        :func:`scipy.optimize.minimize` minimization function.
+
+        Returns
+        -------
+        xmin : 1D ndarray
+            The array containing the function arguments at the function's
+            minimum.
+        fmin : float
+            The function value at its minimum.
+        status : dict
+            The status dictionary with information about the minimization
+            process. The following information are provided:
+
+            niter : int
+                The number of iterations needed to find the minimum.
+            warnflag : int
+                The warning flag indicating if the minimization did converge.
+                The possible values are:
+
+                    0: The minimization converged.
+        """
+
+        method_supports_bounds = False
+
+        constraints: Optional[List[Dict[str, Any]]] = None
+
+        # Check if method allows for bounds
+        if self._method in ["L-BFGS-B", "TNC", "SLSQP"]:
+            method_supports_bounds = True
+        elif self._method == "COBYLA":
+            # COBYLA doesn't allow for bounds, but we can convert bounds
+            # to a linear constraint
+
+            constraints = []
+            for bound_num, bound in enumerate(bounds):
+                lower, upper = bound
+                lc = {"type": "ineq",
+                      "fun": lambda x, lb=lower, i=bound_num: x[i] - lb}
+                uc = {"type": "ineq",
+                      "fun": lambda x, ub=upper, i=bound_num: ub - x[i]}
+                constraints.append(lc)
+                constraints.append(uc)
+            bounds = None
+
+        if bounds is not None and not method_supports_bounds:
+            logger.warn(
+                "Selected minimization method ({}) does not "
+                "support bounds. Continue at your own risk.".format(
+                    self._method))
+            bounds = None
+
+        if(func_args is None):
+            func_args = tuple()
+        if(kwargs is None):
+            kwargs = {}
+
+        func_provides_grads = kwargs.pop('func_provides_grads', True)
+
+        res = scipy.optimize.minimize(
+            func,
+            initials,
+            bounds=bounds,
+            constraints=constraints,
+            args=func_args,
+            approx_grad=not func_provides_grads
+            ** kwargs)
+
+        return (res.x, res.func, res.status)
 
 
 class LBFGSMinimizerImpl(MinimizerImpl):
@@ -566,7 +682,7 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
             warnreason: str
                 The description for the set warn flag.
         """
-        logger = logging.getLogger(__name__)
+        
 
         p2_low = bounds[1][0]
         p2_high = bounds[1][1]
@@ -694,8 +810,7 @@ class Minimizer(object):
         if(kwargs is None):
             kwargs = dict()
 
-        logger = logging.getLogger(__name__)
-
+        
         bounds = fitparamset.bounds
 
         (xmin, fmin, status) = self._minimizer_impl.minimize(
