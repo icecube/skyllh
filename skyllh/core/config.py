@@ -98,7 +98,7 @@ class CFGClass(dict):
         """
 
         yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
-        self.__config.update(yaml_config)
+        self.update(yaml_config)
 
     def from_dict(self, user_dict: Dict[Any, Any]) -> None:
         """
@@ -110,10 +110,10 @@ class CFGClass(dict):
         Returns:
             dict
         """
-        self.__config.update(user_dict)
+        self.update(user_dict)
 
 
-CFG = CFGClass()
+CFG = CFGClass(_BASECONFIG)
 
 
 def set_internal_units(
