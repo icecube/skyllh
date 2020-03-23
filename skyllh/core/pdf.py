@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from skyllh.core.trialdata import TrialDataManager
-from skyllh.core.timing import TaskTimer
-from skyllh.core.parameters import (
-    ParameterGrid,
-    ParameterGridSet,
-    ParameterSet,
-    make_params_hash
+from skyllh.core.binning import BinningDefinition
+from skyllh.core.interpolate import (
+    GridManifoldInterpolationMethod,
+    Linear1DGridManifoldInterpolationMethod
 )
 from skyllh.core.py import (
     ObjectCollection,
@@ -15,11 +12,16 @@ from skyllh.core.py import (
     range,
     typename
 )
-from skyllh.core.interpolate import (
-    GridManifoldInterpolationMethod,
-    Linear1DGridManifoldInterpolationMethod
+from skyllh.core.parameters import (
+    ParameterGrid,
+    ParameterGridSet,
+    ParameterSet,
+    make_params_hash
 )
-from skyllh.core.binning import BinningDefinition
+from skyllh.core.timing import TaskTimer
+from skyllh.core.trialdata import TrialDataManager
+
+
 import abc
 import numpy as np
 
