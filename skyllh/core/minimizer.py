@@ -227,10 +227,10 @@ class ScipyMinimizerImpl(MinimizerImpl):
             bounds=bounds,
             constraints=constraints,
             args=func_args,
-            approx_grad=not func_provides_grads
-            ** kwargs)
+            jac = func_provides_grads,
+            **kwargs)
 
-        return (res.x, res.func, res.status)
+        return (res.x, res.fun, res.status)
 
 
 class LBFGSMinimizerImpl(MinimizerImpl):
