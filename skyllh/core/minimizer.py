@@ -15,11 +15,10 @@ from skyllh.core.py import classname
 logger = logging.getLogger(__name__)
 
 
-class MinimizerImpl(object):
+class MinimizerImpl(object, metaclass=abc.ABCMeta):
     """Abstract base class for a minimizer implementation. It defines the
     interface between the implementation and the Minimizer class.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         super(MinimizerImpl, self).__init__()
@@ -230,7 +229,62 @@ class ScipyMinimizerImpl(MinimizerImpl):
             jac = func_provides_grads,
             **kwargs)
 
-        return (res.x, res.fun, res.status)
+        return (res.x, res.fun, res)
+
+    def get_niter(self, status):
+        """Returns the number of iterations needed to find the minimum.
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the minimization
+            process.
+
+        Returns
+        -------
+        niter : int
+            The number of iterations needed to find the minimum.
+        """
+        return status['nit']
+
+    def has_converged(self, status):
+        """Analyzes the status information dictionary if the minimization
+        process has converged. By definition the minimization process has
+        converged if ``status['warnflag']`` equals 0.
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the minimization
+            process.
+
+        Returns
+        -------
+        converged : bool
+            The flag if the minimization has converged (True), or not (False).
+        """
+        return status["success"]
+
+    def is_repeatable(self, status):
+        """Checks if the minimization process can be repeated to get a better
+        result.
+
+        TODO: Method specific checks. For now just return False
+
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the last
+            minimization process.
+
+        Returns
+        -------
+        repeatable : bool
+            The flag if the minimization process can be repeated to obtain a
+            better minimum.
+        """
+        return False
 
 
 class LBFGSMinimizerImpl(MinimizerImpl):
@@ -682,7 +736,7 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
             warnreason: str
                 The description for the set warn flag.
         """
-        
+
 
         p2_low = bounds[1][0]
         p2_high = bounds[1][1]
@@ -810,7 +864,7 @@ class Minimizer(object):
         if(kwargs is None):
             kwargs = dict()
 
-        
+
         bounds = fitparamset.bounds
 
         (xmin, fmin, status) = self._minimizer_impl.minimize(
