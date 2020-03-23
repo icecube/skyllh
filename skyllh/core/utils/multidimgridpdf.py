@@ -36,7 +36,8 @@ def kde_pdf_bkg_norm_factor_func(pdf, tdm, fitparams):
 def create_MultiDimGridPDF_from_photosplinetable(
         ds, data, info_key, splinetable_key, norm_factor_func=None,
         kind=None, tl=None):
-    """Creates a MultiDimGridPDF instance with pdf values taken from photospline pdf,
+    """
+    Creates a MultiDimGridPDF instance with pdf values taken from photospline pdf,
     a spline interpolation of KDE PDF values stored in a splinetable on disk.
 
     Parameters
