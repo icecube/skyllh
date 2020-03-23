@@ -650,7 +650,7 @@ class MultiDimGridPDF(PDF):
     :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
 
-    def __init__(self, axis_binnings, pdf_path_to_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
+    def __init__(self, axis_binnings, path_to_pdf_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
         :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
@@ -662,7 +662,7 @@ class MultiDimGridPDF(PDF):
             The sequence of BinningDefinition instances defining the binning of
             the PDF axes. The name of each BinningDefinition instance defines
             the event field name that should be used for querying the PDF.
-        pdf_path_to_splinetable : str
+        path_to_pdf_splinetable : str
             The path to the file containing the spline table.
             The spline table contains a pre-computed fit to pdf_grid_data.
         pdf_grid_data : n-dimensional numpy ndarray
@@ -691,22 +691,24 @@ class MultiDimGridPDF(PDF):
                 vmax=axis_binning.upper_edge
             ))
 
-        # need either splinetable or value grid
-        if((pdf_path_to_splinetable is None) and (pdf_grid_data is None)):
+        # Need either splinetable or grid of pdf values.
+        if((path_to_pdf_splinetable is None) and (pdf_grid_data is None)):
             raise TypeError(
-                "missing input. need at least one of the following: path to splinetable or grid data!")
+                "Missing input. Need at least one of the following arguments: \
+                        path_to_pdf_splinetable (str) or pdf_grid_data (np.ndarray)!")
 
-        # if available prefer to work with photosplines otherwise use gridinterpolator
-        if(isinstance(pdf_path_to_splinetable, str) and PHOTOSPLINE_LOADED):
-            self._pdf = photospline.SplineTable(pdf_path_to_splinetable)
+        # If available prefer to work with photosplines otherwise use gridinterpolator.
+        if(isinstance(path_to_pdf_splinetable, str) and PHOTOSPLINE_LOADED):
+            self._pdf = photospline.SplineTable(path_to_pdf_splinetable)
 
         else:
-            if(isinstance(pdf_path_to_splinetable, str) and not PHOTOSPLINE_LOADED):
+            if(isinstance(path_to_pdf_splinetable, str) and not PHOTOSPLINE_LOADED):
                 raise ImportError(
-                    "missing library: can not find photosplines.")
+                    "Missing library: can not import Photosplines.")
 
             if not isinstance(pdf_grid_data, np.ndarray):
-                raise TypeError("missing or wrong input: can not create RegularGridInterpolator from type {}".format(
+                raise TypeError("Argument pdf_grid_data should be of type np.ndarray. \
+                        Can not create RegularGridInterpolator from type {}".format(
                     type(pdf_grid_data)))
 
             self._pdf = RegularGridInterpolator(
