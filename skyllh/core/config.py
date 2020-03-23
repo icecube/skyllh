@@ -69,7 +69,7 @@ _BASECONFIG = {
 }
 
 
-class CFGClass(object):
+class CFGClass(dict):
 
     """
     This class holds the global config state
@@ -78,41 +78,15 @@ class CFGClass(object):
     interface to the underlying config dictionary.
     """
 
+    # Keep track of whether this class has been instantiated
     _is_instantiated = False
 
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         if CFGClass._is_instantiated:
             raise RuntimeError("Can only instantiate CFGClass once")
-        self.__config = dict(_BASECONFIG)
+
+        super().__init__(*args, **kwargs)
         CFGClass._is_instantiated = True
-
-    def __getitem__(self, key: Any) -> Any:
-        """Get a config value"""
-        if key not in self.__config:
-            raise KeyError("Key {} not in config".format(key))
-        return self.__config[key]
-
-    def __setitem__(self, key: Any, val: Any) -> None:
-        """Set a config value"""
-        self.__config[key] = val
-
-    def __iter__(self) -> Iterator[Any]:
-        """Get the underlying dicts iterator"""
-        return self.__config.__iter__()
-
-    def __contains__(self, key: Any) -> bool:
-        """Check if key is in underlying dict"""
-        return key in self.__config
-
-    @classmethod
-    def __eq__(self, other: Any) -> bool:
-        """Check if underlying dict is equal to `other`"""
-        return self.__eq__(other)
-
-    @classmethod
-    def __ne__(self, other: Any) -> bool:
-        """Check if underlying dict is not equal to `other`"""
-        return self.__ne__(other)
 
     def from_yaml(self, yaml_file: str) -> None:
         """
@@ -138,21 +112,6 @@ class CFGClass(object):
         """
         self.__config.update(user_dict)
 
-    def keys(self) -> KeysView[Any]:
-        """Get the underlying keys view"""
-        return self.__config.keys()
-
-    def items(self) -> ItemsView[Any, Any]:
-        """Get the underlying items view"""
-        return self.__config.items()
-
-    def values(self) -> ValuesView[Any]:
-        """Get the underlying values view"""
-        return self.__config.values()
-
-    def get(self, key: Any) -> Any:
-        """Delegates get call to the underlying dict"""
-        return self.__config.get(key)
 
 CFG = CFGClass()
 
