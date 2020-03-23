@@ -48,7 +48,7 @@ def create_MultiDimGridPDF_from_photosplinetable(
         The DatasetData instance that holds the auxiliary data of the data set.
     info_key : str
         The auxiliary data name for the file containing PDF information.
-    splinetable_key : str 
+    splinetable_key : str
         The auxiliary data name for the name of the splinetablefile.
     norm_factor_func : callable | None
         The normalization factor function. It must have the following call
@@ -93,14 +93,14 @@ def create_MultiDimGridPDF_from_photosplinetable(
         for (idx, var) in enumerate(num_dict['vars'])
     ]
 
-    # Get the splinetable file.
+    # Getting the name of the splinetable file
     splinetable_file_list = ds.get_aux_data_definition(splinetable_key)
     # This is a list with only one element.
     splinetable_file = os.path.join(ds.root_dir, splinetable_file_list[0])
 
     pdf = pdf_type(
         axis_binnings,
-        pdf_path_to_splinetable=splinetable_file,
+        path_to_pdf_splinetable=splinetable_file,
         pdf_grid_data=None,
         norm_factor_func=norm_factor_func)
 
@@ -201,7 +201,7 @@ def create_MultiDimGridPDF_from_kde_pdf(
 
     pdf = pdf_type(
         axis_binnings,
-        pdf_path_to_splinetable=None,
+        path_to_pdf_splinetable=None,
         pdf_grid_data=vals,
         norm_factor_func=norm_factor_func)
 

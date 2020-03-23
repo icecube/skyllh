@@ -301,7 +301,7 @@ class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
     a :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
 
-    def __init__(self, axis_binnings, pdf_path_to_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
+    def __init__(self, axis_binnings, path_to_pdf_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
         """Creates a new signal PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
         :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
@@ -313,7 +313,7 @@ class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
             The sequence of BinningDefinition instances defining the binning of
             the PDF axes. The name of each BinningDefinition instance defines
             the event field name that should be used for querying the PDF.
-        pdf_path_to_splinetable : str
+        path_to_pdf_splinetable : str
             The path to the file containing the spline table.
             The spline table contains a  pre-computed fit to pdf_grid_data. 
         pdf_grid_data : n-dimensional numpy ndarray
@@ -331,7 +331,7 @@ class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
         """
         super(SignalMultiDimGridPDF, self).__init__(
             axis_binnings=axis_binnings,
-            pdf_path_to_splinetable=pdf_path_to_splinetable,
+            path_to_pdf_splinetable=path_to_pdf_splinetable,
             pdf_grid_data=pdf_grid_data,
             norm_factor_func=norm_factor_func)
 
