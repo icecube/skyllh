@@ -17,7 +17,12 @@ class BackgroundMultiDimGridPDF(MultiDimGridPDF, IsBackgroundPDF):
     instance.
     """
 
-    def __init__(self, axis_binnings, pdf_path_to_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
+    def __init__(
+        self,
+        axis_binnings,
+        pdf_path_to_splinetable=None,
+        pdf_grid_data=None,
+        norm_factor_func=None):
         """Creates a new background PDF instance for a multi-dimensional PDF
         given as PDF values on a grid. The grid data is interpolated with a
         :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
