@@ -92,7 +92,7 @@ def create_MultiDimGridPDF_from_photosplinetable(
         for (idx, var) in enumerate(num_dict['vars'])
     ]
 
-    # Getthe splinetable file.
+    # Get the splinetable file.
     splinetable_file_list = ds.get_aux_data_definition(splinetable_key)
     # This is a list with only one element.
     splinetable_file = os.path.join(ds.root_dir, splinetable_file_list[0])
