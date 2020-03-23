@@ -18,11 +18,11 @@ rss = RandomStateService(seed=1)
 
 # Generate some psydo data.
 data = gen_data(rss, N=10)
-print data['ra']
+print(data['ra'])
 
 # Create DataScrambler instance with RA scrambling.
 scr = DataScrambler(method=RAScramblingMethod(rss=rss))
 
 # Scramble the data.
 scr.scramble_data(data)
-print data['ra']
+print(data['ra'])
