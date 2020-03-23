@@ -664,7 +664,7 @@ class MultiDimGridPDF(PDF):
             the event field name that should be used for querying the PDF.
         pdf_path_to_splinetable : str
             The path to the file containing the spline table.
-            The spline table contains a  pre-computed fit to pdf_grid_data.
+            The spline table contains a pre-computed fit to pdf_grid_data.
         pdf_grid_data : n-dimensional numpy ndarray
             The n-dimensional numpy ndarray holding the PDF values at given grid
             points. The grid points must match the bin edges of the given
