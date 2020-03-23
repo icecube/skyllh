@@ -8,8 +8,8 @@ import os.path
 import sys
 from typing import Any, Dict, Iterator, KeysView, ItemsView, ValuesView
 
-import yaml
 from astropy import units  # type: ignore
+import yaml
 
 from skyllh.core.py import issequenceof
 
