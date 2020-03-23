@@ -706,7 +706,7 @@ class MultiDimGridPDF(PDF):
                 raise ImportError(
                     "Missing library: can not import Photosplines.")
 
-            if not isinstance(pdf_grid_data, np.ndarray):
+            if(not isinstance(pdf_grid_data, np.ndarray)):
                 raise TypeError("Argument pdf_grid_data should be of type np.ndarray. \
                         Can not create RegularGridInterpolator from type {}".format(
                     type(pdf_grid_data)))
