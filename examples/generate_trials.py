@@ -37,7 +37,7 @@ parser.add_argument("--gseed", "-gs", help="gamma seed for minimizer", type=floa
 args=parser.parse_args()
 print(args)
 
-# DO NOT USE PHOTOSPLINE
+# DO NOT USE PHOTOSPLINE.
 skyllh.core.pdf.PHOTOSPLINE_LOADED = False
 
 CFG.from_yaml(args.config)
