@@ -1058,7 +1058,8 @@ class Dataset(object):
         Returns
         -------
         _aux_data[name] : list of str
-            The locationsi (pathfilenames) of the files defined in the auxiliary data.
+            locations (pathfilenames) of the files defined in the auxiliary data \
+                    as auxiliary data definition.
         """
         
         if(not name in self._aux_data_definitions):
