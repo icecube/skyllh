@@ -6,6 +6,7 @@
 from __future__ import division
 
 import abc
+from copy import deepcopy
 
 from skyllh.core.py import (
     classname,

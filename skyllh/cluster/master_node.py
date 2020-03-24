@@ -102,7 +102,7 @@ class MasterNode(object):
                     clientsock, blocksize=blocksize)
                 if(not cmd.is_same_as(RegisterCN)):
                     raise RuntimeError('The compute node provided an unknown '
-                        'command "%s"!'%(m.msg))
+                        'command "%s"!'%(cmd.as_message().msg))
                 ACK().send(clientsock)
 
                 cn = CNRegistryEntry(
