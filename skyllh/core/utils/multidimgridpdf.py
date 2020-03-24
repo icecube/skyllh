@@ -23,6 +23,7 @@ def kde_pdf_sig_spatial_norm_factor_func(pdf, tdm, fitparams):
     norm = 1. / (2 * np.pi * np.log(10) * psi * np.sin(psi))
     return norm
 
+
 def kde_pdf_bkg_norm_factor_func(pdf, tdm, fitparams):
     """This is the standard normalization factor function for the background
     MultiDimGridPDF, which is created from KDE PDF values.
@@ -31,11 +32,13 @@ def kde_pdf_bkg_norm_factor_func(pdf, tdm, fitparams):
     """
     return 1. / (2 * np.pi)
 
+
 def create_MultiDimGridPDF_from_photosplinetable(
         ds, data, info_key, splinetable_key, norm_factor_func=None,
         kind=None, tl=None):
-    """Creates a MultiDimGridPDF instance with pdf values taken from KDE PDF
-    values stored in the dataset's auxiliary data.
+    """
+    Creates a MultiDimGridPDF instance with pdf values taken from photospline pdf,
+    a spline interpolation of KDE PDF values stored in a splinetable on disk.
 
     Parameters
     ----------
@@ -44,9 +47,9 @@ def create_MultiDimGridPDF_from_photosplinetable(
     data : DatasetData instance
         The DatasetData instance that holds the auxiliary data of the data set.
     info_key : str
-        The auxiliary data name for the PDF information (e.g. axis definitions)
-    splinetable_key : str 
-        The auxiliary data name for the name of the splinetablefile 
+        The auxiliary data name for the file containing PDF information.
+    splinetable_key : str
+        The auxiliary data name for the name of the splinetablefile.
     norm_factor_func : callable | None
         The normalization factor function. It must have the following call
         signature:
@@ -67,7 +70,6 @@ def create_MultiDimGridPDF_from_photosplinetable(
         MultiDimGridPDF instance.
     """
 
-
     if(kind is None):
         pdf_type = MultiDimGridPDF
     elif(kind == 'sig'):
@@ -76,34 +78,33 @@ def create_MultiDimGridPDF_from_photosplinetable(
         pdf_type = BackgroundMultiDimGridPDF
     else:
         raise ValueError('The kind argument must be None, "sig", or "bkg"! '
-            'Currently it is '+str(kind)+'!')
+                         'Currently it is '+str(kind)+'!')
 
     # Load the PDF data from the auxilary files.
-    num_dict = ds.load_aux_data(info_key, tl=tl)  
+    num_dict = ds.load_aux_data(info_key, tl=tl)
 
     kde_pdf_axis_name_map = ds.load_aux_data('KDE_PDF_axis_name_map', tl=tl)
     kde_pdf_axis_name_map_inv = dict(
-        [(v,k) for (k,v) in kde_pdf_axis_name_map.items()])
+        [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
 
     axis_binnings = [
         BinningDefinition(
             kde_pdf_axis_name_map_inv[var], num_dict['bins'][idx])
-        for (idx,var) in enumerate(num_dict['vars'])
+        for (idx, var) in enumerate(num_dict['vars'])
     ]
- 
-    # get splinetable file
-    splinetable_file_list = ds.get_aux_data_definition(splinetable_key) 
-    # this is a list with only one element
+
+    # Getting the name of the splinetable file
+    splinetable_file_list = ds.get_aux_data_definition(splinetable_key)
+    # This is a list with only one element.
     splinetable_file = os.path.join(ds.root_dir, splinetable_file_list[0])
 
     pdf = pdf_type(
         axis_binnings,
-        pdf_path_to_splinetable=splinetable_file,
+        path_to_pdf_splinetable=splinetable_file,
         pdf_grid_data=None,
         norm_factor_func=norm_factor_func)
 
     return pdf
-
 
 
 def create_MultiDimGridPDF_from_kde_pdf(
@@ -150,7 +151,7 @@ def create_MultiDimGridPDF_from_kde_pdf(
         pdf_type = BackgroundMultiDimGridPDF
     else:
         raise ValueError('The kind argument must be None, "sig", or "bkg"! '
-            'Currently it is '+str(kind)+'!')
+                         'Currently it is '+str(kind)+'!')
 
     # Load the PDF data from the auxilary files.
     num_dict = ds.load_aux_data(numerator_key, tl=tl)
@@ -161,12 +162,12 @@ def create_MultiDimGridPDF_from_kde_pdf(
 
     kde_pdf_axis_name_map = ds.load_aux_data('KDE_PDF_axis_name_map', tl=tl)
     kde_pdf_axis_name_map_inv = dict(
-        [(v,k) for (k,v) in kde_pdf_axis_name_map.items()])
+        [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
 
     axis_binnings = [
         BinningDefinition(
             kde_pdf_axis_name_map_inv[var], num_dict['bins'][idx])
-        for (idx,var) in enumerate(num_dict['vars'])
+        for (idx, var) in enumerate(num_dict['vars'])
     ]
 
     vals = num_dict['pdf_vals']
@@ -200,7 +201,7 @@ def create_MultiDimGridPDF_from_kde_pdf(
 
     pdf = pdf_type(
         axis_binnings,
-        pdf_path_to_splinetable=None,
+        path_to_pdf_splinetable=None,
         pdf_grid_data=vals,
         norm_factor_func=norm_factor_func)
 
