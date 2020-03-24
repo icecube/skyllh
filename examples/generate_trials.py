@@ -42,7 +42,7 @@ skyllh.core.pdf.PHOTOSPLINE_LOADED = False
 
 CFG.from_yaml(args.config)
 
-# Define datasets (todo: generalize to other analyses)
+# Define datasets (todo: generalize to other analyses).
 bp = CFG["paths"]["base_path"]
 dsc_name = CFG["analysis"]["name"]
 dsc = data_samples[dsc_name].create_dataset_collection(base_path=bp)
