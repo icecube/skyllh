@@ -351,7 +351,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         if(func_args is None):
             func_args = tuple()
 
-        (ns_min, ns_max) = bounds[0]
+        (ns_min, ns_max) = bounds[0] 
         if(ns_min > initials[0]):
             raise ValueError('The initial value for ns (%g) must be equal or '
                 'greater than the minimum bound value for ns (%g)'%(
@@ -360,53 +360,69 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         ns_tol = self.ns_tol
 
         niter = 0
-        step = ns_tol + 1
-        ns = initials[0]
-        status = {'warnflag': 0, 'warnreason': ''}
-        f = None
-        fprime = 0
         x = np.copy(initials).astype(np.float)
+        ns = x[0]
+
+        # Initialize stepsize to be larger than ns tolerance.
+        # Also initialize first derivative to large value.
+        # Want to perform at least one NR iteration.
+        step = ns_tol + 1 
+        fprime = 1000
+        # NR does not guarantee, thus limit iterations.
+        max_steps = 100
+        status = {'warnflag': 0, 'warnreason': ''}
+        f = None  
+        at_boundary = False
+
         # We do the minimization process while the precision of ns is not
         # reached yet or the function is still rising or falling fast, i.e. the
         # minimum is in a deep well.
-        while (ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1):
-            niter += 1
-            x[0] = ns
-            (f, fprime, fprimeprime) = func(x, *func_args)
-            if(ns == ns_min and fprime >= 0):
-                # We found the function minimum to be below the minimum bound of
-                # the parameter value, but the function is rising. This can be
-                # considered as converged.
-                break
+        while ((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1) and niter<max_steps): 
 
+            x[0] = ns
+            (f, fprime, fprimeprime) = func(x, *func_args) 
             step = -fprime / fprimeprime
+
+            # Treat boundary values.
+            if((ns == ns_min and step < 0.0) or (ns == ns_max and step > 0.0)):
+                at_boundary = True
+                f_sol = f
+
+                if(ns == ns_min):
+                    status['warnreason'] = 'Function minimum is below the '\
+                                            'minimum bound of the parameter '\
+                                            'value. Convergence forced at boundary.'
+                elif(ns == ns_max):
+                    status['warnreason'] = 'Function minimum is above the '\
+                                            'maximum bound of the parameter '\
+                                            'value. Convergence forced at boundary.'
+                break 
+
+            # Always perform step in ns as it improves the solution.
             ns += step
 
+            # Do not allow ns outside boundaries.
             if(ns < ns_min):
-                # The function minimum is below the minimum bound of the
-                # parameter value.
                 ns = ns_min
-                if((ns_tol > np.fabs(step)) or (np.fabs(fprime) > 1)):
-                    status['warnflag'] = 1
-                    status['warnreason'] = 'Function minimum is below the '\
-                                           'minimum bound of the parameter '\
-                                           'value.'
-                break
-            if(ns > ns_max):
-                # The function minimum is above the maximum bound of the
-                # parameter value.
+            elif(ns > ns_max):
                 ns = ns_max
-                if((ns_tol > np.fabs(step)) or (np.fabs(fprime) > 1)):
-                    status['warnflag'] = 2
-                    status['warnreason'] = 'Function minimum is above the '\
-                                           'maximum bound of the parameter '\
-                                           'value.'
-                break
+
+            # Increase counter since a step was taken.
+            niter += 1 
+            
+        x[0] = ns
+        # Once converged evaluate function at minimum unless hit boundary
+        if(not at_boundary):
+            (f_sol, fprime, fprimeprime) = func(x, *func_args) 
+
+        if(niter==max_steps):
+            status['warnflag'] = 1
+            status['warnreason'] = 'NR optimization did not converge within {}'\
+                                   'NR steps.'.format(niter)
 
         status['niter'] = niter
-        status['last_nr_step'] = step
-
-        return (x, f, status)
+        status['last_nr_step'] = step 
+        return (x, f_sol, status)
 
     def get_niter(self, status):
         """Returns the number of iterations needed to find the minimum.
@@ -537,7 +553,7 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
         logger = logging.getLogger(__name__)
 
         p2_low = bounds[1][0]
-        p2_high = bounds[1][1]
+        p2_high = bounds[1][1] 
         p2_scan_values = np.linspace(
             p2_low, p2_high, int((p2_high-p2_low)/self.p2_scan_step)+1)
 
@@ -550,11 +566,11 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
         best_fmin = None
         best_status = None
         for p2_value in p2_scan_values:
-            initials[1] = p2_value
+            initials[1] = p2_value 
             (xmin, fmin, status) = super().minimize(
                 initials, bounds, func, func_args, **kwargs)
-            niter_total += status['niter']
-            if((best_fmin is None) or (fmin < best_fmin)):
+            niter_total += status['niter'] 
+            if((best_fmin is None) or (fmin < best_fmin)): 
                 best_xmin = xmin
                 best_fmin = fmin
                 best_status = status
@@ -661,7 +677,7 @@ class Minimizer(object):
 
         logger = logging.getLogger(__name__)
 
-        bounds = fitparamset.bounds
+        bounds = fitparamset.bounds 
 
         (xmin, fmin, status) = self._minimizer_impl.minimize(
             fitparamset.initials, bounds, func, args, **kwargs)
