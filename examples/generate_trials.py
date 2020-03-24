@@ -56,7 +56,7 @@ source = PointLikeSource(src_ra, src_dec)
 
 tl = TimeLord()
 
-# Create analysis
+# Create analysis.
 yr=365.25 # days per year
 livetime = CFG["analysis"]["livetime"] * yr
 
