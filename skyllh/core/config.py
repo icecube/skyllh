@@ -78,7 +78,7 @@ class CFGClass(dict):
     interface to the underlying config dictionary.
     """
 
-    # Keep track of whether this class has been instantiated
+    # Keep track of whether this class has been instantiated.
     _is_instantiated = False
 
     def __init__(self, *args, **kwargs) -> None:
