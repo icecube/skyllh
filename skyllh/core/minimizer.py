@@ -275,7 +275,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
     signal events ns.
     """
 
-    def __init__(self, ns_tol=1e-3):
+    def __init__(self, ns_tol=1e-3, max_steps=100):
         """Creates a new NRNs minimizer instance to minimize the given
         likelihood function with its given partial derivatives.
 
@@ -287,6 +287,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         super(NR1dNsMinimizerImpl, self).__init__()
 
         self.ns_tol = ns_tol
+        self.max_steps = max_steps
 
     def minimize(self, initials, bounds, func, func_args=None, **kwargs):
         """Minimizes the given function ``func`` with the given initial function
@@ -340,12 +341,13 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
                     0: The minimization converged with a iteration step size
                        smaller than the specified precision.
-                    1: The function minimum is below the minimum bound of the
-                       parameter value. The last iteration's step size did not
-                       achieve the specified precision.
-                    2: The function minimum is above the maximum bound of the
-                       parameter value. The last iteration's step size did not
-                       achieve the specified precision.
+                    -1: The function minimum is above the upper bound of the
+                       parameter value. Convergence forced at upper bound.
+                    -2: The function minimum is below the lower bound of the
+                       parameter value. Convergence forced at lower bound.
+                    1: The minimization did NOT converge within self.max_steps
+                        number of steps
+
             warnreason: str
                 The description for the set warn flag.
 
@@ -371,7 +373,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         step = ns_tol + 1
         fprime = 1000
         # NR does not guarantee convergence, thus limit iterations.
-        max_steps = 100
+        max_steps = self.max_steps
         status = {'warnflag': 0, 'warnreason': ''}
         f = None
         at_boundary = False
@@ -380,8 +382,8 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         # reached yet or the function is still rising or falling fast, i.e. the
         # minimum is in a deep well.
         # In case the optimum is found outside the bounds on ns the best fit
-        # will be set to the boundary value.
-        while ((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1) and niter < max_steps):
+        # will be set to the boundary value and the fit considered converged.
+        while( ((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1.e-2)) and (niter < max_steps) ):
 
             x[0] = ns
             (f, fprime, fprimeprime) = func(x, *func_args)
@@ -390,16 +392,17 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
             # Exit optimization if ns is at boundary but next step would be outside.
             if((ns == ns_min and step < 0.0) or (ns == ns_max and step > 0.0)):
                 at_boundary = True
-                f_sol = f
 
                 if(ns == ns_min):
-                    status['warnreason'] = 'Function minimum is below the '\
-                        'minimum bound of the parameter '\
-                        'value. Convergence forced at boundary.'
+                    status['warnflag'] = -2
+                    status['warnreason'] = ('Function minimum is below the '
+                        'minimum bound of the parameter '
+                        'value. Convergence forced at boundary.')
                 elif(ns == ns_max):
-                    status['warnreason'] = 'Function minimum is above the '\
-                        'maximum bound of the parameter '\
-                        'value. Convergence forced at boundary.'
+                    status['warnflag'] = -1
+                    status['warnreason'] = ('Function minimum is above the '
+                        'maximum bound of the parameter '
+                        'value. Convergence forced at boundary.')
                 break
 
             # Always perform step in ns as it improves the solution.
@@ -415,18 +418,20 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
             niter += 1
 
         x[0] = ns
-        # Once converged evaluate function at minimum unless hit boundary
+        # Once converged evaluate function at minimum value unless
+        # Convergence was forced at boundary
+        # in which case function value is already known
         if(not at_boundary):
-            (f_sol, fprime, fprimeprime) = func(x, *func_args)
+            (f, fprime, fprimeprime) = func(x, *func_args)
 
         if(niter == max_steps):
             status['warnflag'] = 1
-            status['warnreason'] = 'NR optimization did not converge within {}'\
-                                   'NR steps.'.format(niter)
+            status['warnreason'] = ('NR optimization did not converge within {} '
+                                   'NR steps.'.format(niter))
 
         status['niter'] = niter
         status['last_nr_step'] = step
-        return (x, f_sol, status)
+        return (x, f, status)
 
     def get_niter(self, status):
         """Returns the number of iterations needed to find the minimum.
@@ -447,7 +452,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
     def has_converged(self, status):
         """Analyzes the status information dictionary if the minimization
         process has converged. By definition the minimization process has
-        converged if ``status['warnflag']`` equals 0.
+        converged if ``status['warnflag']`` is smaller or equal to 0.
 
         Parameters
         ----------
@@ -460,7 +465,11 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         converged : bool
             The flag if the minimization has converged (True), or not (False).
         """
-        return not status['warnflag']
+        if status['warnflag'] > 0:
+            return False
+
+        else:
+            return True
 
     def is_repeatable(self, status):
         """Checks if the minimization process can be repeated to get a better
