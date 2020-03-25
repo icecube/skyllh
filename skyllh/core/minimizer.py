@@ -121,6 +121,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
     """The LBFGSMinimizerImpl class provides the minimizer implementation for
     L-BFG-S minimizer used from the :mod:`scipy.optimize` module.
     """
+
     def __init__(self):
         """Creates a new L-BGF-S minimizer instance to minimize the given
         likelihood function with its given partial derivatives.
@@ -194,9 +195,9 @@ class LBFGSMinimizerImpl(MinimizerImpl):
 
         (xmin, fmin, status) = self._fmin_l_bfgs_b(
             func, initials,
-            bounds = bounds,
-            args = func_args,
-            approx_grad = not func_provides_grads,
+            bounds=bounds,
+            args=func_args,
+            approx_grad=not func_provides_grads,
             **kwargs
         )
 
@@ -273,7 +274,8 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
     function, i.e. a function that depends solely on one parameter, the number of
     signal events ns.
     """
-    def __init__(self, ns_tol=1e-4):
+
+    def __init__(self, ns_tol=1e-3):
         """Creates a new NRNs minimizer instance to minimize the given
         likelihood function with its given partial derivatives.
 
@@ -351,11 +353,11 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         if(func_args is None):
             func_args = tuple()
 
-        (ns_min, ns_max) = bounds[0] 
+        (ns_min, ns_max) = bounds[0]
         if(ns_min > initials[0]):
             raise ValueError('The initial value for ns (%g) must be equal or '
-                'greater than the minimum bound value for ns (%g)'%(
-                    initials[0], ns_min))
+                             'greater than the minimum bound value for ns (%g)' % (
+                                 initials[0], ns_min))
 
         ns_tol = self.ns_tol
 
@@ -366,37 +368,39 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         # Initialize stepsize to be larger than ns tolerance.
         # Also initialize first derivative to large value.
         # Want to perform at least one NR iteration.
-        step = ns_tol + 1 
+        step = ns_tol + 1
         fprime = 1000
-        # NR does not guarantee, thus limit iterations.
+        # NR does not guarantee convergence, thus limit iterations.
         max_steps = 100
         status = {'warnflag': 0, 'warnreason': ''}
-        f = None  
+        f = None
         at_boundary = False
 
         # We do the minimization process while the precision of ns is not
         # reached yet or the function is still rising or falling fast, i.e. the
         # minimum is in a deep well.
-        while ((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1) and niter<max_steps): 
+        # In case the optimum is found outside the bounds on ns the best fit
+        # will be set to the boundary value.
+        while ((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1) and niter < max_steps):
 
             x[0] = ns
-            (f, fprime, fprimeprime) = func(x, *func_args) 
+            (f, fprime, fprimeprime) = func(x, *func_args)
             step = -fprime / fprimeprime
 
-            # Treat boundary values.
+            # Exit optimization if ns is at boundary but next step would be outside.
             if((ns == ns_min and step < 0.0) or (ns == ns_max and step > 0.0)):
                 at_boundary = True
                 f_sol = f
 
                 if(ns == ns_min):
                     status['warnreason'] = 'Function minimum is below the '\
-                                            'minimum bound of the parameter '\
-                                            'value. Convergence forced at boundary.'
+                        'minimum bound of the parameter '\
+                        'value. Convergence forced at boundary.'
                 elif(ns == ns_max):
                     status['warnreason'] = 'Function minimum is above the '\
-                                            'maximum bound of the parameter '\
-                                            'value. Convergence forced at boundary.'
-                break 
+                        'maximum bound of the parameter '\
+                        'value. Convergence forced at boundary.'
+                break
 
             # Always perform step in ns as it improves the solution.
             ns += step
@@ -408,20 +412,20 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
                 ns = ns_max
 
             # Increase counter since a step was taken.
-            niter += 1 
-            
+            niter += 1
+
         x[0] = ns
         # Once converged evaluate function at minimum unless hit boundary
         if(not at_boundary):
-            (f_sol, fprime, fprimeprime) = func(x, *func_args) 
+            (f_sol, fprime, fprimeprime) = func(x, *func_args)
 
-        if(niter==max_steps):
+        if(niter == max_steps):
             status['warnflag'] = 1
             status['warnreason'] = 'NR optimization did not converge within {}'\
                                    'NR steps.'.format(niter)
 
         status['niter'] = niter
-        status['last_nr_step'] = step 
+        status['last_nr_step'] = step
         return (x, f_sol, status)
 
     def get_niter(self, status):
@@ -471,7 +475,8 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
     the R2->R1 function where the first dimension is minimized using the
     Newton-Raphson minimization method and the second dimension is scanned.
     """
-    def __init__(self, p2_scan_step, ns_tol=1e-4):
+
+    def __init__(self, p2_scan_step, ns_tol=1e-3):
         """Creates a new minimizer implementation instance.
 
         Parameters
@@ -553,24 +558,24 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
         logger = logging.getLogger(__name__)
 
         p2_low = bounds[1][0]
-        p2_high = bounds[1][1] 
+        p2_high = bounds[1][1]
         p2_scan_values = np.linspace(
             p2_low, p2_high, int((p2_high-p2_low)/self.p2_scan_step)+1)
 
         logger.debug('Minimize func by scanning 2nd parameter in {:d} steps '
-            'with a step size of {:g}'.format(
-                len(p2_scan_values), np.mean(np.diff(p2_scan_values))))
+                     'with a step size of {:g}'.format(
+                         len(p2_scan_values), np.mean(np.diff(p2_scan_values))))
 
         niter_total = 0
         best_xmin = None
         best_fmin = None
         best_status = None
         for p2_value in p2_scan_values:
-            initials[1] = p2_value 
+            initials[1] = p2_value
             (xmin, fmin, status) = super().minimize(
                 initials, bounds, func, func_args, **kwargs)
-            niter_total += status['niter'] 
-            if((best_fmin is None) or (fmin < best_fmin)): 
+            niter_total += status['niter']
+            if((best_fmin is None) or (fmin < best_fmin)):
                 best_xmin = xmin
                 best_fmin = fmin
                 best_status = status
@@ -586,6 +591,7 @@ class Minimizer(object):
     function. The class takes an instance of MinimizerImpl for a specific
     minimizer implementation.
     """
+
     def __init__(self, minimizer_impl, max_repetitions=100):
         """Creates a new Minimizer instance.
 
@@ -607,11 +613,12 @@ class Minimizer(object):
         the minimizer.
         """
         return self._minimizer_impl
+
     @minimizer_impl.setter
     def minimizer_impl(self, impl):
         if(not isinstance(impl, MinimizerImpl)):
             raise TypeError('The minimizer_impl property must be an instance '
-                'of MinimizerImpl!')
+                            'of MinimizerImpl!')
         self._minimizer_impl = impl
 
     @property
@@ -621,11 +628,12 @@ class Minimizer(object):
         different initials.
         """
         return self._max_repetitions
+
     @max_repetitions.setter
     def max_repetitions(self, n):
         if(not isinstance(n, int)):
             raise TypeError('The maximal repetitions property must be of type '
-                'int!')
+                            'int!')
         self._max_repetitions = n
 
     def minimize(self, rss, fitparamset, func, args=None, kwargs=None):
@@ -670,14 +678,14 @@ class Minimizer(object):
         """
         if(not isinstance(fitparamset, FitParameterSet)):
             raise TypeError('The fitparamset argument must be an instance of '
-                'FitParameterSet!')
+                            'FitParameterSet!')
 
         if(kwargs is None):
             kwargs = dict()
 
         logger = logging.getLogger(__name__)
 
-        bounds = fitparamset.bounds 
+        bounds = fitparamset.bounds
 
         (xmin, fmin, status) = self._minimizer_impl.minimize(
             fitparamset.initials, bounds, func, args, **kwargs)
@@ -686,7 +694,7 @@ class Minimizer(object):
         while((not self._minimizer_impl.has_converged(status)) and
               self._minimizer_impl.is_repeatable(status) and
               reps < self._max_repetitions
-        ):
+              ):
             # The minimizer did not converge at the first time, but it is
             # possible to repeat the minimization process with different
             # initials to obtain a better result.
@@ -703,24 +711,24 @@ class Minimizer(object):
 
         if(not self._minimizer_impl.has_converged(status)):
             raise ValueError('The minimizer did not converge after %d '
-                'repetitions! The maximum number of repetitions is %d. '
-                'The status dictionary is "%s".'%(
-                    reps, self._max_repetitions, str(status)))
+                             'repetitions! The maximum number of repetitions is %d. '
+                             'The status dictionary is "%s".' % (
+                                 reps, self._max_repetitions, str(status)))
 
         # Check if any fit value is outside its bounds due to rounding errors by
         # the minimizer. If so, set those fit values to their respective bound
         # value and re-evaluate the function with the corrected fit values.
-        condmin = xmin < bounds[:,0]
-        condmax = xmin > bounds[:,1]
+        condmin = xmin < bounds[:, 0]
+        condmax = xmin > bounds[:, 1]
         if(np.any(condmin) or np.any(condmax)):
-            xmin = np.where(condmin, bounds[:,0], xmin)
-            xmin = np.where(condmax, bounds[:,1], xmin)
+            xmin = np.where(condmin, bounds[:, 0], xmin)
+            xmin = np.where(condmax, bounds[:, 1], xmin)
             if(args is None):
                 args = tuple()
             (fmin, grads) = func(xmin, *args)
 
         logger.debug(
-            '%s (%s): Minimized function: %d iterations, %d repetitions'%(
+            '%s (%s): Minimized function: %d iterations, %d repetitions' % (
                 classname(self), classname(self._minimizer_impl),
                 self._minimizer_impl.get_niter(status), reps))
 
