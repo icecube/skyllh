@@ -343,9 +343,9 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
                 The possible values are:
 
                     -1: The function minimum is above the upper bound of the
-                       parameter value. Convergence forced at upper bound.
+                        parameter value. Convergence forced at upper bound.
                     -2: The function minimum is below the lower bound of the
-                       parameter value. Convergence forced at lower bound.
+                        parameter value. Convergence forced at lower bound.
                     0: The minimization converged with a iteration step size
                        smaller than the specified precision.
                     1: The minimization did NOT converge within self.max_steps
