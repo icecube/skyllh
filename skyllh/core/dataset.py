@@ -1043,30 +1043,28 @@ class Dataset(object):
         self._aux_data_definitions[name] = pathfilenames
 
     def get_aux_data_definition(self, name):
-        """Returns the data files from the auxiliary data definition from the
-        dataset.
+        """Returns the auxiliary data definition from the dataset.
 
         Parameters
         ----------
         name : str
-            The name of the auxiliary data. The name is used as identifier for
-            the data within SkyLLH.
+            The name of the auxiliary data. 
        
         Raises
         ------
         KeyError
-            If auxiliary data is already stored under the given name.
-
+            If auxiliary data with the given name does not exist.
 
         Returns
         -------
-        _aux_data[name] : list of strings
-            The locations of the files defined in the auxiliary data
+        aux_data_definition : list of str
+            The locations (pathfilenames) of the files defined in the auxiliary data
+                    as auxiliary data definition.
         """
         
         if(not name in self._aux_data_definitions):
-            raise KeyError('The auxiliary data definition "%s" does not '
-                'exist in dataset "%s"!'%(name, self.name))
+            raise KeyError('The auxiliary data definition "{}" does not '
+                'exist in dataset "{}"!'.format(name, self.name))
 
         return self._aux_data_definitions[name]
 
