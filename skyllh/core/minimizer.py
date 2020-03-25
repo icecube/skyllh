@@ -468,11 +468,10 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         converged : bool
             The flag if the minimization has converged (True), or not (False).
         """
-        if status['warnflag'] > 0:
-            return False
-
-        else:
+        if(status['warnflag'] <= 0):
             return True
+
+        return False
 
     def is_repeatable(self, status):
         """Checks if the minimization process can be repeated to get a better
