@@ -1057,7 +1057,7 @@ class Dataset(object):
 
         Returns
         -------
-        _aux_data_definition[name] : list of str
+        aux_data_definition : list of str
             The locations (pathfilenames) of the files defined in the auxiliary data
                     as auxiliary data definition.
         """
