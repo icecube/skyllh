@@ -283,6 +283,9 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         ----------
         ns_tol : float
             The tolerance / precision for the ns parameter value.
+        max_steps : int
+            The maximum number NR steps. If max_step is reached,
+            the fit is considered NOT converged.
         """
         super(NR1dNsMinimizerImpl, self).__init__()
 
