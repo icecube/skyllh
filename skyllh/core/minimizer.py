@@ -349,7 +349,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
                     0: The minimization converged with a iteration step size
                        smaller than the specified precision.
                     1: The minimization did NOT converge within self.max_steps
-                        number of steps
+                       number of steps
 
             warnreason: str
                 The description for the set warn flag.
