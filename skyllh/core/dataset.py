@@ -1064,7 +1064,7 @@ class Dataset(object):
         
         if(not name in self._aux_data_definitions):
             raise KeyError('The auxiliary data definition {} does not '
-                'exist in dataset {}!'.format(name, self.name))
+                'exist in dataset "{}"!'.format(name, self.name))
 
         return self._aux_data_definitions[name]
 
