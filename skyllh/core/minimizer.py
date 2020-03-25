@@ -430,7 +430,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         if(niter == max_steps):
             status['warnflag'] = 1
             status['warnreason'] = ('NR optimization did not converge within {} '
-                                   'NR steps.'.format(niter))
+                                    'NR steps.'.format(niter))
 
         status['niter'] = niter
         status['last_nr_step'] = step
