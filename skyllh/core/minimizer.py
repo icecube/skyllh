@@ -423,7 +423,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         x[0] = ns
         # Once converged evaluate function at minimum value unless
         # Convergence was forced at boundary
-        # in which case function value is already known
+        # in which case function value is already known.
         if(not at_boundary):
             (f, fprime, fprimeprime) = func(x, *func_args)
 
