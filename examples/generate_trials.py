@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-import os, sys
+import argparse
+import os
+import sys
 
 import logging
 import numpy as np
@@ -22,19 +24,25 @@ from skyllh.core.debugging import setup_logger, setup_console_handler
 setup_logger('skyllh', logging.INFO)
 setup_console_handler('skyllh', logging.INFO)
 
-import argparse
-parser=argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 
 parser.add_argument("--config", "-c", help="Path to user config", type=str,
                     required=True)
-parser.add_argument("--gamma", "-g", help="spectral index", type=float, default=2.0)
-parser.add_argument("--n_trials", "-nt", help="number of trials per job", type=int, default=10)
-parser.add_argument("--mean_ns", "-ns", help="mean number of nsig injected per job", type=float, default=0.0)
-parser.add_argument("--ncpus", "-nc", help="number of CPUs to use", type=int, default=1)
-parser.add_argument("--rss_seed", "-rs", help="random_number_seed", type=int, default=5)
-parser.add_argument("--gseed", "-gs", help="gamma seed for minimizer", type=float, default=3.0)
+parser.add_argument("--gamma", "-g", help="spectral index", type=float,
+                    default=2.0)
+parser.add_argument("--n_trials", "-nt", help="number of trials per job",
+                    type=int, default=10)
+parser.add_argument("--mean_ns", "-ns",
+                    help="mean number of nsig injected per job", type=float,
+                    default=0.0)
+parser.add_argument("--ncpus", "-nc", help="number of CPUs to use",
+                    type=int, default=1)
+parser.add_argument("--rss_seed", "-rs",
+                    help="random_number_seed", type=int, default=5)
+parser.add_argument(
+    "--gseed", "-gs", help="gamma seed for minimizer", type=float, default=3.0)
 
-args=parser.parse_args()
+args = parser.parse_args()
 print(args)
 
 # DO NOT USE PHOTOSPLINE.
@@ -43,22 +51,23 @@ skyllh.core.pdf.PHOTOSPLINE_LOADED = False
 CFG.from_yaml(args.config)
 
 # Define datasets (todo: generalize to other analyses).
-bp = CFG["paths"]["base_path"]
-dsc_name = CFG["analysis"]["name"]
+
+bp = CFG["repository"]["base_path"]
+dsc_name = CFG["analysis"]["dsc_name"]
 dsc = data_samples[dsc_name].create_dataset_collection(base_path=bp)
 ds_names = CFG["analysis"]["datasets"]
 datasets = dsc.get_datasets(ds_names)
 
 # Define the point source at TXS position.
-src_ra  = np.radians(CFG["analysis"]["default_source"]["ra"])
+src_ra = np.radians(CFG["analysis"]["default_source"]["ra"])
 src_dec = np.radians(CFG["analysis"]["default_source"]["dec"])
 source = PointLikeSource(src_ra, src_dec)
 
 tl = TimeLord()
 
 # Create analysis.
-yr=365.25 # days per year
-livetime = CFG["analysis"]["livetime"] * yr
+
+livetime = CFG["analysis"]["livetime"] * CFG["internal_units"]["time"]
 
 minimizers = {"COBYLA": ScipyMinimizerImpl(method="COBYLA"),
               "LBFGSB": LBFGSMinimizerImpl()}
@@ -71,7 +80,7 @@ for min_name, minimizer in minimizers.items():
             source,
             bkg_event_rate_field_names=['astro', 'conv'],
             refplflux_gamma=args.gamma,
-            gamma_seed = args.gseed,
+            gamma_seed=args.gseed,
             fit_gamma=True,
             livetime_list=[livetime],
             compress_data=True,
@@ -84,17 +93,21 @@ for min_name, minimizer in minimizers.items():
     rss_seed = args.rss_seed
     rss = RandomStateService(rss_seed)
 
-    trials_outfile = os.path.join(CFG["paths"]["output_dir"],
-                                  dsc_name+'_atTXS'+'_gamma{:.2f}_mean_ns{}_gseed{:.2f}_ltime{:.0f}yr_rss{:}_mini{}'.format(args.gamma,
-                                                                                                                            args.mean_ns,
-                                                                                                                            args.gseed,
-                                                                                                                            livetime,
-                                                                                                                            args.rss_seed,
-                                                                                                                            min_name))
+    output_name = dsc_name+'_atTXS'+'_gamma{:.2f}_mean_ns{}_gseed{:.2f}_ltime{:.0f}yr_rss{:}_mini{}'.format(
+            args.gamma,
+            args.mean_ns,
+            args.gseed,
+            livetime,
+            args.rss_seed,
+            min_name)
+
+    trials_outfile = os.path.join(
+        CFG["paths"]["output_dir"],
+        output_name)
 
     # Run trials.
     with tl.task_timer('Running trials.') as tt:
-        (seed,mean_ns,mean_ns_null,trial_data)=create_trial_data_file(
+        (seed, mean_ns, mean_ns_null, trial_data) = create_trial_data_file(
             ana=ana,
             ncpu=args.ncpus,
             rss=rss,
