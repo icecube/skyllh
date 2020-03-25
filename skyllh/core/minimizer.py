@@ -339,12 +339,12 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
                 The warning flag indicating if the minimization did converge.
                 The possible values are:
 
-                    0: The minimization converged with a iteration step size
-                       smaller than the specified precision.
                     -1: The function minimum is above the upper bound of the
                        parameter value. Convergence forced at upper bound.
                     -2: The function minimum is below the lower bound of the
                        parameter value. Convergence forced at lower bound.
+                    0: The minimization converged with a iteration step size
+                       smaller than the specified precision.
                     1: The minimization did NOT converge within self.max_steps
                         number of steps
 
@@ -383,7 +383,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         # minimum is in a deep well.
         # In case the optimum is found outside the bounds on ns the best fit
         # will be set to the boundary value and the fit considered converged.
-        while( ((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1.e-2)) and (niter < max_steps) ):
+        while( ((ns_tol < np.fabs(step)) or (np.fabs(fprime) > 1.e-1)) and (niter < max_steps) ):
 
             x[0] = ns
             (f, fprime, fprimeprime) = func(x, *func_args)
