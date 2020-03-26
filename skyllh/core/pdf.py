@@ -7,6 +7,7 @@ from skyllh.core.interpolate import (
 )
 from skyllh.core.py import (
     ObjectCollection,
+    classname,
     func_has_n_args,
     issequenceof,
     range,
@@ -115,6 +116,13 @@ class PDFAxis(object):
             return True
         return False
 
+    def __str__(self):
+        """Pretty string implementation for the PDFAxis instance.
+        """
+        s = '{}: {}: vmin={:g} vmax={:g}'.format(
+            classname(self), self._name, self._vmin, self._vmax)
+        return s
+
 
 class PDFAxes(ObjectCollection):
     """This class describes the set of PDFAxis objects defining the
@@ -153,6 +161,16 @@ class PDFAxes(ObjectCollection):
 
     def __init__(self, axes=None):
         super(PDFAxes, self).__init__(objs=axes, obj_type=PDFAxis)
+
+    def __str__(self):
+        """Pretty string implementation for the PDFAxes instance.
+        """
+        s = ''
+        for i in range(len(self)):
+            if(i > 0):
+                s += '\n'
+            s += str(self[i])
+        return s
 
     def get_axis(self, name):
         """Retrieves the PDFAxis object with the given name.
@@ -995,8 +1013,13 @@ class PDFSet(object):
             some_pdf = self._gridfitparams_hash_pdf_dict[
                 next(iter(self._gridfitparams_hash_pdf_dict.keys()))]
             if(not pdf.axes.is_same_as(some_pdf.axes)):
-                raise ValueError('The given PDF does not have the same axes '
-                                 'than the already added PDFs!')
+                raise ValueError(
+                    'The given PDF does not have the same axes than the '
+                    'already added PDFs!\n'
+                    'New axes:\n{}\n'
+                    'Old axes:\n{}'.format(
+                        str(pdf.axes), str(some_pdf.axes))
+                    )
 
         self._gridfitparams_hash_pdf_dict[gridfitparams_hash] = pdf
 
