@@ -700,6 +700,38 @@ class MultiDimGridPDF(PDF):
         """
         super(MultiDimGridPDF, self).__init__()
 
+        # Need either splinetable or grid of pdf values.
+        if((path_to_pdf_splinetable is None) and (pdf_grid_data is None)):
+            raise ValueError(
+                'At least one of the following arguments are required: '
+                'path_to_pdf_splinetable (str) or '
+                'pdf_grid_data (numpy.ndarray)!')
+        elif((path_to_pdf_splinetable is not None) and
+           (pdf_grid_data is not None)):
+            raise ValueError(
+                'Only one of the two arguments path_to_pdf_splinetable and '
+                'pdf_grid_data can be specified!')
+
+        # If a path to the photospline tables is given, we raise an error if
+        # the photospline package is not loaded.
+        if(path_to_pdf_splinetable is not None):
+            if(not isinstance(path_to_pdf_splinetable, str)):
+                raise TypeError(
+                    'The path_to_pdf_splinetable argument must be None or of '
+                    'type str!')
+
+            if(not PHOTOSPLINE_LOADED):
+                raise ImportError(
+                    'The path_to_pdf_splinetable argument is specified, but '
+                    'the "photospline" package is not available!')
+
+        if(pdf_grid_data is not None):
+            if(not isinstance(pdf_grid_data, np.ndarray)):
+                raise TypeError(
+                    'The pdf_grid_data argument must be an instance of numpy '
+                    'ndarray. The current type is {}!'.format(
+                        type(pdf_grid_data)))
+
         self.axis_binning_list = axis_binnings
         self.norm_factor_func = norm_factor_func
 
@@ -711,26 +743,10 @@ class MultiDimGridPDF(PDF):
                 vmax=axis_binning.upper_edge
             ))
 
-        # Need either splinetable or grid of pdf values.
-        if((path_to_pdf_splinetable is None) and (pdf_grid_data is None)):
-            raise TypeError(
-                "Missing input. Need at least one of the following arguments: \
-                        path_to_pdf_splinetable (str) or pdf_grid_data (np.ndarray)!")
-
-        # If available prefer to work with photosplines otherwise use gridinterpolator.
-        if(isinstance(path_to_pdf_splinetable, str) and PHOTOSPLINE_LOADED):
+        # Create the internal PDF object.
+        if(path_to_pdf_splinetable is not None):
             self._pdf = photospline.SplineTable(path_to_pdf_splinetable)
-
         else:
-            if(isinstance(path_to_pdf_splinetable, str) and not PHOTOSPLINE_LOADED):
-                raise ImportError(
-                    "Missing library: can not import Photosplines.")
-
-            if(not isinstance(pdf_grid_data, np.ndarray)):
-                raise TypeError("Argument pdf_grid_data should be of type np.ndarray. \
-                        Can not create RegularGridInterpolator from type {}".format(
-                    type(pdf_grid_data)))
-
             self._pdf = RegularGridInterpolator(
                 tuple([binning.binedges for binning in self._axis_binnning_list]),
                 pdf_grid_data,
@@ -752,9 +768,10 @@ class MultiDimGridPDF(PDF):
         if(isinstance(binnings, BinningDefinition)):
             binnings = [binnings]
         if(not issequenceof(binnings, BinningDefinition)):
-            raise TypeError('The axis_binning_list property must be an '
-                            'instance of BinningDefinition or a sequence of '
-                            'BinningDefinition instances!')
+            raise TypeError(
+                'The axis_binning_list property must be an instance of '
+                'BinningDefinition or a sequence of BinningDefinition '
+                'instances!')
         self._axis_binnning_list = list(binnings)
 
     @property
@@ -777,11 +794,12 @@ class MultiDimGridPDF(PDF):
             def func(pdf, tdm, fitparams): return np.ones(
                 (tdm.n_events,), dtype=np.float)
         if(not callable(func)):
-            raise TypeError('The norm_factor_func property must be a callable '
-                            'object!')
+            raise TypeError(
+                'The norm_factor_func property must be a callable object!')
         if(not func_has_n_args(func, 3)):
-            raise TypeError('The norm_factor_func property must be a function '
-                            'with 3 arguments!')
+            raise TypeError(
+                'The norm_factor_func property must be a function with 3 '
+                'arguments!')
         self._norm_factor_func = func
 
     def assert_is_valid_for_trial_data(self, tdm):
@@ -805,9 +823,10 @@ class MultiDimGridPDF(PDF):
             if(np.any(data < axis.vmin) or
                np.any(data > axis.vmax)
                ):
-                raise ValueError('Some of the trial data for PDF axis '
-                                 '"%s" is out of range (%g,%g)!' % (
-                                     axis.name, axis.vmin, axis.vmax))
+                raise ValueError(
+                    'Some of the trial data for PDF axis '
+                    '"%s" is out of range (%g,%g)!' % (
+                        axis.name, axis.vmin, axis.vmax))
 
     def get_prob_with_eventdata(self, tdm, params, eventdata, tl=None):
         """Calculates the probability for the trial events given the specified
