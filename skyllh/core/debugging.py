@@ -7,6 +7,24 @@ import sys
 from skyllh.core.config import CFG
 
 
+def get_logger(name):
+    """Retrieves the logger with the given name from the Python logging system.
+
+    Parameters
+    ----------
+    name : str
+        The name of the logger.
+        Logger hierarchy is defined using dots as separators.
+
+    Returns
+    -------
+    logger : logging.Logger
+        The Logger instance.
+    """
+    logger = logging.getLogger(name)
+    return logger
+
+
 def setup_logger(name, log_level):
     """Initializes logger with a given name and a log level.
 
