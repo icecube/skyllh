@@ -40,7 +40,7 @@ def setup_logger(name, log_level):
     logger.setLevel(log_level)
 
 
-def setup_console_handler(name, log_level, log_format=None, stream=None):
+def setup_console_handler(name, log_level=None, log_format=None, stream=None):
     """Initializes `StreamHandler` for a logger with a given name and sets its
     handling level.
 
@@ -48,21 +48,26 @@ def setup_console_handler(name, log_level, log_format=None, stream=None):
     ----------
     name : str
         Logger name. Loggers hierarchy is defined using dots as separators.
-    log_level : int
+    log_level : int | None
         The log level. The ``logging`` module predefines levels, e.g.
         ``logging.DEBUG``.
+        If set to None, the log level of the logger will be used.
     log_format : str | None
         The format of log records in the final output.
         If set to `None`, the log format is taken from the configuration.
     stream : data stream | None
         The stream that the handler should use. Default stream is `sys.stderr`.
     """
+    logger = logging.getLogger(name)
+
+    if(log_level is None):
+        log_level = logger.level
+
     if(log_format is None):
         log_format = CFG['debugging']['log_format']
+
     if(stream is None):
         stream = sys.stderr
-
-    logger = logging.getLogger(name)
 
     # Create and add `StreamHandler` to the logger.
     sh = logging.StreamHandler(stream=stream)
@@ -71,8 +76,8 @@ def setup_console_handler(name, log_level, log_format=None, stream=None):
     logger.addHandler(sh)
 
 
-def setup_file_handler(name, log_level, filename, path=None, log_format=None,
-        mode='a'):
+def setup_file_handler(
+        name, filename, log_level=None, path=None, log_format=None, mode='a'):
     """Initializes `FileHandler` for a logger with a given name and sets its
     handling level.
 
@@ -80,8 +85,9 @@ def setup_file_handler(name, log_level, filename, path=None, log_format=None,
     ----------
     name : str
         Logger name. Loggers hierarchy is defined using dots as separators.
-    log_level : int
+    log_level : int | None
         The log level. There are predefined levels, e.g. ``logging.DEBUG``.
+        If set to None, the log level of the logger will be used.
     filename : str
         The filename of the specified file which is opened and used as the
         stream for logging.
@@ -94,12 +100,16 @@ def setup_file_handler(name, log_level, filename, path=None, log_format=None,
     mode : str
         File opening mode. Default is 'a' for appending.
     """
-    if(log_format is None):
-        log_format = CFG['debugging']['log_format']
+    logger = logging.getLogger(name)
+
+    if(log_level is None):
+        log_level = logger.level
+
     if(path is None):
         path = CFG['project']['working_directory']
 
-    logger = logging.getLogger(name)
+    if(log_format is None):
+        log_format = CFG['debugging']['log_format']
 
     pathfilename = os.path.join(path, filename)
 
