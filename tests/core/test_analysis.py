@@ -28,11 +28,11 @@ from skyllh.core.minimizer import Minimizer, LBFGSMinimizerImpl
 
 # Classes for defining the analysis.
 from skyllh.core.test_statistic import TestStatisticWilks
-from skyllh.core.analysis import (
-    SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis as Analysis
-)
+#from skyllh.core.analysis import (
+#    SpacialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis as Analysis
+#)
 
-
+"""
 class TestAnalysis(unittest.TestCase):
     def setUp(self):
         # path = os.path.abspath(os.path.dirname(__file__))
@@ -55,7 +55,7 @@ class TestAnalysis(unittest.TestCase):
 
         self.analysis = Analysis()
         self.rss = RandomStateService(seed=0)
-    
+
         # Define the data scrambler with its data scrambling method, which is used
         # for background generation.
         data_scrambler = DataScrambler(UniformRAScramblingMethod(),
@@ -75,7 +75,7 @@ class TestAnalysis(unittest.TestCase):
         ncpu = None
 
         self.analysis.do_trials(N, self.rss, ncpu=ncpu)
-
+"""
 
 if(__name__ == '__main__'):
     unittest.main()
