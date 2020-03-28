@@ -104,9 +104,10 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
             self.fail('The __str__ method raised an exception!')
 
     def test_field_name_list(self):
-        self.assertEqual(
-            self.arr.field_name_list,
-            ['field1', 'field2', 'field3'])
+        self.assertEqual(len(self.arr.field_name_list), 3)
+        self.assertTrue('field1' in self.arr.field_name_list)
+        self.assertTrue('field2' in self.arr.field_name_list)
+        self.assertTrue('field3' in self.arr.field_name_list)
 
     def test_indices(self):
         assert_array_almost_equal(
@@ -122,9 +123,10 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.assertFalse('field2' in self.arr)
         self.assertTrue('new_field2' in self.arr)
         self.assertTrue('field3' in self.arr)
-        self.assertEqual(
-            self.arr.field_name_list,
-            ['field1', 'field3', 'new_field2'])
+        self.assertEqual(len(self.arr.field_name_list), 3)
+        self.assertTrue('field1' in self.arr.field_name_list)
+        self.assertTrue('new_field2' in self.arr.field_name_list)
+        self.assertTrue('field3' in self.arr.field_name_list)
 
     def test_sort_by_field(self):
         self.arr.sort_by_field('field2')
@@ -140,7 +142,8 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
 
     def test_tidy_up(self):
         self.arr.tidy_up('field2')
-        self.assertEqual(self.arr.field_name_list, ['field2'])
+        self.assertEqual(len(self.arr.field_name_list), 1)
+        self.assertTrue('field2' in self.arr.field_name_list)
         self.assertFalse('field1' in self.arr)
         self.assertTrue('field2' in self.arr)
         self.assertFalse('field3' in self.arr)
@@ -149,7 +152,9 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.setUp()
 
         self.arr.tidy_up(('field2','field3'))
-        self.assertEqual(self.arr.field_name_list, ['field2', 'field3'])
+        self.assertEqual(len(self.arr.field_name_list), 2)
+        self.assertTrue('field2' in self.arr.field_name_list)
+        self.assertTrue('field3' in self.arr.field_name_list)
         self.assertFalse('field1' in self.arr)
         self.assertTrue('field2' in self.arr)
         self.assertTrue('field3' in self.arr)
