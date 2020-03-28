@@ -532,6 +532,23 @@ class DataFieldRecordArray(object):
         self._field_name_list = list(self._data_fields.keys())
         self._indices = None
 
+    def __contains__(self, name):
+        """Checks if the given field exists in this DataFieldRecordArray
+        instance.
+
+        Parameters
+        ----------
+        name : str
+            The name of the field.
+
+        Returns
+        -------
+        check : bool
+            True, if the given field exists in this DataFieldRecordArray
+            instance, False otherwise.
+        """
+        return (name in self._data_fields)
+
     def __getitem__(self, name):
         """Implements data field value access.
 
@@ -542,6 +559,11 @@ class DataFieldRecordArray(object):
             contain the indices for which to retrieve a data selection of the
             entire DataFieldRecordArray. A numpy ndarray of bools can be given
             as well to define a mask.
+
+        Raises
+        ------
+        KeyError
+            If the given data field does not exist.
 
         Returns
         -------
@@ -570,6 +592,12 @@ class DataFieldRecordArray(object):
             The numpy ndarray holding the field values. It must be of the same
             length as this DataFieldRecordArray. If `name` is a numpy ndarray,
             `arr` must be a DataFieldRecordArray.
+
+        Raises
+        ------
+        ValueError
+            If the given data array is not of the same length as this
+            DataFieldRecordArray instance.
         """
         if(isinstance(name, np.ndarray)):
             self.set_selection(name, arr)
@@ -834,8 +862,7 @@ class DataFieldRecordArray(object):
         """
         for (old_fname, new_fname) in convertions.items():
             if(old_fname in self.field_name_list):
-                self._data_fields[new_fname] = self._data_fields[old_fname]
-                self._data_fields.pop(old_fname)
+                self._data_fields[new_fname] = self._data_fields.pop(old_fname)
             elif(must_exist is True):
                 raise KeyError('The required field "%s" does not exist!'%(
                     old_fname))
@@ -843,6 +870,22 @@ class DataFieldRecordArray(object):
         self._field_name_list = list(self._data_fields.keys())
 
     def tidy_up(self, keep_fields):
+        """Removes all fields that are not specified through the keep_fields
+        argument.
+
+        Parameters
+        ----------
+        keep_fields : str | sequence of str
+            The field name(s), that should not be removed.
+
+        Raises
+        ------
+        TypeError
+            If keep_fields is not an instance of str or a sequence of str
+            instances.
+        """
+        if(isinstance(keep_fields, str)):
+            keep_fields = [ keep_fields ]
         if(not issequenceof(keep_fields, str)):
             raise TypeError('The keep_fields argument must be a sequence of '
                 'str!')
@@ -855,7 +898,7 @@ class DataFieldRecordArray(object):
                 self.remove_field(fname)
 
     def sort_by_field(self, name):
-        """Sorts the data along the given field name is ascending order.
+        """Sorts the data along the given field name in ascending order.
 
         Parameters
         ----------
