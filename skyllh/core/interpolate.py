@@ -42,7 +42,7 @@ class GridManifoldInterpolationMethod(object):
             on the grid, and ``eventdata`` is a 2-dimensional (N,V)-shaped numpy
             ndarray holding the event data, where N is the number of events, and
             V the dimensionality of the event data.
-        param_grid_set : ParameterGridSet instance | ParameterGrid instance
+        param_grid_set : ParameterGrid instance | ParameterGridSet instance
             The set of d parameter grids. This defines the grid of the
             manifold.
         """
@@ -110,6 +110,72 @@ class GridManifoldInterpolationMethod(object):
             of this interpolation method object.
         """
         pass
+
+
+class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
+    """This grid manifold interpolation method performes no interpolation. When
+    the ``get_value_and_gradients`` method is called, it rounds the parameter
+    values to their nearest grid point values. All gradients are set to zero.
+    """
+    def __init__(self, f, param_grid_set):
+        """Creates a new NullGridManifoldInterpolationMethod instance.
+
+        Parameters
+        ----------
+        f : callable R^D -> R
+            The function that takes the parameter grid value as input and
+            returns the value of the n-dimensional manifold at this point for
+            each given event.
+
+                ``__call__(gridparams, eventdata)``
+
+            where ``gridparams`` is the dictionary with the parameter names and
+            values on the grid, and ``eventdata`` is a 2-dimensional
+            (N,V)-shaped numpy ndarray holding the event data, where N is the
+            number of events, and V the dimensionality of the event data.
+            The return value of ``f`` must be a (N,)-shaped 1d ndarray of float.
+        param_grid_set : ParameterGrid instance | ParameterGridSet instance
+            The set of parameter grids. This defines the grid of the
+            D-dimensional manifold.
+        """
+        super(NullGridManifoldInterpolationMethod, self).__init__(
+            f, param_grid_set)
+
+    def get_value_and_gradients(self, eventdata, params):
+        """Calculates the non-interpolated manifold value and its gradient
+        (zero) for each given event at the point ``params``.
+        By definition the D values of ``params`` must coincide with the
+        parameter grid values.
+
+        Parameters
+        ----------
+        eventdata : numpy (N_events,V)-shaped 2D ndarray
+            The 2D (N_events,V)-shaped numpy ndarray holding the event data,
+            where N_events is the number of events, and V the dimensionality of
+            the event data.
+        params : dict
+            The dictionary with the D parameter values, defining the point on
+            the manifold for which the value should get calculated.
+
+        Returns
+        -------
+        value : (N,) ndarray of float
+            The interpolated manifold value for the N given events.
+        gradients : (D,N) ndarray of float
+            The D manifold gradients for the N given events, where D is the
+            number of parameters.
+            By definition, all gradients are zero.
+        """
+        # Round the given parameter values to their nearest grid values.
+        gridparams = dict()
+        for (pname,pvalue) in params.items():
+            p_grid = self._param_grid_set[pname]
+            gridparams[pname] = p_grid.round_to_nearest_grid_point(pvalue)
+
+        value = self._f(gridparams, eventdata)
+        gradients = np.zeros((len(params),eventdata.shape[0]), dtype=np.float)
+
+        return (value, gradients)
 
 
 class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
