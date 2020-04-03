@@ -196,14 +196,17 @@ class I3Dataset(Dataset):
         return grl_data
 
     def load_data(
-            self, livetime=None, dtc_dict=None, dtc_except_fields=None,
-            efficiency_mode=None, tl=None):
+            self, keep_fields=None, livetime=None, dtc_dict=None,
+            dtc_except_fields=None, efficiency_mode=None, tl=None):
         """Loads the data, which is described by the dataset. If a good-run-list
         (GRL) is provided for this dataset, only experimental data will be
         selected which matches the GRL.
 
         Parameters
         ----------
+        keep_fields : list of str | None
+            The list of user-defined data fields that should get loaded and kept
+            in addition to the analysis required data fields.
         livetime : float | None
             If not None, uses this livetime (in days) as livetime for the
             DatasetData instance, otherwise uses the live time from the Dataset
@@ -262,6 +265,7 @@ class I3Dataset(Dataset):
         # Load all the defined data.
         data = I3DatasetData(
             super(I3Dataset, self).load_data(
+                keep_fields=keep_fields,
                 livetime=lt,
                 dtc_dict=dtc_dict,
                 dtc_except_fields=dtc_except_fields,

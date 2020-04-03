@@ -606,8 +606,8 @@ class Dataset(object):
             self._verqualifiers[q] = verqualifiers[q]
 
     def load_data(
-            self, livetime=None, dtc_dict=None, dtc_except_fields=None,
-            efficiency_mode=None, tl=None):
+            self, keep_fields=None, livetime=None, dtc_dict=None,
+            dtc_except_fields=None, efficiency_mode=None, tl=None):
         """Loads the data, which is described by the dataset.
 
         Note: This does not call the ``prepare_data`` method! It only loads
@@ -615,6 +615,9 @@ class Dataset(object):
 
         Parameters
         ----------
+        keep_fields : list of str | None
+            The list of user-defined data fields that should get loaded and kept
+            in addition to the analysis required data fields.
         livetime : float | None
             If not None, uses this livetime (in days) for the DatasetData
             instance, otherwise uses the Dataset livetime property value for
@@ -669,6 +672,9 @@ class Dataset(object):
 
             return orig_field_names
 
+        if(keep_fields is None):
+            keep_fields = []
+
         # Load the experimental data if there is any.
         if(len(self._exp_pathfilename_list) > 0):
             fileloader_exp = create_FileLoader(self.exp_abs_pathfilename_list)
@@ -677,7 +683,8 @@ class Dataset(object):
                 keep_fields = list(set(
                     _conv_new2orig_field_names(
                         CFG['dataset']['analysis_required_exp_field_names'] +
-                        self._loading_extra_exp_field_name_list,
+                        self._loading_extra_exp_field_name_list +
+                        keep_fields,
                         self._exp_field_name_renaming_dict
                     )
                 ))
@@ -699,11 +706,13 @@ class Dataset(object):
             keep_fields = list(set(
                 _conv_new2orig_field_names(
                     CFG['dataset']['analysis_required_exp_field_names'] +
-                    self._loading_extra_exp_field_name_list,
+                    self._loading_extra_exp_field_name_list +
+                    keep_fields,
                     self._exp_field_name_renaming_dict) +
                 _conv_new2orig_field_names(
                     CFG['dataset']['analysis_required_mc_field_names'] +
-                    self._loading_extra_mc_field_name_list,
+                    self._loading_extra_mc_field_name_list +
+                    keep_fields,
                     self._mc_field_name_renaming_dict)
             ))
             data_mc = fileloader_mc.load_data(
@@ -896,6 +905,7 @@ class Dataset(object):
             dtc_except_fields = [ 'mcweight' ]
 
         data = self.load_data(
+            keep_fields=keep_fields,
             livetime=livetime,
             dtc_dict=dtc_dict,
             dtc_except_fields=dtc_except_fields,
@@ -1048,8 +1058,8 @@ class Dataset(object):
         Parameters
         ----------
         name : str
-            The name of the auxiliary data. 
-       
+            The name of the auxiliary data.
+
         Raises
         ------
         KeyError
@@ -1061,7 +1071,7 @@ class Dataset(object):
             The locations (pathfilenames) of the files defined in the auxiliary data
                     as auxiliary data definition.
         """
-        
+
         if(not name in self._aux_data_definitions):
             raise KeyError('The auxiliary data definition "{}" does not '
                 'exist in dataset "{}"!'.format(name, self.name))
