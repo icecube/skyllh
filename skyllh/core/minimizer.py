@@ -171,17 +171,8 @@ class ScipyMinimizerImpl(MinimizerImpl):
             minimum.
         fmin : float
             The function value at its minimum.
-        status : dict
-            The status dictionary with information about the minimization
-            process. The following information are provided:
-
-            niter : int
-                The number of iterations needed to find the minimum.
-            warnflag : int
-                The warning flag indicating if the minimization did converge.
-                The possible values are:
-
-                    0: The minimization converged.
+        res : scipy.optimize.OptimizeResult
+            Scipy OptimizeResult
         """
 
         method_supports_bounds = False
