@@ -6,13 +6,14 @@ convenience utility functions to set different configuration settings.
 
 import os.path
 import sys
+from typing import Any, Dict, Iterator, KeysView, ItemsView, ValuesView
 
-from astropy import units
+from astropy import units  # type: ignore
+import yaml
 
 from skyllh.core.py import issequenceof
 
-
-CFG = {
+_BASECONFIG = {
     'multiproc': {
         # The number of CPUs to use for functions that allow multi-processing.
         # If this setting is set to an int value in the range [1, N] this
@@ -22,7 +23,8 @@ CFG = {
     },
     'debugging': {
         # The default log format.
-        'log_format': ('%(asctime)s %(processName)s %(name)s %(levelname)s: '
+        'log_format': (
+            '%(asctime)s %(processName)s %(name)s %(levelname)s: '
             '%(message)s')
     },
     'project': {
@@ -67,6 +69,51 @@ CFG = {
 }
 
 
+class CFGClass(dict):
+
+    """
+    This class holds the global config state.
+
+    The class behaves like a dict, delegating all methods of the dict
+    interface to the underlying config dictionary.
+    """
+
+    # Keep track of whether this class has been instantiated.
+    _is_instantiated = False
+
+    def __init__(self, *args, **kwargs) -> None:
+        if CFGClass._is_instantiated:
+            raise RuntimeError("Can only instantiate CFGClass once")
+
+        super().__init__(*args, **kwargs)
+        CFGClass._is_instantiated = True
+
+    def from_yaml(self, yaml_file: str) -> None:
+        """
+        Update config with yaml file.
+
+        Parameters:
+            yaml_file: str
+                Path to yaml file.
+        """
+
+        yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
+        self.update(yaml_config)
+
+    def from_dict(self, user_dict: Dict[Any, Any]) -> None:
+        """
+        Creates a config from dictionary.
+
+        Parameters:
+            user_dict: dict
+
+        """
+        self.update(user_dict)
+
+
+CFG = CFGClass(_BASECONFIG)
+
+
 def set_internal_units(
         angle_unit=None, energy_unit=None, length_unit=None, time_unit=None):
     """Sets the units used internally to compute quantities. These units must
@@ -89,27 +136,32 @@ def set_internal_units(
     """
     if(angle_unit is not None):
         if(not isinstance(angle_unit, units.UnitBase)):
-            raise TypeError('The angle_unit argument must be an instance of '
+            raise TypeError(
+                'The angle_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['angle'] = angle_unit
 
     if(energy_unit is not None):
         if(not isinstance(energy_unit, units.UnitBase)):
-            raise TypeError('The energy_unit argument must be an instance of '
+            raise TypeError(
+                'The energy_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['energy'] = energy_unit
 
     if(length_unit is not None):
         if(not isinstance(length_unit, units.UnitBase)):
-            raise TypeError('The length_unit argument must be an instance of '
+            raise TypeError(
+                'The length_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['length'] = length_unit
 
     if(time_unit is not None):
         if(not isinstance(time_unit, units.UnitBase)):
-            raise TypeError('The time_unit argument must be an instance of '
+            raise TypeError(
+                'The time_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['time'] = time_unit
+
 
 def set_wd(path):
     """Sets the project's working directory configuration variable and adds it
@@ -118,9 +170,9 @@ def set_wd(path):
     Parameters
     ----------
     path : str
-        The path of the project's working directory. This can be a path relative
-        to the path given by ``os.path.getcwd``, the current working directory
-        of the program.
+        The path of the project's working directory. This can be a path
+        relative to the path given by ``os.path.getcwd``, the current
+        working directory of the program.
 
     Returns
     -------
@@ -136,6 +188,7 @@ def set_wd(path):
 
     return wd
 
+
 def set_analysis_required_exp_data_field_names(fieldnames):
     """Sets the data field names of the experimental data that are required by
     the analysis.
@@ -146,12 +199,14 @@ def set_analysis_required_exp_data_field_names(fieldnames):
         The field name or sequence of field names for the experimental data.
     """
     if(isinstance(fieldnames, str)):
-        fieldnames = [ fieldnames ]
+        fieldnames = [fieldnames]
     elif(not issequenceof(fieldnames, str)):
-        raise TypeError('The fieldnames argument must be an instance of str '
+        raise TypeError(
+            'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
 
     CFG['dataset']['analysis_required_exp_field_names'] = list(set(fieldnames))
+
 
 def set_analysis_required_mc_data_field_names(fieldnames):
     """Sets the data field names of the monte-carlo data that are required by
@@ -163,9 +218,10 @@ def set_analysis_required_mc_data_field_names(fieldnames):
         The field name or sequence of field names for the monte-carlo data.
     """
     if(isinstance(fieldnames, str)):
-        fieldnames = [ fieldnames ]
+        fieldnames = [fieldnames]
     elif(not issequenceof(fieldnames, str)):
-        raise TypeError('The fieldnames argument must be an instance of str '
+        raise TypeError(
+            'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
 
     CFG['dataset']['analysis_required_mc_field_names'] = list(set(fieldnames))
