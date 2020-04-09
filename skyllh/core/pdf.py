@@ -670,7 +670,9 @@ class MultiDimGridPDF(PDF):
     :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
 
-    def __init__(self, axis_binnings, path_to_pdf_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
+    def __init__(
+            self, axis_binnings, path_to_pdf_splinetable=None,
+            pdf_grid_data=None, norm_factor_func=None):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
         :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
@@ -678,14 +680,14 @@ class MultiDimGridPDF(PDF):
 
         Parameters
         ----------
-        axis_binnings : sequence of BinningDefinition
+        axis_binnings : BinningDefinition | sequence of BinningDefinition
             The sequence of BinningDefinition instances defining the binning of
             the PDF axes. The name of each BinningDefinition instance defines
             the event field name that should be used for querying the PDF.
-        path_to_pdf_splinetable : str
+        path_to_pdf_splinetable : str | None
             The path to the file containing the spline table.
             The spline table contains a pre-computed fit to pdf_grid_data.
-        pdf_grid_data : n-dimensional numpy ndarray
+        pdf_grid_data : n-dimensional numpy ndarray | None
             The n-dimensional numpy ndarray holding the PDF values at given grid
             points. The grid points must match the bin edges of the given
             BinningDefinition instances of the `axis_binnings` argument.
@@ -791,8 +793,8 @@ class MultiDimGridPDF(PDF):
         if(func is None):
             # Define a normalization function that just returns 1 for each
             # event.
-            def func(pdf, tdm, fitparams): return np.ones(
-                (tdm.n_events,), dtype=np.float)
+            def func(pdf, tdm, fitparams):
+                return np.ones((tdm.n_events,), dtype=np.float)
         if(not callable(func)):
             raise TypeError(
                 'The norm_factor_func property must be a callable object!')
@@ -830,9 +832,10 @@ class MultiDimGridPDF(PDF):
 
     def get_prob_with_eventdata(self, tdm, params, eventdata, tl=None):
         """Calculates the probability for the trial events given the specified
-        parameters. This method the additional argument ``eventdata`` which must
-        be a 2d ndarray containing the trial event data in the correct order for
-        for evaluation of the RegularGridInterpolator instance.
+        parameters. This method has the additional argument ``eventdata`` which
+        must be a 2d ndarray containing the trial event data in the correct
+        order for the evaluation of the RegularGridInterpolator or photospline
+        table instance.
         This method is usefull when PDF values for the same trial data need to
         get evaluated.
 
@@ -857,10 +860,11 @@ class MultiDimGridPDF(PDF):
         prob : (N_events,)-shaped numpy ndarray
             The 1D numpy ndarray with the probability for each event.
         """
-        with TaskTimer(tl, 'Get prob from RegularGridInterpolator.'):
-            if(isinstance(self._pdf, RegularGridInterpolator)):
+        if(isinstance(self._pdf, RegularGridInterpolator)):
+            with TaskTimer(tl, 'Get prob from RegularGridInterpolator.'):
                 prob = self._pdf(eventdata)
-            else:
+        else:
+            with TaskTimer(tl, 'Get prob from photospline fit.'):
                 V = eventdata.shape[1]
                 prob = self._pdf.evaluate_simple(
                     [eventdata[:, i] for i in range(0, V)])
@@ -896,12 +900,214 @@ class MultiDimGridPDF(PDF):
             Because this PDF does not depend on any parameters, no gradients
             w.r.t. the parameters are returned.
         """
-        with TaskTimer(tl, 'Get PDF axis data.'):
+        with TaskTimer(tl, 'Get PDF event data.'):
             eventdata = np.array([tdm.get_data(axis.name)
                                   for axis in self._axes]).T
         prob = self.get_prob_with_eventdata(tdm, params, eventdata, tl=tl)
 
         return (prob, None)
+
+
+class NDPhotosplinePDF(PDF):
+    """This class provides a multi-dimensional PDF created from a n-dimensional
+    photospline fit. The photospline package is used to evaluate the PDF fit.
+    """
+
+    def __init__(
+            self,
+            axis_binnings,
+            param_set,
+            path_to_pdf_splinefit,
+            norm_factor_func=None):
+        """Creates a new PDF instance for a n-dimensional photospline PDF fit.
+
+        Parameters
+        ----------
+        axis_binnings : BinningDefinition | sequence of BinningDefinition
+            The sequence of BinningDefinition instances defining the binning of
+            the PDF axes. The name of each BinningDefinition instance defines
+            the event field name that should be used for querying the PDF.
+        param_set : Parameter | ParameterSet
+            The Parameter instance or ParameterSet instance defining the
+            parameters of this PDF. The ParameterSet holds the information
+            which parameters are fixed and which are floating (i.e. fitted).
+        path_to_pdf_splinefit : str
+            The path to the file containing the photospline fit.
+        norm_factor_func : callable | None
+            The function that calculates a possible required normalization
+            factor for the PDF value based on the event properties.
+            The call signature of this function must be
+            `__call__(pdf, tdm, params)`, where `pdf` is this PDF
+            instance, `tdm` is an instance of TrialDataManager holding the
+            event data for which to calculate the PDF values, and `params` is a
+            dictionary with the current parameter names and values.
+        """
+        super(NDPhotosplinePDF, self).__init__(
+            param_set=param_set)
+
+        if(isinstance(axis_binnings, BinningDefinition)):
+            axis_binnings = [axis_binnings]
+        if(not issequenceof(axis_binnings, BinningDefinition)):
+            raise TypeError(
+                'The axis_binnings argument must be an instance of '
+                'BinningDefinition or a sequence of BinningDefinition '
+                'instances!')
+
+        if(not instance(path_to_pdf_splinefit, str)):
+            raise TypeError(
+                'The path_to_pdf_splinefit argument must be an instance of '
+                'str!')
+
+        self.norm_factor_func = norm_factor_func
+
+        # Define the PDF axes and create a mapping of fit parameter names to
+        # axis indices.
+        self._fitparam_name_to_axis_idx_map = dict()
+        for (axis_idx, axis_binning) in enumerate(axis_binnings):
+            axis_name = axis_binning.name
+
+            self.add_axis(PDFAxis(
+                name=axis_name,
+                vmin=axis_binning.lower_edge,
+                vmax=axis_binning.upper_edge
+            ))
+
+            if(self._param_set.has_floating_param(axis_name)):
+                self._fitparam_name_to_axis_idx_map[axis_name] = axis_idx
+
+        self._pdf = photospline.SplineTable(path_to_pdf_splinefit)
+
+    @property
+    def norm_factor_func(self):
+        """The function that calculates the possible required normalization
+        factor. The call signature of this function must be
+        `__call__(pdf, tdm, fitparams)`, where `pdf` is this PDF
+        instance, `tdm` is an instance of TrialDataManager holding the events
+        for which to calculate the PDF values, and `fitparams` is a dictionary
+        with the current fit parameter names and values. This property can be
+        set to `None`. In that case a unity returning function is used.
+        """
+        return self._norm_factor_func
+
+    @norm_factor_func.setter
+    def norm_factor_func(self, func):
+        if(func is None):
+            # Define a normalization function that just returns 1 for each
+            # event.
+            def func(pdf, tdm, fitparams):
+                return np.ones((tdm.n_events,), dtype=np.float)
+        if(not callable(func)):
+            raise TypeError(
+                'The norm_factor_func property must be a callable object!')
+        if(not func_has_n_args(func, 3)):
+            raise TypeError(
+                'The norm_factor_func property must be a function with 3 '
+                'arguments!')
+        self._norm_factor_func = func
+
+     def assert_is_valid_for_trial_data(self, tdm):
+        """Checks if the PDF is valid for all values of the given trial data.
+        The trial data values must be within the ranges of the PDF axes.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The instance of TrialDataManager that holds the trial data which is
+            going to be evaluated.
+
+        Raises
+        ------
+        ValueError
+            If any of the trial data is out of its axis range.
+        """
+        for axis in self._axes:
+            data = tdm.get_data(axis.name)
+            if(np.any(data < axis.vmin) or
+               np.any(data > axis.vmax)
+               ):
+                raise ValueError(
+                    'Some of the trial data for PDF axis '
+                    '"%s" is out of range (%g,%g)!' % (
+                        axis.name, axis.vmin, axis.vmax))
+
+    def get_prob(self, tdm, params=None, tl=None):
+        """Calculates the probability for the trial events given the specified
+        parameters.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The TrialDataManager instance holding the trial event data for which
+            the PDF values should get calculated.
+        params : dict | None
+            The dictionary containing the parameter names and values the
+            probability should get calculated for.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        prob : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability for each event.
+        grads : (N_fitparams,N_events)-shaped ndarray | None
+            The 2D numpy ndarray holding the gradients of the PDF w.r.t.
+            each fit parameter for each event. The order of the gradients
+            is the same as the order of floating parameters specified through
+            the ``param_set`` property.
+            It is ``None``, if this PDF does not depend on any parameters.
+        """
+        with TaskTimer(tl, 'Get PDF event data.'):
+            eventdata = np.empty(
+                (tdm.n_events, len(self._axes)), dtype=np.float)
+            for (axis_idx, axis) in enumerate(self._axes):
+                axis_name = axis.name
+                if(axis_name in tdm):
+                    axis_data = tdm.get_data(axis_name)
+                else:
+                    # The requested data field (for the axis) is not part of the
+                    # trial data, so it must be a parameter.
+                    if(axis_name not in params):
+                        raise KeyError(
+                            'The PDF axis "{}" is not part of the trial data '
+                            'and is not a parameter!'.format(
+                                axis_name))
+                    axis_data = np.full(
+                        (tdm.n_events,), params[axis_name], dtype=np.float)
+                eventdata[:,axis_idx] = axis_data
+
+        self__pdf_evaluate_simple = self._pdf.evaluate_simple
+
+        with TaskTimer(tl, 'Get prob from photospline fit.'):
+            V = eventdata.shape[1]
+            evaluate_simple_data = [eventdata[:, i] for i in range(0, V)]
+            prob = self__pdf_evaluate_simple(
+                evaluate_simple_data, mode=0)
+
+        with TaskTimer(tl, 'Normalize NDPhotosplinePDF with norm factor.'):
+            norm = self._norm_factor_func(self, tdm, params)
+            prob *= norm
+
+        self__param_set = self._param_set
+        n_fitparams = self__param_set.n_floating_params
+        if(n_fitparams == 0):
+            # This PDF does not depend on any fit parameters.
+            return (prob, None)
+
+        with TaskTimer(tl, 'Get grads from photospline fit.'):
+            grads = np.empty((n_fitparams,len(prob)), dtype=np.float)
+            # Loop through the fit parameters of this PDF and calculate their
+            # derivative.
+            for (fitparam_idx,fitparam_name) in enumerate(
+                    self__param_set.floating_param_name_list):
+                # Determine the axis index of this fit parameter.
+                axis_idx = self._fitparam_name_to_axis_idx_map[fitparam_name]
+                mode = 2**axis_idx
+                grad = self__pdf_evaluate_simple(
+                    evaluate_simple_data, mode=mode)
+                grads[fitparam_idx,:] = grad
+
+        return (prob, grads)
 
 
 class PDFSet(object):
