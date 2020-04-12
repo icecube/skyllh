@@ -90,7 +90,7 @@ class I3Dataset(Dataset):
         """(read-only) The list of absolute path file names of the good-run-list
         data files.
         """
-        return self._get_abs_pathfilename_list(self._grl_pathfilename_list)
+        return self.get_abs_pathfilename_list(self._grl_pathfilename_list)
 
     @property
     def grl_field_name_renaming_dict(self):
