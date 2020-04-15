@@ -87,9 +87,17 @@ def create_MultiDimGridPDF_from_photosplinetable(
     kde_pdf_axis_name_map_inv = dict(
         [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
 
+    if 'bin_centers' in num_dict:
+        bin_centers_key = 'bin_centers'
+    elif 'bins' in num_dict:
+        bin_centers_key = 'bins'
+    else:
+        raise KeyError(
+            "The PDF information file is missing 'bin_centers' or 'bins' key.")
+
     axis_binnings = [
         BinningDefinition(
-            kde_pdf_axis_name_map_inv[var], num_dict['bins'][idx])
+            kde_pdf_axis_name_map_inv[var], num_dict[bin_centers_key][idx])
         for (idx, var) in enumerate(num_dict['vars'])
     ]
 
@@ -164,9 +172,17 @@ def create_MultiDimGridPDF_from_kde_pdf(
     kde_pdf_axis_name_map_inv = dict(
         [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
 
+    if 'bin_centers' in num_dict:
+        bin_centers_key = 'bin_centers'
+    elif 'bins' in num_dict:
+        bin_centers_key = 'bins'
+    else:
+        raise KeyError(
+            "The PDF information file is missing 'bin_centers' or 'bins' key.")
+
     axis_binnings = [
         BinningDefinition(
-            kde_pdf_axis_name_map_inv[var], num_dict['bins'][idx])
+            kde_pdf_axis_name_map_inv[var], num_dict[bin_centers_key][idx])
         for (idx, var) in enumerate(num_dict['vars'])
     ]
 
