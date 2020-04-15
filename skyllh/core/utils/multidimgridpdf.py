@@ -86,6 +86,9 @@ def create_MultiDimGridPDF_from_photosplinetable(
     kde_pdf_axis_name_map = ds.load_aux_data('KDE_PDF_axis_name_map', tl=tl)
     kde_pdf_axis_name_map_inv = dict(
         [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
+    for var in num_dict['vars']:
+        if(var not in kde_pdf_axis_name_map_inv):
+            kde_pdf_axis_name_map_inv[var] = var
 
     axis_binnings = [
         BinningDefinition(
@@ -163,6 +166,9 @@ def create_MultiDimGridPDF_from_kde_pdf(
     kde_pdf_axis_name_map = ds.load_aux_data('KDE_PDF_axis_name_map', tl=tl)
     kde_pdf_axis_name_map_inv = dict(
         [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
+    for var in num_dict['vars']:
+        if(var not in kde_pdf_axis_name_map_inv):
+            kde_pdf_axis_name_map_inv[var] = var
 
     axis_binnings = [
         BinningDefinition(

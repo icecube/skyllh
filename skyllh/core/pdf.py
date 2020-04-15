@@ -154,7 +154,7 @@ class PDFAxes(ObjectCollection):
         axes = PDFAxes(axes=axeses[0])
         for axes_i in axeses[1:]:
             for axis in axes_i:
-                if(not axes.has_axis(axis)):
+                if(not axes.has_axis(axis.name)):
                     axes += axis
 
         return axes
@@ -204,7 +204,22 @@ class PDFAxes(ObjectCollection):
     def has_axis(self, name):
         """Checks if an axis of the given name is present in this PDFAxes
         instance.
+
+        Parameters
+        ----------
+        name : str
+            The name of this axis.
+
+        Returns
+        -------
+        check : bool
+            True, if this Axis object has an axis of the given name,
+            False otherwise.
         """
+        if(not isinstance(name, str)):
+            raise TypeError(
+                'The name argument must be an instance of str!')
+
         for axis in self:
             if(axis.name == name):
                 return True
@@ -953,7 +968,7 @@ class NDPhotosplinePDF(PDF):
                 'BinningDefinition or a sequence of BinningDefinition '
                 'instances!')
 
-        if(not instance(path_to_pdf_splinefit, str)):
+        if(not isinstance(path_to_pdf_splinefit, str)):
             raise TypeError(
                 'The path_to_pdf_splinefit argument must be an instance of '
                 'str!')
@@ -1005,7 +1020,7 @@ class NDPhotosplinePDF(PDF):
                 'arguments!')
         self._norm_factor_func = func
 
-     def assert_is_valid_for_trial_data(self, tdm):
+    def assert_is_valid_for_trial_data(self, tdm):
         """Checks if the PDF is valid for all values of the given trial data.
         The trial data values must be within the ranges of the PDF axes.
 
@@ -1082,7 +1097,7 @@ class NDPhotosplinePDF(PDF):
             V = eventdata.shape[1]
             evaluate_simple_data = [eventdata[:, i] for i in range(0, V)]
             prob = self__pdf_evaluate_simple(
-                evaluate_simple_data, mode=0)
+                evaluate_simple_data)
 
         with TaskTimer(tl, 'Normalize NDPhotosplinePDF with norm factor.'):
             norm = self._norm_factor_func(self, tdm, params)
@@ -1104,7 +1119,7 @@ class NDPhotosplinePDF(PDF):
                 axis_idx = self._fitparam_name_to_axis_idx_map[fitparam_name]
                 mode = 2**axis_idx
                 grad = self__pdf_evaluate_simple(
-                    evaluate_simple_data, mode=mode)
+                    evaluate_simple_data, mode)
                 grads[fitparam_idx,:] = grad
 
         return (prob, grads)

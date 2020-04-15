@@ -5,15 +5,15 @@
 NDPhotosplinePDF instances.
 """
 
+from skyllh.core.binning import BinningDefinition
 from skyllh.core.pdf import NDPhotosplinePDF
 from skyllh.core.backgroundpdf import BackgroundNDPhotosplinePDF
 from skyllh.core.signalpdf import SignalNDPhotosplinePDF
 
 
 def create_NDPhotosplinePDF_from_photosplinefit(
-        ds, info_key, splinefit_key, param_set,
+        ds, kind, info_key, splinefit_key, param_set=None,
         norm_factor_func=None,
-        kind=None,
         tl=None
     ):
     """Creates a new NDPhotosplinePDF instance from a photospline fits file that
@@ -23,13 +23,17 @@ def create_NDPhotosplinePDF_from_photosplinefit(
     ----------
     ds : Dataset instance
         The Dataset instance the PDF applies to.
+    kind : str | None
+        The kind of PDF to create. This is either ``'sig'`` for a
+        SignalNDPhotosplinePDF, or ``'bkg'`` for a BackgroundNDPhotosplinePDF
+        instance. If set to None, a NDPhotosplinePDF instance is created.
     info_key : str
         The auxiliary data name for the file containing PDF meta data
         information.
     splinefit_key : str
         The auxiliary data name defining the path to the file containing the
         photospline fit.
-    param_set : Parameter | ParameterSet
+    param_set : Parameter | ParameterSet | None
         The Parameter instance or ParameterSet instance defining the
         parameters of the new PDF. The ParameterSet holds the information
         which parameters are fixed and which are floating (i.e. fitted).
@@ -37,10 +41,6 @@ def create_NDPhotosplinePDF_from_photosplinefit(
         The normalization factor function. It must have the following call
         signature:
             __call__(pdf, tdm, params)
-    kind : str | None
-        The kind of PDF to create. This is either ``'sig'`` for a
-        SignalNDPhotosplinePDF, or ``'bkg'`` for a BackgroundNDPhotosplinePDF
-        instance. If set to None, a NDPhotosplinePDF instance is created.
     tl : TimeLord instance | None
         The optional TimeLord instance to use for measuring timing information.
 
@@ -70,6 +70,9 @@ def create_NDPhotosplinePDF_from_photosplinefit(
     kde_pdf_axis_name_map = ds.load_aux_data('KDE_PDF_axis_name_map', tl=tl)
     kde_pdf_axis_name_map_inv = dict(
         [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
+    for var in info_dict['vars']:
+        if(var not in kde_pdf_axis_name_map_inv):
+            kde_pdf_axis_name_map_inv[var] = var
 
     # Select the bin center information from the meta data information file.
     # The "bins" key is for backward compatibility.
