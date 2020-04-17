@@ -1120,6 +1120,7 @@ class NDPhotosplinePDF(PDF):
                 mode = 2**axis_idx
                 grad = self__pdf_evaluate_simple(
                     evaluate_simple_data, mode)
+                grad *= norm
                 grads[fitparam_idx,:] = grad
 
         return (prob, grads)
