@@ -269,6 +269,12 @@ class TrialDataManager(object):
             True if the data field is defined in this data field manager,
             False otherwise.
         """
+        # Check if the data field is part of the original trial data.
+        if((self._events is not None) and
+           (name in self._events.field_name_list)):
+            return True
+
+        # Check if the data field is a user defined data field.
         if((name in self._source_data_field_reg) or
            (name in self._static_data_field_reg) or
            (name in self._fitparam_data_field_reg)):

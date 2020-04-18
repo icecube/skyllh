@@ -211,7 +211,7 @@ class Dataset(object):
         """(read-only) The list of absolute path file names of the experimental
         data files.
         """
-        return self._get_abs_pathfilename_list(self._exp_pathfilename_list)
+        return self.get_abs_pathfilename_list(self._exp_pathfilename_list)
 
     @property
     def mc_pathfilename_list(self):
@@ -235,7 +235,7 @@ class Dataset(object):
         """(read-only) The list of absolute path file names of the monte-carlo
         data files.
         """
-        return self._get_abs_pathfilename_list(self._mc_pathfilename_list)
+        return self.get_abs_pathfilename_list(self._mc_pathfilename_list)
 
     @property
     def livetime(self):
@@ -456,24 +456,6 @@ class Dataset(object):
         s += ' ' + pathfilename
         return s
 
-    def _get_abs_pathfilename_list(self, pathfilename_list):
-        """Returns a list where each entry of the given pathfilename_list is
-        an absolute path. Relative paths will be prefixed with the root_dir
-        property of this Dataset instance.
-        """
-        root_dir = self.root_dir
-
-        abs_pathfilename_list = []
-        for pathfilename in pathfilename_list:
-            if(os.path.isabs(pathfilename)):
-                abs_pathfilename_list.append(
-                    pathfilename)
-            else:
-                abs_pathfilename_list.append(
-                    os.path.join(root_dir, pathfilename))
-
-        return abs_pathfilename_list
-
     def __gt__(self, ds):
         """Implementation to support the operation ``b = self > ds``, where
         ``self`` is this Dataset object and ``ds`` an other Dataset object.
@@ -567,7 +549,7 @@ class Dataset(object):
 
                 s2 += name+':'
                 s3 = ''
-                pathfilename_list = self._get_abs_pathfilename_list(
+                pathfilename_list = self.get_abs_pathfilename_list(
                     pathfilename_list)
                 for pathfilename in pathfilename_list:
                     s3 += '\n' + self._gen_datafile_pathfilename_entry(pathfilename)
@@ -580,6 +562,34 @@ class Dataset(object):
             display.INDENTATION_WIDTH, s1)
 
         return s
+
+    def get_abs_pathfilename_list(self, pathfilename_list):
+        """Returns a list where each entry of the given pathfilename_list is
+        an absolute path. Relative paths will be prefixed with the root_dir
+        property of this Dataset instance.
+
+        Parameters
+        ----------
+        pathfilename_list : sequence of str
+            The sequence of file names, either with relative, or absolute paths.
+
+        Returns
+        -------
+        abs_pathfilename_list : list of str
+            The list of file names with absolute paths.
+        """
+        root_dir = self.root_dir
+
+        abs_pathfilename_list = []
+        for pathfilename in pathfilename_list:
+            if(os.path.isabs(pathfilename)):
+                abs_pathfilename_list.append(
+                    pathfilename)
+            else:
+                abs_pathfilename_list.append(
+                    os.path.join(root_dir, pathfilename))
+
+        return abs_pathfilename_list
 
     def update_version_qualifiers(self, verqualifiers):
         """Updates the version qualifiers of the dataset. The update can only
@@ -764,8 +774,8 @@ class Dataset(object):
 
         aux_pathfilename_list = self._aux_data_definitions[name]
         with TaskTimer(tl, 'Loaded aux data "%s" from disk.'%(name)):
-            fileloader_aux = create_FileLoader(self._get_abs_pathfilename_list(
-                    aux_pathfilename_list))
+            fileloader_aux = create_FileLoader(self.get_abs_pathfilename_list(
+                aux_pathfilename_list))
             data = fileloader_aux.load_data()
 
         return data
