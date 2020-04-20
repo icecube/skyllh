@@ -25,7 +25,6 @@ class TestDatasetFunctions(unittest.TestCase):
             np.load(os.path.join(path, 'testdata/mc_testdata.npy')))
         self.livetime_datafile = np.load(
             os.path.join(path, 'testdata/livetime_testdata.npy'))
-        self.data_aux = dict()
         self.livetime = 100
 
     def tearDown(self):
@@ -38,13 +37,14 @@ class TestDatasetFunctions(unittest.TestCase):
         # Whole interval.
         t_start = 58442.0
         t_end = 58445.0
-        dataset_data = DatasetData(self.exp_data, self.mc_data,
-                                   self.data_aux, self.livetime)
+        dataset_data = DatasetData(
+            self.exp_data, self.mc_data, self.livetime)
         livetime_data = Livetime(self.livetime_datafile)
-        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data,
-                                                                 livetime_data,
-                                                                 t_start,
-                                                                 t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(
+            dataset_data,
+            livetime_data,
+            t_start,
+            t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 4)
         self.assertEqual(len(dataset_data_subset.mc), 4)
@@ -53,13 +53,14 @@ class TestDatasetFunctions(unittest.TestCase):
         # Sub interval without cutting livetime.
         t_start = 58443.3
         t_end = 58444.3
-        dataset_data = DatasetData(self.exp_data, self.mc_data,
-                                   self.data_aux, self.livetime)
+        dataset_data = DatasetData(
+            self.exp_data, self.mc_data, self.livetime)
         livetime_data = Livetime(self.livetime_datafile)
-        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data,
-                                                                 livetime_data,
-                                                                 t_start,
-                                                                 t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(
+            dataset_data,
+            livetime_data,
+            t_start,
+            t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 2)
         self.assertEqual(len(dataset_data_subset.mc), 2)
@@ -68,34 +69,37 @@ class TestDatasetFunctions(unittest.TestCase):
         # Cutting first livetime interval.
         t_start = 58443.1
         t_end = 58444.75
-        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data,
-                                                                 livetime_data,
-                                                                 t_start,
-                                                                 t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(
+            dataset_data,
+            livetime_data,
+            t_start,
+            t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 3)
         self.assertEqual(len(dataset_data_subset.mc), 3)
         self.assertAlmostEqual(livetime_subset.livetime, 0.9)
 
         # Cutting last livetime interval.
-        t_start = 58443.0   
+        t_start = 58443.0
         t_end = 58444.6
-        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data,
-                                                                 livetime_data,
-                                                                 t_start,
-                                                                 t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(
+            dataset_data,
+            livetime_data,
+            t_start,
+            t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 4)
         self.assertEqual(len(dataset_data_subset.mc), 4)
         self.assertAlmostEqual(livetime_subset.livetime, 0.85)
 
         # Cutting first and last livetime interval.
-        t_start = 58443.1   
+        t_start = 58443.1
         t_end = 58444.6
-        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data,
-                                                                 livetime_data,
-                                                                 t_start,
-                                                                 t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(
+            dataset_data,
+            livetime_data,
+            t_start,
+            t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 3)
         self.assertEqual(len(dataset_data_subset.mc), 3)

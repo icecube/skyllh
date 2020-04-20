@@ -8,8 +8,10 @@ import os.path
 import sys
 from typing import Any, Dict, Iterator, KeysView, ItemsView, ValuesView
 
-import yaml
+
 from astropy import units  # type: ignore
+import yaml
+
 
 from skyllh.core.py import issequenceof
 
@@ -72,13 +74,14 @@ _BASECONFIG = {
 class CFGClass(dict):
 
     """
-    This class holds the global config state
+    This class holds the global config state.
 
     The class behaves like a dict, delegating all methods of the dict
     interface to the underlying config dictionary.
     """
 
-    # Keep track of whether this class has been instantiated
+    # Keep track of whether this class has been instantiated.
+
     _is_instantiated = False
 
     def __init__(self, *args, **kwargs) -> None:
@@ -90,11 +93,11 @@ class CFGClass(dict):
 
     def from_yaml(self, yaml_file: str) -> None:
         """
-        Update config with yaml file
+        Update config with yaml file.
 
         Parameters:
             yaml_file: str
-                path to yaml file
+                Path to yaml file.
         """
 
         yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
@@ -102,13 +105,11 @@ class CFGClass(dict):
 
     def from_dict(self, user_dict: Dict[Any, Any]) -> None:
         """
-        Creates a config from dictionary
+        Creates a config from dictionary.
 
         Parameters:
             user_dict: dict
 
-        Returns:
-            dict
         """
         self.update(user_dict)
 

@@ -1301,7 +1301,7 @@ class ParameterGrid(object):
         gp = np.around(gp, self._decimals)
 
         if(scalar_input):
-            return np.asscalar(gp)
+            return gp.item()
         return gp
 
     def round_to_lower_grid_point(self, value):
@@ -1328,7 +1328,7 @@ class ParameterGrid(object):
         gp = np.around(gp, self._decimals)
 
         if(scalar_input):
-            return np.asscalar(gp)
+            return gp.item()
         return gp
 
     def round_to_upper_grid_point(self, value):
@@ -1355,7 +1355,7 @@ class ParameterGrid(object):
         gp = np.around(gp, self._decimals)
 
         if(scalar_input):
-            return np.asscalar(gp)
+            return gp.item()
         return gp
 
 
