@@ -177,7 +177,8 @@ class ScipyMinimizerImpl(MinimizerImpl):
 
         method_supports_bounds = False
 
-        constraints: Optional[List[Dict[str, Any]]] = None
+        constraints: Optional[List[Dict[str, Any]]]
+        constraints = None
 
         # Check if method allows for bounds
         if self._method in ["L-BFGS-B", "TNC", "SLSQP"]:
