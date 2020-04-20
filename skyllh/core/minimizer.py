@@ -188,7 +188,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
             # to a linear constraint
 
             constraints = []
-            for bound_num, bound in enumerate(bounds):
+            for (bound_num, bound) in enumerate(bounds):
                 lower, upper = bound
                 lc = {"type": "ineq",
                       "fun": lambda x, lb=lower, i=bound_num: x[i] - lb}
