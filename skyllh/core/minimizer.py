@@ -183,7 +183,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
         # Check if method allows for bounds
         if(self._method in ["L-BFGS-B", "TNC", "SLSQP"]):
             method_supports_bounds = True
-        elif self._method == "COBYLA":
+        elif(self._method == "COBYLA"):
             # COBYLA doesn't allow for bounds, but we can convert bounds
             # to a linear constraint
 
