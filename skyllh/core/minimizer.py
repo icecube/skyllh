@@ -198,7 +198,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
                 constraints.append(uc)
             bounds = None
 
-        if bounds is not None and not method_supports_bounds:
+        if((bounds is not None) and (not method_supports_bounds)):
             logger.warn(
                 "Selected minimization method ({}) does not "
                 "support bounds. Continue at your own risk.".format(
