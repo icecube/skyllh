@@ -255,7 +255,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
         converged : bool
             The flag if the minimization has converged (True), or not (False).
         """
-        return status["success"]
+        return bool(status["success"])
 
     def is_repeatable(self, status):
         """Checks if the minimization process can be repeated to get a better
