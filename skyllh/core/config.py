@@ -4,16 +4,14 @@
 convenience utility functions to set different configuration settings.
 """
 
+from astropy import units  # type: ignore
 import os.path
 import sys
 from typing import Any, Dict, Iterator, KeysView, ItemsView, ValuesView
-
-
-from astropy import units  # type: ignore
 import yaml
 
-
 from skyllh.core.py import issequenceof
+
 
 _BASECONFIG = {
     'multiproc': {
