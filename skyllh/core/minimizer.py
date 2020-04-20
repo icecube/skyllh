@@ -4,13 +4,13 @@ a function.
 """
 import abc
 import logging
-from typing import Optional, Dict, Any, List
 import numpy as np
-
 import scipy.optimize
+from typing import Optional, Dict, Any, List
 
 from skyllh.core.parameters import FitParameterSet
 from skyllh.core.py import classname
+
 
 logger = logging.getLogger(__name__)
 
