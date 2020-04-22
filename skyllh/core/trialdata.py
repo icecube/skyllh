@@ -157,6 +157,12 @@ class DataField(object):
             # It's the first time this method is called, so we need to calculate
             # the data field values for sure.
             self._values = self._func(tdm, src_hypo_group_manager, fitparams)
+            # We store the fit parameter values for which the field values were
+            # calculated for. So they have to get recalculated only when the
+            # fit parameter values the field depends on change.
+            self._fitparam_value_list = [
+                fitparams[name] for name in self._fitparam_name_list
+            ]
             return
 
         for (idx, fitparam_name) in enumerate(self._fitparam_name_list):
