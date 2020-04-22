@@ -697,9 +697,11 @@ class Minimizer(object):
         logger = logging.getLogger(__name__)
 
         bounds = fitparamset.bounds
+        initials = fitparamset.initials
+        logger.debug('Do function minimization: initials: {}'.format(initials))
 
         (xmin, fmin, status) = self._minimizer_impl.minimize(
-            fitparamset.initials, bounds, func, args, **kwargs)
+            initials, bounds, func, args, **kwargs)
 
         reps = 0
         while((not self._minimizer_impl.has_converged(status)) and
@@ -713,6 +715,10 @@ class Minimizer(object):
             # Create a new set of random parameter initials based on the
             # parameter bounds.
             initials = fitparamset.generate_random_initials(rss)
+
+            logger.debug(
+                'Prev rep ({}) status={}, new initials={}'.format(
+                    reps, str(status), str(initials)))
 
             # Repeat the minimization process.
             (xmin, fmin, status) = self._minimizer_impl.minimize(
