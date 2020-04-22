@@ -10,6 +10,7 @@ from __future__ import division
 import abc
 import numpy as np
 
+from skyllh.core.debugging import get_logger
 from skyllh.core.py import (
     classname,
     int_cast,
@@ -36,6 +37,9 @@ from skyllh.core.pdfratio import (
 )
 from skyllh.core.timing import TaskTimer
 from skyllh.physics.source import SourceModel
+
+
+logger = get_logger(__name__)
 
 
 class LLHRatio(object):
@@ -1150,6 +1154,9 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
             # that both, background and signal events laying outside of the
             # selection area get marked as pure background events.
             if(event_selection_method is not None):
+                logger.debug(
+                    'Selecting events with event selection method "{}".'.format(
+                        classname(event_selection_method)))
                 events = event_selection_method.select_events(events)
 
             # Initialize the log-likelihood ratio function of the dataset with

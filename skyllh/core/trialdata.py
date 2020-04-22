@@ -9,11 +9,15 @@ then be used by different analysis objects, like PDF objects.
 
 import numpy as np
 
+from skyllh.core.debugging import get_logger
 from skyllh.core.py import (
     func_has_n_args,
     issequenceof
 )
 from skyllh.core.storage import DataFieldRecordArray
+
+
+logger = get_logger(__name__)
 
 
 class DataField(object):
@@ -307,6 +311,9 @@ class TrialDataManager(object):
         """
         # Sort the events by the index field, if a field was provided.
         if(self._index_field_name is not None):
+            logger.debug(
+                'Sorting events in index field "{}"'.format(
+                    self._index_field_name))
             events.sort_by_field(self._index_field_name)
 
         # Set the events property, so that the calculation functions of the data
