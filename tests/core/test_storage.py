@@ -97,6 +97,18 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
             np.array([2.51, 2.12, 2.3, 2.44, 2.2], dtype=np.float))
         assert_array_almost_equal(self.arr['field3'], self.field3)
 
+        # Reset the array.
+        self.setUp()
+
+        # Add a new field.
+        new_field = np.array([4.2, 4.5, 4.1, 4.3, 4.4], dtype=np.float)
+        self.arr['field4'] = new_field
+        self.assertTrue('field4' in self.arr)
+        self.assertTrue('field4' in self.arr.field_name_list)
+        assert_array_almost_equal(
+            self.arr['field4'],
+            new_field)
+
     def test__str__(self):
         try:
             str(self.arr)

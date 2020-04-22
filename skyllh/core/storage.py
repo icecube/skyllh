@@ -581,7 +581,9 @@ class DataFieldRecordArray(object):
         return self._data_fields[name]
 
     def __setitem__(self, name, arr):
-        """Implements data field value assigment.
+        """Implements data field value assigment. If values are assigned to a
+        data field that does not exist yet, it  will be added via the
+        ``append_field`` method.
 
         Parameters
         ----------
@@ -603,11 +605,21 @@ class DataFieldRecordArray(object):
             self.set_selection(name, arr)
             return
 
-        # We set a particular data field.
+        # Check if a new field is supposed to be added.
+        if(name not in self):
+            self.append_field(name, arr)
+            return
+
+        # We set a particular already existing data field.
         if(len(arr) != self._len):
             raise ValueError('The length of the to-be-set data (%d) must '
                 'match the length (%d) of the DataFieldRecordArray instance!'%(
                 len(arr), self._len))
+
+        if(not isinstance(arr, np.ndarray)):
+            raise TypeError(
+                'When setting a field directly, the data must be provided as a '
+                'numpy ndarray!')
 
         self._data_fields[name] = arr
 
@@ -916,7 +928,7 @@ class DataFieldRecordArray(object):
 
         sorted_idxs = np.argsort(self._data_fields[name])
 
-        for fname in self.field_name_list:
+        for fname in self._field_name_list:
             self._data_fields[fname] = self._data_fields[fname][sorted_idxs]
 
 
