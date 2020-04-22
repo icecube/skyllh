@@ -957,6 +957,10 @@ class NDPhotosplinePDF(PDF):
             event data for which to calculate the PDF values, and `params` is a
             dictionary with the current parameter names and values.
         """
+        if(not PHOTOSPLINE_LOADED):
+            raise ImportError(
+                'The photospline package could not be loaded!')
+
         super(NDPhotosplinePDF, self).__init__(
             param_set=param_set)
 
