@@ -4,14 +4,14 @@
 convenience utility functions to set different configuration settings.
 """
 
+from astropy import units  # type: ignore
 import os.path
 import sys
 from typing import Any, Dict, Iterator, KeysView, ItemsView, ValuesView
-
-from astropy import units  # type: ignore
 import yaml
 
 from skyllh.core.py import issequenceof
+
 
 _BASECONFIG = {
     'multiproc': {
@@ -79,6 +79,7 @@ class CFGClass(dict):
     """
 
     # Keep track of whether this class has been instantiated.
+
     _is_instantiated = False
 
     def __init__(self, *args, **kwargs) -> None:
