@@ -10,6 +10,7 @@ from __future__ import division
 import abc
 import numpy as np
 
+from skyllh.core.config import CFG
 from skyllh.core.debugging import get_logger
 from skyllh.core.py import (
     classname,
@@ -123,20 +124,32 @@ class LLHRatio(object):
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
+        tracing = CFG['debugging']['enable_tracing']
+
         # Define the negative llhratio function, that will get minimized.
         self_evaluate = self.evaluate
-        def negative_llhratio_func(fitparam_values, tl=None):
+        def negative_llhratio_func(fitparam_values, func_stats, tl=None):
+            func_stats['n_calls'] += 1
             with TaskTimer(tl, 'Evaluate llh-ratio function.'):
                 (f, grads) = self_evaluate(fitparam_values, tl=tl)
+                if(tracing): logger.debug(
+                    'LLH-ratio func value f={:g}, grads={}'.format(
+                        f, str(grads)))
             return (-f, -grads)
 
         minimize_kwargs = {'func_provides_grads': True}
 
+        func_stats = {'n_calls': 0}
         with TaskTimer(tl, 'Minimize -llhratio function.'):
             (fitparam_values, fmin, status) = self._minimizer.minimize(
-                rss, fitparamset, negative_llhratio_func, args=(tl,),
+                rss, fitparamset, negative_llhratio_func, args=(func_stats,tl),
                 kwargs=minimize_kwargs)
         log_lambda_max = -fmin
+        status['n_llhratio_func_calls'] = func_stats['n_calls']
+
+        logger.debug(
+            'Maximized LLH ratio function with {:d} calls'.format(
+                status['n_llhratio_func_calls']))
 
         return (log_lambda_max, fitparam_values, status)
 
