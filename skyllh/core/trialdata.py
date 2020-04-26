@@ -10,9 +10,12 @@ then be used by different analysis objects, like PDF objects.
 import numpy as np
 
 from skyllh.core.debugging import get_logger
+from skyllh.core import display as dsp
 from skyllh.core.py import (
+    classname,
     func_has_n_args,
-    issequenceof
+    issequenceof,
+    typename
 )
 from skyllh.core.storage import DataFieldRecordArray
 
@@ -25,7 +28,8 @@ class DataField(object):
     Analysis class instance. The calculation is defined through an external
     function.
     """
-    def __init__(self, name, func, fitparam_names=None):
+    def __init__(
+            self, name, func, fitparam_names=None, dt=None):
         """Creates a new instance of DataField that might depend on fit
         parameters.
 
@@ -48,6 +52,10 @@ class DataField(object):
             The sequence of str instances specifying the names of the fit
             parameters this data field depends on. If set to None, the data
             field does not depend on any fit parameters.
+        dt : numpy dtype | str | None
+            If specified it defines the data type this data field should have.
+            If a str instance is given, it defines the name of the data field
+            whose data type should be taken for this data field.
         """
         super(DataField, self).__init__()
 
@@ -60,6 +68,8 @@ class DataField(object):
             raise TypeError('The fitparam_names argument must be None or a '
                 'sequence of str instances!')
         self._fitparam_name_list = list(fitparam_names)
+
+        self.dt = dt
 
         # Define the list of fit parameter values for which the fit parameter
         # depend data field values have been calculated for.
@@ -105,20 +115,81 @@ class DataField(object):
         self._func = f
 
     @property
+    def dt(self):
+        """The numpy dtype object defining the data type of this data field.
+        A str instance defines the name of the data field whose data type should
+        be taken for this data field.
+        It is None, if there is no explicit data type defined for this data
+        field.
+        """
+        return self._dt
+    @dt.setter
+    def dt(self, obj):
+        if(obj is not None):
+            if((not isinstance(obj, np.dtype)) and
+               (not isinstance(obj, str))):
+                raise TypeError(
+                    'The dt property must be None, an instance of numpy.dtype, '
+                    'or an instance of str! Currently it is of type %s.'%(
+                        str(type(obj))))
+        self._dt = obj
+
+    @property
     def values(self):
         """(read-only) The calculated data values of the data field.
         """
         return self._values
 
+    def __str__(self):
+        """Pretty string representation of this DataField instance.
+        """
+        dtype = 'None'
+        vmin = np.nan
+        vmax = np.nan
+        if(self._values is not None):
+            dtype = str(self._values.dtype)
+            try:
+                vmin = np.min(self._values)
+            except:
+                pass
+            try:
+                vmax = np.max(self._values)
+            except:
+                pass
+        s = '{}: {}: '.format(classname(self), self.name)
+        s +='{dtype: '
+        s += '{}, vmin: {: .3e}, vmax: {: .3e}'.format(
+            dtype, vmin, vmax)
+        s += '}'
+
+        return s
+
+    def _convert_dtype(self, tdm):
+        """Converts the given ndarray into the data type this data field should
+        have.
+        """
+        if(self._dt is not None):
+            if(isinstance(self._dt, str)):
+                self._dt = tdm.get_dtype(self._dt)
+            self._values = self._values.astype(self._dt, copy=False)
+
     def _calc_source_values(
-        self, tdm, src_hypo_group_manager, fitparams):
+            self, tdm, src_hypo_group_manager, fitparams):
         """Calculates the data field values utilizing the defined external
-        function. The data field values solely depend on source parameters.
+        function. The data field values solely depend on fixed source
+        parameters.
         """
         self._values = self._func(tdm, src_hypo_group_manager)
+        if(not isinstance(self._values, np.ndarray)):
+            raise TypeError(
+                'The calculation function for the data field "%s" must '
+                'return an instance of numpy.ndarray! '
+                'Currently it is of type "%s".'%(
+                    self._name, typename(type(self._values))))
+        self._convert_dtype(tdm)
 
     def _calc_static_values(
-        self, tdm, src_hypo_group_manager, fitparams):
+            self, tdm, src_hypo_group_manager, fitparams):
         """Calculates the data field values utilizing the defined external
         function, that are static and only depend on source parameters.
 
@@ -135,9 +206,16 @@ class DataField(object):
             By definition this dictionary is empty.
         """
         self._values = self._func(tdm, src_hypo_group_manager, fitparams)
+        if(not isinstance(self._values, np.ndarray)):
+            raise TypeError(
+                'The calculation function for the data field "%s" must '
+                'return an instance of numpy.ndarray! '
+                'Currently it is of type "%s".'%(
+                    self._name, typename(type(self._values))))
+        self._convert_dtype(tdm)
 
     def _calc_fitparam_dependent_values(
-        self, tdm, src_hypo_group_manager, fitparams):
+            self, tdm, src_hypo_group_manager, fitparams):
         """Calculate data field values utilizing the defined external
         function, that depend on fit parameter values. We check if the fit
         parameter values have changed.
@@ -157,6 +235,13 @@ class DataField(object):
             # It's the first time this method is called, so we need to calculate
             # the data field values for sure.
             self._values = self._func(tdm, src_hypo_group_manager, fitparams)
+            if(not isinstance(self._values, np.ndarray)):
+                raise TypeError(
+                    'The calculation function for the data field "%s" must '
+                    'return an instance of numpy.ndarray! '
+                    'Currently it is of type "%s".'%(
+                        self._name, typename(type(self._values))))
+            self._convert_dtype(tdm)
             # We store the fit parameter values for which the field values were
             # calculated for. So they have to get recalculated only when the
             # fit parameter values the field depends on change.
@@ -174,15 +259,17 @@ class DataField(object):
                 ]
                 self._values = self._func(
                     tdm, src_hypo_group_manager, fitparams)
+                self._convert_dtype(tdm)
                 break
 
 
 class TrialDataManager(object):
     """The TrialDataManager class manages the event data for an analysis trial.
-    It provides possible additional data fields and their calculation. New data fields can be defined via the `add_data_field` method. Whenever a new trial
-    is being initialized the data fields get re-calculated. The data trial
-    manager is provided to the PDF evaluation method. Hence, data fields are
-    calculated only once.
+    It provides possible additional data fields and their calculation.
+    New data fields can be defined via the `add_data_field` method.
+    Whenever a new trial is being initialized the data fields get re-calculated.
+    The data trial manager is provided to the PDF evaluation method.
+    Hence, data fields are calculated only once.
     """
     def __init__(self, index_field_name=None):
         """Creates a new TrialDataManager instance.
@@ -235,8 +322,9 @@ class TrialDataManager(object):
     def index_field_name(self, name):
         if(name is not None):
             if(not isinstance(name, str)):
-                raise TypeError('The index_field_name property must be an '
-                    'instance of type str!')
+                raise TypeError(
+                    'The index_field_name property must be an instance of '
+                    'type str!')
         self._index_field_name = name
 
     @property
@@ -248,7 +336,8 @@ class TrialDataManager(object):
     @events.setter
     def events(self, arr):
         if(not isinstance(arr, DataFieldRecordArray)):
-            raise TypeError('The events property must be an instance of '
+            raise TypeError(
+                'The events property must be an instance of '
                 'DataFieldRecordArray!')
         self._events = arr
 
@@ -292,6 +381,52 @@ class TrialDataManager(object):
 
         return False
 
+    def __str__(self):
+        """Implements pretty string representation of this TrialDataManager
+        instance.
+        """
+        s = classname(self)+':\n'
+        s1 = 'Base data fields:\n'
+        s2 = str(self._events)
+        s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
+        s += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s1)
+        s += '\n'
+
+        s1 = 'Source data fields:\n'
+        s2 = ''
+        for (idx, dfield) in enumerate(self._source_data_fields):
+            if(idx > 0):
+                s2 += '\n'
+            s2 += str(dfield)
+        if(s2 == ''):
+            s2 = 'None'
+        s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
+        s += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s1)
+        s += '\n'
+
+        s1 = 'Static data fields:\n'
+        s2 = ''
+        for (idx, dfield) in enumerate(self._static_data_fields):
+            if(idx > 0):
+                s2 += '\n'
+            s2 += str(dfield)
+        s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
+        s += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s1)
+        s += '\n'
+
+        s1 = 'Fitparam data fields:\n'
+        s2 = ''
+        for (idx, dfield) in enumerate(self._fitparam_data_fields):
+            if(idx > 0):
+                s2 += '\n'
+            s2 += str(dfield)
+        if(s2 == ''):
+            s2 = 'None'
+        s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
+        s += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s1)
+
+        return s
+
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Recalculate the source data fields.
 
@@ -332,7 +467,7 @@ class TrialDataManager(object):
         # Increment the trial data state ID.
         self._trial_data_state_id += 1
 
-    def add_source_data_field(self, name, func):
+    def add_source_data_field(self, name, func, dt=None):
         """Adds a new data field to the manager. The data field must depend
         solely on source parameters.
 
@@ -348,16 +483,22 @@ class TrialDataManager(object):
             `tdm` is the TrialDataManager instance holding the event data,
             `src_hypo_group_manager` is the SourceHypoGroupManager instance,
             and `fitparams` is an unused interface argument.
+        dt : numpy dtype | str | None
+            If specified it defines the data type this data field should have.
+            If a str instance is given, it defines the name of the data field
+            whose data type should be taken for the data field.
         """
         if(name in self):
-            raise KeyError('The data field "%s" is already defined!'%(name))
+            raise KeyError(
+                'The data field "%s" is already defined!'%(name))
 
-        data_field = DataField(name, func)
+        data_field = DataField(name, func, dt=dt)
 
         self._source_data_fields.append(data_field)
         self._source_data_field_reg[name] = data_field
 
-    def add_data_field(self, name, func, fitparam_names=None):
+    def add_data_field(
+            self, name, func, fitparam_names=None, dt=None):
         """Adds a new data field to the manager.
 
         Parameters
@@ -377,11 +518,16 @@ class TrialDataManager(object):
             The sequence of str instances specifying the names of the fit
             parameters this data field depends on. If set to None, it means that
             the data field does not depend on any fit parameters.
+        dt : numpy dtype | str | None
+            If specified it defines the data type this data field should have.
+            If a str instance is given, it defines the name of the data field
+            whose data type should be taken for the data field.
         """
         if(name in self):
-            raise KeyError('The data field "%s" is already defined!'%(name))
+            raise KeyError(
+                'The data field "%s" is already defined!'%(name))
 
-        data_field = DataField(name, func, fitparam_names)
+        data_field = DataField(name, func, fitparam_names, dt=dt)
 
         if(fitparam_names is not None):
             self._fitparam_data_fields.append(data_field)
@@ -469,13 +615,47 @@ class TrialDataManager(object):
         KeyError
             If the given data field is not defined.
         """
-        if(name in self._events.field_name_list):
+        if((self._events is not None) and
+           (name in self._events.field_name_list)):
             return self._events[name]
-        if(name in self._source_data_field_reg):
-            return self._source_data_field_reg[name].values
-        if(name in self._static_data_field_reg):
-            return self._static_data_field_reg[name].values
-        if(name in self._fitparam_data_field_reg):
-            return self._fitparam_data_field_reg[name].values
 
-        raise KeyError('The data field "%s" is not defined!'%(name))
+        if(name in self._source_data_field_reg):
+            data = self._source_data_field_reg[name].values
+        elif(name in self._static_data_field_reg):
+            data = self._static_data_field_reg[name].values
+        elif(name in self._fitparam_data_field_reg):
+            data = self._fitparam_data_field_reg[name].values
+        else:
+            raise KeyError('The data field "%s" is not defined!'%(name))
+
+        if(self._events is not None):
+            # Broadcast the value of the one-element 1D ndarray to the length
+            # of the number of events. Note: Make sure that we don't broadcast
+            # recarrays.
+            if((len(data) == 1) and (data.ndim == 1) and
+               (data.dtype.fields is None)):
+                return np.repeat(data, len(self._events))
+
+        return data
+
+    def get_dtype(self, name):
+        """Gets the data type of the given data field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field whose data type should get retrieved.
+
+        Returns
+        -------
+        dt : numpy dtype
+            The numpy dtype object of the given data field.
+
+        Raises
+        ------
+        KeyError
+            If the given data field is not defined.
+        """
+        dt = self.get_data(name).dtype
+
+        return dt
