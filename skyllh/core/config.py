@@ -25,7 +25,10 @@ _BASECONFIG = {
         # The default log format.
         'log_format': (
             '%(asctime)s %(processName)s %(name)s %(levelname)s: '
-            '%(message)s')
+            '%(message)s'),
+        # Flag if detailed debug log messages, i.e. trace log messages, should
+        # get generated. This is good for debugging but bad for performance.
+        'enable_tracing': False
     },
     'project': {
         # The project's working directory.
