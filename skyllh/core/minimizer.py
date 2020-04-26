@@ -284,11 +284,21 @@ class LBFGSMinimizerImpl(MinimizerImpl):
     L-BFG-S minimizer used from the :mod:`scipy.optimize` module.
     """
 
-    def __init__(self):
+    def __init__(self, ftol=1e-6, maxls=100):
         """Creates a new L-BGF-S minimizer instance to minimize the given
         likelihood function with its given partial derivatives.
+
+        Parameters
+        ----------
+        ftol : float
+            The function value tolerance.
+        maxls : int
+            The maximum number of line search steps for an interation.
         """
         super(LBFGSMinimizerImpl, self).__init__()
+
+        self._ftol = ftol
+        self._maxls = maxls
 
         self._fmin_l_bfgs_b = scipy.optimize.fmin_l_bfgs_b
 
@@ -352,6 +362,9 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             func_args = tuple()
         if(kwargs is None):
             kwargs = {}
+
+        kwargs['factr'] = self._ftol / np.finfo(float).eps
+        kwargs['maxls'] = self._maxls
 
         func_provides_grads = kwargs.pop('func_provides_grads', True)
 
@@ -728,8 +741,6 @@ class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
             warnreason: str
                 The description for the set warn flag.
         """
-
-
         p2_low = bounds[1][0]
         p2_high = bounds[1][1]
         p2_scan_values = np.linspace(
@@ -856,7 +867,6 @@ class Minimizer(object):
         if(kwargs is None):
             kwargs = dict()
 
-
         bounds = fitparamset.bounds
         initials = fitparamset.initials
         logger.debug('Do function minimization: initials: {}'.format(initials))
@@ -878,7 +888,7 @@ class Minimizer(object):
             initials = fitparamset.generate_random_initials(rss)
 
             logger.debug(
-                'Prev rep ({}) status={}, new initials={}'.format(
+                'Previous rep ({}) status={}, new initials={}'.format(
                     reps, str(status), str(initials)))
 
             # Repeat the minimization process.
@@ -887,11 +897,15 @@ class Minimizer(object):
 
             reps += 1
 
+        # Store the number of repetitions in the status dictionary.
+        status['skyllh_minimizer_n_reps'] = reps
+
         if(not self._minimizer_impl.has_converged(status)):
-            raise ValueError('The minimizer did not converge after %d '
-                             'repetitions! The maximum number of repetitions is %d. '
-                             'The status dictionary is "%s".' % (
-                                 reps, self._max_repetitions, str(status)))
+            raise ValueError(
+                'The minimizer did not converge after %d '
+                'repetitions! The maximum number of repetitions is %d. '
+                'The status dictionary is "%s".' % (
+                    reps, self._max_repetitions, str(status)))
 
         # Check if any fit value is outside its bounds due to rounding errors by
         # the minimizer. If so, set those fit values to their respective bound
