@@ -2057,7 +2057,8 @@ class FitParameter(object):
         grid : ParameterGrid instance
             The ParameterGrid instance holding the grid values.
         """
-        delta = float_cast(delta, 'The delta argument must be castable to type float!')
+        delta = float_cast(
+            delta, 'The delta argument must be castable to type float!')
         grid = make_linear_parameter_grid_1d(
             self._name, self._valmin, self._valmax, delta)
         return grid
