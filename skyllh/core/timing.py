@@ -253,13 +253,13 @@ class TaskTimer(object):
     def __enter__(self):
         """This gets executed when entering the `with` block.
         """
-        self._start = time.time()
+        self._start = time.process_time()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """This gets executed when exiting the `with` block.
         """
-        self._end = time.time()
+        self._end = time.process_time()
 
         if(self._time_lord is None):
             return
