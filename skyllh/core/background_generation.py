@@ -12,9 +12,13 @@ from skyllh.core.py import (
     func_has_n_args,
     issequenceof
 )
+from skyllh.core.debugging import get_logger
 from skyllh.core.scrambling import DataScrambler
 from skyllh.core.timing import TaskTimer
 from skyllh.core.config import CFG
+
+
+logger = get_logger(__name__)
 
 
 class BackgroundGenerationMethod(object):
@@ -362,11 +366,21 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             background events. The number of events can be less than `n_bkg`
             if an event selection method is used.
         """
+        tracing_enabled = CFG['debugging']['enable_tracing']
+
+        # Create aliases to avoid dot-lookup.
+        self__pre_event_selection_method = self._pre_event_selection_method
+        self__event_selection_method = self._event_selection_method
+
         # Check if the data set has changed. In that case need to get new
         # background probabilities for each monte-carlo event and a new mean
         # number of background events.
         data_id = id(data)
         if(self._cache_data_id != data_id):
+            if(tracing_enabled):
+                logger.debug(
+                    f'DatasetData instance id of dataset "{dataset.name}" '
+                    f'changed from {self._cache_data_id} to {data_id}')
             # Cache the current id of the data.
             self._cache_data_id = data_id
 
@@ -374,8 +388,10 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             # except the specified MC data fields to keep for the
             # ``get_mean_func`` and ``get_event_prob_func`` functions.
             keep_field_names = list(set(
-                CFG['dataset']['analysis_required_exp_field_names'] + data.exp_field_names +
-                self._keep_mc_data_field_names))
+                CFG['dataset']['analysis_required_exp_field_names'] +
+                data.exp_field_names +
+                self._keep_mc_data_field_names
+            ))
             data_mc = data.mc.copy(keep_fields=keep_field_names)
 
             if(self._get_mean_func is not None):
@@ -387,11 +403,11 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                 self._cache_mc_event_bkg_prob = self._get_event_prob_func(
                     dataset, data, data_mc)
 
-            if(self._pre_event_selection_method is not None):
+            if(self__pre_event_selection_method is not None):
                 with TaskTimer(tl, 'Pre-select MC events.'):
                     (self._cache_mc_pre_selected,
                      mc_pre_selected_mask) =\
-                    self._pre_event_selection_method.select_events(
+                    self__pre_event_selection_method.select_events(
                         data_mc, retmask=True, tl=tl)
                 self._cache_mc_event_bkg_prob_pre_selected = self._cache_mc_event_bkg_prob[mc_pre_selected_mask]
             else:
@@ -423,18 +439,17 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                     rss, data_mc_pre_selected, copy=False)
 
         # Select the significant events from the pre-selection.
-        event_selection_method = self._event_selection_method
-        if(event_selection_method is None):
+        if(self__event_selection_method is None):
             data_mc_selected = data_mc_pre_selected
         else:
             with TaskTimer(tl, 'Select the significant background events.'):
-                (data_mc_selected, mask) = event_selection_method.select_events(
+                (data_mc_selected, mask) = self__event_selection_method.select_events(
                     data_mc_pre_selected, retmask=True, tl=tl)
 
         # Determine if there is an event selection at all.
         no_selection = (
-            (self._pre_event_selection_method is None) and
-            (event_selection_method is None)
+            (self__pre_event_selection_method is None) and
+            (self__event_selection_method is None)
         )
 
         # Calculate the mean number of background events for the selected
@@ -453,10 +468,10 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         with TaskTimer(tl, 'Get p array.'):
             if(no_selection):
                 p = self._cache_mc_event_bkg_prob
-            elif(event_selection_method is None):
+            elif(self__event_selection_method is None):
                 # Only pre-selection.
                 p = self._cache_mc_event_bkg_prob_pre_selected / p_binomial
-            elif(self._pre_event_selection_method is None):
+            elif(self__pre_event_selection_method is None):
                 # Only normal selection.
                 p = self._cache_mc_event_bkg_prob[mask] / p_binomial
             else:
