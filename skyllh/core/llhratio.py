@@ -506,6 +506,8 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             The gradient value of log_lambda for each fit parameter.
             The first element is the gradient for ns.
         """
+        tracing = CFG['debugging']['enable_tracing']
+
         # Get the number of selected events.
         Nprime = len(Xi)
 
@@ -518,6 +520,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
         # log-function argument, and an inverted mask thereof.
         stablemask = alpha_i > alpha
         unstablemask = ~stablemask
+        if(tracing):
+            logger.debug(
+                '# of events doing Taylor expansion for (unstable events): '
+                '{:d}'.format(
+                    np.count_nonzero(unstablemask)))
 
         # Allocate memory for the log_lambda_i values.
         log_lambda_i = np.empty_like(alpha_i, dtype=np.float)
@@ -690,6 +697,8 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
             parameter and ns.
             The first element is the gradient for ns.
         """
+        tracing = CFG['debugging']['enable_tracing']
+
         # Define local variables to avoid (.)-lookup procedure.
         tdm = self._tdm
         pdfratioarray = self._pdfratioarray
@@ -734,6 +743,11 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
 
             # Calculate the derivative of Xi w.r.t. the fit parameter.
             dXi_ps[idx] = dRi / N
+
+        if(tracing):
+            logger.debug(
+                '{:s}.evaluate: N={:d}, Nprime={:d}, ns={:.3f}, '.format(
+                    classname(self), N, len(Xi), ns))
 
         with TaskTimer(tl, 'Calc logLamds and grads'):
             (log_lambda, grads) = self.calculate_log_lambda_and_grads(
@@ -1197,7 +1211,13 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
             log-likelihood-ratio function for ns and each global fit parameter.
             By definition the first element is the gradient for ns.
         """
+        tracing = CFG['debugging']['enable_tracing']
+
         ns = fitparam_values[0]
+        if(tracing):
+            logger.debug(
+                '{:s}.evaluate: ns={:.3f}'.format(
+                    classname(self), ns))
 
         # Get the dataset signal weights and their gradients.
         # f is a (N_datasets,)-shaped 1D ndarray.
@@ -1227,6 +1247,10 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         llhratio_fitparam_values = np.empty((len(fitparam_values),), dtype=np.float)
         # Loop over the llh ratio functions.
         for (j, llhratio) in enumerate(self._llhratio_list):
+            if(tracing):
+                logger.debug(
+                    'nsf[j={:d}] = {:.3f}'.format(
+                        j, nsf[j]))
             llhratio_fitparam_values[0] = nsf[j]
             llhratio_fitparam_values[1:] = fitparam_values[1:]
             (log_lambda_j, grads_j) = llhratio.evaluate(
