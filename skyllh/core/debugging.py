@@ -7,6 +7,18 @@ import sys
 from skyllh.core.config import CFG
 
 
+def enable_tracing():
+    """Enables the tracing log debug messages of SkyLLH.
+    """
+    CFG['debugging']['enable_tracing'] = True
+
+
+def disable_tracing():
+    """Disables the tracing log debug messages of SkyLLH.
+    """
+    CFG['debugging']['enable_tracing'] = False
+
+
 def get_logger(name):
     """Retrieves the logger with the given name from the Python logging system.
 
