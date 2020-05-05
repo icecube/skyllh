@@ -12,6 +12,7 @@ from skyllh.core.py import (
     issequenceof,
     range
 )
+from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.dataset import (
     Dataset,
     DatasetData
@@ -455,6 +456,170 @@ class Analysis(object):
 
         return (TS, fitparam_dict, status)
 
+    def generate_background_events(
+            self, rss, mean_n_bkg_list=None, bkg_kwargs=None, tl=None):
+        """Generates background events utilizing the background generator.
+
+        Parameters
+        ----------
+        rss : RandomStateService
+            The RandomStateService instance to use for generating random
+            numbers.
+        mean_n_bkg_list : list of float | None
+            The mean number of background events that should be generated for
+            each dataset. If set to None (the default), the background
+            generation method needs to obtain this number itself.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks of this method.
+
+        Returns
+        -------
+        n_events_list : list of int
+            The list of the number of events that have been generated for each
+            pseudo data set.
+        events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances containing the pseudo
+            data events for each data sample. The number of events for each
+            data set can be less than the number of events given by
+            `n_events_list` if an event selection method was already utilized
+            when generating background events.
+        """
+        n_datasets = self.n_datasets
+
+        if(not isinstance(rss, RandomStateService)):
+            raise TypeError(
+                'The rss argument must be an instance of RandomStateService!')
+
+        if(mean_n_bkg_list is None):
+            mean_n_bkg_list = [ None ] * n_datasets
+        if(not issequenceof(mean_n_bkg_list, (type(None), float))):
+            raise TypeError(
+                'The mean_n_bkg_list argument must be a sequence of None '
+                'and/or floats!')
+
+        if(bkg_kwargs is None):
+            bkg_kwargs = dict()
+
+        # Construct the background event generator in case it's not constructed
+        # yet.
+        if(self._bkg_generator is None):
+            self.construct_background_generator()
+
+        n_events_list = []
+        events_list = []
+        for ds_idx in range(n_datasets):
+            bkg_kwargs.update(mean=mean_n_bkg_list[ds_idx])
+            with TaskTimer(tl, 'Generating background events for data set '
+                '{:d}.'.format(ds_idx)):
+                (n_bkg, bkg_events) = self._bkg_generator.generate_background_events(
+                    rss, ds_idx, tl=tl, **bkg_kwargs)
+            n_events_list.append(n_bkg)
+            events_list.append(bkg_events)
+
+        return (n_events_list, events_list)
+
+    def generate_signal_events(
+            self, rss, mean_n_sig, sig_kwargs=None, n_events_list=None,
+            events_list=None, tl=None):
+        """Generates signal events utilizing the signal generator.
+
+        Parameters
+        ----------
+        rss : RandomStateService
+            The RandomStateService instance to use for generating random
+            numbers.
+        mean_n_sig : float
+            The mean number of signal events that should be generated for the
+            trial. The actual number of generated events will be drawn from a
+            Poisson distribution with this given signal mean as mean.
+        sig_kwargs : dict | None
+            Additional keyword arguments for the `generate_signal_events` method
+            of the `SignalGenerator` class. An usual keyword argument is
+            `poisson`.
+        n_events_list : list of int | None
+            If given, it specifies the number of events of each data set already
+            present and the number of signal events will be added.
+        events_list : list of DataFieldRecordArray instances | None
+            If given, it specifies the events of each data set already present
+            and the signal events will be added.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks of this method.
+
+        Returns
+        -------
+        n_sig : int
+            The actual number of injected signal events.
+        n_events_list : list of int
+            The list of the number of events that have been generated for each
+            pseudo data set.
+        events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances containing the pseudo
+            signal data events for each data set. An entry is None, if no signal
+            events were generated for this particular data set.
+        """
+        n_datasets = self.n_datasets
+
+        if(not isinstance(rss, RandomStateService)):
+            raise TypeError(
+                'The rss argument must be an instance of RandomStateService!')
+
+        if(sig_kwargs is None):
+            sig_kwargs = dict()
+
+        if(n_events_list is None):
+            n_events_list = [0] * n_datasets
+        else:
+            if(not issequenceof(n_events_list, int)):
+                raise TypeError(
+                    'The n_events_list argument must be a sequence of '
+                    'instances of type int!')
+            if(len(n_events_list) != n_datasets):
+                raise ValueError(
+                    'The n_events_list argument must be a list of int of '
+                    'length {:d}! Currently it is of length {:d}.'.format(
+                        n_datasets, len(n_events_list)))
+
+        if(events_list is None):
+            events_list = [None] * n_datasets
+        else:
+            if(not issequenceof(
+                    events_list, (type(None), DataFieldRecordArray))):
+                raise TypeError(
+                    'The events_list argument must be a sequence of '
+                    'instances of type DataFieldRecordArray!')
+            if(len(events_list) != n_datasets):
+                raise ValueError(
+                    'The events_list argument must be a list of instances of '
+                    'type DataFieldRecordArray with a length of {:d}! '
+                    'Currently it is of length {:d}.'.format(
+                        n_datasets, len(events_list)))
+
+        n_sig = 0
+
+        if(mean_n_sig == 0):
+            return (n_sig, n_events_list, events_list)
+
+        # Construct the signal generator if not done yet.
+        if(self._sig_generator is None):
+            self.construct_signal_generator()
+        # Generate signal events with the given mean number of signal
+        # events.
+        sig_kwargs.update(mean=mean_n_sig)
+        with TaskTimer(tl, 'Generating signal events.'):
+            (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
+                rss, **sig_kwargs)
+        # Inject the signal events to the generated background data.
+        for (ds_idx, sig_events) in ds_sig_events_dict.items():
+            n_events_list[ds_idx] += len(sig_events)
+            if(events_list[ds_idx] is None):
+                events_list[ds_idx] = sig_events
+            else:
+                events_list[ds_idx].append(sig_events)
+
+        return (n_sig, n_events_list, events_list)
+
     def generate_pseudo_data(
             self, rss, mean_n_bkg_list=None, mean_n_sig=0, bkg_kwargs=None,
             sig_kwargs=None, tl=None):
@@ -501,55 +666,22 @@ class Analysis(object):
             `n_events_list` if an event selection method was already utilized
             when generating background events.
         """
-        if(not isinstance(rss, RandomStateService)):
-            raise TypeError('The rss argument must be an instance of '
-                'RandomStateService!')
+        # Generate background events for each dataset.
+        (n_events_list, events_list) = self.generate_background_events(
+            rss=rss,
+            mean_n_bkg_list=mean_n_bkg_list,
+            bkg_kwargs=bkg_kwargs,
+            tl=tl)
 
-        if(mean_n_bkg_list is None):
-            mean_n_bkg_list = [ None ]*self.n_datasets
-        if(not issequenceof(mean_n_bkg_list, (type(None), float))):
-            raise TypeError('The mean_n_bkg_list argument must be a sequence '
-                'of None and/or floats!')
-
-        if(bkg_kwargs is None):
-            bkg_kwargs = dict()
-
-        if(sig_kwargs is None):
-            sig_kwargs = dict()
-
-        # Construct the background event generator in case it's not constructed
-        # yet.
-        if(self._bkg_generator is None):
-            self.construct_background_generator()
-
-        # Generate pseudo data for each dataset with background and possible
-        # signal events.
-        n_events_list = []
-        events_list = []
-        for ds_idx in range(self.n_datasets):
-            bkg_kwargs.update(mean=mean_n_bkg_list[ds_idx])
-            with TaskTimer(tl, 'Generating background events for data set '
-                '{:d}.'.format(ds_idx)):
-                (n_bkg, bkg_events) = self._bkg_generator.generate_background_events(
-                    rss, ds_idx, tl=tl, **bkg_kwargs)
-            n_events_list.append(n_bkg)
-            events_list.append(bkg_events)
-
-        n_sig = 0
-        if(mean_n_sig > 0):
-            # Construct the signal generator if not done yet.
-            if(self._sig_generator is None):
-                self.construct_signal_generator()
-            # Generate signal events with the given mean number of signal
-            # events.
-            sig_kwargs.update(mean=mean_n_sig)
-            with TaskTimer(tl, 'Generating signal events.'):
-                (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
-                    rss, **sig_kwargs)
-            # Inject the signal events to the generated background data.
-            for (idx, sig_events) in ds_sig_events_dict.items():
-                n_events_list[idx] += len(sig_events)
-                events_list[idx].append(sig_events)
+        # Generate signal events and add them to the already generated
+        # background events.
+        (n_sig, n_events_list, events_list) = self.generate_signal_events(
+            rss=rss,
+            mean_n_sig=mean_n_sig,
+            sig_kwargs=sig_kwargs,
+            n_events_list=n_events_list,
+            events_list=events_list,
+            tl=tl)
 
         return (n_sig, n_events_list, events_list)
 
