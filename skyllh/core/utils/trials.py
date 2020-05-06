@@ -98,38 +98,28 @@ def load_pseudo_data(filename, tl=None):
         data.
     n_sig : int
         The actual total number of signal events in the pseudo data.
-    n_events_list : list of int
-        The total number of events for each data set of the pseudo data.
-    events_list : list of DataFieldRecordArray instances
-        The list of DataFieldRecordArray instances containing the pseudo
-        data events for each data sample. The number of events for each
-        data sample can be less than the number of events given by
-        `n_events_list` if an event selection method was already utilized
-        when generating background events.
+    n_bkg_events_list : list of int
+        The total number of background events for each data set of the
+        pseudo data.
+    n_sig_events_list : list of int
+        The total number of signal events for each data set of the pseudo data.
+    bkg_events_list : list of DataFieldRecordArray instances
+        The list of DataFieldRecordArray instances containing the background
+        pseudo data events for each data set.
+    sig_events_list : list of DataFieldRecordArray instances or None
+        The list of DataFieldRecordArray instances containing the signal
+        pseudo data events for each data set. If a particular dataset has
+        no signal events, the entry for that dataset can be None.
     """
     with TaskTimer(tl, 'Loading pseudo data from file.'):
         with open(filename, 'rb') as fp:
             trial_data = pickle.load(fp)
 
-    n_events_list = list(
-        np.array(trial_data['n_bkg_events_list']) +
-        np.array(trial_data['n_sig_events_list'])
-    )
-
-    events_list = trial_data['bkg_events_list']
-
-    # Add potential signal events to the background events.
-    sig_events_list = trial_data['sig_events_list']
-    for ds_idx in range(len(events_list)):
-        if(sig_events_list[ds_idx] is not None):
-            if(events_list[ds_idx] is None):
-                events_list[ds_idx] = sig_events_list[ds_idx]
-            else:
-                events_list[ds_idx].append(sig_events_list[ds_idx])
-
     return (
         trial_data['mean_n_sig'],
         trial_data['n_sig'],
-        n_events_list,
-        events_list
+        trial_data['n_bkg_events_list'],
+        trial_data['n_sig_events_list'],
+        trial_data['bkg_events_list'],
+        trial_data['sig_events_list']
     )

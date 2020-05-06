@@ -773,6 +773,87 @@ class Analysis(object):
 
         return result
 
+    def do_trial_with_given_bkg_and_sig_pseudo_data(
+            self, rss, mean_n_sig, n_sig, n_bkg_events_list, n_sig_events_list,
+            bkg_events_list, sig_events_list,
+            mean_n_sig_0=None,
+            minimizer_status_dict=None,
+            tl=None):
+        """Performs an analysis trial on the given background and signal pseudo
+        data. This method merges the background and signal pseudo events and
+        calls the ``do_trial_with_given_pseudo_data`` method of this class.
+
+        Note
+        ----
+        This method alters the DataFieldRecordArray instances of the
+        bkg_events_list argument!
+
+        Parameters
+        ----------
+        rss : RandomStateService
+            The RandomStateService instance to use for generating random
+            numbers.
+        mean_n_sig : float
+            The mean number of signal events the pseudo data was generated with.
+        n_sig : int
+            The total number of actual signal events in the pseudo data.
+        n_bkg_events_list : list of int
+            The total number of background events for each data set of the
+            pseudo data.
+        n_sig_events_list : list of int
+            The total number of signal events for each data set of the
+            pseudo data.
+        bkg_events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances containing the background
+            pseudo data events for each data set.
+        sig_events_list : list of DataFieldRecordArray instances or None
+            The list of DataFieldRecordArray instances containing the signal
+            pseudo data events for each data set. If a particular dataset has
+            no signal events, the entry for that dataset can be None.
+        mean_n_sig_0 : float | None
+            The fixed mean number of signal events for the null-hypothesis,
+            when using a ns-profile log-likelihood-ratio function.
+            If set to None, this argument is interpreted as 0.
+        minimizer_status_dict : dict | None
+            If a dictionary is provided, it will be updated with the minimizer
+            status dictionary.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks.
+
+        Returns
+        -------
+        result : structured numpy ndarray
+            The structured numpy ndarray holding the result of the trial.
+            See the documentation of the ``do_trial_with_given_pseudo_data``
+            method for further information.
+        """
+        n_events_list = list(
+            np.array(n_bkg_events_list) +
+            np.array(n_sig_events_list)
+        )
+
+        events_list = bkg_events_list
+
+        # Add potential signal events to the background events.
+        for ds_idx in range(len(events_list)):
+            if(sig_events_list[ds_idx] is not None):
+                if(events_list[ds_idx] is None):
+                    events_list[ds_idx] = sig_events_list[ds_idx]
+                else:
+                    events_list[ds_idx].append(sig_events_list[ds_idx])
+
+        return self.do_trial_with_given_pseudo_data(
+            rss = rss,
+            mean_n_sig = mean_n_sig,
+            n_sig = n_sig,
+            n_events_list = n_events_list,
+            events_list = events_list,
+            mean_n_sig_0 = mean_n_sig_0,
+            minimizer_status_dict = minimizer_status_dict,
+            tl = tl
+        )
+
     def do_trial(
             self, rss, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
             bkg_kwargs=None, sig_kwargs=None, minimizer_status_dict=None,
