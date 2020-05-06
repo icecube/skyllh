@@ -3,6 +3,7 @@
 """This module contains utility functions related analysis trials.
 """
 
+import numpy as np
 import pickle
 
 from skyllh.core.timing import TaskTimer
@@ -49,15 +50,19 @@ def create_pseudo_data_file(
         The instance of TimeLord that should be used to time individual tasks.
 
     """
-    with TaskTimer(tl, 'Generating pseudo data.'):
-        (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(
-            rss = rss,
-            mean_n_bkg_list = mean_n_bkg_list,
-            mean_n_sig = mean_n_sig,
-            bkg_kwargs = bkg_kwargs,
-            sig_kwargs = sig_kwargs,
-            tl = tl
-        )
+    (n_bkg_events_list, bkg_events_list) = ana.generate_background_events(
+        rss = rss,
+        mean_n_bkg_list = mean_n_bkg_list,
+        bkg_kwargs = bkg_kwargs,
+        tl = tl
+    )
+
+    (n_sig, n_sig_events_list, sig_events_list) = ana.generate_signal_events(
+        rss = rss,
+        mean_n_sig = mean_n_sig,
+        sig_kwargs = sig_kwargs,
+        tl = tl
+    )
 
     trial_data = dict(
         mean_n_bkg_list = mean_n_bkg_list,
@@ -65,8 +70,10 @@ def create_pseudo_data_file(
         bkg_kwargs = bkg_kwargs,
         sig_kwargs = sig_kwargs,
         n_sig = n_sig,
-        n_events_list = n_events_list,
-        events_list = events_list
+        n_bkg_events_list = n_bkg_events_list,
+        n_sig_events_list = n_sig_events_list,
+        bkg_events_list = bkg_events_list,
+        sig_events_list = sig_events_list
     )
 
     with TaskTimer(tl, 'Writing pseudo data to file.'):
@@ -104,9 +111,25 @@ def load_pseudo_data(filename, tl=None):
         with open(filename, 'rb') as fp:
             trial_data = pickle.load(fp)
 
+    n_events_list = list(
+        np.array(trial_data['n_bkg_events_list']) +
+        np.array(trial_data['n_sig_events_list'])
+    )
+
+    events_list = trial_data['bkg_events_list']
+
+    # Add potential signal events to the background events.
+    sig_events_list = trial_data['sig_events_list']
+    for ds_idx in range(len(events_list)):
+        if(sig_events_list[ds_idx] is not None):
+            if(events_list[ds_idx] is None):
+                events_list[ds_idx] = sig_events_list[ds_idx]
+            else:
+                events_list[ds_idx].append(sig_events_list[ds_idx])
+
     return (
         trial_data['mean_n_sig'],
         trial_data['n_sig'],
-        trial_data['n_events_list'],
-        trial_data['events_list']
+        n_events_list,
+        events_list
     )
