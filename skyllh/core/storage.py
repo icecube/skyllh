@@ -719,14 +719,32 @@ class DataFieldRecordArray(object):
             The name of the new data field.
         data : numpy ndarray
             The numpy ndarray holding the data.
+
+        Raises
+        ------
+        KeyError
+            If the given data field name already exists in this
+            DataFieldRecordArray instance.
+        ValueError
+            If the length of the data array does not equal to the length of the
+            data of this DataFieldRecordArray instance.
+        TypeError
+            If the arguments are of the wrong type.
         """
         if(not isinstance(name, str)):
-            raise TypeError('The name argument must be an instance of str!')
+            raise TypeError(
+                'The name argument must be an instance of str!')
         if(not isinstance(data, np.ndarray)):
-            raise TypeError('The data argument must be an instance of ndarray!')
+            raise TypeError(
+                'The data argument must be an instance of ndarray!')
+        if(name in self._data_fields):
+            raise KeyError(
+                'The data field "%s" already exists in this %s instance!'%(
+                    name, classname(self)))
         if(len(data) != self._len):
-            raise ValueError('The length of the given data is %d, but must '
-                'be %d!'%(len(data), self._len))
+            raise ValueError(
+                'The length of the given data is %d, but must be %d!'%(
+                    len(data), self._len))
 
         self._data_fields[name] = data
         self._field_name_list.append(name)
