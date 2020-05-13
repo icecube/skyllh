@@ -34,34 +34,34 @@ class TaskRecord(object):
             raise ValueError('The number of start and end time stamps must '
                 'be equal!')
 
-        # Create a (2,Niter)-shaped 2D ndarray holding the start and end time
-        # stamps of the task executions. This array must be sorted by the start
-        # time stamps.
-        self._tstart_tend_arr = np.sort(np.vstack((tstart, tend)), axis=1)
+        self._tstart_list = list(tstart)
+        self._tend_list = list(tend)
 
     @property
     def tstart(self):
         """(read-only) The time stamps the execution of this task started.
         """
-        return self._tstart_tend_arr[0,:]
+        return self._tstart_list
 
     @property
     def tend(self):
         """(read-only) The time stamps the execution of this task was stopped.
         """
-        return self._tstart_tend_arr[1,:]
+        return self._tend_list
 
     @property
     def duration(self):
         """(read-only) The total duration (without time overlap) the task was
         executed.
         """
-        arr = self._tstart_tend_arr
+        # Create a (2,Niter)-shaped 2D ndarray holding the start and end time
+        # stamps of the task executions. This array gets then sorted by the
+        # start time stamps.
+        arr = np.sort(np.vstack((self._tstart_list, self._tend_list)), axis=1)
 
         d = arr[1,0] - arr[0,0]
         last_tend = arr[1,0]
-        n = self.niter
-        for idx in range(1, n):
+        for idx in range(1, arr.shape[1]):
             tstart = arr[0,idx]
             tend = arr[1,idx]
             if(tend <= last_tend):
@@ -78,7 +78,7 @@ class TaskRecord(object):
     def niter(self):
         """(read-only) The number of times this task was executed.
         """
-        return self._tstart_tend_arr.shape[1]
+        return len(self._tstart_list)
 
     def join(self, tr):
         """Joins this TaskRecord with the given TaskRecord instance.
@@ -89,11 +89,8 @@ class TaskRecord(object):
             The instance of TaskRecord that should be joined with this
             TaskRecord instance.
         """
-        self._tstart_tend_arr = np.sort(
-            np.append(
-                self._tstart_tend_arr, np.vstack((tr.tstart, tr.tend)),
-                axis=1),
-            axis=1)
+        self._tstart_list.extend(tr._tstart_list)
+        self._tend_list.extend(tr._tend_list)
 
 
 class TimeLord(object):
