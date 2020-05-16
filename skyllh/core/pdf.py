@@ -13,6 +13,7 @@ from skyllh.core.py import (
     range,
     typename
 )
+from skyllh.core.debugging import get_logger
 from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet,
@@ -34,6 +35,9 @@ try:
     import photospline
 except ImportError:
     PHOTOSPLINE_LOADED = False
+
+
+logger = get_logger(__name__)
 
 
 class PDFAxis(object):
@@ -171,6 +175,13 @@ class PDFAxes(ObjectCollection):
                 s += '\n'
             s += str(self[i])
         return s
+
+    @property
+    def axis_name_list(self):
+        """(read-only) The list of the names of all the axes of this PDFAxes
+        instance.
+        """
+        return [ axis.name for axis in self ]
 
     def get_axis(self, name):
         """Retrieves the PDFAxis object with the given name.
@@ -995,6 +1006,10 @@ class NDPhotosplinePDF(PDF):
                 self._fitparam_name_to_axis_idx_map[axis_name] = axis_idx
 
         self._pdf = photospline.SplineTable(path_to_pdf_splinefit)
+
+        logger.debug(
+            'Created %s instance with axis name list %s' % (
+                classname(self), str(self._axes.axis_name_list)))
 
     @property
     def norm_factor_func(self):
