@@ -783,6 +783,16 @@ class MultiDimGridPDF(PDF):
                 fill_value=0
             )
 
+        # Because this PDF does not depend on any fit parameters, the PDF values
+        # can be cached as long as the trial data state ID of the trial data
+        # manager has not changed.
+        self._cache_tdm_trial_data_state_id = None
+        self._cache_prob = None
+
+        logger.debug(
+            'Created %s instance with axis name list %s' % (
+                classname(self), str(self._axes.axis_name_list)))
+
     @property
     def axis_binning_list(self):
         """The list of BinningDefinition instances for each PDF axis.
@@ -886,6 +896,12 @@ class MultiDimGridPDF(PDF):
         prob : (N_events,)-shaped numpy ndarray
             The 1D numpy ndarray with the probability for each event.
         """
+        tdm_trial_data_state_id = tdm.trial_data_state_id
+        cache_tdm_trial_data_state_id = self._cache_tdm_trial_data_state_id
+
+        if(cache_tdm_trial_data_state_id == tdm_trial_data_state_id):
+            return self._cache_prob
+
         if(isinstance(self._pdf, RegularGridInterpolator)):
             with TaskTimer(tl, 'Get prob from RegularGridInterpolator.'):
                 prob = self._pdf(eventdata)
@@ -898,6 +914,9 @@ class MultiDimGridPDF(PDF):
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(self, tdm, params)
             prob *= norm
+
+        self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
+        self._cache_prob = prob
 
         return prob
 
@@ -926,10 +945,21 @@ class MultiDimGridPDF(PDF):
             Because this PDF does not depend on any parameters, no gradients
             w.r.t. the parameters are returned.
         """
+        tdm_trial_data_state_id = tdm.trial_data_state_id
+        cache_tdm_trial_data_state_id = self._cache_tdm_trial_data_state_id
+
+        if((cache_tdm_trial_data_state_id is not None) and
+           (cache_tdm_trial_data_state_id == tdm_trial_data_state_id)):
+            return (self._cache_prob, None)
+
         with TaskTimer(tl, 'Get PDF event data.'):
             eventdata = np.array([tdm.get_data(axis.name)
                                   for axis in self._axes]).T
+
         prob = self.get_prob_with_eventdata(tdm, params, eventdata, tl=tl)
+
+        self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
+        self._cache_prob = prob
 
         return (prob, None)
 
@@ -974,6 +1004,8 @@ class NDPhotosplinePDF(PDF):
 
         super(NDPhotosplinePDF, self).__init__(
             param_set=param_set)
+
+        self._n_fitparams = self._param_set.n_floating_params
 
         if(isinstance(axis_binnings, BinningDefinition)):
             axis_binnings = [axis_binnings]
@@ -1115,21 +1147,19 @@ class NDPhotosplinePDF(PDF):
         with TaskTimer(tl, 'Get prob from photospline fit.'):
             V = eventdata.shape[1]
             evaluate_simple_data = [eventdata[:, i] for i in range(0, V)]
-            prob = self__pdf_evaluate_simple(
-                evaluate_simple_data)
+            prob = self__pdf_evaluate_simple(evaluate_simple_data)
 
         with TaskTimer(tl, 'Normalize NDPhotosplinePDF with norm factor.'):
             norm = self._norm_factor_func(self, tdm, params)
             prob *= norm
 
-        self__param_set = self._param_set
-        n_fitparams = self__param_set.n_floating_params
-        if(n_fitparams == 0):
+        if(self._n_fitparams == 0):
             # This PDF does not depend on any fit parameters.
             return (prob, None)
 
         with TaskTimer(tl, 'Get grads from photospline fit.'):
-            grads = np.empty((n_fitparams,len(prob)), dtype=np.float)
+            self__param_set = self._param_set
+            grads = np.empty((self._n_fitparams, len(prob)), dtype=np.float)
             # Loop through the fit parameters of this PDF and calculate their
             # derivative.
             for (fitparam_idx,fitparam_name) in enumerate(
@@ -1321,7 +1351,7 @@ class PDFSet(object):
 
 class MultiDimGridPDFSet(PDF, PDFSet):
     def __init__(
-            self, param_set, param_grid_set, gridparams_pdfs, tdm,
+            self, param_set, param_grid_set, gridparams_pdfs,
             interpolmethod=None, **kwargs):
         """Creates a new MultiDimGridPDFSet instance, which holds a set of
         MultiDimGridPDF instances, one for each point of a parameter grid set.
@@ -1337,9 +1367,6 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
             The sequence of 2-element tuples which define the mapping of grid
             values to PDF instances.
-        tdm : TrialDataManager instance
-            The instance of TrialDataManager that should be used to get the
-            data of the trial events.
         interpolmethod : subclass of GridManifoldInterpolationMethod
             The class specifying the interpolation method. This must be a
             subclass of ``GridManifoldInterpolationMethod``.
@@ -1351,11 +1378,6 @@ class MultiDimGridPDFSet(PDF, PDFSet):
             pdf_type=MultiDimGridPDF,
             fitparams_grid_set=param_grid_set,
             **kwargs)
-
-        if(not isinstance(tdm, TrialDataManager)):
-            raise TypeError('The tdm argument must be an instance of '
-                            'TrialDataManager!')
-        self._tdm = tdm
 
         if(interpolmethod is None):
             interpolmethod = Linear1DGridManifoldInterpolationMethod
@@ -1389,13 +1411,15 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         from the PDFs that is registered for the given gridparams parameter
         values.
         """
-        def _get_prob_for_gridparams_with_eventdata(gridparms, eventdata):
+        def _get_prob_for_gridparams_with_eventdata(tdm, gridparms, eventdata):
             """Gets the probability for each event given by ``eventdata`` from
             the PDFs that is registered for the given gridparams parameter
             values.
 
             Parameters
             ----------
+            tdm : TrialDataManager
+                The TrialDataManager instance holding the trial data.
             gridparams : dict
                 The dictionary with the grid parameter names and values, that
                 reference the registered PDF of interest.
@@ -1408,7 +1432,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
                 The ndarray holding the probability values for each event.
             """
             pdf = self.get_pdf(gridparms)
-            prob = pdf.get_prob_with_eventdata(self._tdm, gridparms, eventdata)
+            prob = pdf.get_prob_with_eventdata(tdm, gridparms, eventdata)
             return prob
 
         return _get_prob_for_gridparams_with_eventdata
@@ -1458,7 +1482,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         # by the param_grid_set. The order of the D gradients is the same as
         # the parameter grids.
         (prob, grads_) = self._interpolmethod_instance.get_value_and_gradients(
-            eventdata, params)
+            tdm, eventdata, params)
 
         # Handle the special (common) case were there is only one fit parameter
         # and it coincides with the only grid parameter of this PDFSet.

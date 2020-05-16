@@ -154,7 +154,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
             raise TypeError('The fillmethod property must be an instance of PDFRatioFillMethod!')
         self._fillmethod = obj
 
-    def _get_spline_value(self, gridfitparams, eventdata):
+    def _get_spline_value(self, tdm, gridfitparams, eventdata):
         """Selects the spline object for the given fit parameter grid point and
         evaluates the spline for all the given events.
         """
@@ -188,7 +188,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         eventdata = np.vstack([get_data(fn) for fn in self._data_field_names]).T
 
         (ratio, gradients) = self._interpolmethod_instance.get_value_and_gradients(
-            eventdata, fitparams)
+            tdm, eventdata, fitparams)
         # The interpolation works on the logarithm of the ratio spline, hence
         # we need to transform it using the exp function, and we need to account
         # for the exp function in the gradients.

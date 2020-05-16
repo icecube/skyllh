@@ -302,7 +302,8 @@ class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
     a :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
 
-    def __init__(self, axis_binnings, path_to_pdf_splinetable=None, pdf_grid_data=None, norm_factor_func=None):
+    def __init__(self, axis_binnings, path_to_pdf_splinetable=None,
+                 pdf_grid_data=None, norm_factor_func=None):
         """Creates a new signal PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
         :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
@@ -343,7 +344,7 @@ class SignalMultiDimGridPDFSet(MultiDimGridPDFSet, IsSignalPDF):
     class for what this PDF provides.
     """
 
-    def __init__(self, param_set, param_grid_set, gridparams_pdfs, tdm,
+    def __init__(self, param_set, param_grid_set, gridparams_pdfs,
                  interpolmethod=None, **kwargs):
         """Creates a new SignalMultiDimGridPDFSet instance, which holds a set of
         MultiDimGridPDF instances, one for each point of a parameter grid set.
@@ -359,9 +360,6 @@ class SignalMultiDimGridPDFSet(MultiDimGridPDFSet, IsSignalPDF):
         gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
             The sequence of 2-element tuples which define the mapping of grid
             values to PDF instances.
-        tdm : TrialDataManager instance
-            The instance of TrialDataManager that should be used to get the
-            data of the trial events.
         interpolmethod : subclass of GridManifoldInterpolationMethod
             The class specifying the interpolation method. This must be a
             subclass of ``GridManifoldInterpolationMethod``.
@@ -372,7 +370,6 @@ class SignalMultiDimGridPDFSet(MultiDimGridPDFSet, IsSignalPDF):
             param_set=param_set,
             param_grid_set=param_grid_set,
             gridparams_pdfs=gridparams_pdfs,
-            tdm=tdm,
             interpolmethod=interpolmethod,
             **kwargs)
 
