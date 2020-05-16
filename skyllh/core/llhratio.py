@@ -511,6 +511,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
         # Get the number of selected events.
         Nprime = len(Xi)
 
+        if(tracing):
+            logger.debug(
+                'N={:d}, Nprime={:d}'.format(
+                    N, Nprime))
+
         one_plus_alpha = ZeroSigH0SingleDatasetTCLLHRatio._one_plus_alpha
 
         alpha = one_plus_alpha - 1
@@ -730,6 +735,8 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
 
         # Calculate Xi for each (selected) event.
         Xi = (Ri - 1.) / N
+        if(tracing):
+            logger.debug('dtype(Xi)={:s}'.format(str(Xi.dtype)))
 
         # Calculate the gradients of Xi for each fit parameter (without ns).
         dXi_ps = np.empty((len(fitparam_values)-1,len(Xi)), dtype=np.float)
