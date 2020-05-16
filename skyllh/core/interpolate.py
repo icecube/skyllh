@@ -36,9 +36,10 @@ class GridManifoldInterpolationMethod(object):
             event.
             The call signature of f must be:
 
-                ``__call__(gridparams, eventdata)``
+                ``__call__(tdm, gridparams, eventdata)``
 
-            where gridparams is the dictionary with the parameter values
+            where ``tdm`` is the TrialDataManager instance holding the trial
+            data, ``gridparams`` is the dictionary with the parameter values
             on the grid, and ``eventdata`` is a 2-dimensional (N,V)-shaped numpy
             ndarray holding the event data, where N is the number of events, and
             V the dimensionality of the event data.
@@ -84,13 +85,15 @@ class GridManifoldInterpolationMethod(object):
         return len(self._param_grid_set)
 
     @abc.abstractmethod
-    def get_value_and_gradients(self, eventdata, params):
+    def get_value_and_gradients(self, tdm, eventdata, params):
         """Retrieves the interpolated value of the manifold at the d-dimensional
         point ``params`` for all given events, along with the d gradients,
         i.e. partial derivatives.
 
         Parameters
         ----------
+        tdm : TrialDataManager
+            The TrialDataManager instance holding the trial data.
         eventdata : numpy (N_events,V)-shaped 2D ndarray
             The 2D (N_events,V)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
@@ -127,7 +130,7 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             returns the value of the n-dimensional manifold at this point for
             each given event.
 
-                ``__call__(gridparams, eventdata)``
+                ``__call__(tdm, gridparams, eventdata)``
 
             where ``gridparams`` is the dictionary with the parameter names and
             values on the grid, and ``eventdata`` is a 2-dimensional
@@ -141,7 +144,7 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         super(NullGridManifoldInterpolationMethod, self).__init__(
             f, param_grid_set)
 
-    def get_value_and_gradients(self, eventdata, params):
+    def get_value_and_gradients(self, tdm, eventdata, params):
         """Calculates the non-interpolated manifold value and its gradient
         (zero) for each given event at the point ``params``.
         By definition the D values of ``params`` must coincide with the
@@ -149,6 +152,8 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
 
         Parameters
         ----------
+        tdm : TrialDataManager
+            The TrialDataManager instance holding the trial data.
         eventdata : numpy (N_events,V)-shaped 2D ndarray
             The 2D (N_events,V)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
@@ -172,8 +177,8 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             p_grid = self._param_grid_set[pname]
             gridparams[pname] = p_grid.round_to_nearest_grid_point(pvalue)
 
-        value = self._f(gridparams, eventdata)
-        gradients = np.zeros((len(params),eventdata.shape[0]), dtype=np.float)
+        value = self._f(tdm, gridparams, eventdata)
+        gradients = np.zeros((len(params), tdm.n_events), dtype=np.float)
 
         return (value, gradients)
 
@@ -192,7 +197,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             returns the value of the 1-dimensional manifold at this point for
             each given event.
 
-                ``__call__(gridparams, eventdata)``
+                ``__call__(tdm, gridparams, eventdata)``
 
             where ``gridparams`` is the dictionary with the parameter names and
             values on the grid, and ``eventdata`` is a 2-dimensional
@@ -238,12 +243,14 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             'b': b
         }
 
-    def get_value_and_gradients(self, eventdata, params):
+    def get_value_and_gradients(self, tdm, eventdata, params):
         """Calculates the interpolated manifold value and its gradient for each
         given event at the point ``params``.
 
         Parameters
         ----------
+        tdm : TrialDataManager
+            The TrialDataManager instance holding the trial data.
         eventdata : numpy (N_events,V)-shaped 2D ndarray
             The 2D (N_events,V)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
@@ -271,7 +278,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         # Check if the line parametrization for x0 is already cached.
         self__cache = self._cache
         if((self__cache['x0'] == x0) and
-           (eventdata.shape[0] == len(self__cache['m']))
+           (tdm.n_events == len(self__cache['m']))
           ):
             m = self__cache['m']
             b = self__cache['b']
@@ -286,19 +293,19 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             # The value will be of that grid point x0, but the gradient is
             # calculated based on the two neighboring grid points of x0.
             if(x1 == x0):
-                value = self__f({xname:x0}, eventdata)
+                value = self__f(tdm, {xname:x0}, eventdata)
                 x0 = self__p_grid.round_to_nearest_grid_point(
                     x0 - self__p_grid.delta)
                 x1 = self__p_grid.round_to_nearest_grid_point(
                     x1 + self__p_grid.delta)
 
-                M0 = self__f({xname:x0}, eventdata)
-                M1 = self__f({xname:x1}, eventdata)
+                M0 = self__f(tdm, {xname:x0}, eventdata)
+                M1 = self__f(tdm, {xname:x1}, eventdata)
                 m = (M1 - M0) / (x1 - x0)
                 return (value, np.atleast_2d(m))
 
-            M0 = self__f({xname:x0}, eventdata)
-            M1 = self__f({xname:x1}, eventdata)
+            M0 = self__f(tdm, {xname:x0}, eventdata)
+            M1 = self__f(tdm, {xname:x1}, eventdata)
 
             m = (M1 - M0) / (x1 - x0)
             b = M0 - m*x0
@@ -327,7 +334,7 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
             each given event.
             The call signature of f must be:
 
-                ``__call__(gridparams, eventdata)``
+                ``__call__(tdm, gridparams, eventdata)``
 
             where ``gridparams`` is the dictionary with the parameter names and
             values on the grid, and ``eventdata`` is a 2-dimensional
@@ -375,12 +382,14 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
             'b': b
         }
 
-    def get_value_and_gradients(self, eventdata, params):
+    def get_value_and_gradients(self, tdm, eventdata, params):
         """Calculates the interpolated manifold value and its gradient for each
         given event at the point ``params``.
 
         Parameters
         ----------
+        tdm : TrialDataManager
+            The TrialDataManager instance holding the trial data.
         eventdata : numpy (N_events,V)-shaped 2D ndarray
             The 2D (N_events,V)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
@@ -410,7 +419,7 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
 
         # Check if the parabola parametrization for x1 is already cached.
         if((self__cache['x1'] == x1) and
-           (eventdata.shape[0] == len(self__cache['M1']))
+           (tdm.n_events == len(self__cache['M1']))
           ):
             M1 = self__cache['M1']
             a = self__cache['a']
@@ -424,9 +433,9 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
 
             # Parameterize the parabola with parameters a, b, and M1.
             self__f = self.f
-            M0 = self__f({xname:x0}, eventdata)
-            M1 = self__f({xname:x1}, eventdata)
-            M2 = self__f({xname:x2}, eventdata)
+            M0 = self__f(tdm, {xname:x0}, eventdata)
+            M1 = self__f(tdm, {xname:x1}, eventdata)
+            M2 = self__f(tdm, {xname:x2}, eventdata)
 
             a = 0.5*(M0 - 2.*M1 + M2) / dx**2
             b = 0.5*(M2 - M0) / dx
