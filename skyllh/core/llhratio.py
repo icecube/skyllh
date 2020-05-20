@@ -1157,7 +1157,8 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
             llhratio.change_source_hypo_group_manager(src_hypo_group_manager)
 
     def initialize_for_new_trial(
-            self, events_list, n_events_list=None, event_selection_method=None):
+            self, events_list, n_events_list=None,
+            event_selection_method_list=None):
         """Initializes the log-likelihood-ratio function with the given events.
 
         Parameters
@@ -1171,18 +1172,19 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
             data set. This number can be larger than the number of given events
             for each data set. If set to None, the number of events is taken
             from the size of the given events array of each data set.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod to use to select only
+        event_selection_method_list : list of EventSelectionMethod | None
+            The list of EventSelectionMethod instances to use to select only
             signal-like events from the given events arrays. All other events
             will be treated as pure background events. This reduces the amount
-            of log-likelihood-ratio function evaluations. If set to None, all
-            events will be evaluated.
+            of log-likelihood-ratio function evaluations. If an entry is set to
+            None, all events of that dataset will be evaluated.
         """
         if(n_events_list is None):
             n_events_list = [ len(events) for events in events_list ]
 
-        for (n_events, events, llhratio) in zip(
-                n_events_list, events_list, self._llhratio_list):
+        for (n_events, events, event_selection_method, llhratio) in zip(
+                n_events_list, events_list, event_selection_method_list,
+                self._llhratio_list):
             # Select events that have potential to be signal. This is for
             # runtime optimization only. Doing this at this point, makes sure
             # that both, background and signal events laying outside of the
@@ -1388,7 +1390,8 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
         self._llhratio.change_source_hypo_group_manager(src_hypo_group_manager)
 
     def initialize_for_new_trial(
-            self, events_list, n_events_list=None, event_selection_method=None):
+            self, events_list, n_events_list=None,
+            event_selection_method_list=None):
         """Initializes the log-likelihood-ratio function with the given events.
 
         Parameters
@@ -1402,15 +1405,15 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
             data set. This number can be larger than the number of given events
             for each data set. If set to None, the number of events is taken
             from the size of the given events array of each data set.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod to use to select only
+        event_selection_method_list : list of EventSelectionMethod | None
+            The list of EventSelectionMethod instances to use to select only
             signal-like events from the given events arrays. All other events
             will be treated as pure background events. This reduces the amount
             of log-likelihood-ratio function evaluations. If set to None, all
             events will be evaluated.
         """
         self._llhratio.initialize_for_new_trial(
-            events_list, n_events_list, event_selection_method)
+            events_list, n_events_list, event_selection_method_list)
 
         # Compute the constant log-likelihood function value for the
         # null-hypothesis.

@@ -82,7 +82,7 @@ class Analysis(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
-                 test_statistic, bkg_gen_method=None, event_selection_method=None):
+                 test_statistic, bkg_gen_method=None):
         """Constructor of the analysis base class.
 
         Parameters
@@ -112,18 +112,15 @@ class Analysis(object):
         # Call the super function to allow for multiple class inheritance.
         super(Analysis, self).__init__()
 
-        if(event_selection_method is None):
-            event_selection_method = AllEventSelectionMethod(src_hypo_group_manager)
-
         self.src_hypo_group_manager = src_hypo_group_manager
         self.src_fitparam_mapper = src_fitparam_mapper
         self.test_statistic = test_statistic
         self.bkg_gen_method = bkg_gen_method
-        self.event_selection_method = event_selection_method
 
         self._dataset_list = []
         self._data_list = []
         self._tdm_list = []
+        self._event_selection_method_list = []
 
         # Predefine the variable for the global fit parameter set, which holds
         # all the global fit parameters.
@@ -190,20 +187,6 @@ class Analysis(object):
                 raise TypeError('The bkg_gen_method property must be an '
                     'instance of BackgroundGenerationMethod!')
         self._bkg_gen_method = method
-
-    @property
-    def event_selection_method(self):
-        """The instance of EventSelectionMethod that selects events, which have
-        potential to be signal. All non-selected events will be treated as pure
-        background events.
-        """
-        return self._event_selection_method
-    @event_selection_method.setter
-    def event_selection_method(self, method):
-        if(not isinstance(method, EventSelectionMethod)):
-            raise TypeError('The event_selection_method property must be an '
-                'instance of EventSelectionMethod!')
-        self._event_selection_method = method
 
     @property
     def dataset_list(self):
@@ -284,7 +267,7 @@ class Analysis(object):
             livetime += data.livetime
         return livetime
 
-    def add_dataset(self, dataset, data, tdm=None):
+    def add_dataset(self, dataset, data, tdm=None, event_selection_method=None):
         """Adds the given dataset to the list of datasets for this analysis.
 
         Parameters
@@ -298,24 +281,38 @@ class Analysis(object):
             The TrialDataManager instance managing the trial data and additional
             data fields of the data set. If set to None, it means that no
             additional data fields are defined.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod to use to select only
+            signal-like events from the data. All other events
+            will be treated as pure background events. This reduces the amount
+            of log-likelihood-ratio function evaluations. If set to None, all
+            events will be evaluated.
         """
         if(not isinstance(dataset, Dataset)):
-            raise TypeError('The dataset argument must be an instance '
-                'of Dataset!')
+            raise TypeError(
+                'The dataset argument must be an instance of Dataset!')
 
         if(not isinstance(data, DatasetData)):
-            raise TypeError('The data argument must be an instance '
-                'of DatasetData!')
+            raise TypeError(
+                'The data argument must be an instance of DatasetData!')
 
         if(tdm is None):
             tdm = TrialDataManager()
         if(not isinstance(tdm, TrialDataManager)):
-            raise TypeError('The tdm argument must be None or an instance of '
+            raise TypeError(
+                'The tdm argument must be None or an instance of '
                 'TrialDataManager!')
+
+        if(event_selection_method is not None):
+            if(not isinstance(event_selection_method, EventSelectionMethod)):
+                raise TypeError(
+                    'The event_selection_method argument must be None or an '
+                    'instance of EventSelectionMethod!')
 
         self._dataset_list.append(dataset)
         self._data_list.append(data)
         self._tdm_list.append(tdm)
+        self._event_selection_method_list.append(event_selection_method)
 
     def calculate_test_statistic(
             self, log_lambda, fitparam_values, *args, **kwargs):
@@ -1029,7 +1026,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
     """
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
                  fitparam_ns,
-                 test_statistic, bkg_gen_method=None, event_selection_method=None):
+                 test_statistic, bkg_gen_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
@@ -1051,21 +1048,14 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The instance of BackgroundGenerationMethod that will be used to
             generate background events for a new analysis trial. This can be set
             to None, if no background events have to get generated.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod that implements the selection
-            of the events, which have potential to be signal. All non-selected
-            events will be treated as pure background events. This is for
-            runtime optimization only.
-            If set to None (default), the AllEventSelectionMethod will be used,
-            that selects all events for the analysis.
         """
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an '
                 'instance of SingleSourceFitParameterMapper!')
 
         super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
-            src_hypo_group_manager, src_fitparam_mapper,
-            test_statistic, bkg_gen_method, event_selection_method)
+            src_hypo_group_manager, src_fitparam_mapper, test_statistic,
+            bkg_gen_method)
 
         self.fitparam_ns = fitparam_ns
 
@@ -1090,7 +1080,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             raise TypeError('The fitparam_ns property must be an instance of FitParameter!')
         self._fitparam_ns = fitparam
 
-    def add_dataset(self, dataset, data, pdfratios, tdm=None):
+    def add_dataset(self, dataset, data, pdfratios, tdm=None,
+                    event_selection_method=None):
         """Adds a dataset with its PDF ratio instances to the analysis.
 
         Parameters
@@ -1106,9 +1097,15 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         tdm : TrialDataManager instance | None
             The TrialDataManager instance that manages the trial data and
             additional data fields for this data set.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod to use to select only
+            signal-like events from the trial data. All other events
+            will be treated as pure background events. This reduces the amount
+            of log-likelihood-ratio function evaluations. If set to None, all
+            events will be evaluated.
         """
         super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(
-            dataset, data, tdm)
+            dataset, data, tdm, event_selection_method)
 
         if(isinstance(pdfratios, PDFRatio)):
             pdfratios = [pdfratios]
@@ -1216,8 +1213,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         # Change the source hypo group manager of the EventSelectionMethod
         # instance.
-        self._event_selection_method.change_source_hypo_group_manager(
-            self._src_hypo_group_manager)
+        for event_selection_method in self._event_selection_method_list:
+            event_selection_method.change_source_hypo_group_manager(
+                self._src_hypo_group_manager)
 
         # Change the source hypo group manager of the LLH ratio function
         # instance.
@@ -1250,7 +1248,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             the number of events is taken from the size of the given events.
         """
         self._llhratio.initialize_for_new_trial(
-            events_list, n_events_list, self._event_selection_method)
+            events_list, n_events_list, self._event_selection_method_list)
 
     def maximize_llhratio(self, rss, tl=None):
         """Maximizes the log-likelihood ratio function, by minimizing its
@@ -1344,8 +1342,7 @@ class SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
     """
     def __init__(
         self, src_hypo_group_manager, src_fitparam_mapper,
-        fitparam_ns, test_statistic, bkg_gen_method=None,
-        event_selection_method=None):
+        fitparam_ns, test_statistic, bkg_gen_method=None):
         """Creates a new time-integrated analysis with separate spatial and
         energy PDFs for multiple datasets assuming a single source.
 
@@ -1367,20 +1364,15 @@ class SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
             The instance of BackgroundGenerationMethod that will be used to
             generate background events for a new analysis trial. This can be set
             to `None`, if no background events have to get generated.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod that implements the selection
-            of the events, which have potential to be signal. All non-selected
-            events will be treated as pure background events. This is for
-            runtime optimization only.
-            If set to None (default), the AllEventSelectionMethod will be used,
-            that selects all events for the analysis.
         """
-        super(SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
-            src_hypo_group_manager, src_fitparam_mapper,
-            fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
+        super(
+            SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis,
+            self).__init__(
+                src_hypo_group_manager, src_fitparam_mapper,
+                fitparam_ns, test_statistic, bkg_gen_method)
 
     def add_dataset(self, dataset, data, spatial_pdfratio, energy_pdfratio,
-                    tdm=None):
+                    tdm=None, event_selection_method=None):
         """Adds a dataset with its spatial and energy PDF ratio instances to the
         analysis.
 
@@ -1399,6 +1391,12 @@ class SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
             The TrialDataManager instance managing the trial data and additional
             data fields of the data set. If set to None, it means that no
             additional data fields are defined.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod to use to select only
+            signal-like events from the data. All other events
+            will be treated as pure background events. This reduces the amount
+            of log-likelihood-ratio function evaluations. If set to None, all
+            events will be evaluated.
         """
         if(not isinstance(spatial_pdfratio, PDFRatio)):
             raise TypeError('The spatial_pdfratio argument must be an instance '
@@ -1417,85 +1415,5 @@ class SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis(
         pdfratios = [spatial_pdfratio, energy_pdfratio]
 
         super(SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis,
-            self).add_dataset(dataset, data, pdfratios, tdm)
-
-
-class SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis(
-    TimeIntegratedMultiDatasetSingleSourceAnalysis):
-    """This is an analysis class that implements a time-integrated LLH ratio
-    analysis with a single multi-dimensional PDF for multiple datasets
-    assuming a single source.
-
-    To run this analysis the following procedure applies:
-
-        1. Add the datasets and their multi-dimensional PDF ratio instance
-           via the :meth:`.add_dataset` method.
-        2. Construct the log-likelihood ratio function via the
-           :meth:`construct_llhratio` method.
-        3. Initialize a trial via the :meth:`initialize_trial` method.
-        4. Fit the global fit parameters to the trial data via the
-           :meth:`maximize_llhratio` method.
-    """
-    def __init__(
-        self, src_hypo_group_manager, src_fitparam_mapper,
-        fitparam_ns, test_statistic, bkg_gen_method=None,
-        event_selection_method=None):
-        """Creates a new time-integrated analysis with a single
-        multi-dimensional PDF for multiple datasets assuming a single source.
-
-        Parameters
-        ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
-            The instance of SourceHypoGroupManager, which defines the groups of
-            source hypotheses, their flux model, and their detector signal
-            efficiency implementation method.
-        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
-            The instance of SingleSourceFitParameterMapper defining the global
-            fit parameters and their mapping to the source fit parameters.
-        fitparam_ns : FitParameter instance
-            The FitParameter instance defining the fit parameter ns.
-        test_statistic : TestStatistic instance
-            The TestStatistic instance that defines the test statistic function
-            of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial. This can be set
-            to `None` if no background events have to get generated.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod that implements the selection
-            of the events, which have potential to be signal. All non-selected
-            events will be treated as pure background events. This is for
-            runtime optimization only.
-            If set to None (default), the AllEventSelectionMethod will be used,
-            that selects all events for the analysis.
-        """
-        super(SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
-            src_hypo_group_manager, src_fitparam_mapper,
-            fitparam_ns, test_statistic, bkg_gen_method, event_selection_method)
-
-    def add_dataset(self, dataset, data, multidim_pdfratio, tdm=None):
-        """Adds a dataset with its single multi-dimensional PDF ratio instance
-        to the analysis.
-
-        Parameters
-        ----------
-        dataset : Dataset instance
-            The Dataset instance that should get added.
-        data : DatasetData instance
-            The DatasetData instance holding the original (prepared) data of the
-            dataset.
-        multidim_pdfratio : PDFRatio instance
-            The multi-dimensional PDFRatio instance for the data set.
-        tdm : TrialDataManager instance | None
-            The TrialDataManager instance managing the trial data and additional
-            data fields of the data set. If set to None, it means that no
-            additional data fields are defined.
-        """
-        if(not isinstance(multidim_pdfratio, PDFRatio)):
-            raise TypeError('The multidim_pdfratio argument must be an '
-                'instance of PDFRatio!')
-
-        pdfratios = [multidim_pdfratio]
-
-        super(SingleMultiDimPDFTimeIntegratedMultiDatasetSingleSourceAnalysis,
-            self).add_dataset(dataset, data, pdfratios, tdm)
+            self).add_dataset(
+                dataset, data, pdfratios, tdm, event_selection_method)
