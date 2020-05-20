@@ -32,7 +32,8 @@ class EventSelectionMethod(object):
 
         # The _src_arr variable holds a numpy record array with the necessary
         # source information needed for the event selection method.
-        self._src_arr = None
+        self._src_arr = self.source_to_array(
+            self._src_hypo_group_manager.source_list)
 
     @property
     def src_hypo_group_manager(self):
@@ -119,7 +120,8 @@ class AllEventSelectionMethod(EventSelectionMethod):
             event selection method it has no meaning, but it is an interface
             parameter.
         """
-        super(AllEventSelectionMethod, self).__init__(src_hypo_group_manager)
+        super(AllEventSelectionMethod, self).__init__(
+            src_hypo_group_manager)
 
     def source_to_array(self, sources):
         return None
@@ -168,44 +170,6 @@ class SpatialEventSelectionMethod(EventSelectionMethod):
         super(SpatialEventSelectionMethod, self).__init__(
             src_hypo_group_manager)
 
-
-class DecBandEventSectionMethod(SpatialEventSelectionMethod):
-    """This event selection method selects events within a declination band
-    around a list of point-like source positions.
-    """
-    def __init__(self, src_hypo_group_manager, delta_angle):
-        """Creates and configures a spatial declination band event selection
-        method object.
-
-        Parameters
-        ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The instance of SourceHypoGroupManager that defines the list of
-            sources, i.e. the list of SourceModel instances.
-        delta_angle : float
-            The half-opening angle around the source in declination for which
-            events should get selected.
-        """
-        super(DecBandEventSectionMethod, self).__init__(
-            src_hypo_group_manager)
-
-        self.delta_angle = delta_angle
-
-        self._src_arr = self.source_to_array(
-            self._src_hypo_group_manager.source_list)
-
-    @property
-    def delta_angle(self):
-        """The half-opening angle around the source in declination and
-        right-ascention for which events should get selected.
-        """
-        return self._delta_angle
-    @delta_angle.setter
-    def delta_angle(self, angle):
-        angle = float_cast(angle, 'The delta_angle property must be castable '
-            'to type float!')
-        self._delta_angle = angle
-
     def source_to_array(self, sources):
         """Converts the given sequence of SourceModel instances into a
         structured numpy ndarray holding the necessary source information needed
@@ -237,6 +201,41 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             arr['dec'][i] = src.loc.dec
 
         return arr
+
+
+class DecBandEventSectionMethod(SpatialEventSelectionMethod):
+    """This event selection method selects events within a declination band
+    around a list of point-like source positions.
+    """
+    def __init__(self, src_hypo_group_manager, delta_angle):
+        """Creates and configures a spatial declination band event selection
+        method object.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The instance of SourceHypoGroupManager that defines the list of
+            sources, i.e. the list of SourceModel instances.
+        delta_angle : float
+            The half-opening angle around the source in declination for which
+            events should get selected.
+        """
+        super(DecBandEventSectionMethod, self).__init__(
+            src_hypo_group_manager)
+
+        self.delta_angle = delta_angle
+
+    @property
+    def delta_angle(self):
+        """The half-opening angle around the source in declination and
+        right-ascention for which events should get selected.
+        """
+        return self._delta_angle
+    @delta_angle.setter
+    def delta_angle(self, angle):
+        angle = float_cast(angle, 'The delta_angle property must be castable '
+            'to type float!')
+        self._delta_angle = angle
 
     def select_events(self, events, retmask=False, tl=None):
         """Selects the events within the declination band.
@@ -317,9 +316,6 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
 
         self.delta_angle = delta_angle
 
-        self._src_arr = self.source_to_array(
-            self._src_hypo_group_manager.source_list)
-
     @property
     def delta_angle(self):
         """The half-opening angle around the source in declination and
@@ -331,38 +327,6 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         angle = float_cast(angle,
             'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
-
-    def source_to_array(self, sources):
-        """Converts the given sequence of SourceModel instances into a
-        structured numpy ndarray holding the necessary source information needed
-        for this event selection method.
-
-        Parameters
-        ----------
-        sources : sequence of SourceModel
-            The sequence of source models containing the necessary information
-            of the source.
-
-        Returns
-        -------
-        arr : numpy record ndarray
-            The generated numpy record ndarray holding the necessary information
-            for each source. It contains the following data fields: 'ra', 'dec'.
-        """
-        if(not issequenceof(sources, SourceModel)):
-            raise TypeError('The sources argument must be a sequence of '
-                'SourceModel instances!')
-
-        arr = np.empty(
-            (len(sources),),
-            dtype=[('ra', np.float), ('dec', np.float)],
-            order='F')
-
-        for (i, src) in enumerate(sources):
-            arr['ra'][i] = src.loc.ra
-            arr['dec'][i] = src.loc.dec
-
-        return arr
 
     def select_events(self, events, retmask=False, tl=None):
         """Selects the events within the right-ascention band.
@@ -469,9 +433,6 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
 
         self.delta_angle = delta_angle
 
-        self._src_arr = self.source_to_array(
-            self._src_hypo_group_manager.source_list)
-
     @property
     def delta_angle(self):
         """The half-opening angle around the source in declination and
@@ -483,38 +444,6 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         angle = float_cast(angle,
             'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
-
-    def source_to_array(self, sources):
-        """Converts the given sequence of SourceModel instances into a
-        structured numpy ndarray holding the necessary source information needed
-        for this event selection method.
-
-        Parameters
-        ----------
-        sources : sequence of SourceModel
-            The sequence of source models containing the necessary information
-            of the source.
-
-        Returns
-        -------
-        arr : numpy record ndarray
-            The generated numpy record ndarray holding the necessary information
-            for each source. It contains the following data fields: 'ra', 'dec'.
-        """
-        if(not issequenceof(sources, SourceModel)):
-            raise TypeError('The sources argument must be a sequence of '
-                'SourceModel instances!')
-
-        arr = np.empty(
-            (len(sources),),
-            dtype=[('ra', np.float), ('dec', np.float)],
-            order='F')
-
-        for (i, src) in enumerate(sources):
-            arr['ra'][i] = src.loc.ra
-            arr['dec'][i] = src.loc.dec
-
-        return arr
 
     def select_events(self, events, retmask=False, tl=None):
         """Selects the events within the spatial box in right-ascention and
@@ -605,6 +534,156 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         with TaskTimer(tl, 'ESM: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
+            idx = events.indices[mask]
+            selected_events = events[idx]
+
+        if(retmask):
+            return (selected_events, mask)
+        return selected_events
+
+
+class PsiFuncEventSelectionMethod(EventSelectionMethod):
+    """This event selection method selects events whose psi value, i.e. the
+    great circle distance of the event to the source, is smaller than the value
+    of the provided function.
+    """
+    def __init__(self, src_hypo_group_manager, psi_name, func, axis_name_list):
+        """Creates a new PsiFuncEventSelectionMethod instance.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The instance of SourceHypoGroupManager that defines the list of
+            sources, i.e. the list of SourceModel instances.
+        psi_name : str
+            The name of the data field that provides the psi value of the event.
+        func : callable
+            The function that should get evaluated for each event. The call
+            signature must be ``func(*axis_data)``, where ``*axis_data`` is the
+            event data of each required axis. The number of axes must match the
+            provided axis names through the ``axis_name_list``.
+        axis_name_list : list of str
+            The list of data field names for each axis of the function ``func``.
+            All field names must be valid field names of the trial data's
+            DataFieldRecordArray instance.
+        """
+        super(PsiFuncEventSelectionMethod, self).__init__(
+            src_hypo_group_manager)
+
+        self.psi_name = psi_name
+        self.func = func
+        self.axis_name_list = axis_name_list
+
+        if(not func_has_n_args(self._func, len(self._axis_name_list))):
+            raise TypeError(
+                'The func argument must be a callable instance with %d '
+                'arguments!'%(
+                    len(self._axis_name_list)))
+
+    @property
+    def psi_name(self):
+        """The name of the data field that provides the psi value of the event.
+        """
+        return self._psi_name
+    @psi_name.setter
+    def psi_name(self, name):
+        if(not isinstance(name, str)):
+            raise TypeError(
+                'The psi_name property must be an instance of type str!')
+        self._psi_name = name
+
+    @property
+    def func(self):
+        """The function that should get evaluated for each event. The call
+        signature must be ``func(*axis_data)``, where ``*axis_data`` is the
+        event data of each required axis. The number of axes must match the
+        provided axis names through the ``axis_name_list`` property.
+        """
+        return self._func
+    @func.setter
+    def func(self, f):
+        if(not callable(f)):
+            raise TypeError(
+                'The func property must be a callable instance!')
+        self._func = f
+
+    @property
+    def axis_name_list(self):
+        """The list of data field names for each axis of the function defined
+        through the ``func`` property.
+        """
+        return self._axis_name_list
+    @axis_name_list.setter
+    def axis_name_list(self, names):
+        if(not issequenceof(names, str)):
+            raise TypeError(
+                'The axis_name_list property must be a sequence of str '
+                'instances!')
+        self._axis_name_list = list(names)
+
+    def source_to_array(self, sources):
+        """Converts the given sequence of SourceModel instances into a
+        structured numpy ndarray holding the necessary source information needed
+        for this event selection method.
+
+        Parameters
+        ----------
+        sources : sequence of SourceModel
+            The sequence of source models containing the necessary information
+            of the source.
+
+        Returns
+        -------
+        arr : None
+            Because this event selection method does not depend directly on the
+            source (only indirectly through the psi values), no source array
+            is required.
+        """
+        return None
+
+    def select_events(self, events, retmask=False, tl=None):
+        """Selects the events whose psi value is smaller than the value of the
+        predefined function.
+
+        Parameters
+        ----------
+        events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray that holds the event data.
+            The following data fields must exist:
+
+            - <psi_name> : float
+                The great circle distance of the event with the source.
+            - <*axis_name_list> : float
+                The name of the axis required for the function ``func`` to be
+                evaluated.
+
+        retmask : bool
+            Flag if also the mask of the selected events should get returned.
+            Default is False.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
+
+        Returns
+        -------
+        selected_events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding only the selected
+            events.
+        mask : (N_events,)-shaped ndarray of bools
+            The mask of the selected events, in case `retmask` is set to True.
+        """
+        cls_name = classname(self)
+
+        with TaskTimer(tl, '%s: Get psi values.'%(cls_name)):
+            psi = events[self._psi_name]
+
+        with TaskTimer(tl, '%s: Get axis data values.'%(cls_name)):
+            func_args = [ events[axis] for axis in self._axis_name_list ]
+
+        with TaskTimer(tl, '%s: Creating mask.'%(cls_name)):
+            mask = psi < self._func(*func_args)
+
+        with TaskTimer(tl, '%s: Create selected_events.'%(cls_name)):
             idx = events.indices[mask]
             selected_events = events[idx]
 
