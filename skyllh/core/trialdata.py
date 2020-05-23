@@ -513,14 +513,23 @@ class TrialDataManager(object):
             logger.debug(
                 f'Performing event selection method '
                 f'"{classname(evt_sel_method)}".')
-            self.events = evt_sel_method.select_events(self._events)
+            (self.events, mask) = evt_sel_method.select_events(
+                self._events, retmask=True)
+
+            # Cut the pre-event-selection data fields.
+            for (name, dfield) in self._pre_evt_sel_static_data_fields_dict.items():
+                dfield._values = dfield._values[mask]
 
         # Sort the events by the index field, if a field was provided.
         if(self._index_field_name is not None):
             logger.debug(
                 'Sorting events in index field "{}"'.format(
                     self._index_field_name))
-            self._events.sort_by_field(self._index_field_name)
+            sorted_idxs = self._events.sort_by_field(self._index_field_name)
+
+            # Sort also the already pre-event-selection data fields.
+            for (name, dfield) in self._pre_evt_sel_static_data_fields_dict.items():
+                dfield._values = dfield._values[sorted_idxs]
 
         # Now calculate all the static data fields. This will increment the
         # trial data state ID.
@@ -638,6 +647,7 @@ class TrialDataManager(object):
 
         fitparams = dict()
         for (name, dfield) in self._pre_evt_sel_static_data_fields_dict.items():
+            print('Calculate pre-evt-sel field "%s"'%(name))
             dfield.calculate(self, src_hypo_group_manager, fitparams)
 
         self._trial_data_state_id += 1
@@ -708,6 +718,8 @@ class TrialDataManager(object):
 
         if(name in self._static_data_fields_dict):
             data = self._static_data_fields_dict[name].values
+        elif(name in self._pre_evt_sel_static_data_fields_dict):
+            data = self._pre_evt_sel_static_data_fields_dict[name].values
         elif(name in self._source_data_fields_dict):
             data = self._source_data_fields_dict[name].values
         elif(name in self._fitparam_data_fields_dict):
