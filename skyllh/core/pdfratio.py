@@ -224,7 +224,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
                 # source, we need to reshape the array, which does not involve
                 # any data copying.
                 self._ratio_values[i] = np.reshape(
-                    pdfratio.get_ratio(tdm), (tdm.n_events,))
+                    pdfratio.get_ratio(tdm), (tdm.n_selected_events,))
 
     @property
     def pdfratio_list(self):
@@ -267,11 +267,11 @@ class SingleSourcePDFRatioArrayArithmetic(object):
 
         # If the amount of events have changed, we need a new array holding the
         # ratio values.
-        if(n_events_old != tdm.n_events):
+        if(n_events_old != tdm.n_selected_events):
             # Create a (N_pdfratios,N_events)-shaped array to hold the PDF ratio
             # values of each PDF ratio object for each event.
             self._ratio_values = np.empty(
-                (len(self._pdfratio_list), tdm.n_events), dtype=np.float)
+                (len(self._pdfratio_list), tdm.n_selected_events), dtype=np.float)
 
         self._precompute_static_pdfratio_values(tdm)
 
@@ -315,7 +315,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             # copying.
             self._ratio_values[i] = np.reshape(
                 self._pdfratio_list[i].get_ratio(tdm, fitparams, tl=tl),
-                (tdm.n_events,))
+                (tdm.n_selected_events,))
 
     def get_ratio_product(self, excluded_fitparam_idx=None):
         """Calculates the product of the of the PDF ratio values of each event,
@@ -708,7 +708,7 @@ class SigOverBkgPDFRatio(PDFRatio):
                 'the get_gradient method!')
 
         # Create the 1D return array for the gradient.
-        grad = np.zeros((tdm.n_events,), dtype=np.float)
+        grad = np.zeros((tdm.n_selected_events,), dtype=np.float)
 
         # Calculate the gradient for the given fit parameter.
         # There are four cases:

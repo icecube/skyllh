@@ -830,7 +830,7 @@ class MultiDimGridPDF(PDF):
             # Define a normalization function that just returns 1 for each
             # event.
             def func(pdf, tdm, fitparams):
-                return np.ones((tdm.n_events,), dtype=np.float)
+                return np.ones((tdm.n_selected_events,), dtype=np.float)
         if(not callable(func)):
             raise TypeError(
                 'The norm_factor_func property must be a callable object!')
@@ -1061,7 +1061,7 @@ class NDPhotosplinePDF(PDF):
             # Define a normalization function that just returns 1 for each
             # event.
             def func(pdf, tdm, fitparams):
-                return np.ones((tdm.n_events,), dtype=np.float)
+                return np.ones((tdm.n_selected_events,), dtype=np.float)
         if(not callable(func)):
             raise TypeError(
                 'The norm_factor_func property must be a callable object!')
@@ -1125,7 +1125,7 @@ class NDPhotosplinePDF(PDF):
         """
         with TaskTimer(tl, 'Get PDF event data.'):
             eventdata = np.empty(
-                (tdm.n_events, len(self._axes)), dtype=np.float)
+                (tdm.n_selected_events, len(self._axes)), dtype=np.float)
             for (axis_idx, axis) in enumerate(self._axes):
                 axis_name = axis.name
                 if(axis_name in tdm):
@@ -1139,7 +1139,8 @@ class NDPhotosplinePDF(PDF):
                             'and is not a parameter!'.format(
                                 axis_name))
                     axis_data = np.full(
-                        (tdm.n_events,), params[axis_name], dtype=np.float)
+                        (tdm.n_selected_events,), params[axis_name],
+                        dtype=np.float)
                 eventdata[:,axis_idx] = axis_data
 
         self__pdf_evaluate_simple = self._pdf.evaluate_simple

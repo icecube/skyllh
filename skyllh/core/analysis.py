@@ -12,6 +12,7 @@ from skyllh.core.py import (
     issequenceof,
     range
 )
+from skyllh.core.debugging import get_logger
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.dataset import (
     Dataset,
@@ -49,6 +50,9 @@ from skyllh.core.background_generation import BackgroundGenerationMethod
 from skyllh.core.background_generator import BackgroundGenerator
 from skyllh.core.signal_generator import SignalGenerator
 from skyllh.physics.source import SourceModel
+
+
+logger = get_logger(__name__)
 
 
 class Analysis(object):
@@ -1232,7 +1236,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             self._sig_generator.change_source_hypo_group_manager(
                 self._src_hypo_group_manager)
 
-    def initialize_trial(self, events_list, n_events_list=None):
+    def initialize_trial(self, events_list, n_events_list=None, tl=None):
         """This method initializes the multi-dataset log-likelihood ratio
         function with a new set of given trial data. This is a low-level method.
         For convenient methods see the `unblind` and `do_trial` methods.
@@ -1245,10 +1249,25 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             for the datasets must be in the same order than the added datasets.
         n_events_list : list of int | None
             The list of the number of events of each data set. If set to None,
-            the number of events is taken from the size of the given events.
+            the number of events is taken from the size of the given events
+            arrays.
+        tl : TimeLord | None
+            The optional TimeLord instance that should be used for timing
+            measurements.
         """
-        self._llhratio.initialize_for_new_trial(
-            events_list, n_events_list, self._event_selection_method_list)
+        if(n_events_list is None):
+            n_events_list = [ None ] * len(events_list)
+
+        for (idx, (tdm, events, n_events, evt_sel_method)) in enumerate(zip(
+                self._tdm_list, events_list, n_events_list,
+                self._event_selection_method_list)):
+
+            # Initialize the trial data manager with the given raw events.
+            self._tdm_list[idx].initialize_trial(
+                self._src_hypo_group_manager, events, n_events, evt_sel_method,
+                tl=tl)
+
+        self._llhratio.initialize_for_new_trial(tl=tl)
 
     def maximize_llhratio(self, rss, tl=None):
         """Maximizes the log-likelihood ratio function, by minimizing its

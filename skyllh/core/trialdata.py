@@ -7,6 +7,7 @@ The rational behind this manager is to compute data fields only once, which can
 then be used by different analysis objects, like PDF objects.
 """
 
+from collections import OrderedDict
 import numpy as np
 
 from skyllh.core.debugging import get_logger
@@ -14,6 +15,7 @@ from skyllh.core import display as dsp
 from skyllh.core.py import (
     classname,
     func_has_n_args,
+    int_cast,
     issequenceof,
     typename
 )
@@ -287,20 +289,21 @@ class TrialDataManager(object):
 
         # Define the list of data fields that depend only on the source
         # parameters.
-        self._source_data_fields = []
-        self._source_data_field_reg = dict()
+        self._source_data_fields_dict = OrderedDict()
+
+        # Define the list of data fields that are static and should be
+        # calculated prior to a possible event selection.
+        self._pre_evt_sel_static_data_fields_dict = OrderedDict()
 
         # Define the list of data fields that are static, i.e. don't depend on
         # any fit parameters. These fields have to be calculated only once when
         # a new evaluation data is available.
-        self._static_data_fields = []
-        self._static_data_field_reg = dict()
+        self._static_data_fields_dict = OrderedDict()
 
         # Define the list of data fields that depend on fit parameters. These
         # data fields have to be re-calculated whenever a fit parameter value
         # changes.
-        self._fitparam_data_fields = []
-        self._fitparam_data_field_reg = dict()
+        self._fitparam_data_fields_dict = OrderedDict()
 
         # Define the member variable that will hold the raw events for which the
         # data fields get calculated.
@@ -343,9 +346,28 @@ class TrialDataManager(object):
 
     @property
     def n_events(self):
-        """(read-only) The number of events which should get evaluated.
+        """The total number of events of the dataset this trial data manager
+        corresponds to.
+        """
+        return self._n_events
+    @n_events.setter
+    def n_events(self, n):
+        self._n_events = int_cast(
+            n, 'The n_events property must be castable to type int!')
+
+    @property
+    def n_selected_events(self):
+        """(read-only) The number of selected events which should get evaluated.
         """
         return len(self._events)
+
+    @property
+    def n_pure_bkg_events(self):
+        """(read-only) The number of pure background events, which are not part
+        of the trial data, but must be considered for the test-statistic value.
+        It is the difference of n_events and n_selected_events.
+        """
+        return self._n_events - len(self._events)
 
     @property
     def trial_data_state_id(self):
@@ -374,9 +396,9 @@ class TrialDataManager(object):
             return True
 
         # Check if the data field is a user defined data field.
-        if((name in self._source_data_field_reg) or
-           (name in self._static_data_field_reg) or
-           (name in self._fitparam_data_field_reg)):
+        if((name in self._source_data_fields_dict) or
+           (name in self._static_data_fields_dict) or
+           (name in self._fitparam_data_fields_dict)):
             return True
 
         return False
@@ -394,7 +416,7 @@ class TrialDataManager(object):
 
         s1 = 'Source data fields:\n'
         s2 = ''
-        for (idx, dfield) in enumerate(self._source_data_fields):
+        for (idx, dfield) in enumerate(self._source_data_fields_dict):
             if(idx > 0):
                 s2 += '\n'
             s2 += str(dfield)
@@ -404,9 +426,19 @@ class TrialDataManager(object):
         s += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s1)
         s += '\n'
 
+        s1 = 'Pre-event-selection static data fields:\n'
+        s2 = ''
+        for (idx, dfield) in enumerate(self._pre_evt_sel_static_data_fields_dict):
+            if(idx > 0):
+                s2 += '\n'
+            s2 += str(dfield)
+        s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
+        s += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s1)
+        s += '\n'
+
         s1 = 'Static data fields:\n'
         s2 = ''
-        for (idx, dfield) in enumerate(self._static_data_fields):
+        for (idx, dfield) in enumerate(self._static_data_fields_dict):
             if(idx > 0):
                 s2 += '\n'
             s2 += str(dfield)
@@ -416,7 +448,7 @@ class TrialDataManager(object):
 
         s1 = 'Fitparam data fields:\n'
         s2 = ''
-        for (idx, dfield) in enumerate(self._fitparam_data_fields):
+        for (idx, dfield) in enumerate(self._fitparam_data_fields_dict):
             if(idx > 0):
                 s2 += '\n'
             s2 += str(dfield)
@@ -438,9 +470,13 @@ class TrialDataManager(object):
         """
         self.calculate_source_data_fields(src_hypo_group_manager)
 
-    def initialize_for_new_trial(self, src_hypo_group_manager, events):
+    def initialize_trial(
+            self, src_hypo_group_manager, events, n_events=None,
+            evt_sel_method=None, tl=None):
         """Initializes the trial data manager for a new trial. It sets the raw
-        events and calculates the static data fields.
+        events, calculates pre-event-selection data fields, performs a possible
+        event selection and calculates the static data fields for the left-over
+        events.
 
         Parameters
         ----------
@@ -448,24 +484,47 @@ class TrialDataManager(object):
             The instance of SourceHypoGroupManager that defines the source
             hypothesis groups.
         events : DataFieldRecordArray instance
-            The DataFieldRecordArray instance holding the raw events.
+            The DataFieldRecordArray instance holding the entire raw events.
+        n_events : int | None
+            The total number of events of the data set this trial data manager
+            corresponds to.
+            If None, the number of events is taken from the number of events
+            present in the ``events`` array.
+        evt_sel_method : EventSelectionMethod | None
+            The optional event selection method that should be used to select
+            potential signal events.
+        tl : TimeLord | None
+            The optional TimeLord instance that should be used for timing
+            measurements.
         """
+        # Set the events property, so that the calculation functions of the data
+        # fields can access them.
+        self.events = events
+
+        if(n_events is None):
+            n_events = len(self._events)
+        self.n_events = n_events
+
+        # Calculate pre-event-selection data fields that are required by the
+        # event selection method.
+        self.calculate_pre_evt_sel_static_data_fields(src_hypo_group_manager)
+
+        if(evt_sel_method is not None):
+            logger.debug(
+                f'Performing event selection method '
+                f'"{classname(evt_sel_method)}".')
+            self.events = evt_sel_method.select_events(self._events)
+
         # Sort the events by the index field, if a field was provided.
         if(self._index_field_name is not None):
             logger.debug(
                 'Sorting events in index field "{}"'.format(
                     self._index_field_name))
-            events.sort_by_field(self._index_field_name)
+            self._events.sort_by_field(self._index_field_name)
 
-        # Set the events property, so that the calculation functions of the data
-        # fields can access them.
-        self.events = events
-
-        # Now calculate all the static data fields.
+        # Now calculate all the static data fields. This will increment the
+        # trial data state ID.
         self.calculate_static_data_fields(src_hypo_group_manager)
-
-        # Increment the trial data state ID.
-        self._trial_data_state_id += 1
 
     def add_source_data_field(self, name, func, dt=None):
         """Adds a new data field to the manager. The data field must depend
@@ -494,11 +553,10 @@ class TrialDataManager(object):
 
         data_field = DataField(name, func, dt=dt)
 
-        self._source_data_fields.append(data_field)
-        self._source_data_field_reg[name] = data_field
+        self._source_data_fields_dict[name] = data_field
 
     def add_data_field(
-            self, name, func, fitparam_names=None, dt=None):
+            self, name, func, fitparam_names=None, dt=None, pre_evt_sel=False):
         """Adds a new data field to the manager.
 
         Parameters
@@ -522,19 +580,28 @@ class TrialDataManager(object):
             If specified it defines the data type this data field should have.
             If a str instance is given, it defines the name of the data field
             whose data type should be taken for the data field.
+        pre_evt_sel : bool
+            Flag if this data field should get calculated before potential
+            signal events get selected (True), or afterwards (False).
+            Default is False.
         """
         if(name in self):
             raise KeyError(
                 'The data field "%s" is already defined!'%(name))
 
+        if(pre_evt_sel and (fitparam_names is not None)):
+            raise ValueError(
+                f'The pre-event-selection data field "{name}" must not depend '
+                 'on fit parameters!')
+
         data_field = DataField(name, func, fitparam_names, dt=dt)
 
-        if(fitparam_names is not None):
-            self._fitparam_data_fields.append(data_field)
-            self._fitparam_data_field_reg[name] = data_field
+        if(pre_evt_sel):
+            self._pre_evt_sel_static_data_fields_dict[name] = data_field
+        elif(fitparam_names is None):
+            self._static_data_fields_dict[name] = data_field
         else:
-            self._static_data_fields.append(data_field)
-            self._static_data_field_reg[name] = data_field
+            self._fitparam_data_fields_dict[name] = data_field
 
     def calculate_source_data_fields(self, src_hypo_group_manager):
         """Calculates the data values of the data fields that solely depend on
@@ -546,12 +613,32 @@ class TrialDataManager(object):
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses.
         """
-        if(len(self._source_data_fields) == 0):
+        if(len(self._source_data_fields_dict) == 0):
             return
 
         fitparams = None
-        for data_field in self._source_data_fields:
-            data_field.calculate(self, src_hypo_group_manager, fitparams)
+        for (name, dfield) in self._source_data_fields_dict.items():
+            dfield.calculate(self, src_hypo_group_manager, fitparams)
+
+        self._trial_data_state_id += 1
+
+    def calculate_pre_evt_sel_static_data_fields(self, src_hypo_group_manager):
+        """Calculates the data values of the data fields that should be
+        available for the event selection method and do not depend on any fit
+        parameters.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses.
+        """
+        if(len(self._pre_evt_sel_static_data_fields_dict) == 0):
+            return
+
+        fitparams = dict()
+        for (name, dfield) in self._pre_evt_sel_static_data_fields_dict.items():
+            dfield.calculate(self, src_hypo_group_manager, fitparams)
 
         self._trial_data_state_id += 1
 
@@ -565,12 +652,12 @@ class TrialDataManager(object):
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses.
         """
-        if(len(self._static_data_fields) == 0):
+        if(len(self._static_data_fields_dict) == 0):
             return
 
         fitparams = dict()
-        for data_field in self._static_data_fields:
-            data_field.calculate(self, src_hypo_group_manager, fitparams)
+        for (name, dfield) in self._static_data_fields_dict.items():
+            dfield.calculate(self, src_hypo_group_manager, fitparams)
 
         self._trial_data_state_id += 1
 
@@ -586,11 +673,11 @@ class TrialDataManager(object):
         fitparams : dict
             The dictionary holding the fit parameter names and values.
         """
-        if(len(self._fitparam_data_fields) == 0):
+        if(len(self._fitparam_data_fields_dict) == 0):
             return
 
-        for data_field in self._fitparam_data_fields:
-            data_field.calculate(self, src_hypo_group_manager, fitparams)
+        for (name, dfield) in self._fitparam_data_fields_dict.items():
+            dfield.calculate(self, src_hypo_group_manager, fitparams)
 
         self._trial_data_state_id += 1
 
@@ -619,12 +706,12 @@ class TrialDataManager(object):
            (name in self._events.field_name_list)):
             return self._events[name]
 
-        if(name in self._source_data_field_reg):
-            data = self._source_data_field_reg[name].values
-        elif(name in self._static_data_field_reg):
-            data = self._static_data_field_reg[name].values
-        elif(name in self._fitparam_data_field_reg):
-            data = self._fitparam_data_field_reg[name].values
+        if(name in self._static_data_fields_dict):
+            data = self._static_data_fields_dict[name].values
+        elif(name in self._source_data_fields_dict):
+            data = self._source_data_fields_dict[name].values
+        elif(name in self._fitparam_data_fields_dict):
+            data = self._fitparam_data_fields_dict[name].values
         else:
             raise KeyError('The data field "%s" is not defined!'%(name))
 

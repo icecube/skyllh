@@ -172,7 +172,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         are already cached.
         """
         if((self._cache_fitparams_hash == fitparams_hash) and
-           (len(self._cache_ratio) == tdm.n_events)
+           (len(self._cache_ratio) == tdm.n_selected_events)
           ):
             return True
         return False

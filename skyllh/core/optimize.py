@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import abc
+import inspect
 import numpy as np
 
-from skyllh.core.py import float_cast, issequenceof
+from skyllh.core.py import (
+    classname,
+    float_cast,
+    func_has_n_args,
+    issequenceof
+)
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.timing import TaskTimer
 from skyllh.physics.source import SourceModel
@@ -574,10 +580,11 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         self.func = func
         self.axis_name_list = axis_name_list
 
-        if(not func_has_n_args(self._func, len(self._axis_name_list))):
+        if(not (len(inspect.signature(self._func).parameters) >=
+                len(self._axis_name_list))):
             raise TypeError(
-                'The func argument must be a callable instance with %d '
-                'arguments!'%(
+                'The func argument must be a callable instance with at least '
+                '%d arguments!'%(
                     len(self._axis_name_list)))
 
     @property
