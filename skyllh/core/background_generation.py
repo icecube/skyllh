@@ -406,10 +406,10 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             if(self__pre_event_selection_method is not None):
                 with TaskTimer(tl, 'Pre-select MC events.'):
                     (self._cache_mc_pre_selected,
-                     mc_pre_selected_mask) =\
+                     mc_pre_selected_mask_idxs) =\
                     self__pre_event_selection_method.select_events(
-                        data_mc, retmask=True, tl=tl)
-                self._cache_mc_event_bkg_prob_pre_selected = self._cache_mc_event_bkg_prob[mc_pre_selected_mask]
+                        data_mc, retidxs=True, tl=tl)
+                self._cache_mc_event_bkg_prob_pre_selected = self._cache_mc_event_bkg_prob[mc_pre_selected_mask_idxs]
             else:
                 self._cache_mc_pre_selected = data_mc
 
@@ -443,8 +443,8 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
             data_mc_selected = data_mc_pre_selected
         else:
             with TaskTimer(tl, 'Select the significant background events.'):
-                (data_mc_selected, mask) = self__event_selection_method.select_events(
-                    data_mc_pre_selected, retmask=True, tl=tl)
+                (data_mc_selected, mask_idxs) = self__event_selection_method.select_events(
+                    data_mc_pre_selected, retidxs=True, tl=tl)
 
         # Determine if there is an event selection at all.
         no_selection = (
@@ -473,10 +473,10 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                 p = self._cache_mc_event_bkg_prob_pre_selected / p_binomial
             elif(self__pre_event_selection_method is None):
                 # Only normal selection.
-                p = self._cache_mc_event_bkg_prob[mask] / p_binomial
+                p = self._cache_mc_event_bkg_prob[mask_idxs] / p_binomial
             else:
                 # Pre-selection and normal selection.
-                p = self._cache_mc_event_bkg_prob_pre_selected[mask] / p_binomial
+                p = self._cache_mc_event_bkg_prob_pre_selected[mask_idxs] / p_binomial
         n_bkg_selected = int(np.around(n_bkg * p_binomial, 0))
 
         # Draw the actual background events from the selected events of the

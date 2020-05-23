@@ -50,7 +50,9 @@ class EventSelectionMethod(object):
     @src_hypo_group_manager.setter
     def src_hypo_group_manager(self, manager):
         if(not isinstance(manager, SourceHypoGroupManager)):
-            raise TypeError('The src_hypo_group_manager property must be an instance of SourceHypoGroupManager!')
+            raise TypeError(
+                'The src_hypo_group_manager property must be an instance of '
+                'SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
@@ -88,7 +90,7 @@ class EventSelectionMethod(object):
         pass
 
     @abc.abstractmethod
-    def select_events(self, events, retmask=False):
+    def select_events(self, events, retidxs=False, tl=None):
         """This method selects the events, which will contribute to the
         log-likelihood ratio function.
 
@@ -96,18 +98,22 @@ class EventSelectionMethod(object):
         ----------
         events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the events.
-        retmask : bool
-            Flag if also the (N_events,)-shaped boolean ndarray mask of the
-            selected events should get returned.
+        retidxs : bool
+            Flag if also the indices of of the selected events should get
+            returned as 1d ndarray.
             Default is False.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
 
         Returns
         -------
         selected_events : DataFieldRecordArray
             The instance of DataFieldRecordArray holding the selected events,
             i.e. a subset of the `events` argument.
-        mask : (N_events,)-shaped ndarray of bools
-            The mask of the selected events, in case `retmask` is set to True.
+        idxs : ndarray of ints
+            The indices of the selected events, in case `retidxs` is set to
+            True.
         """
         pass
 
@@ -132,7 +138,7 @@ class AllEventSelectionMethod(EventSelectionMethod):
     def source_to_array(self, sources):
         return None
 
-    def select_events(self, events, retmask=False):
+    def select_events(self, events, retidxs=False, tl=None):
         """Selects all of the given events. Hence, the returned event array is
         the same as the given array.
 
@@ -141,20 +147,25 @@ class AllEventSelectionMethod(EventSelectionMethod):
         events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the events, for which
             the selection method should get applied.
-        retmask : bool
-            Flag if also the mask of the selected events should get returned.
+        retidxs : bool
+            Flag if also the indices of of the selected events should get
+            returned as 1d ndarray.
             Default is False.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
 
         Returns
         -------
         selected_events : DataFieldRecordArray
             The instance of DataFieldRecordArray holding the selected events,
             i.e. a subset of the `events` argument.
-        mask : (N_events,)-shaped ndarray of bools
-            The mask of the selected events, in case `retmask` is set to True.
+        idxs : ndarray of ints
+            The indices of the selected events, in case `retidxs` is set to
+            True.
         """
-        if(retmask):
-            return (events, np.ones((len(events),), dtype=np.bool))
+        if(retidxs):
+            return (events, events.indices)
         return events
 
 
@@ -243,7 +254,7 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             'to type float!')
         self._delta_angle = angle
 
-    def select_events(self, events, retmask=False, tl=None):
+    def select_events(self, events, retidxs=False, tl=None):
         """Selects the events within the declination band.
 
         Parameters
@@ -254,8 +265,9 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
 
             - 'dec' : float
                 The declination of the event.
-        retmask : bool
-            Flag if also the mask of the selected events should get returned.
+        retidxs : bool
+            Flag if also the indices of of the selected events should get
+            returned as 1d ndarray.
             Default is False.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
@@ -266,8 +278,9 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        mask : (N_events,)-shaped ndarray of bools
-            The mask of the selected events, in case `retmask` is set to True.
+        idxs : ndarray of ints
+            The indices of the selected events, in case `retidxs` is set to
+            True.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -292,11 +305,11 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
 
         # Reduce the events according to the mask.
         with TaskTimer(tl, 'ESM-DecBand: Create selected_events.'):
-            idx = events.indices[mask]
-            selected_events = events[idx]
+            idxs = events.indices[mask]
+            selected_events = events[idxs]
 
-        if(retmask):
-            return (selected_events, mask)
+        if(retidxs):
+            return (selected_events, idxs)
         return selected_events
 
 
@@ -334,7 +347,7 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
             'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
-    def select_events(self, events, retmask=False, tl=None):
+    def select_events(self, events, retidxs=False, tl=None):
         """Selects the events within the right-ascention band.
 
         The solid angle dOmega = dRA * dSinDec = dRA * dDec * cos(dec) is a
@@ -351,8 +364,9 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
                 The right-ascention of the event.
             - 'dec' : float
                 The declination of the event.
-        retmask : bool
-            Flag if also the mask of the selected events should get returned.
+        retidxs : bool
+            Flag if also the indices of of the selected events should get
+            returned as 1d ndarray.
             Default is False.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
@@ -363,8 +377,9 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        mask : (N_events,)-shaped ndarray of bools
-            The mask of the selected events, in case `retmask` is set to True.
+        idxs : ndarray of ints
+            The indices of the selected events, in case `retidxs` is set to
+            True.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -409,11 +424,11 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         with TaskTimer(tl, 'ESM-RaBand: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            idx = events.indices[mask]
-            selected_events = events[idx]
+            idxs = events.indices[mask]
+            selected_events = events[idxs]
 
-        if(retmask):
-            return (selected_events, mask)
+        if(retidxs):
+            return (selected_events, idxs)
         return selected_events
 
 
@@ -451,7 +466,7 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
             'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
-    def select_events(self, events, retmask=False, tl=None):
+    def select_events(self, events, retidxs=False, tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination.
 
@@ -469,8 +484,9 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
                 The right-ascention of the event.
             - 'dec' : float
                 The declination of the event.
-        retmask : bool
-            Flag if also the mask of the selected events should get returned.
+        retidxs : bool
+            Flag if also the indices of of the selected events should get
+            returned as 1d ndarray.
             Default is False.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
@@ -481,8 +497,9 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        mask : (N_events,)-shaped ndarray of bools
-            The mask of the selected events, in case `retmask` is set to True.
+        idxs : ndarray of ints
+            The indices of the selected events, in case `retidxs` is set to
+            True.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -540,11 +557,11 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         with TaskTimer(tl, 'ESM: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            idx = events.indices[mask]
-            selected_events = events[idx]
+            idxs = events.indices[mask]
+            selected_events = events[idxs]
 
-        if(retmask):
-            return (selected_events, mask)
+        if(retidxs):
+            return (selected_events, idxs)
         return selected_events
 
 
@@ -648,7 +665,7 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         """
         return None
 
-    def select_events(self, events, retmask=False, tl=None):
+    def select_events(self, events, retidxs=False, tl=None):
         """Selects the events whose psi value is smaller than the value of the
         predefined function.
 
@@ -664,8 +681,9 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
                 The name of the axis required for the function ``func`` to be
                 evaluated.
 
-        retmask : bool
-            Flag if also the mask of the selected events should get returned.
+        retidxs : bool
+            Flag if also the indices of of the selected events should get
+            returned as 1d ndarray.
             Default is False.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
@@ -676,8 +694,9 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        mask : (N_events,)-shaped ndarray of bools
-            The mask of the selected events, in case `retmask` is set to True.
+        idxs : ndarray of ints
+            The indices of the selected events, in case `retidxs` is set to
+            True.
         """
         cls_name = classname(self)
 
@@ -691,9 +710,9 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
             mask = psi < self._func(*func_args)
 
         with TaskTimer(tl, '%s: Create selected_events.'%(cls_name)):
-            idx = events.indices[mask]
-            selected_events = events[idx]
+            idxs = events.indices[mask]
+            selected_events = events[idxs]
 
-        if(retmask):
-            return (selected_events, mask)
+        if(retidxs):
+            return (selected_events, idxs)
         return selected_events
