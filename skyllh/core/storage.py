@@ -935,6 +935,11 @@ class DataFieldRecordArray(object):
         name : str
             The name of the field along the events should get sorted.
 
+        Returns
+        -------
+        sorted_idxs : (n_events,)-shaped numpy ndarray
+            The numpy ndarray holding the indices of the sorted array.
+
         Raises
         ------
         KeyError
@@ -949,6 +954,7 @@ class DataFieldRecordArray(object):
         for fname in self._field_name_list:
             self._data_fields[fname] = self._data_fields[fname][sorted_idxs]
 
+        return sorted_idxs
 
 register_FileLoader(['.npy'], NPYFileLoader)
 register_FileLoader(['.pkl'], PKLFileLoader)
