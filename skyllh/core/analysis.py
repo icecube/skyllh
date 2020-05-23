@@ -1218,8 +1218,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # Change the source hypo group manager of the EventSelectionMethod
         # instance.
         for event_selection_method in self._event_selection_method_list:
-            event_selection_method.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
+            if(event_selection_method is not None):
+                event_selection_method.change_source_hypo_group_manager(
+                    self._src_hypo_group_manager)
 
         # Change the source hypo group manager of the LLH ratio function
         # instance.
