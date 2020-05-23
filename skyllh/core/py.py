@@ -255,7 +255,7 @@ def func_has_n_args(func, n):
     check : bool
         True if the given function has `n` arguments. False otherwise.
     """
-    check = (len(inspect.getargspec(func)[0]) == n)
+    check = (len(inspect.signature(func).parameters) == n)
     return check
 
 def bool_cast(v, errmsg):
