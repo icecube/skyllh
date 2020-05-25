@@ -166,14 +166,23 @@ class DataField(object):
 
         return s
 
-    def _convert_dtype(self, tdm):
-        """Converts the given ndarray into the data type this data field should
-        have.
+    def _get_desired_dtype(self, tdm):
+        """Retrieves the data type this field should have. It's None, if no
+        data type was defined for this data field.
         """
         if(self._dt is not None):
             if(isinstance(self._dt, str)):
                 self._dt = tdm.get_dtype(self._dt)
-            self._values = self._values.astype(self._dt, copy=False)
+        return self._dt
+
+    def _convert_to_desired_dtype(self, tdm, values):
+        """Converts the data type of the given values array to the given data
+        type.
+        """
+        dt = self._get_desired_dtype(tdm)
+        if(dt is not None):
+            values = values.astype(dt, copy=False)
+        return values
 
     def _calc_source_values(
             self, tdm, src_hypo_group_manager, fitparams):
@@ -188,7 +197,9 @@ class DataField(object):
                 'return an instance of numpy.ndarray! '
                 'Currently it is of type "%s".'%(
                     self._name, typename(type(self._values))))
-        self._convert_dtype(tdm)
+
+        # Convert the data type.
+        self._values = self._convert_to_desired_dtype(tdm, self._values)
 
     def _calc_static_values(
             self, tdm, src_hypo_group_manager, fitparams):
@@ -207,14 +218,20 @@ class DataField(object):
             The dictionary holding the current fit parameter names and values.
             By definition this dictionary is empty.
         """
-        self._values = self._func(tdm, src_hypo_group_manager, fitparams)
-        if(not isinstance(self._values, np.ndarray)):
+        values = self._func(tdm, src_hypo_group_manager, fitparams)
+        if(not isinstance(values, np.ndarray)):
             raise TypeError(
                 'The calculation function for the data field "%s" must '
                 'return an instance of numpy.ndarray! '
                 'Currently it is of type "%s".'%(
-                    self._name, typename(type(self._values))))
-        self._convert_dtype(tdm)
+                    self._name, typename(type(values))))
+
+        # Convert the data type.
+        values = self._convert_to_desired_dtype(tdm, values)
+
+        # Set the data values. This will add the data field to the
+        # DataFieldRecordArray if it does not exist yet.
+        tdm.events[self._name] = values
 
     def _calc_fitparam_dependent_values(
             self, tdm, src_hypo_group_manager, fitparams):
@@ -233,35 +250,50 @@ class DataField(object):
         fitparams : dict
             The dictionary holding the current fit parameter names and values.
         """
-        if(self._values is None):
+        if(self._name not in tdm.events):
             # It's the first time this method is called, so we need to calculate
             # the data field values for sure.
-            self._values = self._func(tdm, src_hypo_group_manager, fitparams)
-            if(not isinstance(self._values, np.ndarray)):
+            values = self._func(tdm, src_hypo_group_manager, fitparams)
+            if(not isinstance(values, np.ndarray)):
                 raise TypeError(
                     'The calculation function for the data field "%s" must '
                     'return an instance of numpy.ndarray! '
                     'Currently it is of type "%s".'%(
-                        self._name, typename(type(self._values))))
-            self._convert_dtype(tdm)
+                        self._name, typename(type(values))))
+
+            # Convert the data type.
+            values = self._convert_to_desired_dtype(tdm, values)
+
+            # Set the data values. This will add the data field to the
+            # DataFieldRecordArray if it does not exist yet.
+            tdm.events[self._name] = values
+
             # We store the fit parameter values for which the field values were
             # calculated for. So they have to get recalculated only when the
             # fit parameter values the field depends on change.
             self._fitparam_value_list = [
                 fitparams[name] for name in self._fitparam_name_list
             ]
+
             return
 
         for (idx, fitparam_name) in enumerate(self._fitparam_name_list):
             if(fitparams[fitparam_name] != self._fitparam_value_list[idx]):
                 # This current fit parameter value has changed. So we need to
                 # re-calculate the data field values.
+                values = self._func(tdm, src_hypo_group_manager, fitparams)
+
+                # Convert the data type.
+                values = self._convert_to_desired_dtype(tdm, values)
+
+                # Set the data values.
+                tdm.events[self._name] = values
+
+                # Store the new fit parameter values.
                 self._fitparam_value_list = [
                     fitparams[name] for name in self._fitparam_name_list
                 ]
-                self._values = self._func(
-                    tdm, src_hypo_group_manager, fitparams)
-                self._convert_dtype(tdm)
+
                 break
 
 
@@ -397,6 +429,7 @@ class TrialDataManager(object):
 
         # Check if the data field is a user defined data field.
         if((name in self._source_data_fields_dict) or
+           (name in self._pre_evt_sel_static_data_fields_dict) or
            (name in self._static_data_fields_dict) or
            (name in self._fitparam_data_fields_dict)):
             return True
@@ -513,23 +546,18 @@ class TrialDataManager(object):
             logger.debug(
                 f'Performing event selection method '
                 f'"{classname(evt_sel_method)}".')
-            (self.events, idxs) = evt_sel_method.select_events(
-                self._events, retidxs=True)
-
-            # Cut the pre-event-selection data fields.
-            for (name, dfield) in self._pre_evt_sel_static_data_fields_dict.items():
-                dfield._values = dfield._values[idxs]
+            selected_events = evt_sel_method.select_events(self._events, tl=tl)
+            logger.debug(
+                f'Selected {len(selected_events)} out of {len(self._events)} '
+                 'events')
+            self.events = selected_events
 
         # Sort the events by the index field, if a field was provided.
         if(self._index_field_name is not None):
             logger.debug(
                 'Sorting events in index field "{}"'.format(
                     self._index_field_name))
-            sorted_idxs = self._events.sort_by_field(self._index_field_name)
-
-            # Sort also the already pre-event-selection data fields.
-            for (name, dfield) in self._pre_evt_sel_static_data_fields_dict.items():
-                dfield._values = dfield._values[sorted_idxs]
+            self._events.sort_by_field(self._index_field_name)
 
         # Now calculate all the static data fields. This will increment the
         # trial data state ID.
@@ -715,24 +743,19 @@ class TrialDataManager(object):
            (name in self._events.field_name_list)):
             return self._events[name]
 
-        if(name in self._static_data_fields_dict):
-            data = self._static_data_fields_dict[name].values
-        elif(name in self._pre_evt_sel_static_data_fields_dict):
-            data = self._pre_evt_sel_static_data_fields_dict[name].values
-        elif(name in self._source_data_fields_dict):
+        if(name in self._source_data_fields_dict):
             data = self._source_data_fields_dict[name].values
-        elif(name in self._fitparam_data_fields_dict):
-            data = self._fitparam_data_fields_dict[name].values
-        else:
-            raise KeyError('The data field "%s" is not defined!'%(name))
 
-        if(self._events is not None):
-            # Broadcast the value of the one-element 1D ndarray to the length
+            # Broadcast the value of an one-element 1D ndarray to the length
             # of the number of events. Note: Make sure that we don't broadcast
             # recarrays.
-            if((len(data) == 1) and (data.ndim == 1) and
-               (data.dtype.fields is None)):
-                return np.repeat(data, len(self._events))
+            if(self._events is not None):
+                if((len(data) == 1) and (data.ndim == 1) and
+                   (data.dtype.fields is None)):
+                    data = np.repeat(data, len(self._events))
+        else:
+            raise KeyError(
+                f'The data field "{name}" is not defined!')
 
         return data
 
