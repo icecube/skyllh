@@ -111,20 +111,12 @@ def polynomial_fit(
     """
     (params, cov) = np.polyfit(ns, p, deg, w=p_weight, cov=True)
 
-    params_var = []
-    for k in range(deg+1):
-        params_var.append(cov[k][k])
-
     if(deg == 1):
-        (a,b) = (params[0],params[1])
-        (a_var,b_var) = (params_var[0],params_var[1])
-
+        (a, b) = (params[0], params[1])
         ns = (p_thr - b)/a
 
     if(deg == 2):
-        (a,b,c) = (params[0],params[1],params[2])
-        (a_var,b_var,c_var) = (params_var[0],params_var[1],params_var[2])
-
+        (a, b, c) = (params[0], params[1], params[2])
         ns = (- b + np.sqrt((b**2)-4*a*(c-p_thr))) / (2*a)
 
     return ns
