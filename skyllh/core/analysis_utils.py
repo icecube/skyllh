@@ -214,7 +214,7 @@ def estimate_mean_nsignal_for_ts_quantile(
     # probability can be estimated via binomial statistics.
     n_trials = int(p*(1-p)/eps_p**2 + 0.5)
 
-    n_sig, p_vals, p_val_weights = [],[],[]
+    (n_sig, p_vals, p_val_weights) = ([], [], [])
 
     while True:
         logger.debug(
