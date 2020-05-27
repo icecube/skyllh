@@ -17,7 +17,6 @@ from skyllh.core.py import (
 )
 from skyllh.core.session import is_interactive_session
 from skyllh.core.storage import NPYFileLoader
-from skyllh.core.timing import TaskTimer
 from skyllh.physics.source import PointLikeSource
 
 from scipy.interpolate import interp1d
@@ -89,9 +88,8 @@ def polynomial_fit(
         ns, p, p_weight, deg, p_thr):
     """Performs a polynomial fit on the p-values of test-statistic trials
     associated to each ns..
-    Using the fitted parameters and the covariance matrix it computes the
-    number of signal events correponding to the given p-value critical value
-    together with its uncertainty.
+    Using the fitted parameters it computes the number of signal events 
+    correponding to the given p-value critical value.
     
     Parameters
     ----------
@@ -111,49 +109,23 @@ def polynomial_fit(
     -------
     ns : float
     """
-    params, cov = np.polyfit(ns, p, deg, w=p_weight, cov=True)
+    (params, cov) = np.polyfit(ns, p, deg, w=p_weight, cov=True)
 
     params_var = []
     for k in range(deg+1):
         params_var.append(cov[k][k])
 
-    if deg == 1:
-        a,b = params[0],params[1]
-        a_var,b_var = params_var[0],params_var[1]
-        print('Fit params:',a,b)
-        print('Fit params variances:',a_var,b_var)
+    if(deg == 1):
+        (a,b) = (params[0],params[1])
+        (a_var,b_var) = (params_var[0],params_var[1])
 
         ns = (p_thr - b)/a
 
-        dnda = (b - p_thr)/(a**2)
-        dndb = -1/a
-
-        print('dnda:',dnda)
-        print('dndb:',dndb)
-        print('')
-
-        err = np.sqrt(dnda**2*a_var + dndb**2*b_var)
-        ns_err = np.sqrt((dnda**2*a_var)+(dndb**2*b_var))
-
-    if deg == 2:
-        a,b,c = params[0],params[1],params[2]
-        a_var,b_var,c_var = params_var[0],params_var[1],params_var[2]
-        print('Fit params:',a,b,c)
-        print('Fit params variances:',a_var,b_var,c_var)
+    if(deg == 2):
+        (a,b,c) = (params[0],params[1],params[2])
+        (a_var,b_var,c_var) = (params_var[0],params_var[1],params_var[2])
 
         ns = (- b + np.sqrt((b**2)-4*a*(c-p_thr))) / (2*a)
-
-        dnda = (0.5*(b*np.sqrt(b**2-4*(c-p_thr)*a)-b**2+2*a*(c-p_thr))/
-                    (a**2*np.sqrt(b**2-4*a*(c-p_thr))))
-        dndb = 1/(2*a)*(b/(np.sqrt(b**2-4*a*(c-p_thr)))-1)
-        dndc = -1/(np.sqrt(b**2-4*a*(c-p_thr)))
-
-        print('dnda:',dnda)
-        print('dndb:',dndb)
-        print('dndc:',dndc)
-        print('')
-
-        err = np.sqrt(dnda**2*a_var + dndb**2*b_var + dndc**2*c_var)
 
     return ns
 
@@ -209,6 +181,8 @@ def estimate_mean_nsignal_for_ts_quantile(
     -------
     mu : float
         Estimated mean number of signal events.
+    mu_err : None
+        Error estimate needs to be implemented.
     """
     logger = logging.getLogger(__name__)
 
@@ -336,8 +310,9 @@ def estimate_mean_nsignal_for_ts_quantile(
                     np.min(n_sig), np.max(n_sig), len(n_sig), deg)
 
                 mu = polynomial_fit(n_sig, p_vals, p_val_weights, deg, p)
+                mu_err = None
 
-                return (mu)
+                return (mu, mu_err)
 
         if(delta_p < p0_sigma*5):
             # The desired probability is within the 5 sigma region of the
