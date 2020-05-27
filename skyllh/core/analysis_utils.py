@@ -17,6 +17,7 @@ from skyllh.core.py import (
 )
 from skyllh.core.session import is_interactive_session
 from skyllh.core.storage import NPYFileLoader
+from skyllh.core.timing import TaskTimer
 from skyllh.physics.source import PointLikeSource
 
 from scipy.interpolate import interp1d
@@ -84,6 +85,78 @@ def calculate_pval_from_trials(
 
     return (p, p_sigma)
 
+def polynomial_fit(
+        ns, p, p_weight, deg, p_thr):
+    """Performs a polynomial fit on the p-values of test-statistic trials
+    associated to each ns..
+    Using the fitted parameters and the covariance matrix it computes the
+    number of signal events correponding to the given p-value critical value
+    together with its uncertainty.
+    
+    Parameters
+    ----------
+    ns : 1D array_like object
+        x-coordinates of the sample.
+    p : 1D array_like object
+        y-coordinates of the sample.
+    p_weight : 1D array_like object
+        Weights to apply to the y-coordinates of the sample points. For gaussian
+        uncertainties, use 1/sigma.
+    deg : int
+        Degree of the fitting polynomial function.
+    p_thr : float within [0,1]
+        The critical p-value.
+
+    Returns
+    -------
+    ns : float
+    """
+    params, cov = np.polyfit(ns, p, deg, w=p_weight, cov=True)
+
+    params_var = []
+    for k in range(deg+1):
+        params_var.append(cov[k][k])
+
+    if deg == 1:
+        a,b = params[0],params[1]
+        a_var,b_var = params_var[0],params_var[1]
+        print('Fit params:',a,b)
+        print('Fit params variances:',a_var,b_var)
+
+        ns = (p_thr - b)/a
+
+        dnda = (b - p_thr)/(a**2)
+        dndb = -1/a
+
+        print('dnda:',dnda)
+        print('dndb:',dndb)
+        print('')
+
+        err = np.sqrt(dnda**2*a_var + dndb**2*b_var)
+        ns_err = np.sqrt((dnda**2*a_var)+(dndb**2*b_var))
+
+    if deg == 2:
+        a,b,c = params[0],params[1],params[2]
+        a_var,b_var,c_var = params_var[0],params_var[1],params_var[2]
+        print('Fit params:',a,b,c)
+        print('Fit params variances:',a_var,b_var,c_var)
+
+        ns = (- b + np.sqrt((b**2)-4*a*(c-p_thr))) / (2*a)
+
+        dnda = (0.5*(b*np.sqrt(b**2-4*(c-p_thr)*a)-b**2+2*a*(c-p_thr))/
+                    (a**2*np.sqrt(b**2-4*a*(c-p_thr))))
+        dndb = 1/(2*a)*(b/(np.sqrt(b**2-4*a*(c-p_thr)))-1)
+        dndc = -1/(np.sqrt(b**2-4*a*(c-p_thr)))
+
+        print('dnda:',dnda)
+        print('dndb:',dndb)
+        print('dndc:',dndc)
+        print('')
+
+        err = np.sqrt(dnda**2*a_var + dndb**2*b_var + dndc**2*c_var)
+
+    return ns
+
 
 def estimate_mean_nsignal_for_ts_quantile(
         ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
@@ -136,8 +209,6 @@ def estimate_mean_nsignal_for_ts_quantile(
     -------
     mu : float
         Estimated mean number of signal events.
-    mu_err : float
-        The uncertainty on the mean number of signal events.
     """
     logger = logging.getLogger(__name__)
 
@@ -177,6 +248,8 @@ def estimate_mean_nsignal_for_ts_quantile(
     # probability can be estimated via binomial statistics.
     n_trials = int(p*(1-p)/eps_p**2 + 0.5)
 
+    n_sig, p_vals, p_val_weights = [],[],[]
+
     while True:
         logger.debug(
             'Doing new loop for nsignal range %s',
@@ -198,6 +271,7 @@ def estimate_mean_nsignal_for_ts_quantile(
                     rss, dn_trials, mean_n_sig=ns0, bkg_kwargs=bkg_kwargs,
                     sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']))
             (p0, p0_sigma) = calculate_pval_from_trials(ts_vals0, c)
+            
             n_total_generated_trials += dn_trials
 
             delta_p = np.abs(p0 - p)
@@ -217,6 +291,10 @@ def estimate_mean_nsignal_for_ts_quantile(
             if((p0_sigma < eps_p) and (delta_p < eps_p)):
                 # We found the ns0 value that corresponds to the desired
                 # probability within the desired uncertainty.
+
+                n_sig.append(ns0)
+                p_vals.append(p0)
+                p_val_weights.append(1./p0_sigma)
 
                 logger.debug(
                     'Found mu value %g with p value %g within uncertainty +-%g',
@@ -242,38 +320,24 @@ def estimate_mean_nsignal_for_ts_quantile(
                     'corresponding to p=(%g +-%g, %g +-%g)',
                     ns0, ns1, p0, p0_sigma, p1, p1_sigma)
 
-                # Check if p1 and p0 are equal, which would result in a divison
-                # by zero.
-                if(p0 == p1):
-                    mu = 0.5*(ns0 + ns1)
-                    mu_err = 0.5*np.abs(ns1 - ns0)
+                n_sig.append(ns1)
+                p_vals.append(p1)
+                p_val_weights.append(1./p1_sigma)
 
-                    logger.debug(
-                        'Probability for mu=%g and mu=%g has the same value %g',
-                        ns0, ns1, p0)
+                scanned_range = np.max(n_sig) - np.min(n_sig)
+                if(len(n_sig) < 5 or scanned_range < 1.5):
+                    deg = 1
                 else:
-                    dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
-
-                    logger.debug(
-                        'Estimated |dmu/dp| = %g within mu range (%g,%g) '
-                        'corresponding to p=(%g +-%g, %g +-%g)',
-                        dns_dp, ns0, ns1, p0, p0_sigma, p1, p1_sigma)
-
-                    if(p0 > p):
-                        mu = ns0 - dns_dp * delta_p
-                    else:
-                        mu = ns0 + dns_dp * delta_p
-                    mu_err = dns_dp * delta_p
+                    deg = 2
 
                 logger.debug(
-                    'Estimated final mu to be %g +- %g',
-                    mu, mu_err)
+                    'Scanned mu range: [%g , %g]\nPoints to fit: %g\n '
+                    'Using polynomial fit of order %g',
+                    np.min(n_sig), np.max(n_sig), len(n_sig), deg)
 
-                logger.debug(
-                    'Generated %d trials in total',
-                    n_total_generated_trials)
+                mu = polynomial_fit(n_sig, p_vals, p_val_weights, deg, p)
 
-                return (mu, mu_err)
+                return (mu)
 
         if(delta_p < p0_sigma*5):
             # The desired probability is within the 5 sigma region of the
@@ -284,6 +348,11 @@ def estimate_mean_nsignal_for_ts_quantile(
 
             # Store ns0 for the new lower or upper bound depending on where the
             # p0 lies.
+            
+            n_sig.append(ns0)
+            p_vals.append(p0)
+            p_val_weights.append(1./p0_sigma)
+
             if(p0+p0_sigma+eps_p <= p):
                 ns_lower_bound = ns0
             elif(p0-p0_sigma-eps_p >= p):
@@ -306,6 +375,10 @@ def estimate_mean_nsignal_for_ts_quantile(
             n_total_generated_trials += ts_vals0.size
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
+            
+            n_sig.append(ns1)
+            p_vals.append(p1)
+            p_val_weights.append(1./p1_sigma)
 
             # Check if p0 and p1 are equal, which would result into a division
             # by zero.
@@ -351,6 +424,11 @@ def estimate_mean_nsignal_for_ts_quantile(
             # The current ns corresponds to a probability p0 that is at least
             # 5 sigma away from the desired probability p, hence
             # delta_p >= p0_sigma*5.
+            
+            n_sig.append(ns0)
+            p_vals.append(p0)
+            p_val_weights.append(1./p0_sigma)
+
             if(p0 < p):
                 ns_range_[0] = ns0
             else:
