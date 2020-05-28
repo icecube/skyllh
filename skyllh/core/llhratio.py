@@ -43,10 +43,9 @@ from skyllh.physics.source import SourceModel
 logger = get_logger(__name__)
 
 
-class LLHRatio(object):
+class LLHRatio(object, metaclass=abc.ABCMeta):
     """Abstract base class for a log-likelihood (LLH) ratio function.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, minimizer):
         """Creates a new LLH ratio function instance.
@@ -166,11 +165,10 @@ class LLHRatio(object):
         return (log_lambda_max, fitparam_values, status)
 
 
-class TCLLHRatio(LLHRatio):
+class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
     """Abstract base class for a log-likelihood (LLH) ratio function with two
     components, i.e. signal and background.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, minimizer, mean_n_sig_0):
         """Creates a new two-component LLH ratio function instance.
@@ -272,11 +270,10 @@ class TCLLHRatio(LLHRatio):
         return super(TCLLHRatio, self).maximize(rss, fitparamset, tl=tl)
 
 
-class SingleDatasetTCLLHRatio(TCLLHRatio):
+class SingleDatasetTCLLHRatio(TCLLHRatio, metaclass=abc.ABCMeta):
     """Abstract base class for a log-likelihood (LLH) ratio function with two
     components, i.e. signal and background, for a single data set.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(
             self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
@@ -756,10 +753,9 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
     ## TODO: Implement this class!!
 
 
-class DatasetSignalWeights(object):
+class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
     """Abstract base class for a dataset signal weight calculator class.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
@@ -1369,7 +1365,7 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
         """
         return self._llhratio.calculate_ns_grad2(fitparam_values)
 
-#class NestedProfileLLHRatio(LLHRatio):
+#class NestedProfileLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
     #r"""This class provides the abstract base class for a nested profile
     #log-likelihood ratio function, which is, by definition, of the form
 
@@ -1381,7 +1377,6 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
     #and :math:`\Theta_0` are the total and nested fit parameter spaces,
     #respectively.
     #"""
-    #__metaclass__ = abc.ABCMeta
 
     #def __init__(self, ):
         #super(NestedProfileLLHRatio, self).__init__()

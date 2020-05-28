@@ -5,10 +5,9 @@ import abc
 from skyllh.core.livetime import Livetime
 
 
-class TimeGenerationMethod(object):
+class TimeGenerationMethod(object, metaclass=abc.ABCMeta):
     """Base class (type) for implementing a method to generate times.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         pass

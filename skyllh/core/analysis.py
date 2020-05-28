@@ -55,7 +55,7 @@ from skyllh.physics.source import SourceModel
 logger = get_logger(__name__)
 
 
-class Analysis(object):
+class Analysis(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for all analysis classes. It contains
     common properties required by all analyses and defines the overall analysis
     interface howto set-up and run an analysis.
@@ -82,8 +82,6 @@ class Analysis(object):
     has to be constructed via the ``construct_signal_generator`` method before
     any random trial data can be generated.
     """
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
                  test_statistic, bkg_gen_method=None):

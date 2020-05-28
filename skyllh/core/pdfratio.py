@@ -29,11 +29,10 @@ from skyllh.core.pdf import (
 from skyllh.core.timing import TaskTimer
 
 
-class PDFRatio(object):
+class PDFRatio(object, metaclass=abc.ABCMeta):
     """Abstract base class for a PDF ratio class. It defines the interface
     of a PDF ratio class.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, pdf_type, *args, **kwargs):
         """Constructor for a PDF ratio class.
@@ -346,12 +345,11 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         return np.prod(self._ratio_values[pdfratio_indices], axis=0)
 
 
-class PDFRatioFillMethod(object):
+class PDFRatioFillMethod(object, metaclass=abc.ABCMeta):
     """Abstract base class to implement a PDF ratio fill method. It can happen,
     that there are empty background bins but where signal could possibly be.
     A PDFRatioFillMethod implements what happens in such cases.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, *args, **kwargs):
         super(PDFRatioFillMethod, self).__init__(*args, **kwargs)

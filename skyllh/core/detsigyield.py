@@ -31,7 +31,7 @@ def get_integrated_livetime_in_days(livetime):
     return livetime_days
 
 
-class DetSigYield(object):
+class DetSigYield(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for a detector signal yield.
 
     The detector signal yield, Y_s(x_s,p_s), is defined as the expected mean
@@ -47,7 +47,6 @@ class DetSigYield(object):
     Hence, for a given detector, source, flux model, and dataset, an appropriate
     implementation method needs to be chosen.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, implmethod, dataset, fluxmodel, livetime):
         """Constructs a new detector signal yield object. It takes
@@ -67,6 +66,8 @@ class DetSigYield(object):
         livetime : float | Livetime
             The live-time in days to use for the detector signal yield.
         """
+        super(DetSigYield, self).__init__()
+
         self.implmethod = implmethod
         self.dataset = dataset
         self.fluxmodel = fluxmodel
@@ -183,13 +184,12 @@ class DetSigYield(object):
         pass
 
 
-class DetSigYieldImplMethod(object):
+class DetSigYieldImplMethod(object, metaclass=abc.ABCMeta):
     """Abstract base class for an implementation method of a detector signal
     yield. Via the ``construct_detsigyield`` method it creates a DetSigYield
     instance holding the internal objects to calculate the detector signal
     yield.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, **kwargs):
         super(DetSigYieldImplMethod, self).__init__(**kwargs)

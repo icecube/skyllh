@@ -27,12 +27,11 @@ from skyllh.physics.flux import (
 )
 
 
-class I3DetSigYield(DetSigYield):
+class I3DetSigYield(DetSigYield, metaclass=abc.ABCMeta):
     """Abstract base class for all IceCube specific detector signal yield
     classes. It assumes that sin(dec) binning is required for calculating the
     detector effective area and hence the detector signal yield.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, implmethod, dataset, fluxmodel, livetime, sin_dec_binning):
         """Constructor of the IceCube specific detector signal yield base
@@ -56,11 +55,10 @@ class I3DetSigYield(DetSigYield):
         self._sin_dec_binning = bd
 
 
-class I3DetSigYieldImplMethod(DetSigYieldImplMethod):
+class I3DetSigYieldImplMethod(DetSigYieldImplMethod, metaclass=abc.ABCMeta):
     """Abstract base class for an IceCube specific detector signal yield
     implementation method class.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, sin_dec_binning=None, **kwargs):
         """Constructor of the IceCube specific detector signal yield
@@ -107,7 +105,8 @@ class I3DetSigYieldImplMethod(DetSigYieldImplMethod):
         return sin_dec_binning
 
 
-class PointLikeSourceI3DetSigYieldImplMethod(I3DetSigYieldImplMethod):
+class PointLikeSourceI3DetSigYieldImplMethod(
+        I3DetSigYieldImplMethod, metaclass=abc.ABCMeta):
     """Abstract base class for all IceCube specific detector signal yield
     implementation methods for a point-like source. All IceCube detector signal
     yield implementation methods require a sinDec binning definition for
@@ -115,7 +114,6 @@ class PointLikeSourceI3DetSigYieldImplMethod(I3DetSigYieldImplMethod):
     stored in the dataset, but a user-defined sinDec binning can be specified
     if needed.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, sin_dec_binning=None, **kwargs):
         """Initializes a new detector signal yield implementation method

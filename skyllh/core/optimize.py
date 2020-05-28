@@ -15,13 +15,12 @@ from skyllh.core.timing import TaskTimer
 from skyllh.physics.source import SourceModel
 
 
-class EventSelectionMethod(object):
+class EventSelectionMethod(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for all event selection method classes.
     The idea is to pre-select only events that contribute to the likelihood
     function, i.e. are more signal than background like. The different methods
     are implemented through derived classes of this base class.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, src_hypo_group_manager):
         """Creates a new event selection method instance.
@@ -169,11 +168,10 @@ class AllEventSelectionMethod(EventSelectionMethod):
         return events
 
 
-class SpatialEventSelectionMethod(EventSelectionMethod):
+class SpatialEventSelectionMethod(EventSelectionMethod, metaclass=abc.ABCMeta):
     """This class defines the base class for all spatial event selection
     methods.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, src_hypo_group_manager):
         """Creates a new event selection method instance.

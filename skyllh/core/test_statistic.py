@@ -8,10 +8,9 @@ import abc
 import numpy as np
 
 
-class TestStatistic(object):
+class TestStatistic(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for a test statistic class.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         """Constructs the test-statistic function instance.
@@ -106,7 +105,7 @@ class TestStatisticWilksZeroNsTaylor(TestStatistic):
     being the derivative w.r.t. ns of the log-likelihood ratio function, and
 
         b = d/dns ( a )
-        
+
     being its second derivative w.r.t. ns.
     """
     def __init__(self):

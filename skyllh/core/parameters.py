@@ -1419,13 +1419,12 @@ class ParameterGridSet(NamedObjectCollection):
         return copy
 
 
-class ModelParameterMapper(object):
+class ModelParameterMapper(object, metaclass=abc.ABCMeta):
     """This abstract base class defines the interface of a model parameter
     mapper. A model parameter mapper provides the functionality to map a global
     parameter, usually a fit parameter, to a local parameter of a model, e.g.
     to a source, or a background model parameter.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, name, models):
         """Constructor of the parameter mapper.
@@ -2207,12 +2206,11 @@ class FitParameterSet(object):
         return ri
 
 
-class SourceFitParameterMapper(object):
+class SourceFitParameterMapper(object, metaclass=abc.ABCMeta):
     """This abstract base class defines the interface of the source fit
     parameter mapper. This mapper provides the functionality to map a global fit
     parameter to a source fit parameter.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         """Constructor of the source fit parameter mapper.
