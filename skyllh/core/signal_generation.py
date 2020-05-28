@@ -7,12 +7,11 @@ from skyllh.core.py import (
     float_cast
 )
 
-class SignalGenerationMethod(object):
+class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
     """This is a base class for a source and detector specific signal generation
     method, that calculates the source flux for a given monte-carlo event, which
     is needed to calculate the MC event weights for the signal generator.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, energy_range):
         """Constructs a new signal generation method instance.

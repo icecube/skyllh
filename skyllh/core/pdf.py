@@ -309,7 +309,7 @@ class IsSignalPDF(object):
         return SignalPDFProduct(self, other)
 
 
-class PDF(object):
+class PDF(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for all probability distribution
     function (PDF) models.
     All PDF model classes must be derived from this class. Mathematically, it
@@ -317,7 +317,6 @@ class PDF(object):
     event data and :math::`\vec{p}` is the set of parameters the PDF is given
     for.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, param_set=None, **kwargs):
         """Creates a new PDF instance.
@@ -437,11 +436,10 @@ class PDF(object):
         pass
 
 
-class PDFProduct(PDF):
+class PDFProduct(PDF, metaclass=abc.ABCMeta):
     """The PDFProduct class represents the product of two PDF instances. It
     is derived from the PDF class and hence is a PDF itself.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, pdf1, pdf2):
         """Creates a new PDFProduct instance, which implements the operation
@@ -606,11 +604,10 @@ class BackgroundPDFProduct(PDFProduct, IsBackgroundPDF):
         super(BackgroundPDFProduct, self).__init__(pdf1, pdf2)
 
 
-class SpatialPDF(PDF):
+class SpatialPDF(PDF, metaclass=abc.ABCMeta):
     """This is the abstract base class for a spatial PDF model. A spatial PDF
     has two axes, right-ascention (ra) and declination (dec).
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, ra_range, dec_range, *args, **kwargs):
         """Constructor of a spatial PDF. It adds the PDF axes "ra" and "dec"
@@ -672,19 +669,17 @@ class SpatialPDF(PDF):
                 dec_axis.vmin, dec_axis.vmax))
 
 
-class EnergyPDF(PDF):
+class EnergyPDF(PDF, metaclass=abc.ABCMeta):
     """This is the abstract base class for an energy PDF model.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, *args, **kwargs):
         super(EnergyPDF, self).__init__(*args, **kwargs)
 
 
-class TimePDF(PDF):
+class TimePDF(PDF, metaclass=abc.ABCMeta):
     """This is the abstract base class for a time PDF model.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, *args, **kwargs):
         super(TimePDF, self).__init__(*args, **kwargs)

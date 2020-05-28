@@ -13,7 +13,7 @@ from skyllh.core.parameters import (
 from skyllh.core.py import classname
 
 
-class GridManifoldInterpolationMethod(object):
+class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
     """This is an abstract base class for implementing a method to interpolate
     a manifold that is defined on a grid of parameter values. In general the
     number of parameters can be arbitrary and hence the manifold's
@@ -22,7 +22,6 @@ class GridManifoldInterpolationMethod(object):
     Nevertheless, we provide this interface to allow for manifold grids with
     different dimensionality.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, f, param_grid_set):
         """Constructor for a GridManifoldInterpolationMethod object.

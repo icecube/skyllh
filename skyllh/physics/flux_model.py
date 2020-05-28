@@ -30,19 +30,17 @@ from skyllh.core.py import (
 )
 
 
-class FluxProfile(MathFunction):
+class FluxProfile(MathFunction, metaclass=abc.ABCMeta):
     """The abstract base class for a flux profile math function.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         super(FluxProfile, self).__init__()
 
 
-class SpatialFluxProfile(FluxProfile):
+class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for a spatial flux profile function.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(
             self, angle_unit=None):
@@ -244,10 +242,9 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
         return value
 
 
-class EnergyFluxProfile(FluxProfile):
+class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for an energy flux profile function.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, energy_unit=None):
         """Creates a new energy flux profile with a given energy unit to be used
@@ -437,10 +434,9 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
         return value
 
 
-class TimeFluxProfile(FluxProfile):
+class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for a time flux profile function.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, t_start=-np.inf, t_end=np.inf, time_unit=None):
         """Creates a new time flux profile instance.
@@ -987,7 +983,7 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         return integral
 
 
-class FluxModel(MathFunction, Model):
+class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
     r"""Abstract base class for all flux models
     :math:`\Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s)`.
 
@@ -996,7 +992,6 @@ class FluxModel(MathFunction, Model):
 
     At this point the functional form of the flux model is not yet defined.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(
             self, angle_unit=None, energy_unit=None, length_unit=None,

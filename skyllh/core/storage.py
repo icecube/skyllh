@@ -92,8 +92,7 @@ def assert_file_exists(pathfilename):
         raise RuntimeError('The data file "%s" does not exist!'%(pathfilename))
 
 
-class FileLoader:
-    __metaclass__ = abc.ABCMeta
+class FileLoader(object, metaclass=abc.ABCMeta):
 
     def __init__(self, pathfilenames, **kwargs):
         """Initializes a new FileLoader instance.
@@ -104,6 +103,8 @@ class FileLoader:
             The sequence of fully qualified file names of the data files that
             need to be loaded.
         """
+        super(FileLoader, self).__init__(**kwargs)
+
         self.pathfilename_list = pathfilenames
 
     @property

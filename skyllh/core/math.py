@@ -16,13 +16,12 @@ from skyllh.core.py import (
 )
 
 
-class MathFunction(object):
+class MathFunction(object, metaclass=abc.ABCMeta):
     """This abstract base class provides an implementation for a mathematical
     function. Such a function has defined parameters, which are implemented as
     class properties. The tuple of parameter names is defined through the
     `param_names` property.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, **kwargs):
         super(MathFunction, self).__init__(**kwargs)

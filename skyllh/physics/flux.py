@@ -49,7 +49,7 @@ def get_conversion_factor_to_internal_flux_unit(fluxmodel):
     return unit_conversion_factor
 
 
-class FluxModel(object):
+class FluxModel(object, metaclass=abc.ABCMeta):
     """Abstract base class for all flux models.
     This base class defines the units used for the flux calculation. At this
     point the function form of the flux model is not yet defined.
@@ -65,9 +65,10 @@ class FluxModel(object):
     math_function_str : str
         The string showing the mathematical function of the flux calculation.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
+        super(FluxModel, self).__init__()
+
         # Define the default units.
         self.energy_unit = units.GeV
         self.length_unit = units.cm
@@ -188,7 +189,7 @@ class FluxModel(object):
                 raise TypeError('The attribute "%s" of flux model "%s" is no property!'%(classname(self), prop))
             setattr(self, prop, val)
 
-class NormedFluxModel(FluxModel):
+class NormedFluxModel(FluxModel, metaclass=abc.ABCMeta):
     """Abstract base class for all normalized flux models of the form
 
         dN/(dEdAdt) = Phi0 * f(E/E0),
@@ -209,10 +210,10 @@ class NormedFluxModel(FluxModel):
         Normalization energy in unit of energy.
 
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, Phi0, E0):
         super(NormedFluxModel, self).__init__()
+
         self.Phi0 = Phi0
         self.E0 = E0
 

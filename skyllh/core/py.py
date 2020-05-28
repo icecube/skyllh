@@ -9,13 +9,12 @@ import numpy as np
 import sys
 
 
-class PyQualifier(object):
+class PyQualifier(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for any Python qualifier class.
     An object can get qualified by calling a PyQualifier instance with that
     object. The PyQualifier class will be added to the ``__pyqualifiers__``
     attribute of the object.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         super(PyQualifier, self).__init__()

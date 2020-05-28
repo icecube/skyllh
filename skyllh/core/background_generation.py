@@ -21,11 +21,10 @@ from skyllh.core.config import CFG
 logger = get_logger(__name__)
 
 
-class BackgroundGenerationMethod(object):
+class BackgroundGenerationMethod(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for a detector specific background
     generation method.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         """Constructs a new background generation method instance.

@@ -7,10 +7,9 @@ import numpy as np
 
 from skyllh.core.py import float_cast, classname
 
-class TimeProfileModel(object):
+class TimeProfileModel(object, metaclass=abc.ABCMeta):
     """Abstract base class for an emission time profile of a source.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, t_start, t_end):
         """Creates a new time profile instance.

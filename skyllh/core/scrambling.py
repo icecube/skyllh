@@ -7,13 +7,12 @@ import numpy as np
 from skyllh.core.times import TimeGenerator
 
 
-class DataScramblingMethod(object):
+class DataScramblingMethod(object, metaclass=abc.ABCMeta):
     """Base class (type) for implementing a data scrambling method.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
-        pass
+        super(DataScramblingMethod, self).__init__()
 
     @abc.abstractmethod
     def scramble(self, rss, data):

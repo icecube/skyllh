@@ -12,10 +12,9 @@ from skyllh.core.py import issequenceof, range
 # unsmooth, i.e. no smoothing should be applied along that axis.
 UNSMOOTH_AXIS = np.ones(1)
 
-class HistSmoothingMethod(object):
+class HistSmoothingMethod(object, metaclass=abc.ABCMeta):
     """Abstract base class for implementing a histogram smoothing method.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         super(HistSmoothingMethod, self).__init__()
