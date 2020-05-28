@@ -288,7 +288,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
         # The sum of the on-time integrals of the time profile, A, will be zero
         # if the time profile is entirly during detector off-time.
-        prob = np.zeros((tdm.n_events,), dtype=np.float)
+        prob = np.zeros((tdm.n_selected_events,), dtype=np.float)
         if(self._S > 0):
             prob[on] = self._time_profile.get_value(
                 events_time[on]) / (self._I * self._S)

@@ -178,7 +178,8 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             gridparams[pname] = p_grid.round_to_nearest_grid_point(pvalue)
 
         value = self._f(tdm, gridparams, eventdata)
-        gradients = np.zeros((len(params), tdm.n_events), dtype=np.float)
+        gradients = np.zeros(
+            (len(params), tdm.n_selected_events), dtype=np.float)
 
         return (value, gradients)
 
@@ -278,7 +279,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         # Check if the line parametrization for x0 is already cached.
         self__cache = self._cache
         if((self__cache['x0'] == x0) and
-           (tdm.n_events == len(self__cache['m']))
+           (tdm.n_selected_events == len(self__cache['m']))
           ):
             m = self__cache['m']
             b = self__cache['b']
@@ -419,7 +420,7 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
 
         # Check if the parabola parametrization for x1 is already cached.
         if((self__cache['x1'] == x1) and
-           (tdm.n_events == len(self__cache['M1']))
+           (tdm.n_selected_events == len(self__cache['M1']))
           ):
             M1 = self__cache['M1']
             a = self__cache['a']

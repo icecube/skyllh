@@ -74,6 +74,18 @@ class LLHRatio(object):
                 'of Minimizer!')
         self._minimizer = minimizer
 
+    def initialize_for_new_trial(self, tl=None):
+        """This method will be called by the Analysis class after new trial data
+        has been initialized to the trial data manager. Derived classes can make
+        use of this call hook to perform LLHRatio specific trial initialization.
+
+        Parameters
+        ----------
+        tl : TimeLord | None
+            The optional TimeLord instance to use for timing measurements.
+        """
+        pass
+
     @abc.abstractmethod
     def evaluate(self, fitparam_values, tl=None):
         """This method evaluates the LLH ratio function for the given set of
@@ -342,32 +354,6 @@ class SingleDatasetTCLLHRatio(TCLLHRatio):
                 'TrialDataManager!')
         self._tdm = manager
 
-    @property
-    def n_events(self):
-        """The total number of events of the trial data.
-        """
-        return self._n_events
-    @n_events.setter
-    def n_events(self, n):
-        n = int_cast(n, 'The n_events property must be castable to an integer '
-            'value!')
-        self._n_events = n
-
-    @property
-    def n_pure_bkg_events(self):
-        """(read-only) The number of pure background events, which are not part
-        of the trial data, but must be considered for the test-statistic value.
-        It is the difference of n_events and n_selected_events.
-        """
-        return self._n_events - self.n_selected_events
-
-    @property
-    def n_selected_events(self):
-        """(read-only) The number of selected events for the log-likelihood
-        ratio evaluation.
-        """
-        return self._tdm.n_events
-
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Changes the source hypothesis group manager of this two-component LLH
         ratio function.
@@ -379,27 +365,6 @@ class SingleDatasetTCLLHRatio(TCLLHRatio):
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self._tdm.change_source_hypo_group_manager(src_hypo_group_manager)
-
-    def initialize_for_new_trial(self, events, n_events):
-        """Initializes the log-likelihood ratio function for a new trial.
-        It must be re-implemented by the derived class, which calls the
-        method of the base class first.
-
-        Parameters
-        ----------
-        events : instance of DataFieldRecordArray
-            The instance of DataFieldRecordArray holding the new data events
-            which should get evaluated in the new trial.
-        n_events : int
-            The total number of events of the trial data. This number can be
-            larger than the number of events given by the `events` array. The
-            difference is the number of pure background events, which are not
-            part of `events`, but must be considered for the log_lambda value.
-        """
-        self._tdm.initialize_for_new_trial(
-            self._src_hypo_group_manager, events)
-
-        self.n_events = n_events
 
 
 class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
@@ -602,8 +567,8 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             self.evaluate(fitparam_values)
 
         ns = fitparam_values[0]
-        Nprime = self.n_selected_events
-        N = Nprime + self.n_pure_bkg_events
+        Nprime = self._tdm.n_selected_events
+        N = Nprime + self._tdm.n_pure_bkg_events
 
         nsgrad2 = -np.sum(self._cache_nsgrad_i**2) - (N - Nprime)/(N - ns)**2
 
@@ -660,23 +625,15 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
             self._pdfratio_list,
             self._src_fitparam_mapper.fitparamset.fitparam_list)
 
-    def initialize_for_new_trial(self, events, n_events):
+    def initialize_for_new_trial(self, tl=None):
         """Initializes the log-likelihood ratio function for a new trial.
 
         Parameters
         ----------
-        events : numpy record array
-            The numpy record array holding the new data events which should get
-            evaluated in the new trial.
-        n_events : int
-            The total number of events of the trial data. This number can be
-            larger than the number of events given by the `events` array. The
-            difference is the number of pure background events, which are not
-            part of `events`, but must be considered for the log_lambda value.
+        tl : TimeLord | None
+            The optional TimeLord instance that should be used for timing
+            measurements.
         """
-        super(SingleSourceZeroSigH0SingleDatasetTCLLHRatio,
-              self).initialize_for_new_trial(events, n_events)
-
         self._pdfratioarray.initialize_for_new_trial(self._tdm)
 
     def evaluate(self, fitparam_values, tl=None):
@@ -710,7 +667,7 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
 
         ns = fitparam_values[0]
 
-        N = self.n_events
+        N = tdm.n_events
 
         # Create the fitparams dictionary with the fit parameter names and
         # values.
@@ -1134,7 +1091,7 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         """
         n_selected_events = 0
         for llhratio in self._llhratio_list:
-            n_selected_events += llhratio.n_selected_events
+            n_selected_events += llhratio.tdm.n_selected_events
         return n_selected_events
 
     @TCLLHRatio.mean_n_sig_0.setter
@@ -1156,46 +1113,11 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         for llhratio in self._llhratio_list:
             llhratio.change_source_hypo_group_manager(src_hypo_group_manager)
 
-    def initialize_for_new_trial(
-            self, events_list, n_events_list=None, event_selection_method=None):
-        """Initializes the log-likelihood-ratio function with the given events.
-
-        Parameters
-        ----------
-        events_list : list of DataFieldRecordArray instances
-            The list of DataFieldRecordArray instances holding the data events
-            for each data set, which should be used for the log-likelihood-ratio
-            function evaluation.
-        n_events_list : list of int | None
-            The list of the number of total events of the trial data for each
-            data set. This number can be larger than the number of given events
-            for each data set. If set to None, the number of events is taken
-            from the size of the given events array of each data set.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod to use to select only
-            signal-like events from the given events arrays. All other events
-            will be treated as pure background events. This reduces the amount
-            of log-likelihood-ratio function evaluations. If set to None, all
-            events will be evaluated.
+    def initialize_for_new_trial(self, tl=None):
+        """Initializes the log-likelihood-ratio function for a new trial.
         """
-        if(n_events_list is None):
-            n_events_list = [ len(events) for events in events_list ]
-
-        for (n_events, events, llhratio) in zip(
-                n_events_list, events_list, self._llhratio_list):
-            # Select events that have potential to be signal. This is for
-            # runtime optimization only. Doing this at this point, makes sure
-            # that both, background and signal events laying outside of the
-            # selection area get marked as pure background events.
-            if(event_selection_method is not None):
-                logger.debug(
-                    'Selecting events with event selection method "{}".'.format(
-                        classname(event_selection_method)))
-                events = event_selection_method.select_events(events)
-
-            # Initialize the log-likelihood ratio function of the dataset with
-            # the selected (scrambled) events.
-            llhratio.initialize_for_new_trial(events, n_events)
+        for llhratio in self._llhratio_list:
+            llhratio.initialize_for_new_trial(tl=tl)
 
     def evaluate(self, fitparam_values, tl=None):
         """Evaluates the composite log-likelihood-ratio function and returns its
@@ -1387,30 +1309,16 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
         """
         self._llhratio.change_source_hypo_group_manager(src_hypo_group_manager)
 
-    def initialize_for_new_trial(
-            self, events_list, n_events_list=None, event_selection_method=None):
-        """Initializes the log-likelihood-ratio function with the given events.
+    def initialize_for_new_trial(self, tl=None):
+        """Initializes the log-likelihood-ratio function for a new trial.
 
         Parameters
         ----------
-        events_list : list of DataFieldRecordArray instances
-            The list of DataFieldRecordArray instances holding the data events
-            for each data set, which should be used for the log-likelihood-ratio
-            function evaluation.
-        n_events_list : list of int | None
-            The list of the number of total events of the trial data for each
-            data set. This number can be larger than the number of given events
-            for each data set. If set to None, the number of events is taken
-            from the size of the given events array of each data set.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod to use to select only
-            signal-like events from the given events arrays. All other events
-            will be treated as pure background events. This reduces the amount
-            of log-likelihood-ratio function evaluations. If set to None, all
-            events will be evaluated.
+        tl : TimeLord | None
+            The optional TimeLord instance that should be used for timing
+            measurements.
         """
-        self._llhratio.initialize_for_new_trial(
-            events_list, n_events_list, event_selection_method)
+        self._llhratio.initialize_for_new_trial(tl=tl)
 
         # Compute the constant log-likelihood function value for the
         # null-hypothesis.

@@ -193,6 +193,27 @@ def set_wd(path):
     return wd
 
 
+def add_analysis_required_exp_data_field_names(fieldnames):
+    """Adds the given data field names to the set of data field names of the
+    experimental data that are required by the analysis.
+
+    Parameters
+    ----------
+    fieldnames : str | sequence of str
+        The field name or sequence of field names that should get added for the
+        experimental data.
+    """
+    if(isinstance(fieldnames, str)):
+        fieldnames = [fieldnames]
+    elif(not issequenceof(fieldnames, str)):
+        raise TypeError(
+            'The fieldnames argument must be an instance of str '
+            'or a sequence of type str instances!')
+
+    CFG['dataset']['analysis_required_exp_field_names'] = list(set(
+        CFG['dataset']['analysis_required_exp_field_names'] + fieldnames))
+
+
 def set_analysis_required_exp_data_field_names(fieldnames):
     """Sets the data field names of the experimental data that are required by
     the analysis.

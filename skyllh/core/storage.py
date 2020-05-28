@@ -798,6 +798,26 @@ class DataFieldRecordArray(object):
         """
         return self._data_fields[name].dtype
 
+    def set_field_dtype(self, name, dt):
+        """Sets the data type of the given field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field.
+        dt : numpy.dtype
+            The dtype instance defining the new data type.
+        """
+        if(name not in self):
+            raise KeyError(
+                f'The data field "{name}" does not exist in this '
+                 'DataFieldRecordArray!')
+        if(not isinstance(dt, np.dtype)):
+            raise TypeError(
+                'The dt argument must be an instance of type numpy.dtype!')
+
+        self._data_fields[name] = self._data_fields[name].astype(dt, copy=False)
+
     def convert_dtypes(self, convertions, except_fields=None):
         """Converts the data type of the data fields of this
         DataFieldRecordArray. This method can be used to compress the data.
@@ -805,10 +825,9 @@ class DataFieldRecordArray(object):
         Parameters
         ----------
         convertions : dict of `old_dtype` -> `new_dtype`
-            The sequence of 2-element tuples that define the old and the new
-            data type as numpy dtype instances.
-        except_fields : list of str | None
-            The list of field names, which should not get converted.
+            The dictionary with the old dtype as key and the new dtype as value.
+        except_fields : sequence of str | None
+            The sequence of field names, which should not get converted.
         """
         if(not isinstance(convertions, dict)):
             raise TypeError('The convertions argument must be an instance of '
@@ -935,6 +954,11 @@ class DataFieldRecordArray(object):
         name : str
             The name of the field along the events should get sorted.
 
+        Returns
+        -------
+        sorted_idxs : (n_events,)-shaped numpy ndarray
+            The numpy ndarray holding the indices of the sorted array.
+
         Raises
         ------
         KeyError
@@ -949,6 +973,7 @@ class DataFieldRecordArray(object):
         for fname in self._field_name_list:
             self._data_fields[fname] = self._data_fields[fname][sorted_idxs]
 
+        return sorted_idxs
 
 register_FileLoader(['.npy'], NPYFileLoader)
 register_FileLoader(['.pkl'], PKLFileLoader)
