@@ -9,10 +9,7 @@ import itertools
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
-from skyllh.core.py import (
-    classname,
-    range
-)
+from skyllh.core.py import classname
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.trialdata import TrialDataManager

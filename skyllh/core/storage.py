@@ -12,8 +12,7 @@ from skyllh.core.py import (
     get_byte_size_prefix,
     getsizeof,
     issequence,
-    issequenceof,
-    range
+    issequenceof
 )
 from skyllh.core import display as dsp
 

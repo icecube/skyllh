@@ -12,8 +12,7 @@ from skyllh.core.py import (
     float_cast,
     int_cast,
     issequence,
-    issequenceof,
-    range
+    issequenceof
 )
 from skyllh.core.session import is_interactive_session
 from skyllh.core.storage import NPYFileLoader
@@ -88,9 +87,9 @@ def polynomial_fit(
         ns, p, p_weight, deg, p_thr):
     """Performs a polynomial fit on the p-values of test-statistic trials
     associated to each ns..
-    Using the fitted parameters it computes the number of signal events 
+    Using the fitted parameters it computes the number of signal events
     correponding to the given p-value critical value.
-    
+
     Parameters
     ----------
     ns : 1D array_like object
@@ -237,7 +236,7 @@ def estimate_mean_nsignal_for_ts_quantile(
                     rss, dn_trials, mean_n_sig=ns0, bkg_kwargs=bkg_kwargs,
                     sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']))
             (p0, p0_sigma) = calculate_pval_from_trials(ts_vals0, c)
-            
+
             n_total_generated_trials += dn_trials
 
             delta_p = np.abs(p0 - p)
@@ -315,7 +314,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
             # Store ns0 for the new lower or upper bound depending on where the
             # p0 lies.
-            
+
             n_sig.append(ns0)
             p_vals.append(p0)
             p_val_weights.append(1./p0_sigma)
@@ -342,7 +341,7 @@ def estimate_mean_nsignal_for_ts_quantile(
             n_total_generated_trials += ts_vals0.size
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
-            
+
             n_sig.append(ns1)
             p_vals.append(p1)
             p_val_weights.append(1./p1_sigma)
@@ -391,7 +390,7 @@ def estimate_mean_nsignal_for_ts_quantile(
             # The current ns corresponds to a probability p0 that is at least
             # 5 sigma away from the desired probability p, hence
             # delta_p >= p0_sigma*5.
-            
+
             n_sig.append(ns0)
             p_vals.append(p0)
             p_val_weights.append(1./p0_sigma)

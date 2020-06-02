@@ -6,8 +6,7 @@ import numpy as np
 
 from skyllh.core.py import (
     get_smallest_numpy_int_type,
-    float_cast,
-    range
+    float_cast
 )
 from skyllh.core.coords import rotate_spherical_vector
 from skyllh.core.signal_generation import SignalGenerationMethod

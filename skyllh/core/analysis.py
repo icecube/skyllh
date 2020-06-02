@@ -9,8 +9,7 @@ import pickle
 
 from skyllh.core.py import (
     classname,
-    issequenceof,
-    range
+    issequenceof
 )
 from skyllh.core.debugging import get_logger
 from skyllh.core.storage import DataFieldRecordArray
