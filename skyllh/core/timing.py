@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 from skyllh.core import display
-from skyllh.core.py import range
+from skyllh.core.py import classname
 
 """The timing module provides code execution timing functionalities. The
 TimeLord class keeps track of execution times of specific code segments,
@@ -177,13 +177,18 @@ class TimeLord(object):
     def __str__(self):
         """Generates a pretty string for this time lord.
         """
-        s = 'Executed tasks:'
         task_name_list = self.task_name_list
+        n_tasks = len(task_name_list)
+
+        s = f'{classname(self)}: Executed tasks:'
+        if(n_tasks == 0):
+            s += ' None.'
+            return s
+
         task_name_len_list = [ len(task_name) for task_name in task_name_list ]
         max_task_name_len = np.minimum(
             np.max(task_name_len_list), display.PAGE_WIDTH-25)
 
-        n_tasks = len(task_name_list)
         for i in range(n_tasks):
             tr = self._task_records[i]
             task_name = tr.name[0:max_task_name_len]
