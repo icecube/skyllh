@@ -401,24 +401,6 @@ def get_number_of_float_decimals(value):
             return idx+1
     return 0
 
-def _get_func_range():
-    """Returns a lazy iterable `range` function to be consistent with Python 3.
-
-    Returns
-    -------
-    func : function
-        Lazy iterable `range` function.
-    """
-    try:
-        func = xrange
-    except NameError:
-        func = range
-
-    return func
-
-# Overwrite of built-in `range` function to be consistent with Python 3.
-range = _get_func_range()
-
 
 class ObjectCollection(object):
     """This class provides a collection of objects of a specific type. Objects

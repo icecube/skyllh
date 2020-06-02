@@ -2,7 +2,6 @@
 
 import numpy as np
 
-from skyllh.core.py import range 
 
 def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     """Calculates the rotation matrix R to rotate the spherical vector

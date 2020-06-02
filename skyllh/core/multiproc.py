@@ -22,9 +22,9 @@ import time
 
 from skyllh.core.config import CFG
 from skyllh.core.progressbar import ProgressBar
-from skyllh.core.py import range
 from skyllh.core.random import RandomStateService
 from skyllh.core.timing import TimeLord
+
 
 def get_ncpu(local_ncpu):
     """Determines the number of CPUs to use for functions that support
