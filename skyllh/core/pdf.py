@@ -10,7 +10,6 @@ from skyllh.core.py import (
     classname,
     func_has_n_args,
     issequenceof,
-    range,
     typename
 )
 from skyllh.core.debugging import get_logger

@@ -20,7 +20,6 @@ from skyllh.core.py import (
     get_number_of_float_decimals,
     issequence,
     issequenceof,
-    range,
     str_cast
 )
 from skyllh.core.random import RandomStateService

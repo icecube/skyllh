@@ -8,7 +8,6 @@ from skyllh.core.py import (
     classname,
     float_cast,
     issequenceof,
-    range,
     typename
 )
 from skyllh.core.parameters import (
