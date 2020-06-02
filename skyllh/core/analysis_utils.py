@@ -290,18 +290,50 @@ def estimate_mean_nsignal_for_ts_quantile(
                 p_val_weights.append(1./p1_sigma)
 
                 scanned_range = np.max(n_sig) - np.min(n_sig)
-                if(len(n_sig) < 5 or scanned_range < 1.5):
-                    deg = 1
+                if(len(n_sig)>2):
+                    if(len(n_sig) < 5 or scanned_range < 1.5):
+                        deg = 1
+                    else:
+                        deg = 2
+
+                    logger.debug(
+                        'Scanned mu range: [%g , %g]\nPoints to fit: %g\n '
+                        'Using polynomial fit of order %g',
+                        np.min(n_sig), np.max(n_sig), len(n_sig), deg)
+
+                    mu = polynomial_fit(n_sig, p_vals, p_val_weights, deg, p)
+                    mu_err = None
+
                 else:
-                    deg = 2
+                    # If the points in the scanned range are only two, we
+                    # calculate the final mu value with a linear interpolation
+                    # between those points.
+
+                    # Check if p1 and p0 are equal, which would result in a divison
+                    # by zero.
+                    if(p0 == p1):
+                        mu = 0.5*(ns0 + ns1)
+                        mu_err = 0.5*np.abs(ns1 - ns0)
+
+                        logger.debug(
+                            'Probability for mu=%g and mu=%g has the same value %g',
+                            ns0, ns1, p0)
+                    else:
+                        dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
+
+                        logger.debug(
+                            'Estimated |dmu/dp| = %g within mu range (%g,%g) '
+                            'corresponding to p=(%g +-%g, %g +-%g)',
+                            dns_dp, ns0, ns1, p0, p0_sigma, p1, p1_sigma)
+                        if(p0 > p):
+                            mu = ns0 - dns_dp * delta_p
+                        else:
+                            mu = ns0 + dns_dp * delta_p
+                        mu_err = dns_dp * delta_p
 
                 logger.debug(
-                    'Scanned mu range: [%g , %g]\nPoints to fit: %g\n '
-                    'Using polynomial fit of order %g',
-                    np.min(n_sig), np.max(n_sig), len(n_sig), deg)
-
-                mu = polynomial_fit(n_sig, p_vals, p_val_weights, deg, p)
-                mu_err = None
+                    'Estimated final mu to be %g +- %g',
+                    mu, mu_err)
 
                 return (mu, mu_err)
 
