@@ -309,6 +309,11 @@ def estimate_mean_nsignal_for_ts_quantile(
                     # calculate the final mu value with a linear interpolation
                     # between those points.
 
+                    logger.debug(
+                        'Scanned mu range: [%g , %g]\nPoints to fit: %g\n '
+                        'Doing a linear interpolation.',
+                        np.min(n_sig), np.max(n_sig), len(n_sig))
+
                     # Check if p1 and p0 are equal, which would result in a divison
                     # by zero.
                     if(p0 == p1):
