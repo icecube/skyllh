@@ -267,10 +267,14 @@ def estimate_mean_nsignal_for_ts_quantile(
 
                 if(p0 > p):
                     ns1 = ns_range_[0]
+                    if(np.abs(ns0 - ns1) > 1.0):
+                        ns1 = ns0 - 1.0
                     if(np.abs(ns0 - ns1) < min_dmu):
                         ns1 = ns0 - min_dmu
                 else:
                     ns1 = ns_range_[1]
+                    if(np.abs(ns0 - ns1) > 1.0):
+                        ns1 = ns0 + 1.0
                     if(np.abs(ns0 - ns1) < min_dmu):
                         ns1 = ns0 + min_dmu
 
