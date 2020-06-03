@@ -332,8 +332,9 @@ def estimate_mean_nsignal_for_ts_quantile(
                         mu_err = dns_dp * delta_p
 
                 logger.debug(
-                    'Estimated final mu to be %g +- %g',
-                    mu, mu_err)
+                    'Estimated final mu to be %g (error estimation to be '
+                    'implemented)',
+                    mu)
 
                 return (mu, mu_err)
 
