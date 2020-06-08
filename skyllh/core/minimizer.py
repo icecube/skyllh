@@ -284,7 +284,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
     L-BFG-S minimizer used from the :mod:`scipy.optimize` module.
     """
 
-    def __init__(self, ftol=1e-6, maxls=100):
+    def __init__(self, ftol=1e-6, pgtol=1e-5, maxls=100):
         """Creates a new L-BGF-S minimizer instance to minimize the given
         likelihood function with its given partial derivatives.
 
@@ -292,12 +292,15 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         ----------
         ftol : float
             The function value tolerance.
+        pgtol : float
+            The gradient value tolerance.
         maxls : int
             The maximum number of line search steps for an interation.
         """
         super(LBFGSMinimizerImpl, self).__init__()
 
         self._ftol = ftol
+        self._pgtol = pgtol
         self._maxls = maxls
 
         self._fmin_l_bfgs_b = scipy.optimize.fmin_l_bfgs_b
@@ -363,8 +366,12 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         if(kwargs is None):
             kwargs = {}
 
-        kwargs['factr'] = self._ftol / np.finfo(float).eps
-        kwargs['maxls'] = self._maxls
+        if('factr' not in kwargs):
+            kwargs['factr'] = self._ftol / np.finfo(float).eps
+        if('pgtol' not in kwargs):
+            kwargs['pgtol'] = self._pgtol
+        if('maxls' not in kwargs):
+            kwargs['maxls'] = self._maxls
 
         func_provides_grads = kwargs.pop('func_provides_grads', True)
 
