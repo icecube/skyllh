@@ -114,12 +114,13 @@ def polynomial_fit(
         (a, b) = (params[0], params[1])
         ns = (p_thr - b)/a
 
+        return ns
+
     if(deg == 2):
         (a, b, c) = (params[0], params[1], params[2])
         ns = (- b + np.sqrt((b**2)-4*a*(c-p_thr))) / (2*a)
 
-    return ns
-
+        return ns
 
 def estimate_mean_nsignal_for_ts_quantile(
         ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
@@ -293,8 +294,9 @@ def estimate_mean_nsignal_for_ts_quantile(
                 p_vals.append(p1)
                 p_val_weights.append(1./p1_sigma)
 
-                scanned_range = np.max(n_sig) - np.min(n_sig)
                 if(len(n_sig)>2):
+                    scanned_range = np.max(n_sig) - np.min(n_sig)
+                    
                     if(len(n_sig) < 5 or scanned_range < 1.5):
                         deg = 1
                     else:
