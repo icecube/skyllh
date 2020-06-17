@@ -5,8 +5,12 @@ import numpy as np
 
 import iminuit
 
-from skyllh.core.debugging import get_logger
+from skyllh.core.debugging import (
+    get_logger,
+    is_tracing_enabled
+)
 from skyllh.core.minimizer import MinimizerImpl
+
 
 logger = get_logger(__name__)
 
@@ -19,6 +23,8 @@ class FuncWithGradsFunctor(object):
 
     def __init__(self, func, func_args=None):
         """
+        Initializes a new functor instance for the given function ``func``.
+
         Parameters
         ----------
         func : callable
@@ -38,17 +44,22 @@ class FuncWithGradsFunctor(object):
         self._func = func
         self._func_args = func_args
 
+        self._tracing = is_tracing_enabled()
+
         self._cache_x = None
         self._cache_f = None
         self._cache_grads = None
 
-    def call_func(self, x):
+    def get_f(self, x):
+        tracing = self._tracing
+
         if(self._cache_x is None):
             self._cache_x = np.copy(x)
         else:
             if(np.all(x == self._cache_x)):
-                logger.debug(
-                    f'call_func(x={x}): Return cached f={self._cache_f}')
+                if(tracing):
+                    logger.debug(
+                        f'call_func(x={x}): Return cached f={self._cache_f}')
                 return self._cache_f
             else:
                 np.copyto(self._cache_x, x)
@@ -56,17 +67,22 @@ class FuncWithGradsFunctor(object):
         (self._cache_f, self._cache_grads) = self._func(
             x, *self._func_args)
 
-        logger.debug(
-            f'call_func(x={x}): Return calculated f={self._cache_f}')
+        if(tracing):
+            logger.debug(
+                f'call_func(x={x}): Return calculated f={self._cache_f}')
         return self._cache_f
 
-    def call_grads(self, x):
+    def get_grads(self, x):
+        tracing = self._tracing
+
         if(self._cache_x is None):
             self._cache_x = np.copy(x)
         else:
             if(np.all(x == self._cache_x)):
-                logger.debug(
-                    f'call_grads(x={x}): Return cached grads={self._cache_grads}')
+                if(tracing):
+                    logger.debug(
+                        f'call_grads(x={x}): Return cached '
+                        f'grads={self._cache_grads}')
                 return self._cache_grads
             else:
                 np.copyto(self._cache_x, x)
@@ -74,8 +90,10 @@ class FuncWithGradsFunctor(object):
         (self._cache_f, self._cache_grads) = self._func(
             x, *self._func_args)
 
-        logger.debug(
-            f'call_grads(x={x}): Return calculated grads={self._cache_grads}')
+        if(tracing):
+            logger.debug(
+                f'call_grads(x={x}): Return calculated '
+                f'grads={self._cache_grads}')
         return self._cache_grads
 
 
@@ -149,10 +167,10 @@ class IMinuitMinimizerImpl(MinimizerImpl):
                 func_args=func_args)
 
             res = iminuit.minimize(
-                fun=functor.call_func,
+                fun=functor.get_f,
                 x0=initials,
                 bounds=bounds,
-                jac=functor.call_grads,
+                jac=functor.get_grads,
                 **kwargs
             )
         else:
@@ -206,7 +224,7 @@ class IMinuitMinimizerImpl(MinimizerImpl):
         """Checks if the minimization process can be repeated to get a better
         result.
 
-        TODO: Implement a proper check. For new just return False.
+        TODO: Implement a proper check. For now just return True.
 
 
         Parameters
@@ -221,4 +239,4 @@ class IMinuitMinimizerImpl(MinimizerImpl):
             The flag if the minimization process can be repeated to obtain a
             better minimum.
         """
-        return False
+        return True
