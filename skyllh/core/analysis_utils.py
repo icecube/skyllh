@@ -126,7 +126,7 @@ def polynomial_fit(
         (a, b, c) = (params[0], params[1], params[2])
         ns = (- b + np.sqrt((b**2)-4*a*(c-p_thr))) / (2*a)
         return ns
-    
+
     else:
         raise ValueError(
             'deg = %g is not valid. The order of the polynomial function '
