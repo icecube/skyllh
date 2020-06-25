@@ -110,16 +110,28 @@ def polynomial_fit(
     """
     (params, cov) = np.polyfit(ns, p, deg, w=p_weight, cov=True)
 
+    # Check if the second order coefficient is positive and eventually
+    # change to a polynomial fit of order 1 to avoid to overestimate
+    # the mean number of signal events for the chosen ts quantile.
+    if(deg == 2 and params[0] > 0):
+        deg = 1
+        (params, cov) = np.polyfit(ns, p, deg, w=p_weight, cov=True)
+
     if(deg == 1):
         (a, b) = (params[0], params[1])
         ns = (p_thr - b)/a
+        return ns
 
-    if(deg == 2):
+    elif(deg == 2):
         (a, b, c) = (params[0], params[1], params[2])
         ns = (- b + np.sqrt((b**2)-4*a*(c-p_thr))) / (2*a)
+        return ns
 
-    return ns
-
+    else:
+        raise ValueError(
+            'deg = %g is not valid. The order of the polynomial function '
+            'must be 1 or 2.',
+            deg)
 
 def estimate_mean_nsignal_for_ts_quantile(
         ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
@@ -213,6 +225,14 @@ def estimate_mean_nsignal_for_ts_quantile(
     # probability can be estimated via binomial statistics.
     n_trials = int(p*(1-p)/eps_p**2 + 0.5)
 
+    # Define the range of p-values that will be possible to fit with a
+    # polynomial function of order not larger than 2.
+    min_fit_p, max_fit_p = p - 0.35, p + 0.35
+    if(min_fit_p < 0.5):
+        min_fit_p = 0.5
+    if(max_fit_p > 0.985):
+        max_fit_p = 0.985
+
     (n_sig, p_vals, p_val_weights) = ([], [], [])
 
     while True:
@@ -229,9 +249,10 @@ def estimate_mean_nsignal_for_ts_quantile(
         # Initially generate trials for a 5-times larger uncertainty ``eps_p``
         # to catch ns0 points far away from the desired propability quicker.
         dn_trials = max(100, int(n_trials/5**2 + 0.5))
+        trial_vals0 = None
         (ts_vals0, p0_sigma, delta_p) = ([], 2*eps_p, 0)
         while (delta_p < p0_sigma*5) and (p0_sigma > eps_p):
-            ts_vals0 = np.concatenate((
+            ts_vals0 = np.concatenate((  
                 ts_vals0, ana.do_trials(
                     rss, dn_trials, mean_n_sig=ns0, bkg_kwargs=bkg_kwargs,
                     sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']))
@@ -257,9 +278,10 @@ def estimate_mean_nsignal_for_ts_quantile(
                 # We found the ns0 value that corresponds to the desired
                 # probability within the desired uncertainty.
 
-                n_sig.append(ns0)
-                p_vals.append(p0)
-                p_val_weights.append(1./p0_sigma)
+                if(p0 < max_fit_p and p0 > min_fit_p):
+                    n_sig.append(ns0)
+                    p_vals.append(p0)
+                    p_val_weights.append(1. / p0_sigma)
 
                 logger.debug(
                     'Found mu value %g with p value %g within uncertainty +-%g',
@@ -267,10 +289,14 @@ def estimate_mean_nsignal_for_ts_quantile(
 
                 if(p0 > p):
                     ns1 = ns_range_[0]
+                    if(np.abs(ns0 - ns1) > 1.0):
+                        ns1 = ns0 - 1.0
                     if(np.abs(ns0 - ns1) < min_dmu):
                         ns1 = ns0 - min_dmu
                 else:
                     ns1 = ns_range_[1]
+                    if(np.abs(ns0 - ns1) > 1.0):
+                        ns1 = ns0 + 1.0
                     if(np.abs(ns0 - ns1) < min_dmu):
                         ns1 = ns0 + min_dmu
 
@@ -285,23 +311,63 @@ def estimate_mean_nsignal_for_ts_quantile(
                     'corresponding to p=(%g +-%g, %g +-%g)',
                     ns0, ns1, p0, p0_sigma, p1, p1_sigma)
 
-                n_sig.append(ns1)
-                p_vals.append(p1)
-                p_val_weights.append(1./p1_sigma)
+                if(p0 < max_fit_p and p0 > min_fit_p):
+                    n_sig.append(ns1)
+                    p_vals.append(p1)
+                    p_val_weights.append(1. / p1_sigma)
 
-                scanned_range = np.max(n_sig) - np.min(n_sig)
-                if(len(n_sig) < 5 or scanned_range < 1.5):
-                    deg = 1
+                if(len(n_sig)>2):
+                    scanned_range = np.max(n_sig) - np.min(n_sig)
+                    
+                    if(len(n_sig) < 5 or scanned_range < 1.5):
+                        deg = 1
+                    else:
+                        deg = 2
+
+                    logger.debug(
+                        'Scanned mu range: [%g , %g]\nPoints to fit: %g\n '
+                        'Using polynomial fit of order %g',
+                        np.min(n_sig), np.max(n_sig), len(n_sig), deg)
+
+                    mu = polynomial_fit(n_sig, p_vals, p_val_weights, deg, p)
+                    mu_err = None
+
                 else:
-                    deg = 2
+                    # If the points in the scanned range are only two, we
+                    # calculate the final mu value with a linear interpolation
+                    # between those points.
+
+                    logger.debug(
+                        'Scanned mu range: [%g , %g]\nPoints to fit: %g\n '
+                        'Doing a linear interpolation.',
+                        np.min(n_sig), np.max(n_sig), len(n_sig))
+
+                    # Check if p1 and p0 are equal, which would result in a divison
+                    # by zero.
+                    if(p0 == p1):
+                        mu = 0.5*(ns0 + ns1)
+                        mu_err = 0.5*np.abs(ns1 - ns0)
+
+                        logger.debug(
+                            'Probability for mu=%g and mu=%g has the same value %g',
+                            ns0, ns1, p0)
+                    else:
+                        dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
+
+                        logger.debug(
+                            'Estimated |dmu/dp| = %g within mu range (%g,%g) '
+                            'corresponding to p=(%g +-%g, %g +-%g)',
+                            dns_dp, ns0, ns1, p0, p0_sigma, p1, p1_sigma)
+                        if(p0 > p):
+                            mu = ns0 - dns_dp * delta_p
+                        else:
+                            mu = ns0 + dns_dp * delta_p
+                        mu_err = dns_dp * delta_p
 
                 logger.debug(
-                    'Scanned mu range: [%g , %g]\nPoints to fit: %g\n '
-                    'Using polynomial fit of order %g',
-                    np.min(n_sig), np.max(n_sig), len(n_sig), deg)
-
-                mu = polynomial_fit(n_sig, p_vals, p_val_weights, deg, p)
-                mu_err = None
+                    'Estimated final mu to be %g (error estimation to be '
+                    'implemented)',
+                    mu)
 
                 return (mu, mu_err)
 
@@ -315,9 +381,10 @@ def estimate_mean_nsignal_for_ts_quantile(
             # Store ns0 for the new lower or upper bound depending on where the
             # p0 lies.
 
-            n_sig.append(ns0)
-            p_vals.append(p0)
-            p_val_weights.append(1./p0_sigma)
+            if(p0 < max_fit_p and p0 > min_fit_p):
+                n_sig.append(ns0)
+                p_vals.append(p0)
+                p_val_weights.append(1. / p0_sigma)
 
             if(p0+p0_sigma+eps_p <= p):
                 ns_lower_bound = ns0
@@ -342,9 +409,10 @@ def estimate_mean_nsignal_for_ts_quantile(
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
 
-            n_sig.append(ns1)
-            p_vals.append(p1)
-            p_val_weights.append(1./p1_sigma)
+            if(p0 < max_fit_p and p0 > min_fit_p):
+                n_sig.append(ns1)
+                p_vals.append(p1)
+                p_val_weights.append(1. / p1_sigma)
 
             # Check if p0 and p1 are equal, which would result into a division
             # by zero.
@@ -391,9 +459,10 @@ def estimate_mean_nsignal_for_ts_quantile(
             # 5 sigma away from the desired probability p, hence
             # delta_p >= p0_sigma*5.
 
-            n_sig.append(ns0)
-            p_vals.append(p0)
-            p_val_weights.append(1./p0_sigma)
+            if(p0 < max_fit_p and p0 > min_fit_p):
+                n_sig.append(ns0)
+                p_vals.append(p0)
+                p_val_weights.append(1. / p0_sigma)
 
             if(p0 < p):
                 ns_range_[0] = ns0
