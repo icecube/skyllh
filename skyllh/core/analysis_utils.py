@@ -237,7 +237,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
     while True:
         logger.debug(
-            'Doing new loop for nsignal range %s'
+            'Doing new loop for nsignal range %s',
             str(ns_range_))
 
         ns0 = (ns_range_[1] + ns_range_[0]) / 2
