@@ -109,6 +109,10 @@ def polynomial_fit(
     ns : float
     """
     (params, cov) = np.polyfit(ns, p, deg, w=p_weight, cov=True)
+
+    # Check if the second order coefficient is positive and eventually
+    # change to a polynomial fit of order 1 to avoid to overestimate
+    # the mean number of signal events for the chosen ts quantile.
     if(deg == 2 and params[0] > 0):
         deg = 1
         (params, cov) = np.polyfit(ns, p, deg, w=p_weight, cov=True)
@@ -116,20 +120,18 @@ def polynomial_fit(
     if(deg == 1):
         (a, b) = (params[0], params[1])
         ns = (p_thr - b)/a
-
         return ns
 
     elif(deg == 2):
         (a, b, c) = (params[0], params[1], params[2])
         ns = (- b + np.sqrt((b**2)-4*a*(c-p_thr))) / (2*a)
-
         return ns
     
     else:
         raise ValueError(
-                'deg = %g is not valid. The order of the polynomial function '
-                'must be 1 or 2.',
-                deg)
+            'deg = %g is not valid. The order of the polynomial function '
+            'must be 1 or 2.',
+            deg)
 
 def estimate_mean_nsignal_for_ts_quantile(
         ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
@@ -235,7 +237,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
     while True:
         logger.debug(
-            'Doing new loop for nsignal range %s',
+            'Doing new loop for nsignal range %s'
             str(ns_range_))
 
         ns0 = (ns_range_[1] + ns_range_[0]) / 2
@@ -255,9 +257,9 @@ def estimate_mean_nsignal_for_ts_quantile(
                     rss, dn_trials, mean_n_sig=ns0, bkg_kwargs=bkg_kwargs,
                     sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']))
             (p0, p0_sigma) = calculate_pval_from_trials(ts_vals0, c)
-            
+
             n_total_generated_trials += dn_trials
-                
+
             delta_p = np.abs(p0 - p)
 
             logger.debug(
