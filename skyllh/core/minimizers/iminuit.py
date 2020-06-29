@@ -101,8 +101,18 @@ class IMinuitMinimizerImpl(MinimizerImpl):
     """The SkyLLH minimizer implementation that utilizes the iminuit minimizer.
     """
 
-    def __init__(self):
+    def __init__(self, ftol=1e-6):
+        """Creates a new IMinuit minimizer instance to minimize a given
+        function.
+
+        Parameters
+        ----------
+        ftol : float
+            The function value tolerance as absolute value.
+        """
         super().__init__()
+
+        self._ftol = ftol
 
     def minimize(self, initials, bounds, func, func_args=None, **kwargs):
         """Minimizes the given function ``func`` with the given initial function
@@ -171,6 +181,7 @@ class IMinuitMinimizerImpl(MinimizerImpl):
                 x0=initials,
                 bounds=bounds,
                 jac=functor.get_grads,
+                tol=self._ftol,
                 **kwargs
             )
         else:
@@ -181,6 +192,7 @@ class IMinuitMinimizerImpl(MinimizerImpl):
                 initials,
                 bounds=bounds,
                 args=func_args,
+                tol=self._ftol,
                 **kwargs
             )
 
