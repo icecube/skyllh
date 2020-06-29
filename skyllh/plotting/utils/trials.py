@@ -226,6 +226,7 @@ def plot_gamma_fit_vs_mean_ns_inj(
         rethist=False,
         title='',
         figsize=None,
+        line_color=None,
         axis_fontsize=16,
         title_fontsize=16,
         tick_fontsize=16,
@@ -298,6 +299,8 @@ def plot_gamma_fit_vs_mean_ns_inj(
     """
     if(figsize is None):
         figsize = (12,10)
+    if(line_color is None):
+        line_color = '#E37222'
     if(xlabel is None):
         xlabel = r'<n>_{\mathrm{sig,inj}}'
     if(ylabel is None):
@@ -360,10 +363,20 @@ def plot_gamma_fit_vs_mean_ns_inj(
         gamma_inj, x_bins[0], x_bins[-1],
         color='black', alpha=0.4, linestyle='-', linewidth=2)
 
+    # Plot the upper quantile curve.
+    ax[0].plot(
+        mean_n_sig, gamma_fit_uq,
+        color=line_color, linestyle='-.', linewidth=2)
+
     # Plot the median fitted gamma.
     ax[0].plot(
         mean_n_sig, gamma_fit_median,
-        color='orange', linestyle='--', linewidth=2)
+        color=line_color, linestyle='-', linewidth=2)
+
+    # Plot the lower quantile curve.
+    ax[0].plot(
+        mean_n_sig, gamma_fit_lq,
+        color=line_color, linestyle='-.', linewidth=2)
 
     # Create the color bar.
     cb = fig.colorbar(image, cax=cax, orientation='horizontal')
