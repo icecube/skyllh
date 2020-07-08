@@ -1224,15 +1224,18 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
 
         # Change the source hypo group manager of the background generator
-        # instance.
-        if(self._bkg_generator is not None):
-            self._bkg_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
+        # instance. Initialize the background generator if it does not exist.
+        if(self._bkg_generator is None):
+            self.construct_background_generator()
+        self._bkg_generator.change_source_hypo_group_manager(
+            self._src_hypo_group_manager)
 
         # Change the source hypo group manager of the signal generator instance.
-        if(self._sig_generator is not None):
-            self._sig_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
+        # Initialize the signal generator if it does not exist.
+        if(self._sig_generator is None):
+            self.construct_signal_generator()
+        self._sig_generator.change_source_hypo_group_manager(
+            self._src_hypo_group_manager)
 
     def initialize_trial(self, events_list, n_events_list=None, tl=None):
         """This method initializes the multi-dataset log-likelihood ratio
