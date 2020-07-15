@@ -210,7 +210,7 @@ def create_MultiDimGridPDF_from_kde_pdf(
                 # array, so we need to add a dimension for that variable.
                 selector.append(np.newaxis)
 
-        denum = denum_dict['pdf_vals'][selector]
+        denum = denum_dict['pdf_vals'][tuple(selector)]
         denum_nonzero_mask = denum != 0
         out = np.zeros_like(vals)
         np.divide(vals, denum, where=denum_nonzero_mask, out=out)
