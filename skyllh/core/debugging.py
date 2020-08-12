@@ -19,6 +19,12 @@ def disable_tracing():
     CFG['debugging']['enable_tracing'] = False
 
 
+def is_tracing_enabled():
+    """Returns True, if tracing is enabled, False otherwise.
+    """
+    return CFG['debugging']['enable_tracing']
+
+
 def get_logger(name):
     """Retrieves the logger with the given name from the Python logging system.
 
