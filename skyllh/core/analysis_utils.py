@@ -19,6 +19,8 @@ from skyllh.core.storage import NPYFileLoader
 from skyllh.physics.source import PointLikeSource
 
 from scipy.interpolate import interp1d
+from scipy.stats import gamma
+from iminuit import minimize
 
 """This module contains common utility functions useful for an analysis.
 """
@@ -83,6 +85,42 @@ def calculate_pval_from_trials(
 
     return (p, p_sigma)
 
+def truncated_gamma_logpdf(
+        a, scale, eta, ts_above_eta, N_above_eta):
+    """calculates the log-likelihood of a sample of random numbers
+    generated from a truncted gamma pdf truncated from below
+    at x=eta
+
+    Parameters
+    ----------
+    
+    """
+    c0 = 1. - gamma.cdf(eta, a=a, scale=scale)
+    c0 = 1./c0
+    logl = N_above_eta * np.log(c0) + np.sum(gamma.logpdf(ts_above_eta,
+                                                a=a, scale=scale))
+    return -logl
+
+def calculate_critical_ts_from_gamma(
+        ts, h0_ts_quantile, eta=3.0, xi=1.e-2):
+    Ntot = len(ts)
+    N = len(ts[ts > xi])
+    alpha = N / Ntot
+
+    ts_eta = ts[ts > eta]
+    N_prime = len(ts_eta)
+    alpha_prime = N_prime / N
+
+    obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta, ts_above_eta=ts_eta,
+                                            N_above_eta=N_prime)
+    x0 = [0.75, 1.8] # starting values
+    bounds = [ [0.1, 10], [0.1, 10] ] # ranges for fitter
+    r = minimize(obj, x0, bounds=bounds)
+    pars = r.x
+    
+    interval = gamma.interval(1-h0_ts_quantile, a=pars[0], scale=pars[1])
+    return interval[1]
+
 def polynomial_fit(
         ns, p, p_weight, deg, p_thr):
     """Performs a polynomial fit on the p-values of test-statistic trials
@@ -135,7 +173,7 @@ def polynomial_fit(
 
 def estimate_mean_nsignal_for_ts_quantile(
         ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
-        bkg_kwargs=None, sig_kwargs=None, ppbar=None, tl=None):
+        bkg_kwargs=None, sig_kwargs=None, ppbar=None, tl=None, pathfilename=None):
     """Calculates the mean number of signal events needed to be injected to
     reach a test statistic distribution with defined properties for the given
     analysis.
@@ -179,6 +217,9 @@ def estimate_mean_nsignal_for_ts_quantile(
     tl: instance of TimeLord | None
         The optional TimeLord instance that should be used to collect timing
         information about this function.
+    pathfilename: string | None
+        Trial data file path including the filename.
+        If set to None, trials won't be saved.
 
     Returns
     -------
@@ -189,17 +230,32 @@ def estimate_mean_nsignal_for_ts_quantile(
     """
     logger = logging.getLogger(__name__)
 
+    n_trials_max = int(5.e5)
     n_total_generated_trials = 0
 
     if(h0_ts_vals is None):
-        eps = min(0.005, h0_ts_quantile/10)
-        n_trials = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
+        if(h0_ts_quantile >= 1.e-3):
+            eps = min(0.005, h0_ts_quantile/10)
+            n_trials = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
+        else:
+            n_trials = n_trials_max
         logger.debug(
             'Generate %d null-hypothesis trials',
             n_trials)
         h0_ts_vals = ana.do_trials(
             rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
             sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+        n_total_generated_trials += n_trials
+    
+    elif(h0_ts_quantile < 1.e-3 and h0_ts_vals.size < n_trials_max):
+        n_trials = n_trials_max - h0_ts_vals.size
+        logger.debug(
+            'Generate %d null-hypothesis trials',
+            n_trials)
+        h0_ts_vals = np.concatenate((
+            h0_ts_vals, ana.do_trials(
+                rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+                sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']))
         n_total_generated_trials += n_trials
 
     h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
@@ -210,10 +266,16 @@ def estimate_mean_nsignal_for_ts_quantile(
         'Min / Max h0 TS value: %e / %e',
         np.min(h0_ts_vals), np.max(h0_ts_vals))
 
-    c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile) * 100)
+    if(h0_ts_quantile >= 1.e-3):
+        c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile) * 100)
+    else:
+        c = calculate_critical_ts_from_gamma(h0_ts_vals, h0_ts_quantile)
     logger.debug(
         'Critical ts value for bkg ts quantile %g: %e',
         h0_ts_quantile, c)
+
+    if(pathfilename is not None):
+        np.save(pathfilename, h0_ts_vals)
 
     # Make sure ns_range is mutable.
     ns_range_ = list(mu_range)
@@ -311,7 +373,7 @@ def estimate_mean_nsignal_for_ts_quantile(
                     'corresponding to p=(%g +-%g, %g +-%g)',
                     ns0, ns1, p0, p0_sigma, p1, p1_sigma)
 
-                if(p0 < max_fit_p and p0 > min_fit_p):
+                if(p1 < max_fit_p and p1 > min_fit_p):
                     n_sig.append(ns1)
                     p_vals.append(p1)
                     p_val_weights.append(1. / p1_sigma)
@@ -409,7 +471,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
 
-            if(p0 < max_fit_p and p0 > min_fit_p):
+            if(p1 < max_fit_p and p1 > min_fit_p):
                 n_sig.append(ns1)
                 p_vals.append(p1)
                 p_val_weights.append(1. / p1_sigma)
@@ -482,7 +544,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 def estimate_sensitivity(
         ana, rss, h0_ts_vals=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None, tl=None):
+        ppbar=None, tl=None, pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -532,6 +594,9 @@ def estimate_sensitivity(
         The possible parent ProgressBar instance.
     tl: instance of TimeLord | None
         The optional TimeLord instance that should be used to collect timing
+    pathfilename : string | None
+        Trial data file path including the filename.
+        If set to None, trials won't be saved.
         information about this function.
 
     Returns
@@ -564,7 +629,7 @@ def estimate_sensitivity(
 def estimate_discovery_potential(
         ana, rss, h0_ts_vals=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None, tl=None):
+        ppbar=None, tl=None, pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -614,6 +679,9 @@ def estimate_discovery_potential(
     tl: instance of TimeLord | None
         The optional TimeLord instance that should be used to collect timing
         information about this function.
+    pathfilename : string | None
+        Trial data file path including the filename.
+        If set to None, trials won't be saved.
 
     Returns
     -------
