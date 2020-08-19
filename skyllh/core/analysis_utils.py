@@ -143,7 +143,7 @@ def calculate_critical_ts_from_gamma(
     """
     Ntot = len(ts)
     N = len(ts[ts > xi])
-    alpha = N / Ntot
+    alpha = N/Ntot
 
     ts_eta = ts[ts > eta]
     N_prime = len(ts_eta)
