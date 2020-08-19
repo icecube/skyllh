@@ -157,7 +157,7 @@ def calculate_critical_ts_from_gamma(
     r = minimize(obj, x0, bounds=bounds)
     pars = r.x
     
-    norm = alpha * (alpha_prime / (1-gamma.cdf(eta, a=pars[0], scale=pars[1])))
+    norm = alpha*(alpha_prime/(1 - gamma.cdf(eta, a=pars[0], scale=pars[1])))
     critical_ts = gamma.ppf(1 - 1./norm*h0_ts_quantile, a=pars[0], scale=pars[1])
 
     if(critical_ts < eta):
