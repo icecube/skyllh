@@ -147,7 +147,7 @@ def calculate_critical_ts_from_gamma(
 
     ts_eta = ts[ts > eta]
     N_prime = len(ts_eta)
-    alpha_prime = N_prime / N
+    alpha_prime = N_prime/N
 
     obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta,
                                             ts_above_eta=ts_eta,
