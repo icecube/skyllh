@@ -97,6 +97,7 @@ def truncated_gamma_logpdf(
     a : float
         Shape parameter.
     scale : float
+        Scale parameter.
     eta : float
         Test-statistic value at which the gamma function is truncated
         from below.
