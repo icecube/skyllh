@@ -114,8 +114,8 @@ def truncated_gamma_logpdf(
     """
     c0 = 1. - gamma.cdf(eta, a=a, scale=scale)
     c0 = 1./c0
-    logl = N_above_eta * np.log(c0) + np.sum(gamma.logpdf(ts_above_eta,
-                                                a=a, scale=scale))
+    logl = N_above_eta*np.log(c0) + np.sum(gamma.logpdf(ts_above_eta,
+                                                        a=a, scale=scale))
     return -logl
 
 def calculate_critical_ts_from_gamma(
