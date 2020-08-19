@@ -153,7 +153,7 @@ def calculate_critical_ts_from_gamma(
                                            ts_above_eta=ts_eta,
                                            N_above_eta=N_prime)
     x0 = [0.75, 1.8] # starting values
-    bounds = [ [0.1, 10], [0.1, 10] ] # ranges for fitter
+    bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
     r = minimize(obj, x0, bounds=bounds)
     pars = r.x
     
