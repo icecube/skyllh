@@ -329,7 +329,7 @@ def estimate_mean_nsignal_for_ts_quantile(
         h0_ts_quantile, c)
 
     if(pathfilename is not None):
-        os.makedirs(os.path.dirname(pathfilename), exist_ok=True)
+        makedirs(os.path.dirname(pathfilename), exist_ok=True)
         np.save(pathfilename, h0_ts_vals)
 
     # Make sure ns_range is mutable.
