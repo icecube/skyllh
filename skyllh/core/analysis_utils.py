@@ -316,7 +316,7 @@ def estimate_mean_nsignal_for_ts_quantile(
     # directly from trials; otherwise calculate it from the gamma function
     # fitted to the ts distribution.
     if(h0_ts_quantile >= 1.e-3):
-        c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile) * 100)
+        c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile)*100)
     else:
         c = calculate_critical_ts_from_gamma(h0_ts_vals, h0_ts_quantile)
     logger.debug(
