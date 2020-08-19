@@ -6,6 +6,8 @@ import logging
 import numpy as np
 from numpy.lib import recfunctions as np_rfn
 import itertools
+import os.makedirs
+import os.path
 
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
