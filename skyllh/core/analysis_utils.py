@@ -160,6 +160,12 @@ def calculate_critical_ts_from_gamma(
     norm = alpha * (alpha_prime / (1-gamma.cdf(eta, a=pars[0], scale=pars[1])))
     critical_ts = gamma.ppf(1 - 1./norm*h0_ts_quantile, a=pars[0], scale=pars[1])
 
+    if(critical_ts < eta):
+        raise ValueError(
+            'Critical ts value = %e, eta = %e. The calculation of the critical ts value from the fit is correct only '
+            'for critical ts larger than the truncation threshold eta.',
+            critical_ts, eta)
+
     return critical_ts
 
 def polynomial_fit(ns, p, p_weight, deg, p_thr):
