@@ -643,10 +643,10 @@ def estimate_sensitivity(
         The possible parent ProgressBar instance.
     tl: instance of TimeLord | None
         The optional TimeLord instance that should be used to collect timing
+        information about this function.
     pathfilename : string | None
         Trial data file path including the filename.
         If set to None, trials won't be saved.
-        information about this function.
 
     Returns
     -------
