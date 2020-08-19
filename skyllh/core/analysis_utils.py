@@ -103,7 +103,7 @@ def truncated_gamma_logpdf(
         from below.
     ts_above_eta : (n_trials,)-shaped 1D ndarray
         The ndarray holding the test-statistic values falling in
-        the truncated gamma pdf..
+        the truncated gamma pdf.
     N_above_eta : int
         Number of test-statistic values falling in the truncated
         gamma pdf.
