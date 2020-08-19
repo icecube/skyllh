@@ -87,13 +87,27 @@ def calculate_pval_from_trials(
 
 def truncated_gamma_logpdf(
         a, scale, eta, ts_above_eta, N_above_eta):
-    """calculates the log-likelihood of a sample of random numbers
-    generated from a truncted gamma pdf truncated from below
-    at x=eta
+    """Calculates the -log(likelihood) of a sample of random numbers
+    generated from a gamma pdf truncated from below at x=eta.
 
     Parameters
     ----------
-    
+    a : float
+        Shape parameter.
+    scale : float
+    eta : float
+        Test-statistic value at which the gamma function is truncated
+        from below.
+    ts_above_eta : (n_trials,)-shaped 1D ndarray
+        The ndarray holding the test-statistic values falling in
+        the truncated gamma pdf..
+    N_above_eta : int
+        Number of test-statistic values falling in the truncated
+        gamma pdf.
+        
+    Returns
+    -------
+    -logl : float
     """
     c0 = 1. - gamma.cdf(eta, a=a, scale=scale)
     c0 = 1./c0
@@ -103,6 +117,27 @@ def truncated_gamma_logpdf(
 
 def calculate_critical_ts_from_gamma(
         ts, h0_ts_quantile, eta=3.0, xi=1.e-2):
+    """Calculates the critical test-statistic value corresponding
+    to h0_ts_quantile by fitting the ts distribution with a truncated
+    gamma function.
+
+    Parameters
+    ----------
+    ts : (n_trials,)-shaped 1D ndarray
+        The ndarray holding the test-statistic values of the trials.
+    h0_ts_quantile : float
+        Null-hypothesis test statistic quantile.
+    eta : float, optional
+        Test-statistic value at which the gamma function is truncated
+        from below.
+    xi : float, optional
+        Approximate estimate of the median of the test-statistic
+        distribution.
+
+    Returns
+    -------
+    critical_ts : float
+    """
     Ntot = len(ts)
     N = len(ts[ts > xi])
     alpha = N / Ntot
@@ -111,7 +146,8 @@ def calculate_critical_ts_from_gamma(
     N_prime = len(ts_eta)
     alpha_prime = N_prime / N
 
-    obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta, ts_above_eta=ts_eta,
+    obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta,
+                                            ts_above_eta=ts_eta,
                                             N_above_eta=N_prime)
     x0 = [0.75, 1.8] # starting values
     bounds = [ [0.1, 10], [0.1, 10] ] # ranges for fitter
@@ -119,7 +155,9 @@ def calculate_critical_ts_from_gamma(
     pars = r.x
     
     interval = gamma.interval(1-h0_ts_quantile, a=pars[0], scale=pars[1])
-    return interval[1]
+    critical_ts = interval[1]
+
+    return critical_ts
 
 def polynomial_fit(
         ns, p, p_weight, deg, p_thr):
@@ -233,6 +271,9 @@ def estimate_mean_nsignal_for_ts_quantile(
     n_trials_max = int(5.e5)
     n_total_generated_trials = 0
 
+    # Depending on how small h0_ts_quantile is, estimate the required 
+    # number of trials from binomial statistics or generate 500k trials
+    # in order to fit the ts distribution.
     if(h0_ts_vals is None):
         if(h0_ts_quantile >= 1.e-3):
             eps = min(0.005, h0_ts_quantile/10)
@@ -247,6 +288,9 @@ def estimate_mean_nsignal_for_ts_quantile(
             sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
         n_total_generated_trials += n_trials
     
+    # If h0_ts_quantile is smaller than 1.e3, makes sure that the number
+    # of ts values in h0_ts_vals is at least 500k, otherwise compute more
+    # trials to fill the gap.
     elif(h0_ts_quantile < 1.e-3 and h0_ts_vals.size < n_trials_max):
         n_trials = n_trials_max - h0_ts_vals.size
         logger.debug(
@@ -265,7 +309,10 @@ def estimate_mean_nsignal_for_ts_quantile(
     logger.debug(
         'Min / Max h0 TS value: %e / %e',
         np.min(h0_ts_vals), np.max(h0_ts_vals))
-
+    
+    # If h0_ts_quantile is larger than 1.e3, compute the critical ts value
+    # directly from trials; otherwise calculate it from the gamma function
+    # fitted to the ts distribution.
     if(h0_ts_quantile >= 1.e-3):
         c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile) * 100)
     else:
