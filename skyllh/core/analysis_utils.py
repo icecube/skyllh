@@ -134,8 +134,7 @@ def calculate_critical_ts_from_gamma(
         Test-statistic value at which the gamma function is truncated
         from below.
     xi : float, optional
-        Approximate estimate of the median of the test-statistic
-        distribution.
+        A small number to numerically discriminate against ts=0.0.
 
     Returns
     -------
