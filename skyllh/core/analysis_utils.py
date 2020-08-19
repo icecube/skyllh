@@ -162,8 +162,7 @@ def calculate_critical_ts_from_gamma(
 
     return critical_ts
 
-def polynomial_fit(
-        ns, p, p_weight, deg, p_thr):
+def polynomial_fit(ns, p, p_weight, deg, p_thr):
     """Performs a polynomial fit on the p-values of test-statistic trials
     associated to each ns..
     Using the fitted parameters it computes the number of signal events
