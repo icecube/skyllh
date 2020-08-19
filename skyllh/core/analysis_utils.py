@@ -621,7 +621,8 @@ def estimate_sensitivity(
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
         ppbar=ppbar,
-        tl=tl)
+        tl=tl,
+        pathfilename=pathfilename)
 
     return (mu, mu_err)
 
@@ -705,7 +706,8 @@ def estimate_discovery_potential(
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
         ppbar=ppbar,
-        tl=tl)
+        tl=tl,
+        pathfilename=pathfilename)
 
     return (mu, mu_err)
 
