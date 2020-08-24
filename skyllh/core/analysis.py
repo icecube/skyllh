@@ -724,6 +724,8 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The structured numpy ndarray holding the result of the trial. It
             contains the following data fields:
 
+            rss_seed : int
+                The RandomStateService seed.
             mean_n_sig : float
                 The mean number of signal events.
             n_sig : int
@@ -753,6 +755,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         # Create the structured array data type for the result array.
         result_dtype = [
+            ('rss_seed', np.int),
             ('mean_n_sig', np.float),
             ('n_sig', np.int),
             ('mean_n_sig_0', np.float),
@@ -762,6 +765,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
                 for fitparam_name in fitparamset.fitparam_name_list
         ]
         result = np.empty((1,), dtype=result_dtype)
+        result['rss_seed'] = rss.seed
         result['mean_n_sig'] = mean_n_sig
         result['n_sig'] = n_sig
         result['mean_n_sig_0'] = mean_n_sig_0
