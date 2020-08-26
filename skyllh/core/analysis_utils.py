@@ -292,12 +292,13 @@ def estimate_mean_nsignal_for_ts_quantile(
             n_trials = n_trials_min
         else:
             n_trials = n_trials_max
-        logger.debug(
-            'Generate %d null-hypothesis trials',
-            n_trials)
         h0_ts_vals = ana.do_trials(
             rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
             sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+        
+        logger.debug(
+            'Generate %d null-hypothesis trials',
+            n_trials)
         n_total_generated_trials += n_trials
         
         if(pathfilename is not None):
@@ -307,32 +308,48 @@ def estimate_mean_nsignal_for_ts_quantile(
         if(n_trials_min < n_trials_max):
             if(h0_trials.size < n_trials_min):
                 if not ('rss_seed' in h0_trials.dtype.names):
-                    raise ValueError('No field of name rss_seed in the '
-                                    'uploaded trial data.')
-                n_trials = n_trials_min - h0_trials.size
+                    n_trials = n_trials_min
+                    logger.debug(
+                        'Uploaded trials miss the rss_seed field. '
+                        'Will not be possible to extend the trial file '
+                        'safely. Uploaded trials will *not* be used.')
+                    h0_ts_vals = ana.do_trials(
+                        rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+                        sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+                else:
+                    n_trials = n_trials_min - h0_trials.size
+                    h0_ts_vals = extend_trial_data_file(ana, rss,
+                        n_trials, trial_data=h0_trials, mean_n_sig=0,
+                        pathfilename=pathfilename)['ts']
                 logger.debug(
                     'Generate %d null-hypothesis trials',
                     n_trials)
-                h0_ts_vals = extend_trial_data_file(ana, rss,
-                    n_trials, trial_data=h0_trials, mean_n_sig=0,
-                    pathfilename=pathfilename)['ts']
+                n_total_generated_trials += n_trials
             else:
                 h0_ts_vals = h0_trials['ts']
         else:
             if(h0_trials.size < n_trials_max):
                 if not ('rss_seed' in h0_trials.dtype.names):
-                    raise ValueError('No field of name rss_seed in the '
-                                    'uploaded trial data.')
-                n_trials = n_trials_max - h0_trials.size
+                    n_trials = n_trials_max
+                    logger.debug(
+                        'Uploaded trials miss the rss_seed field. '
+                        'Will not be possible to extend the trial file '
+                        'safely. Uploaded trials will *not* be used.')
+                    h0_ts_vals = ana.do_trials(
+                        rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+                        sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+                else:
+                    n_trials = n_trials_max - h0_trials.size
+                    h0_ts_vals = extend_trial_data_file(ana, rss,
+                        n_trials, trial_data=h0_trials, mean_n_sig=0,
+                        pathfilename=pathfilename)['ts']
                 logger.debug(
                     'Generate %d null-hypothesis trials',
                     n_trials)
-                h0_ts_vals = extend_trial_data_file(ana, rss,
-                    n_trials, trial_data=h0_trials, mean_n_sig=0,
-                    pathfilename=pathfilename)['ts']
                 n_total_generated_trials += n_trials
             else:
                 h0_ts_vals = h0_trials['ts']
+    
 
     h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
     logger.debug(
