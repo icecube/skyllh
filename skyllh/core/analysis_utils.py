@@ -319,10 +319,10 @@ def estimate_mean_nsignal_for_ts_quantile(
             else:
                 h0_ts_vals = h0_trials['ts']
         else:
-            if not ('rss_seed' in h0_trials.dtype.names):
-                raise ValueError('No field of name rss_seed in the '
-                                'uploaded trial data.')
             if(h0_trials.size < n_trials_max):
+                if not ('rss_seed' in h0_trials.dtype.names):
+                    raise ValueError('No field of name rss_seed in the '
+                                    'uploaded trial data.')
                 n_trials = n_trials_max - h0_trials.size
                 logger.debug(
                     'Generate %d null-hypothesis trials',
@@ -620,7 +620,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
 
 def estimate_sensitivity(
-        ana, rss, h0_ts_vals=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
+        ana, rss, h0_trials=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
         ppbar=None, tl=None, pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
@@ -639,10 +639,10 @@ def estimate_sensitivity(
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
-        The 1D ndarray holding the test-statistic values for the
-        null-hypothesis. If set to `None`, the number of trials is calculated
-        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
+    h0_trials : (n_h0_ts_vals,)-shaped ndarray | None
+        The strutured ndarray holding the trials for the null-hypothesis.
+        If set to `None`, the number of trials is calculated from binomial
+        statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
         where `eps` is `min(5e-3, h0_ts_quantile/10)`.
     h0_ts_quantile : float, optional
         Null-hypothesis test statistic quantile that defines the critical value.
@@ -690,7 +690,7 @@ def estimate_sensitivity(
     (mu, mu_err) = estimate_mean_nsignal_for_ts_quantile(
         ana=ana,
         rss=rss,
-        h0_ts_vals=h0_ts_vals,
+        h0_trials=h0_trials,
         h0_ts_quantile=h0_ts_quantile,
         p=p,
         eps_p=eps_p,
@@ -706,7 +706,7 @@ def estimate_sensitivity(
 
 
 def estimate_discovery_potential(
-        ana, rss, h0_ts_vals=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
+        ana, rss, h0_trials=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
         ppbar=None, tl=None, pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
@@ -725,10 +725,10 @@ def estimate_discovery_potential(
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
-        The 1D ndarray holding the test-statistic values for the
-        null-hypothesis. If set to `None`, the number of trials is calculated
-        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
+    h0_trials : (n_h0_ts_vals,)-shaped ndarray | None
+        The structured ndarray holding the trials for the null-hypothesis.
+        If set to `None`, the number of trials is calculated from binomial
+        statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
         where `eps` is `min(5e-3, h0_ts_quantile/10)`.
     h0_ts_quantile : float, optional
         Null-hypothesis test statistic quantile that defines the critical value.
@@ -776,7 +776,7 @@ def estimate_discovery_potential(
     (mu, mu_err) = estimate_mean_nsignal_for_ts_quantile(
         ana=ana,
         rss=rss,
-        h0_ts_vals=h0_ts_vals,
+        h0_trials=h0_trials,
         h0_ts_quantile=h0_ts_quantile,
         p=p,
         eps_p=eps_p,
@@ -1119,7 +1119,7 @@ def extend_trial_data_file(
         mean number of injected signal events..
     """
     # Use unique seed to generate non identical trials.
-    if rss.seed in trial_data['seed']:
+    if rss.seed in trial_data['rss_seed']:
         seed = next(i for i, e in 
                     enumerate(sorted(np.unique(trial_data['rss_seed'])) + 
                                 [None], 1) if i != e)
@@ -1131,8 +1131,10 @@ def extend_trial_data_file(
                                          asrecarray=True)
     if(pathfilename is not None):
         # Save the trial data to file.
-       makedirs(os.path.dirname(pathfilename), exist_ok=True)
-       np.save(pathfilename, trial_data)
+        makedirs(os.path.dirname(pathfilename), exist_ok=True)
+        np.save(pathfilename, trial_data)
+
+    return trial_data
 
 def calculate_upper_limit_distribution(
         analysis, rss, pathfilename, N_bkg=5000, n_bins=100):
