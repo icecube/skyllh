@@ -277,79 +277,52 @@ def estimate_mean_nsignal_for_ts_quantile(
     logger = logging.getLogger(__name__)
 
     n_trials_max = int(5.e5)
-    eps = min(0.005, h0_ts_quantile/10)
     # Via binomial statistics, calcuate the minimum number of trials
     # needed to get the required precision on the critial TS value.
+    eps = min(0.005, h0_ts_quantile/10)
     n_trials_min = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
 
     n_total_generated_trials = 0
 
-    # Compute either n_trials_max or n_trials_min depending on
+    # Compute either n_trials_max or n_trials_min trials depending on
     # which one is smaller. If n_trials_max trials are computed, a
     # fit to the ts distribution is performed to get the critial TS.
+    n_trials_total = min(n_trials_min, n_trials_max)
     if(h0_trials is None):
-        if(n_trials_min < n_trials_max):
-            n_trials = n_trials_min
-        else:
-            n_trials = n_trials_max
         h0_ts_vals = ana.do_trials(
-            rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+            rss, n_trials_total, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
             sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
         
         logger.debug(
             'Generate %d null-hypothesis trials',
-            n_trials)
-        n_total_generated_trials += n_trials
+            n_trials_total)
+        n_total_generated_trials += n_trials_total
         
         if(pathfilename is not None):
             makedirs(os.path.dirname(pathfilename), exist_ok=True)
             np.save(pathfilename, h0_ts_vals)
     else:
-        if(n_trials_min < n_trials_max):
-            if(h0_trials.size < n_trials_min):
-                if not ('rss_seed' in h0_trials.dtype.names):
-                    n_trials = n_trials_min
-                    logger.debug(
-                        'Uploaded trials miss the rss_seed field. '
-                        'Will not be possible to extend the trial file '
-                        'safely. Uploaded trials will *not* be used.')
-                    h0_ts_vals = ana.do_trials(
-                        rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-                        sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
-                else:
-                    n_trials = n_trials_min - h0_trials.size
-                    h0_ts_vals = extend_trial_data_file(ana, rss,
-                        n_trials, trial_data=h0_trials, mean_n_sig=0,
-                        pathfilename=pathfilename)['ts']
+        if(h0_trials.size < n_trials_total):
+            if not ('rss_seed' in h0_trials.dtype.names):
                 logger.debug(
-                    'Generate %d null-hypothesis trials',
-                    n_trials)
-                n_total_generated_trials += n_trials
+                    'Uploaded trials miss the rss_seed field. '
+                    'Will not be possible to extend the trial file '
+                    'safely. Uploaded trials will *not* be used.')
+                n_trials = n_trials_total
+                h0_ts_vals = ana.do_trials(
+                    rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+                    sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
             else:
-                h0_ts_vals = h0_trials['ts']
+                n_trials = n_trials_total - h0_trials.size
+                h0_ts_vals = extend_trial_data_file(ana, rss,
+                    n_trials, trial_data=h0_trials, mean_n_sig=0,
+                    pathfilename=pathfilename)['ts']
+            logger.debug(
+                'Generate %d null-hypothesis trials',
+                n_trials)
+            n_total_generated_trials += n_trials
         else:
-            if(h0_trials.size < n_trials_max):
-                if not ('rss_seed' in h0_trials.dtype.names):
-                    n_trials = n_trials_max
-                    logger.debug(
-                        'Uploaded trials miss the rss_seed field. '
-                        'Will not be possible to extend the trial file '
-                        'safely. Uploaded trials will *not* be used.')
-                    h0_ts_vals = ana.do_trials(
-                        rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-                        sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
-                else:
-                    n_trials = n_trials_max - h0_trials.size
-                    h0_ts_vals = extend_trial_data_file(ana, rss,
-                        n_trials, trial_data=h0_trials, mean_n_sig=0,
-                        pathfilename=pathfilename)['ts']
-                logger.debug(
-                    'Generate %d null-hypothesis trials',
-                    n_trials)
-                n_total_generated_trials += n_trials
-            else:
-                h0_ts_vals = h0_trials['ts']
-    
+            h0_ts_vals = h0_trials['ts']
 
     h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
     logger.debug(
