@@ -303,7 +303,7 @@ def estimate_mean_nsignal_for_ts_quantile(
             np.save(pathfilename, h0_ts_vals)
     else:
         if(h0_trials.size < n_trials_total):
-            if not ('rss_seed' in h0_trials.dtype.names):
+            if not ('seed' in h0_trials.dtype.names):
                 logger.debug(
                     'Uploaded trials miss the rss_seed field. '
                     'Will not be possible to extend the trial file '
@@ -1109,9 +1109,9 @@ def extend_trial_data_file(
         mean number of injected signal events..
     """
     # Use unique seed to generate non identical trials.
-    if rss.seed in trial_data['rss_seed']:
+    if rss.seed in trial_data['seed']:
         seed = next(i for i, e in 
-                    enumerate(sorted(np.unique(trial_data['rss_seed'])) + 
+                    enumerate(sorted(np.unique(trial_data['seed'])) + 
                                 [None], 1) if i != e)
         rss.reseed(seed)
     (seed, mean_n_sig, mean_n_sig_null, trials) = create_trial_data_file(
