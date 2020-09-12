@@ -110,8 +110,8 @@ class CFGClass(dict):
             yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
             self.update(yaml_config)
         else:
-            raise ImportError(f'Could not import yaml package. Thus can not
-                               import config from yaml file {yaml_file}')
+            raise ImportError(f'Could not import yaml package. Thus can not'
+                              f'import config from yaml file {yaml_file}')
 
     def from_dict(self, user_dict: Dict[Any, Any]) -> None:
         """
