@@ -8,7 +8,13 @@ from astropy import units  # type: ignore
 import os.path
 import sys
 from typing import Any, Dict, Iterator, KeysView, ItemsView, ValuesView
-import yaml
+
+# Try to load the yaml package.
+YAML_LOADED = True
+try:
+    import yaml
+except ImportError:
+    YAML_LOADED = False
 
 from skyllh.core.py import issequenceof
 
@@ -100,9 +106,12 @@ class CFGClass(dict):
             yaml_file: str
                 Path to yaml file.
         """
-
-        yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
-        self.update(yaml_config)
+        if(YAML_LOADED):
+            yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
+            self.update(yaml_config)
+        else:
+            raise ImportError(f'Could not import yaml package. Thus can not
+                               import config from yaml file {yaml_file}')
 
     def from_dict(self, user_dict: Dict[Any, Any]) -> None:
         """
