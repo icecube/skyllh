@@ -5,5 +5,4 @@ iminuit
 sphinx
 sphinx_rtd_theme
 nbsphinx
-pyyaml
 matplotlib
