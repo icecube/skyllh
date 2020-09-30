@@ -222,6 +222,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         # Create a cache for the line parameterization for the last
         # manifold grid point for the different events.
         self._create_cache(None, np.array([]), np.array([]))
+        self._cache_tdm_trial_data_state_id = None
 
     def _create_cache(self, x0, m, b):
         """Creates a cache for the line parameterization for the last manifold
@@ -277,8 +278,14 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
 
         # Check if the line parametrization for x0 is already cached.
         self__cache = self._cache
+
+        tdm_trial_data_state_id = tdm.trial_data_state_id
+        cache_tdm_trial_data_state_id = self._cache_tdm_trial_data_state_id
+
         if((self__cache['x0'] == x0) and
-           (tdm.n_selected_events == len(self__cache['m']))
+           (tdm.n_selected_events == len(self__cache['m'])) and
+           (cache_tdm_trial_data_state_id is not None) and
+           (cache_tdm_trial_data_state_id == tdm_trial_data_state_id)
           ):
             m = self__cache['m']
             b = self__cache['b']
@@ -312,6 +319,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
 
             # Cache the line parametrization.
             self._create_cache(x0, m, b)
+            self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
 
         # Calculate the interpolated manifold value. The gradient is m.
         value = m*x + b
@@ -358,6 +366,7 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
         # Create a cache for the parabola parameterization for the last
         # manifold grid point for the different events.
         self._create_cache(None, np.array([]), np.array([]), np.array([]))
+        self._cache_tdm_trial_data_state_id = None
 
     def _create_cache(self, x1, M1, a, b):
         """Creates a cache for the parabola parameterization for the last
@@ -414,12 +423,17 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
             self__p_grid.round_to_nearest_grid_point
         self__cache = self._cache
 
+        tdm_trial_data_state_id = tdm.trial_data_state_id
+        cache_tdm_trial_data_state_id = self._cache_tdm_trial_data_state_id
+
         # Determine the nearest grid point x1.
         x1 = self__p_grid__round_to_nearest_grid_point(x)
 
         # Check if the parabola parametrization for x1 is already cached.
         if((self__cache['x1'] == x1) and
-           (tdm.n_selected_events == len(self__cache['M1']))
+           (tdm.n_selected_events == len(self__cache['M1'])) and
+           (cache_tdm_trial_data_state_id is not None) and
+           (cache_tdm_trial_data_state_id == tdm_trial_data_state_id)
           ):
             M1 = self__cache['M1']
             a = self__cache['a']
@@ -442,6 +456,7 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
 
             # Cache the parabola parametrization.
             self._create_cache(x1, M1, a, b)
+            self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
 
         # Calculate the interpolated manifold value.
         value = a * (x - x1)**2 + b * (x - x1) + M1
