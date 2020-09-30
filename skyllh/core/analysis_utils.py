@@ -944,6 +944,11 @@ def create_trial_data_file(
         FMNOSEs with a step size of one.
         If a 3-element sequence of floats is given, it specifies the range plus
         the step size of the FMNOSEs.
+    mean_n_bkg_list : list of float | None
+        The mean number of background events that should be generated for
+        each dataset. This parameter is passed to the ``do_trials`` method of
+        the ``Analysis`` class. If set to None (the default), the background
+        generation method needs to obtain this number itself.
     bkg_kwargs : dict | None
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
