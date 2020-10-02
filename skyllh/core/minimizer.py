@@ -6,6 +6,7 @@ import abc
 import logging
 import numpy as np
 import scipy.optimize
+import iminuit
 from typing import Optional, Dict, Any, List
 
 from skyllh.core.parameters import FitParameterSet
@@ -663,6 +664,208 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         return False
 
 
+
+
+
+class MinuitMinimizerImpl(MinimizerImpl):
+    """The LBFGSMinimizerImpl class provides the minimizer implementation for
+    L-BFG-S minimizer used from the :mod:`scipy.optimize` module.
+    """
+
+    def __init__(self, maxls=100):
+        """Creates a new L-BGF-S minimizer instance to minimize the given
+        likelihood function with its given partial derivatives.
+
+        Parameters
+        ----------
+        ftol : float
+            The function value tolerance.
+        pgtol : float
+            The gradient value tolerance.
+        maxls : int
+            The maximum number of line search steps for an interation.
+        """
+        super(MinuitMinimizerImpl, self).__init__()
+
+        
+        self._maxls = maxls
+
+        self._minuit = iminuit.Minuit
+
+    def minimize(self, initials, bounds, func, func_args=None, **kwargs):
+        """Minimizes the given function ``func`` with the given initial function
+        argument values ``initials``.
+
+        Parameters
+        ----------
+        initials : 1D numpy ndarray
+            The ndarray holding the initial values of all the fit parameters.
+        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+            The ndarray holding the boundary values (vmin, vmax) of the fit
+            parameters.
+        func : callable
+            The function that should get minimized.
+            The call signature must be
+
+                ``__call__(x, *args)``
+
+            The return value of ``func`` must be (f, grads), the function value
+            at the function arguments ``x`` and the ndarray with the values of
+            the function gradient for each fit parameter, if the
+            ``func_provides_grads`` keyword argument option is set to True.
+            If set to False, ``func`` must return only the function value.
+        func_args : sequence | None
+            Optional sequence of arguments for ``func``.
+
+        Additional Keyword Arguments
+        ----------------------------
+        Additional keyword arguments include options for this minimizer
+        implementation. Possible options are:
+
+            func_provides_grads : bool
+                Flag if the function ``func`` also returns its gradients.
+                Default is ``True``.
+
+        Any additional keyword arguments are passed on to the underlaying
+        :func:`scipy.optimize.fmin_l_bfgs_b` minimization function.
+
+        Returns
+        -------
+        xmin : 1D ndarray
+            The array containing the function arguments at the function's
+            minimum.
+        fmin : float
+            The function value at its minimum.
+        status : dict
+            The status dictionary with information about the minimization
+            process. The following information are provided:
+
+            niter : int
+                The number of iterations needed to find the minimum.
+            warnflag : int
+                The warning flag indicating if the minimization did converge.
+                The possible values are:
+
+                    0: The minimization converged.
+        """
+        if(func_args is None):
+            func_args = tuple()
+        if(kwargs is None):
+            kwargs = {}
+
+        if('maxls' not in kwargs):
+            kwargs['maxls'] = self._maxls
+
+        func_provides_grads = kwargs.pop('func_provides_grads', True)
+
+        def func_val(*args):
+            return func(args, *func_args)[0]
+        def func_grads(*args):
+            return func(args, *func_args)[1]
+
+        #set initial values for the fitting parameters
+        p_names = ['p{}'.format(_) for _ in range(len(initials))]
+        fit_arg = dict(zip(p_names, initials))
+
+        p_bounds = ['limit_p{}'.format(_) for _ in range(len(initials))]
+        pbounds = [bounds[i] for i in range(len(p_bounds))]
+        fit_arg.update(dict(zip(p_bounds, pbounds)))
+
+        fit_min = self._minuit(fcn=func_val,
+                            grad=func_grads,
+                            forced_parameters=p_names,
+                            pedantic=False,
+                            print_level=0,
+                            **fit_arg)
+
+        fit_min.migrad(resume=False)
+        ncalls = fit_min.ncalls
+        for l in range(25):
+            r = fit_min.migrad(resume=True)
+            ncalls += fit_min.ncalls
+            if r[0]['has_valid_parameters']:
+                break
+
+        xmin = fit_min.args
+        fmin = fit_min.fval
+
+        status = dict()
+        status['warnflag'] = 0
+        status['nit'] = ncalls
+
+        return (xmin, fmin, status)
+
+    def get_niter(self, status):
+        """Returns the number of iterations needed to find the minimum.
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the minimization
+            process.
+
+        Returns
+        -------
+        niter : int
+            The number of iterations needed to find the minimum.
+        """
+        return status['nit']
+
+    def has_converged(self, status):
+        """Analyzes the status information dictionary if the minimization
+        process has converged. By definition the minimization process has
+        converged if ``status['warnflag']`` equals 0.
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the minimization
+            process.
+
+        Returns
+        -------
+        converged : bool
+            The flag if the minimization has converged (True), or not (False).
+        """
+        if(status['warnflag'] == 0):
+            return True
+        return False
+
+    def is_repeatable(self, status):
+        """Checks if the minimization process can be repeated to get a better
+        result. It's repeatable if
+
+            `status['warnflag'] == 2 and 'FACTR' in str(status['task'])`
+
+        Parameters
+        ----------
+        status : dict
+            The dictionary with the status information about the last
+            minimization process.
+
+        Returns
+        -------
+        repeatable : bool
+            The flag if the minimization process can be repeated to obtain a
+            better minimum.
+        """
+        if(status['warnflag'] == 2):
+            task = str(status['task'])
+            if('FACTR' in task):
+                return True
+            if('ABNORMAL_TERMINATION_IN_LNSRCH' in task):
+                # This is causes most probably by starting the minimization at
+                # a parameter boundary.
+                return True
+        return False
+
+
+
+
+
+
+
+
 class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
     """The NRNsScan2dMinimizerImpl class provides a minimizer implementation for
     the R2->R1 function where the first dimension is minimized using the
@@ -905,6 +1108,7 @@ class Minimizer(object):
             reps += 1
 
         # Store the number of repetitions in the status dictionary.
+        
         status['skyllh_minimizer_n_reps'] = reps
 
         if(not self._minimizer_impl.has_converged(status)):

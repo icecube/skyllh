@@ -5,6 +5,7 @@ likelihood function.
 """
 
 import numpy as np
+import scipy as scp
 
 from skyllh.core import display
 from skyllh.core.py import (
@@ -42,7 +43,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     declination of the point-like sources, respectively.
     """
 
-    def __init__(self, ra_range=None, dec_range=None):
+    def __init__(self, ra_range=None, dec_range=None, **kwargs):
         """Creates a new spatial signal PDF for point-like sources with a
         gaussian point-spread-function (PSF).
 
@@ -62,7 +63,8 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
         super(GaussianPSFPointLikeSourceSignalSpatialPDF, self).__init__(
             ra_range=ra_range,
-            dec_range=dec_range)
+            dec_range=dec_range,
+            **kwargs)
 
     def get_prob(self, tdm, fitparams=None, tl=None):
         """Calculates the spatial signal probability of each event for all given
@@ -102,33 +104,91 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             each source and event.
         """
         get_data = tdm.get_data
+        idxs = tdm.idxs
 
         ra = get_data('ra')
         dec = get_data('dec')
         sigma = get_data('ang_err')
+        
+        if len(ra) == 1:
+            self.param_set = None
 
-        # Make the source position angles two-dimensional so the PDF value can
-        # be calculated via numpy broadcasting automatically for several
-        # sources. This is useful for stacking analyses.
-        src_ra = get_data('src_array')['ra'][:, np.newaxis]
-        src_dec = get_data('src_array')['dec'][:, np.newaxis]
+        try:
+            # angular difference is pre calculated 
+            prob = get_data('spatial_pdf_gauss')
+            src_ra = get_data('src_array')['ra']
 
-        # Calculate the cosine of the distance of the source and the event on
-        # the sphere.
-        cos_r = np.cos(src_ra - ra) * np.cos(src_dec) * \
-            np.cos(dec) + np.sin(src_dec) * np.sin(dec)
 
-        # Handle possible floating precision errors.
-        cos_r[cos_r < -1.] = -1.
-        cos_r[cos_r > 1.] = 1.
-        r = np.arccos(cos_r)
+            if idxs is None:
+                prob = prob.reshape((len(get_data('src_array')), len(ra)))
+            else:
+                src_idxs, ev_idxs = idxs
+                sigma = np.take(sigma, idxs[1])
 
-        prob = 0.5/(np.pi*sigma**2) * np.exp(-0.5*(r / sigma)**2)
+        except:
+            # psi is calculated here
+            if idxs is None:
+                # Make the source position angles two-dimensional so the PDF value can
+                # be calculated via numpy broadcasting automatically for several
+                # sources. This is useful for stacking analyses.
+                src_ra = get_data('src_array')['ra'][:, np.newaxis]
+                src_dec = get_data('src_array')['dec'][:, np.newaxis]
 
-        grads = np.array([], dtype=np.float)
+                # Calculate the cosine of the distance of the source and the event on
+                # the sphere.
+                cos_r = np.cos(src_ra - ra) * np.cos(src_dec) * \
+                    np.cos(dec) + np.sin(src_dec) * np.sin(dec)
 
-        # The new interface returns the pdf only for a single source.
-        return (prob[0], grads)
+            else:
+                # Calculate the angular difference only for events that are close
+                # to the respective source poisition. This is useful for stacking 
+                # analyses.
+                src_idxs, ev_idxs = idxs
+                src_ra = get_data('src_array')['ra'][src_idxs]
+                src_dec = get_data('src_array')['dec'][src_idxs]
+
+                # Calculate the cosine of the distance of the source and the event on
+                # the sphere.
+                cos_ev = np.sqrt(1. - np.sin(dec)**2)
+                cos_r = (np.cos(src_ra - np.take(ra, ev_idxs)) * \
+                    np.cos(src_dec) * np.take(cos_ev, ev_idxs) + \
+                    np.sin(src_dec) * np.take(np.sin(dec), ev_idxs))
+
+                # also extend the sigma array to account for all relevant events
+                sigma = np.take(sigma, ev_idxs)
+
+                # Handle possible floating precision errors.
+            cos_r[cos_r < -1.] = -1.
+            cos_r[cos_r > 1.] = 1.
+            r = np.arccos(cos_r)
+
+            prob = 0.5/(np.pi*sigma**2) * np.exp(-0.5*(r / sigma)**2)
+
+        # if the signal hypothesis contains single sources 
+        # return the output here
+
+        if(len(get_data('src_array')['ra']) == 1):
+            grads = np.array([], dtype=np.float)
+            # The new interface returns the pdf only for a single source.
+            return (prob[0], grads)
+
+        else:
+            # if the signal hypothesis contains multiple sources convolve 
+            # the pdfs with the source weights
+            src_w = get_data('src_array')['src_w']
+            src_w_grads = get_data('src_array')['src_w_grad']
+            norm = src_w.sum()
+
+
+            if idxs is not None:
+                prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
+            else:
+                prob = prob.T
+            prob_res = prob.dot(src_w) / norm
+            grads = (prob.dot(src_w_grads)  - \
+                    prob_res * src_w_grads.sum()) / norm
+
+            return (prob_res, np.atleast_2d(grads))
 
 
 class SignalTimePDF(TimePDF, IsSignalPDF):
@@ -371,6 +431,7 @@ class SignalMultiDimGridPDFSet(MultiDimGridPDFSet, IsSignalPDF):
             param_grid_set=param_grid_set,
             gridparams_pdfs=gridparams_pdfs,
             interpolmethod=interpolmethod,
+            pdf_type=SignalMultiDimGridPDF,
             **kwargs)
 
 

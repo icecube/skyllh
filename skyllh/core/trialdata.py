@@ -505,7 +505,7 @@ class TrialDataManager(object):
 
     def initialize_trial(
             self, src_hypo_group_manager, events, n_events=None,
-            evt_sel_method=None, tl=None):
+            evt_sel_method=None, tl=None, retidxs=False):
         """Initializes the trial data manager for a new trial. It sets the raw
         events, calculates pre-event-selection data fields, performs a possible
         event selection and calculates the static data fields for the left-over
@@ -546,11 +546,13 @@ class TrialDataManager(object):
             logger.debug(
                 f'Performing event selection method '
                 f'"{classname(evt_sel_method)}".')
-            selected_events = evt_sel_method.select_events(self._events, tl=tl)
+            selected_events, idxs = evt_sel_method.select_events(self._events, tl=tl,
+                    retidxs=retidxs)
             logger.debug(
                 f'Selected {len(selected_events)} out of {len(self._events)} '
                  'events')
             self.events = selected_events
+            self.idxs = idxs
 
         # Sort the events by the index field, if a field was provided.
         if(self._index_field_name is not None):

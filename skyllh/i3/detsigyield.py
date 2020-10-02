@@ -444,10 +444,15 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge)\
               &(np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
 
+        if len(src_gamma) == len(src_dec):
+            src_gamma = src_gamma[mask]
+        else:
+            src_gamma = src_gamma[0]
+
         values[mask] = np.exp(self._log_spl_sinDec_gamma(
-            np.sin(src_dec[mask]), src_gamma[mask], grid=False))
+            np.sin(src_dec[mask]), src_gamma, grid=False))
         grads[mask] = values[mask] * self._log_spl_sinDec_gamma(
-            np.sin(src_dec[mask]), src_gamma[mask], grid=False, dy=1)
+            np.sin(src_dec[mask]), src_gamma, grid=False, dy=1)
 
         return (values, np.atleast_2d(grads))
 

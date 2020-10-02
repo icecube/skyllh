@@ -43,13 +43,46 @@ class SourceLocation(object):
         v = float_cast(v, 'The dec property must be castable to type float!')
         self._dec = v
 
+class SourceWeights(object):
+    """Stores the relative weights of a source, i.e. weights and gradients.
+    """
+    def __init__(self, src_w=None, src_w_grad=None):
+        self.src_w = src_w
+        self.src_w_grad = src_w_grad
+
+    @property
+    def src_w(self):
+        """The relative weight of the source(s).
+        """
+        return self._src_w
+    @src_w.setter
+    def src_w(self, v):
+        v = float_cast(v, 'The ra property must be castable to type float!')
+        self._src_w = v
+
+    @property
+    def src_w_grad(self):
+        """The relative weight gradients of the source(s).
+        """
+        return self._src_w_grad
+    @src_w_grad.setter
+    def src_w_grad(self, v):
+        v = float_cast(v, 'The dec property must be castable to type float!')
+        self._src_w_grad = v
+
+
+
 
 class SourceModel(object):
     """The base class for all source models in Skyllh. Each source has a central
     location given by a right-ascention and declination location.
     """
-    def __init__(self, ra, dec):
+    def __init__(self, ra, dec, src_w=None, src_w_grad=None):
         self.loc = SourceLocation(ra, dec)
+        if (src_w is None):
+            src_w = np.ones_like(self.loc.ra, dtype=np.float)
+            src_w_grad = np.zeros_like(self.loc.ra, dtype=np.float)
+        self.weight = SourceWeights(src_w, src_w_grad)
 
     @property
     def loc(self):
@@ -61,6 +94,18 @@ class SourceModel(object):
         if(not isinstance(srcloc, SourceLocation)):
             raise TypeError('The loc property must be an instance of SourceLocation!')
         self._loc = srcloc
+
+    @property
+    def weight(self):
+        """The weight of the source.
+        """
+        return self._weight
+    @weight.setter
+    def weight(self, w_src):
+        if(not isinstance(w_src, SourceWeights)):
+            raise TypeError('The weight property must be an instance of SourceWeights!')
+        self._weight = w_src
+
 
     @property
     def id(self):
@@ -170,8 +215,8 @@ class PointLikeSource(SourceModel):
     """The PointLikeSource class is a source model for a point-like source
     object in the sky at a given location (right-ascention and declination).
     """
-    def __init__(self, ra, dec):
-        super(PointLikeSource, self).__init__(ra, dec)
+    def __init__(self, ra, dec, src_w=None, src_w_grad=None):
+        super(PointLikeSource, self).__init__(ra, dec, src_w, src_w_grad)
 
     @property
     def ra(self):

@@ -54,12 +54,19 @@ def pointlikesource_to_data_field_array(
 
     arr = np.empty(
         (len(sources),),
-        dtype=[('ra', np.float), ('dec', np.float)],
+        dtype=[('ra', np.float), ('dec', np.float),
+               ('src_w', np.float), ('src_w_grad', np.float)],
         order='F')
 
     for (i, src) in enumerate(sources):
         arr['ra'][i] = src.ra
         arr['dec'][i] = src.dec
+        arr['src_w'][i] = src.weight.src_w
+        arr['src_w_grad'][i] = src.weight.src_w_grad
+    
+    norm = arr['src_w'].sum()
+    arr['src_w'] /= norm
+    arr['src_w_grad'] /= norm
 
     return arr
 

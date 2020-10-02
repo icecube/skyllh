@@ -33,7 +33,9 @@ from skyllh.core.llhratio import (
     LLHRatio,
     MultiDatasetTCLLHRatio,
     SingleSourceDatasetSignalWeights,
-    SingleSourceZeroSigH0SingleDatasetTCLLHRatio
+    SingleSourceZeroSigH0SingleDatasetTCLLHRatio,
+    MultiSourceZeroSigH0SingleDatasetTCLLHRatio,
+    MultiSourceDatasetSignalWeights
 )
 from skyllh.core.scrambling import DataScramblingMethod
 from skyllh.core.timing import TaskTimer
@@ -601,7 +603,8 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         # Construct the signal generator if not done yet.
         if(self._sig_generator is None):
-            self.construct_signal_generator()
+            with TaskTimer(tl, 'Generating signal generator.'):
+                self.construct_signal_generator()
         # Generate signal events with the given mean number of signal
         # events.
         sig_kwargs.update(mean=mean_n_sig)
@@ -1011,6 +1014,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return result
 
 
+
 class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
     """This is an analysis class that implements a time-integrated LLH ratio
     analysis for multiple datasets assuming a single source.
@@ -1264,6 +1268,283 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             self._tdm_list[idx].initialize_trial(
                 self._src_hypo_group_manager, events, n_events, evt_sel_method,
                 tl=tl)
+
+        self._llhratio.initialize_for_new_trial(tl=tl)
+
+    def maximize_llhratio(self, rss, tl=None):
+        """Maximizes the log-likelihood ratio function, by minimizing its
+        negative.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance that should be used to draw random
+            numbers from. It is used by the minimizer to generate random
+            fit parameter initial values.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to time the
+            maximization of the LLH ratio function.
+
+        Returns
+        -------
+        fitparamset : FitParameterSet instance
+            The instance of FitParameterSet holding the global fit parameter
+            definitions used in the maximization process.
+        log_lambda_max : float
+            The value of the log-likelihood ratio function at its maximum.
+        fitparam_values : (N_fitparam,)-shaped 1D ndarray
+            The ndarray holding the global fit parameter values.
+            By definition, the first element is the value of the fit parameter
+            ns.
+        status : dict
+            The dictionary with status information about the maximization
+            process, i.e. from the minimizer.
+        """
+        (log_lambda_max, fitparam_values, status) = self._llhratio.maximize(
+            rss, self._fitparamset, tl=tl)
+        return (self._fitparamset, log_lambda_max, fitparam_values, status)
+
+    def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
+        """Calculates the factor the source's fluxmodel has to be scaled
+        in order to obtain the given mean number of signal events in the
+        detector.
+
+        Parameters
+        ----------
+        mean_ns : float
+            The mean number of signal events in the detector for which the
+            scaling factor is calculated.
+        fitparam_values : (N_fitparams,)-shaped 1D ndarray
+            The ndarray holding the fit parameter values that should be used for
+            the flux calculation.
+
+        Returns
+        -------
+        factor : float
+            The factor the given fluxmodel needs to be scaled in order to obtain
+            the given mean number of signal events in the detector.
+        """
+        fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(
+            fitparam_values)
+
+        # We use the DatasetSignalWeights class instance of this analysis to
+        # calculate the detector signal yield for all datasets.
+        dataset_signal_weights = self._llhratio.dataset_signal_weights
+
+        # Calculate the detector signal yield, i.e. the mean number of signal
+        # events in the detector, for the given reference flux model.
+        mean_ns_ref = 0
+        detsigyields = dataset_signal_weights.detsigyield_arr[0]
+        for detsigyield in detsigyields:
+            (Yj, Yj_grads) = detsigyield(
+                dataset_signal_weights._src_arr_list[0], fitparams_arr)
+            mean_ns_ref += Yj[0]
+
+        factor = mean_ns / mean_ns_ref
+
+        return factor
+
+
+
+
+
+class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSingleSourceAnalysis):
+    """This is an analysis class that implements a time-integrated LLH ratio
+    analysis for multiple datasets assuming a single source.
+
+    To run this analysis the following procedure applies:
+
+        1. Add the datasets and their spatial and energy PDF ratio instances
+           via the :meth:`.add_dataset` method.
+        2. Construct the log-likelihood ratio function via the
+           :meth:`construct_llhratio` method.
+        3. Initialize a trial via the :meth:`initialize_trial` method.
+        4. Fit the global fit parameters to the trial data via the
+           :meth:`maximize_llhratio` method.
+    """
+    def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
+                 fitparam_ns,
+                 test_statistic, bkg_gen_method=None):
+        """Creates a new time-integrated point-like source analysis assuming a
+        single source.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            efficiency implementation method.
+        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
+            The instance of SingleSourceFitParameterMapper defining the global
+            fit parameters and their mapping to the source fit parameters.
+        fitparam_ns : FitParameter instance
+            The FitParameter instance defining the fit parameter ns.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
+            The instance of BackgroundGenerationMethod that will be used to
+            generate background events for a new analysis trial. This can be set
+            to None, if no background events have to get generated.
+        """
+        if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
+            raise TypeError('The src_fitparam_mapper argument must be an '
+                'instance of SingleSourceFitParameterMapper!')
+
+        super(TimeIntegratedMultiDatasetMultiSourceAnalysis, self).__init__(
+            src_hypo_group_manager, src_fitparam_mapper,
+            fitparam_ns, test_statistic, bkg_gen_method )
+
+     
+    def construct_llhratio(self, minimizer, ppbar=None):
+        """Constructs the log-likelihood-ratio (LLH-ratio) function of the
+        analysis. This setups all the necessary analysis
+        objects like detector signal efficiencies and dataset signal weights,
+        constructs the log-likelihood ratio functions for each dataset and the
+        final composite llh ratio function.
+
+        Parameters
+        ----------
+        minimizer : instance of Minimizer
+            The instance of Minimizer that should be used to minimize the
+            negative of the log-likelihood ratio function.
+        ppbar : ProgressBar instance | None
+            The instance of ProgressBar of the optional parent progress bar.
+
+        Returns
+        -------
+        llhratio : instance of MultiDatasetTCLLHRatio
+            The instance of MultiDatasetTCLLHRatio that implements the
+            log-likelihood-ratio function of the analysis.
+        """
+        # Create the detector signal yield instances for each dataset.
+        # Since this is for a single source, we don't have to have individual
+        # detector signal yield instances for each source as well.
+        detsigyield_list = []
+        fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
+        detsigyield_implmethod_list = self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
+        if((len(detsigyield_implmethod_list) != 1) and
+           (len(detsigyield_implmethod_list) != self.n_datasets)):
+            raise ValueError('The number of detector signal yield '
+                'implementation methods is not 1 and does not match the number '
+                'of used datasets in the analysis!')
+        pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
+        for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
+                                                  self.data_list)):
+            if(len(detsigyield_implmethod_list) == 1):
+                # Only one detsigyield implementation method was defined, so we
+                # use it for all datasets.
+                detsigyield_implmethod = detsigyield_implmethod_list[0]
+            else:
+                detsigyield_implmethod = detsigyield_implmethod_list[j]
+
+            detsigyield = detsigyield_implmethod.construct_detsigyield(
+                dataset, data, fluxmodel, data.livetime, ppbar=pbar)
+            detsigyield_list.append(detsigyield)
+            pbar.increment()
+        pbar.finish()
+
+        # For multiple datasets we need a dataset signal weights instance in
+        # order to distribute ns over the different datasets.
+        dataset_signal_weights = MultiSourceDatasetSignalWeights(
+            self._src_hypo_group_manager, self._src_fitparam_mapper,
+            detsigyield_list)
+
+        # Create the list of log-likelihood ratio functions, one for each
+        # dataset.
+        llhratio_list = []
+        for j in range(self.n_datasets):
+            tdm = self._tdm_list[j]
+            pdfratio_list = self._pdfratio_list_list[j]
+            llhratio = MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
+                minimizer,
+                self._src_hypo_group_manager,
+                self._src_fitparam_mapper,
+                tdm,
+                pdfratio_list,
+                detsigyield_list[j]
+            )
+            llhratio_list.append(llhratio)
+
+        # Create the final multi-dataset log-likelihood ratio function.
+        llhratio = MultiDatasetTCLLHRatio(
+            minimizer, dataset_signal_weights, llhratio_list)
+
+        return llhratio
+
+    def change_source(self, source):
+        """Changes the source of the analysis to the given source. It makes the
+        necessary changes to all the objects of the analysis.
+
+        Parameters
+        ----------
+        source : SourceModel instance
+            The SourceModel instance describing the new source.
+        """
+        if(not isinstance(source, SourceModel)):
+            raise TypeError('The source argument must be an instance of SourceModel')
+
+        if(self._llhratio is None):
+            raise RuntimeError('The LLH ratio function has to be constructed, '
+                'before the `change_source` method can be called!')
+
+        # Change the source in the SourceHypoGroupManager instance.
+        # Because this is a single source analysis, there can only be one source
+        # hypothesis group defined.
+        self._src_hypo_group_manager.src_hypo_group_list[0].source_list[0] = source
+
+        # Change the source hypo group manager of the EventSelectionMethod
+        # instance.
+        for event_selection_method in self._event_selection_method_list:
+            if(event_selection_method is not None):
+                event_selection_method.change_source_hypo_group_manager(
+                    self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the LLH ratio function
+        # instance.
+        self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the background generator
+        # instance.
+        if(self._bkg_generator is not None):
+            self._bkg_generator.change_source_hypo_group_manager(
+                self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the signal generator instance.
+        if(self._sig_generator is not None):
+            self._sig_generator.change_source_hypo_group_manager(
+                self._src_hypo_group_manager)
+
+    def initialize_trial(self, events_list, n_events_list=None, tl=None):
+        """This method initializes the multi-dataset log-likelihood ratio
+        function with a new set of given trial data. This is a low-level method.
+        For convenient methods see the `unblind` and `do_trial` methods.
+
+        Parameters
+        ----------
+        events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances holding the data events
+            to use for the log-likelihood function evaluation. The data arrays
+            for the datasets must be in the same order than the added datasets.
+        n_events_list : list of int | None
+            The list of the number of events of each data set. If set to None,
+            the number of events is taken from the size of the given events
+            arrays.
+        tl : TimeLord | None
+            The optional TimeLord instance that should be used for timing
+            measurements.
+        """
+        if(n_events_list is None):
+            n_events_list = [ None ] * len(events_list)
+
+        for (idx, (tdm, events, n_events, evt_sel_method)) in enumerate(zip(
+                self._tdm_list, events_list, n_events_list,
+                self._event_selection_method_list)):
+
+            # Initialize the trial data manager with the given raw events.
+            self._tdm_list[idx].initialize_trial(
+                self._src_hypo_group_manager, events, n_events, evt_sel_method,
+                tl=tl, retidxs=True)
 
         self._llhratio.initialize_for_new_trial(tl=tl)
 
