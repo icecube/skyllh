@@ -6,6 +6,8 @@ import logging
 import numpy as np
 from numpy.lib import recfunctions as np_rfn
 import itertools
+from os import makedirs
+import os.path
 
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
@@ -19,6 +21,8 @@ from skyllh.core.storage import NPYFileLoader
 from skyllh.physics.source import PointLikeSource
 
 from scipy.interpolate import interp1d
+from scipy.stats import gamma
+from iminuit import minimize
 
 """This module contains common utility functions useful for an analysis.
 """
@@ -90,8 +94,88 @@ def calculate_pval_from_trials(
 
     return (p, p_sigma)
 
-def polynomial_fit(
-        ns, p, p_weight, deg, p_thr):
+def truncated_gamma_logpdf(
+        a, scale, eta, ts_above_eta, N_above_eta):
+    """Calculates the -log(likelihood) of a sample of random numbers
+    generated from a gamma pdf truncated from below at x=eta.
+
+    Parameters
+    ----------
+    a : float
+        Shape parameter.
+    scale : float
+        Scale parameter.
+    eta : float
+        Test-statistic value at which the gamma function is truncated
+        from below.
+    ts_above_eta : (n_trials,)-shaped 1D ndarray
+        The ndarray holding the test-statistic values falling in
+        the truncated gamma pdf.
+    N_above_eta : int
+        Number of test-statistic values falling in the truncated
+        gamma pdf.
+        
+    Returns
+    -------
+    -logl : float
+    """
+    c0 = 1. - gamma.cdf(eta, a=a, scale=scale)
+    c0 = 1./c0
+    logl = N_above_eta*np.log(c0) + np.sum(gamma.logpdf(ts_above_eta,
+                                                        a=a, scale=scale))
+    return -logl
+
+def calculate_critical_ts_from_gamma(
+        ts, h0_ts_quantile, eta=3.0, xi=1.e-2):
+    """Calculates the critical test-statistic value corresponding
+    to h0_ts_quantile by fitting the ts distribution with a truncated
+    gamma function.
+
+    Parameters
+    ----------
+    ts : (n_trials,)-shaped 1D ndarray
+        The ndarray holding the test-statistic values of the trials.
+    h0_ts_quantile : float
+        Null-hypothesis test statistic quantile.
+    eta : float, optional
+        Test-statistic value at which the gamma function is truncated
+        from below.
+    xi : float, optional
+        A small number to numerically discriminate against ts=0.0.
+
+    Returns
+    -------
+    critical_ts : float
+    """
+    Ntot = len(ts)
+    N = len(ts[ts > xi])
+    alpha = N/Ntot
+
+    ts_eta = ts[ts > eta]
+    N_prime = len(ts_eta)
+    alpha_prime = N_prime/N
+
+    obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta,
+                                           ts_above_eta=ts_eta,
+                                           N_above_eta=N_prime)
+    x0 = [0.75, 1.8]  # Initial values of function parameters.
+    bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
+    r = minimize(obj, x0, bounds=bounds)
+    pars = r.x
+    
+    norm = alpha*(alpha_prime/gamma.sf(eta, a=pars[0], scale=pars[1]))
+    critical_ts = gamma.ppf(1 - 1./norm*h0_ts_quantile, a=pars[0], scale=pars[1])
+
+    if(critical_ts < eta):
+        raise ValueError(
+            'Critical ts value = %e, eta = %e. The calculation of the critical '
+            'ts value from the fit is correct only for critical ts larger than '
+            'the truncation threshold eta.',
+            critical_ts, eta)
+
+    return critical_ts
+
+def polynomial_fit(ns, p, p_weight, deg, p_thr):
     """Performs a polynomial fit on the p-values of test-statistic trials
     associated to each ns..
     Using the fitted parameters it computes the number of signal events
@@ -141,8 +225,8 @@ def polynomial_fit(
             deg)
 
 def estimate_mean_nsignal_for_ts_quantile(
-        ana, rss, h0_ts_vals, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
-        bkg_kwargs=None, sig_kwargs=None, ppbar=None, tl=None):
+        ana, rss, h0_trials, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
+        bkg_kwargs=None, sig_kwargs=None, ppbar=None, tl=None, pathfilename=None):
     """Calculates the mean number of signal events needed to be injected to
     reach a test statistic distribution with defined properties for the given
     analysis.
@@ -153,9 +237,9 @@ def estimate_mean_nsignal_for_ts_quantile(
         The Analysis instance to use for the calculation.
     rss : instance of RandomStateService
         The RandomStateService instance to use for generating random numbers.
-    h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
-        The 1D ndarray holding the test-statistic values for the
-        null-hypothesis. If set to `None`, the number of trials is calculated
+    h0_trials : (n_h0_trials,)-shaped ndarray | None
+        The structured ndarray holding the trials for the null-hypothesis.
+        If set to `None`, the number of trials is calculated
         from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
         where `eps` is `min(5e-3, h0_ts_quantile/10)`.
     h0_ts_quantile : float
@@ -186,6 +270,9 @@ def estimate_mean_nsignal_for_ts_quantile(
     tl: instance of TimeLord | None
         The optional TimeLord instance that should be used to collect timing
         information about this function.
+    pathfilename: string | None
+        Trial data file path including the filename.
+        If set to None, generatedtrials won't be saved.
 
     Returns
     -------
@@ -196,18 +283,53 @@ def estimate_mean_nsignal_for_ts_quantile(
     """
     logger = logging.getLogger(__name__)
 
+    n_trials_max = int(5.e5)
+    # Via binomial statistics, calcuate the minimum number of trials
+    # needed to get the required precision on the critial TS value.
+    eps = min(0.005, h0_ts_quantile/10)
+    n_trials_min = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
+
     n_total_generated_trials = 0
 
-    if(h0_ts_vals is None):
-        eps = min(0.005, h0_ts_quantile/10)
-        n_trials = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
+    # Compute either n_trials_max or n_trials_min trials depending on
+    # which one is smaller. If n_trials_max trials are computed, a
+    # fit to the ts distribution is performed to get the critial TS.
+    n_trials_total = min(n_trials_min, n_trials_max)
+    if(h0_trials is None):
+        h0_ts_vals = ana.do_trials(
+            rss, n_trials_total, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+            sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+        
         logger.debug(
             'Generate %d null-hypothesis trials',
-            n_trials)
-        h0_ts_vals = ana.do_trials(
-            rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-            sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
-        n_total_generated_trials += n_trials
+            n_trials_total)
+        n_total_generated_trials += n_trials_total
+        
+        if(pathfilename is not None):
+            makedirs(os.path.dirname(pathfilename), exist_ok=True)
+            np.save(pathfilename, h0_ts_vals)
+    else:
+        if(h0_trials.size < n_trials_total):
+            if not ('seed' in h0_trials.dtype.names):
+                logger.debug(
+                    'Uploaded trials miss the rss_seed field. '
+                    'Will not be possible to extend the trial file '
+                    'safely. Uploaded trials will *not* be used.')
+                n_trials = n_trials_total
+                h0_ts_vals = ana.do_trials(
+                    rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+                    sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+            else:
+                n_trials = n_trials_total - h0_trials.size
+                h0_ts_vals = extend_trial_data_file(ana, rss,
+                    n_trials, trial_data=h0_trials, mean_n_sig=0,
+                    pathfilename=pathfilename)['ts']
+            logger.debug(
+                'Generate %d null-hypothesis trials',
+                n_trials)
+            n_total_generated_trials += n_trials
+        else:
+            h0_ts_vals = h0_trials['ts']
 
     h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
     logger.debug(
@@ -216,11 +338,19 @@ def estimate_mean_nsignal_for_ts_quantile(
     logger.debug(
         'Min / Max h0 TS value: %e / %e',
         np.min(h0_ts_vals), np.max(h0_ts_vals))
-
-    c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile) * 100)
+    
+    # If the minimum number of trials needed to get the required precision
+    # on the critical TS value is smaller then 500k, compute the critical ts
+    # value directly from trials; otherwise calculate it from the gamma
+    # function fitted to the ts distribution.
+    if(n_trials_min <= n_trials_max):
+        c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile)*100)
+    else:
+        c = calculate_critical_ts_from_gamma(h0_ts_vals, h0_ts_quantile)
     logger.debug(
         'Critical ts value for bkg ts quantile %g: %e',
         h0_ts_quantile, c)
+
 
     # Make sure ns_range is mutable.
     ns_range_ = list(mu_range)
@@ -318,7 +448,7 @@ def estimate_mean_nsignal_for_ts_quantile(
                     'corresponding to p=(%g +-%g, %g +-%g)',
                     ns0, ns1, p0, p0_sigma, p1, p1_sigma)
 
-                if(p0 < max_fit_p and p0 > min_fit_p):
+                if(p1 < max_fit_p and p1 > min_fit_p):
                     n_sig.append(ns1)
                     p_vals.append(p1)
                     p_val_weights.append(1. / p1_sigma)
@@ -416,7 +546,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
 
-            if(p0 < max_fit_p and p0 > min_fit_p):
+            if(p1 < max_fit_p and p1 > min_fit_p):
                 n_sig.append(ns1)
                 p_vals.append(p1)
                 p_val_weights.append(1. / p1_sigma)
@@ -487,9 +617,9 @@ def estimate_mean_nsignal_for_ts_quantile(
 
 
 def estimate_sensitivity(
-        ana, rss, h0_ts_vals=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
+        ana, rss, h0_trials=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None, tl=None):
+        ppbar=None, tl=None, pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -506,10 +636,10 @@ def estimate_sensitivity(
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
-        The 1D ndarray holding the test-statistic values for the
-        null-hypothesis. If set to `None`, the number of trials is calculated
-        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
+    h0_trials : (n_h0_ts_vals,)-shaped ndarray | None
+        The strutured ndarray holding the trials for the null-hypothesis.
+        If set to `None`, the number of trials is calculated from binomial
+        statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
         where `eps` is `min(5e-3, h0_ts_quantile/10)`.
     h0_ts_quantile : float, optional
         Null-hypothesis test statistic quantile that defines the critical value.
@@ -540,6 +670,9 @@ def estimate_sensitivity(
     tl: instance of TimeLord | None
         The optional TimeLord instance that should be used to collect timing
         information about this function.
+    pathfilename : string | None
+        Trial data file path including the filename.
+        If set to None, generated trials won't be saved.
 
     Returns
     -------
@@ -554,7 +687,7 @@ def estimate_sensitivity(
     (mu, mu_err) = estimate_mean_nsignal_for_ts_quantile(
         ana=ana,
         rss=rss,
-        h0_ts_vals=h0_ts_vals,
+        h0_trials=h0_trials,
         h0_ts_quantile=h0_ts_quantile,
         p=p,
         eps_p=eps_p,
@@ -563,15 +696,16 @@ def estimate_sensitivity(
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
         ppbar=ppbar,
-        tl=tl)
+        tl=tl,
+        pathfilename=pathfilename)
 
     return (mu, mu_err)
 
 
 def estimate_discovery_potential(
-        ana, rss, h0_ts_vals=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
+        ana, rss, h0_trials=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None, tl=None):
+        ppbar=None, tl=None, pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -588,10 +722,10 @@ def estimate_discovery_potential(
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
-        The 1D ndarray holding the test-statistic values for the
-        null-hypothesis. If set to `None`, the number of trials is calculated
-        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
+    h0_trials : (n_h0_ts_vals,)-shaped ndarray | None
+        The structured ndarray holding the trials for the null-hypothesis.
+        If set to `None`, the number of trials is calculated from binomial
+        statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
         where `eps` is `min(5e-3, h0_ts_quantile/10)`.
     h0_ts_quantile : float, optional
         Null-hypothesis test statistic quantile that defines the critical value.
@@ -621,6 +755,9 @@ def estimate_discovery_potential(
     tl: instance of TimeLord | None
         The optional TimeLord instance that should be used to collect timing
         information about this function.
+    pathfilename : string | None
+        Trial data file path including the filename.
+        If set to None, generated trials won't be saved.
 
     Returns
     -------
@@ -636,7 +773,7 @@ def estimate_discovery_potential(
     (mu, mu_err) = estimate_mean_nsignal_for_ts_quantile(
         ana=ana,
         rss=rss,
-        h0_ts_vals=h0_ts_vals,
+        h0_trials=h0_trials,
         h0_ts_quantile=h0_ts_quantile,
         p=p,
         eps_p=eps_p,
@@ -644,7 +781,8 @@ def estimate_discovery_potential(
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
         ppbar=ppbar,
-        tl=tl)
+        tl=tl,
+        pathfilename=pathfilename)
 
     return (mu, mu_err)
 
@@ -778,9 +916,9 @@ def generate_mu_of_p_spline_interpolation(
 
 
 def create_trial_data_file(
-        ana, rss, pathfilename, n_trials, mean_n_sig=0, mean_n_sig_null=0,
+        ana, rss, n_trials, mean_n_sig=0, mean_n_sig_null=0,
         mean_n_bkg_list=None, bkg_kwargs=None, sig_kwargs=None,
-        ncpu=None, ppbar=None, tl=None):
+        pathfilename=None, ncpu=None, ppbar=None, tl=None):
     """Creates and fills a trial data file with `n_trials` generated trials for
     each mean number of injected signal events from `ns_min` up to `ns_max` for
     a given analysis.
@@ -792,8 +930,6 @@ def create_trial_data_file(
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    pathfilename : string
-        Trial data file path including the filename.
     n_trials : int
         The number of trials to perform for each hypothesis test.
     mean_n_sig : ndarray of float | float | 2- or 3-element sequence of float
@@ -815,6 +951,11 @@ def create_trial_data_file(
         FMNOSEs with a step size of one.
         If a 3-element sequence of floats is given, it specifies the range plus
         the step size of the FMNOSEs.
+    mean_n_bkg_list : list of float | None
+        The mean number of background events that should be generated for
+        each dataset. This parameter is passed to the ``do_trials`` method of
+        the ``Analysis`` class. If set to None (the default), the background
+        generation method needs to obtain this number itself.
     bkg_kwargs : dict | None
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
@@ -823,6 +964,9 @@ def create_trial_data_file(
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`.
+    pathfilename : string | None
+        Trial data file path including the filename.
+        If set to None generated trials won't be saved.
     ncpu : int | None
         The number of CPUs to use.
     ppbar : instance of ProgressBar | None
@@ -842,7 +986,7 @@ def create_trial_data_file(
         The array holding the fixed mean number of signal events for the
         null-hypothesis used to generate the trials.
     trial_data : structured numpy ndarray
-        The trial data that has been written to file.
+        The generated trial data.
     """
     n_trials = int_cast(n_trials,
         'The n_trials argument must be castable to type int!')
@@ -902,9 +1046,6 @@ def create_trial_data_file(
             bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, ncpu=ncpu, tl=tl,
             ppbar=pbar)
 
-        trials = np_rfn.append_fields(
-            trials, 'seed', np.repeat(rss.seed, n_trials), usemask=False, asrecarray=True)
-
         if(trial_data is None):
             trial_data = trials
         else:
@@ -918,49 +1059,84 @@ def create_trial_data_file(
         raise RuntimeError('No trials have been generated! Check your '
             'generation boundaries!')
 
-    # Save the trial data to file.
-    np.save(pathfilename, trial_data)
+    if(pathfilename is not None):
+        # Save the trial data to file.
+        makedirs(os.path.dirname(pathfilename), exist_ok=True)
+        np.save(pathfilename, trial_data)
 
     return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data)
 
 
 def extend_trial_data_file(
-        analysis, rss, pathfilename, ns_max=30, N=1000):
-    """Appends the trial data file with `N` generated trials for each mean
-    number of injected signal events up to `ns_max` for a given analysis.
+        ana, rss, n_trials, trial_data, mean_n_sig=0, mean_n_sig_null=0,
+        mean_n_bkg_list=None, bkg_kwargs=None, sig_kwargs=None,
+        pathfilename=None):
+    """Appends to the trial data file `n_trials` generated trials for each 
+    mean number of injected signal events up to `ns_max` for a given analysis.
 
     Parameters
     ----------
-    analysis : Analysis
+    ana : Analysis
         The Analysis instance to use for sensitivity estimation.
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    pathfilename : string
+    n_trials : int
+        The number of trials the trial data file needs to be extended by.
+    trial_data : structured numpy ndarray
+        The structured numpy ndarray holding the trials.
+    mean_n_sig : ndarray of float | float | 2- or 3-element sequence of float
+        The array of mean number of injected signal events (MNOISEs) for which
+        to generate trials. If this argument is not a ndarray, an array of
+        MNOISEs is generated based on this argument.
+        If a single float is given, only this given MNOISEs are injected.
+        If a 2-element sequence of floats is given, it specifies the range of
+        MNOISEs with a step size of one.
+        If a 3-element sequence of floats is given, it specifies the range plus
+        the step size of the MNOISEs.
+    mean_n_sig_null : ndarray of float | float | 2- or 3-element sequence of
+                      float
+        The array of the fixed mean number of signal events (FMNOSEs) for the
+        null-hypothesis for which to generate trials. If this argument is not a
+        ndarray, an array of FMNOSEs is generated based on this argument.
+        If a single float is given, only this given FMNOSEs are used.
+        If a 2-element sequence of floats is given, it specifies the range of
+        FMNOSEs with a step size of one.
+        If a 3-element sequence of floats is given, it specifies the range plus
+        the step size of the FMNOSEs.
+    bkg_kwargs : dict | None
+        Additional keyword arguments for the `generate_events` method of the
+        background generation method class. An usual keyword argument is
+        `poisson`.
+    sig_kwargs : dict | None
+        Additional keyword arguments for the `generate_signal_events` method
+        of the `SignalGenerator` class. An usual keyword argument is
+        `poisson`.
+    pathfilename : string | None
         Trial data file path including the filename.
-    ns_max : int, optional
-        Maximum number of injected signal events.
-    N : int
-        Number of times to perform analysis trial.
+    Returns
+    -------
+    trial_data :
+        Trial data file extended by the required number of trials for each
+        mean number of injected signal events..
     """
-    # Load trial data file.
-    trial_data = NPYFileLoader(pathfilename).load_data()
-
     # Use unique seed to generate non identical trials.
     if rss.seed in trial_data['seed']:
-        seed = next(i for i, e in enumerate(sorted(trial_data['seed']) + [None],
-                    1) if i != e)
+        seed = next(i for i, e in 
+                    enumerate(sorted(np.unique(trial_data['seed'])) + 
+                                [None], 1) if i != e)
         rss.reseed(seed)
-    for ns in range(0, ns_max):
-        trials = analysis.do_trials(rss, N, sig_mean=ns)
-        names = ['sig_mean', 'seed']
-        data = [[ns]*N, [rss.seed]*N]
-        trials = np_rfn.append_fields(trials, names, data)
-        trial_data = np_rfn.stack_arrays([trial_data, trials], usemask=False,
+    (seed, mean_n_sig, mean_n_sig_null, trials) = create_trial_data_file(
+                                                    ana, rss, n_trials,
+                                                    mean_n_sig=mean_n_sig)
+    trial_data = np_rfn.stack_arrays([trial_data, trials], usemask=False,
                                          asrecarray=True)
-    # Save trial data to the file.
-    np.save(pathfilename, trial_data)
+    if(pathfilename is not None):
+        # Save the trial data to file.
+        makedirs(os.path.dirname(pathfilename), exist_ok=True)
+        np.save(pathfilename, trial_data)
 
+    return trial_data
 
 def calculate_upper_limit_distribution(
         analysis, rss, pathfilename, N_bkg=5000, n_bins=100):

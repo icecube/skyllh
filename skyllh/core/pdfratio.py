@@ -528,15 +528,10 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
 
 
 class SigOverBkgPDFRatio(PDFRatio):
-    """This class implements a signal-over-background PDF ratio for
-    PDFs without any fit parameter dependence.
+    """This class implements a generic signal-over-background PDF ratio for a
+    signal and a background PDF instance.
     It takes a signal PDF of type *pdf_type* and a background PDF of type
     *pdf_type* and calculates the PDF ratio.
-
-    One instance of this class can be used to calculate the PDF ratio
-    for several sources. By definition this PDF ratio does not depend on any
-    fit parameters. Hence, calling the ``get_gradient`` method will result in
-    throwing a RuntimeError exception.
     """
     def __init__(self, sig_pdf, bkg_pdf, pdf_type=None, same_axes=True,
         zero_bkg_ratio_value=1., *args, **kwargs):
