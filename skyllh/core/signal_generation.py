@@ -42,10 +42,10 @@ class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
                 raise ValueError('The energy_range property must be a sequence '
                     'of 2 elements!')
             r = tuple(
-                float_cast(r[0], 'The first element of the energy_range '
+                (float_cast(r[0], 'The first element of the energy_range '
                                  'sequence must be castable to type float!'),
                 float_cast(r[1], 'The second element of the energy_range '
-                                 'sequence must be castable to type float!')
+                                 'sequence must be castable to type float!'))
             )
         self._energy_range = r
 
