@@ -431,12 +431,6 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
 
         data_mc_pre_selected = self._cache_mc_pre_selected
 
-        # Scramble the pre-selected MC events if requested.
-        if(self._data_scrambler is not None):
-            with TaskTimer(tl, 'Scramble MC background data.'):
-                data_mc_pre_selected = self._data_scrambler.scramble_data(
-                    rss, data_mc_pre_selected, copy=False)
-
         # Select the significant events from the pre-selection.
         if(self__event_selection_method is None):
             data_mc_selected = data_mc_pre_selected
@@ -488,6 +482,12 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                 replace=(not self._unique_events))
         with TaskTimer(tl, 'Select MC background events from indices.'):
             bkg_events = data_mc_selected[bkg_event_indices]
+
+        # Scramble the drawn MC events if requested.
+        if(self._data_scrambler is not None):
+            with TaskTimer(tl, 'Scramble MC background data.'):
+                bkg_events = self._data_scrambler.scramble_data(
+                    rss, bkg_events, copy=False)
 
         # Remove MC specific data fields from the background events record
         # array. So the result contains only experimental data fields. The list
