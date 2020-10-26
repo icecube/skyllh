@@ -278,8 +278,8 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Changes the SourceHypoGroupManager instance of the
-        pre-event-selection and event-selection method. Also it invalides the
-        data cache of this background generation method.
+        pre-event-selection method. Also it invalides the data cache of this
+        background generation method.
 
         Parameters
         ----------
@@ -398,7 +398,6 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
         # Apply only event pre-selection before choosing events.
         data_mc_selected = self._cache_mc_pre_selected
 
-        # Determine if there is an event selection at all.
         # Calculate the mean number of background events for the pre-selected
         # MC events.
         if(self__pre_event_selection_method is None):
