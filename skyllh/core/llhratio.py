@@ -146,6 +146,7 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
                 if(tracing): logger.debug(
                     'LLH-ratio func value f={:g}, grads={}'.format(
                         f, str(grads)))
+            #print(fitparam_values, -f )
             return (-f, -grads)
 
         minimize_kwargs = {'func_provides_grads': True}

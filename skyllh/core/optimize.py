@@ -859,6 +859,8 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             The indices of the selected events, in case `retidxs` is set to
             True.
         """
+        #print('Do psi event selection!')
+
         delta_angle = self._delta_angle
         src_arr = self._src_arr
 
