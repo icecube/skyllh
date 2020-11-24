@@ -243,7 +243,6 @@ class SignalGenerator(object):
             size=n_signal,
             p=self._sig_candidates['weight']
         )
-
         # Get the list of unique dataset and source hypothesis group indices of
         # the drawn signal events.
         # Note: This code does not assume the same format for each of the

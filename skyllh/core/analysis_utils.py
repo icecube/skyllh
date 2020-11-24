@@ -373,6 +373,7 @@ def estimate_mean_nsignal_for_ts_quantile(
     (n_sig, p_vals, p_val_weights) = ([], [], [])
 
     while True:
+        ns_range_[0] = np.max([ns_range_[0], 0])
         logger.debug(
             'Doing new loop for nsignal range %s',
             str(ns_range_))
