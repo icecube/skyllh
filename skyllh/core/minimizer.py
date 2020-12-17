@@ -305,7 +305,8 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         self._maxls = maxls
 
         self._fmin_l_bfgs_b = scipy.optimize.fmin_l_bfgs_b
-
+    
+    #@profile
     def minimize(self, initials, bounds, func, func_args=None, **kwargs):
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials``.
@@ -1030,6 +1031,7 @@ class Minimizer(object):
                             'int!')
         self._max_repetitions = n
 
+    #@profile
     def minimize(self, rss, fitparamset, func, args=None, kwargs=None):
         """Minimizes the the given function ``func`` by calling the ``minimize``
         method of the minimizer implementation.

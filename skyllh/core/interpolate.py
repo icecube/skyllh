@@ -456,6 +456,8 @@ class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod)
 
             # Cache the parabola parametrization.
             self._create_cache(x1, M1, a, b)
+
+            #print('cache', self._cache['x1'], self._cache)
             self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
 
         # Calculate the interpolated manifold value.

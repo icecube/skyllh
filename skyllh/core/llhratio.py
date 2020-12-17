@@ -107,7 +107,8 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
             parameter.
         """
         pass
-
+    
+    #@profile
     def maximize(self, rss, fitparamset, tl=None):
         """Maximize the log-likelihood ratio function, by using the ``evaluate``
         method.
@@ -773,7 +774,7 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
 
         self._calc_source_weights = MultiPointSourcesRelSourceWeights(src_hypo_group_manager, 
                 src_fitparam_mapper, detsigyields)
-
+    #@profile
     def evaluate(self, fitparam_values, tl=None):
         """Evaluates the log-likelihood ratio function for the given set of
         data events.
@@ -803,9 +804,77 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
         self._tdm.get_data('src_array')['src_w'] = _src_w
         self._tdm.get_data('src_array')['src_w_grad'] = _src_w_grads.flatten()
 
-        (log_lambda, grads) = super(MultiSourceZeroSigH0SingleDatasetTCLLHRatio, 
-                self).evaluate(fitparam_values, tl)
+        #(log_lambda, grads) = super(MultiSourceZeroSigH0SingleDatasetTCLLHRatio, 
+        #        self).evaluate(fitparam_values, tl)
 
+
+        ####
+
+        tracing = CFG['debugging']['enable_tracing']
+
+        # Define local variables to avoid (.)-lookup procedure.
+        tdm = self._tdm
+        pdfratioarray = self._pdfratioarray
+
+        ns = fitparam_values[0]
+
+        N = tdm.n_events
+
+        # Create the fitparams dictionary with the fit parameter names and
+        # values.
+        with TaskTimer(tl, 'Create fitparams dictionary.'):
+            fitparams = self._src_fitparam_mapper.get_src_fitparams(
+                fitparam_values[1:])
+
+        # Calculate the data fields that depend on fit parameter values.
+        with TaskTimer(tl, 'Calc fit param dep data fields.'):
+            tdm.calculate_fitparam_data_fields(
+                self._src_hypo_group_manager, fitparams)
+
+        # Calculate the PDF ratio values of all PDF ratio objects, which depend
+        # on any fit parameter.
+        with TaskTimer(tl, 'Calc pdfratio values.'):
+            pdfratioarray.calculate_pdfratio_values(tdm, fitparams, tl=tl)
+
+        # Calculate the product of all the PDF ratio values for each (selected)
+        # event.
+        with TaskTimer(tl, 'Calc pdfratio value product Ri'):
+            Ri = pdfratioarray.get_ratio_product()
+
+        # Calculate Xi for each (selected) event.
+        Xi = (Ri - 1.) / N
+        if(tracing):
+            logger.debug('dtype(Xi)={:s}'.format(str(Xi.dtype)))
+
+        # Calculate the gradients of Xi for each fit parameter (without ns).
+        dXi_ps = np.empty((len(fitparam_values)-1,len(Xi)), dtype=np.float)
+        for (idx, fitparam_value) in enumerate(fitparam_values[1:]):
+            fitparam_name = self._src_fitparam_mapper.get_src_fitparam_name(idx)
+            # Get the PDFRatio instance from which we need the derivative from.
+
+            dRi = np.zeros((len(Xi),), dtype=np.float)
+            for (num_k) in np.arange(len(pdfratioarray._pdfratio_list)):
+                pdfratio = pdfratioarray.get_pdfratio(num_k)
+                # Calculate the derivative of Ri.
+                dRi += pdfratio.get_gradient(tdm, fitparams, fitparam_name) * pdfratioarray.get_ratio_product(excluded_idx=num_k)
+
+            # Calculate the derivative of Xi w.r.t. the fit parameter.
+            dXi_ps[idx] = dRi / N
+
+        if(tracing):
+            logger.debug(
+                '{:s}.evaluate: N={:d}, Nprime={:d}, ns={:.3f}, '.format(
+                    classname(self), N, len(Xi), ns))
+
+        with TaskTimer(tl, 'Calc logLamds and grads'):
+            (log_lambda, grads) = self.calculate_log_lambda_and_grads(
+                fitparam_values, N, ns, Xi, dXi_ps)
+
+
+
+
+
+        ####
         return (log_lambda, grads)
 
 class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
@@ -1493,6 +1562,7 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         for llhratio in self._llhratio_list:
             llhratio.initialize_for_new_trial(tl=tl)
 
+    #@profile
     def evaluate(self, fitparam_values, tl=None):
         """Evaluates the composite log-likelihood-ratio function and returns its
         value and global fit parameter gradients.
@@ -1528,8 +1598,10 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         (f, f_grads) = self._dataset_signal_weights(fitparam_values)
         # Cache f for possible later calculation of the second derivative w.r.t.
         # ns of the log-likelihood ratio function.
-        self._cache_fitparam_values_ns = ns
-        self._cache_f = f
+        
+        
+        #self._cache_fitparam_values_ns = ns
+        #self._cache_f = f
 
         nsf = ns * f
 

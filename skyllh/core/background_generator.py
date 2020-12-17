@@ -122,4 +122,5 @@ class BackgroundGenerator(object):
         (n_bkg, bkg_events) = self._bkg_gen_method.generate_events(
             rss, ds, data, tl=tl, **kwargs)
 
+        #print('n', n_bkg)
         return (n_bkg, bkg_events)

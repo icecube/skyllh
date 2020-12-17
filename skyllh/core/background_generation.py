@@ -448,4 +448,5 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                 data.exp_field_names))
             bkg_events.tidy_up(exp_field_names)
 
+        #print('bckg', n_bkg)
         return (n_bkg, bkg_events)

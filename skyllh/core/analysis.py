@@ -1241,6 +1241,52 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             self._sig_generator.change_source_hypo_group_manager(
                 self._src_hypo_group_manager)
 
+
+
+    def change_sources(self, sources):
+        """Changes the source of the analysis to the given source. It makes the
+        necessary changes to all the objects of the analysis.
+
+        Parameters
+        ----------
+        source : SourceModel instance
+            The SourceModel instance describing the new source.
+        """
+        if(not isinstance(sources[0], SourceModel)):
+            raise TypeError('The source argument must be an instance of SourceModel')
+
+        if(self._llhratio is None):
+            raise RuntimeError('The LLH ratio function has to be constructed, '
+                'before the `change_source` method can be called!')
+
+        # Change the source in the SourceHypoGroupManager instance.
+        # Because this is a single source analysis, there can only be one source
+        # hypothesis group defined.
+        self._src_hypo_group_manager.src_hypo_group_list[0].source_list = sources
+
+        # Change the source hypo group manager of the EventSelectionMethod
+        # instance.
+        for event_selection_method in self._event_selection_method_list:
+            if(event_selection_method is not None):
+                event_selection_method.change_source_hypo_group_manager(
+                    self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the LLH ratio function
+        # instance.
+        self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the background generator
+        # instance.
+        if(self._bkg_generator is not None):
+            self._bkg_generator.change_source_hypo_group_manager(
+                self._src_hypo_group_manager)
+
+        # Change the source hypo group manager of the signal generator instance.
+        if(self._sig_generator is not None):
+            self._sig_generator.change_source_hypo_group_manager(
+                self._src_hypo_group_manager)
+
+
     def initialize_trial(self, events_list, n_events_list=None, tl=None):
         """This method initializes the multi-dataset log-likelihood ratio
         function with a new set of given trial data. This is a low-level method.

@@ -290,7 +290,8 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             index.
         """
         return self._pdfratio_list[idx]
-
+    
+    #@profile
     def calculate_pdfratio_values(self, tdm, fitparams, tl=None):
         """Calculates the PDF ratio values for the PDF ratio objects which
         depend on fit parameters.
@@ -624,7 +625,8 @@ class SigOverBkgPDFRatio(PDFRatio):
         """Returns the list of fit parameter names the signal PDF depends on.
         """
         return self._sig_pdf.param_set.floating_param_name_list
-
+    
+    #@profile
     def get_ratio(self, tdm, params=None, tl=None):
         """Calculates the PDF ratio for the given trial events.
 

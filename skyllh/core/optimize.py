@@ -884,15 +884,20 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         # source. We make sure to use the smaller distance on the circle, thus
         # the maximal distance is 180deg, i.e. pi.
         # ra_dist is a (N_sources,N_events)-shaped 2D ndarray.
-        with TaskTimer(tl, 'ESM: Calculate ra_dist.'):
-            ra_dist = np.fabs(
-                np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi)
+        #with TaskTimer(tl, 'ESM: Calculate ra_dist.'):
+        #    ra_dist = np.fabs(
+        #        np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi)
 
         # Determine the mask for the events which fall inside the
         # right-ascention window.
         # mask_ra is a (N_sources,N_events)-shaped ndarray.
+        #print('length background events', len(events['ra']))
         with TaskTimer(tl, 'ESM: Calculate mask_ra.'):
-            mask_ra = ra_dist < dRA_half[:,np.newaxis]
+            mask_ra = np.fabs(
+                np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi) < dRA_half[:,np.newaxis]
+
+            #ra_dist < dRA_half[:,np.newaxis]
+            #del ra_dist
 
         # Determine the mask for the events which fall inside the declination
         # window.
@@ -931,12 +936,13 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         with TaskTimer(tl, '%s: Get psi values.'%(cls_name)):
             psi = self._get_psi(selected_events, (src_idxs, ev_idxs))
 
-        with TaskTimer(tl, '%s: Get axis data values.'%(cls_name)):
-            func_args = [selected_events[axis][ev_idxs] for axis in self._axis_name_list ]
+        #with TaskTimer(tl, '%s: Get axis data values.'%(cls_name)):
+        #    func_args = [selected_events[axis][ev_idxs] for axis in self._axis_name_list ]
 
         with TaskTimer(tl, '%s: Creating mask.'%(cls_name)):
-            mask = psi < self._func(*func_args)
-
+            #mask = psi < self._func(*func_args)
+            mask = (self._func(psi) <= selected_events['ang_err'][ev_idxs]) | (psi < np.deg2rad(5.))
+            #mask = psi>=0
         with TaskTimer(tl, '%s: Create selected_events.'%(cls_name)):
             m_tot = np.bincount(ev_idxs[mask]) > 0
             if not (m_tot.shape[0] == (np.max(ev_idxs)+1)):
@@ -962,6 +968,8 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             ev_idxs = idxs[:,1]
 
             final_selected_events = selected_events[m_tot]
+
+            #print('number of events:', len(src_idxs))
 
         if(retidxs):
             return (final_selected_events, (src_idxs, ev_idxs))
