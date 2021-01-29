@@ -548,6 +548,8 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
             (prob1, grads1) = pdf1.get_prob(tdm, params, tl=tl)
             (prob2, grads2) = pdf2.get_prob(tdm, params, tl=tl)
 
+
+
         prob = prob1 * prob2
         #print('spat', prob1[:10])
         #print('en', prob2[:10])
@@ -958,6 +960,13 @@ class MultiDimGridPDF(PDF):
                 V = eventdata.shape[1]
                 prob = self._pdf.evaluate_simple(
                     [eventdata[:, i] for i in range(0, V)])
+            
+            #evaluate_simple_data = [eventdata[:, i] for i in range(0, V)]
+            #print(np.rad2deg(10**evaluate_simple_data[0][:10]))
+            #print(evaluate_simple_data[1][:10])
+            #print(np.rad2deg(10**evaluate_simple_data[2][:10]))
+            #print(evaluate_simple_data[3][:10])
+
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(self, tdm, params)
@@ -966,6 +975,7 @@ class MultiDimGridPDF(PDF):
             self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
             self._cache_prob = prob
 
+        #print('prob', prob[:10])
         return prob
 
     #@profile
@@ -1256,17 +1266,28 @@ class NDPhotosplinePDF(PDF):
         with TaskTimer(tl, 'Get PDF event data.'):
             #print(self._axes)
             if (self.is_signal_pdf):
-                print('here')
+                #print('here')
                 if (tdm.idxs is not None):
                     src_idxs, ev_idxs = tdm.idxs
 
                     eventdata = np.empty(
                         (len(ev_idxs), len(self._axes)), dtype=np.float)
                     for (axis_idx, axis) in enumerate(self._axes):
-                        print(axis.name)
+                        #print(axis_idx, axis.name)
                         axis_name = axis.name
                         if(axis_name in tdm):
-                            axis_data = tdm.get_data(axis_name)[ev_idxs]
+                            if 'src' in axis_name:
+                                #print(axis_name, tdm.get_data(axis_name).shape )
+                                axis_data = tdm.get_data(axis_name)[src_idxs]
+
+                            elif 'psi' in axis_name:
+                                #print('0', axis_name)
+                                axis_data = tdm.get_data(axis_name)                                
+                                #print(axis_data.shape)
+                            else:
+                                axis_data = tdm.get_data(axis_name)[ev_idxs]
+
+                                #print('1', axis_data.shape)
                         else:
                             # The requested data field (for the axis) is not part of the
                             # trial data, so it must be a parameter.
@@ -1279,20 +1300,19 @@ class NDPhotosplinePDF(PDF):
                             axis_data = np.full(
                                 (len(ev_idxs),), params[axis_name],
                                 dtype=np.float)
-
+                            #print(axis_name, axis_data)
                         eventdata[:,axis_idx] = axis_data
 
 
-            #elif (self.is_background_pdf):
-            else:
+            elif (self.is_background_pdf):
                 eventdata = np.empty(
                     (tdm.n_selected_events, len(self._axes)), dtype=np.float)
                 
-                print('Start')
+                #print('Start')
                 for (axis_idx, axis) in enumerate(self._axes):
-                    print(axis.name)
+                    #print(axis.name)
                     axis_name = axis.name
-                    #print('name', axis_name)
+                    #print('background', axis_name)
                     if(axis_name in tdm):
                         axis_data = tdm.get_data(axis_name)
                     else:
@@ -1315,14 +1335,19 @@ class NDPhotosplinePDF(PDF):
         with TaskTimer(tl, 'Get prob from photospline fit.'):
             V = eventdata.shape[1]
             evaluate_simple_data = [eventdata[:, i] for i in range(0, V)]
+            #print(np.rad2deg(10**evaluate_simple_data[0][:10]))
+            #print(evaluate_simple_data[1][:10])
+            #print(np.rad2deg(10**evaluate_simple_data[2][:10]))
+            #print(evaluate_simple_data[3][:10])
             prob = self__pdf_evaluate_simple(evaluate_simple_data)
 
         with TaskTimer(tl, 'Normalize NDPhotosplinePDF with norm factor.'):
             #print('norm', norm[:10])
             norm = self._norm_factor_func(self, tdm, params)
-            print('norm', norm)
+            #print('norm', norm)
             prob *= norm
 
+        #print('prob', prob[:10])
         if(self._n_fitparams == 0):
             # This PDF does not depend on any fit parameters.
             return (prob, None)
@@ -1652,12 +1677,16 @@ class MultiDimGridPDFSet(PDF, PDFSet):
             # all events and sources (relevant for stacking analyses)
             if (tdm.idxs is not None):
                 src_idxs, ev_idxs = tdm.idxs
-                eventdata = np.array([tdm.get_data(axis.name)[ev_idxs]
-                                  if not 'psi' in axis.name 
-                                  else tdm.get_data(axis.name)
+                eventdata = np.array([tdm.get_data(axis.name) if ('psi' in axis.name)
+                                  else tdm.get_data(axis.name)[src_idxs] if ('src' in axis.name)
+                                  else tdm.get_data(axis.name)[ev_idxs]
                                   for axis in self.pdf_axes]).T
+
+                
             else:
+                # this is still wrong. has to be done similar to above
                 n_src = len(tdm.get_data('src_array')['ra'])
+                l_ev = len(tdm.get_data('ra'))
                 eventdata = np.array([np.tile(tdm.get_data(axis.name), n_src)
                                   if not 'psi' in axis.name 
                                   else tdm.get_data(axis.name)
