@@ -905,11 +905,11 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
                     if not (bi == n_batches-1):
                         mask_ra[bi*batch_size : (bi+1)*batch_size,...] = (np.fabs(
                             np.mod(events['ra'] - src_arr['ra'][bi*batch_size : (bi+1)*batch_size][:,np.newaxis] + np.pi, 2*np.pi) - 
-                            np.pi) < dRA_half[:,np.newaxis])
+                            np.pi) < dRA_half[ bi*batch_size : (bi+1)*batch_size ][:,np.newaxis])
                     else:
                         mask_ra[bi*batch_size : ,...] = (np.fabs(
                             np.mod(events['ra'] - src_arr['ra'][bi*batch_size:][:,np.newaxis] + np.pi, 2*np.pi) - 
-                            np.pi) < dRA_half[:,np.newaxis])
+                            np.pi) < dRA_half[bi*batch_size:][:,np.newaxis])
 
             else:
                 mask_ra = np.fabs(
