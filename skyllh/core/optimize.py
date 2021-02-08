@@ -900,7 +900,7 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             batch_size=200
             if nsrc > batch_size:
                 mask_ra = np.zeros((nsrc, len(events['ra'])), dtype=bool)
-                n_batches = np.ceil(nsrc / float(batch_size))
+                n_batches = int(np.ceil(nsrc / float(batch_size)))
                 for bi in range(n_batches):
                     if not (bi == n_batches-1):
                         mask_ra[bi*batch_size : (bi+1)*batch_size,...] = (np.fabs(
