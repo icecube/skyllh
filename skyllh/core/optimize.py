@@ -892,9 +892,28 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         # right-ascention window.
         # mask_ra is a (N_sources,N_events)-shaped ndarray.
         #print('length background events', len(events['ra']))
+
         with TaskTimer(tl, 'ESM: Calculate mask_ra.'):
-            mask_ra = np.fabs(
-                np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi) < dRA_half[:,np.newaxis]
+            nsrc = len(src_arr['ra'])
+           
+            # fill in batch sizes of 200 maximum to save memory
+            batch_size=200
+            if nsrc > batch_size:
+                mask_ra = np.zeros((nsrc, len(events['ra'])), dtype=bool)
+                n_batches = np.ceil(nsrc / float(batch_size))
+                for bi in range(n_batches):
+                    if not (bi == n_batches-1):
+                        mask_ra[bi*batch_size : (bi+1)*batch_size,...] = (np.fabs(
+                            np.mod(events['ra'] - src_arr['ra'][bi*batch_size : (bi+1)*batch_size][:,np.newaxis] + np.pi, 2*np.pi) - 
+                            np.pi) < dRA_half[:,np.newaxis])
+                    else:
+                        mask_ra[bi*batch_size : ,...] = (np.fabs(
+                            np.mod(events['ra'] - src_arr['ra'][bi*batch_size:][:,np.newaxis] + np.pi, 2*np.pi) - 
+                            np.pi) < dRA_half[:,np.newaxis])
+
+            else:
+                mask_ra = np.fabs(
+                    np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi) < dRA_half[:,np.newaxis]
 
             #ra_dist < dRA_half[:,np.newaxis]
             #del ra_dist
