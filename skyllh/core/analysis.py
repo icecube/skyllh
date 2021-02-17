@@ -85,7 +85,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
-                 test_statistic, bkg_gen_method=None):
+                 test_statistic, bkg_gen_method=None, sig_generation_method=None):
         """Constructor of the analysis base class.
 
         Parameters
@@ -135,6 +135,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         # Predefine the variable for the background and signal generators.
         self._bkg_generator = None
         self._sig_generator = None
+        self._sig_generation_method = sig_generation_method
 
     @property
     def src_hypo_group_manager(self):
@@ -372,8 +373,12 @@ class Analysis(object, metaclass=abc.ABCMeta):
         Analysis class instance. The signal generation method has to be set
         through the source hypothesis group.
         """
-        self._sig_generator = SignalGenerator(
-            self._src_hypo_group_manager, self._dataset_list, self._data_list)
+        if self._sig_generation_method is None:
+            self._sig_generator = SignalGenerator(
+                self._src_hypo_group_manager, self._dataset_list, self._data_list)
+        else:
+            self._sig_generator = self._sig_generation_method(
+                self._src_hypo_group_manager, self._dataset_list, self._data_list)
 
     @abc.abstractmethod
     def initialize_trial(self, events_list, n_events_list=None):
@@ -1034,7 +1039,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
     """
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
                  fitparam_ns,
-                 test_statistic, bkg_gen_method=None):
+                 test_statistic, bkg_gen_method=None, sig_generation_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
@@ -1063,7 +1068,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
             src_hypo_group_manager, src_fitparam_mapper, test_statistic,
-            bkg_gen_method)
+            bkg_gen_method, sig_generation_method)
 
         self.fitparam_ns = fitparam_ns
 
@@ -1413,7 +1418,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSi
     """
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
                  fitparam_ns,
-                 test_statistic, bkg_gen_method=None):
+                 test_statistic, bkg_gen_method=None, sig_generation_method=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
@@ -1442,7 +1447,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSi
 
         super(TimeIntegratedMultiDatasetMultiSourceAnalysis, self).__init__(
             src_hypo_group_manager, src_fitparam_mapper,
-            fitparam_ns, test_statistic, bkg_gen_method )
+            fitparam_ns, test_statistic, bkg_gen_method, sig_generation_method)
 
      
     def construct_llhratio(self, minimizer, ppbar=None):

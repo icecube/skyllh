@@ -522,15 +522,27 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         # source. We make sure to use the smaller distance on the circle, thus
         # the maximal distance is 180deg, i.e. pi.
         # ra_dist is a (N_sources,N_events)-shaped 2D ndarray.
-        with TaskTimer(tl, 'ESM: Calculate ra_dist.'):
-            ra_dist = np.fabs(
-                np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi)
-
-        # Determine the mask for the events which fall inside the
-        # right-ascention window.
-        # mask_ra is a (N_sources,N_events)-shaped ndarray.
         with TaskTimer(tl, 'ESM: Calculate mask_ra.'):
-            mask_ra = ra_dist < dRA_half[:,np.newaxis]
+            nsrc = len(src_arr['ra'])
+            # fill in batch sizes of 200 maximum to save memory
+            batch_size=200
+            if nsrc > batch_size:
+                mask_ra = np.zeros((nsrc, len(events['ra'])), dtype=bool)
+                n_batches = int(np.ceil(nsrc / float(batch_size)))
+                for bi in range(n_batches):
+                    if not (bi == n_batches-1):
+                        mask_ra[bi*batch_size : (bi+1)*batch_size,...] = (np.fabs(
+                            np.mod(events['ra'] - src_arr['ra'][bi*batch_size : (bi+1)*batch_size][:,np.newaxis] + np.pi, 2*np.pi) - 
+                            np.pi) < dRA_half[ bi*batch_size : (bi+1)*batch_size ][:,np.newaxis])
+                    else:
+                        mask_ra[bi*batch_size : ,...] = (np.fabs(
+                            np.mod(events['ra'] - src_arr['ra'][bi*batch_size:][:,np.newaxis] + np.pi, 2*np.pi) - 
+                            np.pi) < dRA_half[bi*batch_size:][:,np.newaxis])
+
+            else:
+                mask_ra = np.fabs(
+                    np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi) < dRA_half[:,np.newaxis]
+
 
         # Determine the mask for the events which fall inside the declination
         # window.
@@ -544,6 +556,8 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         # mask_sky is a (N_sources,N_events)-shaped ndarray.
         with TaskTimer(tl, 'ESM: Calculate mask_sky.'):
             mask_sky = mask_ra & mask_dec
+            del mask_ra
+            del mask_dec
 
         # Determine the mask for the events that fall inside at least one
         # source sky window.
@@ -930,6 +944,8 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         # mask_sky is a (N_sources,N_events)-shaped ndarray.
         with TaskTimer(tl, 'ESM: Calculate mask_sky.'):
             mask_sky = mask_ra & mask_dec
+            del mask_ra
+            del mask_dec
 
         # Determine the mask for the events that fall inside at least one
         # source sky window.
@@ -981,6 +997,9 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             final_sky_mask = np.zeros_like(mask_sky, dtype=bool)
             final_sky_mask[idxs] = mask_sky[idxs]
             final_sky_mask = final_sky_mask.T[m_tot].T
+
+            del mask_sky
+            del idxs
 
             idxs = np.argwhere(final_sky_mask)
             src_idxs = idxs[:,0]
