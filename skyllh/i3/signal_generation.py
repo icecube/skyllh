@@ -424,6 +424,7 @@ class MultiPointLikeSourceI3SignalGenerationMethod(PointLikeSourceI3SignalGenera
 
         # Get the flux model of this source hypo group.
         fluxmodel = shg.fluxmodel
+        src_weights = shg.source_weights
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
@@ -477,8 +478,8 @@ class MultiPointLikeSourceI3SignalGenerationMethod(PointLikeSourceI3SignalGenera
                 #print('herei1', band_mask.shape)
                 del band_mask
 
-            fluxi = fluxmodel(data_mc_true_energy[ev_indi])*toGeVcm2s / src_dec_band_omega[src_indi]
-
+            fluxi = src_weights[src_indi]*fluxmodel(data_mc_true_energy[ev_indi])*toGeVcm2s / src_dec_band_omega[src_indi]
+            #print(src_weights[src_indi])
             ev_indices = np.append(ev_indices, ev_indi)
             src_indices = np.append(src_indices, src_indi)
             flux = np.append(flux, fluxi)
