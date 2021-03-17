@@ -14,7 +14,7 @@ class SourceHypoGroup(object):
     """
     def __init__(
             self, sources, fluxmodel, detsigyield_implmethods,
-            sig_gen_method=None, source_weights=None):
+            sig_gen_method=None):
         """Constructs a new source hypothesis group.
 
         Parameters
@@ -42,7 +42,7 @@ class SourceHypoGroup(object):
         self.fluxmodel = fluxmodel
         self.detsigyield_implmethod_list = detsigyield_implmethods
         self.sig_gen_method = sig_gen_method
-        self.source_weights = source_weights
+
     @property
     def source_list(self):
         """The list of SourceModel instances for which the group is defined.
