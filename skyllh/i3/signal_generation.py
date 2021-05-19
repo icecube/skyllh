@@ -464,7 +464,7 @@ class MultiPointLikeSourceI3SignalGenerationMethod(PointLikeSourceI3SignalGenera
                             (data_mc_sin_true_dec >= 
                                 src_sin_dec_band_min[bi*self.batch_size:][:, np.newaxis]),
                             (data_mc_sin_true_dec <= 
-                                src_sin_dec_band_min[bi*self.batch_size:][:, np.newaxis])
+                                src_sin_dec_band_max[bi*self.batch_size:][:, np.newaxis])
                             )
                 if(self.energy_range is not None):
                     band_mask &= np.logical_and(
