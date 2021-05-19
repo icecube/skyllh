@@ -811,12 +811,10 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
                 'instances!')
         self._axis_name_list = list(names)
 
-
     def _get_psi(self, events, idxs):
-        """Function to calculate the log10 of the opening angle between the
-        source position and the event's reconstructed position.
+        """Function to calculate the the opening angle between the source
+        position and the event's reconstructed position.
         """
-
         ra = events['ra']
         dec = events['dec']
 
@@ -824,17 +822,21 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         src_ra = self._src_arr['ra'][src_idxs]
         src_dec = self._src_arr['dec'][src_idxs]
 
-        cos_ev = np.sqrt(1. - np.sin(dec)**2)
-        cos_psi = (np.cos(src_ra - np.take(ra,ev_idxs)) * \
-                np.cos(src_dec) * np.take(cos_ev, ev_idxs) + \
-                np.sin(src_dec) * np.take(np.sin(dec), ev_idxs))
+        delta_dec = np.abs(np.take(dec, ev_idxs) - src_dec)
+        delta_ra = np.abs(np.take(ra, ev_idxs) - src_ra)
+        x = (np.sin(delta_dec / 2.))**2. + np.cos(np.take(dec, ev_idxs)) *\
+            np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
 
         # Handle possible floating precision errors.
-        cos_psi[cos_psi < -1.] = -1.
-        cos_psi[cos_psi > 1.] = 1.
+        x[x < 0.] = 0.
+        x[x > 1.] = 1.
 
-        psi = np.arccos(cos_psi)
-        psi = np.where(psi == 0, 1e-10, psi)
+        psi = (2.0*np.arcsin(np.sqrt(x)))
+        # Floor psi values below the first bin location in spatial KDE PDF.
+        # Flooring at the boundary (1e-6) requires a regeneration of the
+        # spatial KDE splines.
+        floor = 10**(-5.95442953)
+        psi = np.where(psi < floor, floor, psi)
 
         return psi
 

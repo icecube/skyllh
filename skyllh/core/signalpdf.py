@@ -134,11 +134,11 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                 src_ra = get_data('src_array')['ra'][:, np.newaxis]
                 src_dec = get_data('src_array')['dec'][:, np.newaxis]
 
-                # Calculate the cosine of the distance of the source and the event on
-                # the sphere.
-                cos_r = np.cos(src_ra - ra) * np.cos(src_dec) * \
-                    np.cos(dec) + np.sin(src_dec) * np.sin(dec)
-
+                delta_dec = np.abs(dec - src_dec)
+                delta_ra = np.abs(ra - src_ra)
+                x = (np.sin(delta_dec / 2.))**2. + np.cos(dec) *\
+                    np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
+                x = x.flatten()
             else:
                 # Calculate the angular difference only for events that are close
                 # to the respective source poisition. This is useful for stacking 
@@ -147,24 +147,21 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                 src_ra = get_data('src_array')['ra'][src_idxs]
                 src_dec = get_data('src_array')['dec'][src_idxs]
 
-                # Calculate the cosine of the distance of the source and the event on
-                # the sphere.
-                cos_ev = np.sqrt(1. - np.sin(dec)**2)
-                cos_r = (np.cos(src_ra - np.take(ra, ev_idxs)) * \
-                    np.cos(src_dec) * np.take(cos_ev, ev_idxs) + \
-                    np.sin(src_dec) * np.take(np.sin(dec), ev_idxs))
+                delta_dec = np.abs(np.take(dec, ev_idxs) - src_dec)
+                delta_ra = np.abs(np.take(ra, ev_idxs) - src_ra)
+                x = (np.sin(delta_dec / 2.))**2. + np.cos(np.take(dec, ev_idxs)) *\
+                    np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
 
                 # also extend the sigma array to account for all relevant events
                 sigma = np.take(sigma, ev_idxs)
 
                 # Handle possible floating precision errors.
-            cos_r[cos_r < -1.] = -1.
-            cos_r[cos_r > 1.] = 1.
-            r = np.arccos(cos_r)
+            x[x < 0.] = 0.
+            x[x > 1.] = 1.
 
-            prob = 0.5/(np.pi*sigma**2) * np.exp(-0.5*(r / sigma)**2)
+            psi = (2.0*np.arcsin(np.sqrt(x)))
 
-        # if the signal hypothesis contains single sources 
+            prob = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
         # return the output here
 
         if(len(get_data('src_array')['ra']) == 1):
