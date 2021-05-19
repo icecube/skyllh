@@ -85,7 +85,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
-                 test_statistic, bkg_gen_method=None, sig_generation_method=None):
+                 test_statistic, bkg_gen_method=None, custom_sig_generator=None):
         """Constructor of the analysis base class.
 
         Parameters
@@ -104,13 +104,9 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The instance of BackgroundGenerationMethod that should be used to
             generate background events for pseudo data. This can be set to None,
             if there is no need to generate background events.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod that implements the selection
-            of the events, which have potential to be signal. All non-selected
-            events will be treated as pure background events. This is for
-            runtime optimization only.
-            If set to None (default), the AllEventSelectionMethod will be used,
-            that selects all events for the analysis.
+        custom_sig_generator : SignalGenerator class | None
+            The signal generator class used to create `_sig_generator` instance.
+            Uses default `SignalGenerator` implementation if set to None.
         """
         # Call the super function to allow for multiple class inheritance.
         super(Analysis, self).__init__()
@@ -135,7 +131,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         # Predefine the variable for the background and signal generators.
         self._bkg_generator = None
         self._sig_generator = None
-        self._sig_generation_method = sig_generation_method
+        self._custom_sig_generator = custom_sig_generator
 
     @property
     def src_hypo_group_manager(self):
@@ -373,11 +369,11 @@ class Analysis(object, metaclass=abc.ABCMeta):
         Analysis class instance. The signal generation method has to be set
         through the source hypothesis group.
         """
-        if self._sig_generation_method is None:
+        if self._custom_sig_generator is None:
             self._sig_generator = SignalGenerator(
                 self._src_hypo_group_manager, self._dataset_list, self._data_list)
         else:
-            self._sig_generator = self._sig_generation_method(
+            self._sig_generator = self._custom_sig_generator(
                 self._src_hypo_group_manager, self._dataset_list, self._data_list)
 
     @abc.abstractmethod
@@ -608,7 +604,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         # Construct the signal generator if not done yet.
         if(self._sig_generator is None):
-            with TaskTimer(tl, 'Generating signal generator.'):
+            with TaskTimer(tl, 'Constructing signal generator.'):
                 self.construct_signal_generator()
         # Generate signal events with the given mean number of signal
         # events.
@@ -1022,7 +1018,6 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return result
 
 
-
 class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
     """This is an analysis class that implements a time-integrated LLH ratio
     analysis for multiple datasets assuming a single source.
@@ -1037,9 +1032,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
-    def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
-                 fitparam_ns,
-                 test_statistic, bkg_gen_method=None, sig_generation_method=None):
+    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns,
+                 test_statistic, bkg_gen_method=None, custom_sig_generator=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
@@ -1061,6 +1055,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The instance of BackgroundGenerationMethod that will be used to
             generate background events for a new analysis trial. This can be set
             to None, if no background events have to get generated.
+        custom_sig_generator : SignalGenerator class | None
+            The signal generator class used to create `_sig_generator` instance.
+            Uses default `SignalGenerator` implementation if set to None.
         """
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an '
@@ -1068,7 +1065,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
             src_hypo_group_manager, src_fitparam_mapper, test_statistic,
-            bkg_gen_method, sig_generation_method)
+            bkg_gen_method, custom_sig_generator)
 
         self.fitparam_ns = fitparam_ns
 
@@ -1246,27 +1243,29 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             self._sig_generator.change_source_hypo_group_manager(
                 self._src_hypo_group_manager)
 
-
-
     def change_sources(self, sources):
-        """Changes the source of the analysis to the given source. It makes the
-        necessary changes to all the objects of the analysis.
+        """Changes the sources of the analysis to the given source list. It
+        makes the necessary changes to all the objects of the analysis.
 
         Parameters
         ----------
-        source : SourceModel instance
-            The SourceModel instance describing the new source.
+        sources : list of SourceModel instances
+            The SourceModel instances describing new sources.
         """
-        if(not isinstance(sources[0], SourceModel)):
-            raise TypeError('The source argument must be an instance of SourceModel')
+        if(isinstance(sources, SourceModel)):
+            sources = [sources]
+        if(not issequenceof(sources, SourceModel)):
+            raise TypeError('The sources argument must be a list of instances '
+                            'of SourceModel')
 
         if(self._llhratio is None):
-            raise RuntimeError('The LLH ratio function has to be constructed, '
+            raise RuntimeError(
+                'The LLH ratio function has to be constructed, '
                 'before the `change_source` method can be called!')
 
         # Change the source in the SourceHypoGroupManager instance.
-        # Because this is a single source analysis, there can only be one source
-        # hypothesis group defined.
+        # Because this is a single type sources analysis, there can only be one
+        # source hypothesis group defined.
         self._src_hypo_group_manager.src_hypo_group_list[0].source_list = sources
 
         # Change the source hypo group manager of the EventSelectionMethod
@@ -1278,7 +1277,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         # Change the source hypo group manager of the LLH ratio function
         # instance.
-        self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
+        self._llhratio.change_source_hypo_group_manager(
+            self._src_hypo_group_manager)
 
         # Change the source hypo group manager of the background generator
         # instance.
@@ -1290,7 +1290,6 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         if(self._sig_generator is not None):
             self._sig_generator.change_source_hypo_group_manager(
                 self._src_hypo_group_manager)
-
 
     def initialize_trial(self, events_list, n_events_list=None, tl=None):
         """This method initializes the multi-dataset log-likelihood ratio
@@ -1312,7 +1311,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             measurements.
         """
         if(n_events_list is None):
-            n_events_list = [ None ] * len(events_list)
+            n_events_list = [None] * len(events_list)
 
         for (idx, (tdm, events, n_events, evt_sel_method)) in enumerate(zip(
                 self._tdm_list, events_list, n_events_list,
@@ -1399,12 +1398,10 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         return factor
 
 
-
-
-
-class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSingleSourceAnalysis):
+class TimeIntegratedMultiDatasetMultiSourceAnalysis(
+        TimeIntegratedMultiDatasetSingleSourceAnalysis):
     """This is an analysis class that implements a time-integrated LLH ratio
-    analysis for multiple datasets assuming a single source.
+    analysis for multiple datasets assuming multiple sources.
 
     To run this analysis the following procedure applies:
 
@@ -1416,11 +1413,11 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSi
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
-    def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
-                 fitparam_ns,
-                 test_statistic, bkg_gen_method=None, sig_generation_method=None):
-        """Creates a new time-integrated point-like source analysis assuming a
-        single source.
+    def __init__(
+            self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns,
+            test_statistic, bkg_gen_method=None, custom_sig_generator=None):
+        """Creates a new time-integrated point-like source analysis assuming
+        multiple sources.
 
         Parameters
         ----------
@@ -1440,16 +1437,18 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSi
             The instance of BackgroundGenerationMethod that will be used to
             generate background events for a new analysis trial. This can be set
             to None, if no background events have to get generated.
+        custom_sig_generator : SignalGenerator class | None
+            The signal generator class used to create `_sig_generator` instance.
+            Uses default `SignalGenerator` implementation if set to None.
         """
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an '
-                'instance of SingleSourceFitParameterMapper!')
+                            'instance of SingleSourceFitParameterMapper!')
 
         super(TimeIntegratedMultiDatasetMultiSourceAnalysis, self).__init__(
             src_hypo_group_manager, src_fitparam_mapper,
-            fitparam_ns, test_statistic, bkg_gen_method, sig_generation_method)
+            fitparam_ns, test_statistic, bkg_gen_method, custom_sig_generator)
 
-     
     def construct_llhratio(self, minimizer, ppbar=None):
         """Constructs the log-likelihood-ratio (LLH-ratio) function of the
         analysis. This setups all the necessary analysis
@@ -1479,7 +1478,8 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSi
         detsigyield_implmethod_list = self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
         if((len(detsigyield_implmethod_list) != 1) and
            (len(detsigyield_implmethod_list) != self.n_datasets)):
-            raise ValueError('The number of detector signal yield '
+            raise ValueError(
+                'The number of detector signal yield '
                 'implementation methods is not 1 and does not match the number '
                 'of used datasets in the analysis!')
         pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
@@ -1526,49 +1526,6 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSi
 
         return llhratio
 
-    def change_source(self, source):
-        """Changes the source of the analysis to the given source. It makes the
-        necessary changes to all the objects of the analysis.
-
-        Parameters
-        ----------
-        source : SourceModel instance
-            The SourceModel instance describing the new source.
-        """
-        if(not isinstance(source, SourceModel)):
-            raise TypeError('The source argument must be an instance of SourceModel')
-
-        if(self._llhratio is None):
-            raise RuntimeError('The LLH ratio function has to be constructed, '
-                'before the `change_source` method can be called!')
-
-        # Change the source in the SourceHypoGroupManager instance.
-        # Because this is a single source analysis, there can only be one source
-        # hypothesis group defined.
-        self._src_hypo_group_manager.src_hypo_group_list[0].source_list[0] = source
-
-        # Change the source hypo group manager of the EventSelectionMethod
-        # instance.
-        for event_selection_method in self._event_selection_method_list:
-            if(event_selection_method is not None):
-                event_selection_method.change_source_hypo_group_manager(
-                    self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the LLH ratio function
-        # instance.
-        self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the background generator
-        # instance.
-        if(self._bkg_generator is not None):
-            self._bkg_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the signal generator instance.
-        if(self._sig_generator is not None):
-            self._sig_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
-
     def initialize_trial(self, events_list, n_events_list=None, tl=None):
         """This method initializes the multi-dataset log-likelihood ratio
         function with a new set of given trial data. This is a low-level method.
@@ -1589,7 +1546,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSi
             measurements.
         """
         if(n_events_list is None):
-            n_events_list = [ None ] * len(events_list)
+            n_events_list = [None] * len(events_list)
 
         for (idx, (tdm, events, n_events, evt_sel_method)) in enumerate(zip(
                 self._tdm_list, events_list, n_events_list,
@@ -1601,76 +1558,3 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(TimeIntegratedMultiDatasetSi
                 tl=tl, retidxs=True)
 
         self._llhratio.initialize_for_new_trial(tl=tl)
-
-    def maximize_llhratio(self, rss, tl=None):
-        """Maximizes the log-likelihood ratio function, by minimizing its
-        negative.
-
-        Parameters
-        ----------
-        rss : RandomStateService instance
-            The RandomStateService instance that should be used to draw random
-            numbers from. It is used by the minimizer to generate random
-            fit parameter initial values.
-        tl : TimeLord instance | None
-            The optional TimeLord instance that should be used to time the
-            maximization of the LLH ratio function.
-
-        Returns
-        -------
-        fitparamset : FitParameterSet instance
-            The instance of FitParameterSet holding the global fit parameter
-            definitions used in the maximization process.
-        log_lambda_max : float
-            The value of the log-likelihood ratio function at its maximum.
-        fitparam_values : (N_fitparam,)-shaped 1D ndarray
-            The ndarray holding the global fit parameter values.
-            By definition, the first element is the value of the fit parameter
-            ns.
-        status : dict
-            The dictionary with status information about the maximization
-            process, i.e. from the minimizer.
-        """
-        (log_lambda_max, fitparam_values, status) = self._llhratio.maximize(
-            rss, self._fitparamset, tl=tl)
-        return (self._fitparamset, log_lambda_max, fitparam_values, status)
-
-    def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
-        """Calculates the factor the source's fluxmodel has to be scaled
-        in order to obtain the given mean number of signal events in the
-        detector.
-
-        Parameters
-        ----------
-        mean_ns : float
-            The mean number of signal events in the detector for which the
-            scaling factor is calculated.
-        fitparam_values : (N_fitparams,)-shaped 1D ndarray
-            The ndarray holding the fit parameter values that should be used for
-            the flux calculation.
-
-        Returns
-        -------
-        factor : float
-            The factor the given fluxmodel needs to be scaled in order to obtain
-            the given mean number of signal events in the detector.
-        """
-        fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(
-            fitparam_values)
-
-        # We use the DatasetSignalWeights class instance of this analysis to
-        # calculate the detector signal yield for all datasets.
-        dataset_signal_weights = self._llhratio.dataset_signal_weights
-
-        # Calculate the detector signal yield, i.e. the mean number of signal
-        # events in the detector, for the given reference flux model.
-        mean_ns_ref = 0
-        detsigyields = dataset_signal_weights.detsigyield_arr[0]
-        for detsigyield in detsigyields:
-            (Yj, Yj_grads) = detsigyield(
-                dataset_signal_weights._src_arr_list[0], fitparams_arr)
-            mean_ns_ref += Yj[0]
-
-        factor = mean_ns / mean_ns_ref
-
-        return factor

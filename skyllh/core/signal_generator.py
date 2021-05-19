@@ -9,7 +9,6 @@ from skyllh.core.py import (
     int_cast,
     get_smallest_numpy_int_type
 )
-from skyllh.core.random import RandomStateService
 from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
@@ -17,13 +16,14 @@ from skyllh.physics.flux import (
     get_conversion_factor_to_internal_flux_unit
 )
 
+
 class SignalGenerator(object):
     """This is the general signal generator class. It does not depend on the
     detector or source hypothesis, because these dependencies are factored out
-    into the signal generation method. In fact the construction within this class
-    depends on the construction of the signal generation method. In case of multiple 
-    sources the handling here is very suboptimal. Therefor the MultiSourceSignalGenerator
-    should be used instead!
+    into the signal generation method. In fact the construction within this
+    class depends on the construction of the signal generation method. In case
+    of multiple sources the handling here is very suboptimal. Therefore the
+    MultiSourceSignalGenerator should be used instead!
     """
     def __init__(self, src_hypo_group_manager, dataset_list, data_list):
         """Constructs a new signal generator instance.
@@ -298,17 +298,8 @@ class SignalGenerator(object):
         return (n_signal, signal_events_dict)
 
 
-
-
-
-
 class MultiSourceSignalGenerator(SignalGenerator):
-    """This is the general signal generator class. It does not depend on the
-    detector or source hypothesis, because these dependencies are factored out
-    into the signal generation method. In fact the construction within this class
-    depends on the construction of the signal generation method. In case of multiple 
-    sources the handling here is very suboptimal. Therefor the MultiSourceSignalGenerator
-    should be used instead!
+    """More optimal signal generator for multiple sources.
     """
     def __init__(self, src_hypo_group_manager, dataset_list, data_list):
         """Constructs a new signal generator instance.
@@ -325,9 +316,9 @@ class MultiSourceSignalGenerator(SignalGenerator):
             The list of DatasetData instances holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
         """
-        super(MultiSourceSignalGenerator, self).__init__(src_hypo_group_manager, 
-                dataset_list, data_list)
-    
+        super(MultiSourceSignalGenerator, self).__init__(
+            src_hypo_group_manager, dataset_list, data_list)
+
     def _construct_signal_candidates(self):
         """Constructs an array holding pointer information of signal candidate
         events pointing into the real MC dataset(s).
@@ -349,12 +340,14 @@ class MultiSourceSignalGenerator(SignalGenerator):
 
         # Go through the source hypothesis groups to get the signal event
         # candidates.
-        for ((shg_idx,shg), (j,(ds,data))) in itertools.product(
-            enumerate(shg_list), enumerate(zip(self._dataset_list, self._data_list))):
+        for ((shg_idx, shg), (j, (ds, data))) in itertools.product(
+                enumerate(shg_list),
+                enumerate(zip(self._dataset_list, self._data_list))):
             sig_gen_method = shg.sig_gen_method
             if(sig_gen_method is None):
-                raise ValueError('No signal generation method has been '
-                    'specified for the %dth source hypothesis group!'%(shg_idx))
+                raise ValueError(
+                    'No signal generation method has been specified '
+                    'for the %dth source hypothesis group!' % (shg_idx))
             data_mc = data.mc
             (ev_indices, src_indices, flux) = sig_gen_method.calc_source_signal_mc_event_flux(
                 data_mc, shg)
@@ -374,4 +367,3 @@ class MultiSourceSignalGenerator(SignalGenerator):
         # Normalize the signal candidate weights.
         self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
-

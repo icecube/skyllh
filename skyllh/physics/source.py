@@ -57,7 +57,7 @@ class SourceWeights(object):
         return self._src_w
     @src_w.setter
     def src_w(self, v):
-        v = float_cast(v, 'The ra property must be castable to type float!')
+        v = float_cast(v, 'The src_w property must be castable to type float!')
         self._src_w = v
 
     @property
@@ -67,10 +67,8 @@ class SourceWeights(object):
         return self._src_w_grad
     @src_w_grad.setter
     def src_w_grad(self, v):
-        v = float_cast(v, 'The dec property must be castable to type float!')
+        v = float_cast(v, 'The src_w_grad property must be castable to type float!')
         self._src_w_grad = v
-
-
 
 
 class SourceModel(object):
@@ -105,7 +103,6 @@ class SourceModel(object):
         if(not isinstance(w_src, SourceWeights)):
             raise TypeError('The weight property must be an instance of SourceWeights!')
         self._weight = w_src
-
 
     @property
     def id(self):

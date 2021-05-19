@@ -107,8 +107,7 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
             parameter.
         """
         pass
-    
-    #@profile
+
     def maximize(self, rss, fitparamset, tl=None):
         """Maximize the log-likelihood ratio function, by using the ``evaluate``
         method.
@@ -143,11 +142,10 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
         def negative_llhratio_func(fitparam_values, func_stats, tl=None):
             func_stats['n_calls'] += 1
             with TaskTimer(tl, 'Evaluate llh-ratio function.'):
-                (f, grads) = self_evaluate(fitparam_values,tl=tl)
+                (f, grads) = self_evaluate(fitparam_values, tl=tl)
                 if(tracing): logger.debug(
                     'LLH-ratio func value f={:g}, grads={}'.format(
                         f, str(grads)))
-            #print(fitparam_values, -f )
             return (-f, -grads)
 
         minimize_kwargs = {'func_provides_grads': True}
@@ -772,9 +770,9 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
             self._pdfratio_list,
             self._src_fitparam_mapper.fitparamset.fitparam_list)
 
-        self._calc_source_weights = MultiPointSourcesRelSourceWeights(src_hypo_group_manager, 
-                src_fitparam_mapper, detsigyields)
-    #@profile
+        self._calc_source_weights = MultiPointSourcesRelSourceWeights(
+            src_hypo_group_manager, src_fitparam_mapper, detsigyields)
+
     def evaluate(self, fitparam_values, tl=None):
         """Evaluates the log-likelihood ratio function for the given set of
         data events.
@@ -798,89 +796,21 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
             parameter and ns.
             The first element is the gradient for ns.
         """
-
         _src_w, _src_w_grads = self._calc_source_weights(
                 fitparam_values)
         self._tdm.get_data('src_array')['src_w'] = _src_w
         self._tdm.get_data('src_array')['src_w_grad'] = _src_w_grads.flatten()
 
-        #(log_lambda, grads) = super(MultiSourceZeroSigH0SingleDatasetTCLLHRatio, 
-        #        self).evaluate(fitparam_values, tl)
+        (log_lambda, grads) = super(
+            MultiSourceZeroSigH0SingleDatasetTCLLHRatio, self).evaluate(
+                fitparam_values, tl)
 
-
-        ####
-
-        tracing = CFG['debugging']['enable_tracing']
-
-        # Define local variables to avoid (.)-lookup procedure.
-        tdm = self._tdm
-        pdfratioarray = self._pdfratioarray
-
-        ns = fitparam_values[0]
-
-        N = tdm.n_events
-
-        # Create the fitparams dictionary with the fit parameter names and
-        # values.
-        with TaskTimer(tl, 'Create fitparams dictionary.'):
-            fitparams = self._src_fitparam_mapper.get_src_fitparams(
-                fitparam_values[1:])
-
-        # Calculate the data fields that depend on fit parameter values.
-        with TaskTimer(tl, 'Calc fit param dep data fields.'):
-            tdm.calculate_fitparam_data_fields(
-                self._src_hypo_group_manager, fitparams)
-
-        # Calculate the PDF ratio values of all PDF ratio objects, which depend
-        # on any fit parameter.
-        with TaskTimer(tl, 'Calc pdfratio values.'):
-            pdfratioarray.calculate_pdfratio_values(tdm, fitparams, tl=tl)
-
-        # Calculate the product of all the PDF ratio values for each (selected)
-        # event.
-        with TaskTimer(tl, 'Calc pdfratio value product Ri'):
-            Ri = pdfratioarray.get_ratio_product()
-
-        # Calculate Xi for each (selected) event.
-        Xi = (Ri - 1.) / N
-        if(tracing):
-            logger.debug('dtype(Xi)={:s}'.format(str(Xi.dtype)))
-
-        # Calculate the gradients of Xi for each fit parameter (without ns).
-        dXi_ps = np.empty((len(fitparam_values)-1,len(Xi)), dtype=np.float)
-        for (idx, fitparam_value) in enumerate(fitparam_values[1:]):
-            fitparam_name = self._src_fitparam_mapper.get_src_fitparam_name(idx)
-            # Get the PDFRatio instance from which we need the derivative from.
-
-            dRi = np.zeros((len(Xi),), dtype=np.float)
-            for (num_k) in np.arange(len(pdfratioarray._pdfratio_list)):
-                pdfratio = pdfratioarray.get_pdfratio(num_k)
-                # Calculate the derivative of Ri.
-                dRi += pdfratio.get_gradient(tdm, fitparams, fitparam_name) * pdfratioarray.get_ratio_product(excluded_idx=num_k)
-
-            # Calculate the derivative of Xi w.r.t. the fit parameter.
-            dXi_ps[idx] = dRi / N
-
-        if(tracing):
-            logger.debug(
-                '{:s}.evaluate: N={:d}, Nprime={:d}, ns={:.3f}, '.format(
-                    classname(self), N, len(Xi), ns))
-
-        with TaskTimer(tl, 'Calc logLamds and grads'):
-            (log_lambda, grads) = self.calculate_log_lambda_and_grads(
-                fitparam_values, N, ns, Xi, dXi_ps)
-
-
-
-
-
-        ####
         return (log_lambda, grads)
+
 
 class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
     """Abstract base class for a dataset signal weight calculator class.
     """
-
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
         """Base class constructor.
@@ -893,7 +823,6 @@ class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
         src_fitparam_mapper : SourceFitParameterMapper
             The SourceFitParameterMapper instance that defines the global fit
             parameters and their mapping to the source fit parameters.
-
         detsigyields : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
                      DetSigYield instances
             The collection of DetSigYield instances for each
@@ -1129,16 +1058,15 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
 
         return (f, f_grads)
 
-#TODO: Implement MultiSourceDatasetSignalWeights class!
 
 class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
     """This class calculates the dataset signal weight factors for each dataset
-    assuming a single source.
+    assuming multiple sources.
     """
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
-        """Constructs a new DatasetSignalWeights instance assuming a single
-        source.
+        """Constructs a new DatasetSignalWeights instance assuming multiple
+        sources.
 
         Parameters
         ----------
@@ -1214,13 +1142,9 @@ class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
         return (f, f_grads)
 
 
-
-
-
 class SourceWeights(object, metaclass=abc.ABCMeta):
     """Abstract base class for a source weight calculator class.
     """
-
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
         """Base class constructor.
@@ -1233,7 +1157,6 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
         src_fitparam_mapper : SourceFitParameterMapper
             The SourceFitParameterMapper instance that defines the global fit
             parameters and their mapping to the source fit parameters.
-
         detsigyields : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
                      DetSigYield instances
             The collection of DetSigYield instances for each
@@ -1337,7 +1260,6 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
                 'and dataset combination!')
         self._detsigyield_arr = detsigyields
 
-    
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Changes the SourceHypoGroupManager instance of this
         DatasetSignalWeights instance. This will also recreate the internal
@@ -1378,13 +1300,13 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
 
 
 class MultiPointSourcesRelSourceWeights(SourceWeights):
-    """This class calculates the relative source weights for a 
-    group point sources.
+    """This class calculates the relative source weights for a group of point
+    sources.
     """
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
-        """Constructs a new DatasetSignalWeights instance assuming a single
-        source.
+        """Constructs a new MultiPointSourcesRelSourceWeights instance assuming
+        multiple sources.
 
         Parameters
         ----------
@@ -1402,7 +1324,6 @@ class MultiPointSourcesRelSourceWeights(SourceWeights):
             raise TypeError('The src_fitparam_mapper argument must be an '
                 'instance of SingleSourceFitParameterMapper!')
 
-        
         super(MultiPointSourcesRelSourceWeights, self).__init__(
             src_hypo_group_manager, src_fitparam_mapper, detsigyields)
 
@@ -1433,7 +1354,7 @@ class MultiPointSourcesRelSourceWeights(SourceWeights):
         # Loop over the detector signal efficiency instances for the first and
         # only source hypothesis group.
 
-        # currently thsi only works for one source hypothesis group
+        # currently this only works for one source hypothesis group
         Y, Y_grads = self.detsigyield_arr[0](self._src_arr_list[0], fitparams_arr)
 
         # sumj_Y is the normalisation for each data set
@@ -1449,9 +1370,6 @@ class MultiPointSourcesRelSourceWeights(SourceWeights):
             f_grads = None
 
         return (f, f_grads)
-
-
-
 
 
 class MultiDatasetTCLLHRatio(TCLLHRatio):
@@ -1562,7 +1480,6 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         for llhratio in self._llhratio_list:
             llhratio.initialize_for_new_trial(tl=tl)
 
-    #@profile
     def evaluate(self, fitparam_values, tl=None):
         """Evaluates the composite log-likelihood-ratio function and returns its
         value and global fit parameter gradients.
@@ -1598,10 +1515,9 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         (f, f_grads) = self._dataset_signal_weights(fitparam_values)
         # Cache f for possible later calculation of the second derivative w.r.t.
         # ns of the log-likelihood ratio function.
-        
-        
-        #self._cache_fitparam_values_ns = ns
-        #self._cache_f = f
+
+        # self._cache_fitparam_values_ns = ns
+        # self._cache_f = f
 
         nsf = ns * f
 
@@ -1615,7 +1531,6 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         # for ns.
         grads = np.zeros((len(fitparam_values),), dtype=np.float)
 
-       #print(fitparam_values)
         # Create an array holding the fit parameter values for a particular
         # llh ratio function. Since we need to adjust ns with nsj it's more
         # efficient to create this array once and use it within the for loop
@@ -1627,13 +1542,8 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
                 logger.debug(
                     'nsf[j={:d}] = {:.3f}'.format(
                         j, nsf[j]))
-           #print('here',nsf[j], fitparam_values)
             llhratio_fitparam_values[0] = nsf[j]
             llhratio_fitparam_values[1:] = fitparam_values[1:]
-           #print('here1', llhratio_fitparam_values)
-           #print('llh', llhratio.evaluate(
-           #    llhratio_fitparam_values, tl=tl))
-
             (log_lambda_j, grads_j) = llhratio.evaluate(
                 llhratio_fitparam_values, tl=tl)
             log_lambda += log_lambda_j

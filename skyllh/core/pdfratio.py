@@ -203,7 +203,6 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         # at least one fit parameter.
         self._var_pdfratio_indices = np.unique(self._fitparam_idx_2_pdfratio_idx)
 
-
     def _precompute_static_pdfratio_values(self, tdm):
         """Pre-compute the PDF ratio values for the PDF ratios that do not
         depend on any fit parameters.
@@ -290,8 +289,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             index.
         """
         return self._pdfratio_list[idx]
-    
-    #@profile
+
     def calculate_pdfratio_values(self, tdm, fitparams, tl=None):
         """Calculates the PDF ratio values for the PDF ratio objects which
         depend on fit parameters.

@@ -37,6 +37,10 @@ def pointlikesource_to_data_field_array(
             The right-ascention of the point-like source.
         `dec`: float
             The declination of the point-like source.
+        `src_w`: float
+            The nomalized weight of the point-like source.
+        `src_w_grad`: float
+            The normalized weight gradient of the point-like source.
 
     Parameters
     ----------

@@ -518,13 +518,12 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
             [np.repeat(2*np.pi, len(src_arr['ra'])),
              np.fabs(delta_angle / cosfact)], axis=0)
 
-        # Calculate the right-ascension distance of the events w.r.t. the
-        # source. We make sure to use the smaller distance on the circle, thus
-        # the maximal distance is 180deg, i.e. pi.
-        # ra_dist is a (N_sources,N_events)-shaped 2D ndarray.
+        # Determine the mask for the events which fall inside the
+        # right-ascention window.
+        # mask_ra is a (N_sources,N_events)-shaped ndarray.
         with TaskTimer(tl, 'ESM: Calculate mask_ra.'):
             nsrc = len(src_arr['ra'])
-            # fill in batch sizes of 200 maximum to save memory
+            # Fill in batch sizes of 200 maximum to save memory.
             batch_size=200
             if nsrc > batch_size:
                 mask_ra = np.zeros((nsrc, len(events['ra'])), dtype=bool)
@@ -542,7 +541,6 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
             else:
                 mask_ra = np.fabs(
                     np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi) < dRA_half[:,np.newaxis]
-
 
         # Determine the mask for the events which fall inside the declination
         # window.
@@ -564,8 +562,9 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         # mask is a (N_events,)-shaped ndarray.
         with TaskTimer(tl, 'ESM: Calculate mask.'):
             mask = np.any(mask_sky, axis=0)
-            #remove all events that are not close to any source
+            # Remove all events that are not close to any source.
             mask_sky = mask_sky.T[mask].T
+
         # Reduce the events according to the mask.
         with TaskTimer(tl, 'ESM: Create selected_events.'):
             # Using an integer indices array for data selection is several
@@ -735,16 +734,16 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         return selected_events, None
 
 
-
-
-
 class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
     """This event selection method selects events within a spatial box in
     right-ascention and declination around a list of point-like source
-    positions.
+    positions and performs an additional selection of events whose psi value,
+    i.e. the great circle distance of the event to the source, is smaller than
+    the value of the provided function.
     """
     def __init__(self, src_hypo_group_manager, delta_angle, psi_name, func, axis_name_list):
-        """Creates and configures a spatial box event selection method object.
+        """Creates and configures a spatial box and psi func event selection
+        method object.
 
         Parameters
         ----------
@@ -754,9 +753,20 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         delta_angle : float
             The half-opening angle around the source for which events should
             get selected.
+        psi_name : str
+            The name of the data field that provides the psi value of the event.
+        func : callable
+            The function that should get evaluated for each event. The call
+            signature must be ``func(*axis_data)``, where ``*axis_data`` is the
+            event data of each required axis. The number of axes must match the
+            provided axis names through the ``axis_name_list``.
+        axis_name_list : list of str
+            The list of data field names for each axis of the function ``func``.
+            All field names must be valid field names of the trial data's
+            DataFieldRecordArray instance.
         """
         super(SpatialBoxAndPsiFuncEventSelectionMethod, self).__init__(
-            src_hypo_group_manager, delta_angle )
+            src_hypo_group_manager, delta_angle)
 
         self.psi_name = psi_name
         self.func = func
@@ -768,7 +778,6 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
                 'The func argument must be a callable instance with at least '
                 '%d arguments!'%(
                     len(self._axis_name_list)))
-
 
     @property
     def psi_name(self):
@@ -875,8 +884,6 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             The indices of the selected events, in case `retidxs` is set to
             True.
         """
-        #print('Do psi event selection!')
-
         delta_angle = self._delta_angle
         src_arr = self._src_arr
 
@@ -896,23 +903,13 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             [np.repeat(2*np.pi, len(src_arr['ra'])),
              np.fabs(delta_angle / cosfact)], axis=0)
 
-        # Calculate the right-ascension distance of the events w.r.t. the
-        # source. We make sure to use the smaller distance on the circle, thus
-        # the maximal distance is 180deg, i.e. pi.
-        # ra_dist is a (N_sources,N_events)-shaped 2D ndarray.
-        #with TaskTimer(tl, 'ESM: Calculate ra_dist.'):
-        #    ra_dist = np.fabs(
-        #        np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi)
-
         # Determine the mask for the events which fall inside the
         # right-ascention window.
         # mask_ra is a (N_sources,N_events)-shaped ndarray.
-        #print('length background events', len(events['ra']))
-
         with TaskTimer(tl, 'ESM: Calculate mask_ra.'):
             nsrc = len(src_arr['ra'])
-           
-            # fill in batch sizes of 200 maximum to save memory
+
+            # Fill in batch sizes of 200 maximum to save memory.
             batch_size=200
             if nsrc > batch_size:
                 mask_ra = np.zeros((nsrc, len(events['ra'])), dtype=bool)
@@ -930,9 +927,6 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             else:
                 mask_ra = np.fabs(
                     np.mod(events['ra'] - src_arr['ra'][:,np.newaxis] + np.pi, 2*np.pi) - np.pi) < dRA_half[:,np.newaxis]
-
-            #ra_dist < dRA_half[:,np.newaxis]
-            #del ra_dist
 
         # Determine the mask for the events which fall inside the declination
         # window.
@@ -954,7 +948,7 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         # mask is a (N_events,)-shaped ndarray.
         with TaskTimer(tl, 'ESM: Calculate mask.'):
             mask = np.any(mask_sky, axis=0)
-            #remove all events that are not close to any source
+            # Remove all events that are not close to any source.
             mask_sky = mask_sky.T[mask].T
         # Reduce the events according to the mask.
         with TaskTimer(tl, 'ESM: Create selected_events.'):
@@ -962,8 +956,8 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             # factors faster than using a boolean array.
 
             idxs = np.argwhere(mask_sky)
-            src_idxs = idxs[:,0]
-            ev_idxs = idxs[:,1]
+            src_idxs = idxs[:, 0]
+            ev_idxs = idxs[:, 1]
 
             selected_events = events[mask]
 
@@ -973,13 +967,8 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         with TaskTimer(tl, '%s: Get psi values.'%(cls_name)):
             psi = self._get_psi(selected_events, (src_idxs, ev_idxs))
 
-        #with TaskTimer(tl, '%s: Get axis data values.'%(cls_name)):
-        #    func_args = [selected_events[axis][ev_idxs] for axis in self._axis_name_list ]
-
         with TaskTimer(tl, '%s: Creating mask.'%(cls_name)):
-            #mask = psi < self._func(*func_args)
             mask = (self._func(psi) <= selected_events['ang_err'][ev_idxs]) | (psi < np.deg2rad(5.))
-            #mask = psi>=0
         with TaskTimer(tl, '%s: Create selected_events.'%(cls_name)):
             m_tot = np.bincount(ev_idxs[mask]) > 0
             if not (m_tot.shape[0] == (np.max(ev_idxs)+1)):
@@ -991,11 +980,9 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             src_idxs = src_idxs[mask]
             ev_idxs = ev_idxs[mask]
 
-            n_old = len(idxs[:,0])
-
             idxs = [src_idxs, ev_idxs]
 
-            #remove all events that are not important to any source
+            # Remove all events that are not important to any source.
             final_sky_mask = np.zeros_like(mask_sky, dtype=bool)
             final_sky_mask[idxs] = mask_sky[idxs]
             final_sky_mask = final_sky_mask.T[m_tot].T
@@ -1004,17 +991,12 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             del idxs
 
             idxs = np.argwhere(final_sky_mask)
-            src_idxs = idxs[:,0]
-            ev_idxs = idxs[:,1]
+            src_idxs = idxs[:, 0]
+            ev_idxs = idxs[:, 1]
 
             final_selected_events = selected_events[m_tot]
-
-            #print('number of events:', len(src_idxs))
 
         if(retidxs):
             return (final_selected_events, (src_idxs, ev_idxs))
 
         return final_selected_events, None
-
-
-

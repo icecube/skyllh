@@ -305,8 +305,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         self._maxls = maxls
 
         self._fmin_l_bfgs_b = scipy.optimize.fmin_l_bfgs_b
-    
-    #@profile
+
     def minimize(self, initials, bounds, func, func_args=None, **kwargs):
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials``.
@@ -665,32 +664,21 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         return False
 
 
-
-
-
 class MinuitMinimizerImpl(MinimizerImpl):
-    """The LBFGSMinimizerImpl class provides the minimizer implementation for
-    L-BFG-S minimizer used from the :mod:`scipy.optimize` module.
+    """The MinuitMinimizerImpl class provides the minimizer implementation for
+    minuit minimizer.
     """
-
     def __init__(self, maxls=100):
-        """Creates a new L-BGF-S minimizer instance to minimize the given
-        likelihood function with its given partial derivatives.
+        """Creates a new minimizer instance.
 
         Parameters
         ----------
-        ftol : float
-            The function value tolerance.
-        pgtol : float
-            The gradient value tolerance.
         maxls : int
             The maximum number of line search steps for an interation.
         """
         super(MinuitMinimizerImpl, self).__init__()
 
-        
         self._maxls = maxls
-
         self._minuit = iminuit.Minuit
 
     def minimize(self, initials, bounds, func, func_args=None, **kwargs):
@@ -721,14 +709,7 @@ class MinuitMinimizerImpl(MinimizerImpl):
         Additional Keyword Arguments
         ----------------------------
         Additional keyword arguments include options for this minimizer
-        implementation. Possible options are:
-
-            func_provides_grads : bool
-                Flag if the function ``func`` also returns its gradients.
-                Default is ``True``.
-
-        Any additional keyword arguments are passed on to the underlaying
-        :func:`scipy.optimize.fmin_l_bfgs_b` minimization function.
+        implementation.
 
         Returns
         -------
@@ -757,14 +738,13 @@ class MinuitMinimizerImpl(MinimizerImpl):
         if('maxls' not in kwargs):
             kwargs['maxls'] = self._maxls
 
-        func_provides_grads = kwargs.pop('func_provides_grads', True)
-
         def func_val(*args):
             return func(args, *func_args)[0]
+
         def func_grads(*args):
             return func(args, *func_args)[1]
 
-        #set initial values for the fitting parameters
+        # Set initial values for the fitting parameters.
         p_names = ['p{}'.format(_) for _ in range(len(initials))]
         fit_arg = dict(zip(p_names, initials))
 
@@ -772,12 +752,13 @@ class MinuitMinimizerImpl(MinimizerImpl):
         pbounds = [bounds[i] for i in range(len(p_bounds))]
         fit_arg.update(dict(zip(p_bounds, pbounds)))
 
-        fit_min = self._minuit(fcn=func_val,
-                            grad=func_grads,
-                            forced_parameters=p_names,
-                            pedantic=False,
-                            print_level=0,
-                            **fit_arg)
+        fit_min = self._minuit(
+            fcn=func_val,
+            grad=func_grads,
+            forced_parameters=p_names,
+            pedantic=False,
+            print_level=0,
+            **fit_arg)
 
         fit_min.migrad(resume=False)
         ncalls = fit_min.ncalls
@@ -859,12 +840,6 @@ class MinuitMinimizerImpl(MinimizerImpl):
                 # a parameter boundary.
                 return True
         return False
-
-
-
-
-
-
 
 
 class NRNsScan2dMinimizerImpl(NR1dNsMinimizerImpl):
@@ -1031,7 +1006,6 @@ class Minimizer(object):
                             'int!')
         self._max_repetitions = n
 
-    #@profile
     def minimize(self, rss, fitparamset, func, args=None, kwargs=None):
         """Minimizes the the given function ``func`` by calling the ``minimize``
         method of the minimizer implementation.
@@ -1110,7 +1084,6 @@ class Minimizer(object):
             reps += 1
 
         # Store the number of repetitions in the status dictionary.
-        
         status['skyllh_minimizer_n_reps'] = reps
 
         if(not self._minimizer_impl.has_converged(status)):

@@ -109,15 +109,14 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         ra = get_data('ra')
         dec = get_data('dec')
         sigma = get_data('ang_err')
-        
+
         if len(ra) == 1:
             self.param_set = None
 
         try:
-            # angular difference is pre calculated 
+            # angular difference is pre calculated
             prob = get_data('spatial_pdf_gauss')
             src_ra = get_data('src_array')['ra']
-
 
             if idxs is None:
                 prob = prob.reshape((len(get_data('src_array')), len(ra)))
@@ -162,28 +161,27 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             psi = (2.0*np.arcsin(np.sqrt(x)))
 
             prob = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
-        # return the output here
 
+        # If the signal hypothesis contains single source
+        # return the output here.
         if(len(get_data('src_array')['ra']) == 1):
             grads = np.array([], dtype=np.float)
             # The new interface returns the pdf only for a single source.
             return (prob[0], grads)
-
         else:
-            # if the signal hypothesis contains multiple sources convolve 
-            # the pdfs with the source weights
+            # If the signal hypothesis contains multiple sources convolve
+            # the pdfs with the source weights.
             src_w = get_data('src_array')['src_w']
             src_w_grads = get_data('src_array')['src_w_grad']
             norm = src_w.sum()
-
 
             if idxs is not None:
                 prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
             else:
                 prob = prob.T
-            prob_res = prob.dot(src_w) / norm
-            grads = (prob.dot(src_w_grads)  - \
-                    prob_res * src_w_grads.sum()) / norm
+            prob_res = prob.dot(src_w)/norm
+            grads = (prob.dot(src_w_grads) -
+                     prob_res*src_w_grads.sum())/norm
 
             return (prob_res, np.atleast_2d(grads))
 

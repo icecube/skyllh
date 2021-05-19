@@ -546,11 +546,11 @@ class TrialDataManager(object):
             logger.debug(
                 f'Performing event selection method '
                 f'"{classname(evt_sel_method)}".')
-            selected_events, idxs = evt_sel_method.select_events(self._events, tl=tl,
-                    retidxs=retidxs)
+            (selected_events, idxs) = evt_sel_method.select_events(
+                self._events, tl=tl, retidxs=retidxs)
             logger.debug(
                 f'Selected {len(selected_events)} out of {len(self._events)} '
-                 'events')
+                'events')
             self.events = selected_events
             self.idxs = idxs
 
