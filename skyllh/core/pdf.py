@@ -590,9 +590,11 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
             # Only one source in the signal hypothesis.
             return (prob, grads)
         else:
-            # Signal hypothesis contains multiple sources.
-            src_w = tdm.get_data('src_array')['src_w']
-            src_w_grad = tdm.get_data('src_array')['src_w_grad']
+            # Signal hypothesis contains multiple sources, and the overall weight is obtained by
+            # multiplying the detector weight src_w, and the hypothesis weight src_w_W.
+
+            src_w = tdm.get_data('src_array')['src_w'] * tdm.get_data('src_array')['src_w_W']
+            src_w_grad = tdm.get_data('src_array')['src_w_grad'] * tdm.get_data('src_array')['src_w_W']
 
             idxs = tdm.idxs
             src_idxs, ev_idxs = idxs

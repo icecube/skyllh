@@ -45,11 +45,14 @@ class SourceLocation(object):
 
 class SourceWeights(object):
     """Stores the relative weights of a source, i.e. weights and gradients.
+       There are two weights that should be included. one is the detector weight, 
+       which is declination dependent, and the other is a hypothesis weight, and that
+       is provided by the user.
     """
-    def __init__(self, src_w=None, src_w_grad=None):
-        self.src_w = src_w
+    def __init__(self, src_w=None, src_w_grad=None, src_w_W=None):
+        self.src_w      = src_w
         self.src_w_grad = src_w_grad
-
+        self.src_w_W    = src_w_W
     @property
     def src_w(self):
         """The relative weight of the source(s).
@@ -70,17 +73,30 @@ class SourceWeights(object):
         v = float_cast(v, 'The src_w_grad property must be castable to type float!')
         self._src_w_grad = v
 
+    @property
+    def src_w_W(self):
+        """The hypothesis weight of the source(s).
+        """
+        return self._src_w_W
+    @src_w_W.setter
+    def src_w_W(self, v):
+        v = float_cast(v, 'The src_w_W property must be castable to type float!')
+        self._src_w_W = v
+
 
 class SourceModel(object):
     """The base class for all source models in Skyllh. Each source has a central
     location given by a right-ascention and declination location.
     """
-    def __init__(self, ra, dec, src_w=None, src_w_grad=None):
+    def __init__(self, ra, dec, src_w=None, src_w_grad=None, src_w_W=None):
         self.loc = SourceLocation(ra, dec)
-        if (src_w is None):
-            src_w = np.ones_like(self.loc.ra, dtype=np.float)
-            src_w_grad = np.zeros_like(self.loc.ra, dtype=np.float)
-        self.weight = SourceWeights(src_w, src_w_grad)
+        src_w = np.ones_like(self.loc.ra, dtype=np.float)
+        src_w_grad = np.zeros_like(self.loc.ra, dtype=np.float)
+
+        if (src_w_W is None):
+            src_w_W    = np.ones_like(self.loc.ra, dtype=np.float)
+
+        self.weight = SourceWeights(src_w, src_w_grad, src_w_W)
 
     @property
     def loc(self):
@@ -212,8 +228,8 @@ class PointLikeSource(SourceModel):
     """The PointLikeSource class is a source model for a point-like source
     object in the sky at a given location (right-ascention and declination).
     """
-    def __init__(self, ra, dec, src_w=None, src_w_grad=None):
-        super(PointLikeSource, self).__init__(ra, dec, src_w, src_w_grad)
+    def __init__(self, ra, dec, src_w=None, src_w_grad=None, src_w_W=None):
+        super(PointLikeSource, self).__init__(ra, dec, src_w, src_w_grad, src_w_W)
 
     @property
     def ra(self):
