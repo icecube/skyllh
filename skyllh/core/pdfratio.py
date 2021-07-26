@@ -273,7 +273,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
 
         self._precompute_static_pdfratio_values(tdm)
 
-    def get_pdfratio(self, fitparam_idx):
+    def get_pdfratio(self, idx):
         """Returns the PDFRatio instance that corresponds to the given fit
         parameter index.
 
@@ -288,8 +288,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             The PDFRatio instance which corresponds to the given fit parameter
             index.
         """
-        pdfratio_idx = self._fitparam_idx_2_pdfratio_idx[fitparam_idx]
-        return self._pdfratio_list[pdfratio_idx]
+        return self._pdfratio_list[idx]
 
     def calculate_pdfratio_values(self, tdm, fitparams, tl=None):
         """Calculates the PDF ratio values for the PDF ratio objects which
@@ -306,16 +305,16 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             The optional TimeLord instance that should be used to measure
             timing information.
         """
-        for i in self._var_pdfratio_indices:
+        for (i, _pdfratio_i) in enumerate(self._pdfratio_list):
             # Since the get_ratio method of the PDFRatio class might return a 2D
             # (N_sources, N_events)-shaped array, and we assume a single source,
             # we need to reshape the array, which does not involve any data
             # copying.
             self._ratio_values[i] = np.reshape(
-                self._pdfratio_list[i].get_ratio(tdm, fitparams, tl=tl),
+                _pdfratio_i.get_ratio(tdm, fitparams, tl=tl),
                 (tdm.n_selected_events,))
 
-    def get_ratio_product(self, excluded_fitparam_idx=None):
+    def get_ratio_product(self, excluded_idx=None):
         """Calculates the product of the of the PDF ratio values of each event,
         but excludes the PDF ratio values that correspond to the given excluded
         fit parameter index. This is useful for calculating the derivates of
@@ -333,14 +332,14 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         product : 1D (N_events,)-shaped ndarray
             The product of the PDF ratio values for each event.
         """
-        if(excluded_fitparam_idx is None):
+        if(excluded_idx is None):
             return np.prod(self._ratio_values, axis=0)
 
         # Get the index of the PDF ratio object that corresponds to the excluded
         # fit parameter.
-        excluded_pdfratio_idx = self._fitparam_idx_2_pdfratio_idx[excluded_fitparam_idx]
+        #excluded_pdfratio_idx = self._fitparam_idx_2_pdfratio_idx[excluded_fitparam_idx]
         pdfratio_indices = list(range(self._ratio_values.shape[0]))
-        pdfratio_indices.pop(excluded_pdfratio_idx)
+        pdfratio_indices.pop(excluded_idx)
         return np.prod(self._ratio_values[pdfratio_indices], axis=0)
 
 
@@ -624,7 +623,8 @@ class SigOverBkgPDFRatio(PDFRatio):
         """Returns the list of fit parameter names the signal PDF depends on.
         """
         return self._sig_pdf.param_set.floating_param_name_list
-
+    
+    #@profile
     def get_ratio(self, tdm, params=None, tl=None):
         """Calculates the PDF ratio for the given trial events.
 
@@ -660,7 +660,6 @@ class SigOverBkgPDFRatio(PDFRatio):
         with TaskTimer(tl, 'Calc PDF ratios.'):
             # Select only the events, where background pdf is greater than zero.
             m = (bkgprob > 0)
-
             ratios = np.full_like(sigprob, self._zero_bkg_ratio_value)
             ratios[m] = sigprob[m] / bkgprob[m]
 
@@ -727,6 +726,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         if((not sig_dep) and (not bkg_dep)):
             # Case 1. Returns zeros.
             return grad
+
         if(sig_dep and bkg_dep):
             # Case 4.
             sig_pidx = sig_pdf_param_set.get_floating_pidx(fitparam_name)

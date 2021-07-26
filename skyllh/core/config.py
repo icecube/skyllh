@@ -74,6 +74,12 @@ _BASECONFIG = {
         'analysis_required_mc_field_names': [
             'true_ra', 'true_dec', 'true_energy', 'mcweight'
         ]
+    },
+    # Flag if specific calculations in the core module can be cached.
+    'caching': {
+        'pdf': {
+            'MultiDimGridPDF': False
+        }
     }
 }
 
