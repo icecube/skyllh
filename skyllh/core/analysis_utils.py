@@ -218,8 +218,9 @@ def polynomial_fit(ns, p, p_weight, deg, p_thr):
             deg)
 
 def estimate_mean_nsignal_for_ts_quantile(
-        ana, rss, h0_trials, h0_ts_quantile, p, eps_p, mu_range, min_dmu=0.5,
-        bkg_kwargs=None, sig_kwargs=None, ppbar=None, tl=None, pathfilename=None):
+        ana, rss, p, eps_p, mu_range, critical_ts=None, h0_trials=None,
+        h0_ts_quantile=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
+        ppbar=None, tl=None, pathfilename=None):
     """Calculates the mean number of signal events needed to be injected to
     reach a test statistic distribution with defined properties for the given
     analysis.
@@ -230,13 +231,6 @@ def estimate_mean_nsignal_for_ts_quantile(
         The Analysis instance to use for the calculation.
     rss : instance of RandomStateService
         The RandomStateService instance to use for generating random numbers.
-    h0_trials : (n_h0_trials,)-shaped ndarray | None
-        The structured ndarray holding the trials for the null-hypothesis.
-        If set to `None`, the number of trials is calculated
-        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
-        where `eps` is `min(5e-3, h0_ts_quantile/10)`.
-    h0_ts_quantile : float
-        Null-hypothesis test statistic quantile.
     p : float
         Desired probability of signal test statistic for exceeding
         `h0_ts_quantile` part of null-hypothesis test statistic threshold.
@@ -245,6 +239,19 @@ def estimate_mean_nsignal_for_ts_quantile(
     mu_range : 2-element sequence
         The range of mu (lower,upper) to search for mean number of signal
         events.
+    critical_ts : float | None
+        The critical test-statistic value that should be overcome by the signal
+        distribution. If set to None, the null-hypothesis test-statistic
+        distribution will be used to compute the critical TS value.
+    h0_trials : (n_h0_trials,)-shaped ndarray | None
+        The structured ndarray holding the trials for the null-hypothesis.
+        If set to `None`, the number of trials is calculated
+        from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
+        where `eps` is `min(5e-3, h0_ts_quantile/10)`.
+    h0_ts_quantile : float | None
+        Null-hypothesis test statistic quantile.
+        If set to None, the critical test-statistic value that should be
+        overcome by the signal distribution MUST be given.
     min_dmu : float
         The minimum delta mu to use for calculating the derivative dmu/dp.
         The default is ``0.5``.
@@ -276,73 +283,100 @@ def estimate_mean_nsignal_for_ts_quantile(
     """
     logger = logging.getLogger(__name__)
 
-    n_trials_max = int(5.e5)
-    # Via binomial statistics, calcuate the minimum number of trials
-    # needed to get the required precision on the critial TS value.
-    eps = min(0.005, h0_ts_quantile/10)
-    n_trials_min = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
-
     n_total_generated_trials = 0
 
-    # Compute either n_trials_max or n_trials_min trials depending on
-    # which one is smaller. If n_trials_max trials are computed, a
-    # fit to the ts distribution is performed to get the critial TS.
-    n_trials_total = min(n_trials_min, n_trials_max)
-    if(h0_trials is None):
-        h0_ts_vals = ana.do_trials(
-            rss, n_trials_total, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-            sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
-        
-        logger.debug(
-            'Generate %d null-hypothesis trials',
-            n_trials_total)
-        n_total_generated_trials += n_trials_total
-        
-        if(pathfilename is not None):
-            makedirs(os.path.dirname(pathfilename), exist_ok=True)
-            np.save(pathfilename, h0_ts_vals)
-    else:
-        if(h0_trials.size < n_trials_total):
-            if not ('seed' in h0_trials.dtype.names):
-                logger.debug(
-                    'Uploaded trials miss the rss_seed field. '
-                    'Will not be possible to extend the trial file '
-                    'safely. Uploaded trials will *not* be used.')
-                n_trials = n_trials_total
-                h0_ts_vals = ana.do_trials(
-                    rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-                    sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
-            else:
-                n_trials = n_trials_total - h0_trials.size
-                h0_ts_vals = extend_trial_data_file(ana, rss,
-                    n_trials, trial_data=h0_trials, mean_n_sig=0,
-                    pathfilename=pathfilename)['ts']
+    if(critical_ts is None) and (h0_ts_quantile is None):
+        raise RuntimeError(
+            "Both the critical test-statistic value and the null-hypothesis "
+            "test-statistic quantile are set to None. One of the two is "
+            "needed to have the critical test-statistic value that defines "
+            "the type of test to run."
+        )
+    elif(critical_ts is None):
+        n_trials_max = int(5.e5)
+        # Via binomial statistics, calcuate the minimum number of trials
+        # needed to get the required precision on the critial TS value.
+        eps = min(0.005, h0_ts_quantile/10)
+        n_trials_min = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
+
+        # Compute either n_trials_max or n_trials_min trials depending on
+        # which one is smaller. If n_trials_max trials are computed, a
+        # fit to the ts distribution is performed to get the critial TS.
+        n_trials_total = min(n_trials_min, n_trials_max)
+        if(h0_trials is None):
+            h0_ts_vals = ana.do_trials(
+                rss, n_trials_total, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+                sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+            
             logger.debug(
                 'Generate %d null-hypothesis trials',
-                n_trials)
-            n_total_generated_trials += n_trials
+                n_trials_total)
+            n_total_generated_trials += n_trials_total
+            
+            if(pathfilename is not None):
+                makedirs(os.path.dirname(pathfilename), exist_ok=True)
+                np.save(pathfilename, h0_ts_vals)
         else:
-            h0_ts_vals = h0_trials['ts']
+            if(h0_trials.size < n_trials_total):
+                if not ('seed' in h0_trials.dtype.names):
+                    logger.debug(
+                        'Uploaded trials miss the rss_seed field. '
+                        'Will not be possible to extend the trial file '
+                        'safely. Uploaded trials will *not* be used.')
+                    n_trials = n_trials_total
+                    h0_ts_vals = ana.do_trials(
+                        rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
+                        sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+                else:
+                    n_trials = n_trials_total - h0_trials.size
+                    h0_ts_vals = extend_trial_data_file(ana, rss,
+                        n_trials, trial_data=h0_trials, mean_n_sig=0,
+                        pathfilename=pathfilename)['ts']
+                logger.debug(
+                    'Generate %d null-hypothesis trials',
+                    n_trials)
+                n_total_generated_trials += n_trials
+            else:
+                h0_ts_vals = h0_trials['ts']
 
-    h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
-    logger.debug(
-        'Number of trials after finite cut: %d',
-        len(h0_ts_vals))
-    logger.debug(
-        'Min / Max h0 TS value: %e / %e',
-        np.min(h0_ts_vals), np.max(h0_ts_vals))
-    
-    # If the minimum number of trials needed to get the required precision
-    # on the critical TS value is smaller then 500k, compute the critical ts
-    # value directly from trials; otherwise calculate it from the gamma
-    # function fitted to the ts distribution.
-    if(n_trials_min <= n_trials_max):
-        c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile)*100)
+        h0_ts_vals = h0_ts_vals[np.isfinite(h0_ts_vals)]
+        logger.debug(
+            'Number of trials after finite cut: %d',
+            len(h0_ts_vals))
+        logger.debug(
+            'Min / Max h0 TS value: %e / %e',
+            np.min(h0_ts_vals), np.max(h0_ts_vals))
+        
+        # If the minimum number of trials needed to get the required precision
+        # on the critical TS value is smaller then 500k, compute the critical ts
+        # value directly from trials; otherwise calculate it from the gamma
+        # function fitted to the ts distribution.
+        if(n_trials_min <= n_trials_max):
+            c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile)*100)
+        else:
+            c = calculate_critical_ts_from_gamma(h0_ts_vals, h0_ts_quantile)
+        logger.debug(
+            'Critical ts value for bkg ts quantile %g: %e',
+            h0_ts_quantile, c)
+    elif(h0_ts_quantile is None):
+        # Make sure that the critical ts is a float.
+        if not isinstance(critical_ts, float):
+            raise TypeError(
+                "The critical test-statistic value must be a float, not "
+                f"{type(critical_ts)}!"
+            )
+        c = critical_ts
+        logger.debug(
+            'Critical ts value for upper limit: %e',
+            c)
     else:
-        c = calculate_critical_ts_from_gamma(h0_ts_vals, h0_ts_quantile)
-    logger.debug(
-        'Critical ts value for bkg ts quantile %g: %e',
-        h0_ts_quantile, c)
+        raise RuntimeError(
+            "Both a critical ts value and a null-hypothesis test_statistic "
+            "quantile were given. If you want to use your critical_ts "
+            "value, set h0_ts_quantile to None; if you want to compute the "
+            "critical ts from the background distribution, set critical_ts "
+            "to None."
+        )
 
 
     # Make sure ns_range is mutable.
