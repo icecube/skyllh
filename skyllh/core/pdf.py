@@ -596,6 +596,11 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
             src_w = tdm.get_data('src_array')['src_w'] * tdm.get_data('src_array')['src_w_W']
             src_w_grad = tdm.get_data('src_array')['src_w_grad'] * tdm.get_data('src_array')['src_w_W']
 
+            # Normalize source weights and grads.
+            norm_src_w_temp = src_w.sum()
+            src_w /= norm_src_w_temp
+            src_w_grad /= norm_src_w_temp
+
             idxs = tdm.idxs
             src_idxs, ev_idxs = idxs
 
