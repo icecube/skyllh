@@ -17,6 +17,7 @@ mathematical likelihood function.
     :maxdepth: 3
     :caption: User Documentation
 
+    installation
     analysis/index
     hypothesis/index
     unit_tests
