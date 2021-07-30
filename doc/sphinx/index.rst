@@ -18,7 +18,7 @@ mathematical likelihood function.
     :caption: User Documentation
 
     installation
-    analysis/index
+    tutorials/index
     hypothesis/index
     unit_tests
     reference/skyllh
