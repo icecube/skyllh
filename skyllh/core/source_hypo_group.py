@@ -124,7 +124,7 @@ class SourceHypoGroup(object):
             if(not issequenceof(source_weights, (int, float))):
                 raise TypeError(
                     'The source_weights property must be a sequence of floats!')
-            if(np.sum(source_weights) != 1.0):
+            if not(1.0 - 1e-3 <= np.sum(source_weights) <= 1.0 + 1e-3):
                 raise ValueError(
                     'The sum of source_weights has to be equal to 1!')
             self._source_weights = np.array(source_weights)

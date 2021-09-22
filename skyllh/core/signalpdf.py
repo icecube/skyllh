@@ -171,17 +171,20 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         else:
             # If the signal hypothesis contains multiple sources convolve
             # the pdfs with the source weights.
-            src_w = get_data('src_array')['src_w']
-            src_w_grads = get_data('src_array')['src_w_grad']
-            norm = src_w.sum()
+            src_w = get_data('src_array')['src_w'] * tdm.get_data('src_array')['src_w_W']
+            src_w_grads = get_data('src_array')['src_w_grad'] * tdm.get_data('src_array')['src_w_W']
 
+            norm = src_w.sum()
+            src_w /= norm
+            src_w_grads /= norm
+            
             if idxs is not None:
                 prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
             else:
                 prob = prob.T
-            prob_res = prob.dot(src_w)/norm
+            prob_res = prob.dot(src_w)
             grads = (prob.dot(src_w_grads) -
-                     prob_res*src_w_grads.sum())/norm
+                     prob_res*src_w_grads.sum())/norm**2
 
             return (prob_res, np.atleast_2d(grads))
 
