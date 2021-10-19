@@ -12,6 +12,7 @@ from skyllh.core.py import (
     issequenceof,
     typename
 )
+from skyllh.core.config import CFG
 from skyllh.core.debugging import get_logger
 from skyllh.core.parameters import (
     ParameterGrid,
@@ -25,6 +26,7 @@ from skyllh.core.trialdata import TrialDataManager
 
 import abc
 import numpy as np
+import scipy as scp
 
 from scipy.interpolate import RegularGridInterpolator
 
@@ -542,8 +544,9 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
         pdf1 = self._pdf1
         pdf2 = self._pdf2
 
-        (prob1, grads1) = pdf1.get_prob(tdm, params)
-        (prob2, grads2) = pdf2.get_prob(tdm, params)
+        with TaskTimer(tl, 'Get signal prob from table.'):
+            (prob1, grads1) = pdf1.get_prob(tdm, params, tl=tl)
+            (prob2, grads2) = pdf2.get_prob(tdm, params, tl=tl)
 
         prob = prob1 * prob2
 
@@ -582,7 +585,49 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
                 grad2 = grads2[pdf2.param_set.get_floating_pidx(fitparam_name)]
                 grads[pidx] = prob1*grad2
 
-        return (prob, grads)
+        n_src = len(tdm.get_data('src_array')['ra'])
+        if(n_src == 1):
+            # Only one source in the signal hypothesis.
+            return (prob, grads)
+        else:
+            # Signal hypothesis contains multiple sources, and the overall weight is obtained by
+            # multiplying the detector weight src_w, and the hypothesis weight src_w_W.
+
+            src_w = tdm.get_data('src_array')['src_w'] * tdm.get_data('src_array')['src_w_W']
+            src_w_grad = tdm.get_data('src_array')['src_w_grad'] * tdm.get_data('src_array')['src_w_W']
+
+            # Normalize source weights and grads.
+            norm_src_w_temp = src_w.sum()
+            src_w /= norm_src_w_temp
+            src_w_grad /= norm_src_w_temp
+
+            idxs = tdm.idxs
+            src_idxs, ev_idxs = idxs
+
+            if idxs is not None:
+                prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
+            else:
+                prob = prob.reshape((n_src, prob.shape[0] / n_src))
+            prob_res = prob.dot(src_w)
+
+            n_ev = tdm.n_selected_events
+            norm_w = src_w.sum()
+
+            grads_tot = np.zeros((len(fitparam_names), n_ev), dtype=np.float)
+            for (pidx, fitparam_name) in enumerate(fitparam_names):
+                if idxs is not None:
+                    grad_i = scp.sparse.csr_matrix((grads[pidx], (ev_idxs, src_idxs)))
+                else:
+                    grad_i = prob.reshape((n_src, grads[pidx].shape[0] / n_src))
+
+                if fitparam_name == 'gamma':
+                    d_wf = prob.dot(src_w_grad) + grad_i.dot(src_w)
+                    grads_tot[pidx] = (d_wf * norm_w - src_w_grad.sum() * prob_res) / norm_w**2
+                else:
+                    d_wf = grad_i.dot(src_w)
+                    grads_tot[pidx] = (d_wf * norm_w) / norm_w**2
+
+            return (prob_res, grads_tot)
 
 
 class SignalPDFProduct(PDFProduct, IsSignalPDF):
@@ -824,7 +869,16 @@ class MultiDimGridPDF(PDF):
             # Define a normalization function that just returns 1 for each
             # event.
             def func(pdf, tdm, fitparams):
-                return np.ones((tdm.n_selected_events,), dtype=np.float)
+                n_src = len(tdm.get_data('src_array')['ra'])
+                if(n_src == 1):
+                    n_dim = tdm.n_selected_events
+                else:
+                    if tdm.idxs is None:
+                        n_dim = tdm.n_selected_events * n_src
+                    else:
+                        n_dim = len(tdm.idxs[0])
+                return np.ones((n_dim,), dtype=np.float)
+
         if(not callable(func)):
             raise TypeError(
                 'The norm_factor_func property must be a callable object!')
@@ -890,11 +944,13 @@ class MultiDimGridPDF(PDF):
         prob : (N_events,)-shaped numpy ndarray
             The 1D numpy ndarray with the probability for each event.
         """
-        tdm_trial_data_state_id = tdm.trial_data_state_id
-        cache_tdm_trial_data_state_id = self._cache_tdm_trial_data_state_id
+        do_caching = CFG['caching']['pdf']['MultiDimGridPDF']
+        if(do_caching):
+            tdm_trial_data_state_id = tdm.trial_data_state_id
+            cache_tdm_trial_data_state_id = self._cache_tdm_trial_data_state_id
 
-        if(cache_tdm_trial_data_state_id == tdm_trial_data_state_id):
-            return self._cache_prob
+            if(cache_tdm_trial_data_state_id == tdm_trial_data_state_id):
+                return self._cache_prob
 
         if(isinstance(self._pdf, RegularGridInterpolator)):
             with TaskTimer(tl, 'Get prob from RegularGridInterpolator.'):
@@ -908,9 +964,9 @@ class MultiDimGridPDF(PDF):
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(self, tdm, params)
             prob *= norm
-
-        self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
-        self._cache_prob = prob
+        if(do_caching):
+            self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
+            self._cache_prob = prob
 
         return prob
 
@@ -939,21 +995,45 @@ class MultiDimGridPDF(PDF):
             Because this PDF does not depend on any parameters, no gradients
             w.r.t. the parameters are returned.
         """
-        tdm_trial_data_state_id = tdm.trial_data_state_id
-        cache_tdm_trial_data_state_id = self._cache_tdm_trial_data_state_id
+        do_caching = CFG['caching']['pdf']['MultiDimGridPDF']
 
-        if((cache_tdm_trial_data_state_id is not None) and
-           (cache_tdm_trial_data_state_id == tdm_trial_data_state_id)):
-            return (self._cache_prob, None)
+        if(do_caching):
+            tdm_trial_data_state_id = tdm.trial_data_state_id
+            cache_tdm_trial_data_state_id = self._cache_tdm_trial_data_state_id
+
+            if((cache_tdm_trial_data_state_id is not None) and
+               (cache_tdm_trial_data_state_id == tdm_trial_data_state_id)):
+                return (self._cache_prob, None)
 
         with TaskTimer(tl, 'Get PDF event data.'):
-            eventdata = np.array([tdm.get_data(axis.name)
-                                  for axis in self._axes]).T
+            if(self.is_signal_pdf):
+                # evaluate the relevant quantities for
+                # all events and sources (relevant for stacking analyses)
+                if(tdm.idxs is not None):
+                    src_idxs, ev_idxs = tdm.idxs
+                    eventdata = np.array(
+                        [tdm.get_data(axis.name)[ev_idxs]
+                         if 'psi' not in axis.name
+                         else tdm.get_data(axis.name)
+                         for axis in self._axes]).T
+                else:
+                    n_src = len(tdm.get_data('src_array')['ra'])
+                    eventdata = np.array(
+                        [np.tile(tdm.get_data(axis.name), n_src)
+                         if 'psi' not in axis.name 
+                         else tdm.get_data(axis.name)
+                         for axis in self._axes]).T
+            elif (self.is_background_pdf):
+                eventdata = np.array(
+                    [tdm.get_data(axis.name) for axis in self._axes]).T
+            else:
+                raise TypeError('Pdf type is unknown!')
 
-        prob = self.get_prob_with_eventdata(tdm, params, eventdata, tl=tl)
-
-        self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
-        self._cache_prob = prob
+        with TaskTimer(tl, 'Get prob for all selected events.'):
+            prob = self.get_prob_with_eventdata(tdm, params, eventdata, tl=tl)
+        if(do_caching):
+            self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
+            self._cache_prob = prob
 
         return (prob, None)
 
@@ -1048,14 +1128,22 @@ class NDPhotosplinePDF(PDF):
         set to `None`. In that case a unity returning function is used.
         """
         return self._norm_factor_func
-
     @norm_factor_func.setter
     def norm_factor_func(self, func):
         if(func is None):
             # Define a normalization function that just returns 1 for each
             # event.
             def func(pdf, tdm, fitparams):
-                return np.ones((tdm.n_selected_events,), dtype=np.float)
+                n_src = len(tdm.get_data('src_array')['ra'])
+                if(n_src == 1):
+                    n_dim = tdm.n_selected_events
+                else:
+                    if(tdm.idxs is None):
+                        n_dim = tdm.n_selected_events * n_src
+                    else:
+                        n_dim = len(tdm.idxs[0])
+                return np.ones((n_dim,), dtype=np.float)
+
         if(not callable(func)):
             raise TypeError(
                 'The norm_factor_func property must be a callable object!')
@@ -1118,25 +1206,55 @@ class NDPhotosplinePDF(PDF):
             It is ``None``, if this PDF does not depend on any parameters.
         """
         with TaskTimer(tl, 'Get PDF event data.'):
-            eventdata = np.empty(
-                (tdm.n_selected_events, len(self._axes)), dtype=np.float)
-            for (axis_idx, axis) in enumerate(self._axes):
-                axis_name = axis.name
-                if(axis_name in tdm):
-                    axis_data = tdm.get_data(axis_name)
-                else:
-                    # The requested data field (for the axis) is not part of the
-                    # trial data, so it must be a parameter.
-                    if(axis_name not in params):
-                        raise KeyError(
-                            'The PDF axis "{}" is not part of the trial data '
-                            'and is not a parameter!'.format(
-                                axis_name))
-                    axis_data = np.full(
-                        (tdm.n_selected_events,), params[axis_name],
-                        dtype=np.float)
-                eventdata[:,axis_idx] = axis_data
+            if (self.is_signal_pdf):
+                if (tdm.idxs is not None):
+                    src_idxs, ev_idxs = tdm.idxs
+                    eventdata = np.empty(
+                        (len(ev_idxs), len(self._axes)), dtype=np.float)
+                    for (axis_idx, axis) in enumerate(self._axes):
+                        axis_name = axis.name
+                        if(axis_name in tdm):
+                            if 'src' in axis_name:
+                                axis_data = tdm.get_data(axis_name)[src_idxs]
+                            elif 'psi' in axis_name:
+                                axis_data = tdm.get_data(axis_name)
+                            else:
+                                axis_data = tdm.get_data(axis_name)[ev_idxs]
+                        else:
+                            # The requested data field (for the axis) is not
+                            # part of the trial data, so it must be a parameter.
+                            if(axis_name not in params):
+                                raise KeyError(
+                                    'The PDF axis "{}" is not part of the trial data '
+                                    'and is not a parameter!'.format(
+                                        axis_name))
 
+                            axis_data = np.full(
+                                (len(ev_idxs),), params[axis_name],
+                                dtype=np.float)
+                        eventdata[:, axis_idx] = axis_data
+
+            elif (self.is_background_pdf):
+                eventdata = np.empty(
+                    (tdm.n_selected_events, len(self._axes)), dtype=np.float)
+
+                for (axis_idx, axis) in enumerate(self._axes):
+                    axis_name = axis.name
+                    if(axis_name in tdm):
+                        axis_data = tdm.get_data(axis_name)
+                    else:
+                        # The requested data field (for the axis) is not part
+                        # of the trial data, so it must be a parameter.
+                        if(axis_name not in params):
+                            raise KeyError(
+                                'The PDF axis "{}" is not part of the trial data '
+                                'and is not a parameter!'.format(
+                                    axis_name))
+
+                        axis_data = np.full(
+                            (tdm.n_selected_events,), params[axis_name],
+                            dtype=np.float)
+                eventdata[:, axis_idx] = axis_data
         self__pdf_evaluate_simple = self._pdf.evaluate_simple
 
         with TaskTimer(tl, 'Get prob from photospline fit.'):
@@ -1157,7 +1275,7 @@ class NDPhotosplinePDF(PDF):
             grads = np.empty((self._n_fitparams, len(prob)), dtype=np.float)
             # Loop through the fit parameters of this PDF and calculate their
             # derivative.
-            for (fitparam_idx,fitparam_name) in enumerate(
+            for (fitparam_idx, fitparam_name) in enumerate(
                     self__param_set.floating_param_name_list):
                 # Determine the axis index of this fit parameter.
                 axis_idx = self._fitparam_name_to_axis_idx_map[fitparam_name]
@@ -1165,7 +1283,7 @@ class NDPhotosplinePDF(PDF):
                 grad = self__pdf_evaluate_simple(
                     evaluate_simple_data, mode)
                 grad *= norm
-                grads[fitparam_idx,:] = grad
+                grads[fitparam_idx, :] = grad
 
         return (prob, grads)
 
@@ -1347,7 +1465,8 @@ class PDFSet(object):
 class MultiDimGridPDFSet(PDF, PDFSet):
     def __init__(
             self, param_set, param_grid_set, gridparams_pdfs,
-            interpolmethod=None, **kwargs):
+            interpolmethod=None, pdf_type=MultiDimGridPDF,
+            **kwargs):
         """Creates a new MultiDimGridPDFSet instance, which holds a set of
         MultiDimGridPDF instances, one for each point of a parameter grid set.
 
@@ -1367,10 +1486,12 @@ class MultiDimGridPDFSet(PDF, PDFSet):
             subclass of ``GridManifoldInterpolationMethod``.
             If set to None, the default grid manifold interpolation method
             ``Linear1DGridManifoldInterpolationMethod`` will be used.
+        pdf_type : type
+            The PDF class that can be added to the set.
         """
         super(MultiDimGridPDFSet, self).__init__(
             param_set=param_set,
-            pdf_type=MultiDimGridPDF,
+            pdf_type=pdf_type,
             fitparams_grid_set=param_grid_set,
             **kwargs)
 
@@ -1468,16 +1589,38 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         # ``MultiDimGridPDF.get_prob_with_eventdata`` method.
         # All PDFs of this PDFSet should have the same axes, so use the axes
         # from any of the PDFs in this PDF set.
-        eventdata = np.array(
-            [tdm.get_data(axis.name) for axis in self.pdf_axes]).T
+        if(isinstance(self, IsSignalPDF)):
+            # Evaluate the relevant quantities for
+            # all events and sources (relevant for stacking analyses)
+            if (tdm.idxs is not None):
+                src_idxs, ev_idxs = tdm.idxs
+                eventdata = np.array(
+                    [tdm.get_data(axis.name) if ('psi' in axis.name)
+                     else tdm.get_data(axis.name)[src_idxs] if ('src' in axis.name)
+                     else tdm.get_data(axis.name)[ev_idxs]
+                     for axis in self.pdf_axes]).T
+            else:
+                # This is still wrong, has to be done similar to above.
+                n_src = len(tdm.get_data('src_array')['ra'])
+                l_ev = len(tdm.get_data('ra'))
+                eventdata = np.array(
+                    [np.tile(tdm.get_data(axis.name), n_src)
+                     if 'psi' not in axis.name
+                     else tdm.get_data(axis.name)
+                     for axis in self.pdf_axes]).T
+
+        elif (isinstance(self, IsBackgroundPDF)):
+            eventdata = np.array([tdm.get_data(axis.name)
+                                  for axis in self.pdf_axes]).T
 
         # Get the interpolated PDF values for the arbitrary parameter values.
         # The (D,N_events)-shaped grads_ ndarray contains the gradient of the
         # probability density w.r.t. each of the D parameters, which are defined
         # by the param_grid_set. The order of the D gradients is the same as
         # the parameter grids.
-        (prob, grads_) = self._interpolmethod_instance.get_value_and_gradients(
-            tdm, eventdata, params)
+        with TaskTimer(tl, 'Get signal PDFs for all events.'):
+            (prob, grads_) = self._interpolmethod_instance.get_value_and_gradients(
+                tdm, eventdata, params)
 
         # Handle the special (common) case were there is only one fit parameter
         # and it coincides with the only grid parameter of this PDFSet.

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import numpy as np
 
 from skyllh.core.py import issequenceof
 from skyllh.core.detsigyield import DetSigYieldImplMethod
@@ -14,7 +15,7 @@ class SourceHypoGroup(object):
     """
     def __init__(
             self, sources, fluxmodel, detsigyield_implmethods,
-            sig_gen_method=None):
+            sig_gen_method=None, source_weights=None):
         """Constructs a new source hypothesis group.
 
         Parameters
@@ -37,11 +38,14 @@ class SourceHypoGroup(object):
             be set to None, which means, no signal can be generated. Useful for
             data unblinding and data trial generation, where no signal is
             required.
+        source_weights : float | sequence of floats | None
+            The sequence of relative source weights, normalized to 1.
         """
         self.source_list = sources
         self.fluxmodel = fluxmodel
         self.detsigyield_implmethod_list = detsigyield_implmethods
         self.sig_gen_method = sig_gen_method
+        self.source_weights = source_weights
 
     @property
     def source_list(self):
@@ -104,6 +108,26 @@ class SourceHypoGroup(object):
                 raise TypeError('The sig_gen_method property must be an '
                     'instance of SignalGenerationMethod!')
         self._sig_gen_method = method
+
+    @property
+    def source_weights(self):
+        """The 1d array of relative source weights.
+        """
+        return self._source_weights
+    @source_weights.setter
+    def source_weights(self, source_weights):
+        if(source_weights is None):
+            self._source_weights = source_weights
+        else:
+            if(isinstance(source_weights, (int, float))):
+                source_weights = [source_weights]
+            if(not issequenceof(source_weights, (int, float))):
+                raise TypeError(
+                    'The source_weights property must be a sequence of floats!')
+            if not(1.0 - 1e-3 <= np.sum(source_weights) <= 1.0 + 1e-3):
+                raise ValueError(
+                    'The sum of source_weights has to be equal to 1!')
+            self._source_weights = np.array(source_weights)
 
     @property
     def n_sources(self):

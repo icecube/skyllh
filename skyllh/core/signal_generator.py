@@ -9,7 +9,6 @@ from skyllh.core.py import (
     int_cast,
     get_smallest_numpy_int_type
 )
-from skyllh.core.random import RandomStateService
 from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
@@ -17,10 +16,14 @@ from skyllh.physics.flux import (
     get_conversion_factor_to_internal_flux_unit
 )
 
+
 class SignalGenerator(object):
     """This is the general signal generator class. It does not depend on the
     detector or source hypothesis, because these dependencies are factored out
-    into the signal generation method.
+    into the signal generation method. In fact the construction within this
+    class depends on the construction of the signal generation method. In case
+    of multiple sources the handling here is very suboptimal. Therefore the
+    MultiSourceSignalGenerator should be used instead!
     """
     def __init__(self, src_hypo_group_manager, dataset_list, data_list):
         """Constructs a new signal generator instance.
@@ -293,3 +296,74 @@ class SignalGenerator(object):
             signal_events_dict[ds_idx] = sig_events
 
         return (n_signal, signal_events_dict)
+
+
+class MultiSourceSignalGenerator(SignalGenerator):
+    """More optimal signal generator for multiple sources.
+    """
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list):
+        """Constructs a new signal generator instance.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance defining the source groups with
+            their spectra.
+        dataset_list : list of Dataset instances
+            The list of Dataset instances for which signal events should get
+            generated for.
+        data_list : list of DatasetData instances
+            The list of DatasetData instances holding the actual data of each
+            dataset. The order must match the order of ``dataset_list``.
+        """
+        super(MultiSourceSignalGenerator, self).__init__(
+            src_hypo_group_manager, dataset_list, data_list)
+
+    def _construct_signal_candidates(self):
+        """Constructs an array holding pointer information of signal candidate
+        events pointing into the real MC dataset(s).
+        """
+        n_datasets = len(self._dataset_list)
+        n_sources = self._src_hypo_group_manager.n_sources
+        shg_list = self._src_hypo_group_manager.src_hypo_group_list
+        sig_candidates_dtype = [
+            ('ds_idx', get_smallest_numpy_int_type((0, n_datasets))),
+            ('ev_idx', get_smallest_numpy_int_type(
+                [0]+[len(data.mc) for data in self._data_list])),
+            ('shg_idx', get_smallest_numpy_int_type((0, n_sources))),
+            ('shg_src_idx', get_smallest_numpy_int_type(
+                [0]+[shg.n_sources for shg in shg_list])),
+            ('weight', np.float)
+        ]
+        self._sig_candidates = np.empty(
+            (0,), dtype=sig_candidates_dtype, order='F')
+
+        # Go through the source hypothesis groups to get the signal event
+        # candidates.
+        for ((shg_idx, shg), (j, (ds, data))) in itertools.product(
+                enumerate(shg_list),
+                enumerate(zip(self._dataset_list, self._data_list))):
+            sig_gen_method = shg.sig_gen_method
+            if(sig_gen_method is None):
+                raise ValueError(
+                    'No signal generation method has been specified '
+                    'for the %dth source hypothesis group!' % (shg_idx))
+            data_mc = data.mc
+            (ev_indices, src_indices, flux) = sig_gen_method.calc_source_signal_mc_event_flux(
+                data_mc, shg)
+
+            sig_candidates = np.empty(
+                    (len(ev_indices),), dtype=sig_candidates_dtype, order='F'
+                )
+            sig_candidates['ds_idx'] = j
+            sig_candidates['ev_idx'] = ev_indices
+            sig_candidates['shg_idx'] = shg_idx
+            sig_candidates['shg_src_idx'] = src_indices
+            sig_candidates['weight'] = data_mc[ev_indices]['mcweight'] * data.livetime * 86400 * flux
+
+            self._sig_candidates = np.append(self._sig_candidates, sig_candidates)
+            del sig_candidates
+
+        # Normalize the signal candidate weights.
+        self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
+        self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
