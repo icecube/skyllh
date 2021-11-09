@@ -137,7 +137,6 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                 delta_ra = np.abs(ra - src_ra)
                 x = (np.sin(delta_dec / 2.))**2. + np.cos(dec) *\
                     np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
-                x = x.flatten()
             else:
                 # Calculate the angular difference only for events that are close
                 # to the respective source poisition. This is useful for stacking 
