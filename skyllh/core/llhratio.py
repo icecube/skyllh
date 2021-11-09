@@ -1514,11 +1514,11 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         # f is a (N_datasets,)-shaped 1D ndarray.
         # f_grads is a (N_datasets,N_fitparams)-shaped 2D ndarray.
         (f, f_grads) = self._dataset_signal_weights(fitparam_values)
+
         # Cache f for possible later calculation of the second derivative w.r.t.
         # ns of the log-likelihood ratio function.
-
-        # self._cache_fitparam_values_ns = ns
-        # self._cache_f = f
+        self._cache_fitparam_values_ns = ns
+        self._cache_f = f
 
         nsf = ns * f
 
