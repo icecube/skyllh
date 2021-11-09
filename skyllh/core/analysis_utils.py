@@ -74,10 +74,6 @@ def pointlikesource_to_data_field_array(
         arr['src_w'][i]      = src.weight.src_w
         arr['src_w_grad'][i] = src.weight.src_w_grad
         arr['src_w_W'][i]    = src.weight.src_w_W
-    norm               = arr['src_w'].sum()
-    #arr['src_w']      /= norm
-    #arr['src_w_grad'] /= norm
-
     return arr
 
 
