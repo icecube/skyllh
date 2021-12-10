@@ -223,6 +223,7 @@ class NormedFluxModel(FluxModel, metaclass=abc.ABCMeta):
         [energy]^-1 [length]^-2 [time]^-1.
         """
         return self._Phi0
+
     @Phi0.setter
     def Phi0(self, v):
         v = float_cast(v, 'Property Phi0 must be castable to type float!')
@@ -261,6 +262,17 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
         self.crit_log_energy_flux = crit_log_energy_flux
         self.src_dist = src_dist
 
+        # fake an internal parameter
+        self.gamma = 2.0
+
+    @property
+    def gamma(self):
+        return self._gamma
+    @gamma.setter
+    def gamma(self, v):
+        v = float_cast(v, 'Property gamma must be castable to type float!')
+        self._gamma = v
+
     @property
     def math_function_str(self):
         return "todo"
@@ -278,8 +290,12 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
         out_of_bounds2 = np.logical_or(log_enu < self.crit_log_nu_energy_lower,
                                        log_enu > self.crit_log_nu_energy_upper)
         flux[np.logical_or(out_of_bounds1, out_of_bounds2)] = 0
+        return self.Phi0 * self.lumin_scale * flux
 
-        return self.lumin_scale * flux
+    def __deepcopy__(self, memo):
+        return SeyfertCoreCoronaFlux(self.psp_table, self.src_dist, self.Phi0,
+                                    self.lumin_scale, self.crit_log_energy_flux, self.crit_log_nu_energy_lower, self.crit_log_nu_energy_upper)
+
 
 
 class PowerLawFlux(NormedFluxModel):
