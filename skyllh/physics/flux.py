@@ -238,6 +238,50 @@ class NormedFluxModel(FluxModel, metaclass=abc.ABCMeta):
         v = float_cast(v, 'Property E0 must be castable to type float!')
         self._E0 = v
 
+
+class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
+    def __init__(self, Phi0, psp_table, crit_log_nu_energy_lower, crit_log_nu_energy_upper):
+        super(SplineFluxModel, self).__init__()
+        self.psp_table = psp_table
+        self.Phi0 = Phi0
+        self.crit_log_nu_energy_lower = crit_log_nu_energy_lower
+        self.crit_log_nu_energy_upper = crit_log_nu_energy_upper
+
+
+class SeyfertCoreCoronaFlux(SplineFluxModel):
+    def __init__(self, psp_table, src_dist, Phi0, lumin_scale=1.,
+                crit_log_energy_flux = -50,
+                crit_log_nu_energy_lower = 2.0,
+                crit_log_nu_energy_upper = 7.0):
+
+        super(SeyfertCoreCoronaFlux, self).__init__(Phi0, psp_table,
+                                                    crit_log_nu_energy_lower,
+                                                    crit_log_nu_energy_upper)
+        self.lumin_scale = 1.
+        self.crit_log_energy_flux = crit_log_energy_flux
+        self.src_dist = src_dist
+
+    @property
+    def math_function_str(self):
+        return "todo"
+
+    def __call__(self, E):
+        log_enu = np.log10(E)
+        log_energy_flux = self.psp_table.evaluate_simple([log_enu])
+
+        # convert energy flux to particle flux. account for source distance.
+        flux = 10**(log_energy_flux - 2.0*log_enu - 2.0*np.log10(self.src_dist))
+
+        # need take care of very small fluxes (set to 0 beyond critical energy)
+        # or below critical flux
+        out_of_bounds1 = log_energy_flux < self.crit_log_energy_flux
+        out_of_bounds2 = np.logical_or(log_enu < self.crit_log_nu_energy_lower,
+                                       log_enu > self.crit_log_nu_energy_upper)
+        flux[np.logical_or(out_of_bounds1, out_of_bounds2)] = 0
+
+        return self.lumin_scale * flux
+
+
 class PowerLawFlux(NormedFluxModel):
     """Power law flux of the form
 
