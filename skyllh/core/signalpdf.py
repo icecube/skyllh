@@ -18,6 +18,7 @@ from skyllh.core.pdf import (
     IsSignalPDF,
     MultiDimGridPDF,
     MultiDimGridPDFSet,
+    MappedMultiDimGridPDFSet,
     NDPhotosplinePDF,
     SpatialPDF,
     TimePDF
@@ -428,6 +429,35 @@ class SignalMultiDimGridPDFSet(MultiDimGridPDFSet, IsSignalPDF):
             param_grid_set=param_grid_set,
             gridparams_pdfs=gridparams_pdfs,
             interpolmethod=interpolmethod,
+            pdf_type=SignalMultiDimGridPDF,
+            **kwargs)
+
+
+class SignalMappedMultiDimGridPDFSet(MappedMultiDimGridPDFSet, IsSignalPDF):
+    """This class extends the MappedMultiDimGridPDFSet PDF class to be a signal
+    PDF. See the documentation of the
+    :class:`skyllh.core.pdf.MappedMultiDimGridPDFSet` class for what this PDF
+    provides.
+    """
+
+    def __init__(self, param_grid_set, gridparams_pdfs,
+                 interpolmethod=None, **kwargs):
+        """Creates a new SignalMappedMultiDimGridPDFSet instance, which holds a
+        set of MultiDimGridPDF instances, one for each point of a parameter grid
+        set.
+
+        Parameters
+        ----------
+        param_grid_set : ParameterGrid instance | ParameterGridSet instance
+            The set of ParameterGrid instances, which define the grid values of
+            the model parameters, the given MultiDimGridPDF instances belong to.
+        gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
+            The sequence of 2-element tuples which define the mapping of grid
+            values to PDF instances.
+        """
+        super(SignalMappedMultiDimGridPDFSet, self).__init__(
+            param_grid_set=param_grid_set,
+            gridparams_pdfs=gridparams_pdfs,
             pdf_type=SignalMultiDimGridPDF,
             **kwargs)
 
