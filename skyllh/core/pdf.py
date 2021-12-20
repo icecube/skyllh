@@ -1768,9 +1768,9 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         # by the param_grid_set. The order of the D gradients is the same as
         # the parameter grids.
 
-        # Iterate over fluxmodels in fluxmodel2src_mapping dict.
+        # Iterate over fluxmodels in `fluxmodel_to_src_map` dict.
         prob = np.zeros(eventdata.shape[0])
-        # grads = np.zeros(eventdata.shape[0])
+        grads = np.zeros(eventdata.shape[0])
         for (fluxmodel_hash, src_list) in self.fluxmodel_to_src_map:
             # Mask for selecting events corresponding to specific flux.
             fluxmodel_mask = np.isin(src_idxs, src_list)
@@ -1782,6 +1782,5 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
                     tdm, params, eventdata[fluxmodel_mask])
 
             prob[fluxmodel_mask] = prob_i
-            grads = np.zeros_like(prob)
 
         return (prob, grads)
