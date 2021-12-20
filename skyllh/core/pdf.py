@@ -602,12 +602,12 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
             src_w_grad /= norm_src_w_temp
 
             idxs = tdm.idxs
-            src_idxs, ev_idxs = idxs
 
             if idxs is not None:
+                src_idxs, ev_idxs = idxs
                 prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
             else:
-                prob = prob.reshape((n_src, prob.shape[0] / n_src))
+                prob = prob.reshape((n_src, int(prob.shape[0]/n_src))).T
             prob_res = prob.dot(src_w)
 
             n_ev = tdm.n_selected_events
@@ -618,7 +618,7 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
                 if idxs is not None:
                     grad_i = scp.sparse.csr_matrix((grads[pidx], (ev_idxs, src_idxs)))
                 else:
-                    grad_i = prob.reshape((n_src, grads[pidx].shape[0] / n_src))
+                    grad_i = prob.reshape((n_src, int(grads[pidx].shape[0]/n_src))).T
 
                 if fitparam_name == 'gamma':
                     d_wf = prob.dot(src_w_grad) + grad_i.dot(src_w)
@@ -1004,21 +1004,22 @@ class MultiDimGridPDF(PDF):
 
         with TaskTimer(tl, 'Get PDF event data.'):
             if(self.is_signal_pdf):
-                # evaluate the relevant quantities for
-                # all events and sources (relevant for stacking analyses)
+                # Evaluate the relevant quantities for
+                # all events and sources (relevant for stacking analyses).
                 if(tdm.idxs is not None):
                     src_idxs, ev_idxs = tdm.idxs
                     eventdata = np.array(
-                        [tdm.get_data(axis.name)[ev_idxs]
-                         if 'psi' not in axis.name
-                         else tdm.get_data(axis.name)
+                        [tdm.get_data(axis.name) if ('psi' in axis.name)
+                         else tdm.get_data(axis.name)[src_idxs] if ('src' in axis.name)
+                         else tdm.get_data(axis.name)[ev_idxs]
                          for axis in self._axes]).T
                 else:
                     n_src = len(tdm.get_data('src_array')['ra'])
+                    l_ev = len(tdm.get_data('ra'))
                     eventdata = np.array(
-                        [np.tile(tdm.get_data(axis.name), n_src)
-                         if 'psi' not in axis.name 
-                         else tdm.get_data(axis.name)
+                        [tdm.get_data(axis.name) if ('psi' in axis.name)
+                         else np.repeat(tdm.get_data(axis.name), l_ev) if ('src' in axis.name)
+                         else np.tile(tdm.get_data(axis.name), n_src)
                          for axis in self._axes]).T
             elif (self.is_background_pdf):
                 eventdata = np.array(
@@ -1588,8 +1589,8 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         # from any of the PDFs in this PDF set.
         if(isinstance(self, IsSignalPDF)):
             # Evaluate the relevant quantities for
-            # all events and sources (relevant for stacking analyses)
-            if (tdm.idxs is not None):
+            # all events and sources (relevant for stacking analyses).
+            if(tdm.idxs is not None):
                 src_idxs, ev_idxs = tdm.idxs
                 eventdata = np.array(
                     [tdm.get_data(axis.name) if ('psi' in axis.name)
@@ -1597,13 +1598,12 @@ class MultiDimGridPDFSet(PDF, PDFSet):
                      else tdm.get_data(axis.name)[ev_idxs]
                      for axis in self.pdf_axes]).T
             else:
-                # This is still wrong, has to be done similar to above.
                 n_src = len(tdm.get_data('src_array')['ra'])
                 l_ev = len(tdm.get_data('ra'))
                 eventdata = np.array(
-                    [np.tile(tdm.get_data(axis.name), n_src)
-                     if 'psi' not in axis.name
-                     else tdm.get_data(axis.name)
+                    [tdm.get_data(axis.name) if ('psi' in axis.name)
+                     else np.repeat(tdm.get_data(axis.name), l_ev) if ('src' in axis.name)
+                     else np.tile(tdm.get_data(axis.name), n_src)
                      for axis in self.pdf_axes]).T
 
         elif (isinstance(self, IsBackgroundPDF)):
