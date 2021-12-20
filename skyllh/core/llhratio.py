@@ -798,9 +798,11 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
         """
         _src_w, _src_w_grads = self._calc_source_weights(
                 fitparam_values)
-        #print(_src_w, _src_w_grads)
         self._tdm.get_data('src_array')['src_w'] = _src_w
-        self._tdm.get_data('src_array')['src_w_grad'] = _src_w_grads.flatten()
+        if _src_w_grads is not None:
+            self._tdm.get_data('src_array')['src_w_grad'] = _src_w_grads.flatten()
+        else:
+            self._tdm.get_data('src_array')['src_w_grad'] = np.zeros_like(_src_w)
 
         (log_lambda, grads) = super(
             MultiSourceZeroSigH0SingleDatasetTCLLHRatio, self).evaluate(
