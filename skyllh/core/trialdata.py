@@ -553,6 +553,8 @@ class TrialDataManager(object):
                 'events')
             self.events = selected_events
             self.idxs = idxs
+        else:
+            self.idxs = None
 
         # Sort the events by the index field, if a field was provided.
         if(self._index_field_name is not None):
