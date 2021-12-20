@@ -13,18 +13,21 @@ from skyllh.core.signalpdf import SignalMultiDimGridPDF
 from skyllh.core.backgroundpdf import BackgroundMultiDimGridPDF
 
 
-def kde_pdf_sig_spatial_norm_factor_func(pdf, tdm, fitparams):
+def kde_pdf_sig_spatial_norm_factor_func(pdf, tdm, fitparams, eventdata):
     """This is the standard normalization factor function for the spatial signal
     MultiDimGridPDF, which is created from KDE PDF values.
     It can be used for the ``norm_factor_func`` argument of the
     ``create_MultiDimGridPDF_from_kde_pdf`` function.
     """
-    psi = tdm.get_data('psi')
+    log10_psi_idx = pdf._axes.axis_name_list.index('log10_psi')
+    # psi = tdm.get_data('psi')
+    # Convert to psi.
+    psi = 10**eventdata[:, log10_psi_idx]
     norm = 1. / (2 * np.pi * np.log(10) * psi * np.sin(psi))
     return norm
 
 
-def kde_pdf_bkg_norm_factor_func(pdf, tdm, fitparams):
+def kde_pdf_bkg_norm_factor_func(pdf, tdm, fitparams, eventdata):
     """This is the standard normalization factor function for the background
     MultiDimGridPDF, which is created from KDE PDF values.
     It can be used for the ``norm_factor_func`` argument of the

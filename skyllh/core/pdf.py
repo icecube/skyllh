@@ -868,23 +868,20 @@ class MultiDimGridPDF(PDF):
         if(func is None):
             # Define a normalization function that just returns 1 for each
             # event.
-            def func(pdf, tdm, fitparams):
+            def func(pdf, tdm, fitparams, eventdata):
                 n_src = len(tdm.get_data('src_array')['ra'])
                 if(n_src == 1):
                     n_dim = tdm.n_selected_events
                 else:
-                    if tdm.idxs is None:
-                        n_dim = tdm.n_selected_events * n_src
-                    else:
-                        n_dim = len(tdm.idxs[0])
+                    n_dim = eventdata.shape[0]
                 return np.ones((n_dim,), dtype=np.float)
 
         if(not callable(func)):
             raise TypeError(
                 'The norm_factor_func property must be a callable object!')
-        if(not func_has_n_args(func, 3)):
+        if(not func_has_n_args(func, 4)):
             raise TypeError(
-                'The norm_factor_func property must be a function with 3 '
+                'The norm_factor_func property must be a function with 4 '
                 'arguments!')
         self._norm_factor_func = func
 
@@ -962,7 +959,7 @@ class MultiDimGridPDF(PDF):
                     [eventdata[:, i] for i in range(0, V)])
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
-            norm = self._norm_factor_func(self, tdm, params)
+            norm = self._norm_factor_func(self, tdm, params, eventdata)
             prob *= norm
         if(do_caching):
             self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
