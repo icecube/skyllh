@@ -1352,21 +1352,36 @@ class MultiPointSourcesRelSourceWeights(SourceWeights):
 
         N_fitparams = self._src_fitparam_mapper.n_global_fitparams
 
-        # Loop over the detector signal efficiency instances for the first and
-        # only source hypothesis group.
+        Y = []
 
-        # currently this only works for one source hypothesis group
-        Y, Y_grads = self.detsigyield_arr[0](self._src_arr_list[0], fitparams_arr)
+        if(N_fitparams > 0):
+            Y_grads = np.empty((self.detsigyield_arr.shape[0],len(self._src_arr_list[0]), N_fitparams), dtype=np.float)
 
-        # sumj_Y is the normalisation for each data set
-        sumj_Y = np.sum(Y, axis=0)
+        # Loop over detector signal efficiency instances for each source
+        # hypothesis group in source hypothesis group manager.
+        # TODO: assumes that each SHG has the same number of sources in grad calculation.
+        # TODO: check gradient implementation
+        for (j, detsigyield) in enumerate(self._detsigyield_arr):
+            (Yj, Yj_grads) = detsigyield(self._src_arr_list[j], fitparams_arr)
+            # Store the detector signal yield and its fit parameter
+            # gradients for the first and only source (element 0).
+            # Y[j] = Yj
+            Y.append(Yj)
+            if(N_fitparams > 0):
+                Y_grads[j] = Yj_grads.T
 
-        # f is a ( N_src)-shaped 1D ndarray.
-        f = Y / sumj_Y
+        Y = np.array(Y)
+        sum_Y = np.sum(Y)
+
+        # f is a (N_datasets,)-shaped 1D ndarray.
+        f = Y / sum_Y
+        # Flatten the array so that each relative weight corresponds to specific
+        # source.
+        f = f.flatten()
 
         # f_grads is a (N_datasets, N_src, N_fitparams)-shaped 3D ndarray.
         if(N_fitparams > 0):
-            f_grads = Y_grads.T / sumj_Y
+            f_grads = Y_grads.T / sum_Y
         else:
             f_grads = None
 
