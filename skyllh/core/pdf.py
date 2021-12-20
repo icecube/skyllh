@@ -1520,12 +1520,12 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         self._interpolmethod = cls
 
     def _get_prob_for_gridparams_with_eventdata_func(self):
-        """Returns a function with call signature __call__(gridparms, eventdata)
+        """Returns a function with call signature __call__(gridparams, eventdata)
         that will return the probability for each event given by ``eventdata``
         from the PDFs that is registered for the given gridparams parameter
         values.
         """
-        def _get_prob_for_gridparams_with_eventdata(tdm, gridparms, eventdata):
+        def _get_prob_for_gridparams_with_eventdata(tdm, gridparams, eventdata):
             """Gets the probability for each event given by ``eventdata`` from
             the PDFs that is registered for the given gridparams parameter
             values.
@@ -1545,8 +1545,8 @@ class MultiDimGridPDFSet(PDF, PDFSet):
             prob : (N_events,)-shaped ndarray
                 The ndarray holding the probability values for each event.
             """
-            pdf = self.get_pdf(gridparms)
-            prob = pdf.get_prob_with_eventdata(tdm, gridparms, eventdata)
+            pdf = self.get_pdf(gridparams)
+            prob = pdf.get_prob_with_eventdata(tdm, gridparams, eventdata)
             return prob
 
         return _get_prob_for_gridparams_with_eventdata
