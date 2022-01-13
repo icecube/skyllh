@@ -449,7 +449,7 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
     def __deepcopy__(self, memo):
         """photospline.SplineTable objects are strictly immutable.
            Hence no copy should be required, ever!"""
-        return SeyfertCoreCoronaFlux(self.psp_table, self.src_dist, self.Phi0,
+        return SeyfertCoreCoronaFlux(self.psp_table, self.log_xray_lumin, self.src_dist, self.Phi0,
                                     self.lumin_scale, self.crit_log_energy_flux, self.crit_log_nu_energy_lower, self.crit_log_nu_energy_upper)
 
 
