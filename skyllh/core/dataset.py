@@ -995,6 +995,23 @@ class Dataset(object):
                 'the dataset yet!'%(name))
         return self._binning_definitions[name]
 
+    def remove_binning_definition(self, name):
+        """Removes the BinningDefinition object from the dataset.
+
+        Parameters
+        ----------
+        name : str
+            The name of the binning definition.
+
+        """
+        try:
+            self._binning_definitions.pop(name)
+        except KeyError as e:
+            raise KeyError(
+                f'The given binning name "{name}" does not exist in the '
+                f'dataset "{self.name}", nothing to remove!'
+            ) from e
+
     def has_binning_definition(self, name):
         """Checks if the dataset has a defined binning definition with the given
         name.
@@ -1103,6 +1120,21 @@ class Dataset(object):
 
         return self._aux_data_definitions[name]
 
+    def remove_aux_data_definition(self, name):
+        """Removes the auxiliary data definition from the dataset.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset that should get removed.
+        """
+        try:
+            self._aux_data_definitions.pop(name)
+        except KeyError as e:
+            raise KeyError(
+                f'The auxiliary data definition "{name}" does not exist in '
+                f'dataset "{self.name}", nothing to remove!'
+            ) from e
 
     def add_aux_data(self, name, data):
         """Adds the given data as auxiliary data to this data set.
@@ -1155,6 +1187,23 @@ class Dataset(object):
                 'dataset "%s"!'%(name, self.name))
 
         return self._aux_data[name]
+
+    def remove_aux_data(self, name):
+        """Removes the auxiliary data that is stored in this data set under
+        the given name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset that should get removed.
+        """
+        try:
+            self._aux_data.pop(name)
+        except KeyError as e:
+            raise KeyError(
+                f'The auxiliary data "{name}" is not defined for dataset '
+                f'"{self.name}", nothing to remove!'
+            ) from e
 
 
 class DatasetCollection(object):
