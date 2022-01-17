@@ -8,8 +8,6 @@ The units are defined using the astropy.units module and can be set through
 the properties ``energy_unit``, ``length_unit``, and ``time_unit``.
 The default units are [energy] = GeV, [length] = cm, [time] = s.
 """
-from __future__ import division
-
 import abc
 import numpy as np
 
@@ -248,28 +246,25 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
         dN/(dEdAdt) = Phi0 * f(E),
 
     where Phi0 is the relative flux normalization (dimensionless)
-    and f(E) represents the photospline in units of [energy]^-1 [length]^-2 [time]^-1
-    i.e. the energy dependence of the flux.
+    and f(E) represents the photospline in units of
+    [energy]^-1 [length]^-2 [time]^-1 i.e. the energy dependence of the flux.
 
     The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
 
-    Outside of support [crit_log_nu_energy_lower, crit_log_nu_energy_upper] the flux
-    will be set to 0.
+    Outside of support [crit_log_nu_energy_lower, crit_log_nu_energy_upper] the
+    flux will be set to 0.
 
     Attributes
     ----------
     Phi0 : float
-        flux normalization relative to model prediction
-
+        Flux normalization relative to model prediction.
     psp_table : object
-        photospline.SplineTable object
-
+        The photospline.SplineTable object.
     crit_log_nu_energy_lower : float
-        lower end of energy range (support) of spline flux
-
+        Lower end of energy range (support) of spline flux.
     crit_log_nu_energy_upper : float
-        upper end of energy range (support) of spline flux
+        Upper end of energy range (support) of spline flux.
     """
 
     def __init__(self, Phi0, psp_table, crit_log_nu_energy_lower, crit_log_nu_energy_upper):
@@ -332,37 +327,32 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
        Attributes
        ----------
        Phi0 : float
-           Flux normalization relative to model prediction
-
+           Flux normalization relative to model prediction.
        log_xray_lumin : float
            log10 of intrinsic x-ray luminosity of source in
            2-10 keV band.
-
        psp_table : object
            photospline.SplineTable object
-
        crit_log_nu_energy_lower : float
-           Lower end of energy range (support) of spline flux
-
+           Lower end of energy range (support) of spline flux.
        crit_log_nu_energy_upper : float
-           Upper end of energy range (support) of spline flux
-
+           Upper end of energy range (support) of spline flux.
        src_dist : float
-            Distance to source in units of Mpc
-
+            Distance to source in units of Mpc.
        lumin_scale : float
-            A relative flux scaling factor. Can correct cases when
-            the model calculation has a different normalization from what's desired.
-
+            A relative flux scaling factor. Can correct cases when the model
+            calculation has a different normalization from what's desired.
        crit_log_energy_flux : float
             The spline is parameterized in log10(flux). This value
             determines when the flux should be considered 0.
     """
 
-    def __init__(self, psp_table, log_xray_lumin, src_dist, Phi0, lumin_scale=1.,
-                crit_log_energy_flux = -50,
-                crit_log_nu_energy_lower = 2.0,
-                crit_log_nu_energy_upper = 7.0):
+    def __init__(
+            self, psp_table, log_xray_lumin, src_dist, Phi0,
+            lumin_scale=1.0,
+            crit_log_energy_flux=-50,
+            crit_log_nu_energy_lower=2.0,
+            crit_log_nu_energy_upper=7.0):
 
         super(SeyfertCoreCoronaFlux, self).__init__(Phi0, psp_table,
                                                     crit_log_nu_energy_lower,
@@ -379,7 +369,8 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @log_xray_lumin.setter
     def log_xray_lumin(self, v):
-        v = float_cast(v, 'Property log_xray_lumin must be castable to type float!')
+        v = float_cast(
+            v, 'Property log_xray_lumin must be castable to type float!')
         self._log_xray_lumin = v
 
     @property
@@ -389,7 +380,8 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @lumin_scale.setter
     def lumin_scale(self, v):
-        v = float_cast(v, 'Property lumin_scale must be castable to type float!')
+        v = float_cast(
+            v, 'Property lumin_scale must be castable to type float!')
         self._lumin_scale = v
 
     @property
@@ -399,7 +391,8 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @src_dist.setter
     def src_dist(self, v):
-        v = float_cast(v, 'Property src_dist must be castable to type float!')
+        v = float_cast(
+            v, 'Property src_dist must be castable to type float!')
         self._src_dist = v
 
     @property
@@ -409,13 +402,21 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @crit_log_energy_flux.setter
     def crit_log_energy_flux(self, v):
-        v = float_cast(v, 'Property crit_log_energy_flux must be castable to type float!')
+        v = float_cast(
+            v, 'Property crit_log_energy_flux must be castable to type float!')
         self._crit_log_energy_flux = v
 
     @property
     def math_function_str(self):
-        return ("B-spline representation of model presented in Kheirandish et al.,"
-                "Astrophys.J. 922 (2021) 45")
+        """We have used hash of this representation in
+        `skyllh.core.source_hypothesis.get_fluxmodel_to_source_map()`
+        to map fluxes with KDE PDFs. So far KDEs only depend on `log_xray_lumin`
+        value and not on `src_dist`.
+        """
+        return (
+            f'dN/dE = {self.Phi0} * 10^(log10(f(E)) - 2*log10(E) - '
+            f' 2*log10(src_dist) with log_xray_lumin={self.log_xray_lumin}'
+        )
 
     def __call__(self, E):
         """The flux value dN/dE at energy E.
@@ -447,11 +448,14 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
         return self.Phi0 * self.lumin_scale * flux
 
     def __deepcopy__(self, memo):
-        """photospline.SplineTable objects are strictly immutable.
-           Hence no copy should be required, ever!"""
-        return SeyfertCoreCoronaFlux(self.psp_table, self.log_xray_lumin, self.src_dist, self.Phi0,
-                                    self.lumin_scale, self.crit_log_energy_flux, self.crit_log_nu_energy_lower, self.crit_log_nu_energy_upper)
-
+        """The photospline.SplineTable objects are strictly immutable.
+           Hence no copy should be required, ever!
+        """
+        return SeyfertCoreCoronaFlux(
+            self.psp_table, self.log_xray_lumin, self.src_dist, self.Phi0,
+            self.lumin_scale, self.crit_log_energy_flux,
+            self.crit_log_nu_energy_lower, self.crit_log_nu_energy_upper
+        )
 
 
 class PowerLawFlux(NormedFluxModel):
@@ -509,6 +513,7 @@ class PowerLawFlux(NormedFluxModel):
         flux = self.Phi0 * np.power(E / self.E0, -self.gamma)
         return flux
 
+
 class CutoffPowerLawFlux(PowerLawFlux):
     """Cut-off power law flux of the form
 
@@ -564,6 +569,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
         """
         flux = super(CutoffPowerLawFlux, self).__call__(E) * np.exp(-E / self.Ecut)
         return flux
+
 
 class LogParabolaPowerLawFlux(NormedFluxModel):
     """Power law flux with an index which varies as a log parabola in energy of
