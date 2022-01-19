@@ -359,8 +359,8 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
         """
         super(MultiPointLikeSourceI3SignalGenerationMethod, self).__init__(
                     src_sin_dec_half_bandwidth=src_sin_dec_half_bandwidth,
-                    src_sin_dec_shift_func=None,
-                    energy_range=None
+                    src_sin_dec_shift_func=src_sin_dec_shift_func,
+                    energy_range=energy_range
                     )
         self.batch_size = batch_size
 
