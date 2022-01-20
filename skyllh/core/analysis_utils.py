@@ -145,6 +145,7 @@ def calculate_critical_ts_from_gamma(
     eta : float, optional
         Test-statistic value at which the gamma function is truncated
         from below.
+
     Returns
     -------
     critical_ts : float
