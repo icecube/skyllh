@@ -136,6 +136,7 @@ def calculate_critical_ts_from_gamma(
     """Calculates the critical test-statistic value corresponding
     to h0_ts_quantile by fitting the ts distribution with a truncated
     gamma function.
+
     Parameters
     ----------
     ts : (n_trials,)-shaped 1D ndarray
