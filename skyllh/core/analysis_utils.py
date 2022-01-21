@@ -65,7 +65,7 @@ def pointlikesource_to_data_field_array(
     arr = np.empty(
         (len(sources),),
         dtype=[('ra', np.float), ('dec', np.float),
-               ('src_w', np.float), ('src_w_grad', np.float), ('src_w_W', np.float)] 
+               ('src_w', np.float), ('src_w_grad', np.float), ('src_w_W', np.float)]
               , order='F')
 
     for (i, src) in enumerate(sources):
@@ -120,7 +120,7 @@ def truncated_gamma_logpdf(
     N_above_eta : int
         Number of test-statistic values falling in the truncated
         gamma pdf.
-        
+
     Returns
     -------
     -logl : float
@@ -132,7 +132,7 @@ def truncated_gamma_logpdf(
     return -logl
 
 def calculate_critical_ts_from_gamma(
-        ts, h0_ts_quantile, eta=3.0, xi=1.e-2):
+        ts, h0_ts_quantile, eta=3.0):
     """Calculates the critical test-statistic value corresponding
     to h0_ts_quantile by fitting the ts distribution with a truncated
     gamma function.
@@ -146,20 +146,15 @@ def calculate_critical_ts_from_gamma(
     eta : float, optional
         Test-statistic value at which the gamma function is truncated
         from below.
-    xi : float, optional
-        A small number to numerically discriminate against ts=0.0.
 
     Returns
     -------
     critical_ts : float
     """
     Ntot = len(ts)
-    N = len(ts[ts > xi])
-    alpha = N/Ntot
-
     ts_eta = ts[ts > eta]
     N_prime = len(ts_eta)
-    alpha_prime = N_prime/N
+    alpha = N_prime/Ntot
 
     obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta,
                                            ts_above_eta=ts_eta,
@@ -168,8 +163,8 @@ def calculate_critical_ts_from_gamma(
     bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
     r = minimize(obj, x0, bounds=bounds)
     pars = r.x
-    
-    norm = alpha*(alpha_prime/gamma.sf(eta, a=pars[0], scale=pars[1]))
+
+    norm = alpha/gamma.sf(eta, a=pars[0], scale=pars[1])
     critical_ts = gamma.ppf(1 - 1./norm*h0_ts_quantile, a=pars[0], scale=pars[1])
 
     if(critical_ts < eta):
@@ -320,12 +315,12 @@ def estimate_mean_nsignal_for_ts_quantile(
             h0_ts_vals = ana.do_trials(
                 rss, n_trials_total, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
                 sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
-            
+
             logger.debug(
                 'Generate %d null-hypothesis trials',
                 n_trials_total)
             n_total_generated_trials += n_trials_total
-            
+
             if(pathfilename is not None):
                 makedirs(os.path.dirname(pathfilename), exist_ok=True)
                 np.save(pathfilename, h0_ts_vals)
@@ -359,7 +354,7 @@ def estimate_mean_nsignal_for_ts_quantile(
         logger.debug(
             'Min / Max h0 TS value: %e / %e',
             np.min(h0_ts_vals), np.max(h0_ts_vals))
-        
+
         # If the minimum number of trials needed to get the required precision
         # on the critical TS value is smaller then 500k, compute the critical ts
         # value directly from trials; otherwise calculate it from the gamma
@@ -430,7 +425,7 @@ def estimate_mean_nsignal_for_ts_quantile(
         trial_vals0 = None
         (ts_vals0, p0_sigma, delta_p) = ([], 2*eps_p, 0)
         while (delta_p < p0_sigma*5) and (p0_sigma > eps_p):
-            ts_vals0 = np.concatenate((  
+            ts_vals0 = np.concatenate((
                 ts_vals0, ana.do_trials(
                     rss, dn_trials, mean_n_sig=ns0, bkg_kwargs=bkg_kwargs,
                     sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']))
@@ -496,7 +491,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
                 if(len(n_sig)>2):
                     scanned_range = np.max(n_sig) - np.min(n_sig)
-                    
+
                     if(len(n_sig) < 5 or scanned_range < 1.5):
                         deg = 1
                     else:
@@ -1112,7 +1107,7 @@ def extend_trial_data_file(
         ana, rss, n_trials, trial_data, mean_n_sig=0, mean_n_sig_null=0,
         mean_n_bkg_list=None, bkg_kwargs=None, sig_kwargs=None,
         pathfilename=None):
-    """Appends to the trial data file `n_trials` generated trials for each 
+    """Appends to the trial data file `n_trials` generated trials for each
     mean number of injected signal events up to `ns_max` for a given analysis.
 
     Parameters
@@ -1163,8 +1158,8 @@ def extend_trial_data_file(
     """
     # Use unique seed to generate non identical trials.
     if rss.seed in trial_data['seed']:
-        seed = next(i for i, e in 
-                    enumerate(sorted(np.unique(trial_data['seed'])) + 
+        seed = next(i for i, e in
+                    enumerate(sorted(np.unique(trial_data['seed'])) +
                                 [None], 1) if i != e)
         rss.reseed(seed)
     (seed, mean_n_sig, mean_n_sig_null, trials) = create_trial_data_file(
