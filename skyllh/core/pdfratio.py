@@ -624,7 +624,6 @@ class SigOverBkgPDFRatio(PDFRatio):
         """
         return self._sig_pdf.param_set.floating_param_name_list
     
-    #@profile
     def get_ratio(self, tdm, params=None, tl=None):
         """Calculates the PDF ratio for the given trial events.
 

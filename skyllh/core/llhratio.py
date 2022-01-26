@@ -697,10 +697,10 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
         dXi_ps = np.empty((len(fitparam_values)-1,len(Xi)), dtype=np.float)
         for (idx, fitparam_value) in enumerate(fitparam_values[1:]):
             fitparam_name = self._src_fitparam_mapper.get_src_fitparam_name(idx)
-            # Get the PDFRatio instance from which we need the derivative from.
 
             dRi = np.zeros((len(Xi),), dtype=np.float)
             for (num_k) in np.arange(len(pdfratioarray._pdfratio_list)):
+                # Get the PDFRatio instance from which we need the derivative from.
                 pdfratio = pdfratioarray.get_pdfratio(num_k)
                 # Calculate the derivative of Ri.
                 dRi += pdfratio.get_gradient(tdm, fitparams, fitparam_name) * pdfratioarray.get_ratio_product(excluded_idx=num_k)
@@ -798,7 +798,6 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
         """
         _src_w, _src_w_grads = self._calc_source_weights(
                 fitparam_values)
-        #print(_src_w, _src_w_grads)
         self._tdm.get_data('src_array')['src_w'] = _src_w
         self._tdm.get_data('src_array')['src_w_grad'] = _src_w_grads.flatten()
 
@@ -1514,11 +1513,11 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         # f is a (N_datasets,)-shaped 1D ndarray.
         # f_grads is a (N_datasets,N_fitparams)-shaped 2D ndarray.
         (f, f_grads) = self._dataset_signal_weights(fitparam_values)
+
         # Cache f for possible later calculation of the second derivative w.r.t.
         # ns of the log-likelihood ratio function.
-
-        # self._cache_fitparam_values_ns = ns
-        # self._cache_f = f
+        self._cache_fitparam_values_ns = ns
+        self._cache_f = f
 
         nsf = ns * f
 

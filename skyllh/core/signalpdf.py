@@ -183,7 +183,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                 prob = prob.T
             prob_res = prob.dot(src_w)
             grads = (prob.dot(src_w_grads) -
-                     prob_res*src_w_grads.sum())/norm**2
+                     prob_res*src_w_grads.sum())
 
             return (prob_res, np.atleast_2d(grads))
 
