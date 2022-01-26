@@ -1043,7 +1043,10 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
             # gradients for the first and only source (element 0).
             Y[j] = Yj[0]
             if(N_fitparams > 0):
-                Y_grads[j] = Yj_grads[0]
+                if Yj_grads is None:
+                    Y_grads[j] = np.zeros_like(Yj[0])
+                else:
+                    Y_grads[j] = Yj_grads[0]
 
         # sumj_Y is a scalar.
         sumj_Y = np.sum(Y, axis=0)
