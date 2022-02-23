@@ -1,12 +1,12 @@
-.. _analysis_index:
+.. _tutorials_index:
 
-********
-Analysis
-********
+*********
+Tutorials
+*********
 
 .. toctree::
     :maxdepth: 3
 
     getting_started
-    trad_ps_expbg
     kdepdf_mcbg_ps
+    trad_ps_expbg
