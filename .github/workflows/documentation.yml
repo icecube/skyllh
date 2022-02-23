@@ -1,7 +1,7 @@
 # This workflow builds sphinx documentation and deploys static html files to the gh-pages branch.
 # Based on https://github.com/marketplace/actions/github-pages-action#%EF%B8%8F-static-site-generators-with-python
 
-name: Build and deploy documentation
+name: Documentation
 
 on:
   push:
