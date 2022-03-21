@@ -116,8 +116,9 @@ class Dataset(object):
         exp_pathfilenames : str | sequence of str | None
             The file name(s), including paths, of the experimental data file(s).
             This can be None, if a MC-only study is performed.
-        mc_pathfilenames : str | sequence of str
+        mc_pathfilenames : str | sequence of str | None
             The file name(s), including paths, of the monte-carlo data file(s).
+            This can be None, if a MC-less analysis is performed.
         livetime : float | None
             The integrated live-time in days of the dataset. It can be None for
             cases where the live-time is retrieved directly from the data files
@@ -223,6 +224,8 @@ class Dataset(object):
         return self._mc_pathfilename_list
     @mc_pathfilename_list.setter
     def mc_pathfilename_list(self, pathfilenames):
+        if(pathfilenames is None):
+            pathfilenames = []
         if(isinstance(pathfilenames, str)):
             pathfilenames = [pathfilenames]
         if(not issequenceof(pathfilenames, str)):
@@ -612,7 +615,9 @@ class Dataset(object):
             # number.
             if((q in self._verqualifiers) and
                (verqualifiers[q] <= self._verqualifiers[q])):
-                raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
+                raise ValueError('The integer number (%d) of the version '
+                    'qualifier "%s" is not larger than the old integer number '
+                    '(%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
             self._verqualifiers[q] = verqualifiers[q]
 
     def load_data(
@@ -687,8 +692,9 @@ class Dataset(object):
 
         # Load the experimental data if there is any.
         if(len(self._exp_pathfilename_list) > 0):
-            fileloader_exp = create_FileLoader(self.exp_abs_pathfilename_list)
             with TaskTimer(tl, 'Loading exp data from disk.'):
+                fileloader_exp = create_FileLoader(
+                    self.exp_abs_pathfilename_list)
                 # Create the list of field names that should get kept.
                 keep_fields = list(set(
                     _conv_new2orig_field_names(
@@ -710,35 +716,36 @@ class Dataset(object):
         else:
             data_exp = None
 
-        # Load the monte-carlo data.
-        with TaskTimer(tl, 'Loading mc data from disk.'):
-            fileloader_mc = create_FileLoader(self.mc_abs_pathfilename_list)
-            keep_fields = list(set(
-                _conv_new2orig_field_names(
-                    CFG['dataset']['analysis_required_exp_field_names'] +
-                    self._loading_extra_exp_field_name_list +
-                    keep_fields,
-                    self._exp_field_name_renaming_dict) +
-                _conv_new2orig_field_names(
-                    CFG['dataset']['analysis_required_mc_field_names'] +
-                    self._loading_extra_mc_field_name_list +
-                    keep_fields,
-                    self._mc_field_name_renaming_dict)
-            ))
-            data_mc = fileloader_mc.load_data(
-                keep_fields=keep_fields,
-                dtype_convertions=dtc_dict,
-                dtype_convertion_except_fields=_conv_new2orig_field_names(
-                    dtc_except_fields,
-                    self._mc_field_name_renaming_dict),
-                efficiency_mode=efficiency_mode)
-            data_mc.rename_fields(self._mc_field_name_renaming_dict)
+        # Load the monte-carlo data if there is any.
+        if(len(self._mc_pathfilename_list) > 0):
+            with TaskTimer(tl, 'Loading mc data from disk.'):
+                fileloader_mc = create_FileLoader(
+                    self.mc_abs_pathfilename_list)
+                keep_fields = list(set(
+                    _conv_new2orig_field_names(
+                        CFG['dataset']['analysis_required_exp_field_names'] +
+                        self._loading_extra_exp_field_name_list +
+                        keep_fields,
+                        self._exp_field_name_renaming_dict) +
+                    _conv_new2orig_field_names(
+                        CFG['dataset']['analysis_required_mc_field_names'] +
+                        self._loading_extra_mc_field_name_list +
+                        keep_fields,
+                        self._mc_field_name_renaming_dict)
+                ))
+                data_mc = fileloader_mc.load_data(
+                    keep_fields=keep_fields,
+                    dtype_convertions=dtc_dict,
+                    dtype_convertion_except_fields=_conv_new2orig_field_names(
+                        dtc_except_fields,
+                        self._mc_field_name_renaming_dict),
+                    efficiency_mode=efficiency_mode)
+                data_mc.rename_fields(self._mc_field_name_renaming_dict)
+        else:
+            data_mc = None
 
         if(livetime is None):
             livetime = self.livetime
-        if(livetime is None):
-            raise ValueError('No livetime was provided for dataset '
-                '"%s"!'%(self.name))
 
         data = DatasetData(data_exp, data_mc, livetime)
 
@@ -932,13 +939,15 @@ class Dataset(object):
                     keep_fields
                 )
                 data.exp.tidy_up(keep_fields=keep_fields_exp)
-        with TaskTimer(tl, 'Cleaning MC data.'):
-            keep_fields_mc = (
-                CFG['dataset']['analysis_required_exp_field_names'] +
-                CFG['dataset']['analysis_required_mc_field_names'] +
-                keep_fields
-            )
-            data.mc.tidy_up(keep_fields=keep_fields_mc)
+
+        if(data.mc is not None):
+            with TaskTimer(tl, 'Cleaning MC data.'):
+                keep_fields_mc = (
+                    CFG['dataset']['analysis_required_exp_field_names'] +
+                    CFG['dataset']['analysis_required_mc_field_names'] +
+                    keep_fields
+                )
+                data.mc.tidy_up(keep_fields=keep_fields_mc)
 
         with TaskTimer(tl, 'Asserting data format.'):
             assert_data_format(self, data)
@@ -1517,24 +1526,28 @@ class DatasetData(object):
     @property
     def mc(self):
         """The DataFieldRecordArray instance holding the monte-carlo data.
+        This is None, if there is no monte-carlo data available.
         """
         return self._mc
     @mc.setter
     def mc(self, data):
-        if(not isinstance(data, DataFieldRecordArray)):
-            raise TypeError('The mc property must be an instance of '
-                'DataFieldRecordArray!')
+        if(data is not None):
+            if(not isinstance(data, DataFieldRecordArray)):
+                raise TypeError('The mc property must be an instance of '
+                    'DataFieldRecordArray!')
         self._mc = data
 
     @property
     def livetime(self):
         """The integrated livetime in days of the data.
+        This is None, if there is no live-time provided.
         """
         return self._livetime
     @livetime.setter
     def livetime(self, lt):
-        lt = float_cast(lt,
-            'The livetime property must be castable to type float!')
+        if(lt is not None):
+            lt = float_cast(lt,
+                'The livetime property must be castable to type float!')
         self._livetime = lt
 
     @property
@@ -1578,13 +1591,20 @@ def assert_data_format(dataset, data):
                 'experimental data of dataset "%s": '%(dataset.name)+
                 ', '.join(missing_exp_keys))
 
-    # Check monte-carlo data keys.
-    missing_mc_keys = _get_missing_keys(
-        data.mc.field_name_list,
-        CFG['dataset']['analysis_required_exp_field_names'] +
-        CFG['dataset']['analysis_required_mc_field_names'])
-    if(len(missing_mc_keys) != 0):
-        raise KeyError('The following data fields are missing for the monte-carlo data of dataset "%s": '%(dataset.name)+', '.join(missing_mc_keys))
+    if(data.mc is not None):
+        # Check monte-carlo data keys.
+        missing_mc_keys = _get_missing_keys(
+            data.mc.field_name_list,
+            CFG['dataset']['analysis_required_exp_field_names'] +
+            CFG['dataset']['analysis_required_mc_field_names'])
+        if(len(missing_mc_keys) != 0):
+            raise KeyError('The following data fields are missing for the '
+                'monte-carlo data of dataset "%s": '%(dataset.name)+
+                ', '.join(missing_mc_keys))
+
+    if(data.livetime is None):
+        raise ValueError('No livetime was specified for dataset "{}"!'.format(
+            dataset.name))
 
 
 def remove_events(data_exp, mjds):

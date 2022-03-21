@@ -512,6 +512,8 @@ class TextFileLoader(FileLoader):
                         usecols.append(idx)
                         dtype.append((name,np.float))
                 usecols = tuple(usecols)
+            if(len(dtype) == 0):
+                raise ValueError('No data columns were selected to be loaded!')
 
             data_ndarray = np.loadtxt(ifile,
                 dtype=dtype,
