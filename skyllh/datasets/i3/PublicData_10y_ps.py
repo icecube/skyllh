@@ -256,12 +256,136 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         sub_path_fmt = sub_path_fmt
     )
 
+    grl_field_name_renaming_dict = {
+        'MJD_start[days]': 'start',
+        'MJD_stop[days]': 'stop'
+    }
+
     IC40 = I3Dataset(
         name = 'IC40',
         exp_pathfilenames = 'events/IC40_exp.csv',
-        mc_pathfilenames = '',
+        grl_pathfilenames = 'uptime/IC40_exp.csv',
+        mc_pathfilenames = None,
         **ds_kwargs
     )
+    IC40.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    IC59 = I3Dataset(
+        name = 'IC59',
+        exp_pathfilenames = 'events/IC59_exp.csv',
+        grl_pathfilenames = 'uptime/IC59_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC59.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC79 = I3Dataset(
+        name = 'IC79',
+        exp_pathfilenames = 'events/IC79_exp.csv',
+        grl_pathfilenames = 'uptime/IC79_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC79.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC86_I = I3Dataset(
+        name = 'IC86_I',
+        exp_pathfilenames = 'events/IC86_I_exp.csv',
+        grl_pathfilenames = 'uptime/IC86_I_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC86_I.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC86_II = I3Dataset(
+        name = 'IC86_II',
+        exp_pathfilenames = 'events/IC86_II_exp.csv',
+        grl_pathfilenames = 'uptime/IC86_II_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC86_II.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC86_III = I3Dataset(
+        name = 'IC86_III',
+        exp_pathfilenames = 'events/IC86_III_exp.csv',
+        grl_pathfilenames = 'uptime/IC86_III_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC86_III.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC86_IV = I3Dataset(
+        name = 'IC86_IV',
+        exp_pathfilenames = 'events/IC86_IV_exp.csv',
+        grl_pathfilenames = 'uptime/IC86_IV_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC86_IV.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC86_V = I3Dataset(
+        name = 'IC86_V',
+        exp_pathfilenames = 'events/IC86_V_exp.csv',
+        grl_pathfilenames = 'uptime/IC86_V_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC86_V.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC86_VI = I3Dataset(
+        name = 'IC86_VI',
+        exp_pathfilenames = 'events/IC86_VI_exp.csv',
+        grl_pathfilenames = 'uptime/IC86_VI_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC86_VI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC86_VII = I3Dataset(
+        name = 'IC86_VII',
+        exp_pathfilenames = 'events/IC86_VII_exp.csv',
+        grl_pathfilenames = 'uptime/IC86_VII_exp.csv',
+        mc_pathfilenames = None,
+        **ds_kwargs
+    )
+    IC86_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    dsc.add_datasets((
+        IC40,
+        IC59,
+        IC79,
+        IC86_I,
+        IC86_II,
+        IC86_III,
+        IC86_IV,
+        IC86_V,
+        IC86_VI,
+        IC86_VII
+    ))
+
+    dsc.set_exp_field_name_renaming_dict({
+        'MJD[days]':    'time',
+        'log10(E/GeV)': 'log_energy',
+        'AngErr[deg]':  'ang_err',
+        'RA[deg]':      'ra',
+        'Dec[deg]':     'dec',
+        'Azimuth[deg]': 'azi',
+        'Zenith[deg]':  'zen'
+    })
+
+    def add_run_number(data):
+        exp = data.exp
+        exp.append_field('run', np.repeat(0, len(exp)))
+    def convert_deg2rad(data):
+        exp = data.exp
+        exp['ang_err'] = np.deg2rad(exp['ang_err'])
+        exp['ra'] = np.deg2rad(exp['ra'])
+        exp['dec'] = np.deg2rad(exp['dec'])
+        exp['azi'] = np.deg2rad(exp['azi'])
+        exp['zen'] = np.deg2rad(exp['zen'])
+
+    dsc.add_data_preparation(add_run_number)
+    dsc.add_data_preparation(convert_deg2rad)
 
     return dsc
