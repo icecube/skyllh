@@ -261,6 +261,12 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'MJD_stop[days]': 'stop'
     }
 
+    # Define the datasets for the different seasons.
+    # For the declination and energy binning we use the same binning as was
+    # used in the original point-source analysis using the PointSourceTracks
+    # dataset.
+
+    # ---------- IC40 ----------------------------------------------------------
     IC40 = I3Dataset(
         name = 'IC40',
         exp_pathfilenames = 'events/IC40_exp.csv',
@@ -270,6 +276,17 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC40.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    sin_dec_bins = np.unique(np.concatenate([
+        np.linspace(-1., -0.25, 10 + 1),
+        np.linspace(-0.25, 0.0, 10 + 1),
+        np.linspace(0.0, 1., 10 + 1),
+    ]))
+    IC40.define_binning('sin_dec', sin_dec_bins)
+
+    energy_bins = np.arange(2., 9. + 0.01, 0.125)
+    IC40.define_binning('log_energy', energy_bins)
+
+    # ---------- IC59 ----------------------------------------------------------
     IC59 = I3Dataset(
         name = 'IC59',
         exp_pathfilenames = 'events/IC59_exp.csv',
@@ -279,6 +296,18 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC59.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    sin_dec_bins = np.unique(np.concatenate([
+        np.linspace(-1., -0.95, 2 + 1),
+        np.linspace(-0.95, -0.25, 25 + 1),
+        np.linspace(-0.25, 0.05, 15 + 1),
+        np.linspace(0.05, 1., 10 + 1),
+    ]))
+    IC59.define_binning('sin_dec', sin_dec_bins)
+
+    energy_bins = np.arange(2., 9.5 + 0.01, 0.125)
+    IC59.define_binning('log_energy', energy_bins)
+
+    # ---------- IC79 ----------------------------------------------------------
     IC79 = I3Dataset(
         name = 'IC79',
         exp_pathfilenames = 'events/IC79_exp.csv',
@@ -288,6 +317,17 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC79.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    sin_dec_bins = np.unique(np.concatenate([
+                        np.linspace(-1., -0.75, 10 + 1),
+                        np.linspace(-0.75, 0., 15 + 1),
+                        np.linspace(0., 1., 20 + 1)
+                        ]))
+    IC79.define_binning('sin_dec', sin_dec_bins)
+
+    energy_bins = np.arange(2., 9. + 0.01, 0.125)
+    IC79.define_binning('log_energy', energy_bins)
+
+    # ---------- IC86-I --------------------------------------------------------
     IC86_I = I3Dataset(
         name = 'IC86_I',
         exp_pathfilenames = 'events/IC86_I_exp.csv',
@@ -297,6 +337,19 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC86_I.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    b = np.sin(np.radians(-5.)) # North/South transition boundary.
+    sin_dec_bins = np.unique(np.concatenate([
+        np.linspace(-1., -0.2, 10 + 1),
+        np.linspace(-0.2, b, 4 + 1),
+        np.linspace(b, 0.2, 5 + 1),
+        np.linspace(0.2, 1., 10),
+    ]))
+    IC86_I.define_binning('sin_dec', sin_dec_bins)
+
+    energy_bins = np.arange(1., 10. + 0.01, 0.125)
+    IC86_I.define_binning('log_energy', energy_bins)
+
+    # ---------- IC86-II -------------------------------------------------------
     IC86_II = I3Dataset(
         name = 'IC86_II',
         exp_pathfilenames = 'events/IC86_II_exp.csv',
@@ -306,6 +359,18 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC86_II.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    sin_dec_bins = np.unique(np.concatenate([
+        np.linspace(-1., -0.93, 4 + 1),
+        np.linspace(-0.93, -0.3, 10 + 1),
+        np.linspace(-0.3, 0.05, 9 + 1),
+        np.linspace(0.05, 1., 18 + 1),
+    ]))
+    IC86_II.define_binning('sin_dec', sin_dec_bins)
+
+    energy_bins = np.arange(1., 9.5 + 0.01, 0.125)
+    IC86_II.define_binning('log_energy', energy_bins)
+
+    # ---------- IC86-III ------------------------------------------------------
     IC86_III = I3Dataset(
         name = 'IC86_III',
         exp_pathfilenames = 'events/IC86_III_exp.csv',
@@ -315,6 +380,12 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC86_III.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    IC86_III.add_binning_definition(
+        IC86_II.get_binning_definition('sin_dec'))
+    IC86_III.add_binning_definition(
+        IC86_II.get_binning_definition('log_energy'))
+
+    # ---------- IC86-IV -------------------------------------------------------
     IC86_IV = I3Dataset(
         name = 'IC86_IV',
         exp_pathfilenames = 'events/IC86_IV_exp.csv',
@@ -324,6 +395,12 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC86_IV.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    IC86_IV.add_binning_definition(
+        IC86_II.get_binning_definition('sin_dec'))
+    IC86_IV.add_binning_definition(
+        IC86_II.get_binning_definition('log_energy'))
+
+    # ---------- IC86-V --------------------------------------------------------
     IC86_V = I3Dataset(
         name = 'IC86_V',
         exp_pathfilenames = 'events/IC86_V_exp.csv',
@@ -333,6 +410,12 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC86_V.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    IC86_V.add_binning_definition(
+        IC86_II.get_binning_definition('sin_dec'))
+    IC86_V.add_binning_definition(
+        IC86_II.get_binning_definition('log_energy'))
+
+    # ---------- IC86-VI -------------------------------------------------------
     IC86_VI = I3Dataset(
         name = 'IC86_VI',
         exp_pathfilenames = 'events/IC86_VI_exp.csv',
@@ -342,6 +425,12 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     )
     IC86_VI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
 
+    IC86_VI.add_binning_definition(
+        IC86_II.get_binning_definition('sin_dec'))
+    IC86_VI.add_binning_definition(
+        IC86_II.get_binning_definition('log_energy'))
+
+    # ---------- IC86-VII ------------------------------------------------------
     IC86_VII = I3Dataset(
         name = 'IC86_VII',
         exp_pathfilenames = 'events/IC86_VII_exp.csv',
@@ -350,6 +439,13 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC86_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+
+    IC86_VII.add_binning_definition(
+        IC86_II.get_binning_definition('sin_dec'))
+    IC86_VII.add_binning_definition(
+        IC86_II.get_binning_definition('log_energy'))
+
+    #---------------------------------------------------------------------------
 
     dsc.add_datasets((
         IC40,
