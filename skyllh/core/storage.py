@@ -446,7 +446,7 @@ class TextFileLoader(FileLoader):
     def header_separator(self, s):
         if(s is not None):
             if(not isinstance(s, str)):
-                raise TypeErr('The header_separator property must be None or '
+                raise TypeError('The header_separator property must be None or '
                     'of type str!')
         self._header_separator = s
 
