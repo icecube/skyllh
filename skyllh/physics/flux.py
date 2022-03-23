@@ -293,6 +293,30 @@ class PowerLawFlux(NormedFluxModel):
         flux = self.Phi0 * np.power(E / self.E0, -self.gamma)
         return flux
 
+    def get_integral(self, E_min, E_max):
+        """Returns the integral value of the flux between the given energy
+        range.
+
+        Parameters
+        ----------
+        E_min : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E_max : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+
+        Returns
+        -------
+        integral : float | 1d ndarray of float
+            The integral value(s) of the given integral range(s).
+        """
+        gamma = self.gamma
+
+        integral = (self.Phi0 / ((1.-gamma)*np.power(self.E0, -gamma)) *
+            (np.power(E_max, 1.-gamma) - np.power(E_min, 1.-gamma)))
+
+        return integral
+
+
 class CutoffPowerLawFlux(PowerLawFlux):
     """Cut-off power law flux of the form
 
