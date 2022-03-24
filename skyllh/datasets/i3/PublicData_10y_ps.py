@@ -275,6 +275,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC40.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC40.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC40_effectiveArea.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.25, 10 + 1),
@@ -295,6 +297,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC59.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC59.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC59_effectiveArea.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.95, 2 + 1),
@@ -316,6 +320,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC79.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC79.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC79_effectiveArea.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
                         np.linspace(-1., -0.75, 10 + 1),
@@ -336,6 +342,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC86_I.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC86_I.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC86_I_effectiveArea.csv')
 
     b = np.sin(np.radians(-5.)) # North/South transition boundary.
     sin_dec_bins = np.unique(np.concatenate([
@@ -358,6 +366,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC86_II.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC86_II.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.93, 4 + 1),
@@ -379,6 +389,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC86_III.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC86_III.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
 
     IC86_III.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
@@ -394,6 +406,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC86_IV.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC86_IV.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
 
     IC86_IV.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
@@ -409,6 +423,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC86_V.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC86_V.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
 
     IC86_V.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
@@ -424,6 +440,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC86_VI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC86_VI.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
 
     IC86_VI.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
@@ -439,6 +457,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         **ds_kwargs
     )
     IC86_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
+    IC86_VII.add_aux_data_definition(
+        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
 
     IC86_VII.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
