@@ -311,6 +311,12 @@ class PowerLawFlux(NormedFluxModel):
         """
         gamma = self.gamma
 
+        # Handle special case for gamma = 1.
+        if(gamma == 1):
+            integral = self.Phi0 * self.E0 * (
+                np.log(np.abs(E_max)) - np.log(np.abs(E_min)))
+            return integral
+
         integral = (self.Phi0 / ((1.-gamma)*np.power(self.E0, -gamma)) *
             (np.power(E_max, 1.-gamma) - np.power(E_min, 1.-gamma)))
 
