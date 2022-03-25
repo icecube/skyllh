@@ -45,7 +45,10 @@ from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the detector signal yield tailored to the source hypothesis.
-from skyllh.i3.detsigyield import PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
+from skyllh.analyses.i3.trad_ps.detsigyield import (
+    PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
+)
+
 
 # Classes to define the signal and background PDFs.
 from skyllh.core.signalpdf import GaussianPSFPointLikeSourceSignalSpatialPDF
@@ -77,6 +80,7 @@ from skyllh.core.debugging import (
 
 # The pre-defined data samples.
 from skyllh.datasets.i3 import data_samples
+
 
 def TXS_location():
     src_ra  = np.radians(77.358)
@@ -165,8 +169,9 @@ def create_analysis(
     # The sin(dec) binning will be taken by the implementation method
     # automatically from the Dataset instance.
     gamma_grid = fitparam_gamma.as_linear_grid(delta=0.1)
-    detsigyield_implmethod = PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
-        gamma_grid)
+    detsigyield_implmethod = \
+        PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
+            gamma_grid)
 
     # Define the signal generation method.
     sig_gen_method = PointLikeSourceI3SignalGenerationMethod()
@@ -219,7 +224,8 @@ def create_analysis(
 
         # Create a trial data manager and add the required data fields.
         tdm = TrialDataManager()
-        tdm.add_source_data_field('src_array', pointlikesource_to_data_field_array)
+        tdm.add_source_data_field('src_array',
+            pointlikesource_to_data_field_array)
 
         sin_dec_binning = ds.get_binning_definition('sin_dec')
         log_energy_binning = ds.get_binning_definition('log_energy')
