@@ -27,10 +27,24 @@ def load_smearing_histogram(pathfilenames):
         The 3d ndarray holding the lower bin edges of the reco energy axis.
         For each pair of true_e and true_dec different reco energy bin edges
         are provided.
+        The shape is (n_true_e, n_true_dec, n_reco_e).
     reco_e_upper_edges : 3d ndarray
         The 3d ndarray holding the upper bin edges of the reco energy axis.
         For each pair of true_e and true_dec different reco energy bin edges
         are provided.
+        The shape is (n_true_e, n_true_dec, n_reco_e).
+    psf_lower_edges : 4d ndarray
+        The 4d ndarray holding the lower bin edges of the PSF axis.
+        The shape is (n_true_e, n_true_dec, n_reco_e, n_psf).
+    psf_upper_edges : 4d ndarray
+        The 4d ndarray holding the upper bin edges of the PSF axis.
+        The shape is (n_true_e, n_true_dec, n_reco_e, n_psf).
+    ang_err_lower_edges : 5d ndarray
+        The 5d ndarray holding the lower bin edges of the angular error axis.
+        The shape is (n_true_e, n_true_dec, n_reco_e, n_psf, n_ang_err).
+    ang_err_upper_edges : 5d ndarray
+        The 5d ndarray holding the upper bin edges of the angular error axis.
+        The shape is (n_true_e, n_true_dec, n_reco_e, n_psf, n_ang_err).
     """
     # Load the smearing data from the public dataset.
     loader = create_FileLoader(pathfilenames=pathfilenames)
@@ -98,6 +112,31 @@ def load_smearing_histogram(pathfilenames):
         (n_true_e, n_true_dec, n_reco_e)
     )
 
+    # Get psf bin_edges as a 4d array.
+    idxs = np.array(
+        range(len(data))
+    ) % n_ang_err == 0
+
+    psf_lower_edges = np.reshape(
+        data['psf_min'][idxs],
+        (n_true_e, n_true_dec, n_reco_e, n_psf)
+    )
+    psf_upper_edges = np.reshape(
+        data['psf_max'][idxs],
+        (n_true_e, n_true_dec, n_reco_e, n_psf)
+    )
+
+    # Get angular error bin_edges as a 5d array.
+    ang_err_lower_edges = np.reshape(
+        data['ang_err_min'],
+        (n_true_e, n_true_dec, n_reco_e, n_psf, n_ang_err)
+    )
+    ang_err_upper_edges = np.reshape(
+        data['ang_err_max'],
+        (n_true_e, n_true_dec, n_reco_e, n_psf, n_ang_err)
+    )
+
+
     # Create 5D histogram for the probabilities.
     histogram = np.reshape(
         data['norm_counts'],
@@ -110,8 +149,14 @@ def load_smearing_histogram(pathfilenames):
         )
     )
 
-    return (histogram,
-            true_e_bin_edges,
-            true_dec_bin_edges,
-            reco_e_lower_edges,
-            reco_e_upper_edges)
+    return (
+        histogram,
+        true_e_bin_edges,
+        true_dec_bin_edges,
+        reco_e_lower_edges,
+        reco_e_upper_edges,
+        psf_lower_edges,
+        psf_upper_edges,
+        ang_err_lower_edges,
+        ang_err_upper_edges
+    )

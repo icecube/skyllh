@@ -328,11 +328,14 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
          true_e_bin_edges,
          true_dec_bin_edges,
          reco_e_lower_edges,
-         reco_e_upper_edges
+         reco_e_upper_edges,
+         psf_lower_edges,
+         psf_upper_edges,
+         ang_err_lower_edges,
+         ang_err_upper_edges
         ) = load_smearing_histogram(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
-
 
         def create_PublicDataSignalI3EnergyPDF(
                 ds, data_dict, flux_model, gridfitparams):
