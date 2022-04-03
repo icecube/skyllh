@@ -1666,12 +1666,11 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
             The sequence of 2-element tuples which define the mapping of grid
             values to PDF instances.
-        pdf_type : type
-            The PDF class that can be added to the set.
-        **kwargs
             src_hypo_group_manager : SourceHypoGroupManager instance
                 The instance of SourceHypoGroupManager that defines the list of
                 sources, i.e. the list of SourceModel instances and fluxemodels.
+        pdf_type : type
+            The PDF class that can be added to the set.
         """
         super(MappedMultiDimGridPDFSet, self).__init__(
             param_set=None,
