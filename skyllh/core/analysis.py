@@ -1473,7 +1473,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
         # Create the detector signal yield instances for each dataset.
         # Multi source analysis has to also support multiple source hypothesis
         # groups.
-        # Initialize empty (N_source_hypo_groups,N_datasets)-shaped ndarray.
+        # Initialize empty (N_source_hypo_groups, N_datasets)-shaped ndarray.
         detsigyield_array = np.empty(
             (self._src_hypo_group_manager.n_src_hypo_groups,
              len(self.dataset_list)),

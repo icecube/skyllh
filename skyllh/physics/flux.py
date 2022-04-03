@@ -207,7 +207,6 @@ class NormedFluxModel(FluxModel, metaclass=abc.ABCMeta):
         [energy]^-1 [length]^-2 [time]^-1.
     E0 : float
         Normalization energy in unit of energy.
-
     """
 
     def __init__(self, Phi0, E0):
@@ -276,23 +275,20 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
 
     @property
     def psp_table(self):
-        """The photospline.SplineTable object that describes
-        the neutrino flux as function of neutrino energy via
-        B-spline interpolation.
+        """The photospline.SplineTable object that describes the neutrino flux
+        as function of neutrino energy via B-spline interpolation.
         """
         return self._psp_table
-
     @psp_table.setter
     def psp_table(self, t):
         self._psp_table = t
 
     @property
     def Phi0(self):
-        """The relative flux normalization. Phi0=1 corresponds
-        to the nominal model flux.
+        """The relative flux normalization. Phi0=1 corresponds to the nominal
+        model flux.
         """
         return self._Phi0
-
     @Phi0.setter
     def Phi0(self, v):
         v = float_cast(v, 'Property Phi0 must be castable to type float!')
@@ -300,9 +296,9 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
 
     @property
     def crit_log_nu_energy_lower(self):
-        """The lower bound of the support of the spline interpolator"""
+        """The lower bound of the support of the spline interpolator.
+        """
         return self._crit_log_nu_energy_lower
-
     @crit_log_nu_energy_lower.setter
     def crit_log_nu_energy_lower(self, v):
         v = float_cast(v, 'Property crit_log_nu_energy_lower must be castable to type float!')
@@ -310,9 +306,9 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
 
     @property
     def crit_log_nu_energy_upper(self):
-        """The upper bound of the support of the spline interpolator"""
+        """The upper bound of the support of the spline interpolator.
+        """
         return self._crit_log_nu_energy_upper
-
     @crit_log_nu_energy_upper.setter
     def crit_log_nu_energy_upper(self, v):
         v = float_cast(v, 'Property crit_log_nu_energy_upper must be castable to type float!')
@@ -321,16 +317,15 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
 
 class SeyfertCoreCoronaFlux(SplineFluxModel):
     """Implements the Core-Corona Seyfert Galaxy neutrino flux model of
-       A. Kheirandish et al., Astrophys.J. 922 (2021) 45 by means of
-       B-spline interpolation.
+       A. Kheirandish et al., Astrophys.J. 922 (2021) 45 by means of B-spline
+       interpolation.
 
        Attributes
        ----------
        Phi0 : float
            Flux normalization relative to model prediction.
        log_xray_lumin : float
-           log10 of intrinsic x-ray luminosity of source in
-           2-10 keV band.
+           log10 of intrinsic x-ray luminosity of source in 2-10 keV band.
        psp_table : object
            photospline.SplineTable object
        crit_log_nu_energy_lower : float
@@ -341,10 +336,10 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
             Distance to source in units of Mpc.
        lumin_scale : float
             A relative flux scaling factor. Can correct cases when the model
-            calculation has a different normalization from what's desired.
+            calculation has a different normalization from what is desired.
        crit_log_energy_flux : float
-            The spline is parameterized in log10(flux). This value
-            determines when the flux should be considered 0.
+            The spline is parameterized in log10(flux). This value determines
+            when the flux should be considered 0.
     """
 
     def __init__(
@@ -354,9 +349,9 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
             crit_log_nu_energy_lower=2.0,
             crit_log_nu_energy_upper=7.0):
 
-        super(SeyfertCoreCoronaFlux, self).__init__(Phi0, psp_table,
-                                                    crit_log_nu_energy_lower,
-                                                    crit_log_nu_energy_upper)
+        super(SeyfertCoreCoronaFlux, self).__init__(
+            Phi0, psp_table, crit_log_nu_energy_lower, crit_log_nu_energy_upper)
+
         self._lumin_scale = lumin_scale
         self._crit_log_energy_flux = crit_log_energy_flux
         self._src_dist = src_dist
@@ -364,9 +359,9 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @property
     def log_xray_lumin(self):
-        """The log10 of the intrinsic source luminosity in 2-10keV x-ray band"""
+        """The log10 of the intrinsic source luminosity in 2-10keV x-ray band.
+        """
         return self._log_xray_lumin
-
     @log_xray_lumin.setter
     def log_xray_lumin(self, v):
         v = float_cast(
@@ -375,9 +370,9 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @property
     def lumin_scale(self):
-        """correct normalization of model flux by relative factor"""
+        """Relative factor for model flux normalization correction.
+        """
         return self._lumin_scale
-
     @lumin_scale.setter
     def lumin_scale(self, v):
         v = float_cast(
@@ -386,9 +381,9 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @property
     def src_dist(self):
-        """The distance to the source in units of Mpc"""
+        """The distance to the source in units of Mpc.
+        """
         return self._src_dist
-
     @src_dist.setter
     def src_dist(self, v):
         v = float_cast(
@@ -397,9 +392,9 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @property
     def crit_log_energy_flux(self):
-        """defines when the flux is considered to be 0"""
+        """Defines critical log energy when the flux is considered to be 0.
+        """
         return self._crit_log_energy_flux
-
     @crit_log_energy_flux.setter
     def crit_log_energy_flux(self, v):
         v = float_cast(
@@ -423,23 +418,23 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
         Parameters
         ----------
-        E : float | 1d numpy.ndarray of float
+        E : float | 1D ndarray of float
             Evaluation energy [GeV]
 
         Returns
         -------
-        flux : float | 1d ndarray of float
+        flux : float | 1D ndarray of float
             Flux at energy E in units of GeV^-1 cm^-2 s^-1.
         """
 
         log_enu = np.log10(E)
         log_energy_flux = self.psp_table.evaluate_simple([log_enu])
 
-        # convert energy flux to particle flux. account for source distance.
+        # Convert energy flux to particle flux accounting for source distance.
         flux = 10**(log_energy_flux - 2.0*log_enu - 2.0*np.log10(self.src_dist))
 
-        # need take care of very small fluxes (set to 0 beyond critical energy)
-        # or below critical flux
+        # Have to take care of very small fluxes (set to 0 beyond critical
+        # energy or below the critical flux).
         out_of_bounds1 = log_energy_flux < self.crit_log_energy_flux
         out_of_bounds2 = np.logical_or(log_enu < self.crit_log_nu_energy_lower,
                                        log_enu > self.crit_log_nu_energy_upper)
