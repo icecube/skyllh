@@ -607,13 +607,28 @@ class Dataset(object):
             If the integer number of an existing version qualifier is not larger
             than the old one.
         """
+        got_new_verqualifiers = False
+        verqualifiers_keys = verqualifiers.keys()
+        self_verqualifiers_keys = self._verqualifiers.keys()
+        if(len(verqualifiers_keys) > len(self_verqualifiers_keys)):
+            # New version qualifiers must be a subset of the old version
+            # qualifiers.
+            for q in self_verqualifiers_keys:
+                if(not q in verqualifiers_keys):
+                    raise ValueError('The version qualifier {} has been '
+                        'dropped!'.format(q))
+            got_new_verqualifiers = True
+
+        existing_verqualifiers_incremented = False
         for q in verqualifiers:
-            # If the qualifier already exist, it must have a larger integer
-            # number.
             if((q in self._verqualifiers) and
-               (verqualifiers[q] <= self._verqualifiers[q])):
-                raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
+               (verqualifiers[q] > self._verqualifiers[q])):
+                existing_verqualifiers_incremented = True
             self._verqualifiers[q] = verqualifiers[q]
+
+        if(not (got_new_verqualifiers or existing_verqualifiers_incremented)):
+            raise ValueError('Version qualifier values did not increment and '
+                'no new version qualifiers were added!')
 
     def load_data(
             self, keep_fields=None, livetime=None, dtc_dict=None,
