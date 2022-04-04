@@ -44,12 +44,6 @@ from skyllh.core.analysis import (
 from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
-# Classes to define the detector signal yield tailored to the source hypothesis.
-from skyllh.analyses.i3.trad_ps.detsigyield import (
-    PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
-)
-
-
 # Classes to define the signal and background PDFs.
 from skyllh.core.signalpdf import GaussianPSFPointLikeSourceSignalSpatialPDF
 from skyllh.i3.signalpdf import SignalI3EnergyPDFSet
@@ -62,7 +56,6 @@ from skyllh.core.pdfratio import (
     SpatialSigOverBkgPDFRatio,
     Skylab2SkylabPDFRatioFillMethod
 )
-from skyllh.i3.pdfratio import I3EnergySigSetOverBkgPDFRatioSpline
 
 from skyllh.i3.signal_generation import PointLikeSourceI3SignalGenerationMethod
 
@@ -78,9 +71,19 @@ from skyllh.core.debugging import (
     setup_file_handler
 )
 
-# The pre-defined data samples.
+# Pre-defined IceCube data samples.
 from skyllh.datasets.i3 import data_samples
 
+# Analysis specific classes for working with the public data.
+from skyllh.analyses.i3.trad_ps.detsigyield import (
+    PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
+)
+from skyllh.analyses.i3.trad_ps.signalpdf import (
+    PublicDataSignalI3EnergyPDFSet
+)
+from skyllh.analyses.i3.trad_ps.pdfratio import (
+    PublicDataI3EnergySigSetOverBkgPDFRatioSpline
+)
 
 def TXS_location():
     src_ra  = np.radians(77.358)
@@ -174,7 +177,8 @@ def create_analysis(
             gamma_grid)
 
     # Define the signal generation method.
-    sig_gen_method = PointLikeSourceI3SignalGenerationMethod()
+    #sig_gen_method = PointLikeSourceI3SignalGenerationMethod()
+    sig_gen_method = None
 
     # Create a source hypothesis group manager.
     src_hypo_group_manager = SourceHypoGroupManager(
@@ -240,14 +244,15 @@ def create_analysis(
 
         # Create the energy PDF ratio instance for this dataset.
         smoothing_filter = BlockSmoothingFilter(nbins=1)
-        energy_sigpdfset = SignalI3EnergyPDFSet(
-            data.mc, log_energy_binning, sin_dec_binning, fluxmodel, gamma_grid,
-            smoothing_filter, ppbar=pbar)
+
+        energy_sigpdfset = PublicDataSignalI3EnergyPDFSet(
+            ds, fluxmodel, gamma_grid, ppbar=pbar)
         energy_bkgpdf = DataBackgroundI3EnergyPDF(
             data.exp, log_energy_binning, sin_dec_binning, smoothing_filter)
         fillmethod = Skylab2SkylabPDFRatioFillMethod()
-        energy_pdfratio = I3EnergySigSetOverBkgPDFRatioSpline(
-            energy_sigpdfset, energy_bkgpdf,
+        energy_pdfratio = PublicDataI3EnergySigSetOverBkgPDFRatioSpline(
+            energy_sigpdfset,
+            energy_bkgpdf,
             fillmethod=fillmethod,
             ppbar=pbar)
 
@@ -261,17 +266,17 @@ def create_analysis(
 
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
 
-    analysis.construct_signal_generator()
+    #analysis.construct_signal_generator()
 
     return analysis
 
 if(__name__ == '__main__'):
     p = argparse.ArgumentParser(
-        description = "Calculates TS for a given source location using 7-year "
-                      "point source sample and 3-year GFU sample.",
+        description = 'Calculates TS for a given source location using the '
+            '10-year public point source sample.',
         formatter_class = argparse.RawTextHelpFormatter
     )
-    p.add_argument("--data_base_path", default=None, type=str,
+    p.add_argument('--data_base_path', default=None, type=str,
         help='The base path to the data samples (default=None)'
     )
     p.add_argument("--ncpu", default=1, type=int,
@@ -285,17 +290,18 @@ if(__name__ == '__main__'):
     log_format = '%(asctime)s %(processName)s %(name)s %(levelname)s: '\
                  '%(message)s'
     setup_console_handler('skyllh', logging.INFO, log_format)
-    setup_file_handler('skyllh', logging.DEBUG, log_format, 'debug.log')
+    setup_file_handler('skyllh', 'debug.log',
+        log_level=logging.DEBUG,
+        log_format=log_format)
 
     CFG['multiproc']['ncpu'] = args.ncpu
 
     sample_seasons = [
-        ("PointSourceTracks", "IC40"),
-        ("PointSourceTracks", "IC59"),
-        ("PointSourceTracks", "IC79"),
-        ("PointSourceTracks", "IC86, 2011"),
-        ("PointSourceTracks", "IC86, 2012-2014"),
-        ("GFU", "IC86, 2015-2017")
+        ('PublicData_10y_ps', 'IC40'),
+        ('PublicData_10y_ps', 'IC59'),
+        ('PublicData_10y_ps', 'IC79'),
+        ('PublicData_10y_ps', 'IC86_I'),
+        ('PublicData_10y_ps', 'IC86_II-VII')
     ]
 
     datasets = []
@@ -315,21 +321,23 @@ if(__name__ == '__main__'):
 
     with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
-            datasets, source, compress_data=False, tl=tl)
+            datasets, source, tl=tl)
 
     with tl.task_timer('Unblinding data.'):
         (TS, fitparam_dict, status) = ana.unblind(rss)
 
-    #print('log_lambda_max: %g'%(log_lambda_max))
     print('TS = %g'%(TS))
     print('ns_fit = %g'%(fitparam_dict['ns']))
     print('gamma_fit = %g'%(fitparam_dict['gamma']))
 
+    """
     # Generate some signal events.
     with tl.task_timer('Generating signal events.'):
-        (n_sig, signal_events_dict) = ana.sig_generator.generate_signal_events(rss, 100)
+        (n_sig, signal_events_dict) =\
+            ana.sig_generator.generate_signal_events(rss, 100)
 
     print('n_sig: %d', n_sig)
     print('signal datasets: '+str(signal_events_dict.keys()))
+    """
 
     print(tl)

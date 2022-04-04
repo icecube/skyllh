@@ -246,6 +246,15 @@ class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
 
         return (spline, norm)
 
+    def calc_prob_for_true_dec_idx(self, true_dec_idx, log_energy, tl=None):
+        """Calculates the PDF value for the given true declination bin and the
+        given log10(E_reco) energy values.
+        """
+        (spline, norm) = self.spline_norm_list[true_dec_idx]
+        with TaskTimer(tl, 'Evaluating logE spline.'):
+            prob = spline(log_energy) / norm
+        return prob
+
     def get_prob(self, tdm, fitparams=None, tl=None):
         """Calculates the energy probability (in log10(E)) of each event.
 
@@ -285,14 +294,11 @@ class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
 
         src_dec = get_data('src_array')['dec'][0]
         true_dec_binning = self.get_binning('true_dec')
-
         true_dec_idx = np.digitize(src_dec, true_dec_binning.binedges)
 
         log_energy = get_data('log_energy')
 
-        (spline, norm) = self.spline_norm_list[true_dec_idx]
-        with TaskTimer(tl, 'Evaluating logE spline.'):
-            prob = spline(log_energy) / norm
+        prob = self.calc_prob_for_true_dec_idx(true_dec_idx, log_energy, tl=tl)
 
         return prob
 
@@ -336,6 +342,8 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         ) = load_smearing_histogram(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
+
+        self.true_dec_binning = BinningDefinition(true_dec_bin_edges)
 
         def create_PublicDataSignalI3EnergyPDF(
                 ds, data_dict, flux_model, gridfitparams):
