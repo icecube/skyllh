@@ -1666,9 +1666,9 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
             The sequence of 2-element tuples which define the mapping of grid
             values to PDF instances.
-            src_hypo_group_manager : SourceHypoGroupManager instance
-                The instance of SourceHypoGroupManager that defines the list of
-                sources, i.e. the list of SourceModel instances and fluxemodels.
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The instance of SourceHypoGroupManager that defines the list of
+            sources, i.e. the list of SourceModel instances and flux models.
         pdf_type : type
             The PDF class that can be added to the set.
         """
@@ -1690,7 +1690,6 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         MappedMultiDimGridPDFSet evaluation.
         """
         return self._fluxmodel_to_src_map
-
     @fluxmodel_to_src_map.setter
     def fluxmodel_to_src_map(self, map_dict):
         if(not issequenceof(map_dict, tuple)):
