@@ -1,16 +1,22 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
+from skyllh.core.parameters import make_params_hash
 from skyllh.core.pdf import EnergyPDF
 from skyllh.core.pdfratio import (
     SigSetOverBkgPDFRatio,
     PDFRatioFillMethod,
     MostSignalLikePDFRatioFillMethod
 )
-from skyllh.core.multiproc import IsParallelizable
+from skyllh.core.multiproc import (
+    IsParallelizable,
+    parallelize
+)
 
 from skyllh.analyses.i3.trad_ps.signalpdf import PublicDataSignalI3EnergyPDFSet
+
 
 class PublicDataI3EnergySigSetOverBkgPDFRatioSpline(
         SigSetOverBkgPDFRatio,
@@ -86,7 +92,8 @@ class PublicDataI3EnergySigSetOverBkgPDFRatioSpline(
             sig_mask_mc_covered = np.ones_like(sigpdf_hist, dtype=np.bool)
             bkg_mask_mc_covered = np.ones_like(bkgpdf.hist, dtype=np.bool)
             sig_mask_mc_covered_zero_physics = sigpdf_hist == 0
-            bkg_mask_mc_covered_zero_physics = bkgpdf.hist == 0
+            bkg_mask_mc_covered_zero_physics = np.zeros_like(
+                bkgpdf.hist, dtype=np.bool)
 
             # Create the ratio array with the same shape than the background pdf
             # histogram.
@@ -125,7 +132,7 @@ class PublicDataI3EnergySigSetOverBkgPDFRatioSpline(
         gridfitparams_list = signalpdfset.gridfitparams_list
 
         self._gridfitparams_hash_log_ratio_spline_dict_list = []
-        for src_dec_idx in range(sigpdfset.true_dec_binning.nbins):
+        for src_dec_idx in range(signalpdfset.true_dec_binning.nbins):
             args_list = [
                 (
                     (
@@ -213,7 +220,7 @@ class PublicDataI3EnergySigSetOverBkgPDFRatioSpline(
                 'The PDFRatio class "{}" is only implemneted for a single '
                 'source! But {} sources were defined!'.format(
                     self.__class__.name, len(src_array)))
-        src_dec = get_data('src_array')['dec'][0]
+        src_dec = src_array['dec'][0]
         true_dec_binning = self.signalpdfset.true_dec_binning
         src_dec_idx = np.digitize(src_dec, true_dec_binning.binedges)
 
@@ -284,7 +291,7 @@ class PublicDataI3EnergySigSetOverBkgPDFRatioSpline(
         fitparams_hash = make_params_hash(fitparams)
 
         # Determine the source declination bin index.
-        src_array = get_data('src_array')
+        src_array = tdm.get_data('src_array')
         src_dec_idx = self._get_src_dec_idx_from_source_array(src_array)
 
         # Check if the ratio value is already cached.
@@ -316,7 +323,7 @@ class PublicDataI3EnergySigSetOverBkgPDFRatioSpline(
         pidx = self.convert_signal_fitparam_name_into_index(fitparam_name)
 
         # Determine the source declination bin index.
-        src_array = get_data('src_array')
+        src_array = tdm.get_data('src_array')
         src_dec_idx = self._get_src_dec_idx_from_source_array(src_array)
 
         # Check if the gradients have been calculated already.

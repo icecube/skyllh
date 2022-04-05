@@ -4,6 +4,7 @@ import numpy as np
 from copy import deepcopy
 from scipy.interpolate import UnivariateSpline
 
+from skyllh.core.timing import TaskTimer
 from skyllh.core.binning import (
     BinningDefinition,
     UsesBinning
@@ -343,7 +344,8 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
 
-        self.true_dec_binning = BinningDefinition(true_dec_bin_edges)
+        self.true_dec_binning = BinningDefinition(
+            'true_dec', true_dec_bin_edges)
 
         def create_PublicDataSignalI3EnergyPDF(
                 ds, data_dict, flux_model, gridfitparams):
