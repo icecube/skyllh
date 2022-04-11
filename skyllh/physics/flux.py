@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
-"""The ``flux`` module contains all standard flux models for a source.
+"""Note: This module is deprecated and new flux models should be implemented in
+    `flux_model.py`. However, the framework currently doesn't support flux
+    models derived from `flux_model.FluxModel`.
+
+The ``flux`` module contains all standard flux models for a source.
 The abstract class ``FluxModel`` serves as a base class for all flux model
 classes.
 The unit of the resulting flux value must be [energy]^-1 [length]^-2 [time]^-1.
@@ -265,7 +269,6 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
     crit_log_nu_energy_upper : float
         Upper end of energy range (support) of spline flux.
     """
-
     def __init__(self, Phi0, psp_table, crit_log_nu_energy_lower, crit_log_nu_energy_upper):
         super(SplineFluxModel, self).__init__()
         self._psp_table = psp_table
@@ -301,7 +304,8 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
         return self._crit_log_nu_energy_lower
     @crit_log_nu_energy_lower.setter
     def crit_log_nu_energy_lower(self, v):
-        v = float_cast(v, 'Property crit_log_nu_energy_lower must be castable to type float!')
+        v = float_cast(
+            v, 'Property crit_log_nu_energy_lower must be castable to type float!')
         self._crit_log_nu_energy_lower = v
 
     @property
@@ -311,37 +315,37 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
         return self._crit_log_nu_energy_upper
     @crit_log_nu_energy_upper.setter
     def crit_log_nu_energy_upper(self, v):
-        v = float_cast(v, 'Property crit_log_nu_energy_upper must be castable to type float!')
+        v = float_cast(
+            v, 'Property crit_log_nu_energy_upper must be castable to type float!')
         self._crit_log_nu_energy_upper = v
 
 
 class SeyfertCoreCoronaFlux(SplineFluxModel):
     """Implements the Core-Corona Seyfert Galaxy neutrino flux model of
-       A. Kheirandish et al., Astrophys.J. 922 (2021) 45 by means of B-spline
-       interpolation.
+    A. Kheirandish et al., Astrophys.J. 922 (2021) 45 by means of B-spline
+    interpolation.
 
-       Attributes
-       ----------
-       Phi0 : float
-           Flux normalization relative to model prediction.
-       log_xray_lumin : float
-           log10 of intrinsic x-ray luminosity of source in 2-10 keV band.
-       psp_table : object
-           photospline.SplineTable object
-       crit_log_nu_energy_lower : float
-           Lower end of energy range (support) of spline flux.
-       crit_log_nu_energy_upper : float
-           Upper end of energy range (support) of spline flux.
-       src_dist : float
-            Distance to source in units of Mpc.
-       lumin_scale : float
-            A relative flux scaling factor. Can correct cases when the model
-            calculation has a different normalization from what is desired.
-       crit_log_energy_flux : float
-            The spline is parameterized in log10(flux). This value determines
-            when the flux should be considered 0.
+    Attributes
+    ----------
+    Phi0 : float
+        Flux normalization relative to model prediction.
+    log_xray_lumin : float
+        log10 of intrinsic x-ray luminosity of source in 2-10 keV band.
+    psp_table : object
+        photospline.SplineTable object
+    crit_log_nu_energy_lower : float
+        Lower end of energy range (support) of spline flux.
+    crit_log_nu_energy_upper : float
+        Upper end of energy range (support) of spline flux.
+    src_dist : float
+        Distance to source in units of Mpc.
+    lumin_scale : float
+        A relative flux scaling factor. Can correct cases when the model
+        calculation has a different normalization from what is desired.
+    crit_log_energy_flux : float
+        The spline is parameterized in log10(flux). This value determines
+        when the flux should be considered 0.
     """
-
     def __init__(
             self, psp_table, log_xray_lumin, src_dist, Phi0,
             lumin_scale=1.0,
