@@ -1678,25 +1678,25 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
             fitparams_grid_set=param_grid_set,
             **kwargs)
 
-        self.fluxmodel_to_src_map = src_hypo_group_manager.get_fluxmodel_to_source_map()
+        self.fluxmodel_to_source_mapping = src_hypo_group_manager.get_fluxmodel_to_source_mapping()
 
         # Add the given MultiDimGridPDF instances to the PDF set.
         for (gridparams, pdf) in gridparams_pdfs:
             self.add_pdf(pdf, gridparams)
 
     @property
-    def fluxmodel_to_src_map(self):
-        """The fluxmodel to source map list used for
-        MappedMultiDimGridPDFSet evaluation.
+    def fluxmodel_to_source_mapping(self):
+        """The fluxmodel to source indices mapping list used for
+        MappedMultiDimGridPDFSet evaluation to get the corresponding KDE PDF.
         """
-        return self._fluxmodel_to_src_map
-    @fluxmodel_to_src_map.setter
-    def fluxmodel_to_src_map(self, map_dict):
-        if(not issequenceof(map_dict, tuple)):
+        return self._fluxmodel_to_source_mapping
+    @fluxmodel_to_source_mapping.setter
+    def fluxmodel_to_source_mapping(self, mapping_list):
+        if(not issequenceof(mapping_list, tuple)):
             raise TypeError(
-                'The `fluxmodel_to_src_map` property must be a sequence of '
+                'The `fluxmodel_to_source_mapping` property must be a sequence of '
                 'tuples.')
-        self._fluxmodel_to_src_map = map_dict
+        self._fluxmodel_to_source_mapping = mapping_list
 
     def assert_is_valid_for_trial_data(self, tdm):
         """Checks if this PDF set is valid for all the given trial data. Since
@@ -1766,10 +1766,10 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         # by the param_grid_set. The order of the D gradients is the same as
         # the parameter grids.
 
-        # Iterate over fluxmodels in `fluxmodel_to_src_map` dict.
+        # Iterate over fluxmodels in `fluxmodel_to_source_mapping` list.
         prob = np.zeros(eventdata.shape[0])
         grads = np.zeros(eventdata.shape[0])
-        for (fluxmodel_hash, src_list) in self.fluxmodel_to_src_map:
+        for (fluxmodel_hash, src_list) in self.fluxmodel_to_source_mapping:
             # Mask for selecting events corresponding to specific flux.
             fluxmodel_mask = np.isin(src_idxs, src_list)
 
