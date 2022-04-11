@@ -1375,14 +1375,14 @@ class MultiPointSourcesRelSourceWeights(SourceWeights):
 
         # Loop over detector signal efficiency instances for each source
         # hypothesis group in source hypothesis group manager.
-        for (j, detsigyield) in enumerate(self._detsigyield_arr):
-            (Yj, Yj_grads) = detsigyield(self._src_arr_list[j], fitparams_arr)
+        for (g, detsigyield) in enumerate(self._detsigyield_arr):
+            (Yg, Yg_grads) = detsigyield(self._src_arr_list[g], fitparams_arr)
 
             # Store the detector signal yield and its fit parameter
             # gradients for all sources.
-            Y.append(Yj)
+            Y.append(Yg)
             if(N_fitparams > 0):
-                Y_grads.append(Yj_grads.T)
+                Y_grads.append(Yg_grads.T)
 
         Y = np.array(Y)
         sum_Y = np.sum(Y)
