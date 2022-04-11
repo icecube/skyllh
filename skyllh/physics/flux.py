@@ -407,14 +407,10 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     @property
     def math_function_str(self):
-        """We have used hash of this representation in
-        `skyllh.core.source_hypothesis.get_fluxmodel_to_source_map()`
-        to map fluxes with KDE PDFs. So far KDEs only depend on `log_xray_lumin`
-        value and not on `src_dist`.
-        """
         return (
-            f'dN/dE = {self.Phi0} * 10^(log10(f(E)) - 2*log10(E) - '
-            f' 2*log10(src_dist) with log_xray_lumin={self.log_xray_lumin}'
+            f'dN/dE = {self.Phi0:.2f} * {self.lumin_scale:.2f} '
+            f'* 10^(log10(f(E)) - 2*log10(E) - 2*log10({self.src_dist:.2f}), '
+            f'with log_xray_lumin={self.log_xray_lumin:.2f}'
         )
 
     def __call__(self, E):
@@ -454,6 +450,21 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
             self.psp_table, self.log_xray_lumin, self.src_dist, self.Phi0,
             self.lumin_scale, self.crit_log_energy_flux,
             self.crit_log_nu_energy_lower, self.crit_log_nu_energy_upper
+        )
+
+    def __hash__(self):
+        """We use hash in
+        `skyllh.core.source_hypothesis.get_fluxmodel_to_source_mapping()` for
+        mapping fluxes to KDE PDFs. Seyfert model KDEs only depend on the
+        `log_xray_lumin` parameter.
+        """
+        hash_arg = (self.log_xray_lumin,)
+        return hash(hash_arg)
+
+    def __eq__(self, other):
+        return (
+            self.__class__ == other.__class__ and
+            self.log_xray_lumin == other.log_xray_lumin
         )
 
 
