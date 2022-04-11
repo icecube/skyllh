@@ -406,12 +406,21 @@ class signal_injector(object):
         ]
         events = np.empty((n_events,), dtype=out_dtype)
 
+        # Determine the true energy range for which log_e PDFs are available.
+        m = np.sum(
+            (self.reco_e_upper_edges[:,self.dec_idx] -
+             self.reco_e_lower_edges[:,self.dec_idx] > 0),
+            axis=1) != 0
+        min_log_true_e = np.min(self.true_e_bin_edges[:-1][m])
+        max_log_true_e = np.max(self.true_e_bin_edges[1:][m])
+
         # First draw a true neutrino energy from the hypothesis spectrum.
         log_true_e = np.log10(self.flux_model.get_inv_normed_cdf(
             rs.uniform(size=n_events),
-            E_min=10**np.min(self.true_e_bin_edges),
-            E_max=10**np.max(self.true_e_bin_edges)
+            E_min=10**min_log_true_e,
+            E_max=10**max_log_true_e
         ))
+
         events['log_true_e'] = log_true_e
 
         log_true_e_idxs = (
@@ -458,6 +467,7 @@ class signal_injector(object):
                 np.isnan(events_['ang_err'])
             )
             events_ = events_[m]
+
             n_evt_generated += len(events_)
             if events is None:
                 events = events_
@@ -490,12 +500,21 @@ class signal_injector(object):
 
         events = np.empty((n_events, ), dtype=out_dtype)
 
+        # Determine the true energy range for which log_e PDFs are available.
+        m = np.sum(
+            (self.reco_e_upper_edges[:,self.dec_idx] -
+             self.reco_e_lower_edges[:,self.dec_idx] > 0),
+            axis=1) != 0
+        min_log_true_e = np.min(self.true_e_bin_edges[:-1][m])
+        max_log_true_e = np.max(self.true_e_bin_edges[1:][m])
+
         # First draw a true neutrino energy from the hypothesis spectrum.
         true_energies = np.log10(self.flux_model.get_inv_normed_cdf(
             rs.uniform(size=n_events),
-            E_min=10**np.min(self.true_e_bin_edges),
-            E_max=10**np.max(self.true_e_bin_edges)
+            E_min=10**min_log_true_e,
+            E_max=10**max_log_true_e
         ))
+
         true_e_idx = (
             np.digitize(true_energies, bins=self.true_e_bin_edges) - 1
         )
