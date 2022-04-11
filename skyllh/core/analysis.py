@@ -1480,7 +1480,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             dtype=object
         )
 
-        for (k, shg) in enumerate(self._src_hypo_group_manager._src_hypo_group_list):
+        for (g, shg) in enumerate(self._src_hypo_group_manager._src_hypo_group_list):
             fluxmodel = shg.fluxmodel
             detsigyield_implmethod_list = shg.detsigyield_implmethod_list
 
@@ -1502,7 +1502,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
 
                 detsigyield = detsigyield_implmethod.construct_detsigyield(
                     dataset, data, fluxmodel, data.livetime, ppbar=pbar)
-                detsigyield_array[k, j] = detsigyield
+                detsigyield_array[g, j] = detsigyield
                 pbar.increment()
             pbar.finish()
 
