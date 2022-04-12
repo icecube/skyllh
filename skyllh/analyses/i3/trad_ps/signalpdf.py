@@ -9,6 +9,7 @@ from skyllh.core.binning import (
     BinningDefinition,
     UsesBinning
 )
+from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.pdf import (
     PDF,
     PDFSet,
@@ -25,7 +26,160 @@ from skyllh.core.parameters import (
 )
 from skyllh.i3.dataset import I3Dataset
 from skyllh.physics.flux import FluxModel
-from skyllh.analyses.i3.trad_ps.utils import load_smearing_histogram
+from skyllh.analyses.i3.trad_ps.utils import (
+    load_smearing_histogram,
+    psi_to_dec_and_ra,
+    PublicDataSmearingMatrix
+)
+
+class PublicDataSignalGenerator(object):
+    def __init__(self, ds):
+        """Creates a new instance of the signal generator for generating signal
+        events from the provided public data smearing matrix.
+        """
+        super().__init__()
+
+        self.smearing_matrix = PublicDataSmearingMatrix(
+            pathfilenames=ds.get_abs_pathfilename_list(
+                ds.get_aux_data_definition('smearing_datafile')))
+
+
+    def _generate_events(
+            self, rss, src_dec, src_ra, dec_idx, flux_model, n_events):
+        """Generates `n_events` signal events for the given source location
+        and flux model.
+
+        Note:
+            Some values can be NaN in cases where a PDF was not available!
+
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use for drawing random
+            numbers.
+        src_dec : float
+            The declination of the source in radians.
+        src_ra : float
+            The right-ascention of the source in radians.
+
+        Returns
+        -------
+        events : numpy record array of size `n_events`
+            The numpy record array holding the event data.
+            It contains the following data fields:
+                - 'log_true_energy'
+                - 'log_energy'
+                - 'psi'
+                - 'ang_err'
+                - 'dec'
+                - 'ra'
+            Single values can be NaN in cases where a pdf was not available.
+        """
+        # Create the output event array.
+        out_dtype = [
+            ('log_true_e', float),
+            ('log_e', float),
+            ('psi', float),
+            ('ra', float),
+            ('dec', float),
+            ('ang_err', float)
+        ]
+        events = np.empty((n_events,), dtype=out_dtype)
+
+        sm = self.smearing_matrix
+
+        # Determine the true energy range for which log_e PDFs are available.
+        (min_log_true_e,
+         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pfds(
+             dec_idx)
+
+        # First draw a true neutrino energy from the hypothesis spectrum.
+        log_true_e = np.log10(flux_model.get_inv_normed_cdf(
+            rss.random.uniform(size=n_events),
+            E_min=10**min_log_true_e,
+            E_max=10**max_log_true_e
+        ))
+
+        events['log_true_e'] = log_true_e
+
+        log_true_e_idxs = (
+            np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1
+        )
+        # Sample reconstructed energies given true neutrino energies.
+        (log_e_idxs, log_e) = sm.sample_log_e(
+            rss, dec_idx, log_true_e_idxs)
+        events['log_e'] = log_e
+
+        # Sample reconstructed psi values given true neutrino energy and
+        # reconstructed energy.
+        (psi_idxs, psi) = sm.sample_psi(
+            rss, dec_idx, log_true_e_idxs, log_e_idxs)
+        events['psi'] = psi
+
+        # Sample reconstructed ang_err values given true neutrino energy,
+        # reconstructed energy, and psi.
+        (ang_err_idxs, ang_err) = sm.sample_ang_err(
+            rss, dec_idx, log_true_e_idxs, log_e_idxs, psi_idxs)
+        events['ang_err'] = ang_err
+
+        # Convert the psf into a set of (r.a. and dec.)
+        (dec, ra) = psi_to_dec_and_ra(rss, src_dec, src_ra, psi)
+        events['dec'] = dec
+        events['ra'] = ra
+
+        return events
+
+    def generate_signal_events(
+            self, rss, src_dec, src_ra, flux_model, n_events):
+        """Generates ``n_events`` signal events for the given source location
+        and flux model.
+
+        Returns
+        -------
+        events : DataFieldRecordArray instance
+            The instance of DataFieldRecordArray holding the event data.
+            It contains the following data fields:
+                - 'log_true_energy'
+                - 'log_energy'
+                - 'psi'
+                - 'ang_err'
+                - 'dec'
+                - 'ra'
+        """
+        sm = self.smearing_matrix
+
+        # Find the declination bin index.
+        dec_idx = sm.get_dec_idx(src_dec)
+
+        events = None
+        n_evt_generated = 0
+        while n_evt_generated != n_events:
+            n_evt = n_events - n_evt_generated
+
+            events_ = self._generate_events(
+                rss, src_dec, src_ra, dec_idx, flux_model, n_evt)
+
+            # Cut events that failed to be generated due to missing PDFs.
+            m = np.invert(
+                np.isnan(events_['log_e']) |
+                np.isnan(events_['psi']) |
+                np.isnan(events_['ang_err'])
+            )
+            events_ = events_[m]
+
+            n_evt_generated += len(events_)
+            if events is None:
+                events = events_
+            else:
+                events = np.concatenate((events, events_))
+
+        # Convert events array into DataFieldRecordArray instance.
+        events = DataFieldRecordArray(events, copy=False)
+
+        return events
+
+
 
 
 class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
@@ -124,7 +278,7 @@ class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
         return spline
 
     def get_weighted_energy_pdf_hist_for_true_energy_dec_bin(
-            self, true_e_idx, true_dec_idx, flux_model, log_e_min=2):
+            self, true_e_idx, true_dec_idx, flux_model, log_e_min=0):
         """Gets the reconstructed muon energy pdf histogram for a specific true
         neutrino energy and declination bin weighted with the assumed flux
         model.
@@ -310,7 +464,12 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     energy signal parameters.
     """
     def __init__(
-            self, ds, flux_model, fitparam_grid_set, ncpu=None, ppbar=None):
+            self,
+            ds,
+            flux_model,
+            fitparam_grid_set,
+            ncpu=None,
+            ppbar=None):
         """
         """
         if(isinstance(fitparam_grid_set, ParameterGrid)):
@@ -326,9 +485,13 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         fitparam_grid_set.add_extra_lower_and_upper_bin()
 
         super().__init__(
-            pdf_type=PublicDataSignalI3EnergyPDF,
+            pdf_type=I3EnergyPDF,
             fitparams_grid_set=fitparam_grid_set,
             ncpu=ncpu)
+
+        # Create a signal generator for this dataset.
+        siggen = PublicDataSignalGenerator(ds)
+
 
         # Load the smearing data from file.
         (histogram,
@@ -347,13 +510,17 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         self.true_dec_binning = BinningDefinition(
             'true_dec', true_dec_bin_edges)
 
-        def create_PublicDataSignalI3EnergyPDF(
+        def create_I3EnergyPDF(
                 ds, data_dict, flux_model, gridfitparams):
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
             my_flux_model = flux_model.copy(newprop=gridfitparams)
 
-            epdf = PublicDataSignalI3EnergyPDF(
+            # Generate signal events
+            # FIXME
+            siggen.generate_signal_events()
+
+            epdf = I3EnergyPDF(
                 ds, my_flux_model, data_dict=data_dict)
 
             return epdf
@@ -371,7 +538,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         ]
 
         epdf_list = parallelize(
-            create_PublicDataSignalI3EnergyPDF,
+            create_energy_pdf,
             args_list,
             self.ncpu,
             ppbar=ppbar)
@@ -424,3 +591,5 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         prob = epdf.get_prob(tdm)
         return prob
+
+
