@@ -345,15 +345,14 @@ class PowerLawFlux(NormedFluxModel):
         gamma = self.gamma
 
         if(gamma == 1):
-            inv_normed_cdf = E_max * np.exp(np.log(x/E_min) /
-                                            np.log(E_max/E_min))
-            return inv_normed_cdf
-
-
-        N_0 = E_max ** (1. - gamma) - E_min ** (1. - gamma)
-        inv_normed_cdf = np.power(
-            x * N_0 + E_min**(1. - gamma),
-            (1. / (1. - gamma)))
+            N_0 = np.log(E_max / E_min)
+            inv_normed_cdf = E_min * np.exp(x * N_0)
+        
+        else:
+            N_0 = E_max ** (1. - gamma) - E_min ** (1. - gamma)
+            inv_normed_cdf = np.power(
+                x * N_0 + E_min**(1. - gamma),
+                (1. / (1. - gamma)))
 
         return inv_normed_cdf
 
