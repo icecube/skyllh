@@ -160,3 +160,63 @@ def load_smearing_histogram(pathfilenames):
         ang_err_lower_edges,
         ang_err_upper_edges
     )
+
+def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
+    """Generates random declinations and right-ascension coordinates for the
+    given source location and opening angle `psi`.
+
+    Parameters
+    ----------
+    rss : instance of RandomStateService
+        The instance of RandomStateService to use for drawing random numbers.
+    src_dec : float
+        The declination of the source in radians.
+    src_ra : float
+        The right-ascension of the source in radians.
+    psi : 1d ndarray of float
+        The opening-angle values in radians.
+
+    Returns
+    -------
+    dec : 1d ndarray of float
+        The declination values.
+    ra : 1d ndarray of float
+        The right-ascension values.
+    """
+
+    psi = np.atleast_1d(psi)
+
+    # Transform everything in radians and convert the source declination
+    # to source zenith angle
+    a = psi
+    b = np.pi/2 - src_dec
+    c = src_ra
+
+    # Random rotation angle for the 2D circle
+    t = rss.random.uniform(0, 2*np.pi, size=len(psi))
+
+    # Parametrize the circle
+    x = (
+        (np.sin(a)*np.cos(b)*np.cos(c)) * np.cos(t) + \
+        (np.sin(a)*np.sin(c)) * np.sin(t) - \
+        (np.cos(a)*np.sin(b)*np.cos(c))
+    )
+    y = (
+        -(np.sin(a)*np.cos(b)*np.sin(c)) * np.cos(t) + \
+        (np.sin(a)*np.cos(c)) * np.sin(t) + \
+        (np.cos(a)*np.sin(b)*np.sin(c))
+    )
+    z = (
+        (np.sin(a)*np.sin(b)) * np.cos(t) + \
+        (np.cos(a)*np.cos(b))
+    )
+
+    # Convert back to right-ascension and declination.
+    # This is to distinguish between diametrically opposite directions.
+    zen = np.arccos(z)
+    azi = np.arctan2(y,x)
+
+    dec = np.pi/2 - zen
+    ra = np.pi - azi
+
+    return (dec, ra)
