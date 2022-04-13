@@ -25,7 +25,8 @@ class SignalGenerator(object):
     of multiple sources the handling here is very suboptimal. Therefore the
     MultiSourceSignalGenerator should be used instead!
     """
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list):
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list,
+                **kwargs):
         """Constructs a new signal generator instance.
 
         Parameters

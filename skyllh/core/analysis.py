@@ -371,10 +371,12 @@ class Analysis(object, metaclass=abc.ABCMeta):
         """
         if self._custom_sig_generator is None:
             self._sig_generator = SignalGenerator(
-                self._src_hypo_group_manager, self._dataset_list, self._data_list)
+                self._src_hypo_group_manager, self._dataset_list, self._data_list,
+                llhratio=self.llhratio)
         else:
             self._sig_generator = self._custom_sig_generator(
-                self._src_hypo_group_manager, self._dataset_list, self._data_list)
+                self._src_hypo_group_manager, self._dataset_list, self._data_list,
+                llhratio=self.llhratio)
 
     @abc.abstractmethod
     def initialize_trial(self, events_list, n_events_list=None):
