@@ -51,6 +51,9 @@ from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
     DataBackgroundI3EnergyPDF
 )
+from skyllh.i3.pdfratio import (
+    I3EnergySigSetOverBkgPDFRatioSpline
+)
 # Classes to define the spatial and energy PDF ratios.
 from skyllh.core.pdfratio import (
     SpatialSigOverBkgPDFRatio,
@@ -81,9 +84,7 @@ from skyllh.analyses.i3.trad_ps.detsigyield import (
 from skyllh.analyses.i3.trad_ps.signalpdf import (
     PublicDataSignalI3EnergyPDFSet
 )
-from skyllh.analyses.i3.trad_ps.pdfratio import (
-    PublicDataI3EnergySigSetOverBkgPDFRatioSpline
-)
+
 
 def TXS_location():
     src_ra  = np.radians(77.358)
@@ -91,6 +92,7 @@ def TXS_location():
     return (src_ra, src_dec)
 
 def create_analysis(
+    rss,
     datasets,
     source,
     refplflux_Phi0=1,
@@ -246,11 +248,17 @@ def create_analysis(
         smoothing_filter = BlockSmoothingFilter(nbins=1)
 
         energy_sigpdfset = PublicDataSignalI3EnergyPDFSet(
-            ds, fluxmodel, gamma_grid, ppbar=pbar)
+            rss=rss,
+            ds=ds,
+            flux_model=fluxmodel,
+            fitparam_grid_set=gamma_grid,
+            n_events=int(1e6),
+            smoothing_filter=smoothing_filter,
+            ppbar=pbar)
         energy_bkgpdf = DataBackgroundI3EnergyPDF(
             data.exp, log_energy_binning, sin_dec_binning, smoothing_filter)
         fillmethod = Skylab2SkylabPDFRatioFillMethod()
-        energy_pdfratio = PublicDataI3EnergySigSetOverBkgPDFRatioSpline(
+        energy_pdfratio = I3EnergySigSetOverBkgPDFRatioSpline(
             energy_sigpdfset,
             energy_bkgpdf,
             fillmethod=fillmethod,
@@ -276,6 +284,12 @@ if(__name__ == '__main__'):
             '10-year public point source sample.',
         formatter_class = argparse.RawTextHelpFormatter
     )
+    p.add_argument('--dec', default=23.8, type=float,
+        help='The source declination in degrees.')
+    p.add_argument('--ra', default=216.76, type=float,
+        help='The source right-ascention in degrees.')
+    p.add_argument('--gamma-seed', default=3, type=float,
+        help='The seed value of the gamma fit parameter.')
     p.add_argument('--data_base_path', default=None, type=str,
         help='The base path to the data samples (default=None)'
     )
@@ -315,13 +329,18 @@ if(__name__ == '__main__'):
     rss = RandomStateService(rss_seed)
 
     # Define the point source.
-    source = PointLikeSource(*TXS_location())
+    source = PointLikeSource(np.deg2rad(args.ra), np.deg2rad(args.dec))
+    print('source: ', str(source))
 
     tl = TimeLord()
 
     with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
-            datasets, source, tl=tl)
+            rss,
+            datasets,
+            source,
+            gamma_seed=args.gamma_seed,
+            tl=tl)
 
     with tl.task_timer('Unblinding data.'):
         (TS, fitparam_dict, status) = ana.unblind(rss)

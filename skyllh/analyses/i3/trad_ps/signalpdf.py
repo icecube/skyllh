@@ -24,6 +24,8 @@ from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet
 )
+from skyllh.core.smoothing import SmoothingFilter
+from skyllh.i3.pdf import I3EnergyPDF
 from skyllh.i3.dataset import I3Dataset
 from skyllh.physics.flux import FluxModel
 from skyllh.analyses.i3.trad_ps.utils import (
@@ -52,7 +54,6 @@ class PublicDataSignalGenerator(object):
         Note:
             Some values can be NaN in cases where a PDF was not available!
 
-
         Parameters
         ----------
         rss : instance of RandomStateService
@@ -68,22 +69,16 @@ class PublicDataSignalGenerator(object):
         events : numpy record array of size `n_events`
             The numpy record array holding the event data.
             It contains the following data fields:
-                - 'log_true_energy'
+                - 'isvalid'
                 - 'log_energy'
-                - 'psi'
-                - 'ang_err'
-                - 'dec'
-                - 'ra'
+                - 'sin_dec'
             Single values can be NaN in cases where a pdf was not available.
         """
         # Create the output event array.
         out_dtype = [
-            ('log_true_e', float),
-            ('log_e', float),
-            ('psi', float),
-            ('ra', float),
-            ('dec', float),
-            ('ang_err', float)
+            ('isvalid', np.bool_),
+            ('log_energy', np.double),
+            ('sin_dec', np.double)
         ]
         events = np.empty((n_events,), dtype=out_dtype)
 
@@ -101,7 +96,7 @@ class PublicDataSignalGenerator(object):
             E_max=10**max_log_true_e
         ))
 
-        events['log_true_e'] = log_true_e
+        #events['log_true_e'] = log_true_e
 
         log_true_e_idxs = (
             np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1
@@ -109,24 +104,26 @@ class PublicDataSignalGenerator(object):
         # Sample reconstructed energies given true neutrino energies.
         (log_e_idxs, log_e) = sm.sample_log_e(
             rss, dec_idx, log_true_e_idxs)
-        events['log_e'] = log_e
+        events['log_energy'] = log_e
 
         # Sample reconstructed psi values given true neutrino energy and
         # reconstructed energy.
         (psi_idxs, psi) = sm.sample_psi(
             rss, dec_idx, log_true_e_idxs, log_e_idxs)
-        events['psi'] = psi
 
         # Sample reconstructed ang_err values given true neutrino energy,
         # reconstructed energy, and psi.
         (ang_err_idxs, ang_err) = sm.sample_ang_err(
             rss, dec_idx, log_true_e_idxs, log_e_idxs, psi_idxs)
-        events['ang_err'] = ang_err
 
-        # Convert the psf into a set of (r.a. and dec.)
-        (dec, ra) = psi_to_dec_and_ra(rss, src_dec, src_ra, psi)
-        events['dec'] = dec
-        events['ra'] = ra
+        isvalid = np.invert(
+            np.isnan(log_e) | np.isnan(psi) | np.isnan(ang_err))
+        events['isvalid'] = isvalid
+
+        # Convert the psf into a set of (r.a. and dec.). Only use non-nan
+        # values.
+        (dec, ra) = psi_to_dec_and_ra(rss, src_dec, src_ra, psi[isvalid])
+        events['sin_dec'][isvalid] = np.sin(dec)
 
         return events
 
@@ -137,15 +134,12 @@ class PublicDataSignalGenerator(object):
 
         Returns
         -------
-        events : DataFieldRecordArray instance
-            The instance of DataFieldRecordArray holding the event data.
+        events : numpy record array
+            The numpy record array holding the event data.
             It contains the following data fields:
-                - 'log_true_energy'
+                - 'isvalid'
                 - 'log_energy'
-                - 'psi'
-                - 'ang_err'
-                - 'dec'
-                - 'ra'
+                - 'sin_dec'
         """
         sm = self.smearing_matrix
 
@@ -161,21 +155,13 @@ class PublicDataSignalGenerator(object):
                 rss, src_dec, src_ra, dec_idx, flux_model, n_evt)
 
             # Cut events that failed to be generated due to missing PDFs.
-            m = np.invert(
-                np.isnan(events_['log_e']) |
-                np.isnan(events_['psi']) |
-                np.isnan(events_['ang_err'])
-            )
-            events_ = events_[m]
+            events_ = events_[events_['isvalid']]
 
             n_evt_generated += len(events_)
             if events is None:
                 events = events_
             else:
                 events = np.concatenate((events, events_))
-
-        # Convert events array into DataFieldRecordArray instance.
-        events = DataFieldRecordArray(events, copy=False)
 
         return events
 
@@ -465,9 +451,12 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     """
     def __init__(
             self,
+            rss,
             ds,
             flux_model,
             fitparam_grid_set,
+            n_events=int(1e6),
+            smoothing_filter=None,
             ncpu=None,
             ppbar=None):
         """
@@ -477,6 +466,11 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         if(not isinstance(fitparam_grid_set, ParameterGridSet)):
             raise TypeError('The fitparam_grid_set argument must be an '
                 'instance of ParameterGrid or ParameterGridSet!')
+
+        if((smoothing_filter is not None) and
+           (not isinstance(smoothing_filter, SmoothingFilter))):
+            raise TypeError('The smoothing_filter argument must be None or '
+                'an instance of SmoothingFilter!')
 
         # We need to extend the fit parameter grids on the lower and upper end
         # by one bin to allow for the calculation of the interpolation. But we
@@ -489,56 +483,60 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             fitparams_grid_set=fitparam_grid_set,
             ncpu=ncpu)
 
-        # Create a signal generator for this dataset.
-        siggen = PublicDataSignalGenerator(ds)
-
-
-        # Load the smearing data from file.
-        (histogram,
-         true_e_bin_edges,
-         true_dec_bin_edges,
-         reco_e_lower_edges,
-         reco_e_upper_edges,
-         psf_lower_edges,
-         psf_upper_edges,
-         ang_err_lower_edges,
-         ang_err_upper_edges
-        ) = load_smearing_histogram(
-            pathfilenames=ds.get_abs_pathfilename_list(
-                ds.get_aux_data_definition('smearing_datafile')))
-
-        self.true_dec_binning = BinningDefinition(
-            'true_dec', true_dec_bin_edges)
-
         def create_I3EnergyPDF(
-                ds, data_dict, flux_model, gridfitparams):
+                rss, ds, logE_binning, sinDec_binning, smoothing_filter,
+                siggen, flux_model, n_events, gridfitparams):
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
             my_flux_model = flux_model.copy(newprop=gridfitparams)
 
-            # Generate signal events
-            # FIXME
-            siggen.generate_signal_events()
+            # Generate signal events for sources in every sin(dec) bin.
+            events = None
+            n_evts = int(np.round(n_events / sinDec_binning.nbins))
+            for sin_dec in sinDec_binning.bincenters:
+                src_dec = np.arcsin(sin_dec)
+                events_ = siggen.generate_signal_events(
+                    rss=rss,
+                    src_dec=src_dec,
+                    src_ra=np.radians(180),
+                    flux_model=my_flux_model,
+                    n_events=n_evts)
+                if events is None:
+                    events = events_
+                else:
+                    events = np.concatenate((events, events_))
+
+            data_logE = events['log_energy']
+            data_sinDec = events['sin_dec']
+            data_mcweight = np.ones((len(events),), dtype=np.double)
+            data_physicsweight = np.ones((len(events),), dtype=np.double)
 
             epdf = I3EnergyPDF(
-                ds, my_flux_model, data_dict=data_dict)
+                data_logE=data_logE,
+                data_sinDec=data_sinDec,
+                data_mcweight=data_mcweight,
+                data_physicsweight=data_physicsweight,
+                logE_binning=logE_binning,
+                sinDec_binning=sinDec_binning,
+                smoothing_filter=smoothing_filter
+            )
 
             return epdf
 
-        data_dict = {
-            'histogram': histogram,
-            'true_e_bin_edges': true_e_bin_edges,
-            'true_dec_bin_edges': true_dec_bin_edges,
-            'reco_e_lower_edges': reco_e_lower_edges,
-            'reco_e_upper_edges': reco_e_upper_edges
-        }
+        # Create a signal generator for this dataset.
+        siggen = PublicDataSignalGenerator(ds)
+
+        logE_binning = ds.get_binning_definition('log_energy')
+        sinDec_binning = ds.get_binning_definition('sin_dec')
+
         args_list = [
-            ((ds, data_dict, flux_model, gridfitparams), {})
+            ((rss, ds, logE_binning, sinDec_binning, smoothing_filter, siggen,
+              flux_model, n_events, gridfitparams), {})
                 for gridfitparams in self.gridfitparams_list
         ]
 
         epdf_list = parallelize(
-            create_energy_pdf,
+            create_I3EnergyPDF,
             args_list,
             self.ncpu,
             ppbar=ppbar)
