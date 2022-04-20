@@ -620,6 +620,14 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
                 '%d arguments!'%(
                     len(self._axis_name_list)))
 
+        n_sources = self.src_hypo_group_manager.n_sources
+        if(n_sources != 1):
+            raise ValueError(
+                'The `PsiFuncEventSelectionMethod.select_events` currently '
+                f'supports only one source. It was called with {n_sources} '
+                'sources.'
+            )
+
     @property
     def psi_name(self):
         """The name of the data field that provides the psi value of the event.
