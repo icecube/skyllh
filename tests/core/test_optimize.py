@@ -23,7 +23,7 @@ from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.physics.source import PointLikeSource
 
-from .testdata.testdata_generator import generate_testdata
+from tests.core.testdata.testdata_generator import generate_testdata
 
 
 def shgm_setup(n_sources=1):
