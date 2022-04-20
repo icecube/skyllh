@@ -252,7 +252,7 @@ def create_analysis(
             ds=ds,
             flux_model=fluxmodel,
             fitparam_grid_set=gamma_grid,
-            n_events=int(1e6),
+            n_events=int(1e7),
             smoothing_filter=smoothing_filter,
             ppbar=pbar)
         energy_bkgpdf = DataBackgroundI3EnergyPDF(
@@ -293,6 +293,10 @@ if(__name__ == '__main__'):
     p.add_argument('--data_base_path', default=None, type=str,
         help='The base path to the data samples (default=None)'
     )
+    p.add_argument('--pdf-seed', default=1, type=int,
+        help='The random number generator seed for generating the signal PDF.')
+    p.add_argument('--seed', default=1, type=int,
+        help='The random number generator seed for the likelihood minimization.')
     p.add_argument("--ncpu", default=1, type=int,
         help='The number of CPUs to utilize where parallelization is possible.'
     )
@@ -324,10 +328,10 @@ if(__name__ == '__main__'):
         dsc = data_samples[sample].create_dataset_collection(args.data_base_path)
         datasets.append(dsc.get_dataset(season))
 
-    rss_seed = 1
-    # Define a random state service.
-    rss = RandomStateService(rss_seed)
 
+    # Define a random state service.
+    rss_pdf = RandomStateService(args.pdf_seed)
+    rss = RandomStateService(args.seed)
     # Define the point source.
     source = PointLikeSource(np.deg2rad(args.ra), np.deg2rad(args.dec))
     print('source: ', str(source))
@@ -336,7 +340,7 @@ if(__name__ == '__main__'):
 
     with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
-            rss,
+            rss_pdf,
             datasets,
             source,
             gamma_seed=args.gamma_seed,
