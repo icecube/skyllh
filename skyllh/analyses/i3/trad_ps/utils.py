@@ -308,6 +308,69 @@ def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
     return (dec, ra)
 
 
+class PublicDataAeff(object):
+    """This class is a helper class for dealing with the effective area
+    provided by the public data.
+    """
+    def __init__(
+            self, pathfilenames, **kwargs):
+        """Creates an effective area instance by loading the effective area
+        data from the given file.
+        """
+        super().__init__(**kwargs)
+
+        (
+            self.aeff_arr,
+            self.sin_true_dec_binedges_lower,
+            self.sin_true_dec_binedges_upper,
+            self.log_true_e_binedges_lower,
+            self.log_true_e_binedges_upper
+        ) = load_effective_area_array(pathfilenames)
+
+        self.sin_true_dec_binedges = np.concatenate(
+            (self.sin_true_dec_binedges_lower,
+             self.sin_true_dec_binedges_upper[-1:])
+        )
+        self.log_true_e_binedges = np.concatenate(
+            (self.log_true_e_binedges_lower,
+             self.log_true_e_binedges_upper[-1:])
+        )
+
+    def get_aeff(self, sin_true_dec, log_true_e):
+        """Retrieves the effective area for the given sin(dec_true) and
+        log(E_true) value pairs.
+
+        Parameters
+        ----------
+        sin_true_dec : (n,)-shaped 1D ndarray
+            The sin(dec_true) values.
+        log_true_e : (n,)-shaped 1D ndarray
+            The log(E_true) values.
+
+        Returns
+        -------
+        aeff : (n,)-shaped 1D ndarray
+            The 1D ndarray holding the effective area values for each value
+            pair. For value pairs outside the effective area data zero is
+            returned.
+        """
+        valid = (
+            (sin_true_dec >= self.sin_true_dec_binedges[0]) &
+            (sin_true_dec <= self.sin_true_dec_binedges[-1]) &
+            (log_true_e >= self.log_true_e_binedges[0]) &
+            (log_true_e <= self.log_true_e_binedges[-1])
+        )
+        sin_true_dec_idxs = np.digitize(
+            sin_true_dec[valid], self.sin_true_dec_binedges) - 1
+        log_true_e_idxs = np.digitize(
+            log_true_e[valid], self.log_true_e_binedges) - 1
+
+        aeff = np.zeros((len(valid),), dtype=np.double)
+        aeff[valid] = self.aeff_arr[sin_true_dec_idxs,log_true_e_idxs]
+
+        return aeff
+
+
 class PublicDataSmearingMatrix(object):
     """This class is a helper class for dealing with the smearing matrix
     provided by the public data.
