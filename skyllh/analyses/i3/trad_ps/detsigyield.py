@@ -26,6 +26,9 @@ from skyllh.i3.detsigyield import (
     PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod,
     PowerLawFluxPointLikeSourceI3DetSigYield
 )
+from skyllh.analyses.i3.trad_ps.utils import (
+    load_effective_area_array
+)
 
 
 class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
@@ -134,58 +137,13 @@ class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         # Load the effective area data from the public dataset.
         aeff_fnames = dataset.get_abs_pathfilename_list(
             dataset.get_aux_data_definition('eff_area_datafile'))
-        floader = create_FileLoader(aeff_fnames)
-        aeff_data = floader.load_data()
-        aeff_data.rename_fields(
-            {
-                'log10(E_nu/GeV)_min': 'log_true_energy_nu_min',
-                'log10(E_nu/GeV)_max': 'log_true_energy_nu_max',
-                'Dec_nu_min[deg]':     'true_sin_dec_nu_min',
-                'Dec_nu_max[deg]':     'true_sin_dec_nu_max',
-                'A_Eff[cm^2]':         'a_eff'
-            },
-            must_exist=True)
-        # Convert the true neutrino declination from degrees to radians and into
-        # sin values.
-        aeff_data['true_sin_dec_nu_min'] = np.sin(np.deg2rad(
-            aeff_data['true_sin_dec_nu_min']))
-        aeff_data['true_sin_dec_nu_max'] = np.sin(np.deg2rad(
-            aeff_data['true_sin_dec_nu_max']))
-
-        # Determine the binning for energy and declination.
-        log_energy_bin_edges_lower = np.unique(
-            aeff_data['log_true_energy_nu_min'])
-        log_energy_bin_edges_upper = np.unique(
-            aeff_data['log_true_energy_nu_max'])
-
-        sin_dec_bin_edges_lower = np.unique(aeff_data['true_sin_dec_nu_min'])
-        sin_dec_bin_edges_upper = np.unique(aeff_data['true_sin_dec_nu_max'])
-
-        if(len(log_energy_bin_edges_lower) != len(log_energy_bin_edges_upper)):
-            raise ValueError('Cannot extract the log10(E/GeV) binning of the '
-                'effective area for dataset "{}". The number of lower and '
-                'upper bin edges is not equal!'.format(dataset.name))
-        if(len(sin_dec_bin_edges_lower) != len(sin_dec_bin_edges_upper)):
-            raise ValueError('Cannot extract the Dec_nu binning of the '
-                'effective area for dataset "{}". The number of lower and '
-                'upper bin edges is not equal!'.format(dataset.name))
-
-        n_bins_log_energy = len(log_energy_bin_edges_lower)
-        n_bins_sin_dec = len(sin_dec_bin_edges_lower)
-
-        # Construct the 2d array for the effective area.
-        aeff_arr = np.zeros((n_bins_sin_dec, n_bins_log_energy), dtype=np.float)
-
-        sin_dec_idx = np.digitize(
-            0.5*(aeff_data['true_sin_dec_nu_min'] +
-                 aeff_data['true_sin_dec_nu_max']),
-            sin_dec_bin_edges_lower) - 1
-        log_e_idx = np.digitize(
-            0.5*(aeff_data['log_true_energy_nu_min'] +
-                 aeff_data['log_true_energy_nu_max']),
-            log_energy_bin_edges_lower) - 1
-
-        aeff_arr[sin_dec_idx,log_e_idx] = aeff_data['a_eff']
+        (
+            aeff_arr,
+            sin_true_dec_binedges_lower,
+            sin_true_dec_binedges_upper,
+            log_true_e_binedges_lower,
+            log_true_e_binedges_upper
+        ) = load_effective_area_array(aeff_fnames)
 
         # Calculate the detector signal yield in sin_dec vs gamma.
         def hist(
@@ -219,8 +177,8 @@ class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
 
             return h
 
-        energy_bin_edges_lower = np.power(10, log_energy_bin_edges_lower)
-        energy_bin_edges_upper = np.power(10, log_energy_bin_edges_upper)
+        energy_bin_edges_lower = np.power(10, log_true_e_binedges_lower)
+        energy_bin_edges_upper = np.power(10, log_true_e_binedges_upper)
 
         # Make a copy of the gamma grid and extend the grid by one bin on each
         # side.
@@ -243,14 +201,14 @@ class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
 
         # Create a 2d spline in log of the detector signal yield.
         sin_dec_bincenters = 0.5*(
-            sin_dec_bin_edges_lower + sin_dec_bin_edges_upper)
+            sin_true_dec_binedges_lower + sin_true_dec_binedges_upper)
         log_spl_sinDec_gamma = scipy.interpolate.RectBivariateSpline(
             sin_dec_bincenters, gamma_grid.grid, np.log(h),
             kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
 
         # Construct the detector signal yield instance with the created spline.
         sin_dec_binedges = np.concatenate(
-            (sin_dec_bin_edges_lower, [sin_dec_bin_edges_upper[-1]]))
+            (sin_true_dec_binedges_lower, [sin_true_dec_binedges_upper[-1]]))
         sin_dec_binning = BinningDefinition('sin_dec', sin_dec_binedges)
         detsigyield = PowerLawFluxPointLikeSourceI3DetSigYield(
             self, dataset, fluxmodel, livetime, sin_dec_binning, log_spl_sinDec_gamma)
