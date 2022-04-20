@@ -5,12 +5,98 @@ import numpy as np
 from skyllh.core.storage import create_FileLoader
 
 
+def load_effective_area_array(pathfilenames):
+    """Loads the (nbins_sin_true_dec, nbins_log_true_e)-shaped 2D effective
+    area array from the given data file.
+
+    Parameters
+    ----------
+    pathfilename : str | list of str
+        The file name of the data file.
+
+    Returns
+    -------
+    arr : (nbins_sin_true_dec, nbins_log_true_e)-shaped 2D ndarray
+        The ndarray holding the effective area for each
+        sin(dec_true),log(e_true) bin.
+    sin_true_dec_binedges_lower : (nbins_sin_true_dec,)-shaped ndarray
+        The ndarray holding the lower bin edges of the sin(dec_true) axis.
+    sin_true_dec_binedges_upper : (nbins_sin_true_dec,)-shaped ndarray
+        The ndarray holding the upper bin edges of the sin(dec_true) axis.
+    log_true_e_binedges_lower : (nbins_log_true_e,)-shaped ndarray
+        The ndarray holding the lower bin edges of the log(E_true) axis.
+    log_true_e_binedges_upper : (nbins_log_true_e,)-shaped ndarray
+        The ndarray holding the upper bin edges of the log(E_true) axis.
+    """
+    loader = create_FileLoader(pathfilenames=pathfilenames)
+    data = loader.load_data()
+    renaming_dict = {
+        'log10(E_nu/GeV)_min': 'log_true_e_min',
+        'log10(E_nu/GeV)_max': 'log_true_e_max',
+        'Dec_nu_min[deg]':     'sin_true_dec_min',
+        'Dec_nu_max[deg]':     'sin_true_dec_max',
+        'A_Eff[cm^2]':         'a_eff'
+    }
+    data.rename_fields(renaming_dict, must_exist=True)
+
+    # Convert the true neutrino declination from degrees to radians and into
+    # sin values.
+    data['sin_true_dec_min'] = np.sin(np.deg2rad(
+        data['sin_true_dec_min']))
+    data['sin_true_dec_max'] = np.sin(np.deg2rad(
+        data['sin_true_dec_max']))
+
+    # Determine the binning for energy and declination.
+    log_true_e_binedges_lower = np.unique(
+        data['log_true_e_min'])
+    log_true_e_binedges_upper = np.unique(
+        data['log_true_e_max'])
+    sin_true_dec_binedges_lower = np.unique(
+        data['sin_true_dec_min'])
+    sin_true_dec_binedges_upper = np.unique(
+        data['sin_true_dec_max'])
+
+    if(len(log_true_e_binedges_lower) != len(log_true_e_binedges_upper)):
+        raise ValueError('Cannot extract the log10(E/GeV) binning of the '
+            'effective area from data file "{}". The number of lower and upper '
+            'bin edges is not equal!'.format(str(loader.pathfilename_list)))
+    if(len(sin_true_dec_binedges_lower) != len(sin_true_dec_binedges_upper)):
+        raise ValueError('Cannot extract the Dec_nu binning of the effective '
+            'area from data file "{}". The number of lower and upper bin edges '
+            'is not equal!'.format(str(loader.pathfilename_list)))
+
+    nbins_log_true_e = len(log_true_e_binedges_lower)
+    nbins_sin_true_dec = len(sin_true_dec_binedges_lower)
+
+    # Construct the 2d array for the effective area.
+    arr = np.zeros((nbins_sin_true_dec, nbins_log_true_e), dtype=np.double)
+
+    sin_true_dec_idx = np.digitize(
+        0.5*(data['sin_true_dec_min'] +
+             data['sin_true_dec_max']),
+            sin_true_dec_binedges_lower) - 1
+    log_true_e_idx = np.digitize(
+        0.5*(data['log_true_e_min'] +
+             data['log_true_e_max']),
+        log_true_e_binedges_lower) - 1
+
+    arr[sin_true_dec_idx, log_true_e_idx] = data['a_eff']
+
+    return (
+        arr,
+        sin_true_dec_binedges_lower,
+        sin_true_dec_binedges_upper,
+        log_true_e_binedges_lower,
+        log_true_e_binedges_upper
+    )
+
+
 def load_smearing_histogram(pathfilenames):
     """Loads the 5D smearing histogram from the given data file.
 
     Parameters
     ----------
-    pathfilenames : list of str
+    pathfilenames : str | list of str
         The file name of the data file.
 
     Returns
