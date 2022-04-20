@@ -31,15 +31,16 @@ from skyllh.physics.flux import FluxModel
 from skyllh.analyses.i3.trad_ps.utils import (
     load_smearing_histogram,
     psi_to_dec_and_ra,
+    PublicDataAeff,
     PublicDataSmearingMatrix
 )
 
 class PublicDataSignalGenerator(object):
-    def __init__(self, ds):
+    def __init__(self, ds, **kwargs):
         """Creates a new instance of the signal generator for generating signal
         events from the provided public data smearing matrix.
         """
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.smearing_matrix = PublicDataSmearingMatrix(
             pathfilenames=ds.get_abs_pathfilename_list(
@@ -70,6 +71,7 @@ class PublicDataSignalGenerator(object):
             The numpy record array holding the event data.
             It contains the following data fields:
                 - 'isvalid'
+                - 'log_true_energy'
                 - 'log_energy'
                 - 'sin_dec'
             Single values can be NaN in cases where a pdf was not available.
@@ -77,6 +79,7 @@ class PublicDataSignalGenerator(object):
         # Create the output event array.
         out_dtype = [
             ('isvalid', np.bool_),
+            ('log_true_energy', np.double),
             ('log_energy', np.double),
             ('sin_dec', np.double)
         ]
@@ -96,7 +99,7 @@ class PublicDataSignalGenerator(object):
             E_max=10**max_log_true_e
         ))
 
-        #events['log_true_e'] = log_true_e
+        events['log_true_energy'] = log_true_e
 
         log_true_e_idxs = (
             np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1
@@ -164,8 +167,6 @@ class PublicDataSignalGenerator(object):
                 events = np.concatenate((events, events_))
 
         return events
-
-
 
 
 class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
@@ -485,12 +486,15 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         def create_I3EnergyPDF(
                 rss, ds, logE_binning, sinDec_binning, smoothing_filter,
-                siggen, flux_model, n_events, gridfitparams):
+                aeff, siggen, flux_model, n_events, gridfitparams):
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
             my_flux_model = flux_model.copy(newprop=gridfitparams)
 
             # Generate signal events for sources in every sin(dec) bin.
+            # The physics weight is the effective area of the event given its
+            # true energy and true declination.
+            data_physicsweight = None
             events = None
             n_evts = int(np.round(n_events / sinDec_binning.nbins))
             for sin_dec in sinDec_binning.bincenters:
@@ -501,15 +505,21 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                     src_ra=np.radians(180),
                     flux_model=my_flux_model,
                     n_events=n_evts)
+                data_physicsweight_ = aeff.get_aeff(
+                    np.repeat(sin_dec, len(events_)),
+                    events_['log_true_energy'])
                 if events is None:
                     events = events_
+                    data_physicsweight = data_physicsweight_
                 else:
-                    events = np.concatenate((events, events_))
+                    events = np.concatenate(
+                        (events, events_))
+                    data_physicsweight = np.concatenate(
+                        (data_physicsweight, data_physicsweight_))
 
             data_logE = events['log_energy']
             data_sinDec = events['sin_dec']
             data_mcweight = np.ones((len(events),), dtype=np.double)
-            data_physicsweight = np.ones((len(events),), dtype=np.double)
 
             epdf = I3EnergyPDF(
                 data_logE=data_logE,
@@ -523,15 +533,22 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
             return epdf
 
+        print('Generate signal energy PDF for ds {} with {} CPUs'.format(
+            ds.name, self.ncpu))
+
         # Create a signal generator for this dataset.
         siggen = PublicDataSignalGenerator(ds)
+
+        aeff = PublicDataAeff(
+            pathfilenames=ds.get_abs_pathfilename_list(
+                ds.get_aux_data_definition('eff_area_datafile')))
 
         logE_binning = ds.get_binning_definition('log_energy')
         sinDec_binning = ds.get_binning_definition('sin_dec')
 
         args_list = [
-            ((rss, ds, logE_binning, sinDec_binning, smoothing_filter, siggen,
-              flux_model, n_events, gridfitparams), {})
+            ((rss, ds, logE_binning, sinDec_binning, smoothing_filter, aeff,
+              siggen, flux_model, n_events, gridfitparams), {})
                 for gridfitparams in self.gridfitparams_list
         ]
 
