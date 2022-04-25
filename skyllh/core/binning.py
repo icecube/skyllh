@@ -2,7 +2,146 @@
 
 import numpy as np
 
+from scipy.linalg import solve
+
 from skyllh.core.py import classname
+
+
+def rebin(
+        bincontent: np.array,
+        old_binedges: np.array,
+        new_binedges: np.array,
+        negatives=False):
+    """Rebins the binned counts to the new desired grid. This function
+    uses a method of moments approach. Currently it uses a three moments
+    appraoch. At the edges of the array it uses a two moments approach.
+
+    Parameters
+    ----------
+    bincontent: (n,)-shaped 1D numpy ndarray
+        The binned content which should be rebinned.
+    old_binedges: (n+1,)-shaped 1D numpy ndarray
+        The old grid's bin edges. The shape needs to be the same as
+        `bincontent`.
+    new_binedges: (m+1)-shaped 1D numpy ndarray
+        The new bin edges to use.
+    binning_scheme: str
+        The binning scheme to use. Choices are "log" (logarithmic)
+        or "lin" (linear). This decides how to calculate the midpoints
+        of each bin.
+    negatives: bool
+        Switch to keep or remove negative values in the final binning.
+
+    Returns
+    -------
+    new_bincontent: 1D numpy ndarray
+        The new binned counts for the new binning.
+
+    Raises
+    ------
+    ValueError:
+        Unknown binning scheme.
+
+    Authors
+    -------
+    - Dr. Stephan Meighen-Berger
+    - Dr. Martin Wolf
+    """
+    old_bincenters = 0.5*(old_binedges[1:] + old_binedges[:-1])
+
+    # Checking if shapes align.
+    if bincontent.shape != old_bincenters.shape:
+        ValueError('The arguments bincontent and old_binedges do not match!'
+            'bincontent must be (n,)-shaped and old_binedges must be (n+1,)-'
+            'shaped!')
+
+    # Setting up the new binning.
+    new_bincenters = 0.5*(new_binedges[1:] + new_binedges[:-1])
+
+
+    new_widths = np.diff(new_binedges)
+    new_nbins = len(new_widths)
+
+    # Create output array with zeros.
+    new_bincontent = np.zeros(new_bincenters.shape)
+
+    # Looping over the old bin contents and distributing
+    for (idx, bin_val) in enumerate(bincontent):
+        # Ignore empty bins.
+        if bin_val == 0.:
+            continue
+
+        old_bincenter = old_bincenters[idx]
+
+        new_point = (np.abs(new_binedges - old_bincenter)).argmin()
+
+        if new_point == 0:
+            # It the first bin. Use 2-moments method.
+            start_idx = new_point
+            end_idx = new_point + 1
+
+            mat = np.vstack(
+                (
+                    new_widths[start_idx:end_idx+1],
+                    new_widths[start_idx:end_idx+1]
+                    * new_bincenters[start_idx:end_idx+1]
+                )
+            )
+
+            b = bin_val * np.array([
+                1.,
+                old_bincenter
+            ])
+        elif new_point == new_nbins-1:
+            # It the last bin. Use 2-moments method.
+            start_idx = new_point - 1
+            end_idx = new_point
+
+            mat = np.vstack(
+                (
+                    new_widths[start_idx:end_idx+1],
+                    new_widths[start_idx:end_idx+1]
+                    * new_bincenters[start_idx:end_idx+1]
+                )
+            )
+
+            b = bin_val * np.array([
+                1.,
+                old_bincenter
+            ])
+        else:
+            # Setting up the equation for 3 moments (mat*x = b)
+            # x is the values we want
+            start_idx = new_point - 1
+            end_idx = new_point + 1
+
+            mat = np.vstack(
+                (
+                    new_widths[start_idx:end_idx+1],
+                    new_widths[start_idx:end_idx+1]
+                    * new_bincenters[start_idx:end_idx+1],
+                    new_widths[start_idx:end_idx+1]
+                    * new_bincenters[start_idx:end_idx+1]**2
+                )
+            )
+
+            b = bin_val * np.array([
+                1.,
+                old_bincenter,
+                old_bincenter**2
+            ])
+
+        # Solving and adding to the new bin content.
+        new_bincontent[start_idx:end_idx+1] += solve(mat, b)
+
+        if not negatives:
+            new_bincontent[new_bincontent < 0.] = 0.
+
+    new_bincontent = new_bincontent / (
+        np.sum(new_bincontent) / np.sum(bincontent))
+
+    return new_bincontent
+
 
 class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
