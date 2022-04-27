@@ -143,6 +143,22 @@ def rebin(
     return new_bincontent
 
 
+def get_bincenters_from_binedges(edges):
+    """Calculates the bin center values from the given bin edge values.
+
+    Parameters
+    ----------
+    edges : 1D numpy ndarray
+        The (n+1,)-shaped 1D ndarray holding the bin edge values.
+
+    Returns
+    -------
+    bincenters : 1D numpy ndarray
+        The (n,)-shaped 1D ndarray holding the bin center values.
+    """
+    return 0.5*(edges[:-1] + edges[1:])
+
+
 class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
