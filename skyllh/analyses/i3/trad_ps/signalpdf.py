@@ -3,11 +3,13 @@
 import numpy as np
 from copy import deepcopy
 from scipy.interpolate import UnivariateSpline
+from itertools import product
 
 from skyllh.core.timing import TaskTimer
 from skyllh.core.binning import (
     BinningDefinition,
-    UsesBinning
+    UsesBinning,
+    get_bincenters_from_binedges
 )
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.pdf import (
@@ -485,8 +487,8 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             ncpu=ncpu)
 
         def create_I3EnergyPDF(
-                rss, ds, logE_binning, sinDec_binning, smoothing_filter,
-                aeff, siggen, flux_model, n_events, gridfitparams):
+                logE_binning, sinDec_binning, smoothing_filter,
+                aeff, siggen, flux_model, n_events, gridfitparams, rss):
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
             my_flux_model = flux_model.copy(newprop=gridfitparams)
@@ -547,7 +549,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         sinDec_binning = ds.get_binning_definition('sin_dec')
 
         args_list = [
-            ((rss, ds, logE_binning, sinDec_binning, smoothing_filter, aeff,
+            ((logE_binning, sinDec_binning, smoothing_filter, aeff,
               siggen, flux_model, n_events, gridfitparams), {})
                 for gridfitparams in self.gridfitparams_list
         ]
@@ -556,6 +558,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             create_I3EnergyPDF,
             args_list,
             self.ncpu,
+            rss=rss,
             ppbar=ppbar)
 
         # Save all the energy PDF objects in the PDFSet PDF registry with
@@ -606,5 +609,84 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         prob = epdf.get_prob(tdm)
         return prob
+
+
+class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
+    """This class provides a signal PDF set for the public data.
+    """
+    def __init__(
+            self,
+            ds,
+            src_dec,
+            flux_model,
+            fitparam_grid_set,
+            union_sm_arr_pathfilename=None,
+            ncpu=None,
+            ppbar=None,
+            **kwargs):
+        """Creates a new PublicDataSignalPDFSet instance for the public data.
+        """
+        super().__init__(
+            pdf_type=PDF,
+            fitparams_grid_set=fitparam_grid_set,
+            ncpu=ncpu
+        )
+
+        sm = PublicDataSmearingMatrix(
+            pathfilenames=ds.get_abs_pathfilename_list(
+                ds.get_aux_data_definition('smearing_datafile')))
+
+        if(union_sm_arr_pathfilename is not None):
+            pdf_arr = np.load(union_sm_arr_pathfilename)
+        else:
+            pdf_arr = create_unionized_smearing_matrix_array(sm, src_dec)
+
+        print('pdf_arr.shape={}'.format(str(pdf_arr.shape)))
+        # Create the pdf in gamma for different gamma values.
+        def create_pdf(pdf_arr, flux_model, gridfitparams):
+            """Creates a pdf for a specific gamma value.
+            """
+            # Create a copy of the FluxModel with the given flux parameters.
+            # The copy is needed to not interfer with other CPU processes.
+            my_flux_model = flux_model.copy(newprop=gridfitparams)
+
+            E_nu = np.power(10, sm.true_e_bin_centers)
+            flux = my_flux_model(E_nu)
+            print(flux)
+            dE_nu = np.diff(sm.true_e_bin_edges)
+            print(dE_nu)
+            arr_ = np.copy(pdf_arr)
+            for true_e_idx in range(pdf_arr.shape[0]):
+                arr_[true_e_idx] *= flux[true_e_idx] * dE_nu[true_e_idx]
+            pdf = np.sum(arr_, axis=0)
+            del(arr_)
+
+            # Normalize the pdf.
+            norm = np.sum(pdf)
+            if norm == 0:
+                raise ValueError('The signal PDF is empty for {}! This should '
+                    'not happen. Check the parameter ranges!'.format(
+                        str(gridfitparams)))
+            pdf /= norm
+
+            return pdf
+        """
+        args_list = [
+            ((pdf_arr, flux_model, gridfitparams), {})
+                for gridfitparams in self.gridfitparams_list
+        ]
+
+        self.pdf_list = parallelize(
+            create_pdf,
+            args_list,
+            ncpu=self.ncpu,
+            ppbar=ppbar)
+        """
+        self.pdf_list = [
+            create_pdf(pdf_arr, flux_model, gridfitparams={'gamma': 2})
+        ]
+
+        del(pdf_arr)
+
 
 
