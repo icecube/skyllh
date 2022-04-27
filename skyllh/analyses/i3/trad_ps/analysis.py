@@ -61,6 +61,7 @@ from skyllh.core.pdfratio import (
 )
 
 from skyllh.i3.signal_generation import PointLikeSourceI3SignalGenerationMethod
+from skyllh.analyses.i3.trad_ps.signal_generator import PublicDataSignalGenerator
 
 # Analysis utilities.
 from skyllh.core.analysis_utils import (
@@ -211,7 +212,8 @@ def create_analysis(
         src_fitparam_mapper,
         fitparam_ns,
         test_statistic,
-        bkg_gen_method
+        bkg_gen_method,
+        custom_sig_generator=PublicDataSignalGenerator
     )
 
     # Define the event selection method for pure optimization purposes.
