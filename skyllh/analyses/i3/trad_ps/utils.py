@@ -325,6 +325,15 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
     -------
     arr : (nbins_true_e, nbins_reco_e, nbins_psi, nbins_ang_err)-shaped
           4D numpy ndarray
+        The 4D ndarray holding the smearing matrix values.
+    true_e_bin_edges : 1D numpy ndarray
+        The unionized bin edges of the true energy axis.
+    reco_e_edges : 1D numpy ndarray
+        The unionized bin edges of the reco energy axis.
+    psi_edges : 1D numpy ndarray
+        The unionized bin edges of psi axis.
+    ang_err_edges : 1D numpy ndarray
+        The unionized bin edges of the angular error axis.
     """
     true_dec_idx = sm.get_true_dec_idx(src_dec)
 
@@ -393,7 +402,13 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
                         sm_a_idx
                     ]
 
-    return arr
+    return (
+        arr,
+        sm.true_e_bin_edges,
+        reco_e_edges,
+        psi_edges,
+        ang_err_edges
+    )
 
 
 class PublicDataAeff(object):
