@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+
+import pickle
+
 from copy import deepcopy
 from scipy.interpolate import UnivariateSpline
 from itertools import product
@@ -632,16 +635,35 @@ class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             ncpu=ncpu
         )
 
-        sm = PublicDataSmearingMatrix(
-            pathfilenames=ds.get_abs_pathfilename_list(
-                ds.get_aux_data_definition('smearing_datafile')))
-
         if(union_sm_arr_pathfilename is not None):
-            pdf_arr = np.load(union_sm_arr_pathfilename)
+            with open(union_sm_arr_pathfilename, 'rb') as f:
+                data = pickle.load(f)
+            pdf_arr = data['arr']
+            true_e_bin_edges = data['true_e_bin_edges']
+            reco_e_edges = data['reco_e_edges']
+            psi_edges = data['psi_edges']
+            ang_err_edges = data['ang_err_edges']
         else:
-            pdf_arr = create_unionized_smearing_matrix_array(sm, src_dec)
+            sm = PublicDataSmearingMatrix(
+                pathfilenames=ds.get_abs_pathfilename_list(
+                    ds.get_aux_data_definition('smearing_datafile')))
+            (pdf_arr,
+             true_e_bin_edges,
+             reco_e_edges,
+             psi_edges,
+             ang_err_edges
+            ) = create_unionized_smearing_matrix_array(sm, src_dec)
+
+        reco_e_bw = np.diff(reco_e_edges)
+        psi_edges_bw = np.diff(psi_edges)
+        ang_err_bw = np.diff(ang_err_edges)
+        self.bin_volumes = (
+            reco_e_bw[:,np.newaxis,np.newaxis] *
+            psi_edges_bw[np.newaxis,:,np.newaxis] *
+            ang_err_bw[np.newaxis,np.newaxis,:])
 
         print('pdf_arr.shape={}'.format(str(pdf_arr.shape)))
+        true_e_bin_centers = get_bincenters_from_binedges(true_e_bin_edges)
         # Create the pdf in gamma for different gamma values.
         def create_pdf(pdf_arr, flux_model, gridfitparams):
             """Creates a pdf for a specific gamma value.
@@ -650,10 +672,10 @@ class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             # The copy is needed to not interfer with other CPU processes.
             my_flux_model = flux_model.copy(newprop=gridfitparams)
 
-            E_nu = np.power(10, sm.true_e_bin_centers)
+            E_nu = np.power(10, true_e_bin_centers)
             flux = my_flux_model(E_nu)
             print(flux)
-            dE_nu = np.diff(sm.true_e_bin_edges)
+            dE_nu = np.diff(true_e_bin_edges)
             print(dE_nu)
             arr_ = np.copy(pdf_arr)
             for true_e_idx in range(pdf_arr.shape[0]):
@@ -668,6 +690,7 @@ class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                     'not happen. Check the parameter ranges!'.format(
                         str(gridfitparams)))
             pdf /= norm
+            pdf /= self.bin_volumes
 
             return pdf
         """
