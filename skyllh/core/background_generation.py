@@ -373,7 +373,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
                     (self._cache_mc_pre_selected,
                      mc_pre_selected_mask_idxs) =\
                     self__pre_event_selection_method.select_events(
-                        data_mc, retidxs=True, tl=tl)
+                        data_mc, ret_mask_idxs=True, tl=tl)
                 self._cache_mc_event_bkg_prob_pre_selected = self._cache_mc_event_bkg_prob[mc_pre_selected_mask_idxs]
             else:
                 self._cache_mc_pre_selected = data_mc

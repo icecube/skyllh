@@ -259,7 +259,7 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             'to type float!')
         self._delta_angle = angle
 
-    def select_events(self, events, retidxs=False, tl=None):
+    def select_events(self, events, retidxs=False, ret_mask_idxs=False, tl=None):
         """Selects the events within the declination band.
 
         Parameters
@@ -274,6 +274,10 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
+        ret_mask_idxs : bool
+            Flag if also the indices of the selected events mask should get
+            returned as a mask_idxs 1d ndarray.
+            Default is False.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -283,9 +287,15 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        (src_idxs, ev_idxs) : 1d ndarrays of ints | None
-            The indices of sources and selected events, in case `retidxs` is set
-            to True. Returns None, in case `retidxs` is set to False.
+        idxs: where idxs is one of the following:
+            - (src_idxs, ev_idxs) : 1d ndarrays of ints
+                The indices of sources and selected events, in case `retidxs` is
+                set to True.
+            - mask_idxs : 1d ndarrays of ints
+                The indices of selected events mask, in case
+                `ret_mask_idxs` is set to True.
+            - None
+                In case both `retidxs` and `ret_mask_idxs` are set to False.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -312,15 +322,21 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         with TaskTimer(tl, 'ESM-DecBand: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            selected_events = events[events.indices[mask]]
+            mask_idxs = events.indices[mask]
+            selected_events = events[mask_idxs]
 
-        if(retidxs):
+        if(retidxs and ret_mask_idxs):
+            raise ValueError(
+                'Only one of `retidxs` and `ret_mask_idxs` can be set to True.')
+        elif(retidxs):
             # Get selected events indices.
             idxs = np.argwhere(mask_dec[:, mask])
             src_idxs = idxs[:, 0]
             ev_idxs = idxs[:, 1]
 
             return (selected_events, (src_idxs, ev_idxs))
+        elif(ret_mask_idxs):
+            return (selected_events, mask_idxs)
         else:
             return (selected_events, None)
 
