@@ -277,14 +277,10 @@ class PublicDataSignalGenerator(object):
                     )
                     if events_ is None:
                         continue
-                    events_.append_field(
-                        "ds_idx", np.repeat([ds_idx], len(events_)))
 
                     if shg_src_idx == 0:
-                        signal_events_dict[ds_idx] = events_[
-                            events_['ds_idx'] == ds_idx]
+                        signal_events_dict[ds_idx] = events_
                     else:
-                        signal_events_dict[ds_idx].append(
-                            events_[events_['ds_idx'] == ds_idx])
+                        signal_events_dict[ds_idx].append(events_)
 
         return tot_n_events, signal_events_dict
