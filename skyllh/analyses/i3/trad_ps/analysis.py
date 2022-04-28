@@ -101,6 +101,7 @@ def create_analysis(
     refplflux_gamma=2,
     ns_seed=10.0,
     gamma_seed=3,
+    n_mc_events=int(1e7),
     compress_data=False,
     keep_data_fields=None,
     optimize_delta_angle=10,
@@ -254,7 +255,7 @@ def create_analysis(
             ds=ds,
             flux_model=fluxmodel,
             fitparam_grid_set=gamma_grid,
-            n_events=int(1e7),
+            n_events=n_mc_events,
             smoothing_filter=smoothing_filter,
             ppbar=pbar)
         energy_bkgpdf = DataBackgroundI3EnergyPDF(
@@ -302,6 +303,9 @@ if(__name__ == '__main__'):
     p.add_argument("--ncpu", default=1, type=int,
         help='The number of CPUs to utilize where parallelization is possible.'
     )
+    p.add_argument("--n-mc-events", default=int(1e7), type=int,
+        help='The number of MC events to sample for the energy signal PDF.'
+    )
     args = p.parse_args()
 
     # Setup `skyllh` package logging.
@@ -317,10 +321,10 @@ if(__name__ == '__main__'):
     CFG['multiproc']['ncpu'] = args.ncpu
 
     sample_seasons = [
-        ('PublicData_10y_ps', 'IC40'),
-        ('PublicData_10y_ps', 'IC59'),
-        ('PublicData_10y_ps', 'IC79'),
-        ('PublicData_10y_ps', 'IC86_I'),
+        #('PublicData_10y_ps', 'IC40'),
+        #('PublicData_10y_ps', 'IC59'),
+        #('PublicData_10y_ps', 'IC79'),
+        #('PublicData_10y_ps', 'IC86_I'),
         ('PublicData_10y_ps', 'IC86_II-VII')
     ]
 
@@ -345,6 +349,7 @@ if(__name__ == '__main__'):
             rss_pdf,
             datasets,
             source,
+            n_mc_events=args.n_mc_events,
             gamma_seed=args.gamma_seed,
             tl=tl)
 

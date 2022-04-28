@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+
+import pickle
+
 from copy import deepcopy
 from scipy.interpolate import UnivariateSpline
+from itertools import product
 
 from skyllh.core.timing import TaskTimer
 from skyllh.core.binning import (
     BinningDefinition,
-    UsesBinning
+    UsesBinning,
+    get_bincenters_from_binedges
 )
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.pdf import (
@@ -485,8 +490,8 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             ncpu=ncpu)
 
         def create_I3EnergyPDF(
-                rss, ds, logE_binning, sinDec_binning, smoothing_filter,
-                aeff, siggen, flux_model, n_events, gridfitparams):
+                logE_binning, sinDec_binning, smoothing_filter,
+                aeff, siggen, flux_model, n_events, gridfitparams, rss):
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
             my_flux_model = flux_model.copy(newprop=gridfitparams)
@@ -547,7 +552,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         sinDec_binning = ds.get_binning_definition('sin_dec')
 
         args_list = [
-            ((rss, ds, logE_binning, sinDec_binning, smoothing_filter, aeff,
+            ((logE_binning, sinDec_binning, smoothing_filter, aeff,
               siggen, flux_model, n_events, gridfitparams), {})
                 for gridfitparams in self.gridfitparams_list
         ]
@@ -556,6 +561,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             create_I3EnergyPDF,
             args_list,
             self.ncpu,
+            rss=rss,
             ppbar=ppbar)
 
         # Save all the energy PDF objects in the PDFSet PDF registry with
@@ -606,5 +612,104 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         prob = epdf.get_prob(tdm)
         return prob
+
+
+class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
+    """This class provides a signal PDF set for the public data.
+    """
+    def __init__(
+            self,
+            ds,
+            src_dec,
+            flux_model,
+            fitparam_grid_set,
+            union_sm_arr_pathfilename=None,
+            ncpu=None,
+            ppbar=None,
+            **kwargs):
+        """Creates a new PublicDataSignalPDFSet instance for the public data.
+        """
+        super().__init__(
+            pdf_type=PDF,
+            fitparams_grid_set=fitparam_grid_set,
+            ncpu=ncpu
+        )
+
+        if(union_sm_arr_pathfilename is not None):
+            with open(union_sm_arr_pathfilename, 'rb') as f:
+                data = pickle.load(f)
+            pdf_arr = data['arr']
+            true_e_bin_edges = data['true_e_bin_edges']
+            reco_e_edges = data['reco_e_edges']
+            psi_edges = data['psi_edges']
+            ang_err_edges = data['ang_err_edges']
+        else:
+            sm = PublicDataSmearingMatrix(
+                pathfilenames=ds.get_abs_pathfilename_list(
+                    ds.get_aux_data_definition('smearing_datafile')))
+            (pdf_arr,
+             true_e_bin_edges,
+             reco_e_edges,
+             psi_edges,
+             ang_err_edges
+            ) = create_unionized_smearing_matrix_array(sm, src_dec)
+
+        reco_e_bw = np.diff(reco_e_edges)
+        psi_edges_bw = np.diff(psi_edges)
+        ang_err_bw = np.diff(ang_err_edges)
+        self.bin_volumes = (
+            reco_e_bw[:,np.newaxis,np.newaxis] *
+            psi_edges_bw[np.newaxis,:,np.newaxis] *
+            ang_err_bw[np.newaxis,np.newaxis,:])
+
+        print('pdf_arr.shape={}'.format(str(pdf_arr.shape)))
+        true_e_bin_centers = get_bincenters_from_binedges(true_e_bin_edges)
+        # Create the pdf in gamma for different gamma values.
+        def create_pdf(pdf_arr, flux_model, gridfitparams):
+            """Creates a pdf for a specific gamma value.
+            """
+            # Create a copy of the FluxModel with the given flux parameters.
+            # The copy is needed to not interfer with other CPU processes.
+            my_flux_model = flux_model.copy(newprop=gridfitparams)
+
+            E_nu = np.power(10, true_e_bin_centers)
+            flux = my_flux_model(E_nu)
+            print(flux)
+            dE_nu = np.diff(true_e_bin_edges)
+            print(dE_nu)
+            arr_ = np.copy(pdf_arr)
+            for true_e_idx in range(pdf_arr.shape[0]):
+                arr_[true_e_idx] *= flux[true_e_idx] * dE_nu[true_e_idx]
+            pdf = np.sum(arr_, axis=0)
+            del(arr_)
+
+            # Normalize the pdf.
+            norm = np.sum(pdf)
+            if norm == 0:
+                raise ValueError('The signal PDF is empty for {}! This should '
+                    'not happen. Check the parameter ranges!'.format(
+                        str(gridfitparams)))
+            pdf /= norm
+            pdf /= self.bin_volumes
+
+            return pdf
+        """
+        args_list = [
+            ((pdf_arr, flux_model, gridfitparams), {})
+                for gridfitparams in self.gridfitparams_list
+        ]
+
+        self.pdf_list = parallelize(
+            create_pdf,
+            args_list,
+            ncpu=self.ncpu,
+            ppbar=ppbar)
+        """
+        self.pdf_list = [
+            create_pdf(pdf_arr, flux_model, gridfitparams={'gamma': 2})
+        ]
+
+        del(pdf_arr)
+
 
 
