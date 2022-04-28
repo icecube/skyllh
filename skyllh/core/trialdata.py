@@ -749,6 +749,14 @@ class TrialDataManager(object):
 
         if(name in self._source_data_fields_dict):
             data = self._source_data_fields_dict[name].values
+
+            # Broadcast the value of an one-element 1D ndarray to the length
+            # of the number of events. Note: Make sure that we don't broadcast
+            # recarrays.
+            if(self._events is not None):
+                if((len(data) == 1) and (data.ndim == 1) and 
+                   (data.dtype.fields is None)):
+                    data = np.repeat(data, len(self._events))
         else:
             raise KeyError(
                 f'The data field "{name}" is not defined!')
