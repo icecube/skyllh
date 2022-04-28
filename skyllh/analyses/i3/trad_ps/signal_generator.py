@@ -157,7 +157,7 @@ class PublicDataDatasetSignalGenerator(object):
         sm = self.smearing_matrix
 
         # Find the declination bin index.
-        dec_idx = sm.get_dec_idx(src_dec)
+        dec_idx = sm.get_true_dec_idx(src_dec)
 
         events = None
         n_evt_generated = 0
