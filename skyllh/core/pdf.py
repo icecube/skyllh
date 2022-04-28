@@ -1018,7 +1018,10 @@ class MultiDimGridPDF(PDF):
                     l_ev = len(tdm.get_data('ra'))
                     eventdata = np.array(
                         [tdm.get_data(axis.name) if ('psi' in axis.name)
-                         else np.repeat(tdm.get_data(axis.name), l_ev) if ('src' in axis.name)
+                         else tdm.get_data(axis.name)
+                         if (('src' in axis.name) and (n_src == 1))
+                         else np.repeat(tdm.get_data(axis.name), l_ev)
+                         if (('src' in axis.name) and (n_src != 1))
                          else np.tile(tdm.get_data(axis.name), n_src)
                          for axis in self._axes]).T
             elif (self.is_background_pdf):
@@ -1604,7 +1607,10 @@ class MultiDimGridPDFSet(PDF, PDFSet):
                 l_ev = len(tdm.get_data('ra'))
                 eventdata = np.array(
                     [tdm.get_data(axis.name) if ('psi' in axis.name)
-                     else np.repeat(tdm.get_data(axis.name), l_ev) if ('src' in axis.name)
+                     else tdm.get_data(axis.name)
+                     if (('src' in axis.name) and (n_src == 1))
+                     else np.repeat(tdm.get_data(axis.name), l_ev)
+                     if (('src' in axis.name) and (n_src != 1))
                      else np.tile(tdm.get_data(axis.name), n_src)
                      for axis in self.pdf_axes]).T
 
@@ -1749,7 +1755,10 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
                 l_ev = len(tdm.get_data('ra'))
                 eventdata = np.array(
                     [tdm.get_data(axis.name) if ('psi' in axis.name)
-                     else np.repeat(tdm.get_data(axis.name), l_ev) if ('src' in axis.name)
+                     else tdm.get_data(axis.name)
+                     if (('src' in axis.name) and (n_src == 1))
+                     else np.repeat(tdm.get_data(axis.name), l_ev)
+                     if (('src' in axis.name) and (n_src != 1))
                      else np.tile(tdm.get_data(axis.name), n_src)
                      for axis in self.pdf_axes]).T
 
