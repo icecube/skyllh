@@ -86,6 +86,39 @@ from skyllh.analyses.i3.trad_ps.signalpdf import (
     PublicDataSignalI3EnergyPDFSet
 )
 
+def psi_func(tdm, src_hypo_group_manager, fitparams):
+    """Function to calculate the opening angle between the source position
+    and the event's reconstructed position.
+    """
+    ra = tdm.get_data('ra')
+    dec = tdm.get_data('dec')
+
+    # Make the source position angles two-dimensional so the PDF value
+    # can be calculated via numpy broadcasting automatically for several
+    # sources. This is useful for stacking analyses.
+    src_ra = tdm.get_data('src_array')['ra'][:, np.newaxis]
+    src_dec = tdm.get_data('src_array')['dec'][:, np.newaxis]
+
+    delta_dec = np.abs(dec - src_dec)
+    delta_ra = np.abs(ra - src_ra)
+    x = (
+        (np.sin(delta_dec / 2.))**2. + np.cos(dec) *
+        np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
+    )
+
+    # Handle possible floating precision errors.
+    x[x < 0.] = 0.
+    x[x > 1.] = 1.
+
+    psi = (2.0*np.arcsin(np.sqrt(x)))
+    # Floor psi values below the first bin location in spatial KDE PDF.
+    # Flooring at the boundary (1e-6) requires a regeneration of the
+    # spatial KDE splines.
+    floor = 10**(-5.95442953)
+    psi = np.where(psi < floor, floor, psi)
+
+    # For now we support only a single source, hence return psi[0].
+    return psi[0, :]
 
 def TXS_location():
     src_ra  = np.radians(77.358)
@@ -235,6 +268,7 @@ def create_analysis(
         tdm = TrialDataManager()
         tdm.add_source_data_field('src_array',
             pointlikesource_to_data_field_array)
+        tdm.add_data_field('psi', psi_func)
 
         sin_dec_binning = ds.get_binning_definition('sin_dec')
         log_energy_binning = ds.get_binning_definition('log_energy')
