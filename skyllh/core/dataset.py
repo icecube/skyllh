@@ -1004,13 +1004,13 @@ class Dataset(object):
             The name of the binning definition.
 
         """
-        try:
-            self._binning_definitions.pop(name)
-        except KeyError as e:
+        if(name not in self._binning_definitions):
             raise KeyError(
                 f'The given binning name "{name}" does not exist in the '
                 f'dataset "{self.name}", nothing to remove!'
-            ) from e
+            )
+
+        self._binning_definitions.pop(name)
 
     def has_binning_definition(self, name):
         """Checks if the dataset has a defined binning definition with the given
@@ -1128,13 +1128,13 @@ class Dataset(object):
         name : str
             The name of the dataset that should get removed.
         """
-        try:
-            self._aux_data_definitions.pop(name)
-        except KeyError as e:
+        if(name not in self._aux_data_definitions):
             raise KeyError(
                 f'The auxiliary data definition "{name}" does not exist in '
                 f'dataset "{self.name}", nothing to remove!'
-            ) from e
+            )
+
+        self._aux_data_definitions.pop(name)
 
     def add_aux_data(self, name, data):
         """Adds the given data as auxiliary data to this data set.
@@ -1197,13 +1197,13 @@ class Dataset(object):
         name : str
             The name of the dataset that should get removed.
         """
-        try:
-            self._aux_data.pop(name)
-        except KeyError as e:
+        if(name not in self._aux_data):
             raise KeyError(
                 f'The auxiliary data "{name}" is not defined for dataset '
                 f'"{self.name}", nothing to remove!'
-            ) from e
+            )
+
+        self._aux_data.pop(name)
 
 
 class DatasetCollection(object):
