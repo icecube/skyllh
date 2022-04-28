@@ -159,6 +159,40 @@ def get_bincenters_from_binedges(edges):
     return 0.5*(edges[:-1] + edges[1:])
 
 
+def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
+    """Returns the bin indices for the given lower and upper bin edges the given
+    values fall into.
+
+    Parameters
+    ----------
+    le : 1D numpy ndarray
+        The lower bin edges.
+    ue : 1D numpy ndarray
+        The upper bin edges.
+    values : 1D numpy ndarray
+        The values for which to get the bin indices.
+
+    Returns
+    -------
+    idxs : 1D numpy ndarray
+        The bin indices of the given values.
+    """
+    if np.any(values < le[0]):
+        raise ValueError(
+            'At least one value is smaller than the lowest bin edge!')
+    if np.any(values > ue[-1]):
+        raise ValueError(
+            'At least one value is larger than the largest bin edge!')
+
+    m = (
+        (v[:,np.newaxis] >= le[np.newaxis,:]) &
+        (v[:,np.newaxis] < ue[np.newaxis,:])
+    )
+    idxs = np.nonzero(m)[1]
+
+    return idxs
+
+
 class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
