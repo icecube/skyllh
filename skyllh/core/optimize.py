@@ -98,7 +98,7 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
         events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the events.
         retidxs : bool
-            Flag if also the indices of of the selected events should get
+            Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
@@ -147,7 +147,7 @@ class AllEventSelectionMethod(EventSelectionMethod):
             The instance of DataFieldRecordArray holding the events, for which
             the selection method should get applied.
         retidxs : bool
-            Flag if also the indices of of the selected events should get
+            Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
@@ -271,7 +271,7 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             - 'dec' : float
                 The declination of the event.
         retidxs : bool
-            Flag if also the indices of of the selected events should get
+            Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
@@ -377,7 +377,7 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
             - 'dec' : float
                 The declination of the event.
         retidxs : bool
-            Flag if also the indices of of the selected events should get
+            Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
@@ -502,7 +502,7 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
             - 'dec' : float
                 The declination of the event.
         retidxs : bool
-            Flag if also the indices of of the selected events should get
+            Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
@@ -724,7 +724,7 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
                 evaluated.
 
         retidxs : bool
-            Flag if also the indices of of the selected events should get
+            Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
@@ -921,7 +921,7 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             - 'dec' : float
                 The declination of the event.
         retidxs : bool
-            Flag if also the indices of of the selected events should get
+            Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
