@@ -1009,21 +1009,40 @@ class MultiDimGridPDF(PDF):
                 if(tdm.idxs is not None):
                     src_idxs, ev_idxs = tdm.idxs
                     eventdata = np.array(
-                        [tdm.get_data(axis.name) if ('psi' in axis.name)
-                         else tdm.get_data(axis.name)[src_idxs] if ('src' in axis.name)
-                         else tdm.get_data(axis.name)[ev_idxs]
-                         for axis in self._axes]).T
+                        [
+                            # Check `psi` axis name.
+                            tdm.get_data(axis.name)
+                            if ('psi' in axis.name)
+
+                            # Check `src` axis name.
+                            else tdm.get_data(axis.name)[src_idxs]
+                            if ('src' in axis.name)
+
+                            # Default case.
+                            else tdm.get_data(axis.name)[ev_idxs]
+                            for axis in self._axes
+                        ]
+                    ).T
                 else:
                     n_src = len(tdm.get_data('src_array')['ra'])
                     l_ev = len(tdm.get_data('ra'))
                     eventdata = np.array(
-                        [tdm.get_data(axis.name) if ('psi' in axis.name)
-                         else tdm.get_data(axis.name)
-                         if (('src' in axis.name) and (n_src == 1))
-                         else np.repeat(tdm.get_data(axis.name), l_ev)
-                         if (('src' in axis.name) and (n_src != 1))
-                         else np.tile(tdm.get_data(axis.name), n_src)
-                         for axis in self._axes]).T
+                        [
+                            # Check `psi` axis name.
+                            tdm.get_data(axis.name)
+                            if ('psi' in axis.name)
+
+                            # Check `src` axis name.
+                            else tdm.get_data(axis.name)
+                            if (('src' in axis.name) and (n_src == 1))
+                            else np.repeat(tdm.get_data(axis.name), l_ev)
+                            if (('src' in axis.name) and (n_src != 1))
+
+                            # Default case.
+                            else np.tile(tdm.get_data(axis.name), n_src)
+                            for axis in self._axes
+                        ]
+                    ).T
             elif (self.is_background_pdf):
                 eventdata = np.array(
                     [tdm.get_data(axis.name) for axis in self._axes]).T
@@ -1598,21 +1617,40 @@ class MultiDimGridPDFSet(PDF, PDFSet):
             if(tdm.idxs is not None):
                 src_idxs, ev_idxs = tdm.idxs
                 eventdata = np.array(
-                    [tdm.get_data(axis.name) if ('psi' in axis.name)
-                     else tdm.get_data(axis.name)[src_idxs] if ('src' in axis.name)
-                     else tdm.get_data(axis.name)[ev_idxs]
-                     for axis in self.pdf_axes]).T
+                    [
+                        # Check `psi` axis name.
+                        tdm.get_data(axis.name)
+                        if ('psi' in axis.name)
+
+                        # Check `src` axis name.
+                        else tdm.get_data(axis.name)[src_idxs]
+                        if ('src' in axis.name)
+
+                        # Default case.
+                        else tdm.get_data(axis.name)[ev_idxs]
+                        for axis in self.pdf_axes
+                    ]
+                ).T
             else:
                 n_src = len(tdm.get_data('src_array')['ra'])
                 l_ev = len(tdm.get_data('ra'))
                 eventdata = np.array(
-                    [tdm.get_data(axis.name) if ('psi' in axis.name)
-                     else tdm.get_data(axis.name)
-                     if (('src' in axis.name) and (n_src == 1))
-                     else np.repeat(tdm.get_data(axis.name), l_ev)
-                     if (('src' in axis.name) and (n_src != 1))
-                     else np.tile(tdm.get_data(axis.name), n_src)
-                     for axis in self.pdf_axes]).T
+                    [
+                        # Check `psi` axis name.
+                        tdm.get_data(axis.name)
+                        if ('psi' in axis.name)
+
+                        # Check `src` axis name.
+                        else tdm.get_data(axis.name)
+                        if (('src' in axis.name) and (n_src == 1))
+                        else np.repeat(tdm.get_data(axis.name), l_ev)
+                        if (('src' in axis.name) and (n_src != 1))
+
+                        # Default case.
+                        else np.tile(tdm.get_data(axis.name), n_src)
+                        for axis in self.pdf_axes
+                    ]
+                ).T
 
         elif (isinstance(self, IsBackgroundPDF)):
             eventdata = np.array([tdm.get_data(axis.name)
@@ -1746,21 +1784,40 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
             if(tdm.idxs is not None):
                 src_idxs, ev_idxs = tdm.idxs
                 eventdata = np.array(
-                    [tdm.get_data(axis.name) if ('psi' in axis.name)
-                     else tdm.get_data(axis.name)[src_idxs] if ('src' in axis.name)
-                     else tdm.get_data(axis.name)[ev_idxs]
-                     for axis in self.pdf_axes]).T
+                    [
+                        # Check `psi` axis name.
+                        tdm.get_data(axis.name)
+                        if ('psi' in axis.name)
+
+                        # Check `src` axis name.
+                        else tdm.get_data(axis.name)[src_idxs]
+                        if ('src' in axis.name)
+
+                        # Default case.
+                        else tdm.get_data(axis.name)[ev_idxs]
+                        for axis in self.pdf_axes
+                    ]
+                ).T
             else:
                 n_src = len(tdm.get_data('src_array')['ra'])
                 l_ev = len(tdm.get_data('ra'))
                 eventdata = np.array(
-                    [tdm.get_data(axis.name) if ('psi' in axis.name)
-                     else tdm.get_data(axis.name)
-                     if (('src' in axis.name) and (n_src == 1))
-                     else np.repeat(tdm.get_data(axis.name), l_ev)
-                     if (('src' in axis.name) and (n_src != 1))
-                     else np.tile(tdm.get_data(axis.name), n_src)
-                     for axis in self.pdf_axes]).T
+                    [
+                        # Check `psi` axis name.
+                        tdm.get_data(axis.name)
+                        if ('psi' in axis.name)
+
+                        # Check `src` axis name.
+                        else tdm.get_data(axis.name)
+                        if (('src' in axis.name) and (n_src == 1))
+                        else np.repeat(tdm.get_data(axis.name), l_ev)
+                        if (('src' in axis.name) and (n_src != 1))
+
+                        # Default case.
+                        else np.tile(tdm.get_data(axis.name), n_src)
+                        for axis in self.pdf_axes
+                    ]
+                ).T
 
                 # Construct `src_idxs` for masking with `fluxmodel_mask`.
                 src_idxs = np.repeat(np.arange(n_src), l_ev)
