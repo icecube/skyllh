@@ -12,7 +12,8 @@ from skyllh.core.timing import TaskTimer
 from skyllh.core.binning import (
     BinningDefinition,
     UsesBinning,
-    get_bincenters_from_binedges
+    get_bincenters_from_binedges,
+    get_bin_indices_from_lower_and_upper_binedges
 )
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.pdf import (
@@ -34,6 +35,7 @@ from skyllh.i3.pdf import I3EnergyPDF
 from skyllh.i3.dataset import I3Dataset
 from skyllh.physics.flux import FluxModel
 from skyllh.analyses.i3.trad_ps.utils import (
+    create_unionized_smearing_matrix_array,
     load_smearing_histogram,
     psi_to_dec_and_ra,
     PublicDataAeff,
@@ -152,7 +154,7 @@ class PublicDataSignalGenerator(object):
         sm = self.smearing_matrix
 
         # Find the declination bin index.
-        dec_idx = sm.get_dec_idx(src_dec)
+        dec_idx = sm.get_true_dec_idx(src_dec)
 
         events = None
         n_evt_generated = 0
@@ -614,7 +616,85 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         return prob
 
 
-class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
+class PDSignalPDF(PDF, IsSignalPDF):
+    """This class provides a signal pdf for a given spectrial index value.
+    """
+    def __init__(
+            self, pdf_arr, log_e_edges, psi_edges, ang_err_edges, **kwargs):
+        """Creates a new signal PDF for the public data.
+        """
+        super().__init__(**kwargs)
+
+        self.pdf_arr = pdf_arr
+
+        #self.log_e_edges = log_e_edges
+        self.log_e_lower_edges = log_e_edges[:-1]
+        self.log_e_upper_edges = log_e_edges[1:]
+
+        #self.psi_edges = psi_edges
+        self.psi_lower_edges = psi_edges[:-1]
+        self.psi_upper_edges = psi_edges[1:]
+
+        #self.ang_err_edges = ang_err_edges
+        self.ang_err_lower_edges = ang_err_edges[:-1]
+        self.ang_err_upper_edges = ang_err_edges[1:]
+
+    def assert_is_valid_for_trial_data(self, tdm):
+        pass
+
+    def get_prob(self, tdm, params=None, tl=None):
+        """Looks up the probability density for the events given by the
+        TrialDataManager.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The TrialDataManager instance holding the data events for which the
+            probability should be looked up. The following data fields are
+            required:
+                - 'log_energy'
+                    The log10 of the reconstructed energy.
+                - 'psi'
+                    The opening angle from the source to the event in radians.
+                - 'ang_err'
+                    The angular error of the event in radians.
+        params : dict | None
+            The dictionary containing the parameter names and values for which
+            the probability should get calculated.
+            By definition this PDF does not depend on parameters.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        prob : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
+        grads : (N_fitparams,N_events)-shaped ndarray | None
+            The 2D numpy ndarray holding the gradients of the PDF w.r.t.
+            each fit parameter for each event. The order of the gradients
+            is the same as the order of floating parameters specified through
+            the ``param_set`` property.
+            It is ``None``, if this PDF does not depend on any parameters.
+        """
+        log_e = tdm.get_data('log_energy')
+        psi = tdm.get_data('psi')
+        ang_err = tdm.get_data('ang_err')
+
+        log_e_idxs = get_bin_indices_from_lower_and_upper_binedges(
+            self.log_e_lower_edges, self.log_e_upper_edges, log_e)
+        psi_idxs = get_bin_indices_from_lower_and_upper_binedges(
+            self.psi_lower_edges, self.psi_upper_edges, psi)
+        ang_err_idxs = get_bin_indices_from_lower_and_upper_binedges(
+            self.ang_err_lower_edges, self.ang_err_upper_edges, ang_err)
+
+        idxs = tuple(zip(log_e_idxs, psi_idxs, ang_err_idxs))
+        prob = self.pdf_arr[idxs]
+
+        return (prob, None)
+
+
+class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     """This class provides a signal PDF set for the public data.
     """
     def __init__(
@@ -638,7 +718,7 @@ class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         if(union_sm_arr_pathfilename is not None):
             with open(union_sm_arr_pathfilename, 'rb') as f:
                 data = pickle.load(f)
-            pdf_arr = data['arr']
+            union_arr = data['arr']
             true_e_bin_edges = data['true_e_bin_edges']
             reco_e_edges = data['reco_e_edges']
             psi_edges = data['psi_edges']
@@ -647,7 +727,7 @@ class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             sm = PublicDataSmearingMatrix(
                 pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
-            (pdf_arr,
+            (union_arr,
              true_e_bin_edges,
              reco_e_edges,
              psi_edges,
@@ -657,15 +737,14 @@ class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         reco_e_bw = np.diff(reco_e_edges)
         psi_edges_bw = np.diff(psi_edges)
         ang_err_bw = np.diff(ang_err_edges)
-        self.bin_volumes = (
+        bin_volumes = (
             reco_e_bw[:,np.newaxis,np.newaxis] *
             psi_edges_bw[np.newaxis,:,np.newaxis] *
             ang_err_bw[np.newaxis,np.newaxis,:])
 
-        print('pdf_arr.shape={}'.format(str(pdf_arr.shape)))
         true_e_bin_centers = get_bincenters_from_binedges(true_e_bin_edges)
         # Create the pdf in gamma for different gamma values.
-        def create_pdf(pdf_arr, flux_model, gridfitparams):
+        def create_pdf(union_arr, flux_model, gridfitparams):
             """Creates a pdf for a specific gamma value.
             """
             # Create a copy of the FluxModel with the given flux parameters.
@@ -674,28 +753,32 @@ class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
             E_nu = np.power(10, true_e_bin_centers)
             flux = my_flux_model(E_nu)
-            print(flux)
             dE_nu = np.diff(true_e_bin_edges)
-            print(dE_nu)
-            arr_ = np.copy(pdf_arr)
-            for true_e_idx in range(pdf_arr.shape[0]):
+
+            arr_ = np.copy(union_arr)
+            for true_e_idx in range(len(true_e_bin_centers)):
                 arr_[true_e_idx] *= flux[true_e_idx] * dE_nu[true_e_idx]
-            pdf = np.sum(arr_, axis=0)
+            pdf_arr = np.sum(arr_, axis=0)
             del(arr_)
 
             # Normalize the pdf.
-            norm = np.sum(pdf)
+            norm = np.sum(pdf_arr)
             if norm == 0:
-                raise ValueError('The signal PDF is empty for {}! This should '
+                raise ValueError(
+                    'The signal PDF is empty for {}! This should '
                     'not happen. Check the parameter ranges!'.format(
                         str(gridfitparams)))
-            pdf /= norm
-            pdf /= self.bin_volumes
+            pdf_arr /= norm
+            pdf_arr /= bin_volumes
+
+            pdf = PDSignalPDF(
+                pdf_arr, reco_e_edges, psi_edges, ang_err_edges)
 
             return pdf
+
         """
         args_list = [
-            ((pdf_arr, flux_model, gridfitparams), {})
+            ((union_arr, flux_model, gridfitparams), {})
                 for gridfitparams in self.gridfitparams_list
         ]
 
@@ -705,11 +788,14 @@ class PublicDataSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             ncpu=self.ncpu,
             ppbar=ppbar)
         """
-        self.pdf_list = [
-            create_pdf(pdf_arr, flux_model, gridfitparams={'gamma': 2})
+        pdf_list = [
+            create_pdf(union_arr, flux_model, gridfitparams={'gamma': 2})
         ]
+        #"""
+        del(union_arr)
 
-        del(pdf_arr)
-
-
+        # Save all the energy PDF objects in the PDFSet PDF registry with
+        # the hash of the individual parameters as key.
+        for (gridfitparams, pdf) in zip(self.gridfitparams_list, pdf_list):
+            self.add_pdf(pdf, gridfitparams)
 
