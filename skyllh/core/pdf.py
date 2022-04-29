@@ -1020,7 +1020,7 @@ class MultiDimGridPDF(PDF):
                     n_src = len(tdm.get_data('src_array')['ra'])
                     eventdata = np.array(
                         [np.tile(tdm.get_data(axis.name), n_src)
-                         if 'psi' not in axis.name 
+                         if 'psi' not in axis.name
                          else tdm.get_data(axis.name)
                          for axis in self._axes]).T
             elif (self.is_background_pdf):
@@ -1365,6 +1365,14 @@ class PDFSet(object):
 
     @property
     def pdf_axes(self):
+        """DEPRECATED (read-only) The PDFAxes object of one of the PDFs of this
+        PDF set.
+        All PDFs of this set are supposed to have the same axes.
+        """
+        return self.axes
+
+    @property
+    def axes(self):
         """(read-only) The PDFAxes object of one of the PDFs of this PDF set.
         All PDFs of this set are supposed to have the same axes.
         """
