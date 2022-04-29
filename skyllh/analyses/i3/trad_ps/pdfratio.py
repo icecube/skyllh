@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
+
 from skyllh.core.parameters import make_params_hash
 from skyllh.core.pdf import PDF
 from skyllh.core.pdfratio import SigSetOverBkgPDFRatio
@@ -83,7 +85,7 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
                 'For at least one event no background probability can be '
                 'calculated! Check your background PDF!')
 
-        ratio = sig_prob / bkg_pdf
+        ratio = sig_prob / bkg_prob
 
         return ratio
 
