@@ -544,8 +544,12 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
         pdf1 = self._pdf1
         pdf2 = self._pdf2
 
-        with TaskTimer(tl, 'Get signal prob from table.'):
-            (prob1, grads1) = pdf1.get_prob(tdm, params, tl=tl)
+        with TaskTimer(tl, 'Get prob from individual PDFs.'):
+            p1 = pdf1.get_prob(tdm, params, tl=tl)
+            if isinstance(p1, tuple):
+                (prob1, grads1) = p1
+            else
+                prob1 = p1
             p2 = pdf2.get_prob(tdm, params, tl=tl)
             if isinstance(p2, tuple):
                 (prob2, grads2) = p2
