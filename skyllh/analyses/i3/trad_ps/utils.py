@@ -111,7 +111,8 @@ def load_smearing_histogram(pathfilenames):
     true_e_bin_edges : 1d ndarray
         The ndarray holding the bin edges of the true energy axis.
     true_dec_bin_edges : 1d ndarray
-        The ndarray holding the bin edges of the true declination axis.
+        The ndarray holding the bin edges of the true declination axis in
+        radians.
     reco_e_lower_edges : 3d ndarray
         The 3d ndarray holding the lower bin edges of the reco energy axis.
         For each pair of true_e and true_dec different reco energy bin edges
@@ -123,16 +124,18 @@ def load_smearing_histogram(pathfilenames):
         are provided.
         The shape is (n_true_e, n_true_dec, n_reco_e).
     psi_lower_edges : 4d ndarray
-        The 4d ndarray holding the lower bin edges of the psi axis.
+        The 4d ndarray holding the lower bin edges of the psi axis in radians.
         The shape is (n_true_e, n_true_dec, n_reco_e, n_psi).
     psi_upper_edges : 4d ndarray
-        The 4d ndarray holding the upper bin edges of the psi axis.
+        The 4d ndarray holding the upper bin edges of the psi axis in radians.
         The shape is (n_true_e, n_true_dec, n_reco_e, n_psi).
     ang_err_lower_edges : 5d ndarray
-        The 5d ndarray holding the lower bin edges of the angular error axis.
+        The 5d ndarray holding the lower bin edges of the angular error axis
+        in radians.
         The shape is (n_true_e, n_true_dec, n_reco_e, n_psi, n_ang_err).
     ang_err_upper_edges : 5d ndarray
-        The 5d ndarray holding the upper bin edges of the angular error axis.
+        The 5d ndarray holding the upper bin edges of the angular error axis
+        in radians.
         The shape is (n_true_e, n_true_dec, n_reco_e, n_psi, n_ang_err).
     """
     # Load the smearing data from the public dataset.
@@ -174,8 +177,10 @@ def load_smearing_histogram(pathfilenames):
                 n += 1
         return n
 
-    true_e_bin_edges = np.union1d(data['true_e_min'], data['true_e_max'])
-    true_dec_bin_edges = np.union1d(data['true_dec_min'], data['true_dec_max'])
+    true_e_bin_edges = np.union1d(
+        data['true_e_min'], data['true_e_max'])
+    true_dec_bin_edges = np.union1d(
+        data['true_dec_min'], data['true_dec_max'])
 
     n_true_e = len(true_e_bin_edges) - 1
     n_true_dec = len(true_dec_bin_edges) - 1
@@ -236,6 +241,13 @@ def load_smearing_histogram(pathfilenames):
             n_ang_err
         )
     )
+
+    # Convert degrees into radians.
+    true_dec_bin_edges = np.radians(true_dec_bin_edges)
+    psi_lower_edges = np.radians(psi_lower_edges)
+    psi_upper_edges = np.radians(psi_upper_edges)
+    ang_err_lower_edges = np.radians(ang_err_lower_edges)
+    ang_err_upper_edges = np.radians(ang_err_upper_edges)
 
     return (
         histogram,
@@ -541,8 +553,6 @@ class PublicDataSmearingMatrix(object):
         true_dec_idx : int
             The index of the declination bin for the given declination value.
         """
-        true_dec = np.degrees(true_dec)
-
         if (true_dec < self.true_dec_bin_edges[0]) or\
            (true_dec > self.true_dec_bin_edges[-1]):
             raise ValueError('The declination {} degrees is not supported by '
@@ -596,7 +606,8 @@ class PublicDataSmearingMatrix(object):
         reco_e_idx : int
             The index of the reco energy bin.
         psi : float
-            The psi value for which the bin index should get returned.
+            The psi value in radians for which the bin index should get
+            returned.
 
         Returns
         -------
@@ -632,8 +643,8 @@ class PublicDataSmearingMatrix(object):
         psi_idx : int
             The index of the psi bin.
         ang_err : float
-            The angular error value for which the bin index should get
-            returned.
+            The angular error value in radians for which the bin index should
+            get returned.
 
         Returns
         -------
@@ -655,7 +666,7 @@ class PublicDataSmearingMatrix(object):
 
         return ang_err_idx
 
-    def get_true_log_e_range_with_valid_log_e_pfds(self, dec_idx):
+    def get_true_log_e_range_with_valid_log_e_pdfs(self, dec_idx):
         """Determines the true log energy range for which log_e PDFs are
         available for the given declination bin.
 
@@ -724,7 +735,7 @@ class PublicDataSmearingMatrix(object):
         bin_widths = upper_bin_edges - lower_bin_edges
 
         # Normalize the PDF.
-        pdf /= (np.sum(pdf * bin_widths))
+        pdf /= np.sum(pdf) * bin_widths
 
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
@@ -774,7 +785,7 @@ class PublicDataSmearingMatrix(object):
         bin_widths = upper_bin_edges - lower_bin_edges
 
         # Normalize the PDF.
-        pdf /= (np.sum(pdf * bin_widths))
+        pdf /= np.sum(pdf) * bin_widths
 
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
@@ -825,7 +836,7 @@ class PublicDataSmearingMatrix(object):
         bin_widths = upper_bin_edges - lower_bin_edges
 
         # Normalize the PDF.
-        pdf = pdf / np.sum(pdf * bin_widths)
+        pdf = pdf / (np.sum(pdf) * bin_widths)
 
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
@@ -955,7 +966,7 @@ class PublicDataSmearingMatrix(object):
                 psi_idx[mm] = bb_psi_idx
                 psi[mm] = bb_psi
 
-        return (psi_idx, np.radians(psi))
+        return (psi_idx, psi)
 
     def sample_ang_err(
             self, rss, dec_idx, log_true_e_idxs, log_e_idxs, psi_idxs):
@@ -1032,4 +1043,4 @@ class PublicDataSmearingMatrix(object):
                     ang_err_idx[mmm] = bbb_ang_err_idx
                     ang_err[mmm] = bbb_ang_err
 
-        return (ang_err_idx, np.radians(ang_err))
+        return (ang_err_idx, ang_err)
