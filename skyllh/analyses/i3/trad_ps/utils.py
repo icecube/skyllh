@@ -835,6 +835,14 @@ class PublicDataSmearingMatrix(object):
         ]
         bin_widths = upper_bin_edges - lower_bin_edges
 
+        # Some bins might not be defined, i.e. have zero bin widths.
+        valid = bin_widths > 0
+
+        pdf = pdf[valid]
+        lower_bin_edges = lower_bin_edges[valid]
+        upper_bin_edges = upper_bin_edges[valid]
+        bin_widths = bin_widths[valid]
+
         # Normalize the PDF.
         pdf = pdf / (np.sum(pdf) * bin_widths)
 
