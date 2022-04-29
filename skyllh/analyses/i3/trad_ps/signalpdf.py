@@ -727,6 +727,10 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             **kwargs):
         """Creates a new PDSignalPDFSet instance for the public data.
         """
+        # Extend the fitparam_grid_set
+        fitparam_grid_set = fitparam_grid_set.copy()
+        fitparam_grid_set.add_extra_lower_and_upper_bin()
+
         super().__init__(
             pdf_type=PDF,
             fitparams_grid_set=fitparam_grid_set,
