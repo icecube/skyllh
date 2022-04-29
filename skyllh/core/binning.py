@@ -178,15 +178,19 @@ def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
         The bin indices of the given values.
     """
     if np.any(values < le[0]):
+        invalid_values = values[values < le[0]]
         raise ValueError(
-            'At least one value is smaller than the lowest bin edge!')
+            '{} values ({}) are smaller than the lowest bin edge ({})!'.format(
+                len(invalid_values), str(invalid_values), le[0]))
     if np.any(values > ue[-1]):
+        invalid_values = values[values > ue[-1]]
         raise ValueError(
-            'At least one value is larger than the largest bin edge!')
+            '{} values ({}) are larger than the largest bin edge ({})!'.format(
+                len(invalid_values), str(invalid_values), ue[-1]))
 
     m = (
-        (v[:,np.newaxis] >= le[np.newaxis,:]) &
-        (v[:,np.newaxis] < ue[np.newaxis,:])
+        (values[:,np.newaxis] >= le[np.newaxis,:]) &
+        (values[:,np.newaxis] <  ue[np.newaxis,:])
     )
     idxs = np.nonzero(m)[1]
 
