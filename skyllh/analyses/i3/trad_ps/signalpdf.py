@@ -18,6 +18,7 @@ from skyllh.core.binning import (
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.pdf import (
     PDF,
+    PDFAxis,
     PDFSet,
     IsSignalPDF,
     EnergyPDF
@@ -96,7 +97,7 @@ class PublicDataSignalGenerator(object):
 
         # Determine the true energy range for which log_e PDFs are available.
         (min_log_true_e,
-         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pfds(
+         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
              dec_idx)
 
         # First draw a true neutrino energy from the hypothesis spectrum.
@@ -590,7 +591,6 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             - 'src_array' : 1d record array
                 The source record array containing the declination of the
                 sources.
-
         gridfitparams : dict
             The dictionary holding the signal parameter values for which the
             signal energy probability should be calculated. Note, that the
@@ -627,17 +627,31 @@ class PDSignalPDF(PDF, IsSignalPDF):
 
         self.pdf_arr = pdf_arr
 
-        #self.log_e_edges = log_e_edges
         self.log_e_lower_edges = log_e_edges[:-1]
         self.log_e_upper_edges = log_e_edges[1:]
 
-        #self.psi_edges = psi_edges
         self.psi_lower_edges = psi_edges[:-1]
         self.psi_upper_edges = psi_edges[1:]
 
-        #self.ang_err_edges = ang_err_edges
         self.ang_err_lower_edges = ang_err_edges[:-1]
         self.ang_err_upper_edges = ang_err_edges[1:]
+
+        # Add the PDF axes.
+        self.add_axis(PDFAxis(
+            name='log_energy',
+            vmin=self.log_e_lower_edges[0],
+            vmax=self.log_e_upper_edges[-1])
+        )
+        self.add_axis(PDFAxis(
+            name='psi',
+            vmin=self.psi_lower_edges[0],
+            vmax=self.psi_lower_edges[-1])
+        )
+        self.add_axis(PDFAxis(
+            name='ang_err',
+            vmin=self.ang_err_lower_edges[0],
+            vmax=self.ang_err_upper_edges[-1])
+        )
 
     def assert_is_valid_for_trial_data(self, tdm):
         pass
@@ -689,7 +703,11 @@ class PDSignalPDF(PDF, IsSignalPDF):
             self.ang_err_lower_edges, self.ang_err_upper_edges, ang_err)
 
         idxs = tuple(zip(log_e_idxs, psi_idxs, ang_err_idxs))
-        prob = self.pdf_arr[idxs]
+
+        # FIXME with a block size
+        prob = np.empty((len(idxs),), dtype=np.double)
+        for (i,idx) in enumerate(idxs):
+            prob[i] = self.pdf_arr[idx]
 
         return (prob, None)
 
@@ -707,7 +725,7 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             ncpu=None,
             ppbar=None,
             **kwargs):
-        """Creates a new PublicDataSignalPDFSet instance for the public data.
+        """Creates a new PDSignalPDFSet instance for the public data.
         """
         super().__init__(
             pdf_type=PDF,
@@ -718,11 +736,12 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         if(union_sm_arr_pathfilename is not None):
             with open(union_sm_arr_pathfilename, 'rb') as f:
                 data = pickle.load(f)
-            union_arr = data['arr']
+            union_arr = data['union_arr']
             true_e_bin_edges = data['true_e_bin_edges']
             reco_e_edges = data['reco_e_edges']
             psi_edges = data['psi_edges']
             ang_err_edges = data['ang_err_edges']
+            del(data)
         else:
             sm = PublicDataSmearingMatrix(
                 pathfilenames=ds.get_abs_pathfilename_list(
@@ -732,7 +751,8 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
              reco_e_edges,
              psi_edges,
              ang_err_edges
-            ) = create_unionized_smearing_matrix_array(sm, src_dec)
+            ) = create_unionized_smearing_matrix_array(sm, np.degrees(src_dec))
+            del(sm)
 
         reco_e_bw = np.diff(reco_e_edges)
         psi_edges_bw = np.diff(psi_edges)
@@ -742,7 +762,6 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             psi_edges_bw[np.newaxis,:,np.newaxis] *
             ang_err_bw[np.newaxis,np.newaxis,:])
 
-        true_e_bin_centers = get_bincenters_from_binedges(true_e_bin_edges)
         # Create the pdf in gamma for different gamma values.
         def create_pdf(union_arr, flux_model, gridfitparams):
             """Creates a pdf for a specific gamma value.
@@ -751,17 +770,18 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             # The copy is needed to not interfer with other CPU processes.
             my_flux_model = flux_model.copy(newprop=gridfitparams)
 
-            E_nu = np.power(10, true_e_bin_centers)
-            flux = my_flux_model(E_nu)
-            dE_nu = np.diff(true_e_bin_edges)
+            E_nu_min = np.power(10, true_e_bin_edges[:-1])
+            E_nu_max = np.power(10, true_e_bin_edges[1:])
+
+            flux_dE = my_flux_model.get_integral(E_nu_min, E_nu_max)
 
             arr_ = np.copy(union_arr)
-            for true_e_idx in range(len(true_e_bin_centers)):
-                arr_[true_e_idx] *= flux[true_e_idx] * dE_nu[true_e_idx]
+            for true_e_idx in range(len(true_e_bin_edges)-1):
+                arr_[true_e_idx] *= flux_dE[true_e_idx]
             pdf_arr = np.sum(arr_, axis=0)
             del(arr_)
 
-            # Normalize the pdf.
+            # Normalize the pdf, which is the probability per bin volume.
             norm = np.sum(pdf_arr)
             if norm == 0:
                 raise ValueError(
@@ -776,22 +796,17 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
             return pdf
 
-        """
         args_list = [
             ((union_arr, flux_model, gridfitparams), {})
                 for gridfitparams in self.gridfitparams_list
         ]
 
-        self.pdf_list = parallelize(
+        pdf_list = parallelize(
             create_pdf,
             args_list,
             ncpu=self.ncpu,
             ppbar=ppbar)
-        """
-        pdf_list = [
-            create_pdf(union_arr, flux_model, gridfitparams={'gamma': 2})
-        ]
-        #"""
+
         del(union_arr)
 
         # Save all the energy PDF objects in the PDFSet PDF registry with
@@ -799,3 +814,44 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         for (gridfitparams, pdf) in zip(self.gridfitparams_list, pdf_list):
             self.add_pdf(pdf, gridfitparams)
 
+    def get_prob(self, tdm, gridfitparams, tl=None):
+        """Calculates the signal probability density of each event for the
+        given set of signal fit parameters on a grid.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the data events for which the
+            probability should be calculated for. The following data fields must
+            exist:
+
+            - 'log_energy'
+                The log10 of the reconstructed energy.
+            - 'psi'
+                The opening angle from the source to the event in radians.
+            - 'ang_err'
+                The angular error of the event in radians.
+        gridfitparams : dict
+            The dictionary holding the signal parameter values for which the
+            signal energy probability should be calculated. Note, that the
+            parameter values must match a set of parameter grid values for which
+            a PDSignalPDF object has been created at construction time of this
+            PDSignalPDFSet object.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure time.
+
+        Returns
+        -------
+        prob : 1d ndarray
+            The array with the signal energy probability for each event.
+
+        Raises
+        ------
+        KeyError
+            If no energy PDF can be found for the given signal parameter values.
+        """
+        pdf = self.get_pdf(gridfitparams)
+
+        (prob, grads) = pdf.get_prob(tdm, tl=tl)
+
+        return prob
