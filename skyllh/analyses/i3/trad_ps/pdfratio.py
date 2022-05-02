@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import sys
+
 import numpy as np
 
 from skyllh.core.parameters import make_params_hash
@@ -85,7 +87,10 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
                 'For at least one event no background probability can be '
                 'calculated! Check your background PDF!')
 
-        ratio = sig_prob / bkg_prob
+        m = sig_prob == 0
+        sig_prob[m] = sys.float_info.min
+
+        ratio = np.log(sig_prob) - np.log(bkg_prob)
 
         return ratio
 
@@ -97,6 +102,9 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         (ratio, gradients) =\
             self._interpolmethod_instance.get_value_and_gradients(
                 tdm, eventdata=None, params=fitparams)
+
+        ratio = np.exp(ratio)
+        gradients = ratio * gradients
 
         # Cache the value and the gradients.
         self._cache_fitparams_hash = fitparams_hash
