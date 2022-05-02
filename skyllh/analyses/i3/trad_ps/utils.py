@@ -451,6 +451,59 @@ class PublicDataAeff(object):
              self.log_true_e_binedges_upper[-1:])
         )
 
+    @property
+    def log_true_e_bincenters(self):
+        """The bin center values of the log true energy axis.
+        """
+        bincenters = 0.5 * (
+            self.log_true_e_binedges[:-1] + self.log_true_e_binedges[1:]
+        )
+
+        return bincenters
+
+    def get_aeff_for_sin_true_dec(self, sin_true_dec):
+        """Retrieves the effective area as function of log_true_e.
+
+        Parameters
+        ----------
+        sin_true_dec : float
+            The sin of the true declination.
+
+        Returns
+        -------
+        aeff : (n,)-shaped numpy ndarray
+            The effective area for the given true declination as a function of
+            log true energy.
+        """
+        sin_true_dec_idx = np.digitize(
+            sin_true_dec, self.sin_true_dec_binedges) - 1
+
+        aeff = self.aeff_arr[sin_true_dec_idx]
+
+        return aeff
+
+    def get_aeff_integral_for_sin_true_dec(
+            self, sin_true_dec, log_true_e_min, log_true_e_max):
+        """Calculates the integral of the effective area using the trapezoid
+        method.
+
+        Returns
+        -------
+        integral : float
+            The integral in unit cm^2 GeV.
+        """
+        aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
+
+        integral = (
+            (np.power(10, log_true_e_max) -
+             np.power(10, log_true_e_min)) *
+            0.5 *
+            (np.interp(log_true_e_min, self.log_true_e_bincenters, aeff) +
+             np.interp(log_true_e_max, self.log_true_e_bincenters, aeff))
+        )
+
+        return integral
+
     def get_aeff(self, sin_true_dec, log_true_e):
         """Retrieves the effective area for the given sin(dec_true) and
         log(E_true) value pairs.
