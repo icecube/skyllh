@@ -548,7 +548,7 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
             p1 = pdf1.get_prob(tdm, params, tl=tl)
             if isinstance(p1, tuple):
                 (prob1, grads1) = p1
-            else
+            else:
                 prob1 = p1
             p2 = pdf2.get_prob(tdm, params, tl=tl)
             if isinstance(p2, tuple):
