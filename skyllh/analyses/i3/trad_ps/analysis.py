@@ -8,6 +8,7 @@ event PDF.
 import argparse
 import logging
 import numpy as np
+import os.path
 
 from skyllh.core.progressbar import ProgressBar
 
@@ -83,8 +84,12 @@ from skyllh.analyses.i3.trad_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
 )
 from skyllh.analyses.i3.trad_ps.signalpdf import (
-    PublicDataSignalI3EnergyPDFSet
+    PDSignalPDFSet
 )
+from skyllh.analyses.i3.trad_ps.pdfratio import (
+    PDPDFRatio
+)
+
 
 def psi_func(tdm, src_hypo_group_manager, fitparams):
     """Function to calculate the opening angle between the source position
@@ -134,6 +139,7 @@ def create_analysis(
     refplflux_gamma=2,
     ns_seed=10.0,
     gamma_seed=3,
+    cache_dir='.',
     n_mc_events=int(1e7),
     compress_data=False,
     keep_data_fields=None,
@@ -162,6 +168,8 @@ def create_analysis(
     gamma_seed : float | None
         Value to seed the minimizer with for the gamma fit. If set to None,
         the refplflux_gamma value will be set as gamma_seed.
+    cache_dir : str
+        The cache directory where to look for cached data, e.g. signal PDFs.
     compress_data : bool
         Flag if the data should get converted from float64 into float32.
     keep_data_fields : list of str | None
@@ -195,7 +203,7 @@ def create_analysis(
         The Analysis instance for this analysis.
     """
     # Define the flux model.
-    fluxmodel = PowerLawFlux(
+    flux_model = PowerLawFlux(
         Phi0=refplflux_Phi0, E0=refplflux_E0, gamma=refplflux_gamma)
 
     # Define the fit parameter ns.
@@ -205,7 +213,7 @@ def create_analysis(
     fitparam_gamma = FitParameter('gamma', valmin=1, valmax=4, initial=gamma_seed)
 
     # Define the detector signal efficiency implementation method for the
-    # IceCube detector and this source and fluxmodel.
+    # IceCube detector and this source and flux_model.
     # The sin(dec) binning will be taken by the implementation method
     # automatically from the Dataset instance.
     gamma_grid = fitparam_gamma.as_linear_grid(delta=0.1)
@@ -220,7 +228,7 @@ def create_analysis(
     # Create a source hypothesis group manager.
     src_hypo_group_manager = SourceHypoGroupManager(
         SourceHypoGroup(
-            source, fluxmodel, detsigyield_implmethod, sig_gen_method))
+            source, flux_model, detsigyield_implmethod, sig_gen_method))
 
     # Create a source fit parameter mapper and define the fit parameters.
     src_fitparam_mapper = SingleSourceFitParameterMapper()
@@ -253,6 +261,7 @@ def create_analysis(
     # We will use the same method for all datasets.
     event_selection_method = SpatialBoxEventSelectionMethod(
         src_hypo_group_manager, delta_angle=np.deg2rad(optimize_delta_angle))
+    #event_selection_method = None
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
@@ -274,34 +283,58 @@ def create_analysis(
         log_energy_binning = ds.get_binning_definition('log_energy')
 
         # Create the spatial PDF ratio instance for this dataset.
+        """
         spatial_sigpdf = GaussianPSFPointLikeSourceSignalSpatialPDF(
             dec_range=np.arcsin(sin_dec_binning.range))
+        """
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(
             data.exp, sin_dec_binning)
+        """
         spatial_pdfratio = SpatialSigOverBkgPDFRatio(
             spatial_sigpdf, spatial_bkgpdf)
-
+        """
         # Create the energy PDF ratio instance for this dataset.
         smoothing_filter = BlockSmoothingFilter(nbins=1)
-
+        """
         energy_sigpdfset = PublicDataSignalI3EnergyPDFSet(
             rss=rss,
             ds=ds,
-            flux_model=fluxmodel,
+            flux_model=flux_model,
             fitparam_grid_set=gamma_grid,
             n_events=n_mc_events,
             smoothing_filter=smoothing_filter,
             ppbar=pbar)
+        """
         energy_bkgpdf = DataBackgroundI3EnergyPDF(
             data.exp, log_energy_binning, sin_dec_binning, smoothing_filter)
+        """
         fillmethod = Skylab2SkylabPDFRatioFillMethod()
         energy_pdfratio = I3EnergySigSetOverBkgPDFRatioSpline(
             energy_sigpdfset,
             energy_bkgpdf,
             fillmethod=fillmethod,
             ppbar=pbar)
+        """
 
-        pdfratios = [ spatial_pdfratio, energy_pdfratio ]
+        sig_pdf_set = PDSignalPDFSet(
+            ds=ds,
+            src_dec=source.dec,
+            flux_model=flux_model,
+            fitparam_grid_set=gamma_grid,
+            union_sm_arr_pathfilename=os.path.join(
+                cache_dir, 'union_sm_{}.pkl'.format(ds.name)),
+            ppbar=ppbar
+        )
+
+        bkg_pdf = spatial_bkgpdf * energy_bkgpdf
+
+        pdfratio = PDPDFRatio(
+            sig_pdf_set=sig_pdf_set,
+            bkg_pdf=bkg_pdf
+        )
+
+        #pdfratios = [ spatial_pdfratio, energy_pdfratio ]
+        pdfratios = [ pdfratio ]
 
         analysis.add_dataset(
             ds, data, pdfratios, tdm, event_selection_method)
@@ -334,12 +367,14 @@ if(__name__ == '__main__'):
         help='The random number generator seed for generating the signal PDF.')
     p.add_argument('--seed', default=1, type=int,
         help='The random number generator seed for the likelihood minimization.')
-    p.add_argument("--ncpu", default=1, type=int,
+    p.add_argument('--ncpu', default=1, type=int,
         help='The number of CPUs to utilize where parallelization is possible.'
     )
-    p.add_argument("--n-mc-events", default=int(1e7), type=int,
+    p.add_argument('--n-mc-events', default=int(1e7), type=int,
         help='The number of MC events to sample for the energy signal PDF.'
     )
+    p.add_argument('--cache-dir', default='.', type=str,
+        help='The cache directory to look for cached data, e.g. signal PDFs.')
     args = p.parse_args()
 
     # Setup `skyllh` package logging.
@@ -365,7 +400,8 @@ if(__name__ == '__main__'):
     datasets = []
     for (sample, season) in sample_seasons:
         # Get the dataset from the correct dataset collection.
-        dsc = data_samples[sample].create_dataset_collection(args.data_base_path)
+        dsc = data_samples[sample].create_dataset_collection(
+            args.data_base_path)
         datasets.append(dsc.get_dataset(season))
 
 
@@ -383,6 +419,7 @@ if(__name__ == '__main__'):
             rss_pdf,
             datasets,
             source,
+            cache_dir=args.cache_dir,
             n_mc_events=args.n_mc_events,
             gamma_seed=args.gamma_seed,
             tl=tl)
