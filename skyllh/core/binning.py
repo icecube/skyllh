@@ -268,6 +268,12 @@ class BinningDefinition(object):
         return 0.5*(self._binedges[:-1] + self._binedges[1:])
 
     @property
+    def binwidths(self):
+        """(read-only) The widths of the bins.
+        """
+        return np.diff(self._binedges)
+
+    @property
     def lower_edge(self):
         """The lowest bin edge of the binning.
         """
@@ -302,6 +308,15 @@ class BinningDefinition(object):
         outofrange = np.any((data < self.lower_edge) |
                             (data > self.upper_edge))
         return outofrange
+
+    def get_binwidth_from_value(self, value):
+        """Returns the width of the bin the given value falls into.
+        """
+        idx = np.digitize(value, self._binedges) - 1
+
+        bin_width = self.binwidths[idx]
+
+        return bin_width
 
     def get_subset(self, lower_edge, upper_edge):
         """Creates a new BinningDefinition instance which contains only a subset
