@@ -657,7 +657,7 @@ class PDSignalPDF(PDF, IsSignalPDF):
         pass
 
     def get_prob(self, tdm, params=None, tl=None):
-        """Looks up the probability density for the events given by the
+        """Calculates the probability density for the events given by the
         TrialDataManager.
 
         Parameters
@@ -695,19 +695,27 @@ class PDSignalPDF(PDF, IsSignalPDF):
         psi = tdm.get_data('psi')
         ang_err = tdm.get_data('ang_err')
 
+        # Select events that actually have a signal PDF.
+        # All other events will get zero signal probability.
+        m = (
+            (log_e >= self.log_e_lower_edges[0]) &
+            (log_e < self.log_e_upper_edges[-1]) &
+            (psi >= self.psi_lower_edges[0]) &
+            (psi < self.psi_upper_edges[-1]) &
+            (ang_err >= self.ang_err_lower_edges[0]) &
+            (ang_err < self.ang_err_upper_edges[-1])
+        )
+
+        prob = np.zeros((len(log_e),), dtype=np.double)
+
         log_e_idxs = get_bin_indices_from_lower_and_upper_binedges(
-            self.log_e_lower_edges, self.log_e_upper_edges, log_e)
+            self.log_e_lower_edges, self.log_e_upper_edges, log_e[m])
         psi_idxs = get_bin_indices_from_lower_and_upper_binedges(
-            self.psi_lower_edges, self.psi_upper_edges, psi)
+            self.psi_lower_edges, self.psi_upper_edges, psi[m])
         ang_err_idxs = get_bin_indices_from_lower_and_upper_binedges(
-            self.ang_err_lower_edges, self.ang_err_upper_edges, ang_err)
+            self.ang_err_lower_edges, self.ang_err_upper_edges, ang_err[m])
 
-        idxs = tuple(zip(log_e_idxs, psi_idxs, ang_err_idxs))
-
-        # FIXME with a block size
-        prob = np.empty((len(idxs),), dtype=np.double)
-        for (i,idx) in enumerate(idxs):
-            prob[i] = self.pdf_arr[idx]
+        prob[m] = self.pdf_arr[(log_e_idxs, psi_idxs, ang_err_idxs)]
 
         return (prob, None)
 
@@ -755,8 +763,13 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
              reco_e_edges,
              psi_edges,
              ang_err_edges
-            ) = create_unionized_smearing_matrix_array(sm, np.degrees(src_dec))
+            ) = create_unionized_smearing_matrix_array(sm, src_dec)
             del(sm)
+
+        # Load the effective area.
+        aeff = PublicDataAeff(
+            pathfilenames=ds.get_abs_pathfilename_list(
+                ds.get_aux_data_definition('eff_area_datafile')))
 
         reco_e_bw = np.diff(reco_e_edges)
         psi_edges_bw = np.diff(psi_edges)
@@ -777,11 +790,18 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             E_nu_min = np.power(10, true_e_bin_edges[:-1])
             E_nu_max = np.power(10, true_e_bin_edges[1:])
 
-            flux_dE = my_flux_model.get_integral(E_nu_min, E_nu_max)
+            flux_integral = my_flux_model.get_integral(E_nu_min, E_nu_max)
+
+            aeff_integral = aeff.get_aeff_integral_for_sin_true_dec(
+                np.sin(src_dec), np.log10(E_nu_min), np.log10(E_nu_max))
+
+            dE_nu = np.diff(np.power(10, true_e_bin_edges))
+
+            avg_exposure = aeff_integral / dE_nu * flux_integral
 
             arr_ = np.copy(union_arr)
             for true_e_idx in range(len(true_e_bin_edges)-1):
-                arr_[true_e_idx] *= flux_dE[true_e_idx]
+                arr_[true_e_idx] *= avg_exposure[true_e_idx]
             pdf_arr = np.sum(arr_, axis=0)
             del(arr_)
 
