@@ -335,17 +335,21 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
 
     Returns
     -------
-    arr : (nbins_true_e, nbins_reco_e, nbins_psi, nbins_ang_err)-shaped
-          4D numpy ndarray
-        The 4D ndarray holding the smearing matrix values.
-    true_e_bin_edges : 1D numpy ndarray
-        The unionized bin edges of the true energy axis.
-    reco_e_edges : 1D numpy ndarray
-        The unionized bin edges of the reco energy axis.
-    psi_edges : 1D numpy ndarray
-        The unionized bin edges of psi axis.
-    ang_err_edges : 1D numpy ndarray
-        The unionized bin edges of the angular error axis.
+    result : dict
+        The result dictionary with the following fields:
+            union_arr : (nbins_true_e,
+                         nbins_reco_e,
+                         nbins_psi,
+                         nbins_ang_err)-shaped 4D numpy ndarray
+                The 4D ndarray holding the smearing matrix values.
+            log10_true_e_bin_edges : 1D numpy ndarray
+                The unionized bin edges of the log10 true energy axis.
+            log10_reco_e_binedges : 1D numpy ndarray
+                The unionized bin edges of the log10 reco energy axis.
+            psi_binedges : 1D numpy ndarray
+                The unionized bin edges of psi axis.
+            ang_err_binedges : 1D numpy ndarray
+                The unionized bin edges of the angular error axis.
     """
     true_dec_idx = sm.get_true_dec_idx(src_dec)
 
@@ -377,8 +381,9 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
 
     # Create the unionized pdf array, which contains an axis for the
     # true energy bins.
-    arr = np.zeros(
-        (nbins_true_e, nbins_reco_e, nbins_psi, nbins_ang_err), dtype=np.double)
+    union_arr = np.zeros(
+        (nbins_true_e, nbins_reco_e, nbins_psi, nbins_ang_err),
+        dtype=np.double)
     # Fill the 4D array.
     for (true_e_idx, true_e) in enumerate(true_e_bincenters):
         for (e_idx, e) in enumerate(reco_e_bincenters):
@@ -401,7 +406,7 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
                     if sm_a_idx is None:
                         continue
 
-                    arr[
+                    union_arr[
                         true_e_idx,
                         e_idx,
                         p_idx,
@@ -414,13 +419,15 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
                         sm_a_idx
                     ]
 
-    return (
-        arr,
-        sm.true_e_bin_edges,
-        reco_e_edges,
-        psi_edges,
-        ang_err_edges
-    )
+    result = dict({
+        'union_arr': union_arr,
+        'log10_true_e_binedges': sm.true_e_bin_edges,
+        'log10_reco_e_binedges': reco_e_edges,
+        'psi_binedges': psi_edges,
+        'ang_err_binedges': ang_err_edges
+    })
+
+    return result
 
 
 class PublicDataAeff(object):
@@ -481,6 +488,37 @@ class PublicDataAeff(object):
         aeff = self.aeff_arr[sin_true_dec_idx]
 
         return aeff
+
+    def get_detection_pd_for_sin_true_dec(self, sin_true_dec, true_e):
+        """Calculates the detection probability density p(E_nu|sin_dec) in
+        unit GeV^-1 for the given true energy values.
+
+        Parameters
+        ----------
+        sin_true_dec : float
+            The sin of the true declination.
+        true_e : (n,)-shaped 1d numpy ndarray of float
+            The values of the true energy in GeV for which the probability
+            density value should get calculated.
+
+        Returns
+        -------
+        det_pd : (n,)-shaped 1d numpy ndarray of float
+            The detection probability density values for the given true energy
+            value.
+        """
+        aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
+
+        dE = np.power(10, np.diff(self.log_true_e_binedges))
+
+        det_pdf = aeff / np.sum(aeff) / dE
+
+        det_pd = np.interp(
+            true_e,
+            np.power(10, self.log_true_e_bincenters),
+            det_pdf)
+
+        return det_pd
 
     def get_aeff_integral_for_sin_true_dec(
             self, sin_true_dec, log_true_e_min, log_true_e_max):
