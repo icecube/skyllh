@@ -87,10 +87,7 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
                 'For at least one event no background probability can be '
                 'calculated! Check your background PDF!')
 
-        m = sig_prob == 0
-        sig_prob[m] = sys.float_info.min
-
-        ratio = np.log(sig_prob) - np.log(bkg_prob)
+        ratio = sig_prob / bkg_prob
 
         return ratio
 
@@ -102,9 +99,6 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         (ratio, gradients) =\
             self._interpolmethod_instance.get_value_and_gradients(
                 tdm, eventdata=None, params=fitparams)
-
-        ratio = np.exp(ratio)
-        gradients = ratio * gradients
 
         # Cache the value and the gradients.
         self._cache_fitparams_hash = fitparams_hash
@@ -135,8 +129,8 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         fitparams_hash = make_params_hash(fitparams)
 
         # Check if the ratio value is already cached.
-        if(self._is_cached(tdm, fitparams_hash)):
-            return self._cache_ratio
+        #if(self._is_cached(tdm, fitparams_hash)):
+        #    return self._cache_ratio
 
         self._calculate_ratio_and_gradients(tdm, fitparams, fitparams_hash)
 
@@ -162,8 +156,8 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         pidx = self.convert_signal_fitparam_name_into_index(fitparam_name)
 
         # Check if the gradients have been calculated already.
-        if(self._is_cached(tdm, fitparams_hash)):
-            return self._cache_gradients[pidx]
+        #if(self._is_cached(tdm, fitparams_hash)):
+        #    return self._cache_gradients[pidx]
 
         # The gradients have not been calculated yet.
         self._calculate_ratio_and_gradients(tdm, fitparams, fitparams_hash)
