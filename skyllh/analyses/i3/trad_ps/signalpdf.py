@@ -735,7 +735,7 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             **kwargs):
         """Creates a new PDSignalPDFSet instance for the public data.
         """
-        # Extend the fitparam_grid_set
+        # Extend the fitparam_grid_set.
         fitparam_grid_set = fitparam_grid_set.copy()
         fitparam_grid_set.add_extra_lower_and_upper_bin()
 
@@ -748,32 +748,54 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         if(union_sm_arr_pathfilename is not None):
             with open(union_sm_arr_pathfilename, 'rb') as f:
                 data = pickle.load(f)
-            union_arr = data['union_arr']
-            true_e_bin_edges = data['true_e_bin_edges']
-            reco_e_edges = data['reco_e_edges']
-            psi_edges = data['psi_edges']
-            ang_err_edges = data['ang_err_edges']
-            del(data)
         else:
             sm = PublicDataSmearingMatrix(
                 pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
-            (union_arr,
-             true_e_bin_edges,
-             reco_e_edges,
-             psi_edges,
-             ang_err_edges
-            ) = create_unionized_smearing_matrix_array(sm, src_dec)
+            data = create_unionized_smearing_matrix_array(sm, src_dec)
             del(sm)
+        union_arr = data['union_arr']
+        log_true_e_binedges = data['log10_true_e_binedges']
+        reco_e_edges = data['log10_reco_e_binedges']
+        psi_edges = data['psi_binedges']
+        ang_err_edges = data['ang_err_binedges']
+        del(data)
+
+        true_e_bincenters = np.power(
+            10,
+            0.5*(log_true_e_binedges[:-1] + log_true_e_binedges[1:]))
 
         # Load the effective area.
         aeff = PublicDataAeff(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('eff_area_datafile')))
 
+        # Calculate the detector's detection probability density for a given
+        # true declination: p(E_nu|dec)
+        det_pd = aeff.get_detection_pd_for_sin_true_dec(
+            np.sin(src_dec),
+            true_e_bincenters
+        )
+
         reco_e_bw = np.diff(reco_e_edges)
-        psi_edges_bw = np.diff(psi_edges)
-        ang_err_bw = np.diff(ang_err_edges)
+
+        # For the psi angle we need to consider the solid angle on the shpere
+        # the psi angle spans. For a unit sphere the solid angle of the
+        # spherical cap is given as 2pi * (1 - cos(psi)). Hence, for a solid
+        # angle slice with psi_min and psi_max it is
+        # 2pi * (cos(psi_min) - cos(psi_max)).
+        psi_edges_bw = (
+            2 * np.pi * (np.cos(psi_edges[:-1]) -
+                         np.cos(psi_edges[1:]))
+        )
+
+        # In analog to the psi angle, the phase space of the ang_err is given
+        # in the same way.
+        ang_err_bw = (
+            2 * np.pi * (np.cos(ang_err_edges[:-1]) -
+                         np.cos(ang_err_edges[1:]))
+        )
+
         bin_volumes = (
             reco_e_bw[:,np.newaxis,np.newaxis] *
             psi_edges_bw[np.newaxis,:,np.newaxis] *
@@ -787,23 +809,27 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             # The copy is needed to not interfer with other CPU processes.
             my_flux_model = flux_model.copy(newprop=gridfitparams)
 
-            E_nu_min = np.power(10, true_e_bin_edges[:-1])
-            E_nu_max = np.power(10, true_e_bin_edges[1:])
+            E_nu_min = np.power(10, log_true_e_binedges[:-1])
+            E_nu_max = np.power(10, log_true_e_binedges[1:])
 
-            flux_integral = my_flux_model.get_integral(E_nu_min, E_nu_max)
+            # Calculate the flux probability p(E_nu|gamma).
+            flux_prob = (
+                my_flux_model.get_integral(E_nu_min, E_nu_max) /
+                my_flux_model.get_integral(
+                    np.power(10, log_true_e_binedges[0]),
+                    np.power(10, log_true_e_binedges[-1])
+                )
+            )
 
-            aeff_integral = aeff.get_aeff_integral_for_sin_true_dec(
-                np.sin(src_dec), np.log10(E_nu_min), np.log10(E_nu_max))
+            dE_nu = np.diff(np.power(10, log_true_e_binedges))
 
-            dE_nu = np.diff(np.power(10, true_e_bin_edges))
+            w = det_pd * dE_nu * flux_prob
 
-            avg_exposure = aeff_integral / dE_nu * flux_integral
-
-            arr_ = np.copy(union_arr)
-            for true_e_idx in range(len(true_e_bin_edges)-1):
-                arr_[true_e_idx] *= avg_exposure[true_e_idx]
-            pdf_arr = np.sum(arr_, axis=0)
-            del(arr_)
+            transfer = np.copy(union_arr)
+            for true_e_idx in range(len(log_true_e_binedges)-1):
+                transfer[true_e_idx] *= w[true_e_idx]
+            pdf_arr = np.sum(transfer, axis=0)
+            del(transfer)
 
             # Normalize the pdf, which is the probability per bin volume.
             norm = np.sum(pdf_arr)
