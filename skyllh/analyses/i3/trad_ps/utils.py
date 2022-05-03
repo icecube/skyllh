@@ -406,6 +406,27 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
                     if sm_a_idx is None:
                         continue
 
+                    # Get the bin volume of the smearing matrix's bin.
+                    idx = (
+                        true_e_idx, true_dec_idx, sm_e_idx)
+                    reco_e_bw = (
+                        sm.reco_e_upper_edges[idx] -
+                        sm.reco_e_lower_edges[idx]
+                    )
+                    idx = (
+                        true_e_idx, true_dec_idx, sm_e_idx, sm_p_idx)
+                    psi_bw = 2 * np.pi * (
+                        np.cos(sm.psi_lower_edges[idx]) -
+                        np.cos(sm.psi_upper_edges[idx])
+                    )
+                    idx = (
+                        true_e_idx, true_dec_idx, sm_e_idx, sm_p_idx, sm_a_idx)
+                    ang_err_bw = 2 * np.pi * (
+                        np.cos(sm.ang_err_lower_edges[idx]) -
+                        np.cos(sm.ang_err_upper_edges[idx])
+                    )
+                    bin_volume = reco_e_bw * psi_bw * ang_err_bw
+
                     union_arr[
                         true_e_idx,
                         e_idx,
@@ -417,7 +438,7 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
                         sm_e_idx,
                         sm_p_idx,
                         sm_a_idx
-                    ]
+                    ] / bin_volume
 
     result = dict({
         'union_arr': union_arr,
