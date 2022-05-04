@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from scipy import interpolate
+
 from skyllh.core.binning import (
     get_bincenters_from_binedges
 )
@@ -415,15 +417,23 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
                     )
                     idx = (
                         true_e_idx, true_dec_idx, sm_e_idx, sm_p_idx)
-                    psi_bw = 2 * np.pi * (
-                        np.cos(sm.psi_lower_edges[idx]) -
-                        np.cos(sm.psi_upper_edges[idx])
+                    #psi_bw = 2 * np.pi * (
+                    #    np.cos(sm.psi_lower_edges[idx]) -
+                    #    np.cos(sm.psi_upper_edges[idx])
+                    #)
+                    psi_bw = (
+                        sm.psi_upper_edges[idx] -
+                        sm.psi_lower_edges[idx]
                     )
                     idx = (
                         true_e_idx, true_dec_idx, sm_e_idx, sm_p_idx, sm_a_idx)
-                    ang_err_bw = 2 * np.pi * (
-                        np.cos(sm.ang_err_lower_edges[idx]) -
-                        np.cos(sm.ang_err_upper_edges[idx])
+                    #ang_err_bw = 2 * np.pi * (
+                    #    np.cos(sm.ang_err_lower_edges[idx]) -
+                    #    np.cos(sm.ang_err_upper_edges[idx])
+                    #)
+                    ang_err_bw = (
+                        sm.ang_err_upper_edges[idx] -
+                        sm.ang_err_lower_edges[idx]
                     )
                     bin_volume = reco_e_bw * psi_bw * ang_err_bw
 
@@ -530,14 +540,47 @@ class PublicDataAeff(object):
         """
         aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
 
-        dE = np.power(10, np.diff(self.log_true_e_binedges))
+        dE = np.diff(np.power(10, self.log_true_e_binedges))
 
         det_pdf = aeff / np.sum(aeff) / dE
 
-        det_pd = np.interp(
-            true_e,
-            np.power(10, self.log_true_e_bincenters),
-            det_pdf)
+        x = np.power(10, self.log_true_e_bincenters)
+        y = det_pdf
+        tck = interpolate.splrep(x, y, k=2, s=0)
+
+        det_pd = interpolate.splev(true_e, tck, der=0)
+
+        return det_pd
+
+    def get_detection_pd_in_log10E_for_sin_true_dec(
+            self, sin_true_dec, log10_true_e):
+        """Calculates the detection probability density p(E_nu|sin_dec) in
+        unit log10(GeV)^-1 for the given true energy values.
+
+        Parameters
+        ----------
+        sin_true_dec : float
+            The sin of the true declination.
+        log10_true_e : (n,)-shaped 1d numpy ndarray of float
+            The log10 values of the true energy in GeV for which the
+            probability density value should get calculated.
+
+        Returns
+        -------
+        det_pd : (n,)-shaped 1d numpy ndarray of float
+            The detection probability density values for the given true energy
+            value.
+        """
+        aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
+
+        dlog10E = np.diff(self.log_true_e_binedges)
+
+        det_pdf = aeff / np.sum(aeff) / dlog10E
+
+        spl = interpolate.splrep(
+            self.log_true_e_bincenters, det_pdf, k=1, s=0)
+
+        det_pd = interpolate.splev(log10_true_e, spl, der=0)
 
         return det_pd
 
