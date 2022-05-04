@@ -76,11 +76,8 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         """Select the signal PDF for the given fit parameter grid point and
         evaluates the S/B ratio for all the given events.
         """
-        sig_pdf = self.signalpdfset.get_pdf(gridfitparams)
-        bkg_pdf = self.backgroundpdf
-
-        (sig_prob, _) = sig_pdf.get_prob(tdm)
-        (bkg_prob, _) = bkg_pdf.get_prob(tdm)
+        (sig_prob, _) = self.signalpdfset.get_prob(tdm, gridfitparams)
+        (bkg_prob, _) = self.backgroundpdf.get_prob(tdm)
 
         if np.any(np.invert(bkg_prob > 0)):
             raise ValueError(
