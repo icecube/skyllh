@@ -96,6 +96,99 @@ def calculate_pval_from_trials(
 
     return (p, p_sigma)
 
+
+def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold,
+        eta=3.0, n_max=500000):
+    """Calculates the probability (p-value) of test-statistic exceeding
+    the given test-statistic threshold. This calculation relies on fitting
+    a gamma distribution to a list of ts values.
+
+    Parameters
+    ----------
+    ts_vals : (n_trials,)-shaped 1D ndarray of float
+        The ndarray holding the test-statistic values of the trials.
+    ts_threshold : float
+        The critical test-statistic value.
+    eta : float, optional
+        Test-statistic value at which the gamma function is truncated
+        from below. Default = 3.0.
+    n_max : int, optional
+        The maximum number of trials that should be used during
+        fitting. Default = 500,000
+
+    Returns
+    -------
+    p, p_err: tuple(float, float)
+    """
+    if(ts_threshold <  eta):
+        raise ValueError(
+            'ts threshold value = %e, eta = %e. The calculation of the p-value'
+            'from the fit is correct only for ts threshold larger than '
+            'the truncation threshold eta.',
+            ts_threshold, eta)
+
+    if len(ts_vals) > n_max:
+        ts_vals = ts_vals[:n_max]
+
+    Ntot = len(ts_vals)
+    ts_eta = ts_vals[ts_vals > eta]
+    N_prime = len(ts_eta)
+    alpha = N_prime/Ntot
+
+    obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta,
+                                           ts_above_eta=ts_eta,
+                                           N_above_eta=N_prime)
+    x0 = [0.75, 1.8]  # Initial values of function parameters.
+    bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
+    r = minimize(obj, x0, bounds=bounds)
+    pars = r.x
+
+    norm = alpha/gamma.sf(eta, a=pars[0], scale=pars[1])
+    p = norm * gamma.sf(ts_threshold, a=pars[0], scale=pars[1])
+
+    # a correct calculation of the error in pvalue due to
+    # fitting uncertainty remains to be implemented
+    # return p_sigma = 0 for now for consistentcy with
+    # calculate_pval_from_trials()
+    p_sigma = 0.0
+    return (p, p_sigma)
+
+
+def calculate_pval_from_trials_mixed(ts_vals, ts_threshold, switch_at_ts=5.0,
+        eta=3.0, n_max=500000):
+    """Calculates the probability (p-value) of test-statistic exceeding
+    the given test-statistic threshold. This calculation relies on fitting
+    a gamma distribution to a list of ts values if ts_threshold is larger than
+    switch_at_ts. If ts_threshold is smaller then the pvalue will be taken
+    from the trials directly.
+
+    Parameters
+    ----------
+    ts_vals : (n_trials,)-shaped 1D ndarray of float
+        The ndarray holding the test-statistic values of the trials.
+    ts_threshold : float
+        The critical test-statistic value.
+    switch_at_ts : float, optional
+        Test-statistic value below which p-value is computed from trials
+        directly. For thresholds greater than switch_at_ts the pvalue is
+        calculated using a gamma fit.
+    eta : float, optional
+        Test-statistic value at which the gamma function is truncated
+        from below. Default = 3.0.
+    n_max : int, optional
+        The maximum number of trials that should be used during
+        fitting. Default = 500,000
+
+    Returns
+    -------
+    p, p_err: tuple(float, float)
+    """
+    if ts_threshold < switch_at_ts:
+        return calculate_pval_from_trials(ts_vals, ts_threshold)
+    else:
+        return calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold, eta=eta, n_max=n_max)
+
+
 def truncated_gamma_logpdf(
         a, scale, eta, ts_above_eta, N_above_eta):
     """Calculates the -log(likelihood) of a sample of random numbers
