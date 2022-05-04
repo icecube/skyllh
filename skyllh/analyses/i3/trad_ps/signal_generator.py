@@ -85,7 +85,7 @@ class PublicDataDatasetSignalGenerator(object):
 
         # Determine the true energy range for which log_e PDFs are available.
         (min_log_true_e,
-         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pfds(
+         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
              dec_idx)
 
         # First draw a true neutrino energy from the hypothesis spectrum.
