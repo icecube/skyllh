@@ -546,7 +546,7 @@ class PublicDataAeff(object):
 
         x = np.power(10, self.log_true_e_bincenters)
         y = det_pdf
-        tck = interpolate.splrep(x, y, k=2, s=0)
+        tck = interpolate.splrep(x, y, k=1, s=0)
 
         det_pd = interpolate.splev(true_e, tck, der=0)
 
