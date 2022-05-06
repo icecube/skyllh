@@ -623,7 +623,7 @@ class PDSignalPDF(PDF, IsSignalPDF):
     """This class provides a signal pdf for a given spectrial index value.
     """
     def __init__(
-            self, pdf_arr, log_e_edges, psi_edges, ang_err_edges, **kwargs):
+            self, pdf_arr, log_e_edges, psi_edges, ang_err_edges, true_e_prob, **kwargs):
         """Creates a new signal PDF for the public data.
         """
         super().__init__(**kwargs)
@@ -638,6 +638,8 @@ class PDSignalPDF(PDF, IsSignalPDF):
 
         self.ang_err_lower_edges = ang_err_edges[:-1]
         self.ang_err_upper_edges = ang_err_edges[1:]
+
+        self.true_e_prob = true_e_prob
 
         # Add the PDF axes.
         self.add_axis(PDFAxis(
@@ -785,20 +787,17 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         ang_err_edges = data['ang_err_binedges']
         del(data)
 
-        log10_true_e_bincenters = 0.5*(
-            log_true_e_binedges[:-1] + log_true_e_binedges[1:])
-
         true_e_bincenters = np.power(
             10,
             0.5*(log_true_e_binedges[:-1] + log_true_e_binedges[1:]))
 
+        true_e_binedges = np.power(10, log_true_e_binedges)
+
         # Calculate the neutrino enegry bin widths in GeV.
-        dE_nu = np.diff(np.power(10, log_true_e_binedges))
+        dE_nu = np.diff(true_e_binedges)
         self._logger.debug(
             'dE_nu = {}'.format(dE_nu)
         )
-
-        dlog10E_nu = np.diff(log_true_e_binedges)
 
         # Load the effective area.
         aeff = PublicDataAeff(
@@ -808,50 +807,31 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         # Calculate the detector's neutrino energy detection probability to
         # detect a neutrino of energy E_nu given a neutrino declination:
         # p(E_nu|dec)
-        det_pd_log10E = aeff.get_detection_pd_in_log10E_for_sin_true_dec(
-            np.sin(src_dec),
-            log10_true_e_bincenters
-        )
-        det_prob = det_pd_log10E * dlog10E_nu
+        det_prob = np.empty((len(dE_nu),), dtype=np.double)
+        for i in range(len(dE_nu)):
+            det_prob[i] = aeff.get_detection_prob_for_sin_true_dec(
+                sin_true_dec = np.sin(src_dec),
+                true_e_min = true_e_binedges[i],
+                true_e_max = true_e_binedges[i+1]
+            )
 
         self._logger.debug('det_prob = {}, sum = {}'.format(
             det_prob, np.sum(det_prob)))
 
-        if not np.isclose(np.sum(det_prob), 1, rtol=0.003):
+        if not np.isclose(np.sum(det_prob), 1, rtol=0.06):
             raise ValueError(
                 'The sum of the detection probabilities is not unity! It is '
                '{}.'.format(np.sum(det_prob)))
 
         reco_e_bw = np.diff(reco_e_edges)
-
-        # For the psi angle we need to consider the solid angle on the shpere
-        # the psi angle spans. For a unit sphere the solid angle of the
-        # spherical cap is given as 2pi * (1 - cos(psi)). Hence, for a solid
-        # angle slice with psi_min and psi_max it is
-        # 2pi * (cos(psi_min) - cos(psi_max)).
-        #psi_edges_bw = (
-        #    2 * np.pi * (np.cos(psi_edges[:-1]) -
-        #                 np.cos(psi_edges[1:]))
-        #)
-        psi_edges_bw = (
-            psi_edges[1:] -
-            psi_edges[:-1]
-        )
-        # In analog to the psi angle, the phase space of the ang_err is given
-        # in the same way.
-        #ang_err_bw = (
-        #    2 * np.pi * (np.cos(ang_err_edges[:-1]) -
-        #                 np.cos(ang_err_edges[1:]))
-        #)
-        ang_err_bw = (
-            ang_err_edges[1:] -
-            ang_err_edges[:-1]
-        )
+        psi_edges_bw = np.diff(psi_edges)
+        ang_err_bw = np.diff(ang_err_edges)
 
         bin_volumes = (
             reco_e_bw[:,np.newaxis,np.newaxis] *
             psi_edges_bw[np.newaxis,:,np.newaxis] *
             ang_err_bw[np.newaxis,np.newaxis,:])
+
 
         # Create the pdf in gamma for different gamma values.
         def create_pdf(union_arr, flux_model, gridfitparams):
@@ -887,11 +867,19 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 'flux_prob = {}'.format(flux_prob)
             )
 
-            w = det_prob * flux_prob
+            p = flux_prob * det_prob
+            self._logger.debug(
+                'p = {}, sum(p)={}'.format(p, sum(p))
+            )
+
+            true_e_prob = p / np.sum(p)
+
+            self._logger.debug(
+                f'true_e_prob = {true_e_prob}')
 
             transfer = np.copy(union_arr)
             for true_e_idx in range(nbins_log_true_e):
-                transfer[true_e_idx] *= w[true_e_idx]
+                transfer[true_e_idx] *= true_e_prob[true_e_idx]
             pdf_arr = np.sum(transfer, axis=0)
             del(transfer)
 
@@ -906,7 +894,7 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             pdf_arr /= bin_volumes
 
             pdf = PDSignalPDF(
-                pdf_arr, reco_e_edges, psi_edges, ang_err_edges)
+                pdf_arr, reco_e_edges, psi_edges, ang_err_edges, true_e_prob)
 
             return pdf
 

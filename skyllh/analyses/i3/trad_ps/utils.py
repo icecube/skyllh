@@ -3,6 +3,7 @@
 import numpy as np
 
 from scipy import interpolate
+from scipy import integrate
 
 from skyllh.core.binning import (
     get_bincenters_from_binedges
@@ -583,6 +584,44 @@ class PublicDataAeff(object):
         det_pd = interpolate.splev(log10_true_e, spl, der=0)
 
         return det_pd
+
+    def get_detection_prob_for_sin_true_dec(
+            self, sin_true_dec, true_e_min, true_e_max):
+        """Calculates the detection probability for a given sin declination.
+
+        Parameters
+        ----------
+        sin_true_dec : float
+            The sin of the true declination.
+        true_e_min : float
+            The minimum energy in GeV.
+        true_e_max : float
+            The maximum energy in GeV.
+
+        Returns
+        -------
+        det_prob : float
+            The true energy detection probability.
+        """
+        aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
+
+        true_e_binedges = np.power(10, self.log_true_e_binedges)
+
+        dE = np.diff(true_e_binedges)
+
+        det_pdf = aeff / np.sum(aeff) / dE
+
+        x = np.power(10, self.log_true_e_bincenters)
+        y = det_pdf
+        tck = interpolate.splrep(x, y, k=1, s=0)
+
+        def _eval_func(x):
+            return interpolate.splev(x, tck, der=0)
+
+        r = integrate.quad(_eval_func, true_e_min, true_e_max)
+        det_prob = r[0]
+
+        return det_prob
 
     def get_aeff_integral_for_sin_true_dec(
             self, sin_true_dec, log_true_e_min, log_true_e_max):
