@@ -90,6 +90,10 @@ def calculate_pval_from_trials(
         The ndarray holding the test-statistic values of the trials.
     ts_threshold : float
         The critical test-statistic value.
+
+    Returns
+    -------
+    p, p_sigma: tuple(float, float)
     """
     p = ts_vals[ts_vals > ts_threshold].size / ts_vals.size
     p_sigma = np.sqrt(p * (1 - p) / ts_vals.size)
@@ -118,7 +122,7 @@ def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold,
 
     Returns
     -------
-    p, p_err: tuple(float, float)
+    p, p_sigma: tuple(float, float)
     """
     if(ts_threshold <  eta):
         raise ValueError(
@@ -181,7 +185,7 @@ def calculate_pval_from_trials_mixed(ts_vals, ts_threshold, switch_at_ts=5.0,
 
     Returns
     -------
-    p, p_err: tuple(float, float)
+    p, p_sigma: tuple(float, float)
     """
     if ts_threshold < switch_at_ts:
         return calculate_pval_from_trials(ts_vals, ts_threshold)
