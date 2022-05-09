@@ -170,7 +170,7 @@ def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold,
     return (p, p_sigma)
 
 
-def calculate_pval_from_trials_mixed(ts_vals, ts_threshold, switch_at_ts=5.0,
+def calculate_pval_from_trials_mixed(ts_vals, ts_threshold, switch_at_ts=3.0,
         eta=None, n_max=500000, comp_operator='greater_equal'):
     """Calculates the probability (p-value) of test-statistic exceeding
     the given test-statistic threshold. This calculation relies on fitting
