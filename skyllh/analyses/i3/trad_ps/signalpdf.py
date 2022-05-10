@@ -623,12 +623,20 @@ class PDSignalPDF(PDF, IsSignalPDF):
     """This class provides a signal pdf for a given spectrial index value.
     """
     def __init__(
-            self, pdf_arr, log_e_edges, psi_edges, ang_err_edges, true_e_prob, **kwargs):
+            self, f_s, f_e, log_e_edges, psi_edges, ang_err_edges,
+            true_e_prob, **kwargs):
         """Creates a new signal PDF for the public data.
+
+        Parameters
+        ----------
+        f_s : (n_e_reco, n_psi, n_ang_err)-shaped 3D numpy ndarray
+            The conditional PDF array P(Psi|E_reco,ang_err).
+
         """
         super().__init__(**kwargs)
 
-        self.pdf_arr = pdf_arr
+        self.f_s = f_s
+        self.f_e = f_e
 
         self.log_e_lower_edges = log_e_edges[:-1]
         self.log_e_upper_edges = log_e_edges[1:]
@@ -657,6 +665,24 @@ class PDSignalPDF(PDF, IsSignalPDF):
             vmin=self.ang_err_lower_edges[0],
             vmax=self.ang_err_upper_edges[-1])
         )
+
+        # Check integrety.
+        integral = np.sum(
+            #1/(2*np.pi*np.sin(0.5*(psi_edges[None,1:,None]+
+            #                       psi_edges[None,:-1,None])
+            #                 )) *
+            self.f_s * np.diff(psi_edges)[None,:,None], axis=1)
+        if not np.all(np.isclose(integral[integral > 0], 1)):
+            raise ValueError(
+                'The integral over Psi of the spatial term must be unity! '
+                'But it is {}!'.format(integral[integral > 0]))
+        integral = np.sum(
+            self.f_e * np.diff(log_e_edges)
+        )
+        if not np.isclose(integral, 1):
+            raise ValueError(
+                'The integral over log10_E of the energy term must be unity! '
+                'But it is {}!'.format(integral))
 
     def assert_is_valid_for_trial_data(self, tdm):
         pass
@@ -711,8 +737,6 @@ class PDSignalPDF(PDF, IsSignalPDF):
             (ang_err < self.ang_err_upper_edges[-1])
         )
 
-        prob = np.zeros((len(log_e),), dtype=np.double)
-
         log_e_idxs = get_bin_indices_from_lower_and_upper_binedges(
             self.log_e_lower_edges, self.log_e_upper_edges, log_e[m])
         psi_idxs = get_bin_indices_from_lower_and_upper_binedges(
@@ -720,9 +744,16 @@ class PDSignalPDF(PDF, IsSignalPDF):
         ang_err_idxs = get_bin_indices_from_lower_and_upper_binedges(
             self.ang_err_lower_edges, self.ang_err_upper_edges, ang_err[m])
 
-        prob[m] = self.pdf_arr[(log_e_idxs, psi_idxs, ang_err_idxs)]
+        pd_spatial = np.zeros((len(psi),), dtype=np.double)
+        pd_spatial[m] = (
+            1/(2*np.pi * np.sin(psi[m])) *
+            self.f_s[(log_e_idxs, psi_idxs, ang_err_idxs)]
+        )
 
-        return (prob, None)
+        pd_energy = np.zeros((len(log_e),), dtype=np.double)
+        pd_energy[m] = self.f_e[log_e_idxs]
+
+        return (pd_spatial * pd_energy, None)
 
 
 class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
@@ -893,8 +924,28 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             pdf_arr /= norm
             pdf_arr /= bin_volumes
 
+            # Create the spatial PDF f_s = P(Psi|E_reco,ang_err) =
+            # P(E_reco,Psi,ang_err) / \int dPsi P(E_reco,Psi,ang_err).
+            marg_pdf = np.sum(
+                pdf_arr * psi_edges_bw[np.newaxis,:,np.newaxis],
+                axis=1,
+                keepdims=True
+            )
+            f_s = pdf_arr / marg_pdf
+            f_s[np.isnan(f_s)] = 0
+
+            # Create the enegry PDF f_e = P(log10_E_reco|dec) =
+            # \int dPsi dang_err P(E_reco,Psi,ang_err).
+            f_e = np.sum(
+                pdf_arr * psi_edges_bw[np.newaxis,:,np.newaxis] *
+                          ang_err_bw[np.newaxis,np.newaxis,:],
+                axis=(1,2))
+
+            del(pdf_arr)
+
             pdf = PDSignalPDF(
-                pdf_arr, reco_e_edges, psi_edges, ang_err_edges, true_e_prob)
+                f_s, f_e, reco_e_edges, psi_edges, ang_err_edges,
+                true_e_prob)
 
             return pdf
 
