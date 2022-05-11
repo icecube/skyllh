@@ -116,7 +116,6 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         try:
             # angular difference is pre calculated
             prob = get_data('spatial_pdf_gauss')
-            src_ra = get_data('src_array')['ra']
 
             if idxs is None:
                 prob = prob.reshape((len(get_data('src_array')), len(ra)))
@@ -139,7 +138,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                     np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
             else:
                 # Calculate the angular difference only for events that are close
-                # to the respective source poisition. This is useful for stacking 
+                # to the respective source poisition. This is useful for stacking
                 # analyses.
                 src_idxs, ev_idxs = idxs
                 src_ra = get_data('src_array')['ra'][src_idxs]
@@ -176,7 +175,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             norm = src_w.sum()
             src_w /= norm
             src_w_grads /= norm
-            
+
             if idxs is not None:
                 prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
             else:
@@ -186,6 +185,94 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                      prob_res*src_w_grads.sum())
 
             return (prob_res, np.atleast_2d(grads))
+
+class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
+    """This spatial signal PDF model describes the spatial PDF for a point-like
+    source following a Rayleigh distribution in the opening angle between the
+    source and reconstructed muon direction.
+    Mathematically, it's the convolution of a point in the sky, i.e. the source
+    location, with the PSF. The result of this convolution has the following
+    form:
+
+        1/(2*\pi \sin \Psi) * \Psi/\sigma^2 \exp(-\Psi^2/(2*\sigma^2)),
+
+    where \sigma is the spatial uncertainty of the event and \Psi the distance
+    on the sphere between the source and the data event.
+
+    This PDF requires the `src_array` data field, that is numpy record ndarray
+    with the data fields `ra` and `dec` holding the right-ascention and
+    declination of the point-like sources, respectively.
+    """
+    def __init__(self, ra_range=None, dec_range=None, **kwargs):
+        """Creates a new spatial signal PDF for point-like sources with a
+        Rayleigh point-spread-function (PSF).
+
+        Parameters
+        ----------
+        ra_range : 2-element tuple | None
+            The range in right-ascention this spatial PDF is valid for.
+            If set to None, the range (0, 2pi) is used.
+        dec_range : 2-element tuple | None
+            The range in declination this spatial PDF is valid for.
+            If set to None, the range (-pi/2, +pi/2) is used.
+        """
+        if(ra_range is None):
+            ra_range = (0, 2*np.pi)
+        if(dec_range is None):
+            dec_range = (-np.pi/2, np.pi/2)
+
+        super().__init__(
+            ra_range=ra_range,
+            dec_range=dec_range,
+            **kwargs
+        )
+
+    def get_prob(self, tdm, fitparams=None, tl=None):
+        """Calculates the spatial signal probability density of each event for
+        all defined sources.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial event data for which
+            to calculate the PDF values. The following data fields need to be
+            present:
+
+            'psi' : float
+                The opening angle in radian between the source direction and the
+                reconstructed muon direction.
+            'ang_err': float
+                The reconstruction uncertainty in radian of the data event.
+
+        fitparams : None
+            Unused interface argument.
+        tl : TimeLord instance | None
+            The optional TimeLord instance to use for measuring timing
+            information.
+
+        Returns
+        -------
+        pd : (n_events,)-shaped 1D numpy ndarray
+            The probability density values for each event.
+        grads : (0,)-shaped 1D numpy ndarray
+            Since this PDF does not depend on fit parameters, an empty array
+            is returned.
+        """
+        get_data = tdm.get_data
+
+        psi = get_data('psi')
+        sigma = get_data('ang_err')
+
+        pd = (
+            0.5/(np.pi*np.sin(psi)) *
+            (psi / sigma**2) *
+            np.exp(-0.5*(psi/sigma)**2)
+        )
+
+        grads = np.array([], dtype=np.double)
+
+        return (pd, grads)
+
 
 
 class SignalTimePDF(TimePDF, IsSignalPDF):

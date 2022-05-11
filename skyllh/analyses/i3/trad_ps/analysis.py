@@ -46,7 +46,7 @@ from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the signal and background PDFs.
-from skyllh.core.signalpdf import GaussianPSFPointLikeSourceSignalSpatialPDF
+from skyllh.core.signalpdf import RayleighPSFPointSourceSignalSpatialPDF
 from skyllh.i3.signalpdf import SignalI3EnergyPDFSet
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
@@ -84,7 +84,7 @@ from skyllh.analyses.i3.trad_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
 )
 from skyllh.analyses.i3.trad_ps.signalpdf import (
-    PDSignalPDFSet
+    PDSignalEnergyPDFSet
 )
 from skyllh.analyses.i3.trad_ps.pdfratio import (
     PDPDFRatio
@@ -210,7 +210,7 @@ def create_analysis(
     fitparam_ns = FitParameter('ns', 0, 1e3, ns_seed)
 
     # Define the gamma fit parameter.
-    fitparam_gamma = FitParameter('gamma', valmin=1, valmax=4, initial=gamma_seed)
+    fitparam_gamma = FitParameter('gamma', valmin=1, valmax=5, initial=gamma_seed)
 
     # Define the detector signal efficiency implementation method for the
     # IceCube detector and this source and flux_model.
@@ -283,40 +283,15 @@ def create_analysis(
         log_energy_binning = ds.get_binning_definition('log_energy')
 
         # Create the spatial PDF ratio instance for this dataset.
-        """
-        spatial_sigpdf = GaussianPSFPointLikeSourceSignalSpatialPDF(
+        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
             dec_range=np.arcsin(sin_dec_binning.range))
-        """
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(
             data.exp, sin_dec_binning)
-        """
         spatial_pdfratio = SpatialSigOverBkgPDFRatio(
             spatial_sigpdf, spatial_bkgpdf)
-        """
-        # Create the energy PDF ratio instance for this dataset.
-        smoothing_filter = BlockSmoothingFilter(nbins=1)
-        """
-        energy_sigpdfset = PublicDataSignalI3EnergyPDFSet(
-            rss=rss,
-            ds=ds,
-            flux_model=flux_model,
-            fitparam_grid_set=gamma_grid,
-            n_events=n_mc_events,
-            smoothing_filter=smoothing_filter,
-            ppbar=pbar)
-        """
-        energy_bkgpdf = DataBackgroundI3EnergyPDF(
-            data.exp, log_energy_binning, sin_dec_binning, smoothing_filter)
-        """
-        fillmethod = Skylab2SkylabPDFRatioFillMethod()
-        energy_pdfratio = I3EnergySigSetOverBkgPDFRatioSpline(
-            energy_sigpdfset,
-            energy_bkgpdf,
-            fillmethod=fillmethod,
-            ppbar=pbar)
-        """
 
-        sig_pdf_set = PDSignalPDFSet(
+        # Create the energy PDF ratio instance for this dataset.
+        energy_sigpdfset = PDSignalEnergyPDFSet(
             ds=ds,
             src_dec=source.dec,
             flux_model=flux_model,
@@ -325,16 +300,16 @@ def create_analysis(
                 cache_dir, 'union_sm_{}.pkl'.format(ds.name)),
             ppbar=ppbar
         )
+        smoothing_filter = BlockSmoothingFilter(nbins=1)
+        energy_bkgpdf = DataBackgroundI3EnergyPDF(
+            data.exp, log_energy_binning, sin_dec_binning, smoothing_filter)
 
-        bkg_pdf = spatial_bkgpdf * energy_bkgpdf
-
-        pdfratio = PDPDFRatio(
-            sig_pdf_set=sig_pdf_set,
-            bkg_pdf=bkg_pdf
+        energy_pdfratio = PDPDFRatio(
+            sig_pdf_set=energy_sigpdfset,
+            bkg_pdf=energy_bkgpdf
         )
 
-        #pdfratios = [ spatial_pdfratio, energy_pdfratio ]
-        pdfratios = [ pdfratio ]
+        pdfratios = [ spatial_pdfratio, energy_pdfratio ]
 
         analysis.add_dataset(
             ds, data, pdfratios, tdm, event_selection_method)
@@ -390,10 +365,10 @@ if(__name__ == '__main__'):
     CFG['multiproc']['ncpu'] = args.ncpu
 
     sample_seasons = [
-        #('PublicData_10y_ps', 'IC40'),
-        #('PublicData_10y_ps', 'IC59'),
-        #('PublicData_10y_ps', 'IC79'),
-        #('PublicData_10y_ps', 'IC86_I'),
+        ('PublicData_10y_ps', 'IC40'),
+        ('PublicData_10y_ps', 'IC59'),
+        ('PublicData_10y_ps', 'IC79'),
+        ('PublicData_10y_ps', 'IC86_I'),
         ('PublicData_10y_ps', 'IC86_II-VII')
     ]
 
