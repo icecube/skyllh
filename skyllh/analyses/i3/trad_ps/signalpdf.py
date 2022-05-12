@@ -652,6 +652,27 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
     def assert_is_valid_for_trial_data(self, tdm):
         pass
 
+    def get_pd_by_log_e(self, log_e, tl=None):
+        """Calculates the probability density for the given log10(E/GeV)
+        values.
+
+
+        """
+        # Select events that actually have a signal enegry PDF.
+        # All other events will get zero signal probability.
+        m = (
+            (log_e >= self.log_e_lower_edges[0]) &
+            (log_e < self.log_e_upper_edges[-1])
+        )
+
+        log_e_idxs = get_bin_indices_from_lower_and_upper_binedges(
+            self.log_e_lower_edges, self.log_e_upper_edges, log_e[m])
+
+        pd = np.zeros((len(log_e),), dtype=np.double)
+        pd[m] = self.f_e[log_e_idxs]
+
+        return pd
+
     def get_prob(self, tdm, params=None, tl=None):
         """Calculates the probability density for the events given by the
         TrialDataManager.
@@ -689,18 +710,7 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
         """
         log_e = tdm.get_data('log_energy')
 
-        # Select events that actually have a signal enegry PDF.
-        # All other events will get zero signal probability.
-        m = (
-            (log_e >= self.log_e_lower_edges[0]) &
-            (log_e < self.log_e_upper_edges[-1])
-        )
-
-        log_e_idxs = get_bin_indices_from_lower_and_upper_binedges(
-            self.log_e_lower_edges, self.log_e_upper_edges, log_e[m])
-
-        pd = np.zeros((len(log_e),), dtype=np.double)
-        pd[m] = self.f_e[log_e_idxs]
+        pd = self.get_pd_by_log_e(log_e, tl=tl)
 
         return (pd, None)
 
@@ -717,6 +727,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             flux_model,
             fitparam_grid_set,
             union_sm_arr_pathfilename=None,
+            smoothing=1,
             ncpu=None,
             ppbar=None,
             **kwargs):
@@ -736,6 +747,8 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             The pathfilename of the unionized smearing matrix array file from
             which the unionized smearing matrix array should get loaded from.
             If None, the unionized smearing matrix array will be created.
+        smoothing : int
+            The number of bins to combine to create a smoother energy pdf.
         """
         self._logger = get_logger(module_classname(self))
 
@@ -910,7 +923,30 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
             del(pdf_arr)
 
-            pdf = PDSignalEnergyPDF(f_e, log10_reco_e_edges)
+            # Combine always step bins to smooth out the pdf.
+            step = smoothing
+            n = len(log10_reco_e_edges)-1
+            n_new = int(np.ceil((len(log10_reco_e_edges)-1)/step,))
+            f_e_new = np.zeros((n_new,), dtype=np.double)
+            log10_reco_e_edges_new = np.zeros(
+                (n_new+1), dtype=np.double)
+            start = 0
+            k = 0
+            while start <= n-1:
+                end = np.min([start+step, n])
+
+                v = np.sum(f_e[start:end]) #/ (end - start)
+                f_e_new[k] = v
+                log10_reco_e_edges_new[k] = log10_reco_e_edges[start]
+
+                start += step
+                k += 1
+            log10_reco_e_edges_new[-1] = log10_reco_e_edges[-1]
+
+
+            f_e_new = f_e_new / np.sum(f_e_new) / np.diff(log10_reco_e_edges_new)
+
+            pdf = PDSignalEnergyPDF(f_e_new, log10_reco_e_edges_new)
 
             return pdf
 
