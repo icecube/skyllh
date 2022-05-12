@@ -873,18 +873,17 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                     '{}.'.format(np.sum(flux_prob)))
 
             self._logger.debug(
-                'flux_prob = {}'.format(flux_prob)
+                'flux_prob = {}, sum = {}'.format(
+                    flux_prob, np.sum(flux_prob))
             )
 
             p = flux_prob * det_prob
-            self._logger.debug(
-                'p = {}, sum(p)={}'.format(p, np.sum(p))
-            )
 
             true_e_prob = p / np.sum(p)
 
             self._logger.debug(
-                f'true_e_prob = {true_e_prob}')
+                'true_e_prob = {}'.format(
+                    true_e_prob))
 
             transfer = np.copy(union_arr)
             for true_e_idx in range(nbins_true_e):
@@ -975,8 +974,8 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         KeyError
             If no energy PDF can be found for the given signal parameter values.
         """
-        print('Getting signal PDF for gridfitparams={}'.format(
-            str(gridfitparams)))
+        #print('Getting signal PDF for gridfitparams={}'.format(
+        #    str(gridfitparams)))
         pdf = self.get_pdf(gridfitparams)
 
         (prob, grads) = pdf.get_prob(tdm, tl=tl)
