@@ -6,7 +6,8 @@ from scipy import interpolate
 from scipy import integrate
 
 from skyllh.core.binning import (
-    get_bincenters_from_binedges
+    get_bincenters_from_binedges,
+    get_bin_indices_from_lower_and_upper_binedges
 )
 from skyllh.core.storage import create_FileLoader
 
@@ -586,8 +587,10 @@ class PublicDataAeff(object):
         return det_pd
 
     def get_detection_prob_for_sin_true_dec(
-            self, sin_true_dec, true_e_min, true_e_max):
-        """Calculates the detection probability for a given sin declination.
+            self, sin_true_dec, true_e_min, true_e_max,
+            true_e_range_min, true_e_range_max):
+        """Calculates the detection probability for a given energy range for a
+        given sin declination.
 
         Parameters
         ----------
@@ -597,29 +600,53 @@ class PublicDataAeff(object):
             The minimum energy in GeV.
         true_e_max : float
             The maximum energy in GeV.
+        true_e_range_min : float
+            The minimum energy in GeV of the entire energy range.
+        true_e_range_max : float
+            The maximum energy in GeV of the entire energy range.
 
         Returns
         -------
         det_prob : float
             The true energy detection probability.
         """
-        aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
-
         true_e_binedges = np.power(10, self.log_true_e_binedges)
+
+        # Get the bin indices for the lower and upper energy range values.
+        (lidx, uidx) = get_bin_indices_from_lower_and_upper_binedges(
+            true_e_binedges[:-1],
+            true_e_binedges[1:],
+            np.array([true_e_range_min, true_e_range_max]))
+        # The function determined the bin indices based on the
+        # lower bin edges. So the bin index of the upper energy range value
+        # is 1 to large.
+        uidx -= 1
+
+        aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
+        aeff = aeff[lidx:uidx+1]
+        true_e_binedges = true_e_binedges[lidx:uidx+2]
 
         dE = np.diff(true_e_binedges)
 
-        det_pdf = aeff / np.sum(aeff) / dE
+        det_pdf = aeff / dE
 
-        x = np.power(10, self.log_true_e_bincenters)
-        y = det_pdf
-        tck = interpolate.splrep(x, y, k=1, s=0)
+        true_e_bincenters = 0.5*(true_e_binedges[:-1] + true_e_binedges[1:])
+        tck = interpolate.splrep(
+            true_e_bincenters, det_pdf,
+            xb=true_e_range_min, xe=true_e_range_max, k=1, s=0)
 
         def _eval_func(x):
             return interpolate.splev(x, tck, der=0)
 
-        r = integrate.quad(_eval_func, true_e_min, true_e_max)
-        det_prob = r[0]
+        norm = integrate.quad(
+            _eval_func, true_e_range_min, true_e_range_max,
+            limit=200, full_output=1)[0]
+
+        integral = integrate.quad(
+            _eval_func, true_e_min, true_e_max,
+            limit=200, full_output=1)[0]
+
+        det_prob = integral / norm
 
         return det_prob
 

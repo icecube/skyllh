@@ -820,16 +820,18 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             det_prob[i] = aeff.get_detection_prob_for_sin_true_dec(
                 sin_true_dec = np.sin(src_dec),
                 true_e_min = true_e_binedges[i],
-                true_e_max = true_e_binedges[i+1]
+                true_e_max = true_e_binedges[i+1],
+                true_e_range_min = true_e_binedges[0],
+                true_e_range_max = true_e_binedges[-1]
             )
 
         self._logger.debug('det_prob = {}, sum = {}'.format(
             det_prob, np.sum(det_prob)))
 
-        if not np.isclose(np.sum(det_prob), 1, rtol=0.02):
-            raise ValueError(
+        if not np.isclose(np.sum(det_prob), 1):
+            self._logger.warn(
                 'The sum of the detection probabilities is not unity! It is '
-               '{}.'.format(np.sum(det_prob)))
+                '{}.'.format(np.sum(det_prob)))
 
         log10_reco_e_bw = np.diff(log10_reco_e_edges)
         psi_edges_bw = np.diff(psi_edges)
@@ -866,8 +868,9 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 )
             )
             if not np.isclose(np.sum(flux_prob), 1):
-                raise ValueError(
-                    'The sum of the flux probabilities is not unity!')
+                self._logger.warn(
+                    'The sum of the flux probabilities is not unity! It is '
+                    '{}.'.format(np.sum(flux_prob)))
 
             self._logger.debug(
                 'flux_prob = {}'.format(flux_prob)
