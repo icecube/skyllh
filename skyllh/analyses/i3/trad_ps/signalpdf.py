@@ -6,6 +6,8 @@ import os
 import pickle
 
 from copy import deepcopy
+from scipy import interpolate
+from scipy import integrate
 from scipy.interpolate import UnivariateSpline
 from itertools import product
 
@@ -649,26 +651,73 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
                 'The integral over log10_E of the energy term must be unity! '
                 'But it is {}!'.format(integral))
 
+        # Create a spline of the PDF.
+        self._create_spline(order=1, s=0)
+
+    def _create_spline(self, order=1, s=0):
+        """Creates the spline representation of the energy PDF.
+        """
+        log10_e_bincenters = 0.5*(
+            self.log_e_lower_edges + self.log_e_upper_edges)
+        self.spl_rep = interpolate.splrep(
+            log10_e_bincenters, self.f_e,
+            xb=self.log_e_lower_edges[0],
+            xe=self.log_e_upper_edges[-1],
+            k=order,
+            s=s
+        )
+        self.spl_norm = integrate.quad(
+            self._eval_spline,
+            self.log_e_lower_edges[0], self.log_e_upper_edges[-1],
+            limit=200, full_output=1)[0]
+
+    def _eval_spline(self, x):
+        return interpolate.splev(x, self.spl_rep, der=0)
+
     def assert_is_valid_for_trial_data(self, tdm):
         pass
 
-    def get_pd_by_log_e(self, log_e, tl=None):
+    def get_splined_pd_by_log10_e(self, log10_e, tl=None):
         """Calculates the probability density for the given log10(E/GeV)
-        values.
+        values using the spline representation of the PDF.
 
 
         """
         # Select events that actually have a signal enegry PDF.
         # All other events will get zero signal probability.
         m = (
-            (log_e >= self.log_e_lower_edges[0]) &
-            (log_e < self.log_e_upper_edges[-1])
+            (log10_e >= self.log_e_lower_edges[0]) &
+            (log10_e < self.log_e_upper_edges[-1])
+        )
+
+        pd = np.zeros((len(log10_e),), dtype=np.double)
+
+        pd[m] = self._eval_spline(log10_e[m]) / self.spl_norm
+
+        return pd
+
+    def get_pd_by_log10_e(self, log10_e, tl=None):
+        """Calculates the probability density for the given log10(E/GeV)
+        values.
+
+        Parameters
+        ----------
+        log10_e : (n_events,)-shaped 1D numpy ndarray
+            The numpy ndarray holding the log10(E/GeV) values.
+        tl : TimeLord | None
+            The optional TimeLord instance to measure code timing information.
+        """
+        # Select events that actually have a signal enegry PDF.
+        # All other events will get zero signal probability.
+        m = (
+            (log10_e >= self.log_e_lower_edges[0]) &
+            (log10_e < self.log_e_upper_edges[-1])
         )
 
         log_e_idxs = get_bin_indices_from_lower_and_upper_binedges(
-            self.log_e_lower_edges, self.log_e_upper_edges, log_e[m])
+            self.log_e_lower_edges, self.log_e_upper_edges, log10_e[m])
 
-        pd = np.zeros((len(log_e),), dtype=np.double)
+        pd = np.zeros((len(log10_e),), dtype=np.double)
         pd[m] = self.f_e[log_e_idxs]
 
         return pd
@@ -708,9 +757,9 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
             the ``param_set`` property.
             It is ``None``, if this PDF does not depend on any parameters.
         """
-        log_e = tdm.get_data('log_energy')
+        log10_e = tdm.get_data('log_energy')
 
-        pd = self.get_pd_by_log_e(log_e, tl=tl)
+        pd = self.get_splined_pd_by_log10_e(log10_e, tl=tl)
 
         return (pd, None)
 
@@ -727,7 +776,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             flux_model,
             fitparam_grid_set,
             union_sm_arr_pathfilename=None,
-            smoothing=1,
+            smoothing=8,
             ncpu=None,
             ppbar=None,
             **kwargs):
@@ -749,6 +798,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             If None, the unionized smearing matrix array will be created.
         smoothing : int
             The number of bins to combine to create a smoother energy pdf.
+            Eight seems to produce good results.
         """
         self._logger = get_logger(module_classname(self))
 
@@ -935,7 +985,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             while start <= n-1:
                 end = np.min([start+step, n])
 
-                v = np.sum(f_e[start:end]) #/ (end - start)
+                v = np.sum(f_e[start:end]) / (end - start)
                 f_e_new[k] = v
                 log10_reco_e_edges_new[k] = log10_reco_e_edges[start]
 
@@ -943,7 +993,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 k += 1
             log10_reco_e_edges_new[-1] = log10_reco_e_edges[-1]
 
-
+            # Re-normalize the PDF.
             f_e_new = f_e_new / np.sum(f_e_new) / np.diff(log10_reco_e_edges_new)
 
             pdf = PDSignalEnergyPDF(f_e_new, log10_reco_e_edges_new)
@@ -1216,7 +1266,6 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         reco_e_edges = data['log10_reco_e_binedges']
         psi_edges = data['psi_binedges']
         ang_err_edges = data['ang_err_binedges']
-        print(np.diff(np.degrees(ang_err_edges)))
         del(data)
 
         true_e_bincenters = np.power(
