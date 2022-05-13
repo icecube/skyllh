@@ -45,7 +45,8 @@ from skyllh.analyses.i3.trad_ps.utils import (
     load_smearing_histogram,
     psi_to_dec_and_ra,
     PublicDataAeff,
-    PublicDataSmearingMatrix
+    PublicDataSmearingMatrix,
+    merge_reco_energy_bins
 )
 
 
@@ -759,7 +760,7 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
         """
         log10_e = tdm.get_data('log_energy')
 
-        pd = self.get_splined_pd_by_log10_e(log10_e, tl=tl)
+        pd = self.get_pd_by_log10_e(log10_e, tl=tl)
 
         return (pd, None)
 
@@ -776,7 +777,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             flux_model,
             fitparam_grid_set,
             union_sm_arr_pathfilename=None,
-            smoothing=8,
+            smoothing=1,
             ncpu=None,
             ppbar=None,
             **kwargs):
@@ -860,6 +861,12 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         psi_edges = data['psi_binedges']
         ang_err_edges = data['ang_err_binedges']
         del(data)
+
+        # Merge small energy bins.
+        bw_th = 0.1
+        max_bw = 0.2
+        (union_arr, log10_reco_e_edges) = merge_reco_energy_bins(
+            union_arr, log10_reco_e_edges, bw_th, max_bw)
 
         true_e_binedges = np.power(10, log10_true_e_binedges)
         nbins_true_e = len(true_e_binedges) - 1

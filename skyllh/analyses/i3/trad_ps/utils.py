@@ -419,20 +419,12 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
                     )
                     idx = (
                         true_e_idx, true_dec_idx, sm_e_idx, sm_p_idx)
-                    #psi_bw = 2 * np.pi * (
-                    #    np.cos(sm.psi_lower_edges[idx]) -
-                    #    np.cos(sm.psi_upper_edges[idx])
-                    #)
                     psi_bw = (
                         sm.psi_upper_edges[idx] -
                         sm.psi_lower_edges[idx]
                     )
                     idx = (
                         true_e_idx, true_dec_idx, sm_e_idx, sm_p_idx, sm_a_idx)
-                    #ang_err_bw = 2 * np.pi * (
-                    #    np.cos(sm.ang_err_lower_edges[idx]) -
-                    #    np.cos(sm.ang_err_upper_edges[idx])
-                    #)
                     ang_err_bw = (
                         sm.ang_err_upper_edges[idx] -
                         sm.ang_err_lower_edges[idx]
@@ -461,6 +453,80 @@ def create_unionized_smearing_matrix_array(sm, src_dec):
     })
 
     return result
+
+
+def merge_bins(arr, edges, i_start, i_end):
+    n_to_merge = i_end - i_start + 1
+    bw = np.diff(edges[i_start:i_end+2])
+
+    #print('i_start={}, i_end={}, n_to_merge={}, sum_bw={}'.format(
+    #    i_start, i_end, n_to_merge, np.sum(bw)))
+
+    new_n_e = arr.shape[1] - (i_end-i_start)
+    new_edges = np.empty((new_n_e+1,), dtype=np.double)
+    new_edges[0:i_start+1] = edges[0:i_start+1]
+    new_edges[i_start+1:] = edges[i_end+1:]
+    new_val = np.sum(arr[:,i_start:i_end+1,:,:], axis=1) / n_to_merge
+    new_arr = np.empty(
+        (arr.shape[0],new_n_e,arr.shape[2],arr.shape[3]),
+        dtype=np.double)
+    new_arr[:,i_start,:,:] = new_val
+    new_arr[:,0:i_start,:,:] = arr[:,0:i_start,:,:]
+    new_arr[:,i_start+1:,:,:] = arr[:,i_end+1:,:]
+
+    return (new_arr, new_edges)
+
+
+def merge_reco_energy_bins(arr, log10_reco_e_binedges, bw_th, max_bw=0.2):
+    """
+    """
+    bw = np.diff(log10_reco_e_binedges)
+    n = len(bw)
+    i = 0
+    block_i_start = None
+    block_i_end = None
+    while i < n:
+        merge = False
+        if bw[i] <= bw_th:
+            # We need to combine this bin with the current block.
+            if block_i_start is None:
+                # Start a new block.
+                block_i_start = i
+                block_i_end = i
+            else:
+                # Extend the current block if it's not getting too large.
+                new_bw = (
+                    log10_reco_e_binedges[i+1] -
+                    log10_reco_e_binedges[block_i_start]
+                )
+                if new_bw <= max_bw:
+                    block_i_end = i
+                else:
+                    merge = True
+        elif(block_i_start is not None):
+            # We reached a big bin, so we combine the current block.
+            if block_i_end == block_i_start:
+                block_i_end = i
+            merge = True
+
+        if merge:
+            (arr, log10_reco_e_binedges) = merge_bins(
+                arr, log10_reco_e_binedges, block_i_start, block_i_end)
+            bw = np.diff(log10_reco_e_binedges)
+            n = len(bw)
+            i = 0
+            block_i_start = None
+            block_i_end = None
+            continue
+
+        i += 1
+
+    # Merge the last block if there is any.
+    if block_i_start is not None:
+        (arr, log10_reco_e_binedges) = merge_bins(
+            arr, log10_reco_e_binedges, block_i_start, block_i_end)
+
+    return (arr, log10_reco_e_binedges)
 
 
 class PublicDataAeff(object):
