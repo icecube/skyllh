@@ -61,7 +61,7 @@ autosummary_generate = True
 napoleon_use_rtype = False
 
 intersphinx_mapping = {'numpy': ('https://numpy.org/doc/stable/', None),
-                       'scipy': ('https://docs.scipy.org/doc/scipy/reference',
+                       'scipy': ('https://docs.scipy.org/doc/scipy/',
                                  None)}
 
 nbsphinx_execute = 'never'
