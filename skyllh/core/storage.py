@@ -741,10 +741,10 @@ class DataFieldRecordArray(object):
             raise KeyError(
                 'The data field "%s" already exists in this %s instance!'%(
                     name, classname(self)))
-        if(len(data) != self._len):
-            raise ValueError(
-                'The length of the given data is %d, but must be %d!'%(
-                    len(data), self._len))
+        #if(len(data) != self._len):
+        #    raise ValueError(
+        #        'The length of the given data is %d, but must be %d!'%(
+        #            len(data), self._len))
 
         self._data_fields[name] = data
         self._field_name_list.append(name)

@@ -607,13 +607,28 @@ class Dataset(object):
             If the integer number of an existing version qualifier is not larger
             than the old one.
         """
+        got_new_verqualifiers = False
+        verqualifiers_keys = verqualifiers.keys()
+        self_verqualifiers_keys = self._verqualifiers.keys()
+        if(len(verqualifiers_keys) > len(self_verqualifiers_keys)):
+            # New version qualifiers must be a subset of the old version
+            # qualifiers.
+            for q in self_verqualifiers_keys:
+                if(not q in verqualifiers_keys):
+                    raise ValueError('The version qualifier {} has been '
+                        'dropped!'.format(q))
+            got_new_verqualifiers = True
+
+        existing_verqualifiers_incremented = False
         for q in verqualifiers:
-            # If the qualifier already exist, it must have a larger integer
-            # number.
             if((q in self._verqualifiers) and
-               (verqualifiers[q] <= self._verqualifiers[q])):
-                raise ValueError('The integer number (%d) of the version qualifier "%s" is not larger than the old integer number (%d)'%(verqualifiers[q], q, self._verqualifiers[q]))
+               (verqualifiers[q] > self._verqualifiers[q])):
+                existing_verqualifiers_incremented = True
             self._verqualifiers[q] = verqualifiers[q]
+
+        if(not (got_new_verqualifiers or existing_verqualifiers_incremented)):
+            raise ValueError('Version qualifier values did not increment and '
+                'no new version qualifiers were added!')
 
     def load_data(
             self, keep_fields=None, livetime=None, dtc_dict=None,
@@ -980,6 +995,23 @@ class Dataset(object):
                 'the dataset yet!'%(name))
         return self._binning_definitions[name]
 
+    def remove_binning_definition(self, name):
+        """Removes the BinningDefinition object from the dataset.
+
+        Parameters
+        ----------
+        name : str
+            The name of the binning definition.
+
+        """
+        if(name not in self._binning_definitions):
+            raise KeyError(
+                f'The given binning name "{name}" does not exist in the '
+                f'dataset "{self.name}", nothing to remove!'
+            )
+
+        self._binning_definitions.pop(name)
+
     def has_binning_definition(self, name):
         """Checks if the dataset has a defined binning definition with the given
         name.
@@ -1088,6 +1120,21 @@ class Dataset(object):
 
         return self._aux_data_definitions[name]
 
+    def remove_aux_data_definition(self, name):
+        """Removes the auxiliary data definition from the dataset.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset that should get removed.
+        """
+        if(name not in self._aux_data_definitions):
+            raise KeyError(
+                f'The auxiliary data definition "{name}" does not exist in '
+                f'dataset "{self.name}", nothing to remove!'
+            )
+
+        self._aux_data_definitions.pop(name)
 
     def add_aux_data(self, name, data):
         """Adds the given data as auxiliary data to this data set.
@@ -1140,6 +1187,23 @@ class Dataset(object):
                 'dataset "%s"!'%(name, self.name))
 
         return self._aux_data[name]
+
+    def remove_aux_data(self, name):
+        """Removes the auxiliary data that is stored in this data set under
+        the given name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset that should get removed.
+        """
+        if(name not in self._aux_data):
+            raise KeyError(
+                f'The auxiliary data "{name}" is not defined for dataset '
+                f'"{self.name}", nothing to remove!'
+            )
+
+        self._aux_data.pop(name)
 
 
 class DatasetCollection(object):

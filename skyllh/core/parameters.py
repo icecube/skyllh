@@ -1110,7 +1110,7 @@ class ParameterGrid(object):
     This class represents a one-dimensional grid.
     """
     @staticmethod
-    def from_BinningDefinition(binning):
+    def from_BinningDefinition(binning, delta=None, decimals=None):
         """Creates a ParameterGrid instance from a BinningDefinition instance.
 
         Parameters
@@ -1118,6 +1118,16 @@ class ParameterGrid(object):
         binning : BinningDefinition instance
             The BinningDefinition instance that should be used to create the
             ParameterGrid instance from.
+        delta : float | None
+            The width between the grid values.
+            If set to ``None``, the width is taken from the equal-distant
+            ``grid`` values.
+        decimals : int | None
+            The number of decimals the grid values should get rounded to.
+            The maximal number of decimals is 16.
+            If set to None, the number of decimals will be the maximum of the
+            number of decimals of the first grid value and the number of
+            decimals of the delta value.
 
         Returns
         -------
@@ -1126,7 +1136,9 @@ class ParameterGrid(object):
         """
         return ParameterGrid(
             name=binning.name,
-            grid=binning.binedges)
+            grid=binning.binedges,
+            delta=delta,
+            decimals=decimals)
 
     def __init__(self, name, grid, delta=None, decimals=None):
         """Creates a new parameter grid.

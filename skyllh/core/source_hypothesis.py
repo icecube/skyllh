@@ -6,6 +6,7 @@ hypotheses. The SourceHypoGroupManager manages the groups of source hypotheses.
 
 import numpy as np
 
+from skyllh.core.parameters import make_params_hash
 from skyllh.core.py import issequenceof
 from skyllh.core.source_hypo_group import SourceHypoGroup
 
@@ -164,3 +165,27 @@ class SourceHypoGroupManager(object):
         """
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
         return self._src_hypo_group_list[gidx]._detsigyield_implmethod_list
+
+    def get_fluxmodel_to_source_mapping(self):
+        """Returns the list of tuples mapping fluxmodel to the source indices.
+
+        Returns
+        -------
+        fluxmodel_to_source_mapping : list of (hash, src_index_array) tuples
+            The list that maps hash of the source hypothesis fluxmodel to
+            the corresponding source indices array in the source hypothesis
+            group.
+        """
+        fluxmodel_to_source_mapping = []
+        n_sources_offset = 0
+        for shg in self._src_hypo_group_list:
+            # Mapping tuple.
+            fluxmodel_to_source_mapping.append(
+                (
+                    make_params_hash({'fluxmodel': shg.fluxmodel}),
+                    n_sources_offset + np.arange(shg.n_sources)
+                )
+            )
+            n_sources_offset += shg.n_sources
+
+        return fluxmodel_to_source_mapping
