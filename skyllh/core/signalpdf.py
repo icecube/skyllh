@@ -105,7 +105,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             each source and event.
         """
         get_data = tdm.get_data
-        idxs = tdm.idxs
+        src_ev_idxs = tdm.src_ev_idxs
 
         ra = get_data('ra')
         dec = get_data('dec')
@@ -119,15 +119,15 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             prob = get_data('spatial_pdf_gauss')
             src_ra = get_data('src_array')['ra']
 
-            if idxs is None:
+            if src_ev_idxs is None:
                 prob = prob.reshape((len(get_data('src_array')), len(ra)))
             else:
-                src_idxs, ev_idxs = idxs
-                sigma = np.take(sigma, idxs[1])
+                src_idxs, ev_idxs = src_ev_idxs
+                sigma = np.take(sigma, src_ev_idxs[1])
 
         except:
             # psi is calculated here
-            if idxs is None:
+            if src_ev_idxs is None:
                 # Make the source position angles two-dimensional so the PDF value can
                 # be calculated via numpy broadcasting automatically for several
                 # sources. This is useful for stacking analyses.
@@ -140,9 +140,9 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                     np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
             else:
                 # Calculate the angular difference only for events that are close
-                # to the respective source poisition. This is useful for stacking 
+                # to the respective source poisition. This is useful for stacking
                 # analyses.
-                src_idxs, ev_idxs = idxs
+                (src_idxs, ev_idxs) = src_ev_idxs
                 src_ra = get_data('src_array')['ra'][src_idxs]
                 src_dec = get_data('src_array')['dec'][src_idxs]
 
@@ -177,8 +177,8 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             norm = src_w.sum()
             src_w /= norm
             src_w_grads /= norm
-            
-            if idxs is not None:
+
+            if src_ev_idxs is not None:
                 prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
             else:
                 prob = prob.T
