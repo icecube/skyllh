@@ -84,7 +84,7 @@ from skyllh.analyses.i3.trad_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
 )
 from skyllh.analyses.i3.trad_ps.signalpdf import (
-    PDSignalEnergyPDFSet
+    PDSignalEnergyPDFSet_new
 )
 from skyllh.analyses.i3.trad_ps.pdfratio import (
     PDPDFRatio
@@ -125,10 +125,12 @@ def psi_func(tdm, src_hypo_group_manager, fitparams):
     # For now we support only a single source, hence return psi[0].
     return psi[0, :]
 
+
 def TXS_location():
-    src_ra  = np.radians(77.358)
+    src_ra = np.radians(77.358)
     src_dec = np.radians(5.693)
     return (src_ra, src_dec)
+
 
 def create_analysis(
     rss,
@@ -210,7 +212,8 @@ def create_analysis(
     fitparam_ns = FitParameter('ns', 0, 1e3, ns_seed)
 
     # Define the gamma fit parameter.
-    fitparam_gamma = FitParameter('gamma', valmin=1, valmax=5, initial=gamma_seed)
+    fitparam_gamma = FitParameter(
+        'gamma', valmin=1, valmax=5, initial=gamma_seed)
 
     # Define the detector signal efficiency implementation method for the
     # IceCube detector and this source and flux_model.
@@ -276,7 +279,7 @@ def create_analysis(
         # Create a trial data manager and add the required data fields.
         tdm = TrialDataManager()
         tdm.add_source_data_field('src_array',
-            pointlikesource_to_data_field_array)
+                                  pointlikesource_to_data_field_array)
         tdm.add_data_field('psi', psi_func)
 
         sin_dec_binning = ds.get_binning_definition('sin_dec')
@@ -291,13 +294,11 @@ def create_analysis(
             spatial_sigpdf, spatial_bkgpdf)
 
         # Create the energy PDF ratio instance for this dataset.
-        energy_sigpdfset = PDSignalEnergyPDFSet(
+        energy_sigpdfset = PDSignalEnergyPDFSet_new(
             ds=ds,
             src_dec=source.dec,
             flux_model=flux_model,
             fitparam_grid_set=gamma_grid,
-            union_sm_arr_pathfilename=os.path.join(
-                cache_dir, 'union_sm_{}.pkl'.format(ds.name)),
             ppbar=ppbar
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
@@ -309,7 +310,7 @@ def create_analysis(
             bkg_pdf=energy_bkgpdf
         )
 
-        pdfratios = [ spatial_pdfratio, energy_pdfratio ]
+        pdfratios = [spatial_pdfratio, energy_pdfratio]
 
         analysis.add_dataset(
             ds, data, pdfratios, tdm, event_selection_method)
@@ -319,37 +320,38 @@ def create_analysis(
 
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
 
-    #analysis.construct_signal_generator()
+    # analysis.construct_signal_generator()
 
     return analysis
 
+
 if(__name__ == '__main__'):
     p = argparse.ArgumentParser(
-        description = 'Calculates TS for a given source location using the '
-            '10-year public point source sample.',
-        formatter_class = argparse.RawTextHelpFormatter
+        description='Calculates TS for a given source location using the '
+        '10-year public point source sample.',
+        formatter_class=argparse.RawTextHelpFormatter
     )
     p.add_argument('--dec', default=23.8, type=float,
-        help='The source declination in degrees.')
+                   help='The source declination in degrees.')
     p.add_argument('--ra', default=216.76, type=float,
-        help='The source right-ascention in degrees.')
+                   help='The source right-ascention in degrees.')
     p.add_argument('--gamma-seed', default=3, type=float,
-        help='The seed value of the gamma fit parameter.')
+                   help='The seed value of the gamma fit parameter.')
     p.add_argument('--data_base_path', default=None, type=str,
-        help='The base path to the data samples (default=None)'
-    )
+                   help='The base path to the data samples (default=None)'
+                   )
     p.add_argument('--pdf-seed', default=1, type=int,
-        help='The random number generator seed for generating the signal PDF.')
+                   help='The random number generator seed for generating the signal PDF.')
     p.add_argument('--seed', default=1, type=int,
-        help='The random number generator seed for the likelihood minimization.')
+                   help='The random number generator seed for the likelihood minimization.')
     p.add_argument('--ncpu', default=1, type=int,
-        help='The number of CPUs to utilize where parallelization is possible.'
-    )
+                   help='The number of CPUs to utilize where parallelization is possible.'
+                   )
     p.add_argument('--n-mc-events', default=int(1e7), type=int,
-        help='The number of MC events to sample for the energy signal PDF.'
-    )
+                   help='The number of MC events to sample for the energy signal PDF.'
+                   )
     p.add_argument('--cache-dir', default='.', type=str,
-        help='The cache directory to look for cached data, e.g. signal PDFs.')
+                   help='The cache directory to look for cached data, e.g. signal PDFs.')
     args = p.parse_args()
 
     # Setup `skyllh` package logging.
@@ -359,8 +361,8 @@ if(__name__ == '__main__'):
                  '%(message)s'
     setup_console_handler('skyllh', logging.INFO, log_format)
     setup_file_handler('skyllh', 'debug.log',
-        log_level=logging.DEBUG,
-        log_format=log_format)
+                       log_level=logging.DEBUG,
+                       log_format=log_format)
 
     CFG['multiproc']['ncpu'] = args.ncpu
 
@@ -378,7 +380,6 @@ if(__name__ == '__main__'):
         dsc = data_samples[sample].create_dataset_collection(
             args.data_base_path)
         datasets.append(dsc.get_dataset(season))
-
 
     # Define a random state service.
     rss_pdf = RandomStateService(args.pdf_seed)
@@ -402,9 +403,9 @@ if(__name__ == '__main__'):
     with tl.task_timer('Unblinding data.'):
         (TS, fitparam_dict, status) = ana.unblind(rss)
 
-    print('TS = %g'%(TS))
-    print('ns_fit = %g'%(fitparam_dict['ns']))
-    print('gamma_fit = %g'%(fitparam_dict['gamma']))
+    print('TS = %g' % (TS))
+    print('ns_fit = %g' % (fitparam_dict['ns']))
+    print('gamma_fit = %g' % (fitparam_dict['gamma']))
 
     """
     # Generate some signal events.

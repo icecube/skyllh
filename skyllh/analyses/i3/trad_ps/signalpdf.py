@@ -61,7 +61,6 @@ class PublicDataSignalGenerator(object):
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
 
-
     def _generate_events(
             self, rss, src_dec, src_ra, dec_idx, flux_model, n_events):
         """Generates `n_events` signal events for the given source location
@@ -188,6 +187,7 @@ class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
     """Class that implements the enegry signal PDF for a given flux model given
     the public data.
     """
+
     def __init__(self, ds, flux_model, data_dict=None):
         """Constructs a new enegry PDF instance using the public IceCube data.
 
@@ -227,7 +227,7 @@ class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
              true_dec_bin_edges,
              self.reco_e_lower_edges,
              self.reco_e_upper_edges
-            ) = load_smearing_histogram(
+             ) = load_smearing_histogram(
                 pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
         else:
@@ -244,7 +244,7 @@ class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
         self.add_binning(BinningDefinition('true_dec', true_dec_bin_edges))
 
         # Marginalize over the PSF and angular error axes.
-        self.histogram = np.sum(self.histogram, axis=(3,4))
+        self.histogram = np.sum(self.histogram, axis=(3, 4))
 
         # Create a (prob vs E_reco) spline for each source declination bin.
         n_true_dec = len(true_dec_bin_edges) - 1
@@ -373,7 +373,7 @@ class PublicDataSignalI3EnergyPDF(EnergyPDF, IsSignalPDF, UsesBinning):
             (e_pdf, e_pdf_bin_centers) =\
                 self.get_weighted_energy_pdf_hist_for_true_energy_dec_bin(
                     true_e_idx, true_dec_idx, self.flux_model
-                )
+            )
             if(e_pdf is None):
                 continue
             splines.append(
@@ -465,6 +465,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     It creates a set of PublicDataI3EnergyPDF objects for a discrete set of
     energy signal parameters.
     """
+
     def __init__(
             self,
             rss,
@@ -481,12 +482,12 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             fitparam_grid_set = ParameterGridSet([fitparam_grid_set])
         if(not isinstance(fitparam_grid_set, ParameterGridSet)):
             raise TypeError('The fitparam_grid_set argument must be an '
-                'instance of ParameterGrid or ParameterGridSet!')
+                            'instance of ParameterGrid or ParameterGridSet!')
 
         if((smoothing_filter is not None) and
            (not isinstance(smoothing_filter, SmoothingFilter))):
             raise TypeError('The smoothing_filter argument must be None or '
-                'an instance of SmoothingFilter!')
+                            'an instance of SmoothingFilter!')
 
         # We need to extend the fit parameter grids on the lower and upper end
         # by one bin to allow for the calculation of the interpolation. But we
@@ -564,7 +565,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         args_list = [
             ((logE_binning, sinDec_binning, smoothing_filter, aeff,
               siggen, flux_model, n_events, gridfitparams), {})
-                for gridfitparams in self.gridfitparams_list
+            for gridfitparams in self.gridfitparams_list
         ]
 
         epdf_list = parallelize(
@@ -626,6 +627,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 class PDSignalEnergyPDF(PDF, IsSignalPDF):
     """This class provides a signal energy PDF for a spectrial index value.
     """
+
     def __init__(
             self, f_e, log_e_edges, **kwargs):
         """Creates a new signal energy PDF instance for a particular spectral
@@ -770,6 +772,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     It creates a set of PDSignalEnergyPDF instances, one for each spectral
     index value on a grid.
     """
+
     def __init__(
             self,
             ds,
@@ -832,7 +835,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         # Load the unionized smearing matrix array or create it if no one was
         # specified.
         if ((union_sm_arr_pathfilename is not None) and
-            os.path.exists(union_sm_arr_pathfilename)):
+                os.path.exists(union_sm_arr_pathfilename)):
             self._logger.info(
                 'Loading unionized smearing matrix from file "{}".'.format(
                     union_sm_arr_pathfilename))
@@ -888,11 +891,11 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         det_prob = np.empty((len(dE_nu),), dtype=np.double)
         for i in range(len(dE_nu)):
             det_prob[i] = aeff.get_detection_prob_for_sin_true_dec(
-                sin_true_dec = np.sin(src_dec),
-                true_e_min = true_e_binedges[i],
-                true_e_max = true_e_binedges[i+1],
-                true_e_range_min = true_e_binedges[0],
-                true_e_range_max = true_e_binedges[-1]
+                sin_true_dec=np.sin(src_dec),
+                true_e_min=true_e_binedges[i],
+                true_e_max=true_e_binedges[i+1],
+                true_e_range_min=true_e_binedges[0],
+                true_e_range_max=true_e_binedges[-1]
             )
 
         self._logger.debug('det_prob = {}, sum = {}'.format(
@@ -908,9 +911,9 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         ang_err_bw = np.diff(ang_err_edges)
 
         bin_volumes = (
-            log10_reco_e_bw[:,np.newaxis,np.newaxis] *
-            psi_edges_bw[np.newaxis,:,np.newaxis] *
-            ang_err_bw[np.newaxis,np.newaxis,:])
+            log10_reco_e_bw[:, np.newaxis, np.newaxis] *
+            psi_edges_bw[np.newaxis, :, np.newaxis] *
+            ang_err_bw[np.newaxis, np.newaxis, :])
 
         # Create the energy pdf for different gamma values.
         def create_energy_pdf(union_arr, flux_model, gridfitparams):
@@ -974,9 +977,9 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             # Create the enegry PDF f_e = P(log10_E_reco|dec) =
             # \int dPsi dang_err P(E_reco,Psi,ang_err).
             f_e = np.sum(
-                pdf_arr * psi_edges_bw[np.newaxis,:,np.newaxis] *
-                          ang_err_bw[np.newaxis,np.newaxis,:],
-                axis=(1,2))
+                pdf_arr * psi_edges_bw[np.newaxis, :, np.newaxis] *
+                ang_err_bw[np.newaxis, np.newaxis, :],
+                axis=(1, 2))
 
             del(pdf_arr)
 
@@ -1001,7 +1004,8 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             log10_reco_e_edges_new[-1] = log10_reco_e_edges[-1]
 
             # Re-normalize the PDF.
-            f_e_new = f_e_new / np.sum(f_e_new) / np.diff(log10_reco_e_edges_new)
+            f_e_new = f_e_new / np.sum(f_e_new) / \
+                np.diff(log10_reco_e_edges_new)
 
             pdf = PDSignalEnergyPDF(f_e_new, log10_reco_e_edges_new)
 
@@ -1009,7 +1013,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         args_list = [
             ((union_arr, flux_model, gridfitparams), {})
-                for gridfitparams in self.gridfitparams_list
+            for gridfitparams in self.gridfitparams_list
         ]
 
         pdf_list = parallelize(
@@ -1067,7 +1071,402 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         KeyError
             If no energy PDF can be found for the given signal parameter values.
         """
-        #print('Getting signal PDF for gridfitparams={}'.format(
+        # print('Getting signal PDF for gridfitparams={}'.format(
+        #    str(gridfitparams)))
+        pdf = self.get_pdf(gridfitparams)
+
+        (prob, grads) = pdf.get_prob(tdm, tl=tl)
+
+        return (prob, grads)
+
+
+def eval_spline(x, spl):
+    values = spl(x)
+    values = np.nan_to_num(values, nan=0)
+    return values
+
+
+def create_spline(log10_e_bincenters, f_e):
+    """Creates the spline representation of the energy PDF.
+    """
+
+    spline = interpolate.PchipInterpolator(
+        log10_e_bincenters, f_e, extrapolate=False
+    )
+
+    spl_norm = integrate.quad(
+        eval_spline,
+        log10_e_bincenters[0], log10_e_bincenters[-1],
+        args=(spline,),
+        limit=200, full_output=1)[0]
+
+    return spline, spl_norm
+
+
+class PDSignalEnergyPDF_new(PDF, IsSignalPDF):
+    """This class provides a signal energy PDF for a spectrial index value.
+    """
+
+    def __init__(
+            self, f_e, norm, log_e_edges, **kwargs):
+        """Creates a new signal energy PDF instance for a particular spectral
+        index value.
+        """
+        super().__init__(**kwargs)
+
+        self.f_e = f_e
+        self.norm = norm
+
+        self.log_e_lower_edges = log_e_edges[:-1]
+        self.log_e_upper_edges = log_e_edges[1:]
+
+        # Add the PDF axes.
+        self.add_axis(PDFAxis(
+            name='log_energy',
+            vmin=self.log_e_lower_edges[0],
+            vmax=self.log_e_upper_edges[-1])
+        )
+
+        # Check integrity.
+        integral = integrate.quad(
+            eval_spline,
+            self.log_e_lower_edges[0],
+            self.log_e_upper_edges[-1],
+            args=(self.f_e,),
+            limit=200, full_output=1)[0] / self.norm
+        if not np.isclose(integral, 1):
+            raise ValueError(
+                'The integral over log10_E of the energy term must be unity! '
+                'But it is {}!'.format(integral))
+
+    def assert_is_valid_for_trial_data(self, tdm):
+        pass
+
+    def get_pd_by_log10_e(self, log10_e, tl=None):
+        """Calculates the probability density for the given log10(E/GeV)
+        values using the spline representation of the PDF.
+
+
+        """
+        # Select events that actually have a signal enegry PDF.
+        # All other events will get zero signal probability.
+        m = (
+            (log10_e >= self.log_e_lower_edges[0]) &
+            (log10_e < self.log_e_upper_edges[-1])
+        )
+
+        pd = np.zeros((len(log10_e),), dtype=np.double)
+
+        pd[m] = eval_spline(log10_e[m], self.f_e) / self.norm
+
+        return pd
+
+    def get_prob(self, tdm, params=None, tl=None):
+        """Calculates the probability density for the events given by the
+        TrialDataManager.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The TrialDataManager instance holding the data events for which the
+            probability should be looked up. The following data fields are
+            required:
+                - 'log_energy'
+                    The log10 of the reconstructed energy.
+                - 'psi'
+                    The opening angle from the source to the event in radians.
+                - 'ang_err'
+                    The angular error of the event in radians.
+        params : dict | None
+            The dictionary containing the parameter names and values for which
+            the probability should get calculated.
+            By definition this PDF does not depend on parameters.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        prob : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
+        grads : (N_fitparams,N_events)-shaped ndarray | None
+            The 2D numpy ndarray holding the gradients of the PDF w.r.t.
+            each fit parameter for each event. The order of the gradients
+            is the same as the order of floating parameters specified through
+            the ``param_set`` property.
+            It is ``None``, if this PDF does not depend on any parameters.
+        """
+        log10_e = tdm.get_data('log_energy')
+
+        pd = self.get_pd_by_log10_e(log10_e, tl=tl)
+
+        return (pd, None)
+
+
+class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
+    """This class provides a signal energy PDF set for the public data.
+    It creates a set of PDSignalEnergyPDF instances, one for each spectral
+    index value on a grid.
+    """
+
+    def __init__(
+            self,
+            ds,
+            src_dec,
+            flux_model,
+            fitparam_grid_set,
+            ncpu=None,
+            ppbar=None,
+            **kwargs):
+        """Creates a new PDSignalEnergyPDFSet instance for the public data.
+
+        Parameters
+        ----------
+        ds : I3Dataset instance
+            The I3Dataset instance that defines the public data dataset.
+        src_dec : float
+            The declination of the source in radians.
+        flux_model : FluxModel instance
+            The FluxModel instance that defines the source's flux model.
+        fitparam_grid_set : ParameterGrid | ParameterGridSet instance
+            The parameter grid set defining the grids of the fit parameters.
+        """
+        self._logger = get_logger(module_classname(self))
+
+        # Check for the correct types of the arguments.
+        if not isinstance(ds, I3Dataset):
+            raise TypeError(
+                'The ds argument must be an instance of I3Dataset!')
+
+        if not isinstance(flux_model, FluxModel):
+            raise TypeError(
+                'The flux_model argument must be an instance of FluxModel!')
+
+        if (not isinstance(fitparam_grid_set, ParameterGrid)) and\
+           (not isinstance(fitparam_grid_set, ParameterGridSet)):
+            raise TypeError(
+                'The fitparam_grid_set argument must be an instance of type '
+                'ParameterGrid or ParameterGridSet!')
+
+        # Extend the fitparam_grid_set to allow for parameter interpolation
+        # values at the grid edges.
+        fitparam_grid_set = fitparam_grid_set.copy()
+        fitparam_grid_set.add_extra_lower_and_upper_bin()
+
+        super().__init__(
+            pdf_type=PDF,
+            fitparams_grid_set=fitparam_grid_set,
+            ncpu=ncpu
+        )
+
+        # Load the smearing matrix.
+        sm = PublicDataSmearingMatrix(
+            pathfilenames=ds.get_abs_pathfilename_list(
+                ds.get_aux_data_definition('smearing_datafile')))
+
+        # Select the slice of the smearing matrix corresponding to the
+        # source declination band
+        true_dec_idx = sm.get_true_dec_idx(src_dec)
+        sm_histo = sm.histogram[:, true_dec_idx]
+
+        true_e_binedges = np.power(10, sm.true_e_bin_edges)
+        nbins_true_e = len(true_e_binedges) - 1
+        E_nu_min = true_e_binedges[:-1]
+        E_nu_max = true_e_binedges[1:]
+
+        # Define the values at which to evaluate the splines
+        xvals = np.linspace(
+            min(sm.reco_e_lower_edges.flatten()),
+            max(sm.reco_e_upper_edges.flatten()),
+            1000)
+
+        # Calculate the neutrino enegry bin widths in GeV.
+        dE_nu = np.diff(true_e_binedges)
+        self._logger.debug(
+            'dE_nu = {}'.format(dE_nu)
+        )
+
+        # Load the effective area.
+        aeff = PublicDataAeff(
+            pathfilenames=ds.get_abs_pathfilename_list(
+                ds.get_aux_data_definition('eff_area_datafile')))
+
+        # Calculate the detector's neutrino energy detection probability to
+        # detect a neutrino of energy E_nu given a neutrino declination:
+        # p(E_nu|dec)
+        det_prob = np.empty((len(dE_nu),), dtype=np.double)
+        for i in range(len(dE_nu)):
+            det_prob[i] = aeff.get_detection_prob_for_sin_true_dec(
+                sin_true_dec=np.sin(src_dec),
+                true_e_min=true_e_binedges[i],
+                true_e_max=true_e_binedges[i+1],
+                true_e_range_min=true_e_binedges[0],
+                true_e_range_max=true_e_binedges[-1]
+            )
+
+        self._logger.debug('det_prob = {}, sum = {}'.format(
+            det_prob, np.sum(det_prob)))
+
+        if not np.isclose(np.sum(det_prob), 1):
+            self._logger.warn(
+                'The sum of the detection probabilities is not unity! It is '
+                '{}.'.format(np.sum(det_prob)))
+
+        log10_reco_e_bw = sm.reco_e_upper_edges-sm.reco_e_lower_edges
+        psi_edges_bw = sm.psi_upper_edges-sm.psi_lower_edges
+        ang_err_bw = sm.ang_err_upper_edges-sm.ang_err_lower_edges
+
+        # Create the energy pdf for different gamma values.
+        def create_energy_pdf(sm_histo, flux_model, gridfitparams):
+            """Creates an energy pdf for a specific gamma value.
+            """
+            # Create a copy of the FluxModel with the given flux parameters.
+            # The copy is needed to not interfer with other CPU processes.
+            my_flux_model = flux_model.copy(newprop=gridfitparams)
+
+            self._logger.debug(
+                'Generate signal energy PDF for parameters {} in {} E_nu '
+                'bins.'.format(
+                    gridfitparams, nbins_true_e)
+            )
+
+            # Calculate the flux probability p(E_nu|gamma).
+            flux_prob = (
+                my_flux_model.get_integral(E_nu_min, E_nu_max) /
+                my_flux_model.get_integral(
+                    true_e_binedges[0],
+                    true_e_binedges[-1]
+                )
+            )
+            if not np.isclose(np.sum(flux_prob), 1):
+                self._logger.warn(
+                    'The sum of the flux probabilities is not unity! It is '
+                    '{}.'.format(np.sum(flux_prob)))
+
+            self._logger.debug(
+                'flux_prob = {}, sum = {}'.format(
+                    flux_prob, np.sum(flux_prob))
+            )
+
+            p = flux_prob * det_prob
+
+            true_e_prob = p / np.sum(p)
+
+            self._logger.debug(
+                'true_e_prob = {}'.format(
+                    true_e_prob))
+
+            def create_e_pdf_for_true_e(true_e_idx):
+                transfer = np.copy(sm_histo[true_e_idx])
+
+                # Make it a pdf, i.e. the probability per bin volume.
+                bin_volumes = (
+                    log10_reco_e_bw[
+                        true_e_idx, true_dec_idx, :, np.newaxis, np.newaxis
+                    ] *
+                    psi_edges_bw[
+                        true_e_idx, true_dec_idx, :, :, np.newaxis
+                    ] *
+                    ang_err_bw[
+                        true_e_idx, true_dec_idx, :, :, :
+                    ]
+                )
+                m = transfer != 0
+                transfer[m] /= bin_volumes[m]
+
+                # Create the enegry PDF f_e = P(log10_E_reco|dec) =
+                # \int dPsi dang_err P(E_reco,Psi,ang_err).
+                f_e = np.sum(
+                    transfer *
+                    psi_edges_bw[true_e_idx, true_dec_idx, :, :, np.newaxis] *
+                    ang_err_bw[true_e_idx, true_dec_idx, :, :, :],
+                    axis=(-1, -2)
+                )
+
+                del(transfer)
+
+                # Now build the spline and use it to sum over the true neutrino energy
+                log10_e_bincenters = 0.5*(
+                    sm.reco_e_lower_edges[true_e_idx, true_dec_idx] +
+                    sm.reco_e_upper_edges[true_e_idx, true_dec_idx]
+                )
+                spline, norm = create_spline(
+                    log10_e_bincenters, f_e * true_e_prob[true_e_idx])
+
+                return eval_spline(xvals, spline)/norm
+
+            sum_pdf = np.sum([
+                create_e_pdf_for_true_e(true_e_idx)
+                for true_e_idx in range(nbins_true_e)
+            ], axis=0)
+
+            spline, norm = create_spline(xvals, sum_pdf)
+
+            pdf = PDSignalEnergyPDF_new(spline, norm, xvals)
+
+            return pdf
+
+        args_list = [
+            ((sm_histo, flux_model, gridfitparams), {})
+            for gridfitparams in self.gridfitparams_list
+        ]
+
+        pdf_list = parallelize(
+            create_energy_pdf,
+            args_list,
+            ncpu=self.ncpu,
+            ppbar=ppbar)
+
+        del(sm_histo)
+
+        # Save all the energy PDF objects in the PDFSet PDF registry with
+        # the hash of the individual parameters as key.
+        for (gridfitparams, pdf) in zip(self.gridfitparams_list, pdf_list):
+            self.add_pdf(pdf, gridfitparams)
+
+    def get_prob(self, tdm, gridfitparams, tl=None):
+        """Calculates the signal probability density of each event for the
+        given set of signal fit parameters on a grid.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the data events for which the
+            probability should be calculated for. The following data fields must
+            exist:
+
+            - 'log_energy'
+                The log10 of the reconstructed energy.
+            - 'psi'
+                The opening angle from the source to the event in radians.
+            - 'ang_err'
+                The angular error of the event in radians.
+        gridfitparams : dict
+            The dictionary holding the signal parameter values for which the
+            signal energy probability should be calculated. Note, that the
+            parameter values must match a set of parameter grid values for which
+            a PDSignalPDF object has been created at construction time of this
+            PDSignalPDFSet object.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure time.
+
+        Returns
+        -------
+        prob : 1d ndarray
+            The array with the signal energy probability for each event.
+        grads : (N_fitparams,N_events)-shaped ndarray | None
+            The 2D numpy ndarray holding the gradients of the PDF w.r.t.
+            each fit parameter for each event. The order of the gradients
+            is the same as the order of floating parameters specified through
+            the ``param_set`` property.
+            It is ``None``, if this PDF does not depend on any parameters.
+
+        Raises
+        ------
+        KeyError
+            If no energy PDF can be found for the given signal parameter values.
+        """
+        # print('Getting signal PDF for gridfitparams={}'.format(
         #    str(gridfitparams)))
         pdf = self.get_pdf(gridfitparams)
 
@@ -1079,6 +1478,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 class PDSignalPDF(PDF, IsSignalPDF):
     """This class provides a signal pdf for a given spectrial index value.
     """
+
     def __init__(
             self, f_s, f_e, log_e_edges, psi_edges, ang_err_edges,
             true_e_prob, **kwargs):
@@ -1125,10 +1525,10 @@ class PDSignalPDF(PDF, IsSignalPDF):
 
         # Check integrity.
         integral = np.sum(
-            #1/(2*np.pi*np.sin(0.5*(psi_edges[None,1:,None]+
+            # 1/(2*np.pi*np.sin(0.5*(psi_edges[None,1:,None]+
             #                       psi_edges[None,:-1,None])
             #                 )) *
-            self.f_s * np.diff(psi_edges)[None,:,None], axis=1)
+            self.f_s * np.diff(psi_edges)[None, :, None], axis=1)
         if not np.all(np.isclose(integral[integral > 0], 1)):
             raise ValueError(
                 'The integral over Psi of the spatial term must be unity! '
@@ -1216,6 +1616,7 @@ class PDSignalPDF(PDF, IsSignalPDF):
 class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     """This class provides a signal PDF set for the public data.
     """
+
     def __init__(
             self,
             ds,
@@ -1298,9 +1699,9 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         det_prob = np.empty((len(dE_nu),), dtype=np.double)
         for i in range(len(dE_nu)):
             det_prob[i] = aeff.get_detection_prob_for_sin_true_dec(
-                sin_true_dec = np.sin(src_dec),
-                true_e_min = true_e_binedges[i],
-                true_e_max = true_e_binedges[i+1]
+                sin_true_dec=np.sin(src_dec),
+                true_e_min=true_e_binedges[i],
+                true_e_max=true_e_binedges[i+1]
             )
 
         self._logger.debug('det_prob = {}, sum = {}'.format(
@@ -1309,19 +1710,19 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         if not np.isclose(np.sum(det_prob), 1, rtol=0.06):
             raise ValueError(
                 'The sum of the detection probabilities is not unity! It is '
-               '{}.'.format(np.sum(det_prob)))
+                '{}.'.format(np.sum(det_prob)))
 
         reco_e_bw = np.diff(reco_e_edges)
         psi_edges_bw = np.diff(psi_edges)
         ang_err_bw = np.diff(ang_err_edges)
 
         bin_volumes = (
-            reco_e_bw[:,np.newaxis,np.newaxis] *
-            psi_edges_bw[np.newaxis,:,np.newaxis] *
-            ang_err_bw[np.newaxis,np.newaxis,:])
-
+            reco_e_bw[:, np.newaxis, np.newaxis] *
+            psi_edges_bw[np.newaxis, :, np.newaxis] *
+            ang_err_bw[np.newaxis, np.newaxis, :])
 
         # Create the pdf in gamma for different gamma values.
+
         def create_pdf(union_arr, flux_model, gridfitparams):
             """Creates a pdf for a specific gamma value.
             """
@@ -1384,7 +1785,7 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             # Create the spatial PDF f_s = P(Psi|E_reco,ang_err) =
             # P(E_reco,Psi,ang_err) / \int dPsi P(E_reco,Psi,ang_err).
             marg_pdf = np.sum(
-                pdf_arr * psi_edges_bw[np.newaxis,:,np.newaxis],
+                pdf_arr * psi_edges_bw[np.newaxis, :, np.newaxis],
                 axis=1,
                 keepdims=True
             )
@@ -1394,9 +1795,9 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             # Create the enegry PDF f_e = P(log10_E_reco|dec) =
             # \int dPsi dang_err P(E_reco,Psi,ang_err).
             f_e = np.sum(
-                pdf_arr * psi_edges_bw[np.newaxis,:,np.newaxis] *
-                          ang_err_bw[np.newaxis,np.newaxis,:],
-                axis=(1,2))
+                pdf_arr * psi_edges_bw[np.newaxis, :, np.newaxis] *
+                ang_err_bw[np.newaxis, np.newaxis, :],
+                axis=(1, 2))
 
             del(pdf_arr)
 
@@ -1408,7 +1809,7 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         args_list = [
             ((union_arr, flux_model, gridfitparams), {})
-                for gridfitparams in self.gridfitparams_list
+            for gridfitparams in self.gridfitparams_list
         ]
 
         pdf_list = parallelize(
