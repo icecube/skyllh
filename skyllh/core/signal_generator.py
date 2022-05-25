@@ -188,6 +188,7 @@ class SignalGenerator(object):
         mu_fluxes = np.empty((n_sources,), dtype=np.float)
 
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
+        mu_fluxes_idx_offset = 0
         for (shg_idx,shg) in enumerate(shg_list):
             fluxmodel = shg.fluxmodel
             # Calculate conversion factor from the flux model unit into the
@@ -198,7 +199,8 @@ class SignalGenerator(object):
                         (self._sig_candidates['shg_src_idx'] == k))
                 ref_N_k = np.sum(self._sig_candidates[mask]['weight']) * ref_N
                 mu_flux_k = mu / ref_N * (ref_N_k / ref_N) * fluxmodel.Phi0*toGeVcm2s
-                mu_fluxes[shg_idx*k] = mu_flux_k
+                mu_fluxes[mu_fluxes_idx_offset + k] = mu_flux_k
+            mu_fluxes_idx_offset += shg.n_sources
 
         if(per_source):
             return mu_fluxes

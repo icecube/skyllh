@@ -3,3 +3,5 @@ sphinx
 sphinx_rtd_theme
 nbsphinx
 ipython
+sphinxcontrib-apidoc
+sphinx-multiversion

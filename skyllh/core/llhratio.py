@@ -754,6 +754,10 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
         pdfratios : list of PDFRatio
             The list of PDFRatio instances. A PDFRatio instance might depend on
             none, one, or several fit parameters.
+        detsigyields : (N_source_hypo_groups,)-shaped 1D ndarray of DetSigYield
+                instances
+            The collection of DetSigYield instances for each source hypothesis
+            group.
         """
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an '
@@ -799,7 +803,10 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
         _src_w, _src_w_grads = self._calc_source_weights(
                 fitparam_values)
         self._tdm.get_data('src_array')['src_w'] = _src_w
-        self._tdm.get_data('src_array')['src_w_grad'] = _src_w_grads.flatten()
+        if _src_w_grads is not None:
+            self._tdm.get_data('src_array')['src_w_grad'] = _src_w_grads.flatten()
+        else:
+            self._tdm.get_data('src_array')['src_w_grad'] = np.zeros_like(_src_w)
 
         (log_lambda, grads) = super(
             MultiSourceZeroSigH0SingleDatasetTCLLHRatio, self).evaluate(
@@ -989,8 +996,14 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         src_fitparam_mapper : SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
-        detsigyields : sequence of DetSigYield instances
-            The sequence of DetSigYield instances, one for each dataset.
+        detsigyields : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
+                     DetSigYield instances
+            The collection of DetSigYield instances for each
+            dataset and source group combination. The detector signal yield
+            instances are used to calculate the dataset signal weight factors.
+            The order must follow the definition order of the log-likelihood
+            ratio functions, i.e. datasets, and the definition order of the
+            source hypothesis groups.
         """
 
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
@@ -1031,16 +1044,19 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         Y = np.empty((N_datasets,), dtype=np.float)
         if(N_fitparams > 0):
             Y_grads = np.empty((N_datasets, N_fitparams), dtype=np.float)
+
         # Loop over the detector signal efficiency instances for the first and
         # only source hypothesis group.
-
         for (j, detsigyield) in enumerate(self._detsigyield_arr[0]):
             (Yj, Yj_grads) = detsigyield(self._src_arr_list[0], fitparams_arr)
             # Store the detector signal yield and its fit parameter
             # gradients for the first and only source (element 0).
             Y[j] = Yj[0]
             if(N_fitparams > 0):
-                Y_grads[j] = Yj_grads[0]
+                if Yj_grads is None:
+                    Y_grads[j] = np.zeros_like(Yj[0])
+                else:
+                    Y_grads[j] = Yj_grads[0]
 
         # sumj_Y is a scalar.
         sumj_Y = np.sum(Y, axis=0)
@@ -1076,8 +1092,14 @@ class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
         src_fitparam_mapper : SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
-        detsigyields : sequence of DetSigYield instances
-            The sequence of DetSigYield instances, one for each dataset.
+        detsigyields : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
+                     DetSigYield instances
+            The collection of DetSigYield instances for each
+            dataset and source group combination. The detector signal yield
+            instances are used to calculate the dataset signal weight factors.
+            The order must follow the definition order of the log-likelihood
+            ratio functions, i.e. datasets, and the definition order of the
+            source hypothesis groups.
         """
 
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
@@ -1115,6 +1137,7 @@ class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
         Y = np.empty((N_datasets, len(self._src_arr_list[0])), dtype=np.float)
         if(N_fitparams > 0):
             Y_grads = np.empty((N_datasets, len(self._src_arr_list[0]), N_fitparams), dtype=np.float)
+
         # Loop over the detector signal efficiency instances for the first and
         # only source hypothesis group.
         for (k, detsigyield_k) in enumerate(self._detsigyield_arr):
@@ -1147,7 +1170,7 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
     """
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
-        """Base class constructor.
+        """Constructs a new SourceWeights instance.
 
         Parameters
         ----------
@@ -1157,14 +1180,10 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
         src_fitparam_mapper : SourceFitParameterMapper
             The SourceFitParameterMapper instance that defines the global fit
             parameters and their mapping to the source fit parameters.
-        detsigyields : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
-                     DetSigYield instances
-            The collection of DetSigYield instances for each
-            dataset and source group combination. The detector signal yield
-            instances are used to calculate the dataset signal weight factors.
-            The order must follow the definition order of the log-likelihood
-            ratio functions, i.e. datasets, and the definition order of the
-            source hypothesis groups.
+        detsigyields : (N_source_hypo_groups,)-shaped 1D ndarray of DetSigYield
+                instances
+            The collection of DetSigYield instances for each source hypothesis
+            group.
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self.src_fitparam_mapper = src_fitparam_mapper
@@ -1195,10 +1214,10 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
         src_hypo_group_manager : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance defining the sources.
 
-        detsigyield_arr : 2D (N_source_hypo_groups,N_datasets)-shaped ndarray of
-                        DetSigYield instances
-            The collection of DetSigYield instances for each dataset and source
-            group combination.
+        detsigyield_arr : (N_source_hypo_groups,)-shaped 1D ndarray of
+                DetSigYield instances
+            The collection of DetSigYield instances for each source hypothesis
+            group.
         Returns
         -------
         src_arr_list : list of numpy record ndarrays
@@ -1242,8 +1261,8 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
 
     @property
     def detsigyield_arr(self):
-        """The 1D (N_source_hypo_groups)
-        DetSigYield instances.
+        """The (N_source_hypo_groups,)-shaped 1D ndarray of DetSigYield
+        instances.
         """
         return self._detsigyield_arr
     @detsigyield_arr.setter
@@ -1256,8 +1275,7 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
                 'numpy.ndarray with 1 dimensions!')
         if(not issequenceof(detsigyields.flat, DetSigYield)):
             raise TypeError('The detsigyield_arr property must contain '
-                'DetSigYield instances, one for each source hypothesis group '
-                'and dataset combination!')
+                'DetSigYield instances, one for each source hypothesis group!')
         self._detsigyield_arr = detsigyields
 
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
@@ -1278,7 +1296,7 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def __call__(self, fitparam_values):
-        """This method is supposed to calculate the dataset signal weights and
+        """This method is supposed to calculate source weights and
         their gradients.
 
         Parameters
@@ -1290,11 +1308,11 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        f : (N_datasets,)-shaped 1D ndarray
-            The dataset signal weight factor for each dataset.
-        f_grads : (N_datasets,N_fitparams)-shaped 2D ndarray
-            The gradients of the dataset signal weight factors, one for each
-            fit parameter.
+        f : (N_sources,)-shaped 1D ndarray
+            The source weight factor for each source.
+        f_grads : (N_sources,)-shaped 1D ndarray | None
+            The gradients of the source weight factors. None is returned if
+            there are no fit parameters beside ns.
         """
         pass
 
@@ -1316,8 +1334,10 @@ class MultiPointSourcesRelSourceWeights(SourceWeights):
         src_fitparam_mapper : SingleSourceFitParameterMapper
             The instance of SingleSourceFitParameterMapper defining the global
             fit parameters and their mapping to the source fit parameters.
-        detsigyields : sequence of DetSigYield instances
-            The sequence of DetSigYield instances, one for each dataset.
+        detsigyields : (N_source_hypo_groups,)-shaped 1D ndarray of
+                DetSigYield instances
+            The collection of DetSigYield instances for each source hypothesis
+            group.
         """
 
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
@@ -1329,7 +1349,7 @@ class MultiPointSourcesRelSourceWeights(SourceWeights):
 
     def __call__(self, fitparam_values):
         """Calculates the source weights and its fit parameter gradients
-        for each dataset.
+        for each source.
 
         Parameters
         ----------
@@ -1340,32 +1360,46 @@ class MultiPointSourcesRelSourceWeights(SourceWeights):
 
         Returns
         -------
-        f : (N_datasets,)-shaped 1D ndarray
-            The dataset signal weight factor for each dataset.
-        f_grads : (N_datasets,N_fitparams)-shaped 2D ndarray | None
-            The gradients of the dataset signal weight factors, one for each
-            fit parameter. None is returned if there are no fit parameters
-            beside ns.
+        f : (N_sources,)-shaped 1D ndarray
+            The source weight factor for each source.
+        f_grads : (N_sources,)-shaped 1D ndarray | None
+            The gradients of the source weight factors. None is returned if
+            there are no fit parameters beside ns.
         """
         fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(fitparam_values[1:])
 
         N_fitparams = self._src_fitparam_mapper.n_global_fitparams
 
-        # Loop over the detector signal efficiency instances for the first and
-        # only source hypothesis group.
+        Y = []
+        Y_grads = []
 
-        # currently this only works for one source hypothesis group
-        Y, Y_grads = self.detsigyield_arr[0](self._src_arr_list[0], fitparams_arr)
+        # Loop over detector signal efficiency instances for each source
+        # hypothesis group in source hypothesis group manager.
+        for (g, detsigyield) in enumerate(self._detsigyield_arr):
+            (Yg, Yg_grads) = detsigyield(self._src_arr_list[g], fitparams_arr)
 
-        # sumj_Y is the normalisation for each data set
-        sumj_Y = np.sum(Y, axis=0)
+            # Store the detector signal yield and its fit parameter
+            # gradients for all sources.
+            Y.append(Yg)
+            if(N_fitparams > 0):
+                Y_grads.append(Yg_grads.T)
 
-        # f is a ( N_src)-shaped 1D ndarray.
-        f = Y / sumj_Y
+        Y = np.array(Y)
+        sum_Y = np.sum(Y)
 
-        # f_grads is a (N_datasets, N_src, N_fitparams)-shaped 3D ndarray.
+        # f is a (N_sources,)-shaped 1D ndarray.
+        f = Y / sum_Y
+
+        # Flatten the array so that each relative weight corresponds to specific
+        # source.
+        f = f.flatten()
+
         if(N_fitparams > 0):
-            f_grads = Y_grads.T / sumj_Y
+            Y_grads = np.concatenate(Y_grads)
+
+            # Sum over fit parameter gradients axis.
+            # f_grads is a (N_sources,)-shaped 1D ndarray.
+            f_grads = np.sum(Y_grads, axis=1) / sum_Y
         else:
             f_grads = None
 

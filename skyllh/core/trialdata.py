@@ -553,6 +553,8 @@ class TrialDataManager(object):
                 'events')
             self.events = selected_events
             self.idxs = idxs
+        else:
+            self.idxs = None
 
         # Sort the events by the index field, if a field was provided.
         if(self._index_field_name is not None):
@@ -752,7 +754,7 @@ class TrialDataManager(object):
             # of the number of events. Note: Make sure that we don't broadcast
             # recarrays.
             if(self._events is not None):
-                if((len(data) == 1) and (data.ndim == 1) and
+                if((len(data) == 1) and (data.ndim == 1) and 
                    (data.dtype.fields is None)):
                     data = np.repeat(data, len(self._events))
         else:

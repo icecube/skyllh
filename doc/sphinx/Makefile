@@ -11,15 +11,15 @@ BUILDDIR      = _build
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile apidoc html clean
+.PHONY: help Makefile html clean
 
-# Generate Sphinx sources that document skyllh API.
-apidoc:
-	sphinx-apidoc -e -f -M -T -o reference ../../skyllh
-
-# Add apidoc dependency to html target.
-html: apidoc
+# Build html documentation.
+html:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+# Build html documentation for each branch separately.
+html-multiversion:
+	sphinx-multiversion "$(SOURCEDIR)" "$(BUILDDIR)"
 
 # Prepend clean target to remove skyllh API reference.
 clean:

@@ -1,17 +1,20 @@
 # This workflow builds sphinx documentation and deploys static html files to the gh-pages branch.
 # Based on https://github.com/marketplace/actions/github-pages-action#%EF%B8%8F-static-site-generators-with-python
 
-name: Build and deploy documentation
+name: Documentation
 
 on:
   push:
-    branches: [ master ]
+    branches-ignore:
+      - gh-pages
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v2
@@ -44,10 +47,11 @@ jobs:
       - name: Build documentation
         run: |
           cd ./doc/sphinx
-          make html          
+          make html-multiversion
+          cp _assets/gh-pages-redirect.html _build/index.html
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./doc/sphinx/_build/html
+          publish_dir: ./doc/sphinx/_build

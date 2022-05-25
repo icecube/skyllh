@@ -1473,38 +1473,46 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             log-likelihood-ratio function of the analysis.
         """
         # Create the detector signal yield instances for each dataset.
-        # Since this is for a single source, we don't have to have individual
-        # detector signal yield instances for each source as well.
-        detsigyield_list = []
-        fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
-        detsigyield_implmethod_list = self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
-        if((len(detsigyield_implmethod_list) != 1) and
-           (len(detsigyield_implmethod_list) != self.n_datasets)):
-            raise ValueError(
-                'The number of detector signal yield '
-                'implementation methods is not 1 and does not match the number '
-                'of used datasets in the analysis!')
-        pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
-        for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
-                                                  self.data_list)):
-            if(len(detsigyield_implmethod_list) == 1):
-                # Only one detsigyield implementation method was defined, so we
-                # use it for all datasets.
-                detsigyield_implmethod = detsigyield_implmethod_list[0]
-            else:
-                detsigyield_implmethod = detsigyield_implmethod_list[j]
+        # Multi source analysis has to also support multiple source hypothesis
+        # groups.
+        # Initialize empty (N_source_hypo_groups, N_datasets)-shaped ndarray.
+        detsigyield_array = np.empty(
+            (self._src_hypo_group_manager.n_src_hypo_groups,
+             len(self.dataset_list)),
+            dtype=object
+        )
 
-            detsigyield = detsigyield_implmethod.construct_detsigyield(
-                dataset, data, fluxmodel, data.livetime, ppbar=pbar)
-            detsigyield_list.append(detsigyield)
-            pbar.increment()
-        pbar.finish()
+        for (g, shg) in enumerate(self._src_hypo_group_manager._src_hypo_group_list):
+            fluxmodel = shg.fluxmodel
+            detsigyield_implmethod_list = shg.detsigyield_implmethod_list
+
+            if((len(detsigyield_implmethod_list) != 1) and
+               (len(detsigyield_implmethod_list) != self.n_datasets)):
+                raise ValueError(
+                    'The number of detector signal yield '
+                    'implementation methods is not 1 and does not match the number '
+                    'of used datasets in the analysis!')
+            pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
+            for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
+                                                      self.data_list)):
+                if(len(detsigyield_implmethod_list) == 1):
+                    # Only one detsigyield implementation method was defined, so we
+                    # use it for all datasets.
+                    detsigyield_implmethod = detsigyield_implmethod_list[0]
+                else:
+                    detsigyield_implmethod = detsigyield_implmethod_list[j]
+
+                detsigyield = detsigyield_implmethod.construct_detsigyield(
+                    dataset, data, fluxmodel, data.livetime, ppbar=pbar)
+                detsigyield_array[g, j] = detsigyield
+                pbar.increment()
+            pbar.finish()
 
         # For multiple datasets we need a dataset signal weights instance in
         # order to distribute ns over the different datasets.
         dataset_signal_weights = MultiSourceDatasetSignalWeights(
             self._src_hypo_group_manager, self._src_fitparam_mapper,
-            detsigyield_list)
+            detsigyield_array)
 
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
@@ -1518,7 +1526,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
                 self._src_fitparam_mapper,
                 tdm,
                 pdfratio_list,
-                detsigyield_list[j]
+                detsigyield_array[:, j]
             )
             llhratio_list.append(llhratio)
 
