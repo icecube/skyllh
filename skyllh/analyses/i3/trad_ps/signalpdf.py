@@ -1390,6 +1390,8 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
                     sm.reco_e_lower_edges[true_e_idx, true_dec_idx] +
                     sm.reco_e_upper_edges[true_e_idx, true_dec_idx]
                 )
+                if np.all(log10_e_bincenters == 0):
+                    return np.zeros_like(xvals)
                 spline, norm = create_spline(
                     log10_e_bincenters, f_e * true_e_prob[true_e_idx])
 
