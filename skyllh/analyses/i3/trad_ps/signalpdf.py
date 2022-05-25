@@ -1393,7 +1393,7 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
                 spline, norm = create_spline(
                     log10_e_bincenters, f_e * true_e_prob[true_e_idx])
 
-                return eval_spline(xvals, spline)/norm
+                return eval_spline(xvals, spline)
 
             sum_pdf = np.sum([
                 create_e_pdf_for_true_e(true_e_idx)
