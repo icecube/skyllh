@@ -1386,6 +1386,7 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
                 del(transfer)
 
                 # Now build the spline and use it to sum over the true neutrino energy
+                # while also waiting the pdf with the true neutrino energy probability.
                 log10_e_bincenters = 0.5*(
                     sm.reco_e_lower_edges[true_e_idx, true_dec_idx] +
                     sm.reco_e_upper_edges[true_e_idx, true_dec_idx]
@@ -1397,6 +1398,7 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
 
                 return eval_spline(xvals, spline)
 
+            # Integrate over the true neutrino energy and create a spline for this.
             sum_pdf = np.sum([
                 create_e_pdf_for_true_e(true_e_idx)
                 for true_e_idx in range(nbins_true_e)
