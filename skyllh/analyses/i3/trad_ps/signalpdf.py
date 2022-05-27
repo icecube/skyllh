@@ -1086,7 +1086,7 @@ def eval_spline(x, spl):
     return values
 
 
-def create_spline(log10_e_bincenters, f_e):
+def create_spline(log10_e_bincenters, f_e, norm=False):
     """Creates the spline representation of the energy PDF.
     """
 
@@ -1094,13 +1094,17 @@ def create_spline(log10_e_bincenters, f_e):
         log10_e_bincenters, f_e, extrapolate=False
     )
 
-    spl_norm = integrate.quad(
-        eval_spline,
-        log10_e_bincenters[0], log10_e_bincenters[-1],
-        args=(spline,),
-        limit=200, full_output=1)[0]
+    if norm:
+        spl_norm = integrate.quad(
+            eval_spline,
+            log10_e_bincenters[0], log10_e_bincenters[-1],
+            args=(spline,),
+            limit=200, full_output=1)[0]
 
-    return spline, spl_norm
+        return spline, spl_norm
+
+    else:
+        return spline
 
 
 class PDSignalEnergyPDF_new(PDF, IsSignalPDF):
@@ -1264,10 +1268,12 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
 
-        # Select the slice of the smearing matrix corresponding to the
-        # source declination band
+        # Select the slice of the smearing matrixcorresponding to the
+        # source declination band.
+        # Note that we take the pdfs of the reconstruction calculated
+        # from the smearing matrix here.
         true_dec_idx = sm.get_true_dec_idx(src_dec)
-        sm_histo = sm.histogram[:, true_dec_idx]
+        sm_histo = sm.pdf[:, true_dec_idx]
 
         true_e_binedges = np.power(10, sm.true_e_bin_edges)
         nbins_true_e = len(true_e_binedges) - 1
@@ -1357,54 +1363,36 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
                     true_e_prob))
 
             def create_e_pdf_for_true_e(true_e_idx):
-                transfer = np.copy(sm_histo[true_e_idx])
-
-                # Make it a pdf, i.e. the probability per bin volume.
-                bin_volumes = (
-                    log10_reco_e_bw[
-                        true_e_idx, true_dec_idx, :, np.newaxis, np.newaxis
-                    ] *
-                    psi_edges_bw[
-                        true_e_idx, true_dec_idx, :, :, np.newaxis
-                    ] *
-                    ang_err_bw[
-                        true_e_idx, true_dec_idx, :, :, :
-                    ]
-                )
-                m = transfer != 0
-                transfer[m] /= bin_volumes[m]
-
                 # Create the enegry PDF f_e = P(log10_E_reco|dec) =
                 # \int dPsi dang_err P(E_reco,Psi,ang_err).
                 f_e = np.sum(
-                    transfer *
+                    sm_histo[true_e_idx] *
                     psi_edges_bw[true_e_idx, true_dec_idx, :, :, np.newaxis] *
                     ang_err_bw[true_e_idx, true_dec_idx, :, :, :],
                     axis=(-1, -2)
                 )
 
-                del(transfer)
-
-                # Now build the spline and use it to sum over the true neutrino energy
-                # while also waiting the pdf with the true neutrino energy probability.
+                # Now build the spline to then use it in the sum over the true
+                # neutrino energy. At this point, add the weight of the pdf
+                # with the true neutrino energy probability.
                 log10_e_bincenters = 0.5*(
                     sm.reco_e_lower_edges[true_e_idx, true_dec_idx] +
                     sm.reco_e_upper_edges[true_e_idx, true_dec_idx]
                 )
                 if np.all(log10_e_bincenters == 0):
                     return np.zeros_like(xvals)
-                spline, norm = create_spline(
+                spline = create_spline(
                     log10_e_bincenters, f_e * true_e_prob[true_e_idx])
 
                 return eval_spline(xvals, spline)
 
-            # Integrate over the true neutrino energy and create a spline for this.
+            # Integrate over the true neutrino energy and spline the output.
             sum_pdf = np.sum([
                 create_e_pdf_for_true_e(true_e_idx)
                 for true_e_idx in range(nbins_true_e)
             ], axis=0)
 
-            spline, norm = create_spline(xvals, sum_pdf)
+            spline, norm = create_spline(xvals, sum_pdf, norm=True)
 
             pdf = PDSignalEnergyPDF_new(spline, norm, xvals)
 
