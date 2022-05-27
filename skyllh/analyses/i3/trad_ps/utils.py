@@ -848,10 +848,12 @@ class PublicDataSmearingMatrix(object):
                 :, :, :, :, :
             ]
         )
+
         # Divide the histogram bin probability values by their bin volume.
         # We do this only where the histogram actually has non-zero entries.
+        pdf = np.copy(self.histogram)
         m = self.histogram != 0
-        pdf = self.histogram[m] / bin_volumes[m]
+        pdf[m] /= bin_volumes[m]
 
         return pdf
 
