@@ -50,7 +50,8 @@ class PublicDataDatasetSignalGenerator(object):
             10**low_bin_edges, 10**high_bin_edges
         ) / flux_model.get_integral(
             10 ** low_bin_edges[0],
-            10 ** high_bin_edges[-1])
+            10 ** high_bin_edges[-1]
+        ) / (10**high_bin_edges - 10**low_bin_edges)
 
         # Detection probability P(E_nu | sin(dec)) per bin.
         det_prob = np.empty((len(bin_centers),), dtype=np.double)
@@ -65,6 +66,8 @@ class PublicDataDatasetSignalGenerator(object):
 
         # Compute the cumulative distribution CDF.
         cum_per_bin = np.cumsum(prob_per_bin)
+        cum_per_bin = np.concatenate(([0], cum_per_bin))
+        bin_centers = np.concatenate(([low_bin_edges[0]], bin_centers))
 
         # Build a spline for the inverse CDF.
         self.inv_cdf_spl = interpolate.splrep(
@@ -74,8 +77,7 @@ class PublicDataDatasetSignalGenerator(object):
 
     @staticmethod
     def _eval_spline(x, spl):
-        values = interpolate.splev(x, spl, ext=1)
-        values = np.nan_to_num(values, nan=0)
+        values = interpolate.splev(x, spl, ext=3)
         return values
 
     def _generate_events(
@@ -220,7 +222,6 @@ class PublicDataDatasetSignalGenerator(object):
 
             # Cut events that failed to be generated due to missing PDFs.
             events_ = events_[events_['isvalid']]
-            print(events_)
             if not len(events_) == 0:
                 n_evt_generated += len(events_)
                 if events is None:
