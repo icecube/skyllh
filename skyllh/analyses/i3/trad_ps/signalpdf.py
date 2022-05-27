@@ -1318,7 +1318,6 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
                 'The sum of the detection probabilities is not unity! It is '
                 '{}.'.format(np.sum(det_prob)))
 
-        log10_reco_e_bw = sm.reco_e_upper_edges-sm.reco_e_lower_edges
         psi_edges_bw = sm.psi_upper_edges-sm.psi_lower_edges
         ang_err_bw = sm.ang_err_upper_edges-sm.ang_err_lower_edges
 
