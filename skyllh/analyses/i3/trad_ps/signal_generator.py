@@ -1,4 +1,3 @@
-from code import interact
 import numpy as np
 from scipy import interpolate
 
@@ -21,8 +20,8 @@ from skyllh.core.py import (
 class PublicDataDatasetSignalGenerator(object):
 
     def __init__(self, ds, **kwargs):
-        """Creates a new instance of the signal generator for generating signal
-        events from the provided public data dataset.
+        """Creates a new instance of the signal generator for generating
+        signal events from a specific public data dataset.
         """
         super().__init__(**kwargs)
 
@@ -45,13 +44,13 @@ class PublicDataDatasetSignalGenerator(object):
         low_bin_edges = self.effA.log_true_e_binedges_lower[m]
         high_bin_edges = self.effA.log_true_e_binedges_upper[m]
 
-        # Probability P(E_nu | gamma) per bin.
-        flux_prob = flux_model.get_integral(
+        # Pdf P(E_nu | gamma).
+        flux_pd = flux_model.get_integral(
             10**low_bin_edges, 10**high_bin_edges
         ) / flux_model.get_integral(
             10 ** low_bin_edges[0],
             10 ** high_bin_edges[-1]
-        ) / (10**high_bin_edges - 10**low_bin_edges)
+        )
 
         # Detection probability P(E_nu | sin(dec)) per bin.
         det_prob = np.empty((len(bin_centers),), dtype=np.double)
@@ -61,7 +60,7 @@ class PublicDataDatasetSignalGenerator(object):
                 10 ** low_bin_edges[0], 10 ** high_bin_edges[-1])
 
         # Do the product and normalize again to a probability per bin.
-        product = flux_prob * det_prob
+        product = flux_pd * det_prob
         prob_per_bin = product / np.sum(product)
 
         # Compute the cumulative distribution CDF.
