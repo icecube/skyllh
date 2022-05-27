@@ -1,4 +1,6 @@
+from code import interact
 import numpy as np
+from scipy import interpolate
 
 from skyllh.core.llhratio import LLHRatio
 from skyllh.core.dataset import Dataset
@@ -6,7 +8,8 @@ from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.analyses.i3.trad_ps.utils import (
     psi_to_dec_and_ra,
-    PublicDataSmearingMatrix
+    PublicDataSmearingMatrix,
+    PublicDataAeff
 )
 from skyllh.core.py import (
     issequenceof,
@@ -26,6 +29,54 @@ class PublicDataDatasetSignalGenerator(object):
         self.smearing_matrix = PublicDataSmearingMatrix(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
+
+        self.effA = PublicDataAeff(
+            pathfilenames=ds.get_abs_pathfilename_list(
+                ds.get_aux_data_definition('eff_area_datafile')))
+
+    def _generate_inv_cdf_spline(self, flux_model, src_dec, log_e_min,
+                                 log_e_max):
+        """Sample the true neutrino energy from the power-law
+        re-weighted with the detection probability.
+        """
+        m = (self.effA.log_true_e_bincenters >= log_e_min) & (
+            self.effA.log_true_e_bincenters < log_e_max)
+        bin_centers = self.effA.log_true_e_bincenters[m]
+        low_bin_edges = self.effA.log_true_e_binedges_lower[m]
+        high_bin_edges = self.effA.log_true_e_binedges_upper[m]
+
+        # Probability P(E_nu | gamma) per bin.
+        flux_prob = flux_model.get_integral(
+            10**low_bin_edges, 10**high_bin_edges
+        ) / flux_model.get_integral(
+            10 ** low_bin_edges[0],
+            10 ** high_bin_edges[-1])
+
+        # Detection probability P(E_nu | sin(dec)) per bin.
+        det_prob = np.empty((len(bin_centers),), dtype=np.double)
+        for i in range(len(bin_centers)):
+            det_prob[i] = self.effA.get_detection_prob_for_sin_true_dec(
+                src_dec, 10**low_bin_edges[i], 10**high_bin_edges[i],
+                10 ** low_bin_edges[0], 10 ** high_bin_edges[-1])
+
+        # Do the product and normalize again to a probability per bin.
+        product = flux_prob * det_prob
+        prob_per_bin = product / np.sum(product)
+
+        # Compute the cumulative distribution CDF.
+        cum_per_bin = np.cumsum(prob_per_bin)
+
+        # Build a spline for the inverse CDF.
+        self.inv_cdf_spl = interpolate.splrep(
+            cum_per_bin, bin_centers, k=1, s=0)
+
+        return
+
+    @staticmethod
+    def _eval_spline(x, spl):
+        values = interpolate.splev(x, spl, ext=1)
+        values = np.nan_to_num(values, nan=0)
+        return values
 
     def _generate_events(
             self, rss, src_dec, src_ra, dec_idx, flux_model, n_events):
@@ -88,12 +139,12 @@ class PublicDataDatasetSignalGenerator(object):
          max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
              dec_idx)
 
-        # First draw a true neutrino energy from the hypothesis spectrum.
-        log_true_e = np.log10(flux_model.get_inv_normed_cdf(
-            rss.random.uniform(size=n_events),
-            E_min=10**min_log_true_e,
-            E_max=10**max_log_true_e
-        ))
+        # Build the spline for the inverse CDF and draw a true neutrino
+        # energy from the hypothesis spectrum.
+        self._generate_inv_cdf_spline(flux_model, src_dec,
+                                      min_log_true_e, max_log_true_e)
+        log_true_e = self._eval_spline(
+            rss.random.uniform(size=n_events), self.inv_cdf_spl)
 
         events['log_true_energy'] = log_true_e
 
@@ -127,7 +178,7 @@ class PublicDataDatasetSignalGenerator(object):
         events['sin_dec'][isvalid] = np.sin(dec)
 
         # Add an angular error. Only use non-nan values.
-        events['ang_err'][isvalid] = ang_err
+        events['ang_err'][isvalid] = ang_err[isvalid]
 
         # Add fields required by the framework
         events['time'] = np.ones(n_events)
@@ -169,12 +220,13 @@ class PublicDataDatasetSignalGenerator(object):
 
             # Cut events that failed to be generated due to missing PDFs.
             events_ = events_[events_['isvalid']]
-
-            n_evt_generated += len(events_)
-            if events is None:
-                events = events_
-            else:
-                events = np.concatenate((events, events_))
+            print(events_)
+            if not len(events_) == 0:
+                n_evt_generated += len(events_)
+                if events is None:
+                    events = events_
+                else:
+                    events.append(events_)
 
         return events
 
@@ -260,7 +312,7 @@ class PublicDataSignalGenerator(object):
                 else:
                     n_events = int_cast(
                         w_mean,
-                        '`mean` must be castable to type of float!'
+                        '`mean` must be castable to type of int!'
                     )
                 tot_n_events += n_events
 
