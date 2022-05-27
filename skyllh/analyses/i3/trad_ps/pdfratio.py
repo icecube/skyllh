@@ -97,7 +97,7 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         m_zero_bkg = np.invert(m_nonzero_bkg)
         if np.any(m_zero_bkg):
             ev_idxs = np.where(m_zero_bkg)[0]
-            logger.warn(
+            self._logger.debug(
                 f'For {len(ev_idxs)} events the background probability is '
                 f'zero. The event indices of these events are: {ev_idxs}')
 
