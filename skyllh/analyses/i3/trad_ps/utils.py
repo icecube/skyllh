@@ -826,6 +826,35 @@ class PublicDataSmearingMatrix(object):
         return 0.5*(self._true_dec_bin_edges[:-1] +
                     self._true_dec_bin_edges[1:])
 
+    @property
+    def pdf(self):
+        """(read-only) The probability-density-function
+        P(E_reco,psi,ang_err|E_nu,dec_nu), which, by definition, is the
+        histogram property divided by the 3D bin volumes for E_reco, psi, and
+        ang_err.
+        """
+        log10_reco_e_bw = self.reco_e_upper_edges - self.reco_e_lower_edges
+        psi_bw = self.psi_upper_edges - self.psi_lower_edges
+        ang_err_bw = self.ang_err_upper_edges - self.ang_err_lower_edges
+
+        bin_volumes = (
+            log10_reco_e_bw[
+                :, :, :, np.newaxis, np.newaxis
+            ] *
+            psi_bw[
+                :, :, :, :, np.newaxis
+            ] *
+            ang_err_bw[
+                :, :, :, :, :
+            ]
+        )
+        # Divide the histogram bin probability values by their bin volume.
+        # We do this only where the histogram actually has non-zero entries.
+        m = self.histogram != 0
+        pdf = self.histogram[m] / bin_volumes[m]
+
+        return pdf
+
     def get_true_dec_idx(self, true_dec):
         """Returns the true declination index for the given true declination
         value.
