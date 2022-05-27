@@ -44,8 +44,8 @@ class PublicDataDatasetSignalGenerator(object):
         low_bin_edges = self.effA.log_true_e_binedges_lower[m]
         high_bin_edges = self.effA.log_true_e_binedges_upper[m]
 
-        # Pdf P(E_nu | gamma).
-        flux_pd = flux_model.get_integral(
+        # Flux probability P(E_nu | gamma) per bin.
+        flux_prob = flux_model.get_integral(
             10**low_bin_edges, 10**high_bin_edges
         ) / flux_model.get_integral(
             10 ** low_bin_edges[0],
@@ -60,7 +60,7 @@ class PublicDataDatasetSignalGenerator(object):
                 10 ** low_bin_edges[0], 10 ** high_bin_edges[-1])
 
         # Do the product and normalize again to a probability per bin.
-        product = flux_pd * det_prob
+        product = flux_prob * det_prob
         prob_per_bin = product / np.sum(product)
 
         # Compute the cumulative distribution CDF.
