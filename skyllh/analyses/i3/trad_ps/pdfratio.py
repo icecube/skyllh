@@ -4,6 +4,8 @@ import sys
 
 import numpy as np
 
+from skyllh.core.py import module_classname
+from skyllh.core.debugging import get_logger
 from skyllh.core.parameters import make_params_hash
 from skyllh.core.pdf import PDF
 from skyllh.core.pdfratio import SigSetOverBkgPDFRatio
@@ -18,6 +20,8 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         ----------
         sig_pdf_set :
         """
+        self._logger = get_logger(module_classname(self))
+
         super().__init__(
             pdf_type=PDF,
             signalpdfset=sig_pdf_set,
@@ -84,12 +88,22 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         if isinstance(bkg_prob, tuple):
             (bkg_prob, _) = bkg_prob
 
-        if np.any(np.invert(bkg_prob > 0)):
+        if len(sig_prob) != len(bkg_prob):
             raise ValueError(
-                'For at least one event no background probability can be '
-                'calculated! Check your background PDF!')
+                f'The number of signal ({len(sig_prob)}) and background '
+                f'({len(bkg_prob)}) probability values is not equal!')
 
-        ratio = sig_prob / bkg_prob
+        m_nonzero_bkg = bkg_prob > 0
+        m_zero_bkg = np.invert(m_nonzero_bkg)
+        if np.any(m_zero_bkg):
+            ev_idxs = np.where(m_zero_bkg)[0]
+            logger.warn(
+                f'For {len(ev_idxs)} events the background probability is '
+                f'zero. The event indices of these events are: {ev_idxs}')
+
+        ratio = np.empty((len(sig_prob),), dtype=np.double)
+        ratio[m_nonzero_bkg] = sig_prob[m_nonzero_bkg] / bkg_prob[m_nonzero_bkg]
+        ratio[m_zero_bkg] = sig_prob[m_zero_bkg] / np.finfo(np.double).resolution
 
         return ratio
 
