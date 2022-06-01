@@ -1158,7 +1158,7 @@ class NDPhotosplinePDF(PDF):
                 if(n_src == 1):
                     n_dim = tdm.n_selected_events
                 else:
-                    if(tdm.src_ev_idxs is None):
+                    if tdm.src_ev_idxs is None:
                         n_dim = tdm.n_selected_events * n_src
                     else:
                         n_dim = len(tdm.src_ev_idxs[0])
