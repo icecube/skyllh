@@ -604,7 +604,7 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
             src_ev_idxs = tdm.src_ev_idxs
 
             if src_ev_idxs is not None:
-                src_idxs, ev_idxs = src_ev_idxs
+                (src_idxs, ev_idxs) = src_ev_idxs
                 prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
             else:
                 prob = prob.reshape((n_src, int(prob.shape[0]/n_src))).T
