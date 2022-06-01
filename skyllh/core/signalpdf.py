@@ -122,7 +122,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             if src_ev_idxs is None:
                 prob = prob.reshape((len(get_data('src_array')), len(ra)))
             else:
-                src_idxs, ev_idxs = src_ev_idxs
+                (src_idxs, ev_idxs) = src_ev_idxs
                 sigma = np.take(sigma, src_ev_idxs[1])
 
         except:
