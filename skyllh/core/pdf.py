@@ -1006,7 +1006,7 @@ class MultiDimGridPDF(PDF):
             if(self.is_signal_pdf):
                 # Evaluate the relevant quantities for
                 # all events and sources (relevant for stacking analyses).
-                if(tdm.src_ev_idxs is not None):
+                if tdm.src_ev_idxs is not None:
                     (src_idxs, ev_idxs) = tdm.src_ev_idxs
                     eventdata = np.array(
                         [
