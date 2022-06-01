@@ -341,6 +341,10 @@ class TrialDataManager(object):
         # data fields get calculated.
         self._events = None
 
+        # Define the member variable that holds the source to event index
+        # mapping.
+        self._src_ev_idxs = None
+
         # We store an integer number for the trial data state and increase it
         # whenever the state of the trial data changed. This way other code,
         # e.g. PDFs, can determine when the data changed and internal caches
@@ -400,6 +404,13 @@ class TrialDataManager(object):
         It is the difference of n_events and n_selected_events.
         """
         return self._n_events - len(self._events)
+
+    @property
+    def src_ev_idxs(self):
+        """(read-only) The 2-tuple holding the source index and event index
+        1d ndarray arrays.
+        """
+        return self._src_ev_idxs
 
     @property
     def trial_data_state_id(self):
@@ -505,7 +516,7 @@ class TrialDataManager(object):
 
     def initialize_trial(
             self, src_hypo_group_manager, events, n_events=None,
-            evt_sel_method=None, tl=None, retidxs=False):
+            evt_sel_method=None, store_src_ev_idxs=False, tl=None):
         """Initializes the trial data manager for a new trial. It sets the raw
         events, calculates pre-event-selection data fields, performs a possible
         event selection and calculates the static data fields for the left-over
@@ -526,6 +537,10 @@ class TrialDataManager(object):
         evt_sel_method : EventSelectionMethod | None
             The optional event selection method that should be used to select
             potential signal events.
+        store_src_ev_idxs : bool
+            If the evt_sel_method is not None, it determines if source and
+            event indices of the selected events should get calculated and
+            stored.
         tl : TimeLord | None
             The optional TimeLord instance that should be used for timing
             measurements.
@@ -546,15 +561,13 @@ class TrialDataManager(object):
             logger.debug(
                 f'Performing event selection method '
                 f'"{classname(evt_sel_method)}".')
-            (selected_events, idxs) = evt_sel_method.select_events(
-                self._events, tl=tl, retidxs=retidxs)
+            (selected_events, src_ev_idxs) = evt_sel_method.select_events(
+                self._events, tl=tl, ret_src_ev_idxs=store_src_ev_idxs)
             logger.debug(
                 f'Selected {len(selected_events)} out of {len(self._events)} '
-                'events')
+                'events.')
             self.events = selected_events
-            self.idxs = idxs
-        else:
-            self.idxs = None
+            self._src_ev_idxs = src_ev_idxs
 
         # Sort the events by the index field, if a field was provided.
         if(self._index_field_name is not None):
@@ -754,7 +767,7 @@ class TrialDataManager(object):
             # of the number of events. Note: Make sure that we don't broadcast
             # recarrays.
             if(self._events is not None):
-                if((len(data) == 1) and (data.ndim == 1) and 
+                if((len(data) == 1) and (data.ndim == 1) and
                    (data.dtype.fields is None)):
                     data = np.repeat(data, len(self._events))
         else:

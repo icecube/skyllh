@@ -601,10 +601,10 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
             src_w /= norm_src_w_temp
             src_w_grad /= norm_src_w_temp
 
-            idxs = tdm.idxs
+            src_ev_idxs = tdm.src_ev_idxs
 
-            if idxs is not None:
-                src_idxs, ev_idxs = idxs
+            if src_ev_idxs is not None:
+                (src_idxs, ev_idxs) = src_ev_idxs
                 prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
             else:
                 prob = prob.reshape((n_src, int(prob.shape[0]/n_src))).T
@@ -615,7 +615,7 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
 
             grads_tot = np.zeros((len(fitparam_names), n_ev), dtype=np.float)
             for (pidx, fitparam_name) in enumerate(fitparam_names):
-                if idxs is not None:
+                if src_ev_idxs is not None:
                     grad_i = scp.sparse.csr_matrix((grads[pidx], (ev_idxs, src_idxs)))
                 else:
                     grad_i = prob.reshape((n_src, int(grads[pidx].shape[0]/n_src))).T
@@ -1006,8 +1006,8 @@ class MultiDimGridPDF(PDF):
             if(self.is_signal_pdf):
                 # Evaluate the relevant quantities for
                 # all events and sources (relevant for stacking analyses).
-                if(tdm.idxs is not None):
-                    src_idxs, ev_idxs = tdm.idxs
+                if tdm.src_ev_idxs is not None:
+                    (src_idxs, ev_idxs) = tdm.src_ev_idxs
                     eventdata = np.array(
                         [
                             # Check `psi` axis name.
@@ -1158,10 +1158,10 @@ class NDPhotosplinePDF(PDF):
                 if(n_src == 1):
                     n_dim = tdm.n_selected_events
                 else:
-                    if(tdm.idxs is None):
+                    if tdm.src_ev_idxs is None:
                         n_dim = tdm.n_selected_events * n_src
                     else:
-                        n_dim = len(tdm.idxs[0])
+                        n_dim = len(tdm.src_ev_idxs[0])
                 return np.ones((n_dim,), dtype=np.float)
 
         if(not callable(func)):
@@ -1226,9 +1226,9 @@ class NDPhotosplinePDF(PDF):
             It is ``None``, if this PDF does not depend on any parameters.
         """
         with TaskTimer(tl, 'Get PDF event data.'):
-            if (self.is_signal_pdf):
-                if (tdm.idxs is not None):
-                    src_idxs, ev_idxs = tdm.idxs
+            if self.is_signal_pdf:
+                if tdm.src_ev_idxs is not None:
+                    (src_idxs, ev_idxs) = tdm.src_ev_idxs
                     eventdata = np.empty(
                         (len(ev_idxs), len(self._axes)), dtype=np.float)
                     for (axis_idx, axis) in enumerate(self._axes):
@@ -1245,8 +1245,8 @@ class NDPhotosplinePDF(PDF):
                             # part of the trial data, so it must be a parameter.
                             if(axis_name not in params):
                                 raise KeyError(
-                                    'The PDF axis "{}" is not part of the trial data '
-                                    'and is not a parameter!'.format(
+                                    'The PDF axis "{}" is not part of the '
+                                    'trial data and is not a parameter!'.format(
                                         axis_name))
 
                             axis_data = np.full(
@@ -1254,7 +1254,7 @@ class NDPhotosplinePDF(PDF):
                                 dtype=np.float)
                         eventdata[:, axis_idx] = axis_data
 
-            elif (self.is_background_pdf):
+            elif self.is_background_pdf:
                 eventdata = np.empty(
                     (tdm.n_selected_events, len(self._axes)), dtype=np.float)
 
@@ -1614,8 +1614,8 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         if(isinstance(self, IsSignalPDF)):
             # Evaluate the relevant quantities for
             # all events and sources (relevant for stacking analyses).
-            if(tdm.idxs is not None):
-                src_idxs, ev_idxs = tdm.idxs
+            if tdm.src_ev_idxs is not None:
+                (src_idxs, ev_idxs) = tdm.src_ev_idxs
                 eventdata = np.array(
                     [
                         # Check `psi` axis name.
@@ -1781,8 +1781,8 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         if(isinstance(self, IsSignalPDF)):
             # Evaluate the relevant quantities for
             # all events and sources (relevant for stacking analyses).
-            if(tdm.idxs is not None):
-                src_idxs, ev_idxs = tdm.idxs
+            if tdm.src_ev_idxs is not None:
+                (src_idxs, ev_idxs) = tdm.src_ev_idxs
                 eventdata = np.array(
                     [
                         # Check `psi` axis name.
