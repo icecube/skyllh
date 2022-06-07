@@ -1368,8 +1368,11 @@ class DatasetCollection(object):
             collection.
         """
         if(name not in self._datasets):
+            ds_names = '", "'.join(self.dataset_names)
+            ds_names = '"'+ds_names+'"'
             raise KeyError('The dataset "%s" is not part of the dataset '
-                'collection "%s"!'%(name, self.name))
+                'collection "%s"! Possible dataset names are: %s!'%(
+                    name, self.name, ds_names))
         return self._datasets[name]
 
     def get_datasets(self, names):
