@@ -142,6 +142,7 @@ def create_analysis(
     ns_seed=10.0,
     gamma_seed=3,
     cache_dir='.',
+    cap_ratio=False,
     n_mc_events=int(1e7),
     compress_data=False,
     keep_data_fields=None,
@@ -307,7 +308,8 @@ def create_analysis(
 
         energy_pdfratio = PDPDFRatio(
             sig_pdf_set=energy_sigpdfset,
-            bkg_pdf=energy_bkgpdf
+            bkg_pdf=energy_bkgpdf,
+            cap_ratio=cap_ratio
         )
 
         pdfratios = [spatial_pdfratio, energy_pdfratio]
@@ -331,27 +333,66 @@ if(__name__ == '__main__'):
         '10-year public point source sample.',
         formatter_class=argparse.RawTextHelpFormatter
     )
-    p.add_argument('--dec', default=23.8, type=float,
-                   help='The source declination in degrees.')
-    p.add_argument('--ra', default=216.76, type=float,
-                   help='The source right-ascention in degrees.')
-    p.add_argument('--gamma-seed', default=3, type=float,
-                   help='The seed value of the gamma fit parameter.')
-    p.add_argument('--data_base_path', default=None, type=str,
-                   help='The base path to the data samples (default=None)'
-                   )
-    p.add_argument('--pdf-seed', default=1, type=int,
-                   help='The random number generator seed for generating the signal PDF.')
-    p.add_argument('--seed', default=1, type=int,
-                   help='The random number generator seed for the likelihood minimization.')
-    p.add_argument('--ncpu', default=1, type=int,
-                   help='The number of CPUs to utilize where parallelization is possible.'
-                   )
-    p.add_argument('--n-mc-events', default=int(1e7), type=int,
-                   help='The number of MC events to sample for the energy signal PDF.'
-                   )
-    p.add_argument('--cache-dir', default='.', type=str,
-                   help='The cache directory to look for cached data, e.g. signal PDFs.')
+    p.add_argument(
+        '--dec',
+        default=23.8,
+        type=float,
+        help='The source declination in degrees.'
+    )
+    p.add_argument(
+        '--ra',
+        default=216.76,
+        type=float,
+        help='The source right-ascention in degrees.'
+    )
+    p.add_argument(
+        '--gamma-seed',
+        default=3,
+        type=float,
+        help='The seed value of the gamma fit parameter.'
+    )
+    p.add_argument(
+        '--data_base_path',
+        default=None,
+        type=str,
+        help='The base path to the data samples (default=None)'
+    )
+    p.add_argument(
+        '--pdf-seed',
+        default=1,
+        type=int,
+        help='The random number generator seed for generating the '
+             'signal PDF.'
+    )
+    p.add_argument(
+        '--seed',
+        default=1,
+        type=int,
+        help='The random number generator seed for the likelihood '
+             'minimization.'
+    )
+    p.add_argument(
+        '--ncpu',
+        default=1,
+        type=int,
+        help='The number of CPUs to utilize where parallelization is possible.'
+    )
+    p.add_argument(
+        '--n-mc-events',
+        default=int(1e7),
+        type=int,
+        help='The number of MC events to sample for the energy signal PDF.'
+    )
+    p.add_argument(
+        '--cache-dir',
+        default='.',
+        type=str,
+        help='The cache directory to look for cached data, e.g. signal PDFs.')
+    p.add_argument(
+        '--cap-ratio',
+        action='store_true',
+        help='Switch to cap the energy PDF ratio.')
+    p.set_defaults(cap_ratio=False)
     args = p.parse_args()
 
     # Setup `skyllh` package logging.
@@ -396,6 +437,7 @@ if(__name__ == '__main__'):
             datasets,
             source,
             cache_dir=args.cache_dir,
+            cap_ratio=args.cap_ratio,
             n_mc_events=args.n_mc_events,
             gamma_seed=args.gamma_seed,
             tl=tl)
