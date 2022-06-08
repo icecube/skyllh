@@ -1280,11 +1280,21 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
         E_nu_min = true_e_binedges[:-1]
         E_nu_max = true_e_binedges[1:]
 
-        # Define the values at which to evaluate the splines
+        # Define the values at which to evaluate the splines.
+        # Some bins might have zero bin widths.
+        m = (sm.reco_e_upper_edges[:,true_dec_idx] -
+             sm.reco_e_lower_edges[:,true_dec_idx]) > 0
+        le = sm.reco_e_lower_edges[:,true_dec_idx][m].flatten()
+        ue = sm.reco_e_upper_edges[:,true_dec_idx][m].flatten()
+        min_log10_reco_e = np.min(le)
+        max_log10_reco_e = np.max(ue)
+        d_log10_reco_e = np.min(ue - le) / 20
+        n_xvals = int((max_log10_reco_e - min_log10_reco_e) / d_log10_reco_e)
         xvals = np.linspace(
-            min(sm.reco_e_lower_edges.flatten()),
-            max(sm.reco_e_upper_edges.flatten()),
-            1000)
+            min_log10_reco_e,
+            max_log10_reco_e,
+            n_xvals
+        )
 
         # Calculate the neutrino enegry bin widths in GeV.
         dE_nu = np.diff(true_e_binedges)
@@ -1362,6 +1372,9 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
                     true_e_prob))
 
             def create_e_pdf_for_true_e(true_e_idx):
+                """This functions creates a spline for the reco energy
+                distribution given a true neutrino engery.
+                """
                 # Create the enegry PDF f_e = P(log10_E_reco|dec) =
                 # \int dPsi dang_err P(E_reco,Psi,ang_err).
                 f_e = np.sum(
@@ -1380,8 +1393,27 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
                 )
                 if np.all(log10_e_bincenters == 0):
                     return np.zeros_like(xvals)
-                spline = create_spline(
-                    log10_e_bincenters, f_e * true_e_prob[true_e_idx])
+
+                p = f_e * true_e_prob[true_e_idx]
+
+                # Create the spline from the lowest and highest bin edge in
+                # reconstructed enegry.
+                x = np.concatenate((
+                    np.array(
+                        [sm.reco_e_lower_edges[true_e_idx, true_dec_idx][0]]),
+                    log10_e_bincenters,
+                    np.array(
+                        [sm.reco_e_upper_edges[true_e_idx, true_dec_idx][-1]])
+                ))
+                y = np.concatenate((
+                    np.array(
+                        [p[0]]),
+                    p,
+                    np.array(
+                        [p[-1]])
+                ))
+
+                spline = create_spline(x, y)
 
                 return eval_spline(xvals, spline)
 
