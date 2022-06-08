@@ -4,11 +4,15 @@ import numpy as np
 import os.path
 
 from skyllh.core import display
-from skyllh.core.py import issequenceof
+from skyllh.core.py import (
+    issequenceof,
+    module_classname
+)
 from skyllh.core.dataset import (
     Dataset,
     DatasetData
 )
+from skyllh.core.debugging import get_logger
 from skyllh.core.storage import (
     DataFieldRecordArray,
     create_FileLoader
@@ -18,6 +22,7 @@ from skyllh.core.timing import TaskTimer
 # Load the IceCube specific config defaults.
 # This will change the skyllh.core.config.CFG dictionary.
 from skyllh.i3 import config
+
 
 class I3Dataset(Dataset):
     """The I3Dataset class is an IceCube specific Dataset class that adds
@@ -61,6 +66,8 @@ class I3Dataset(Dataset):
 
         """
         super(I3Dataset, self).__init__(*args, **kwargs)
+
+        self._logger = get_logger(module_classname(self))
 
         self.grl_pathfilename_list = grl_pathfilenames
 
@@ -318,15 +325,40 @@ class I3Dataset(Dataset):
 
         # Select only the experimental data which fits the good-run-list for
         # this dataset.
-        if((data.grl is not None) and
-           ('run' in data.grl) and
-           ('run' in data.exp)):
-            task = 'Selected only the experimental data that matches the GRL '\
-                'for dataset "%s".'%(self.name)
-            with TaskTimer(tl, task):
-                runs = np.unique(data.grl['run'])
-                mask = np.isin(data.exp['run'], runs)
-                data.exp = data.exp[mask]
+        if data.grl is not None:
+            # Select based on run information.
+            if (('run' in data.grl) and
+                ('run' in data.exp)):
+                task = 'Selected only the experimental data that matches the '\
+                    'run information in the GRL for dataset "%s".'%(self.name)
+                with TaskTimer(tl, task):
+                    runs = np.unique(data.grl['run'])
+                    mask = np.isin(data.exp['run'], runs)
+                    data.exp = data.exp[mask]
+
+            # Select based on detector on-time information.
+            if (('start' in data.grl) and
+                ('stop' in data.grl) and
+                ('time' in data.exp)):
+                task = 'Selected only the experimental data that matches the '\
+                    'detector\'s on-time information in the GRL for dataset '\
+                    '"%s".'%(self.name)
+                with TaskTimer(tl, task):
+                    mask = np.zeros((len(data.exp),), dtype=np.bool)
+                    for (start, stop) in zip(data.grl['start'],
+                                             data.grl['stop']):
+                        mask |= (
+                            (data.exp['time'] >= start) &
+                            (data.exp['time'] < stop)
+                        )
+
+                    if np.any(~mask):
+                        n_cut_evts = np.count_nonzero(~mask)
+                        self._logger.info(
+                            f'Cutting {n_cut_evts} events from dataset '
+                            f'{self.name} due to GRL on-time window '
+                            'information.')
+                        data.exp = data.exp[mask]
 
 
 class I3DatasetData(DatasetData):
