@@ -12,7 +12,7 @@ from skyllh.core.pdfratio import SigSetOverBkgPDFRatio
 
 
 class PDPDFRatio(SigSetOverBkgPDFRatio):
-    def __init__(self, sig_pdf_set, bkg_pdf, **kwargs):
+    def __init__(self, sig_pdf_set, bkg_pdf, cap_ratio=False, **kwargs):
         """Creates a PDFRatio instance for the public data.
         It takes a signal PDF set for different discrete gamma values.
 
@@ -32,15 +32,28 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         self._interpolmethod_instance = self.interpolmethod(
             self._get_ratio_values, sig_pdf_set.fitparams_grid_set)
 
-        """
-        # Get the requires field names from the background and signal pdf.
-        self._data_field_name_list = []
-        for axis in sig_pdf_set.axes:
-            field_name_list.append(axis.name)
-        for axis in bkg_pdf.axes:
-            if axis.name not in field_name_list:
-                field_name_list.append(axis.name)
-        """
+        # Calculate the ratio value for the phase space where no background
+        # is available. We will take the p_sig percentile of the signal like
+        # phase space.
+        ratio_perc = 99
+
+        # Get the log10 reco energy values where the background pdf has
+        # non-zero values.
+        (n_logE, n_sinDec) = bkg_pdf._hist_logE_sinDec.shape
+        bd = bkg_pdf._hist_logE_sinDec > 0
+        log10_e_bc = bkg_pdf.get_binning('log_energy').bincenters
+        self.ratio_fill_value_dict = dict()
+        for sig_pdf_key in sig_pdf_set.pdf_keys:
+            sigpdf = sig_pdf_set[sig_pdf_key]
+            sigvals = sigpdf.get_pd_by_log10_e(log10_e_bc)
+            sigvals = np.broadcast_to(sigvals, (n_sinDec, n_logE)).T
+            r = sigvals[bd] / bkg_pdf._hist_logE_sinDec[bd]
+            val = np.percentile(r[r > 1.], ratio_perc)
+            self.ratio_fill_value_dict[sig_pdf_key] = val
+
+        self.cap_ratio = cap_ratio
+        if cap_ratio:
+            self._logger.info('The PDF ratio will be capped!')
 
         # Create cache variables for the last ratio value and gradients in order
         # to avoid the recalculation of the ratio value when the
@@ -49,6 +62,17 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         self._cache_fitparams_hash = None
         self._cache_ratio = None
         self._cache_gradients = None
+
+    @property
+    def cap_ratio(self):
+        """Boolean switch whether to cap the ratio where no background
+        information is available (True) or use the smallest possible floating
+        point number greater than zero as background pdf value (False).
+        """
+        return self._cap_ratio
+    @cap_ratio.setter
+    def cap_ratio(self, b):
+        self._cap_ratio = b
 
     def _get_signal_fitparam_names(self):
         """This method must be re-implemented by the derived class and needs to
@@ -80,7 +104,9 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         """Select the signal PDF for the given fit parameter grid point and
         evaluates the S/B ratio for all the given events.
         """
-        sig_prob = self.signalpdfset.get_prob(tdm, gridfitparams)
+        sig_pdf_key = self.signalpdfset.make_pdf_key(gridfitparams)
+
+        sig_prob = self.signalpdfset.get_pdf(sig_pdf_key).get_prob(tdm)
         if isinstance(sig_prob, tuple):
             (sig_prob, _) = sig_prob
 
@@ -103,7 +129,12 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
 
         ratio = np.empty((len(sig_prob),), dtype=np.double)
         ratio[m_nonzero_bkg] = sig_prob[m_nonzero_bkg] / bkg_prob[m_nonzero_bkg]
-        ratio[m_zero_bkg] = sig_prob[m_zero_bkg] / np.finfo(np.double).resolution
+
+        if self._cap_ratio:
+            ratio[m_zero_bkg] = self.ratio_fill_value_dict[sig_pdf_key]
+        else:
+            ratio[m_zero_bkg] = (sig_prob[m_zero_bkg] /
+                                 np.finfo(np.double).resolution)
 
         return ratio
 
