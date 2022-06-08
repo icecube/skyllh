@@ -1409,11 +1409,40 @@ class PDFSet(object):
         key = next(iter(self._gridfitparams_hash_pdf_dict.keys()))
         return self._gridfitparams_hash_pdf_dict[key].axes
 
+    def __getitem__(self, k):
+        """(read-only) Returns the PDF for the given PDF key.
+        """
+        return self._gridfitparams_hash_pdf_dict[k]
+
     def items(self):
         """Returns the list of 2-element tuples for the PDF stored in this
         PDFSet object.
         """
         return self._gridfitparams_hash_pdf_dict.items()
+
+    def make_pdf_key(self, gridfitparams):
+        """Creates the PDF key for the given grid fit parameter values.
+
+        Parameters
+        ----------
+        gridfitparams : dict | int
+            The dictionary with the grid fit parameters for which the PDF key
+            should get made. If an integer is given, it is assumed to be
+            the PDF key.
+
+        Returns
+        -------
+        pdf_key : int
+            The hash that represents the key for the PDF with the given grid
+            fit parameter values.
+        """
+        if(isinstance(gridfitparams, int)):
+            return gridfitparams
+        if(isinstance(gridfitparams, dict)):
+            return make_params_hash(gridfitparams)
+
+        raise TypeError(
+            'The gridfitparams argument must be of type dict or int!')
 
     def add_pdf(self, pdf, gridfitparams):
         """Adds the given PDF object for the given parameters to the internal
@@ -1441,10 +1470,9 @@ class PDFSet(object):
         if(not isinstance(pdf, self.pdf_type)):
             raise TypeError('The pdf argument must be an instance of %s!' % (
                 typename(self.pdf_type)))
-        if(not isinstance(gridfitparams, dict)):
-            raise TypeError('The fitparams argument must be of type dict!')
 
-        gridfitparams_hash = make_params_hash(gridfitparams)
+        gridfitparams_hash = self.make_pdf_key(gridfitparams)
+
         if(gridfitparams_hash in self._gridfitparams_hash_pdf_dict):
             raise KeyError('The PDF with grid fit parameters %s was already '
                            'added!' % (str(gridfitparams)))
@@ -1484,17 +1512,12 @@ class PDFSet(object):
         KeyError
             If no PDF object was created for the given set of parameters.
         """
-        if(isinstance(gridfitparams, int)):
-            gridfitparams_hash = gridfitparams
-        elif(isinstance(gridfitparams, dict)):
-            gridfitparams_hash = make_params_hash(gridfitparams)
-        else:
-            raise TypeError(
-                'The gridfitparams argument must be of type dict or int!')
+        gridfitparams_hash = self.make_pdf_key(gridfitparams)
 
         if(gridfitparams_hash not in self._gridfitparams_hash_pdf_dict):
             raise KeyError(
-                'No PDF was created for the parameter set "%s"!' % (str(gridfitparams)))
+                'No PDF was created for the parameter set "%s"!' %
+                (str(gridfitparams)))
 
         pdf = self._gridfitparams_hash_pdf_dict[gridfitparams_hash]
         return pdf
