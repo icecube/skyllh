@@ -84,7 +84,7 @@ from skyllh.analyses.i3.trad_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
 )
 from skyllh.analyses.i3.trad_ps.signalpdf import (
-    PDSignalEnergyPDFSet_new
+    PDSignalEnergyPDFSet
 )
 from skyllh.analyses.i3.trad_ps.pdfratio import (
     PDPDFRatio
@@ -116,11 +116,6 @@ def psi_func(tdm, src_hypo_group_manager, fitparams):
     x[x > 1.] = 1.
 
     psi = (2.0*np.arcsin(np.sqrt(x)))
-    # Floor psi values below the first bin location in spatial KDE PDF.
-    # Flooring at the boundary (1e-6) requires a regeneration of the
-    # spatial KDE splines.
-    # floor = 10**(-5.95442953)
-    # psi = np.where(psi < floor, floor, psi)
 
     # For now we support only a single source, hence return psi[0].
     return psi[0, :]
@@ -295,7 +290,7 @@ def create_analysis(
             spatial_sigpdf, spatial_bkgpdf)
 
         # Create the energy PDF ratio instance for this dataset.
-        energy_sigpdfset = PDSignalEnergyPDFSet_new(
+        energy_sigpdfset = PDSignalEnergyPDFSet(
             ds=ds,
             src_dec=source.dec,
             flux_model=flux_model,

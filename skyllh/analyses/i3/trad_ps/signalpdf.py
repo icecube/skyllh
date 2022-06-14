@@ -1107,7 +1107,7 @@ def create_spline(log10_e_bincenters, f_e, norm=False):
         return spline
 
 
-class PDSignalEnergyPDF_new(PDF, IsSignalPDF):
+class PDSignalEnergyPDF(PDF, IsSignalPDF):
     """This class provides a signal energy PDF for a spectrial index value.
     """
 
@@ -1207,7 +1207,7 @@ class PDSignalEnergyPDF_new(PDF, IsSignalPDF):
         return (pd, None)
 
 
-class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
+class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
     """This class provides a signal energy PDF set for the public data.
     It creates a set of PDSignalEnergyPDF instances, one for each spectral
     index value on a grid.
@@ -1282,10 +1282,10 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
 
         # Define the values at which to evaluate the splines.
         # Some bins might have zero bin widths.
-        m = (sm.reco_e_upper_edges[:,true_dec_idx] -
-             sm.reco_e_lower_edges[:,true_dec_idx]) > 0
-        le = sm.reco_e_lower_edges[:,true_dec_idx][m].flatten()
-        ue = sm.reco_e_upper_edges[:,true_dec_idx][m].flatten()
+        m = (sm.reco_e_upper_edges[:, true_dec_idx] -
+             sm.reco_e_lower_edges[:, true_dec_idx]) > 0
+        le = sm.reco_e_lower_edges[:, true_dec_idx][m].flatten()
+        ue = sm.reco_e_upper_edges[:, true_dec_idx][m].flatten()
         min_log10_reco_e = np.min(le)
         max_log10_reco_e = np.max(ue)
         d_log10_reco_e = np.min(ue - le) / 20
@@ -1425,7 +1425,7 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
 
             spline, norm = create_spline(xvals, sum_pdf, norm=True)
 
-            pdf = PDSignalEnergyPDF_new(spline, norm, xvals)
+            pdf = PDSignalEnergyPDF(spline, norm, xvals)
 
             return pdf
 
@@ -1498,7 +1498,7 @@ class PDSignalEnergyPDFSet_new(PDFSet, IsSignalPDF, IsParallelizable):
         return (prob, grads)
 
 
-class PDSignalPDF(PDF, IsSignalPDF):
+class PDSignalPDF_unionized_matrix(PDF, IsSignalPDF):
     """This class provides a signal pdf for a given spectrial index value.
     """
 
@@ -1636,7 +1636,7 @@ class PDSignalPDF(PDF, IsSignalPDF):
         return (pd_spatial * pd_energy, None)
 
 
-class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
+class PDSignalPDFSet_unionized_matrix(PDFSet, IsSignalPDF, IsParallelizable):
     """This class provides a signal PDF set for the public data.
     """
 
@@ -1824,7 +1824,7 @@ class PDSignalPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
             del(pdf_arr)
 
-            pdf = PDSignalPDF(
+            pdf = PDSignalPDF_unionized_matrix(
                 f_s, f_e, reco_e_edges, psi_edges, ang_err_edges,
                 true_e_prob)
 
