@@ -33,8 +33,11 @@ def create_flux_file(save_path, ds):
     )
 
     # Setup MCeq.
-    config.e_min = 10**aeff.log_true_e_binedges_lower[0]
-    config.e_max = 10**aeff.log_true_e_binedges_upper[-1]
+    config.e_min = float(
+        10**(np.max([aeff.log_true_e_binedges_lower[0], 2])))
+    config.e_max = float(
+        10**(np.min([aeff.log_true_e_binedges_upper[-1], 9])+0.05))
+
     print('E_min = %s'%(config.e_min))
     print('E_max = %s'%(config.e_max))
 
@@ -44,6 +47,8 @@ def create_flux_file(save_path, ds):
         theta_deg=0.0,
         density_model=("MSIS00_IC", ("SouthPole", "January")),
     )
+
+    print('MCEq log10(e_grid) = %s'%(str(np.log10(mceq.e_grid))))
 
     mag = 0
     # Use the same binning as for the effective area.
