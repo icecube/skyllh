@@ -863,8 +863,8 @@ class PublicDataSmearingMatrix(object):
 
         Parameters
         ----------
-        dec : float
-            The declination value in radians.
+        true_dec : float
+            The true declination value in radians.
 
         Returns
         -------
@@ -879,6 +879,31 @@ class PublicDataSmearingMatrix(object):
         true_dec_idx = np.digitize(true_dec, self.true_dec_bin_edges) - 1
 
         return true_dec_idx
+
+    def get_log10_true_e_idx(self, log10_true_e):
+        """Returns the bin index for the given true log10 energy value.
+
+        Parameters
+        ----------
+        log10_true_e : float
+            The log10 value of the true energy.
+
+        Returns
+        -------
+        log10_true_e_idx : int
+            The index of the true log10 energy bin for the given log10 true
+            energy value.
+        """
+        if (log10_true_e < self.true_e_bin_edges[0]) or\
+           (log10_true_e > self.true_e_bin_edges[-1]):
+               raise ValueError(
+                   'The log10 true energy value {} is not supported by the '
+                   'smearing matrix!'.format(log10_true_e))
+
+        log10_true_e_idx = np.digitize(
+            log10_true_e, self._true_e_bin_edges) - 1
+
+        return log10_true_e_idx
 
     def get_reco_e_idx(self, true_e_idx, true_dec_idx, reco_e):
         """Returns the bin index for the given reco energy value given the
