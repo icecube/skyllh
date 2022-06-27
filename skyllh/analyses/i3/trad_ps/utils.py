@@ -797,6 +797,12 @@ class PublicDataSmearingMatrix(object):
         ) = load_smearing_histogram(pathfilenames)
 
     @property
+    def n_log10_true_e_bins(self):
+        """(read-only) The number of log10 true energy bins.
+        """
+        return len(self._true_e_bin_edges) - 1
+
+    @property
     def true_e_bin_edges(self):
         """(read-only) The (n_true_e+1,)-shaped 1D numpy ndarray holding the
         bin edges of the true energy.
@@ -810,6 +816,12 @@ class PublicDataSmearingMatrix(object):
         """
         return 0.5*(self._true_e_bin_edges[:-1] +
                     self._true_e_bin_edges[1:])
+
+    @property
+    def n_true_dec_bins(self):
+        """(read-only) The number of true declination bins.
+        """
+        return len(self._true_dec_bin_edges) - 1
 
     @property
     def true_dec_bin_edges(self):
