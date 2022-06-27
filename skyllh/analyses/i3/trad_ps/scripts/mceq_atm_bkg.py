@@ -13,11 +13,10 @@ from skyllh.datasets.i3 import PublicData_10y_ps
 def create_flux_file(save_path, ds):
     """Creates a pickle file containing the flux for the given dataset.
     """
-    output_filename = f'{ds.name}.pkl'
+    output_filename = ds.get_aux_data_definition('mceq_flux_datafile')[0]
     output_pathfilename = ''
     if args.save_path is None:
-        output_pathfilename = os.path.join(
-            ds.root_dir, 'fluxes', output_filename)
+        output_pathfilename = ds.get_abs_pathfilename_list([output_filename])[0]
     else:
         output_pathfilename = os.path.join(
             args.save_path, output_filename)
@@ -142,7 +141,7 @@ def create_flux_file(save_path, ds):
 
     # Save the result to the output file.
     with open(output_pathfilename, 'wb') as f:
-        pickle.dump(((mceq.e_grid, theta_angles), flux_def), f)
+        pickle.dump(((mceq.e_grid, theta_angles_binedges), flux_def), f)
     print('Saved fluxes for dataset %s to: %s'%(ds.name, output_pathfilename))
 
 #-------------------------------------------------------------------------------
