@@ -230,7 +230,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
     def get_prob(self, tdm, fitparams=None, tl=None):
         """Calculates the spatial signal probability density of each event for
-        all defined sources.
+        the defined source.
 
         Parameters
         ----------
@@ -254,7 +254,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         Returns
         -------
         pd : (n_events,)-shaped 1D numpy ndarray
-            The probability density values for each event.
+            The probability density value for each event in unit 1/rad.
         grads : (0,)-shaped 1D numpy ndarray
             Since this PDF does not depend on fit parameters, an empty array
             is returned.
