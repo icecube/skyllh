@@ -2,7 +2,13 @@
 
 import numpy as np
 
-from skyllh.core.binning import get_bincenters_from_binedges
+from scipy import interpolate
+from scipy import integrate
+
+from skyllh.core.binning import (
+    get_bincenters_from_binedges,
+    get_bin_indices_from_lower_and_upper_binedges,
+)
 from skyllh.core.storage import create_FileLoader
 
 
@@ -158,28 +164,25 @@ class PDAeff(object):
         """
         return self._aeff_decnu_log10enu
 
+    def get_aeff_for_decnu(self, decnu):
+        """Retrieves the effective area as function of log10_enu.
 
+        Parameters
+        ----------
+        decnu : float
+            The true neutrino declination.
 
-    #def get_aeff_for_sin_true_dec(self, sin_true_dec):
-        #"""Retrieves the effective area as function of log_true_e.
+        Returns
+        -------
+        aeff : (n,)-shaped numpy ndarray
+            The effective area in cm^2 for the given true neutrino declination
+            as a function of log10 true neutrino energy.
+        """
+        decnu_idx = np.digitize(decnu, self._decnu_binedges) - 1
 
-        #Parameters
-        #----------
-        #sin_true_dec : float
-            #The sin of the true declination.
+        aeff = self._aeff_decnu_log10enu[decnu_idx]
 
-        #Returns
-        #-------
-        #aeff : (n,)-shaped numpy ndarray
-            #The effective area for the given true declination as a function of
-            #log true energy.
-        #"""
-        #sin_true_dec_idx = np.digitize(
-            #sin_true_dec, self.sin_true_dec_binedges) - 1
-
-        #aeff = self.aeff_arr[sin_true_dec_idx]
-
-        #return aeff
+        return aeff
 
     #def get_detection_pd_for_sin_true_dec(self, sin_true_dec, true_e):
         #"""Calculates the detection probability density p(E_nu|sin_dec) in
@@ -245,69 +248,72 @@ class PDAeff(object):
 
         #return det_pd
 
-    #def get_detection_prob_for_sin_true_dec(
-            #self, sin_true_dec, true_e_min, true_e_max,
-            #true_e_range_min, true_e_range_max):
-        #"""Calculates the detection probability for a given energy range for a
-        #given sin declination.
+    def get_detection_prob_for_decnu(
+            self, decnu, enu_min, enu_max, enu_range_min, enu_range_max):
+        """Calculates the detection probability for a given true neutrino energy
+        range for a given neutrino declination.
 
-        #Parameters
-        #----------
-        #sin_true_dec : float
-            #The sin of the true declination.
-        #true_e_min : float
-            #The minimum energy in GeV.
-        #true_e_max : float
-            #The maximum energy in GeV.
-        #true_e_range_min : float
-            #The minimum energy in GeV of the entire energy range.
-        #true_e_range_max : float
-            #The maximum energy in GeV of the entire energy range.
+        Parameters
+        ----------
+        decnu : float
+            The neutrino declination in radians.
+        enu_min : float
+            The minimum energy in GeV.
+        enu_max : float
+            The maximum energy in GeV.
+        enu_range_min : float
+            The minimum energy in GeV of the entire energy range.
+        enu_range_max : float
+            The maximum energy in GeV of the entire energy range.
 
-        #Returns
-        #-------
-        #det_prob : float
-            #The true energy detection probability.
-        #"""
-        #true_e_binedges = np.power(10, self.log_true_e_binedges)
+        Returns
+        -------
+        det_prob : float
+            The neutrino energy detection probability.
+        """
+        enu_binedges = np.power(10, self.log10_enu_binedges)
 
-        ## Get the bin indices for the lower and upper energy range values.
-        #(lidx, uidx) = get_bin_indices_from_lower_and_upper_binedges(
-            #true_e_binedges[:-1],
-            #true_e_binedges[1:],
-            #np.array([true_e_range_min, true_e_range_max]))
-        ## The function determined the bin indices based on the
-        ## lower bin edges. So the bin index of the upper energy range value
-        ## is 1 to large.
-        #uidx -= 1
+        # Get the bin indices for the lower and upper energy range values.
+        (lidx, uidx) = get_bin_indices_from_lower_and_upper_binedges(
+            enu_binedges[:-1],
+            enu_binedges[1:],
+            np.array([enu_range_min, enu_range_max]))
 
-        #aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
-        #aeff = aeff[lidx:uidx+1]
-        #true_e_binedges = true_e_binedges[lidx:uidx+2]
+        aeff = self.get_aeff_for_decnu(decnu)
+        aeff = aeff[lidx:uidx+1]
+        enu_binedges = enu_binedges[lidx:uidx+2]
 
-        #dE = np.diff(true_e_binedges)
+        dE = np.diff(enu_binedges)
 
-        #det_pdf = aeff / dE
+        daeff_dE = aeff / dE
 
-        #true_e_bincenters = 0.5*(true_e_binedges[:-1] + true_e_binedges[1:])
-        #tck = interpolate.splrep(
-            #true_e_bincenters, det_pdf,
-            #xb=true_e_range_min, xe=true_e_range_max, k=1, s=0)
+        enu_bincenters = get_bincenters_from_binedges(enu_binedges)
+        tck = interpolate.splrep(
+            enu_bincenters, daeff_dE,
+            xb=enu_range_min, xe=enu_range_max, k=1, s=0)
 
-        #def _eval_func(x):
-            #return interpolate.splev(x, tck, der=0)
+        def _eval_func(x):
+            return interpolate.splev(x, tck, der=0)
 
-        #norm = integrate.quad(
-            #_eval_func, true_e_range_min, true_e_range_max,
-            #limit=200, full_output=1)[0]
+        norm = integrate.quad(
+            _eval_func,
+            enu_range_min,
+            enu_range_max,
+            limit=200,
+            full_output=1
+        )[0]
 
-        #integral = integrate.quad(
-            #_eval_func, true_e_min, true_e_max,
-            #limit=200, full_output=1)[0]
+        integral = integrate.quad(
+            _eval_func,
+            enu_min,
+            enu_max,
+            limit=200,
+            full_output=1
+        )[0]
 
-        #det_prob = integral / norm
+        det_prob = integral / norm
 
-        #return det_prob
+        return det_prob
 
     #def get_aeff_integral_for_sin_true_dec(
             #self, sin_true_dec, log_true_e_min, log_true_e_max):

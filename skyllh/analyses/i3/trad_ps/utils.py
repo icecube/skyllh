@@ -12,6 +12,74 @@ from skyllh.core.binning import (
 from skyllh.core.storage import create_FileLoader
 
 
+class FctSpline1D(object):
+    """Class to represent a 1D function spline using the PchipInterpolator
+    class from scipy.
+
+    The evaluate the spline, use the ``__call__`` method.
+    """
+    def __init__(self, f, x_binedges, norm=False, **kwargs):
+        """Creates a new 1D function spline using the PchipInterpolator
+        class from scipy.
+
+        Parameters
+        ----------
+        f : (n_x,)-shaped 1D numpy ndarray
+            The numpy ndarray holding the function values at the bin centers.
+        x_binedges : (n_x+1,)-shaped 1D numpy ndarray
+            The numpy ndarray holding the bin edges of the x-axis.
+        norm : bool
+            Switch
+        """
+        super().__init__(**kwargs)
+
+        self.x_binedges = np.copy(x_binedges)
+
+        self.x_min = self.x_binedges[0]
+        self.x_max = self.x_binedges[-1]
+
+        x = get_bincenters_from_binedges(self.x_binedges)
+
+        self.spl_f = interpolate.PchipInterpolator(
+            x, f, extrapolate=False
+        )
+
+        self.norm = None
+        if norm:
+            self.norm = integrate.quad(
+                self.__call__,
+                self.x_min,
+                self.x_max,
+                limit=200,
+                full_output=1
+            )[0]
+
+    def __call__(self, x, oor_value=0):
+        """Evaluates the spline at the given x values. For x-values
+        outside the spline's range, the oor_value is returned.
+
+        Parameters
+        ----------
+        x : (n_x,)-shaped 1D numpy ndarray
+            The numpy ndarray holding the x values at which the spline should
+            get evaluated.
+
+        Returns
+        -------
+        f : (n_x,)-shaped 1D numpy ndarray
+            The numpy ndarray holding the evaluated values of the spline.
+        """
+        f = self.spl_f(x)
+        f = np.nan_to_num(f, nan=oor_value)
+
+        return f
+
+    def evaluate(self, *args, **kwargs):
+        """Alias for the __call__ method.
+        """
+        return self(*args, **kwargs)
+
+
 class FctSpline2D(object):
     """Class to represent a 2D function spline using the RectBivariateSpline
     class from scipy.
@@ -22,7 +90,8 @@ class FctSpline2D(object):
     The evaluate the spline, use the ``__call__`` method.
     """
     def __init__(self, f, x_binedges, y_binedges, **kwargs):
-        """Creates a new 2D function spline.
+        """Creates a new 2D function spline using the RectBivariateSpline
+        class from scipy.
 
         Parameters
         ----------
@@ -43,8 +112,8 @@ class FctSpline2D(object):
         self.y_min = self.y_binedges[0]
         self.y_max = self.y_binedges[-1]
 
-        x = get_bincenters_from_binedges(x_binedges)
-        y = get_bincenters_from_binedges(y_binedges)
+        x = get_bincenters_from_binedges(self.x_binedges)
+        y = get_bincenters_from_binedges(self.y_binedges)
 
         # Note: For simplicity we approximate zero bins with 1000x smaller
         # values than the minimum value. To do this correctly, one should store
@@ -567,6 +636,8 @@ class PublicDataSmearingMatrix(object):
     def true_e_bin_edges(self):
         """(read-only) The (n_true_e+1,)-shaped 1D numpy ndarray holding the
         bin edges of the true energy.
+
+        Depricated! Use log10_true_enu_binedges instead!
         """
         return self._true_e_bin_edges
 
@@ -577,6 +648,13 @@ class PublicDataSmearingMatrix(object):
         """
         return 0.5*(self._true_e_bin_edges[:-1] +
                     self._true_e_bin_edges[1:])
+
+    @property
+    def log10_true_enu_binedges(self):
+        """(read-only) The (n_log10_true_enu+1,)-shaped 1D numpy ndarray holding
+        the bin edges of the log10 true neutrino energy.
+        """
+        return self._true_e_bin_edges
 
     @property
     def n_true_dec_bins(self):
@@ -598,6 +676,18 @@ class PublicDataSmearingMatrix(object):
         """
         return 0.5*(self._true_dec_bin_edges[:-1] +
                     self._true_dec_bin_edges[1:])
+
+    @property
+    def log10_reco_e_binedges_lower(self):
+        """(read-only) The upper bin edges of the log10 reco energy axes.
+        """
+        return self.reco_e_lower_edges
+
+    @property
+    def log10_reco_e_binedges_upper(self):
+        """(read-only) The upper bin edges of the log10 reco energy axes.
+        """
+        return self.reco_e_upper_edges
 
     @property
     def min_log10_reco_e(self):
