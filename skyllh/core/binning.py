@@ -158,6 +158,31 @@ def get_bincenters_from_binedges(edges):
     """
     return 0.5*(edges[:-1] + edges[1:])
 
+def get_binedges_from_bincenters(centers):
+    """Calculates the bin edges from the given bin center values. The bin center
+    values must be evenly spaced.
+
+    Parameters
+    ----------
+    centers : 1D numpy ndarray
+        The (n,)-shaped 1D ndarray holding the bin center values.
+
+    Returns
+    -------
+    edges : 1D numpy ndarray
+        The (n+1,)-shaped 1D ndarray holding the bin edge values.
+    """
+    d = np.diff(centers)
+    if not np.all(np.isclose(np.diff(d), 0)):
+        raise ValueError('The bin center values are not evenly spaced!')
+    d = d[0]
+    print(d)
+
+    edges = np.zeros((len(centers)+1,), dtype=np.double)
+    edges[:-1] = centers - d/2
+    edges[-1] = centers[-1] + d/2
+
+    return edges
 
 def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
     """Returns the bin indices for the given lower and upper bin edges the given
@@ -190,7 +215,7 @@ def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
 
     m = (
         (values[:,np.newaxis] >= le[np.newaxis,:]) &
-        (values[:,np.newaxis] <  ue[np.newaxis,:])
+        (values[:,np.newaxis] <= ue[np.newaxis,:])
     )
     idxs = np.nonzero(m)[1]
 
