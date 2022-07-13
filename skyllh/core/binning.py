@@ -185,37 +185,46 @@ def get_binedges_from_bincenters(centers):
     return edges
 
 def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
-    """Returns the bin indices for the given lower and upper bin edges the given
-    values fall into.
+    """Returns the bin indices for the given values which must fall into bins
+    defined by the given lower and upper bin edges.
+
+    Note: The upper edge is not included in the bin.
 
     Parameters
     ----------
-    le : 1D numpy ndarray
+    le : (m,)-shaped 1D numpy ndarray
         The lower bin edges.
-    ue : 1D numpy ndarray
+    ue : (m,)-shaped 1D numpy ndarray
         The upper bin edges.
-    values : 1D numpy ndarray
+    values : (n,)-shaped 1D numpy ndarray
         The values for which to get the bin indices.
 
     Returns
     -------
-    idxs : 1D numpy ndarray
+    idxs : (n,)-shaped 1D numpy ndarray
         The bin indices of the given values.
     """
+    if len(le) != len(ue):
+        raise ValueError(
+            'The lower {} and upper {} edge arrays must be of the same '
+            'size!'.format(
+                len(le), len(ue)))
+
     if np.any(values < le[0]):
         invalid_values = values[values < le[0]]
         raise ValueError(
             '{} values ({}) are smaller than the lowest bin edge ({})!'.format(
                 len(invalid_values), str(invalid_values), le[0]))
-    if np.any(values > ue[-1]):
-        invalid_values = values[values > ue[-1]]
+    if np.any(values >= ue[-1]):
+        invalid_values = values[values >= ue[-1]]
         raise ValueError(
-            '{} values ({}) are larger than the largest bin edge ({})!'.format(
+            '{} values ({}) are larger or equal than the largest bin edge '
+            '({})!'.format(
                 len(invalid_values), str(invalid_values), ue[-1]))
 
     m = (
         (values[:,np.newaxis] >= le[np.newaxis,:]) &
-        (values[:,np.newaxis] <= ue[np.newaxis,:])
+        (values[:,np.newaxis] < ue[np.newaxis,:])
     )
     idxs = np.nonzero(m)[1]
 
