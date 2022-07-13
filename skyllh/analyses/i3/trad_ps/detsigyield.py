@@ -26,7 +26,7 @@ from skyllh.i3.detsigyield import (
     PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod,
     PowerLawFluxPointLikeSourceI3DetSigYield
 )
-from skyllh.analyses.i3.trad_ps.utils import (
+from skyllh.analyses.i3.trad_ps.pd_aeff import (
     load_effective_area_array
 )
 

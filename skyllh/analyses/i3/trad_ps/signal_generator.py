@@ -8,8 +8,8 @@ from skyllh.core.storage import DataFieldRecordArray
 from skyllh.analyses.i3.trad_ps.utils import (
     psi_to_dec_and_ra,
     PublicDataSmearingMatrix,
-    PublicDataAeff
 )
+from skyllh.analyses.i3.trad_ps.pd_aeff import PDAeff
 from skyllh.core.py import (
     issequenceof,
     float_cast,
@@ -29,7 +29,7 @@ class PublicDataDatasetSignalGenerator(object):
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
 
-        self.effA = PublicDataAeff(
+        self.effA = PDAeff(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('eff_area_datafile')))
 

@@ -560,7 +560,7 @@ class PublicDataSignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         # Create a signal generator for this dataset.
         siggen = PublicDataSignalGenerator(ds)
 
-        aeff = PublicDataAeff(
+        aeff = PDAeff(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('eff_area_datafile')))
 
@@ -886,7 +886,7 @@ class PDSignalEnergyPDFSet_old(PDFSet, IsSignalPDF, IsParallelizable):
         )
 
         # Load the effective area.
-        aeff = PublicDataAeff(
+        aeff = PDAeff(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('eff_area_datafile')))
 
@@ -1713,7 +1713,7 @@ class PDSignalPDFSet_unionized_matrix(PDFSet, IsSignalPDF, IsParallelizable):
         )
 
         # Load the effective area.
-        aeff = PublicDataAeff(
+        aeff = PDAeff(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('eff_area_datafile')))
 

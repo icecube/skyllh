@@ -45,7 +45,7 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         self.ratio_fill_value_dict = dict()
         for sig_pdf_key in sig_pdf_set.pdf_keys:
             sigpdf = sig_pdf_set[sig_pdf_key]
-            sigvals = sigpdf.get_pd_by_log10_e(log10_e_bc)
+            sigvals = sigpdf.get_pd_by_log10_reco_e(log10_e_bc)
             sigvals = np.broadcast_to(sigvals, (n_sinDec, n_logE)).T
             r = sigvals[bd] / bkg_pdf._hist_logE_sinDec[bd]
             val = np.percentile(r[r > 1.], ratio_perc)
