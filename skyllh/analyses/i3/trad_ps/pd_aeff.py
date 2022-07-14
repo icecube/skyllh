@@ -137,6 +137,13 @@ class PDAeff(object):
         return self._decnu_binedges
 
     @property
+    def sin_decnu_binedges(self):
+        """(read-only) The sin of the bin edges of the neutrino declination
+        in radians.
+        """
+        return np.sin(self._decnu_binedges)
+
+    @property
     def decnu_bincenters(self):
         """(read-only) The bin center values of the neutrino declination axis in
         radians.

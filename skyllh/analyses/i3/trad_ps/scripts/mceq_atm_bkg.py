@@ -7,7 +7,7 @@ import crflux.models as pm
 import mceq_config as config
 from MCEq.core import MCEqRun
 
-from skyllh.analyses.i3.trad_ps.utils import PublicDataAeff
+from skyllh.analyses.i3.trad_ps.pd_aeff import PDAeff
 from skyllh.datasets.i3 import PublicData_10y_ps
 
 def create_flux_file(save_path, ds):
@@ -15,16 +15,16 @@ def create_flux_file(save_path, ds):
     """
     output_filename = ds.get_aux_data_definition('mceq_flux_datafile')[0]
     output_pathfilename = ''
-    if args.save_path is None:
+    if save_path is None:
         output_pathfilename = ds.get_abs_pathfilename_list([output_filename])[0]
     else:
         output_pathfilename = os.path.join(
-            args.save_path, output_filename)
+            save_path, output_filename)
 
     print('Output path filename: %s'%(output_pathfilename))
 
     # Load the effective area instance to get the binning information.
-    aeff = PublicDataAeff(
+    aeff = PDAeff(
         os.path.join(
             ds.root_dir,
             ds.get_aux_data_definition('eff_area_datafile')[0]
@@ -33,9 +33,9 @@ def create_flux_file(save_path, ds):
 
     # Setup MCeq.
     config.e_min = float(
-        10**(np.max([aeff.log_true_e_binedges_lower[0], 2])))
+        10**(np.max([aeff._log10_enu_binedges_lower[0], 2])))
     config.e_max = float(
-        10**(np.min([aeff.log_true_e_binedges_upper[-1], 9])+0.05))
+        10**(np.min([aeff._log10_enu_binedges_upper[-1], 9])+0.05))
 
     print('E_min = %s'%(config.e_min))
     print('E_max = %s'%(config.e_max))
@@ -52,9 +52,9 @@ def create_flux_file(save_path, ds):
     mag = 0
     # Use the same binning as for the effective area.
     # theta = delta + pi/2
-    print('sin_true_dec_binedges: %s'%(str(aeff.sin_true_dec_binedges)))
+    print('sin_true_dec_binedges: %s'%(str(aeff.sin_decnu_binedges)))
     theta_angles_binedges = np.rad2deg(
-        np.arcsin(aeff.sin_true_dec_binedges) + np.pi/2
+        np.arcsin(aeff.sin_decnu_binedges) + np.pi/2
     )
     theta_angles = 0.5*(theta_angles_binedges[:-1] + theta_angles_binedges[1:])
     print('Theta angles = %s'%(str(theta_angles)))
