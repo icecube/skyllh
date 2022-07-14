@@ -1,20 +1,23 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
 from scipy import interpolate
 
-from skyllh.core.llhratio import LLHRatio
-from skyllh.core.dataset import Dataset
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
-from skyllh.core.storage import DataFieldRecordArray
-from skyllh.analyses.i3.trad_ps.utils import (
-    psi_to_dec_and_ra,
-    PublicDataSmearingMatrix,
-)
-from skyllh.analyses.i3.trad_ps.pd_aeff import PDAeff
 from skyllh.core.py import (
     issequenceof,
     float_cast,
     int_cast
 )
+from skyllh.core.llhratio import LLHRatio
+from skyllh.core.dataset import Dataset
+from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.storage import DataFieldRecordArray
+
+from skyllh.analyses.i3.publicdata_ps.utils import (
+    psi_to_dec_and_ra,
+    PublicDataSmearingMatrix,
+)
+from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 
 
 class PublicDataDatasetSignalGenerator(object):

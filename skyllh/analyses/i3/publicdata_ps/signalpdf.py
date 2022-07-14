@@ -41,10 +41,10 @@ from skyllh.i3.pdf import I3EnergyPDF
 from skyllh.i3.dataset import I3Dataset
 from skyllh.physics.flux import FluxModel
 
-from skyllh.analyses.i3.trad_ps.pd_aeff import (
+from skyllh.analyses.i3.publicdata_ps.pd_aeff import (
     PDAeff,
 )
-from skyllh.analyses.i3.trad_ps.utils import (
+from skyllh.analyses.i3.publicdata_ps.utils import (
     FctSpline1D,
     create_unionized_smearing_matrix_array,
     load_smearing_histogram,

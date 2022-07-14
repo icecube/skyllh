@@ -76,17 +76,17 @@ from skyllh.core.debugging import (
     setup_file_handler
 )
 
-# Pre-defined IceCube data samples.
+# Pre-defined public IceCube data samples.
 from skyllh.datasets.i3 import data_samples
 
 # Analysis specific classes for working with the public data.
 from skyllh.analyses.i3.trad_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
 )
-from skyllh.analyses.i3.trad_ps.signalpdf import (
+from skyllh.analyses.i3.publicdata_ps.signalpdf import (
     PDSignalEnergyPDFSet
 )
-from skyllh.analyses.i3.trad_ps.pdfratio import (
+from skyllh.analyses.i3.publicdata_ps.pdfratio import (
     PDPDFRatio
 )
 
