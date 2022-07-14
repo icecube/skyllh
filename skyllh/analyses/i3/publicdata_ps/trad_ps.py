@@ -62,7 +62,6 @@ from skyllh.core.pdfratio import (
 )
 
 from skyllh.i3.signal_generation import PointLikeSourceI3SignalGenerationMethod
-from skyllh.analyses.i3.trad_ps.signal_generator import PublicDataSignalGenerator
 
 # Analysis utilities.
 from skyllh.core.analysis_utils import (
@@ -80,7 +79,10 @@ from skyllh.core.debugging import (
 from skyllh.datasets.i3 import data_samples
 
 # Analysis specific classes for working with the public data.
-from skyllh.analyses.i3.trad_ps.detsigyield import (
+from skyllh.analyses.i3.publicdata_ps.signal_generator import (
+    PublicDataSignalGenerator
+)
+from skyllh.analyses.i3.publicdata_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
 )
 from skyllh.analyses.i3.publicdata_ps.signalpdf import (
