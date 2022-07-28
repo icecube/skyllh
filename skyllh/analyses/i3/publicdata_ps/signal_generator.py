@@ -41,11 +41,11 @@ class PublicDataDatasetSignalGenerator(object):
         """Sample the true neutrino energy from the power-law
         re-weighted with the detection probability.
         """
-        m = (self.effA.log_true_e_bincenters >= log_e_min) & (
-            self.effA.log_true_e_bincenters < log_e_max)
-        bin_centers = self.effA.log_true_e_bincenters[m]
-        low_bin_edges = self.effA.log_true_e_binedges_lower[m]
-        high_bin_edges = self.effA.log_true_e_binedges_upper[m]
+        m = (self.effA.log10_enu_bincenters >= log_e_min) & (
+            self.effA.log10_enu_bincenters < log_e_max)
+        bin_centers = self.effA.log10_enu_bincenters[m]
+        low_bin_edges = self.effA._log10_enu_binedges_lower[m]
+        high_bin_edges = self.effA._log10_enu_binedges_upper[m]
 
         # Flux probability P(E_nu | gamma) per bin.
         flux_prob = flux_model.get_integral(
@@ -58,7 +58,7 @@ class PublicDataDatasetSignalGenerator(object):
         # Detection probability P(E_nu | sin(dec)) per bin.
         det_prob = np.empty((len(bin_centers),), dtype=np.double)
         for i in range(len(bin_centers)):
-            det_prob[i] = self.effA.get_detection_prob_for_sin_true_dec(
+            det_prob[i] = self.effA.get_detection_prob_for_decnu(
                 src_dec, 10**low_bin_edges[i], 10**high_bin_edges[i],
                 10 ** low_bin_edges[0], 10 ** high_bin_edges[-1])
 
