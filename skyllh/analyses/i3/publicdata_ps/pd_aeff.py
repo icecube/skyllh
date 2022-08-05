@@ -151,6 +151,12 @@ class PDAeff(object):
         return get_bincenters_from_binedges(self._decnu_binedges)
 
     @property
+    def n_decnu_bins(self):
+        """(read-only) The number of bins of the neutrino declination axis.
+        """
+        return len(self._decnu_binedges) - 1
+
+    @property
     def log10_enu_binedges(self):
         """(read-only) The bin edges of the log10(E_nu/GeV) neutrino energy
         axis.
@@ -163,6 +169,12 @@ class PDAeff(object):
         energy axis.
         """
         return get_bincenters_from_binedges(self._log10_enu_binedges)
+
+    @property
+    def n_log10_enu_bins(self):
+        """(read-only) The number of bins of the log10 neutrino energy axis.
+        """
+        return len(self._log10_enu_binedges) - 1
 
     @property
     def aeff_decnu_log10enu(self):

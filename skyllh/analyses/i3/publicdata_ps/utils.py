@@ -612,6 +612,9 @@ class PublicDataSmearingMatrix(object):
             self.ang_err_upper_edges
         ) = load_smearing_histogram(pathfilenames)
 
+        self.n_psi_bins = self.histogram.shape[3]
+        self.n_ang_err_bins = self.histogram.shape[4]
+
         # Create bin edges array for log10_reco_e.
         s = np.array(self.reco_e_lower_edges.shape)
         s[-1] += 1
