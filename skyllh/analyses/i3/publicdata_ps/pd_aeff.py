@@ -11,6 +11,8 @@ from skyllh.core.binning import (
 )
 from skyllh.core.storage import create_FileLoader
 
+from skyllh.analyses.i3.publicdata_ps.utils import FctSpline2D
+
 
 def load_effective_area_array(pathfilenames):
     """Loads the (nbins_decnu, nbins_log10enu)-shaped 2D effective
@@ -182,6 +184,23 @@ class PDAeff(object):
         2D numpy ndarray.
         """
         return self._aeff_decnu_log10enu
+
+    def create_sin_decnu_log10_enu_spline(self):
+        """Creates a FctSpline2D object representing a 2D spline of the
+        effective area in sin(dec_nu)-log10(E_nu/GeV)-space.
+
+        Returns
+        -------
+        spl : FctSpline2D instance
+            The FctSpline2D instance representing a spline in the
+            sin(dec_nu)-log10(E_nu/GeV)-space.
+        """
+        spl = FctSpline2D(
+            self._aeff_decnu_log10enu,
+            self.sin_decnu_binedges,
+            self.log10_enu_binedges
+        )
+        return spl
 
     def get_aeff_for_decnu(self, decnu):
         """Retrieves the effective area as function of log10_enu.
