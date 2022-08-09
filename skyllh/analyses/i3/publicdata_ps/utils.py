@@ -619,15 +619,22 @@ class PublicDataSmearingMatrix(object):
         s = np.array(self.reco_e_lower_edges.shape)
         s[-1] += 1
         self.log10_reco_e_binedges = np.empty(s, dtype=np.double)
-        self.log10_reco_e_binedges[:,:,:-1] = self.reco_e_lower_edges
-        self.log10_reco_e_binedges[:,:,-1] = self.reco_e_upper_edges[:,:,-1]
+        self.log10_reco_e_binedges[...,:-1] = self.reco_e_lower_edges
+        self.log10_reco_e_binedges[...,-1] = self.reco_e_upper_edges[...,-1]
 
         # Create bin edges array for psi.
         s = np.array(self.psi_lower_edges.shape)
         s[-1] += 1
         self.psi_binedges = np.empty(s, dtype=np.double)
-        self.psi_binedges[:,:,:,:-1] = self.psi_lower_edges
-        self.psi_binedges[:,:,:,-1] = self.psi_upper_edges[:,:,:,-1]
+        self.psi_binedges[...,:-1] = self.psi_lower_edges
+        self.psi_binedges[...,-1] = self.psi_upper_edges[...,-1]
+
+        # Create bin edges array for ang_err.
+        s = np.array(self.ang_err_lower_edges.shape)
+        s[-1] += 1
+        self.ang_err_binedges = np.empty(s, dtype=np.double)
+        self.ang_err_binedges[...,:-1] = self.ang_err_lower_edges
+        self.ang_err_binedges[...,-1] = self.ang_err_upper_edges[...,-1]
 
     @property
     def n_log10_true_e_bins(self):
