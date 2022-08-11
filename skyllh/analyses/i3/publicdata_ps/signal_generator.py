@@ -51,31 +51,42 @@ class PublicDataDatasetSignalGenerator(object):
         flux_prob = flux_model.get_integral(
             10**low_bin_edges, 10**high_bin_edges
         ) / flux_model.get_integral(
-            10 ** low_bin_edges[0],
-            10 ** high_bin_edges[-1]
+            10**low_bin_edges[0], 10**high_bin_edges[-1]
         )
 
         # Detection probability P(E_nu | sin(dec)) per bin.
         det_prob = np.empty((len(bin_centers),), dtype=np.double)
         for i in range(len(bin_centers)):
             det_prob[i] = self.effA.get_detection_prob_for_decnu(
-                src_dec, 10**low_bin_edges[i], 10**high_bin_edges[i],
-                10 ** low_bin_edges[0], 10 ** high_bin_edges[-1])
+                src_dec,
+                10**low_bin_edges[i], 10**high_bin_edges[i],
+                10**low_bin_edges[0], 10**high_bin_edges[-1])
 
         # Do the product and normalize again to a probability per bin.
         product = flux_prob * det_prob
         prob_per_bin = product / np.sum(product)
 
+        # The probability per bin cannot be zero, otherwise the cumulative
+        # sum would not be increasing monotonically. So we set zero bins to
+        # 1000 times smaller than the smallest non-zero bin.
+        m = prob_per_bin == 0
+        prob_per_bin[m] = np.min(prob_per_bin[np.invert(m)]) / 1000
+        prob_per_bin /= np.sum(prob_per_bin)
+
         # Compute the cumulative distribution CDF.
         cum_per_bin = np.cumsum(prob_per_bin)
         cum_per_bin = np.concatenate(([0], cum_per_bin))
+        if np.any(np.diff(cum_per_bin) == 0):
+            raise ValueError(
+                'The cumulative sum of the true energy probability is not '
+                'monotonically increasing! Values of the cumsum are '
+                f'{cum_per_bin}.')
+
         bin_centers = np.concatenate(([low_bin_edges[0]], bin_centers))
 
         # Build a spline for the inverse CDF.
         self.inv_cdf_spl = interpolate.splrep(
             cum_per_bin, bin_centers, k=1, s=0)
-
-        return
 
     @staticmethod
     def _eval_spline(x, spl):
@@ -155,9 +166,9 @@ class PublicDataDatasetSignalGenerator(object):
         log_true_e_idxs = (
             np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1
         )
+
         # Sample reconstructed energies given true neutrino energies.
-        (log_e_idxs, log_e) = sm.sample_log_e(
-            rss, dec_idx, log_true_e_idxs)
+        (log_e_idxs, log_e) = sm.sample_log_e(rss, dec_idx, log_true_e_idxs)
         events['log_energy'] = log_e
 
         # Sample reconstructed psi values given true neutrino energy and
