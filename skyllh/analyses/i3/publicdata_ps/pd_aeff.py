@@ -338,16 +338,31 @@ class PDAeff(object):
 
         daeff_dE = aeff / dE
 
-        enu_bincenters = get_bincenters_from_binedges(enu_binedges)
-        tck = interpolate.splrep(
-            enu_bincenters, daeff_dE,
-            xb=enu_range_min, xe=enu_range_max, k=1, s=0)
+        # Create a spline representation that spans the entire enu range.
+        x = np.empty((len(enu_binedges)+1,), dtype=np.double)
+        x[0] = enu_binedges[0]
+        x[1:-1] = get_bincenters_from_binedges(enu_binedges)
+        x[-1] = enu_binedges[-1]
 
-        def _eval_func(x):
-            return interpolate.splev(x, tck, der=0)
+        y = np.empty((len(enu_binedges)+1,), dtype=np.double)
+        y[0] = daeff_dE[0]
+        y[1:-1] = daeff_dE
+        y[-1] = daeff_dE[-1]
+
+        spl = interpolate.splrep(
+            x,
+            y,
+            xb=enu_range_min,
+            xe=enu_range_max,
+            k=1,
+            s=0
+        )
+
+        def _eval_spl_func(x):
+            return interpolate.splev(x, spl, der=0, ext=1)
 
         norm = integrate.quad(
-            _eval_func,
+            _eval_spl_func,
             enu_range_min,
             enu_range_max,
             limit=200,
@@ -355,7 +370,7 @@ class PDAeff(object):
         )[0]
 
         integral = integrate.quad(
-            _eval_func,
+            _eval_spl_func,
             enu_min,
             enu_max,
             limit=200,
