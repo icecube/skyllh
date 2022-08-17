@@ -39,7 +39,8 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
 
         # Get the log10 reco energy values where the background pdf has
         # non-zero values.
-        (n_logE, n_sinDec) = bkg_pdf._hist_logE_sinDec.shape
+        n_logE = bkg_pdf.get_binning('log_energy').nbins
+        n_sinDec = bkg_pdf.get_binning('sin_dec').nbins
         bd = bkg_pdf._hist_logE_sinDec > 0
         log10_e_bc = bkg_pdf.get_binning('log_energy').bincenters
         self.ratio_fill_value_dict = dict()
