@@ -2,7 +2,10 @@
 
 import numpy as np
 
-from skyllh.core.binning import UsesBinning
+from skyllh.core.binning import (
+    BinningDefinition,
+    UsesBinning,
+)
 from skyllh.core.pdf import (
     EnergyPDF,
     IsBackgroundPDF,
@@ -177,34 +180,34 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
 
         self._hist_logE_sinDec = h
 
-    @ property
+    @property
     def hist_smoothing_method(self):
         """The HistSmoothingMethod instance defining the smoothing filter of the
         energy PDF histogram.
         """
         return self._hist_smoothing_method
 
-    @ hist_smoothing_method.setter
+    @hist_smoothing_method.setter
     def hist_smoothing_method(self, method):
         if(not isinstance(method, HistSmoothingMethod)):
             raise TypeError(
                 'The hist_smoothing_method property must be an instance of HistSmoothingMethod!')
         self._hist_smoothing_method = method
 
-    @ property
+    @property
     def hist(self):
         """(read-only) The 2D logE-sinDec histogram array.
         """
         return self._hist_logE_sinDec
 
-    @ property
+    @property
     def hist_mask_mc_covered(self):
         """(read-only) The boolean ndarray holding the mask of the 2D histogram
         bins for which there is monte-carlo coverage.
         """
         return self._hist_mask_mc_covered
 
-    @ property
+    @property
     def hist_mask_mc_covered_zero_physics(self):
         """(read-only) The boolean ndarray holding the mask of the 2D histogram
         bins for which there is monte-carlo coverage but zero physics
@@ -212,46 +215,13 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
         """
         return self._hist_mask_mc_covered_zero_physics
 
-    @ property
+    @property
     def hist_mask_mc_covered_with_physics(self):
         """(read-only) The boolean ndarray holding the mask of the 2D histogram
         bins for which there is monte-carlo coverage and has physics
         contribution.
         """
         return self._hist_mask_mc_covered & ~self._hist_mask_mc_covered_zero_physics
-
-    def assert_is_valid_for_exp_data(self, data_exp):
-        """Checks if this energy PDF is valid for all the given experimental
-        data.
-        It checks if all the data is within the logE and sin(dec) binning range.
-
-        Parameters
-        ----------
-        data_exp : numpy record ndarray
-            The array holding the experimental data. The following data fields
-            must exist:
-
-            - 'log_energy' : float
-                The logarithm of the energy value of the data event.
-            - 'dec' : float
-                The declination of the data event.
-
-        Raises
-        ------
-        ValueError
-            If some of the data is outside the logE or sin(dec) binning range.
-        """
-        logE_binning = self.get_binning('log_energy')
-        sinDec_binning = self.get_binning('sin_dec')
-
-        exp_logE = data_exp['log_energy']
-        exp_sinDec = np.sin(data_exp['dec'])
-
-        # Check if all the data is within the binning range.
-        # if(logE_binning.any_data_out_of_binning_range(exp_logE)):
-        # self.logger.warning('Some data is outside the logE range (%.3f, %.3f)', logE_binning.lower_edge, logE_binning.upper_edge)
-        # if(sinDec_binning.any_data_out_of_binning_range(exp_sinDec)):
-        # self.logger.warning('Some data is outside the sin(dec) range (%.3f, %.3f)', sinDec_binning.lower_edge, sinDec_binning.upper_edge)
 
     def get_prob(self, tdm, fitparams=None, tl=None):
         """Calculates the energy probability (in logE) of each event.
@@ -340,5 +310,143 @@ class PDDataBackgroundI3EnergyPDF(PDEnergyPDF, IsBackgroundPDF):
             data_logE, data_sinDec, data_mcweight, data_physicsweight,
             logE_binning, sinDec_binning, smoothing_filter, kde_smoothing
         )
-        # Check if this PDF is valid for all the given experimental data.
-        self.assert_is_valid_for_exp_data(data_exp)
+
+
+class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
+    """This class provides a background energy PDF constructed from the public
+    data and a monte-carlo background flux model.
+    """
+    def __init__(
+            self, pdf_sindecmu_log10emu, sindecmu_binning, log10emu_binning,
+            **kwargs):
+        """Constructs a new background energy PDF with the given PDF data and
+        binning.
+
+        Parameters
+        ----------
+        pdf_sindecmu_log10emu : 2D numpy ndarray
+            The (n_sindecmu, n_log10emu)-shaped 2D numpy ndarray holding the
+            PDF values in unit 1/log10(E_mu/GeV).
+            A copy of this data will be created and held within this class
+            instance.
+        sindecmu_binning : BinningDefinition
+            The binning definition for the binning in sin(dec_mu).
+        log10emu_binning : BinningDefinition
+            The binning definition for the binning in log10(E_mu/GeV).
+        """
+        if not isinstance(pdf_sindecmu_log10emu, np.ndarray):
+            raise TypeError(
+                'The pdf_sindecmu_log10emu argument must be an instance of '
+                'numpy.ndarray!')
+        if not isinstance(sindecmu_binning, BinningDefinition):
+            raise TypeError(
+                'The sindecmu_binning argument must be an instance of '
+                'BinningDefinition!')
+        if not isinstance(log10emu_binning, BinningDefinition):
+            raise TypeError(
+                'The log10emu_binning argument must be an instance of '
+                'BinningDefinition!')
+
+        super().__init__(**kwargs)
+
+        self.add_axis(PDFAxis(
+            log10emu_binning.name,
+            log10emu_binning.lower_edge,
+            log10emu_binning.upper_edge,
+        ))
+
+        self.add_axis(PDFAxis(
+            sindecmu_binning.name,
+            sindecmu_binning.lower_edge,
+            sindecmu_binning.upper_edge,
+        ))
+
+        self._hist_logE_sinDec = np.copy(pdf_sindecmu_log10emu).T
+        self.add_binning(log10emu_binning, name='log_energy')
+        self.add_binning(sindecmu_binning, name='sin_dec')
+
+    def assert_is_valid_for_trial_data(self, tdm):
+        """Checks if this PDF covers the entire value range of the trail
+        data events.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The TrialDataManager instance holding the data events.
+            The following data fields need to exist:
+
+                'sin_dec'
+
+                'log_energy'
+
+        Raises
+        ------
+        ValueError
+            If parts of the trial data is outside the value range of this
+            PDF.
+        """
+        sindecmu = tdm.get_data('sin_dec')
+        if np.min(sindecmu) < self.get_axis(0).vmin:
+            raise ValueError(
+                'The minimum sindecmu value %e of the trial data is lower '
+                'than the minimum value of the PDF %e!' % (
+                    np.min(sindecmu), self.get_axis(0).vmin))
+        if np.max(sindecmu) > self.get_axis(0).vmax:
+            raise ValueError(
+                'The maximum sindecmu value %e of the trial data is larger '
+                'than the maximum value of the PDF %e!' % (
+                    np.max(sindecmu), self.get_axis(0).vmax))
+
+        log10emu = tdm.get_data('log_energy')
+        if np.min(log10emu) < self.get_axis(1).vmin:
+            raise ValueError(
+                'The minimum log10emu value %e of the trial data is lower '
+                'than the minimum value of the PDF %e!' % (
+                    np.min(log10emu), self.get_axis(1).vmin))
+        if np.max(log10emu) > self.get_axis(1).vmax:
+            raise ValueError(
+                'The maximum log10emu value %e of the trial data is larger '
+                'than the maximum value of the PDF %e!' % (
+                    np.max(log10emu), self.get_axis(1).vmax))
+
+    def get_prob(self, tdm, params=None, tl=None):
+        """Gets the probability density for the given trial data events.
+
+        Parameters
+        ----------
+        tdm : TrialDataManager instance
+            The TrialDataManager instance holding the data events.
+            The following data fields need to exist:
+
+                'sin_dec'
+
+                'log_energy'
+
+        params : dict | None
+            The dictionary containing the parameter names and values for which
+            the probability should get calculated.
+            By definition of this PDF, this is ``Ǹone``, because this PDF does
+            not depend on any parameters.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        prob : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
+        """
+        get_data = tdm.get_data
+
+        log10emu = get_data('log_energy')
+        sindecmu = get_data('sin_dec')
+
+        log10emu_idxs = np.digitize(
+            log10emu, self.get_binning('log_energy').binedges) - 1
+        sindecmu_idxs = np.digitize(
+            sindecmu, self.get_binning('sin_dec').binedges) - 1
+
+        with TaskTimer(tl, 'Evaluating sindecmu-log10emu PDF.'):
+            pd = self._hist_logE_sinDec[(log10emu_idxs,sindecmu_idxs)]
+
+        return pd
