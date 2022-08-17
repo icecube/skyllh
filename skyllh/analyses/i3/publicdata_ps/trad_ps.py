@@ -8,7 +8,6 @@ event PDF.
 import argparse
 import logging
 import numpy as np
-import os.path
 
 from skyllh.core.progressbar import ProgressBar
 
@@ -47,21 +46,14 @@ from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the signal and background PDFs.
 from skyllh.core.signalpdf import RayleighPSFPointSourceSignalSpatialPDF
-from skyllh.i3.signalpdf import SignalI3EnergyPDFSet
 from skyllh.i3.backgroundpdf import (
-    DataBackgroundI3SpatialPDF,
-    DataBackgroundI3EnergyPDF
+    DataBackgroundI3SpatialPDF
 )
-from skyllh.i3.pdfratio import (
-    I3EnergySigSetOverBkgPDFRatioSpline
-)
+
 # Classes to define the spatial and energy PDF ratios.
 from skyllh.core.pdfratio import (
     SpatialSigOverBkgPDFRatio,
-    Skylab2SkylabPDFRatioFillMethod
 )
-
-from skyllh.i3.signal_generation import PointLikeSourceI3SignalGenerationMethod
 
 # Analysis utilities.
 from skyllh.core.analysis_utils import (
@@ -90,6 +82,9 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
 )
 from skyllh.analyses.i3.publicdata_ps.pdfratio import (
     PDPDFRatio
+)
+from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
+    PDDataBackgroundI3EnergyPDF
 )
 
 
@@ -130,7 +125,6 @@ def TXS_location():
 
 
 def create_analysis(
-    rss,
     datasets,
     source,
     refplflux_Phi0=1,
@@ -138,9 +132,8 @@ def create_analysis(
     refplflux_gamma=2,
     ns_seed=10.0,
     gamma_seed=3,
-    cache_dir='.',
+    kde_smoothing=False,
     cap_ratio=False,
-    n_mc_events=int(1e7),
     compress_data=False,
     keep_data_fields=None,
     optimize_delta_angle=10,
@@ -300,8 +293,9 @@ def create_analysis(
             ppbar=ppbar
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
-        energy_bkgpdf = DataBackgroundI3EnergyPDF(
-            data.exp, log_energy_binning, sin_dec_binning, smoothing_filter)
+        energy_bkgpdf = PDDataBackgroundI3EnergyPDF(
+            data.exp, log_energy_binning, sin_dec_binning,
+            smoothing_filter, kde_smoothing)
 
         energy_pdfratio = PDPDFRatio(
             sig_pdf_set=energy_sigpdfset,
@@ -318,8 +312,6 @@ def create_analysis(
     pbar.finish()
 
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
-
-    # analysis.construct_signal_generator()
 
     return analysis
 
@@ -355,13 +347,6 @@ if(__name__ == '__main__'):
         help='The base path to the data samples (default=None)'
     )
     p.add_argument(
-        '--pdf-seed',
-        default=1,
-        type=int,
-        help='The random number generator seed for generating the '
-             'signal PDF.'
-    )
-    p.add_argument(
         '--seed',
         default=1,
         type=int,
@@ -374,17 +359,6 @@ if(__name__ == '__main__'):
         type=int,
         help='The number of CPUs to utilize where parallelization is possible.'
     )
-    p.add_argument(
-        '--n-mc-events',
-        default=int(1e7),
-        type=int,
-        help='The number of MC events to sample for the energy signal PDF.'
-    )
-    p.add_argument(
-        '--cache-dir',
-        default='.',
-        type=str,
-        help='The cache directory to look for cached data, e.g. signal PDFs.')
     p.add_argument(
         '--cap-ratio',
         action='store_true',
@@ -430,12 +404,9 @@ if(__name__ == '__main__'):
 
     with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
-            rss_pdf,
             datasets,
             source,
-            cache_dir=args.cache_dir,
             cap_ratio=args.cap_ratio,
-            n_mc_events=args.n_mc_events,
             gamma_seed=args.gamma_seed,
             tl=tl)
 
