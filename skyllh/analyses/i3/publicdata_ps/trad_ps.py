@@ -383,7 +383,8 @@ if(__name__ == '__main__'):
         ('PublicData_10y_ps', 'IC59'),
         ('PublicData_10y_ps', 'IC79'),
         ('PublicData_10y_ps', 'IC86_I'),
-        ('PublicData_10y_ps', 'IC86_II-VII')
+        ('PublicData_10y_ps', 'IC86_II-VII'),
+        #('PublicData_10y_ps', 'IC86_II'),
     ]
 
     datasets = []
@@ -394,8 +395,8 @@ if(__name__ == '__main__'):
         datasets.append(dsc.get_dataset(season))
 
     # Define a random state service.
-    rss_pdf = RandomStateService(args.pdf_seed)
     rss = RandomStateService(args.seed)
+
     # Define the point source.
     source = PointLikeSource(np.deg2rad(args.ra), np.deg2rad(args.dec))
     print('source: ', str(source))
