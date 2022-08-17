@@ -388,6 +388,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'smearing_datafile', 'irfs/IC86_II_smearing.csv')
     IC86_II.add_aux_data_definition(
         'mceq_flux_datafile', 'fluxes/mceq_IC86_II.pkl')
+    IC86_II.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_sindecmu_log10emu_IC86_II.pkl')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.93, 4 + 1),
