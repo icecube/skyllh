@@ -400,9 +400,10 @@ class PDF(object, metaclass=abc.ABCMeta):
         The method must raise a ValueError if the PDF is not valid for the
         given trial data.
         """
-        raise NotImplementedError('The derived PDF class "%s" did not '
-                                  'implement the "assert_is_valid_for_trial_data" method!' % (
-                                      classname(self)))
+        raise NotImplementedError(
+            'The derived PDF class "%s" did not implement the '
+            '"assert_is_valid_for_trial_data" method!' % (
+                classname(self)))
 
     @abc.abstractmethod
     def get_prob(self, tdm, params=None, tl=None):
