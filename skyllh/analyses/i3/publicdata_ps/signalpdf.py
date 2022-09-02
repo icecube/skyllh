@@ -1286,24 +1286,37 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
 
-        # Select the slice of the smearing matrixcorresponding to the
+        # Select the slice of the smearing matrix corresponding to the
         # source declination band.
         # Note that we take the pdfs of the reconstruction calculated
         # from the smearing matrix here.
         true_dec_idx = sm.get_true_dec_idx(src_dec)
         sm_pdf = sm.pdf[:, true_dec_idx]
-
-        true_enu_binedges = np.power(10, sm.log10_true_enu_binedges)
+        
+        # Only look at true neutrino energies for which a recostructed
+        # muon energy distribution exists in the smearing matrix.
+        (min_log_true_e,
+         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
+            true_dec_idx)
+        log_true_e_mask = np.logical_and(
+            sm.log10_true_enu_binedges >= min_log_true_e,
+            sm.log10_true_enu_binedges <= max_log_true_e)
+        true_enu_binedges = np.power(
+            10, sm.log10_true_enu_binedges[log_true_e_mask])
         true_enu_binedges_lower = true_enu_binedges[:-1]
         true_enu_binedges_upper = true_enu_binedges[1:]
-        nbins_true_e = len(true_enu_binedges) - 1
+        valid_true_e_idxs = [sm.get_log10_true_e_idx(0.5 * (he + le))
+            for he,le in zip(
+                sm.log10_true_enu_binedges[log_true_e_mask][1:],
+                sm.log10_true_enu_binedges[log_true_e_mask][:-1])
+            ]
 
         # Define the values at which to evaluate the splines.
         # Some bins might have zero bin widths.
-        m = (sm.log10_reco_e_binedges_upper[:, true_dec_idx] -
-             sm.log10_reco_e_binedges_lower[:, true_dec_idx]) > 0
-        le = sm.log10_reco_e_binedges_lower[:, true_dec_idx][m]
-        ue = sm.log10_reco_e_binedges_upper[:, true_dec_idx][m]
+        m = (sm.log10_reco_e_binedges_upper[valid_true_e_idxs, true_dec_idx] -
+             sm.log10_reco_e_binedges_lower[valid_true_e_idxs, true_dec_idx]) > 0
+        le = sm.log10_reco_e_binedges_lower[valid_true_e_idxs, true_dec_idx][m]
+        ue = sm.log10_reco_e_binedges_upper[valid_true_e_idxs, true_dec_idx][m]
         min_log10_reco_e = np.min(le)
         max_log10_reco_e = np.max(ue)
         d_log10_reco_e = np.min(ue - le) / 20
@@ -1361,7 +1374,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             self._logger.debug(
                 'Generate signal energy PDF for parameters {} in {} E_nu '
                 'bins.'.format(
-                    gridfitparams, nbins_true_e)
+                    gridfitparams, len(valid_true_e_idxs))
             )
 
             # Calculate the flux probability p(E_nu|gamma).
@@ -1393,7 +1406,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 'true_e_prob = {}'.format(
                     true_e_prob))
 
-            def create_reco_e_pdf_for_true_e(true_e_idx):
+            def create_reco_e_pdf_for_true_e(idx, true_e_idx):
                 """This functions creates a spline for the reco energy
                 distribution given a true neutrino engery.
                 """
@@ -1412,7 +1425,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 log10_reco_e_binedges = sm.log10_reco_e_binedges[
                     true_e_idx, true_dec_idx]
 
-                p = f_e * true_e_prob[true_e_idx]
+                p = f_e * true_e_prob[idx]
 
                 spline = FctSpline1D(p, log10_reco_e_binedges)
 
@@ -1420,8 +1433,8 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
             # Integrate over the true neutrino energy and spline the output.
             sum_pdf = np.sum([
-                create_reco_e_pdf_for_true_e(true_e_idx)
-                for true_e_idx in range(nbins_true_e)
+                create_reco_e_pdf_for_true_e(i, true_e_idx)
+                for i,true_e_idx in enumerate(valid_true_e_idxs)
             ], axis=0)
 
             spline = FctSpline1D(sum_pdf, xvals_binedges, norm=True)

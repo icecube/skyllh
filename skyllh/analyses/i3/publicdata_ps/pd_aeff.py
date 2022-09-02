@@ -331,8 +331,8 @@ class PDAeff(object):
             uidx -= 1
 
         aeff = self.get_aeff_for_decnu(decnu)
-        aeff = aeff[lidx:uidx+1]
-        enu_binedges = enu_binedges[lidx:uidx+2]
+        aeff = aeff[lidx+1:uidx+1]
+        enu_binedges = enu_binedges[lidx+1:uidx+2]
 
         dE = np.diff(enu_binedges)
 
