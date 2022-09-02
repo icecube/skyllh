@@ -317,26 +317,26 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
     data and a monte-carlo background flux model.
     """
     def __init__(
-            self, pdf_sindecmu_log10emu, sindecmu_binning, log10emu_binning,
+            self, pdf_log10emu_sindecmu, log10emu_binning, sindecmu_binning,
             **kwargs):
         """Constructs a new background energy PDF with the given PDF data and
         binning.
 
         Parameters
         ----------
-        pdf_sindecmu_log10emu : 2D numpy ndarray
-            The (n_sindecmu, n_log10emu)-shaped 2D numpy ndarray holding the
+        pdf_log10emu_sindecmu : 2D numpy ndarray
+            The (n_log10emu, n_sindecmu)-shaped 2D numpy ndarray holding the
             PDF values in unit 1/log10(E_mu/GeV).
             A copy of this data will be created and held within this class
             instance.
-        sindecmu_binning : BinningDefinition
-            The binning definition for the binning in sin(dec_mu).
         log10emu_binning : BinningDefinition
             The binning definition for the binning in log10(E_mu/GeV).
+        sindecmu_binning : BinningDefinition
+            The binning definition for the binning in sin(dec_mu).
         """
-        if not isinstance(pdf_sindecmu_log10emu, np.ndarray):
+        if not isinstance(pdf_log10emu_sindecmu, np.ndarray):
             raise TypeError(
-                'The pdf_sindecmu_log10emu argument must be an instance of '
+                'The pdf_log10emu_sindecmu argument must be an instance of '
                 'numpy.ndarray!')
         if not isinstance(sindecmu_binning, BinningDefinition):
             raise TypeError(
@@ -361,7 +361,7 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             sindecmu_binning.upper_edge,
         ))
 
-        self._hist_logE_sinDec = np.copy(pdf_sindecmu_log10emu).T
+        self._hist_logE_sinDec = np.copy(pdf_log10emu_sindecmu)
         self.add_binning(log10emu_binning, name='log_energy')
         self.add_binning(sindecmu_binning, name='sin_dec')
 
