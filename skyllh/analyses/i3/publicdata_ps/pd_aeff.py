@@ -99,7 +99,8 @@ class PDAeff(object):
     the public data.
     """
     def __init__(
-            self, pathfilenames, **kwargs):
+            self, pathfilenames, src_dec=None, min_log_e=None, max_log_e=None,
+            **kwargs):
         """Creates an effective area instance by loading the effective area
         data from the given file.
         """
@@ -131,9 +132,6 @@ class PDAeff(object):
              self._log10_enu_binedges_upper[-1:])
         )
 
-        src_dec = kwargs.pop('src_dec', None)
-        min_log_e = kwargs.pop('min_log_e', None)
-        max_log_e = kwargs.pop('max_log_e', None)
         if (src_dec is not None) and (min_log_e is not None) and (max_log_e is not None):
             m = (self.log10_enu_bincenters >= min_log_e) & (
                 self.log10_enu_bincenters < max_log_e)
