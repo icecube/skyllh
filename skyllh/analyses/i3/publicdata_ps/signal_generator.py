@@ -43,12 +43,13 @@ class PublicDataDatasetSignalGenerator(object):
                     dec_idx)
             kwargs = {
                 'src_dec': src_dec,
-                'min_log_e': min_log_true_e,
-                'max_log_e': max_log_true_e
+                'min_log10enu': min_log_true_e,
+                'max_log10enu': max_log_true_e
             }
             self.effA = PDAeff(
                 pathfilenames=ds.get_abs_pathfilename_list(
-                    ds.get_aux_data_definition('eff_area_datafile')), **kwargs)
+                    ds.get_aux_data_definition('eff_area_datafile')),
+                **kwargs)
 
         else:
             self.effA = effA

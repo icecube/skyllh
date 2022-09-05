@@ -99,10 +99,31 @@ class PDAeff(object):
     the public data.
     """
     def __init__(
-            self, pathfilenames, src_dec=None, min_log_e=None, max_log_e=None,
+            self, pathfilenames, src_dec=None,
+            min_log10enu=None, max_log10enu=None,
             **kwargs):
         """Creates an effective area instance by loading the effective area
         data from the given file.
+
+        Parameters
+        ----------
+        pathfilenames : str | list of str
+            The path file names of the effective area data file(s) which should
+            be used for this public data effective area instance.
+        src_dec : float | None
+            The source declination in radians for which detection probabilities
+            should get pre-calculated using the ``get_detection_prob_for_decnu``
+            method.
+        min_log10enu : float | None
+            The minimum log10(E_nu/GeV) value that should get used for
+            calculating the detection probability.
+            If None, the lowest available neutrino energy bin edge of the
+            effective area is used.
+        max_log10enu : float | None
+            The maximum log10(E_nu/GeV) value that should get used for
+            calculating the detection probability.
+            If None, the highest available neutrino energy bin edge of the
+            effective area is used.
         """
         super().__init__(**kwargs)
 
@@ -132,13 +153,22 @@ class PDAeff(object):
              self._log10_enu_binedges_upper[-1:])
         )
 
-        if (src_dec is not None) and (min_log_e is not None) and (max_log_e is not None):
-            m = (self.log10_enu_bincenters >= min_log_e) & (
-                self.log10_enu_bincenters < max_log_e)
+        # Pre-calculate detection probabilities for certain neutrino
+        # declinations if requested.
+        if src_dec is not None:
+            if min_log10enu is None:
+                min_log10enu = self._log10_enu_binedges_lower[0]
+            if max_log10enu is None:
+                max_log10enu = self._log10_enu_binedges_upper[-1]
+
+            m = (
+                (self.log10_enu_bincenters >= min_log10enu) &
+                (self.log10_enu_bincenters < max_log10enu)
+            )
             bin_centers = self.log10_enu_bincenters[m]
             low_bin_edges = self._log10_enu_binedges_lower[m]
             high_bin_edges = self._log10_enu_binedges_upper[m]
-            # Detection probability P(E_nu | sin(dec)) per bin.
+            # Get the detection probability P(E_nu | sin(dec)) per bin.
             self.det_prob = np.empty((len(bin_centers),), dtype=np.double)
             for i in range(len(bin_centers)):
                 self.det_prob[i] = self.get_detection_prob_for_decnu(
