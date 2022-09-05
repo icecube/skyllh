@@ -22,21 +22,38 @@ from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 
 class PublicDataDatasetSignalGenerator(object):
 
-    def __init__(self, ds, **kwargs):
+    def __init__(self, ds, src_dec, cache_effA=None, cache_sm=None, **kwargs):
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
         """
         super().__init__(**kwargs)
 
-        self.smearing_matrix = PublicDataSmearingMatrix(
-            pathfilenames=ds.get_abs_pathfilename_list(
-                ds.get_aux_data_definition('smearing_datafile')))
+        if cache_sm is None:
+            self.smearing_matrix = PublicDataSmearingMatrix(
+                pathfilenames=ds.get_abs_pathfilename_list(
+                    ds.get_aux_data_definition('smearing_datafile')))
+        else:
+            self.smearing_matrix = cache_sm
 
-        self.effA = PDAeff(
-            pathfilenames=ds.get_abs_pathfilename_list(
-                ds.get_aux_data_definition('eff_area_datafile')))
+        if cache_effA is None:
+            dec_idx = self.smearing_matrix.get_true_dec_idx(src_dec)
+            (min_log_true_e,
+             max_log_true_e) = \
+                self.smearing_matrix.get_true_log_e_range_with_valid_log_e_pdfs(
+                    dec_idx)
+            kwargs = {
+                'src_dec': src_dec,
+                'min_log_e': min_log_true_e,
+                'max_log_e': max_log_true_e
+            }
+            self.effA = PDAeff(
+                pathfilenames=ds.get_abs_pathfilename_list(
+                    ds.get_aux_data_definition('eff_area_datafile')), **kwargs)
 
-    def _generate_inv_cdf_spline(self, flux_model, src_dec, log_e_min,
+        else:
+            self.effA = cache_effA
+
+    def _generate_inv_cdf_spline(self, flux_model, log_e_min,
                                  log_e_max):
         """Sample the true neutrino energy from the power-law
         re-weighted with the detection probability.
@@ -54,16 +71,8 @@ class PublicDataDatasetSignalGenerator(object):
             10**low_bin_edges[0], 10**high_bin_edges[-1]
         )
 
-        # Detection probability P(E_nu | sin(dec)) per bin.
-        det_prob = np.empty((len(bin_centers),), dtype=np.double)
-        for i in range(len(bin_centers)):
-            det_prob[i] = self.effA.get_detection_prob_for_decnu(
-                src_dec,
-                10**low_bin_edges[i], 10**high_bin_edges[i],
-                10**low_bin_edges[0], 10**high_bin_edges[-1])
-
         # Do the product and normalize again to a probability per bin.
-        product = flux_prob * det_prob
+        product = flux_prob * self.effA.det_prob
         prob_per_bin = product / np.sum(product)
 
         # The probability per bin cannot be zero, otherwise the cumulative
@@ -85,8 +94,7 @@ class PublicDataDatasetSignalGenerator(object):
         bin_centers = np.concatenate(([low_bin_edges[0]], bin_centers))
 
         # Build a spline for the inverse CDF.
-        self.inv_cdf_spl = interpolate.splrep(
-            cum_per_bin, bin_centers, k=1, s=0)
+        return interpolate.splrep(cum_per_bin, bin_centers, k=1, s=0)
 
     @staticmethod
     def _eval_spline(x, spl):
@@ -94,7 +102,8 @@ class PublicDataDatasetSignalGenerator(object):
         return values
 
     def _generate_events(
-            self, rss, src_dec, src_ra, dec_idx, flux_model, n_events):
+            self, rss, src_dec, src_ra, dec_idx,
+            log_true_e_inv_cdf_spl, n_events):
         """Generates `n_events` signal events for the given source location
         and flux model.
 
@@ -149,17 +158,8 @@ class PublicDataDatasetSignalGenerator(object):
 
         sm = self.smearing_matrix
 
-        # Determine the true energy range for which log_e PDFs are available.
-        (min_log_true_e,
-         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
-             dec_idx)
-
-        # Build the spline for the inverse CDF and draw a true neutrino
-        # energy from the hypothesis spectrum.
-        self._generate_inv_cdf_spline(flux_model, src_dec,
-                                      min_log_true_e, max_log_true_e)
         log_true_e = self._eval_spline(
-            rss.random.uniform(size=n_events), self.inv_cdf_spl)
+            rss.random.uniform(size=n_events), log_true_e_inv_cdf_spl)
 
         events['log_true_energy'] = log_true_e
 
@@ -225,13 +225,22 @@ class PublicDataDatasetSignalGenerator(object):
         # Find the declination bin index.
         dec_idx = sm.get_true_dec_idx(src_dec)
 
+        # Determine the true energy range for which log_e PDFs are available.
+        (min_log_true_e,
+         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
+             dec_idx)
+        # Build the spline for the inverse CDF and draw a true neutrino
+        # energy from the hypothesis spectrum.
+        log_true_e_inv_cdf_spl = self._generate_inv_cdf_spline(
+            flux_model, min_log_true_e, max_log_true_e)
+
         events = None
         n_evt_generated = 0
         while n_evt_generated != n_events:
             n_evt = n_events - n_evt_generated
 
             events_ = self._generate_events(
-                rss, src_dec, src_ra, dec_idx, flux_model, n_evt)
+                rss, src_dec, src_ra, dec_idx, log_true_e_inv_cdf_spl, n_evt)
 
             # Cut events that failed to be generated due to missing PDFs.
             events_ = events_[events_['isvalid']]
@@ -255,10 +264,10 @@ class PublicDataSignalGenerator(object):
         self.dataset_list = dataset_list
         self.data_list = data_list
         self.llhratio = llhratio
-
-        self.sig_gen_list = []
-        for ds in self._dataset_list:
-            self.sig_gen_list.append(PublicDataDatasetSignalGenerator(ds))
+        self.cache_effA = list()
+        self.cache_sm = list()
+        [self.cache_effA.append(None) for i in self._dataset_list]
+        [self.cache_sm.append(None) for i in self._dataset_list]
 
     @property
     def src_hypo_group_manager(self):
@@ -313,8 +322,7 @@ class PublicDataSignalGenerator(object):
             # Each source hypo group can have a different power-law
             gamma = shg.fluxmodel.gamma
             weights, _ = self.llhratio.dataset_signal_weights([mean, gamma])
-            src_list = shg.source_list
-            for (ds_idx, (sig_gen, w)) in enumerate(zip(self.sig_gen_list, weights)):
+            for (ds_idx, w) in enumerate(weights):
                 w_mean = mean * w
                 if(poisson):
                     n_events = rss.random.poisson(
@@ -331,7 +339,15 @@ class PublicDataSignalGenerator(object):
                 tot_n_events += n_events
 
                 events_ = None
-                for (shg_src_idx, src) in enumerate(src_list):
+                for (shg_src_idx, src) in enumerate(shg.source_list):
+                    ds = self._dataset_list[ds_idx]
+                    sig_gen = PublicDataDatasetSignalGenerator(
+                        ds, src.dec, self.cache_effA[ds_idx],
+                        self.cache_sm[ds_idx])
+                    if self.cache_effA[ds_idx] is None:
+                        self.cache_effA[ds_idx] = sig_gen.effA
+                    if self.cache_sm[ds_idx] is None:
+                        self.cache_sm[ds_idx] = sig_gen.smearing_matrix
                     # ToDo: here n_events should be split according to some
                     # source weight
                     events_ = sig_gen.generate_signal_events(

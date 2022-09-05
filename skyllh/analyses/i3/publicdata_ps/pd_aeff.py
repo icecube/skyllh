@@ -131,6 +131,23 @@ class PDAeff(object):
              self._log10_enu_binedges_upper[-1:])
         )
 
+        src_dec = kwargs.pop('src_dec', None)
+        min_log_e = kwargs.pop('min_log_e', None)
+        max_log_e = kwargs.pop('max_log_e', None)
+        if (src_dec is not None) and (min_log_e is not None) and (max_log_e is not None):
+            m = (self.log10_enu_bincenters >= min_log_e) & (
+                self.log10_enu_bincenters < max_log_e)
+            bin_centers = self.log10_enu_bincenters[m]
+            low_bin_edges = self._log10_enu_binedges_lower[m]
+            high_bin_edges = self._log10_enu_binedges_upper[m]
+            # Detection probability P(E_nu | sin(dec)) per bin.
+            self.det_prob = np.empty((len(bin_centers),), dtype=np.double)
+            for i in range(len(bin_centers)):
+                self.det_prob[i] = self.get_detection_prob_for_decnu(
+                    src_dec,
+                    10**low_bin_edges[i], 10**high_bin_edges[i],
+                    10**low_bin_edges[0], 10**high_bin_edges[-1])
+
     @property
     def decnu_binedges(self):
         """(read-only) The bin edges of the neutrino declination axis in
