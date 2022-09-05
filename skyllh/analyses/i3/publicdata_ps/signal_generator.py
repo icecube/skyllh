@@ -22,20 +22,20 @@ from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 
 class PublicDataDatasetSignalGenerator(object):
 
-    def __init__(self, ds, src_dec, cache_effA=None, cache_sm=None, **kwargs):
+    def __init__(self, ds, src_dec, effA=None, sm=None, **kwargs):
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
         """
         super().__init__(**kwargs)
 
-        if cache_sm is None:
+        if sm is None:
             self.smearing_matrix = PublicDataSmearingMatrix(
                 pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
         else:
-            self.smearing_matrix = cache_sm
+            self.smearing_matrix = sm
 
-        if cache_effA is None:
+        if effA is None:
             dec_idx = self.smearing_matrix.get_true_dec_idx(src_dec)
             (min_log_true_e,
              max_log_true_e) = \
@@ -51,7 +51,7 @@ class PublicDataDatasetSignalGenerator(object):
                     ds.get_aux_data_definition('eff_area_datafile')), **kwargs)
 
         else:
-            self.effA = cache_effA
+            self.effA = effA
 
     def _generate_inv_cdf_spline(self, flux_model, log_e_min,
                                  log_e_max):
@@ -264,10 +264,8 @@ class PublicDataSignalGenerator(object):
         self.dataset_list = dataset_list
         self.data_list = data_list
         self.llhratio = llhratio
-        self.cache_effA = list()
-        self.cache_sm = list()
-        [self.cache_effA.append(None) for i in self._dataset_list]
-        [self.cache_sm.append(None) for i in self._dataset_list]
+        self.effA = [None] * len(self._dataset_list)
+        self.sm = [None] * len(self._dataset_list)
 
     @property
     def src_hypo_group_manager(self):
@@ -311,6 +309,18 @@ class PublicDataSignalGenerator(object):
                                 'LLHRatio!')
         self._llhratio = llhratio
 
+    @property
+    def sig_gen_list(self):
+        """The list of PublicDataDatasetSignalGenerator instances for each dataset
+        """
+        return self._sig_gen_list
+
+    @sig_gen_list.setter
+    def sig_gen_list(self, sig_gen_list):
+        if(not issequenceof(sig_gen_list, PublicDataDatasetSignalGenerator)):
+            raise TypeError('The sig_gen_list property must be a sequence of '
+                            'PublicDataDatasetSignalGenerator instances!')
+
     def generate_signal_events(self, rss, mean, poisson=True):
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
 
@@ -342,12 +352,11 @@ class PublicDataSignalGenerator(object):
                 for (shg_src_idx, src) in enumerate(shg.source_list):
                     ds = self._dataset_list[ds_idx]
                     sig_gen = PublicDataDatasetSignalGenerator(
-                        ds, src.dec, self.cache_effA[ds_idx],
-                        self.cache_sm[ds_idx])
-                    if self.cache_effA[ds_idx] is None:
-                        self.cache_effA[ds_idx] = sig_gen.effA
-                    if self.cache_sm[ds_idx] is None:
-                        self.cache_sm[ds_idx] = sig_gen.smearing_matrix
+                        ds, src.dec, self.effA[ds_idx], self.sm[ds_idx])
+                    if self.effA[ds_idx] is None:
+                        self.effA[ds_idx] = sig_gen.effA
+                    if self.sm[ds_idx] is None:
+                        self.sm[ds_idx] = sig_gen.smearing_matrix
                     # ToDo: here n_events should be split according to some
                     # source weight
                     events_ = sig_gen.generate_signal_events(
