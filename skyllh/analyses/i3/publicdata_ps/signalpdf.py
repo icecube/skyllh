@@ -1292,7 +1292,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         # from the smearing matrix here.
         true_dec_idx = sm.get_true_dec_idx(src_dec)
         sm_pdf = sm.pdf[:, true_dec_idx]
-        
+
         # Only look at true neutrino energies for which a recostructed
         # muon energy distribution exists in the smearing matrix.
         (min_log_true_e,
@@ -1342,15 +1342,13 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         # Calculate the detector's neutrino energy detection probability to
         # detect a neutrino of energy E_nu given a neutrino declination:
         # p(E_nu|dec)
-        det_prob = np.empty((len(d_enu),), dtype=np.double)
-        for i in range(len(d_enu)):
-            det_prob[i] = aeff.get_detection_prob_for_decnu(
-                decnu=src_dec,
-                enu_min=true_enu_binedges[i],
-                enu_max=true_enu_binedges[i+1],
-                enu_range_min=true_enu_binedges[0],
-                enu_range_max=true_enu_binedges[-1]
-            )
+        det_prob = aeff.get_detection_prob_for_decnu(
+            decnu=src_dec,
+            enu_min=true_enu_binedges[:-1],
+            enu_max=true_enu_binedges[1:],
+            enu_range_min=true_enu_binedges[0],
+            enu_range_max=true_enu_binedges[-1]
+        )
 
         self._logger.debug('det_prob = {}, sum = {}'.format(
             det_prob, np.sum(det_prob)))

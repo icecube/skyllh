@@ -168,13 +168,13 @@ class PDAeff(object):
             bin_centers = self.log10_enu_bincenters[m]
             low_bin_edges = self._log10_enu_binedges_lower[m]
             high_bin_edges = self._log10_enu_binedges_upper[m]
+
             # Get the detection probability P(E_nu | sin(dec)) per bin.
-            self.det_prob = np.empty((len(bin_centers),), dtype=np.double)
-            for i in range(len(bin_centers)):
-                self.det_prob[i] = self.get_detection_prob_for_decnu(
-                    src_dec,
-                    10**low_bin_edges[i], 10**high_bin_edges[i],
-                    10**low_bin_edges[0], 10**high_bin_edges[-1])
+            self.det_prob = self.get_detection_prob_for_decnu(
+                src_dec,
+                10**low_bin_edges, 10**high_bin_edges,
+                10**low_bin_edges[0], 10**high_bin_edges[-1]
+            )
 
     @property
     def decnu_binedges(self):
@@ -333,16 +333,16 @@ class PDAeff(object):
 
     def get_detection_prob_for_decnu(
             self, decnu, enu_min, enu_max, enu_range_min, enu_range_max):
-        """Calculates the detection probability for a given true neutrino energy
-        range for a given neutrino declination.
+        """Calculates the detection probability for given true neutrino energy
+        ranges for a given neutrino declination.
 
         Parameters
         ----------
         decnu : float
             The neutrino declination in radians.
-        enu_min : float
+        enu_min : float | ndarray of float
             The minimum energy in GeV.
-        enu_max : float
+        enu_max : float | ndarray of float
             The maximum energy in GeV.
         enu_range_min : float
             The minimum energy in GeV of the entire energy range.
@@ -351,8 +351,9 @@ class PDAeff(object):
 
         Returns
         -------
-        det_prob : float
-            The neutrino energy detection probability.
+        det_prob : ndarray of float
+            The neutrino energy detection probabilities for the given true
+            enegry ranges.
         """
         enu_binedges = np.power(10, self.log10_enu_binedges)
 
@@ -412,15 +413,20 @@ class PDAeff(object):
             full_output=1
         )[0]
 
-        integral = integrate.quad(
-            _eval_spl_func,
-            enu_min,
-            enu_max,
-            limit=200,
-            full_output=1
-        )[0]
+        enu_min = np.atleast_1d(enu_min)
+        enu_max = np.atleast_1d(enu_max)
 
-        det_prob = integral / norm
+        det_prob = np.empty((len(enu_min),), dtype=np.double)
+        for i in range(len(enu_min)):
+            integral = integrate.quad(
+                _eval_spl_func,
+                enu_min[i],
+                enu_max[i],
+                limit=200,
+                full_output=1
+            )[0]
+
+            det_prob[i] = integral / norm
 
         return det_prob
 
