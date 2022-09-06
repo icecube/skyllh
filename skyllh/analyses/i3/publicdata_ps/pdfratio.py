@@ -32,32 +32,32 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         self._interpolmethod_instance = self.interpolmethod(
             self._get_ratio_values, sig_pdf_set.fitparams_grid_set)
 
-        # Calculate the ratio value for the phase space where no background
-        # is available. We will take the p_sig percentile of the signal like
-        # phase space.
-        ratio_perc = 99
-
-        # Get the log10 reco energy values where the background pdf has
-        # non-zero values.
-        n_logE = bkg_pdf.get_binning('log_energy').nbins
-        n_sinDec = bkg_pdf.get_binning('sin_dec').nbins
-        bd = bkg_pdf._hist_logE_sinDec > 0
-        log10_e_bc = bkg_pdf.get_binning('log_energy').bincenters
-        self.ratio_fill_value_dict = dict()
-        for sig_pdf_key in sig_pdf_set.pdf_keys:
-            sigpdf = sig_pdf_set[sig_pdf_key]
-            sigvals = sigpdf.get_pd_by_log10_reco_e(log10_e_bc)
-            sigvals = np.broadcast_to(sigvals, (n_sinDec, n_logE)).T
-            r = sigvals[bd] / bkg_pdf._hist_logE_sinDec[bd]
-            val = np.percentile(r[r > 1.], ratio_perc)
-            self.ratio_fill_value_dict[sig_pdf_key] = val
-
         self.cap_ratio = cap_ratio
-        if cap_ratio:
+        if self.cap_ratio:
             self._logger.info('The PDF ratio will be capped!')
 
-        # Create cache variables for the last ratio value and gradients in order
-        # to avoid the recalculation of the ratio value when the
+            # Calculate the ratio value for the phase space where no background
+            # is available. We will take the p_sig percentile of the signal
+            # like phase space.
+            ratio_perc = 99
+
+            # Get the log10 reco energy values where the background pdf has
+            # non-zero values.
+            n_logE = bkg_pdf.get_binning('log_energy').nbins
+            n_sinDec = bkg_pdf.get_binning('sin_dec').nbins
+            bd = bkg_pdf._hist_logE_sinDec > 0
+            log10_e_bc = bkg_pdf.get_binning('log_energy').bincenters
+            self.ratio_fill_value_dict = dict()
+            for sig_pdf_key in sig_pdf_set.pdf_keys:
+                sigpdf = sig_pdf_set[sig_pdf_key]
+                sigvals = sigpdf.get_pd_by_log10_reco_e(log10_e_bc)
+                sigvals = np.broadcast_to(sigvals, (n_sinDec, n_logE)).T
+                r = sigvals[bd] / bkg_pdf._hist_logE_sinDec[bd]
+                val = np.percentile(r[r > 1.], ratio_perc)
+                self.ratio_fill_value_dict[sig_pdf_key] = val
+
+        # Create cache variables for the last ratio value and gradients in
+        # order to avoid the recalculation of the ratio value when the
         # ``get_gradient`` method is called (usually after the ``get_ratio``
         # method was called).
         self._cache_fitparams_hash = None
