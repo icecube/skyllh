@@ -24,9 +24,8 @@ from skyllh.core.parameters import (
 )
 
 # Classes for the minimizer.
-from skyllh.core.minimizer import (
-    Minimizer, LBFGSMinimizerImpl, MinuitMinimizerImpl
-)
+from skyllh.core.minimizer import Minimizer, LBFGSMinimizerImpl
+from skyllh.core.minimizers.iminuit import IMinuitMinimizerImpl
 
 # Classes for utility functionality.
 from skyllh.core.config import CFG
@@ -209,7 +208,7 @@ def create_analysis(
     if minimizer_impl == "LBFGS":
         minimizer = Minimizer(LBFGSMinimizerImpl())
     elif minimizer_impl == "minuit":
-        minimizer = Minimizer(MinuitMinimizerImpl())
+        minimizer = Minimizer(IMinuitMinimizerImpl())
     else:
         raise NameError(f"Minimizer implementation `{minimizer_impl}` is not "
             "supported. Please use `LBFGS` or `minuit`.")
