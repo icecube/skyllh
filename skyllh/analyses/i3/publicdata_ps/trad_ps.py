@@ -24,7 +24,9 @@ from skyllh.core.parameters import (
 )
 
 # Classes for the minimizer.
-from skyllh.core.minimizer import Minimizer, LBFGSMinimizerImpl
+from skyllh.core.minimizer import (
+    Minimizer, LBFGSMinimizerImpl, MinuitMinimizerImpl
+)
 
 # Classes for utility functionality.
 from skyllh.core.config import CFG
@@ -133,6 +135,7 @@ def create_analysis(
     ns_seed=10.0,
     gamma_seed=3,
     kde_smoothing=False,
+    minimizer_impl="LBFGS",
     cap_ratio=False,
     compress_data=False,
     keep_data_fields=None,
@@ -161,8 +164,14 @@ def create_analysis(
     gamma_seed : float | None
         Value to seed the minimizer with for the gamma fit. If set to None,
         the refplflux_gamma value will be set as gamma_seed.
-    cache_dir : str
-        The cache directory where to look for cached data, e.g. signal PDFs.
+    kde_smoothing : bool | False
+        Apply a KDE-based smoothing to the data-driven backgroun pdf.
+        Default: False.
+    minimizer_impl : str | "LBFGS"
+        Minimizer implementation to be used. Supported options are "LBFGS"
+        (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
+        "minuit" (Minuit minimizer used by the :mod:`iminuit` module).
+        Default: "LBFGS".
     compress_data : bool
         Flag if the data should get converted from float64 into float32.
     keep_data_fields : list of str | None
@@ -195,6 +204,16 @@ def create_analysis(
     analysis : SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis
         The Analysis instance for this analysis.
     """
+
+    # Create the minimizer instance.
+    if minimizer_impl == "LBFGS":
+        minimizer = Minimizer(LBFGSMinimizerImpl())
+    elif minimizer_impl == "minuit":
+        minimizer = Minimizer(MinuitMinimizerImpl())
+    else:
+        raise NameError(f"Minimizer implementation `{minimizer_impl}` is not "
+            "supported. Please use `LBFGS` or `minuit`.")
+
     # Define the flux model.
     flux_model = PowerLawFlux(
         Phi0=refplflux_Phi0, E0=refplflux_E0, gamma=refplflux_gamma)
@@ -237,9 +256,6 @@ def create_analysis(
 
     # Create background generation method.
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
-
-    # Create the minimizer instance.
-    minimizer = Minimizer(LBFGSMinimizerImpl())
 
     # Create the Analysis instance.
     analysis = Analysis(
