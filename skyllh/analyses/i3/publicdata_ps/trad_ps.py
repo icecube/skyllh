@@ -208,7 +208,7 @@ def create_analysis(
     if minimizer_impl == "LBFGS":
         minimizer = Minimizer(LBFGSMinimizerImpl())
     elif minimizer_impl == "minuit":
-        minimizer = Minimizer(IMinuitMinimizerImpl())
+        minimizer = Minimizer(IMinuitMinimizerImpl(ftol=1e-8))
     else:
         raise NameError(f"Minimizer implementation `{minimizer_impl}` is not "
             "supported. Please use `LBFGS` or `minuit`.")
