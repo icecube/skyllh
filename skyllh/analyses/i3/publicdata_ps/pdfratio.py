@@ -137,6 +137,12 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
             ratio[m_zero_bkg] = (sig_prob[m_zero_bkg] /
                                  np.finfo(np.double).resolution)
 
+        # Check for positive inf values in the ratio and set the ratio to a
+        # finite number. Here we choose the maximum value of float32 to keep
+        # room for additional computational operations.
+        m_inf = np.isposinf(ratio)
+        ratio[m_inf] = np.finfo(np.float32).max
+
         return ratio
 
     def _calculate_ratio_and_gradients(self, tdm, fitparams, fitparams_hash):
