@@ -1313,19 +1313,22 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         # Define the values at which to evaluate the splines.
         # Some bins might have zero bin widths.
-        m = (sm.log10_reco_e_binedges_upper[valid_true_e_idxs, true_dec_idx] -
-             sm.log10_reco_e_binedges_lower[valid_true_e_idxs, true_dec_idx]) > 0
-        le = sm.log10_reco_e_binedges_lower[valid_true_e_idxs, true_dec_idx][m]
-        ue = sm.log10_reco_e_binedges_upper[valid_true_e_idxs, true_dec_idx][m]
-        min_log10_reco_e = np.min(le)
-        max_log10_reco_e = np.max(ue)
-        d_log10_reco_e = np.min(ue - le) / 20
-        n_xvals = int((max_log10_reco_e - min_log10_reco_e) / d_log10_reco_e)
-        xvals_binedges = np.linspace(
-            min_log10_reco_e,
-            max_log10_reco_e,
-            n_xvals+1
-        )
+        # m = (sm.log10_reco_e_binedges_upper[valid_true_e_idxs, true_dec_idx] -
+        #      sm.log10_reco_e_binedges_lower[valid_true_e_idxs, true_dec_idx]) > 0
+        # le = sm.log10_reco_e_binedges_lower[valid_true_e_idxs, true_dec_idx][m]
+        # ue = sm.log10_reco_e_binedges_upper[valid_true_e_idxs, true_dec_idx][m]
+        # min_log10_reco_e = np.min(le)
+        # max_log10_reco_e = np.max(ue)
+        # d_log10_reco_e = np.min(ue - le) / 20
+        # n_xvals = int((max_log10_reco_e - min_log10_reco_e) / d_log10_reco_e)
+        # xvals_binedges = np.linspace(
+        #     min_log10_reco_e,
+        #     max_log10_reco_e,
+        #     n_xvals+1
+        # )
+        # xvals = get_bincenters_from_binedges(xvals_binedges)
+
+        xvals_binedges = ds.get_binning_definition('log_energy').binedges
         xvals = get_bincenters_from_binedges(xvals_binedges)
 
         # Calculate the neutrino enegry bin widths in GeV.
