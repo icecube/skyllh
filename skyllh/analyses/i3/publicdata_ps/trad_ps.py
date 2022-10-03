@@ -139,7 +139,6 @@ def create_analysis(
     compress_data=False,
     keep_data_fields=None,
     optimize_delta_angle=10,
-    efficiency_mode=None,
     tl=None,
     ppbar=None
 ):
@@ -163,14 +162,21 @@ def create_analysis(
     gamma_seed : float | None
         Value to seed the minimizer with for the gamma fit. If set to None,
         the refplflux_gamma value will be set as gamma_seed.
-    kde_smoothing : bool | False
-        Apply a KDE-based smoothing to the data-driven backgroun pdf.
+    kde_smoothing : bool
+        Apply a KDE-based smoothing to the data-driven background pdf.
         Default: False.
     minimizer_impl : str | "LBFGS"
         Minimizer implementation to be used. Supported options are "LBFGS"
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
         "minuit" (Minuit minimizer used by the :mod:`iminuit` module).
         Default: "LBFGS".
+    cap_ratio : bool
+        If set to True, the energy PDF ratio will be capped to a finite value
+        where no background energy PDF information is available. This will
+        ensure that an energy PDF ratio is available for high energies where
+        no background is available from the experimental data.
+        If kde_smoothing is set to True, cap_ratio should be set to False!
+        Default is False.
     compress_data : bool
         Flag if the data should get converted from float64 into float32.
     keep_data_fields : list of str | None
@@ -178,21 +184,6 @@ def create_analysis(
         the data.
     optimize_delta_angle : float
         The delta angle in degrees for the event selection optimization methods.
-    efficiency_mode : str | None
-        The efficiency mode the data should get loaded with. Possible values
-        are:
-
-            - 'memory':
-                The data will be load in a memory efficient way. This will
-                require more time, because all data records of a file will
-                be loaded sequentially.
-            - 'time':
-                The data will be loaded in a time efficient way. This will
-                require more memory, because each data file gets loaded in
-                memory at once.
-
-        The default value is ``'time'``. If set to ``None``, the default
-        value will be used.
     tl : TimeLord instance | None
         The TimeLord instance to use to time the creation of the analysis.
     ppbar : ProgressBar instance | None
@@ -200,7 +191,7 @@ def create_analysis(
 
     Returns
     -------
-    analysis : SpatialEnergyTimeIntegratedMultiDatasetSingleSourceAnalysis
+    analysis : TimeIntegratedMultiDatasetSingleSourceAnalysis
         The Analysis instance for this analysis.
     """
 
@@ -279,7 +270,6 @@ def create_analysis(
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
             compress=compress_data,
-            efficiency_mode=efficiency_mode,
             tl=tl)
 
         # Create a trial data manager and add the required data fields.
