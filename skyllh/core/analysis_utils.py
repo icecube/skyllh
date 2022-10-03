@@ -1219,7 +1219,7 @@ def create_trial_data_file(
 def extend_trial_data_file(
         ana, rss, n_trials, trial_data, mean_n_sig=0, mean_n_sig_null=0,
         mean_n_bkg_list=None, bkg_kwargs=None, sig_kwargs=None,
-        pathfilename=None):
+        pathfilename=None, **kwargs):
     """Appends to the trial data file `n_trials` generated trials for each
     mean number of injected signal events up to `ns_max` for a given analysis.
 
@@ -1263,6 +1263,12 @@ def extend_trial_data_file(
         `poisson`.
     pathfilename : string | None
         Trial data file path including the filename.
+
+    Additional keyword arguments
+    ----------------------------
+    Additional keyword arguments are passed-on to the ``create_trial_data_file``
+    function.
+
     Returns
     -------
     trial_data :
@@ -1275,11 +1281,19 @@ def extend_trial_data_file(
                     enumerate(sorted(np.unique(trial_data['seed'])) +
                                 [None], 1) if i != e)
         rss.reseed(seed)
+
     (seed, mean_n_sig, mean_n_sig_null, trials) = create_trial_data_file(
-                                                    ana, rss, n_trials,
-                                                    mean_n_sig=mean_n_sig)
-    trial_data = np_rfn.stack_arrays([trial_data, trials], usemask=False,
-                                         asrecarray=True)
+        ana=ana,
+        rss=rss,
+        n_trials=n_trials,
+        mean_n_sig=mean_n_sig,
+        **kwargs
+    )
+    trial_data = np_rfn.stack_arrays(
+        [trial_data, trials],
+        usemask=False,
+        asrecarray=True)
+
     if(pathfilename is not None):
         # Save the trial data to file.
         makedirs(os.path.dirname(pathfilename), exist_ok=True)
