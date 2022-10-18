@@ -18,6 +18,7 @@ mathematical likelihood function.
     :caption: User Documentation
 
     installation
+    concepts/index
     tutorials/index
     hypothesis/index
     unit_tests
