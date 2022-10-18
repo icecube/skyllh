@@ -1192,6 +1192,12 @@ class ParameterGrid(object):
         # setting the delta and offser properties.
         self.grid = grid
 
+    def __str__(self):
+        """Pretty string representation.
+        """
+        return '{:s} = {:s}, decimals = {:d}'.format(
+            self._name, str(self._grid), self._decimals)
+
     @property
     def name(self):
         """The name of the parameter.
