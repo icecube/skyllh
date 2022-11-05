@@ -28,6 +28,7 @@ from skyllh.core.py import (
     issequenceof,
     float_cast
 )
+from skyllh.physics.source import IsPointlike
 
 
 class FluxProfile(MathFunction, metaclass=abc.ABCMeta):
@@ -1395,49 +1396,7 @@ class FactorizedFluxModel(FluxModel):
         return updated
 
 
-class IsPointlikeSource(object):
-    """This is a classifier class that can be used by other classes to indicate
-    that the specific class describes a point-like source.
-    """
-    def __init__(
-            self, ra_func_instance=None, get_ra_func=None, set_ra_func=None,
-            dec_func_instance=None, get_dec_func=None, set_dec_func=None,
-            **kwargs):
-        """Constructor method. Gets called when the an instance of a class is
-        created which derives from this IsPointlikeSource class.
-
-
-        """
-        super(IsPointlikeSource, self).__init__(**kwargs)
-
-        self._ra_func_instance = ra_func_instance
-        self._get_ra_func = get_ra_func
-        self._set_ra_func = set_ra_func
-
-        self._dec_func_instance = dec_func_instance
-        self._get_dec_func = get_dec_func
-        self._set_dec_func = set_dec_func
-
-    @property
-    def ra(self):
-        """The right-ascention coordinate of the point-like source.
-        """
-        return self._get_ra_func(self._ra_func_instance)
-    @ra.setter
-    def ra(self, v):
-        self._set_ra_func(self._ra_func_instance, v)
-
-    @property
-    def dec(self):
-        """The declination coordinate of the point-like source.
-        """
-        return self._get_dec_func(self._dec_func_instance)
-    @dec.setter
-    def dec(self, v):
-        self._set_dec_func(self._dec_func_instance, v)
-
-
-class PointlikeSourceFFM(FactorizedFluxModel, IsPointlikeSource):
+class PointlikeFFM(FactorizedFluxModel, IsPointlike):
     """This class describes a factorized flux model (FFM), where the spatial
     profile is modeled as a point. This class provides the base class for a flux
     model of a point-like source.
@@ -1475,7 +1434,7 @@ class PointlikeSourceFFM(FactorizedFluxModel, IsPointlikeSource):
         spatial_profile=PointSpatialFluxProfile(
             alpha_s, delta_s, angle_unit=angle_unit)
 
-        super(PointlikeSourceFFM, self).__init__(
+        super().__init__(
             Phi0=Phi0,
             spatial_profile=spatial_profile,
             energy_profile=energy_profile,
@@ -1490,10 +1449,10 @@ class PointlikeSourceFFM(FactorizedFluxModel, IsPointlikeSource):
         )
 
 
-class SteadyPointlikeSourceFFM(PointlikeSourceFFM):
+class SteadyPointlikeFFM(PointlikeFFM):
     """This class describes a factorized flux model (FFM), where the spatial
     profile is modeled as a point and the time profile as constant 1. It is
-    derived from the ``PointlikeSourceFFM`` class.
+    derived from the ``PointlikeFFM`` class.
     """
     def __init__(
             self, alpha_s, delta_s, Phi0, energy_profile,
@@ -1515,7 +1474,7 @@ class SteadyPointlikeSourceFFM(PointlikeSourceFFM):
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
         """
-        super(SteadyPointlikeSourceFFM, self).__init__(
+        super().__init__(
             alpha_s=alpha_s,
             delta_s=delta_s,
             Phi0=Phi0,
