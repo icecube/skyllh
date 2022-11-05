@@ -9,6 +9,9 @@ import numpy as np
 import sys
 
 
+from skyllh.core.display import INDENTATION_WIDTH
+
+
 class PyQualifier(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for any Python qualifier class.
     An object can get qualified by calling a PyQualifier instance with that
@@ -324,11 +327,14 @@ def float_cast(v, errmsg, allow_None=False):
 
     return _obj_float_cast(v, errmsg, allow_None)
 
-def str_cast(v, errmsg):
+def str_cast(v, errmsg, allow_None=False):
     """Casts the given value to a str object.
     If the cast is impossible, a TypeError is raised with the given error
     message.
     """
+    if allow_None and v is None:
+        return v
+
     try:
         v = str(v)
     except:
@@ -418,11 +424,19 @@ class ObjectCollection(object):
         objs : instance of obj_type | sequence of obj_type instances | None
             The sequence of objects of type ``obj_type`` with which this
             collection should get initialized with.
-        obj_type : type
+        obj_type : type | None
             The type of the objects, which can be added to the collection.
+            If set to None, the type will be determined from the given objects.
+            If no objects are given, the object type will be `object`.
         """
         if(obj_type is None):
             obj_type = object
+            if objs is not None:
+                if issequence(objs) and len(objs) > 0:
+                    obj_type = type(objs[0])
+                else:
+                    obj_type = type(objs)
+
         if(not issubclass(obj_type, object)):
             raise TypeError(
                 'The obj_type argument must be a subclass of object!')
@@ -484,7 +498,10 @@ class ObjectCollection(object):
     def __str__(self):
         """Pretty string representation of this object collection.
         """
-        return classname(self)+ ': ' + str(self._objects)
+        obj_str = ",\n".join([
+            ' '*INDENTATION_WIDTH + str(obj) for obj in self._objects
+        ])
+        return classname(self) + ": {\n" + obj_str + "\n}"
 
     def copy(self):
         """Creates a copy of this ObjectCollection. The objects of the
@@ -495,11 +512,13 @@ class ObjectCollection(object):
         return oc
 
     def add(self, obj):
-        """Adds the given object to this object collection.
+        """Adds the given object, sequence of objects, or object collection to
+        this object collection.
 
         Parameters
         ----------
-        obj : obj_type instance | ObjectCollection of obj_type
+        obj : obj_type instance | sequence of obj_type |
+              ObjectCollection of obj_type
             An instance of ``obj_type`` that should be added to the collection.
             If given an ObjectCollection for objects of type obj_type, it will
             add all objects of the given collection to this collection.
@@ -510,8 +529,11 @@ class ObjectCollection(object):
             The instance of this ObjectCollection, in order to be able to chain
             several ``add`` calls.
         """
-        if(isinstance(obj, ObjectCollection)):
-            if(typename(obj.obj_type) != typename(self._obj_type)):
+        if issequence(obj) and not isinstance(obj, ObjectCollection):
+            obj = ObjectCollection(obj)
+
+        if isinstance(obj, ObjectCollection):
+            if not issubclass(obj.obj_type, self.obj_type):
                 raise TypeError('Cannot add objects from ObjectCollection for '
                     'objects of type "%s" to this ObjectCollection for objects '
                     'of type "%s"!'%(
@@ -519,7 +541,7 @@ class ObjectCollection(object):
             self._objects.extend(obj.objects)
             return self
 
-        if(not isinstance(obj, self._obj_type)):
+        if not isinstance(obj, self._obj_type):
             raise TypeError('The object of type "%s" cannot be added to the '
                 'object collection for objects of type "%s"!'%(
                     classname(obj), typename(self._obj_type)))
