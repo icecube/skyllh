@@ -9,4 +9,5 @@ This section covers a few concepts SkyLLH is persuing.
     :maxdepth: 1
     :caption: SkyLLH concepts
 
+    source_definition
     parameter_handling
