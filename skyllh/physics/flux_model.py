@@ -35,8 +35,8 @@ class FluxProfile(MathFunction, metaclass=abc.ABCMeta):
     """The abstract base class for a flux profile math function.
     """
 
-    def __init__(self):
-        super(FluxProfile, self).__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
@@ -44,7 +44,7 @@ class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """
 
     def __init__(
-            self, angle_unit=None):
+            self, angle_unit=None, **kwargs):
         """Creates a new SpatialFluxProfile instance.
 
         Parameters
@@ -54,7 +54,7 @@ class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
             If set to ``Ǹone``, the configured default angle unit for fluxes is
             used.
         """
-        super(SpatialFluxProfile, self).__init__()
+        super().__init__(**kwargs)
 
         self.angle_unit = angle_unit
 
@@ -101,7 +101,7 @@ class UnitySpatialFluxProfile(SpatialFluxProfile):
     """Spatial flux profile for the constant profile function 1 for any spatial
     coordinates.
     """
-    def __init__(self, angle_unit=None):
+    def __init__(self, angle_unit=None, **kwargs):
         """Creates a new UnitySpatialFluxProfile instance.
 
         Parameters
@@ -112,7 +112,7 @@ class UnitySpatialFluxProfile(SpatialFluxProfile):
             used.
         """
         super(UnitySpatialFluxProfile, self).__init__(
-            angle_unit=angle_unit)
+            angle_unit=angle_unit, **kwargs)
 
     @property
     def math_function_str(self):
@@ -148,7 +148,7 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
     """Spatial flux profile for a delta function at the celestrical coordinate
     (alpha_s, delta_s).
     """
-    def __init__(self, alpha_s, delta_s, angle_unit=None):
+    def __init__(self, alpha_s, delta_s, angle_unit=None, **kwargs):
         """Creates a new spatial flux profile for a point.
 
         Parameters
@@ -163,7 +163,7 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
             used.
         """
         super(PointSpatialFluxProfile, self).__init__(
-            angle_unit=angle_unit)
+            angle_unit=angle_unit, **kwargs)
 
         self.alpha_s = alpha_s
         self.delta_s = delta_s
@@ -247,7 +247,7 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for an energy flux profile function.
     """
 
-    def __init__(self, energy_unit=None):
+    def __init__(self, energy_unit=None, **kwargs):
         """Creates a new energy flux profile with a given energy unit to be used
         for flux calculation.
 
@@ -258,7 +258,7 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
             If set to ``None``, the configured default energy unit for fluxes is
             used.
         """
-        super(EnergyFluxProfile, self).__init__()
+        super(EnergyFluxProfile, self).__init__(**kwargs)
 
         # Set the energy unit.
         self.energy_unit = energy_unit
@@ -302,7 +302,7 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
 class UnityEnergyFluxProfile(EnergyFluxProfile):
     """Energy flux profile for the constant function 1.
     """
-    def __init__(self, energy_unit=None):
+    def __init__(self, energy_unit=None, **kwargs):
         """Creates a new UnityEnergyFluxProfile instance.
 
         Parameters
@@ -313,7 +313,7 @@ class UnityEnergyFluxProfile(EnergyFluxProfile):
             used.
         """
         super(UnityEnergyFluxProfile, self).__init__(
-            energy_unit=energy_unit)
+            energy_unit=energy_unit, **kwargs)
 
     @property
     def math_function_str(self):
@@ -352,7 +352,7 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
     .. math::
         (E / E_0)^{-\gamma}
     """
-    def __init__(self, E0, gamma, energy_unit=None):
+    def __init__(self, E0, gamma, energy_unit=None, **kwargs):
         """Creates a new power law flux profile with the reference energy ``E0``
         and spectral index ``gamma``.
 
@@ -368,14 +368,14 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
             used.
         """
         super(PowerLawEnergyFluxProfile, self).__init__(
-            energy_unit=energy_unit)
+            energy_unit=energy_unit, **kwargs)
 
         self.E0 = E0
         self.gamma = gamma
 
         # Define the parameters which can be set via the `set_parameters`
         # method.
-        self.parameter_names = ('E0', 'gamma',)
+        self.param_names = ('E0', 'gamma',)
 
     @property
     def E0(self):
@@ -439,7 +439,7 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for a time flux profile function.
     """
 
-    def __init__(self, t_start=-np.inf, t_end=np.inf, time_unit=None):
+    def __init__(self, t_start=-np.inf, t_end=np.inf, time_unit=None, **kwargs):
         """Creates a new time flux profile instance.
 
         Parameters
@@ -457,7 +457,7 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
             If set to ``None``, the configured default time unit for fluxes is
             used.
         """
-        super(TimeFluxProfile, self).__init__()
+        super(TimeFluxProfile, self).__init__(**kwargs)
 
         self.time_unit = time_unit
 
@@ -466,7 +466,7 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
 
         # Define the parameters which can be set via the `set_parameters`
         # method.
-        self.parameter_names = ('t_start', 't_end')
+        self.param_names = ('t_start', 't_end')
 
     @property
     def t_start(self):
@@ -591,9 +591,10 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
 class UnityTimeFluxProfile(TimeFluxProfile):
     """Time flux profile for the constant profile function ``1``.
     """
-    def __init__(self, time_unit=None):
-        super(UnityTimeFluxProfile, self).__init__(
-            time_unit=time_unit)
+    def __init__(self, time_unit=None, **kwargs):
+        super().__init__(
+            time_unit=time_unit,
+            **kwargs)
 
     @property
     def math_function_str(self):
@@ -679,7 +680,7 @@ class BoxTimeFluxProfile(TimeFluxProfile):
 
     The box is centered at ``t0`` and extends to +/-``tw``/2 around ``t0``.
     """
-    def __init__(self, t0, tw, time_unit=None):
+    def __init__(self, t0, tw, time_unit=None, **kwargs):
         """Creates a new box-shaped time profile instance.
 
         Parameters
@@ -696,12 +697,15 @@ class BoxTimeFluxProfile(TimeFluxProfile):
         t_start = t0 - tw/2.
         t_end = t0 + tw/2.
 
-        super(BoxTimeFluxProfile, self).__init__(
-            t_start=t_start, t_end=t_end, time_unit=time_unit)
+        super().__init__(
+            t_start=t_start,
+            t_end=t_end,
+            time_unit=time_unit,
+            **kwargs)
 
         # Define the parameters which can be set via the `set_parameters`
         # method.
-        self.parameter_names = ('t0', 'tw')
+        self.param_names = ('t0', 'tw')
 
     @property
     def t0(self):
@@ -834,7 +838,7 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         sigma_t : float
             The one-sigma width of the gaussian profile.
     """
-    def __init__(self, t0, sigma_t, tol=1e-12, time_unit=None):
+    def __init__(self, t0, sigma_t, tol=1e-12, time_unit=None, **kwargs):
         """Creates a new gaussian-shaped time profile instance.
 
         Parameters
@@ -858,15 +862,18 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         t_end = t0 + dt
 
         # A Gaussian profile extends to +/- infinity by definition.
-        super(GaussianTimeFluxProfile, self).__init__(
-            t_start=t_start, t_end=t_end, time_unit=time_unit)
+        super().__init__(
+            t_start=t_start,
+            t_end=t_end,
+            time_unit=time_unit,
+            **kwargs)
 
         self.t0 = t0
         self.sigma_t = sigma_t
 
         # Define the parameters which can be set via the `set_parameters`
         # method.
-        self.parameter_names = ('t0', 'sigma_t')
+        self.param_names = ('t0', 'sigma_t')
 
     @property
     def t0(self):
@@ -1018,7 +1025,7 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
             If set to ``None``, the configured default time unit for fluxes is
             used.
         """
-        super(FluxModel, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         # Define the units.
         self.angle_unit = angle_unit
@@ -1105,7 +1112,7 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def __call__(
-            self, alpha, delta, E, t,
+            self, alpha=None, delta=None, E=None, t=None,
             angle_unit=None, energy_unit=None, time_unit=None):
         """The call operator to retrieve a flux value for a given celestrial
         position, energy, and observation time.
@@ -1202,7 +1209,7 @@ class FactorizedFluxModel(FluxModel):
 
         # Define the parameters which can be set via the `set_parameters`
         # method.
-        self.parameter_names = ('Phi0',)
+        self.param_names = ('Phi0',)
 
     @property
     def Phi0(self):
@@ -1304,36 +1311,36 @@ class FactorizedFluxModel(FluxModel):
         self._time_profile.time_unit = unit
 
     @property
-    def parameter_names(self):
+    def param_names(self):
         """The tuple holding the names of the math function's parameters. This
         is the total set of parameter names for all flux profiles of this
         FactorizedFluxModel instance.
         """
-        pnames = list(self._parameter_names)
-        pnames += self._spatial_profile.parameter_names
-        pnames += self._energy_profile.parameter_names
-        pnames += self._time_profile.parameter_names
+        pnames = list(super(FactorizedFluxModel, type(self)).param_names)
+        pnames += self._spatial_profile.param_names
+        pnames += self._energy_profile.param_names
+        pnames += self._time_profile.param_names
 
         return tuple(pnames)
-    @parameter_names.setter
-    def parameter_names(self, names):
-        super(FactorizedFluxModel, self.__class__).parameter_names.fset(self, names)
+    @param_names.setter
+    def param_names(self, names):
+        super(FactorizedFluxModel, type(self)).param_names.fset(self, names)
 
     def __call__(
-            self, alpha, delta, E, t,
+            self, alpha=None, delta=None, E=None, t=None,
             angle_unit=None, energy_unit=None, time_unit=None):
         """Calculates the flux values for the given celestrial positions,
         energies, and observation times.
 
         Parameters
         ----------
-        alpha : float | (Ncoord,)-shaped 1d numpy ndarray of float
+        alpha : float | (Ncoord,)-shaped 1d numpy ndarray of float | None
             The right-ascention coordinate for which to retrieve the flux value.
-        delta : float | (Ncoord,)-shaped 1d numpy ndarray of float
+        delta : float | (Ncoord,)-shaped 1d numpy ndarray of float | None
             The declination coordinate for which to retrieve the flux value.
-        E : float | (Nenergy,)-shaped 1d numpy ndarray of float
+        E : float | (Nenergy,)-shaped 1d numpy ndarray of float | None
             The energy for which to retrieve the flux value.
-        t : float | (Ntime,)-shaped 1d numpy ndarray of float
+        t : float | (Ntime,)-shaped 1d numpy ndarray of float | None
             The observation time for which to retrieve the flux value.
         angle_unit : instance of astropy.units.UnitBase | None
             The unit of the given angles.
@@ -1354,12 +1361,23 @@ class FactorizedFluxModel(FluxModel):
             The flux values are in unit
             [energy]^{-1} [angle]^{-2} [length]^{-2} [time]^{-1}.
         """
-        spatial_profile_values = self._spatial_profile(
-            alpha, delta, unit=angle_unit)
-        energy_profile_values = self._energy_profile(
-            E, unit=energy_unit)
-        time_profile_values = self._time_profile(
-            t, unit=time_unit)
+        if alpha is not None and delta is not None:
+            spatial_profile_values = self._spatial_profile(
+                alpha, delta, unit=angle_unit)
+        else:
+            spatial_profile_values = np.array([1])
+
+        if E is not None:
+            energy_profile_values = self._energy_profile(
+                E, unit=energy_unit)
+        else:
+            energy_profile_values = np.array([1])
+
+        if t is not None:
+            time_profile_values = self._time_profile(
+                t, unit=time_unit)
+        else:
+            time_profile_values = np.array([1])
 
         flux = (
             self._Phi0 *
@@ -1403,7 +1421,7 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
     """
     def __init__(
             self, alpha_s, delta_s, Phi0, energy_profile, time_profile,
-            angle_unit=None, length_unit=None):
+            angle_unit=None, length_unit=None, **kwargs):
         """Creates a new factorized flux model for a point-like source.
 
         Parameters
@@ -1445,7 +1463,8 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
             set_ra_func=spatial_profile.__class__.alpha_s.fset,
             dec_func_instance=spatial_profile,
             get_dec_func=spatial_profile.__class__.delta_s.fget,
-            set_dec_func=spatial_profile.__class__.delta_s.fset
+            set_dec_func=spatial_profile.__class__.delta_s.fset,
+            **kwargs
         )
 
 
@@ -1456,7 +1475,7 @@ class SteadyPointlikeFFM(PointlikeFFM):
     """
     def __init__(
             self, alpha_s, delta_s, Phi0, energy_profile,
-            angle_unit=None, length_unit=None, time_unit=None):
+            angle_unit=None, length_unit=None, time_unit=None, **kwargs):
         """Creates a new factorized flux model for a point-like source with no
         time dependance.
 
@@ -1474,54 +1493,15 @@ class SteadyPointlikeFFM(PointlikeFFM):
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
         """
+        time_profile = UnityTimeFluxProfile(time_unit=time_unit)
+
         super().__init__(
             alpha_s=alpha_s,
             delta_s=delta_s,
             Phi0=Phi0,
             energy_profile=energy_profile,
-            time_profile=UnityTimeFluxProfile(time_unit=time_unit),
+            time_profile=time_profile,
             angle_unit=angle_unit,
-            length_unit=length_unit
+            length_unit=length_unit,
+            **kwargs
         )
-
-    def __call__(
-            self, alpha, delta, E,
-            angle_unit=None, energy_unit=None):
-        """Calculates the flux values for the given celestrial positions, and
-        energies.
-
-        Parameters
-        ----------
-        alpha : float | (Ncoord,)-shaped 1d numpy ndarray of float
-            The right-ascention coordinate for which to retrieve the flux value.
-        delta : float | (Ncoord,)-shaped 1d numpy ndarray of float
-            The declination coordinate for which to retrieve the flux value.
-        E : float | (Nenergy,)-shaped 1d numpy ndarray of float
-            The energy for which to retrieve the flux value.
-        angle_unit : instance of astropy.units.UnitBase | None
-            The unit of the given angles.
-            If ``None``, the set angle unit of the spatial flux profile is
-            assumed.
-        energy_unit : instance of astropy.units.UnitBase | None
-            The unit of the given energies.
-            If ``None``, the set energy unit of the energy flux profile is
-            assumed.
-
-        Returns
-        -------
-        flux : (Ncoord,Nenergy)-shaped ndarray of float
-            The flux values are in unit
-            [energy]^{-1} [angle]^{-2} [length]^{-2} [time]^{-1}.
-        """
-        spatial_profile_values = self._spatial_profile(
-            alpha, delta, unit=angle_unit)
-        energy_profile_values = self._energy_profile(
-            E, unit=energy_unit)
-
-        flux = (
-            self._Phi0 *
-            spatial_profile_values[:,np.newaxis] *
-            energy_profile_values[np.newaxis,:]
-        )
-
-        return flux
