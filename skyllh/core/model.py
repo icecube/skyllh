@@ -14,7 +14,7 @@ class Model(object):
     """This class provides a base class for all model classes used in SkyLLH.
     Models could be for instance source models or background models.
     """
-    def __init__(self, name=None):
+    def __init__(self, name=None, **kwargs):
         """Creates a new Model instance.
 
         Parameters
@@ -23,7 +23,7 @@ class Model(object):
             The name of the model. If set to `None`, the id of the object is
             taken as name.
         """
-        super(Model, self).__init__()
+        super(Model, self).__init__(**kwargs)
 
         if(name is None):
             name = self.id
