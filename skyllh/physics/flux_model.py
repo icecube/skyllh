@@ -34,7 +34,6 @@ from skyllh.physics.source import IsPointlike
 class FluxProfile(MathFunction, metaclass=abc.ABCMeta):
     """The abstract base class for a flux profile math function.
     """
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -42,9 +41,7 @@ class FluxProfile(MathFunction, metaclass=abc.ABCMeta):
 class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for a spatial flux profile function.
     """
-
-    def __init__(
-            self, angle_unit=None, **kwargs):
+    def __init__(self, angle_unit=None, **kwargs):
         """Creates a new SpatialFluxProfile instance.
 
         Parameters
@@ -74,15 +71,15 @@ class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         self._angle_unit = unit
 
     @abc.abstractmethod
-    def __call__(self, alpha, delta, unit=None):
+    def __call__(self, ra, dec, unit=None):
         """This method is supposed to return the spatial profile value for the
         given celestrial coordinates.
 
         Parameters
         ----------
-        alpha : float | 1d numpy ndarray of float
+        ra : float | 1d numpy ndarray of float
             The right-ascention coordinate.
-        delta : float | 1d numpy ndarray of float
+        dec : float | 1d numpy ndarray of float
             The declination coordinate.
         unit : instance of astropy.units.UnitBase | None
             The unit of the given celestrial angles.
@@ -111,21 +108,22 @@ class UnitySpatialFluxProfile(SpatialFluxProfile):
             If set to ``Ǹone``, the configured default angle unit for fluxes is
             used.
         """
-        super(UnitySpatialFluxProfile, self).__init__(
-            angle_unit=angle_unit, **kwargs)
+        super().__init__(
+            angle_unit=angle_unit,
+            **kwargs)
 
     @property
     def math_function_str(self):
         return '1'
 
-    def __call__(self, alpha, delta, unit=None):
-        """Returns 1 as numpy ndarray in same shape as alpha and delta.
+    def __call__(self, ra, dec, unit=None):
+        """Returns 1 as numpy ndarray in same shape as ra and dec.
 
         Parameters
         ----------
-        alpha : float | 1d numpy ndarray of float
+        ra : float | 1d numpy ndarray of float
             The right-ascention coordinate.
-        delta : float | 1d numpy ndarray of float
+        dec : float | 1d numpy ndarray of float
             The declination coordinate.
         unit : instance of astropy.units.UnitBase | None
             The unit of the given celestrial angles.
@@ -134,86 +132,97 @@ class UnitySpatialFluxProfile(SpatialFluxProfile):
         Returns
         -------
         values : 1D numpy ndarray
-            1 in same shape as alpha and delta.
+            1 in same shape as ra and dec.
         """
-        (alpha, delta) = np.atleast_1d(alpha, delta)
-        if(alpha.shape != delta.shape):
-            raise ValueError('The alpha and delta arguments must be of the '
-                'same shape!')
+        (ra, dec) = np.atleast_1d(ra, dec)
+        if(ra.shape != dec.shape):
+            raise ValueError(
+                'The ra and dec arguments must be of the same shape!')
 
-        return np.ones_like(alpha)
+        return np.ones_like(ra)
 
 
 class PointSpatialFluxProfile(SpatialFluxProfile):
     """Spatial flux profile for a delta function at the celestrical coordinate
-    (alpha_s, delta_s).
+    (ra, dec).
     """
-    def __init__(self, alpha_s, delta_s, angle_unit=None, **kwargs):
-        """Creates a new spatial flux profile for a point.
+    def __init__(self, ra, dec, angle_unit=None, **kwargs):
+        """Creates a new spatial flux profile for a point at equatorial
+        coordinate (ra, dec).
 
         Parameters
         ----------
-        alpha_s : float
-            The right-ascention of the point-like source.
-        delta_s : float
-            The declination of the point-like source.
+        ra : float | None
+            The right-ascention of the point.
+            In case it is None, the evaluation of this spatial flux profile will
+            return zero, unless evaluated for ra=None.
+        dec : float | None
+            The declination of the point.
+            In case it is None, the evaluation of this spatial flux profile will
+            return zero, unless evaluated for dec=None.
         angle_unit : instance of astropy.units.UnitBase | None
             The used unit for angles.
             If set to ``Ǹone``, the configured default angle unit for fluxes is
             used.
         """
-        super(PointSpatialFluxProfile, self).__init__(
-            angle_unit=angle_unit, **kwargs)
+        super().__init__(
+            angle_unit=angle_unit,
+            **kwargs)
 
-        self.alpha_s = alpha_s
-        self.delta_s = delta_s
+        self.ra = ra
+        self.dec = dec
 
         # Define the names of the parameters, which can be updated.
-        self.param_names = ('alpha_s', 'delta_s')
+        self.param_names = ('ra', 'dec')
 
     @property
-    def alpha_s(self):
-        """The right-ascention of the point-like source.
+    def ra(self):
+        """The right-ascention of the point.
         The unit is the set angle unit of this SpatialFluxProfile instance.
         """
-        return self._alpha_s
-    @alpha_s.setter
-    def alpha_s(self, v):
+        return self._ra
+    @ra.setter
+    def ra(self, v):
         v = float_cast(v,
-            'The alpha_s property must be castable to type float!')
-        self._alpha_s = v
+            'The ra property must be castable to type float!',
+            allow_None=True)
+        self._ra = v
 
     @property
-    def delta_s(self):
-        """The declination of the point-like source.
+    def dec(self):
+        """The declination of the point.
         The unit is the set angle unit of this SpatialFluxProfile instance.
         """
-        return self._delta_s
-    @delta_s.setter
-    def delta_s(self, v):
+        return self._dec
+    @dec.setter
+    def dec(self, v):
         v = float_cast(v,
-            'The delta_s property must be castable to type float!')
-        self._delta_s = v
+            'The dec property must be castable to type float!',
+            allow_None=True)
+        self._dec = v
 
     @property
     def math_function_str(self):
         """(read-only) The string representation of the mathematical function of
         this spatial flux profile instance.
         """
-        return 'delta(alpha-%g%s)*delta(delta-%g%s)'%(
-            self._alpha_s, self._angle_unit.to_string(), self._delta_s,
-            self._angle_unit.to_string())
+        if self._ra is None or self._dec is None:
+            return '0'
 
-    def __call__(self, alpha, delta, unit=None):
-        """Returns a numpy ndarray in same shape as alpha and delta with 1 if
-        `alpha` equals `alpha_s` and `delta` equals `delta_s`, and 0 otherwise.
+        return 'delta(alpha-%g%s)*delta(delta-%g%s)'%(
+            self._ra, self._angle_unit.to_string(),
+            self._dec, self._angle_unit.to_string())
+
+    def __call__(self, ra, dec, unit=None):
+        """Returns a numpy ndarray in same shape as ra and dec with 1 if
+        `ra` equals `self.ra` and `dec` equals `self.dec`, and 0 otherwise.
 
         Parameters
         ----------
-        alpha : float | 1d numpy ndarray of float
+        ra : float | 1d numpy ndarray of float
             The right-ascention coordinate at which to evaluate the spatial flux
             profile. The unit must be the internally used angle unit.
-        delta : float | 1d numpy ndarray of float
+        dec : float | 1d numpy ndarray of float
             The declination coordinate at which to evaluate the spatial flux
             profile. The unit must be the internally used angle unit.
         unit : instance of astropy.units.UnitBase | None
@@ -224,21 +233,21 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
         Returns
         -------
         value : 1D numpy ndarray of int8
-            A numpy ndarray in same shape as alpha and delta with 1 if `alpha`
-            equals `alpha_s` and `delta` equals `delta_s`, and 0 otherwise.
+            A numpy ndarray in same shape as ra and dec with 1 if `ra`
+            equals `self.ra` and `dec` equals `self.dec`, and 0 otherwise.
         """
-        (alpha, delta) = np.atleast_1d(alpha, delta)
-        if(alpha.shape != delta.shape):
-            raise ValueError('The alpha and delta arguments must be of the '
-                'same shape!')
+        (ra, dec) = np.atleast_1d(ra, dec)
+        if(ra.shape != dec.shape):
+            raise ValueError(
+                'The ra and dec arguments must be of the same shape!')
 
         if((unit is not None) and (unit != self._angle_unit)):
             angle_unit_conv_factor = unit.to(self._angle_unit)
-            alpha = alpha * angle_unit_conv_factor
-            delta = delta * angle_unit_conv_factor
+            ra = ra * angle_unit_conv_factor
+            dec = dec * angle_unit_conv_factor
 
-        value = ((alpha == self._alpha_s) &
-                 (delta == self._delta_s)).astype(np.int8, copy=False)
+        value = ((ra == self._ra) &
+                 (dec == self._dec)).astype(np.int8, copy=False)
 
         return value
 
@@ -246,7 +255,6 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
 class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for an energy flux profile function.
     """
-
     def __init__(self, energy_unit=None, **kwargs):
         """Creates a new energy flux profile with a given energy unit to be used
         for flux calculation.
@@ -258,7 +266,7 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
             If set to ``None``, the configured default energy unit for fluxes is
             used.
         """
-        super(EnergyFluxProfile, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         # Set the energy unit.
         self.energy_unit = energy_unit
@@ -312,8 +320,9 @@ class UnityEnergyFluxProfile(EnergyFluxProfile):
             If set to ``None``, the configured default energy unit for fluxes is
             used.
         """
-        super(UnityEnergyFluxProfile, self).__init__(
-            energy_unit=energy_unit, **kwargs)
+        super().__init__(
+            energy_unit=energy_unit,
+            **kwargs)
 
     @property
     def math_function_str(self):
@@ -367,8 +376,9 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
             If set to ``None``, the configured default energy unit for fluxes is
             used.
         """
-        super(PowerLawEnergyFluxProfile, self).__init__(
-            energy_unit=energy_unit, **kwargs)
+        super().__init__(
+            energy_unit=energy_unit,
+            **kwargs)
 
         self.E0 = E0
         self.gamma = gamma
@@ -438,7 +448,6 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
 class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for a time flux profile function.
     """
-
     def __init__(self, t_start=-np.inf, t_end=np.inf, time_unit=None, **kwargs):
         """Creates a new time flux profile instance.
 
@@ -1112,16 +1121,16 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def __call__(
-            self, alpha=None, delta=None, E=None, t=None,
+            self, ra=None, dec=None, E=None, t=None,
             angle_unit=None, energy_unit=None, time_unit=None):
         """The call operator to retrieve a flux value for a given celestrial
         position, energy, and observation time.
 
         Parameters
         ----------
-        alpha : float | (Ncoord,)-shaped 1D numpy ndarray of float
+        ra : float | (Ncoord,)-shaped 1D numpy ndarray of float
             The right-ascention coordinate for which to retrieve the flux value.
-        delta : float | (Ncoord,)-shaped 1D numpy ndarray of float
+        dec : float | (Ncoord,)-shaped 1D numpy ndarray of float
             The declination coordinate for which to retrieve the flux value.
         E : float | (Nenergy,)-shaped 1D numpy ndarray of float
             The energy for which to retrieve the flux value.
@@ -1327,16 +1336,16 @@ class FactorizedFluxModel(FluxModel):
         super(FactorizedFluxModel, type(self)).param_names.fset(self, names)
 
     def __call__(
-            self, alpha=None, delta=None, E=None, t=None,
+            self, ra=None, dec=None, E=None, t=None,
             angle_unit=None, energy_unit=None, time_unit=None):
         """Calculates the flux values for the given celestrial positions,
         energies, and observation times.
 
         Parameters
         ----------
-        alpha : float | (Ncoord,)-shaped 1d numpy ndarray of float | None
+        ra: float | (Ncoord,)-shaped 1d numpy ndarray of float | None
             The right-ascention coordinate for which to retrieve the flux value.
-        delta : float | (Ncoord,)-shaped 1d numpy ndarray of float | None
+        dec : float | (Ncoord,)-shaped 1d numpy ndarray of float | None
             The declination coordinate for which to retrieve the flux value.
         E : float | (Nenergy,)-shaped 1d numpy ndarray of float | None
             The energy for which to retrieve the flux value.
@@ -1361,9 +1370,9 @@ class FactorizedFluxModel(FluxModel):
             The flux values are in unit
             [energy]^{-1} [angle]^{-2} [length]^{-2} [time]^{-1}.
         """
-        if alpha is not None and delta is not None:
+        if ra is not None and dec is not None:
             spatial_profile_values = self._spatial_profile(
-                alpha, delta, unit=angle_unit)
+                ra, dec, unit=angle_unit)
         else:
             spatial_profile_values = np.array([1])
 
@@ -1405,7 +1414,7 @@ class FactorizedFluxModel(FluxModel):
         """
         updated = False
 
-        updated |= super(FactorizedFluxModel, self).set_parameters(pdict)
+        updated |= super().set_parameters(pdict)
 
         updated |= self._spatial_profile.set_parameters(pdict)
         updated |= self._energy_profile.set_parameters(pdict)
@@ -1420,16 +1429,19 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
     model of a point-like source.
     """
     def __init__(
-            self, alpha_s, delta_s, Phi0, energy_profile, time_profile,
-            angle_unit=None, length_unit=None, **kwargs):
+            self,
+            Phi0,
+            energy_profile,
+            time_profile,
+            ra=None,
+            dec=None,
+            angle_unit=None,
+            length_unit=None,
+            **kwargs):
         """Creates a new factorized flux model for a point-like source.
 
         Parameters
         ----------
-        alpha_s : float
-            The right-ascention of the point-like source.
-        delta_s : float
-            The declination of the point-like source.
         Phi0 : float
             The flux normalization constant in unit of flux.
         energy_profile : EnergyFluxProfile instance | None
@@ -1442,6 +1454,10 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
             of the flux.
             If set to None, an instance of UnityTimeFluxProfile will be used,
             which represents the constant function 1.
+        ra : float | None
+            The right-ascention of the point.
+        dec : float | None
+            The declination of the point.
         angle_unit : instance of astropy.units.UnitBase | None
             The unit for angles used for the flux unit.
             If set to ``None``, the configured internal angle unit is used.
@@ -1450,7 +1466,9 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
             If set to ``None``, the configured internal length unit is used.
         """
         spatial_profile=PointSpatialFluxProfile(
-            alpha_s, delta_s, angle_unit=angle_unit)
+            ra=ra,
+            dec=dec,
+            angle_unit=angle_unit)
 
         super().__init__(
             Phi0=Phi0,
@@ -1459,11 +1477,11 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
             time_profile=time_profile,
             length_unit=length_unit,
             ra_func_instance=spatial_profile,
-            get_ra_func=spatial_profile.__class__.alpha_s.fget,
-            set_ra_func=spatial_profile.__class__.alpha_s.fset,
+            get_ra_func=type(spatial_profile).ra.fget,
+            set_ra_func=type(spatial_profile).ra.fset,
             dec_func_instance=spatial_profile,
-            get_dec_func=spatial_profile.__class__.delta_s.fget,
-            set_dec_func=spatial_profile.__class__.delta_s.fset,
+            get_dec_func=type(spatial_profile).dec.fget,
+            set_dec_func=type(spatial_profile).dec.fset,
             **kwargs
         )
 
@@ -1474,17 +1492,20 @@ class SteadyPointlikeFFM(PointlikeFFM):
     derived from the ``PointlikeFFM`` class.
     """
     def __init__(
-            self, alpha_s, delta_s, Phi0, energy_profile,
-            angle_unit=None, length_unit=None, time_unit=None, **kwargs):
+            self,
+            Phi0,
+            energy_profile,
+            ra=None,
+            dec=None,
+            angle_unit=None,
+            length_unit=None,
+            time_unit=None,
+            **kwargs):
         """Creates a new factorized flux model for a point-like source with no
         time dependance.
 
         Parameters
         ----------
-        alpha_s : float
-            The right-ascention of the point-like source.
-        delta_s : float
-            The declination of the point-like source.
         Phi0 : float
             The flux normalization constant.
         energy_profile : EnergyFluxProfile instance | None
@@ -1492,13 +1513,29 @@ class SteadyPointlikeFFM(PointlikeFFM):
             function of the flux.
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
+        ra : float | None
+            The right-ascention of the point.
+        dec : float | None
+            The declination of the point.
+        angle_unit : instance of astropy.units.UnitBase | None
+            The unit for angles used for the flux unit.
+            If set to ``None``, the configured default angle unit for fluxes
+            is used.
+        length_unit : instance of astropy.units.UnitBase | None
+            The unit for length used for the flux unit.
+            If set to ``None``, the configured default length unit for fluxes
+            is used.
+        time_unit : instance of astropy.units.UnitBase | None
+            The used unit for time.
+            If set to ``None``, the configured default time unit for fluxes
+            is used.
         """
         time_profile = UnityTimeFluxProfile(time_unit=time_unit)
 
         super().__init__(
-            alpha_s=alpha_s,
-            delta_s=delta_s,
             Phi0=Phi0,
+            ra=ra,
+            dec=dec,
             energy_profile=energy_profile,
             time_profile=time_profile,
             angle_unit=angle_unit,
