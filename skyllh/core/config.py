@@ -4,10 +4,10 @@
 convenience utility functions to set different configuration settings.
 """
 
-from astropy import units  # type: ignore
+from astropy import units
 import os.path
 import sys
-from typing import Any, Dict, Iterator, KeysView, ItemsView, ValuesView
+from typing import Any, Dict
 
 # Try to load the yaml package.
 YAML_LOADED = True
@@ -85,47 +85,47 @@ _BASECONFIG = {
 
 
 class CFGClass(dict):
-
-    """
-    This class holds the global config state.
+    """This class holds the global configuration state.
 
     The class behaves like a dict, delegating all methods of the dict
-    interface to the underlying config dictionary.
+    interface to the underlying configuration dictionary.
     """
 
     # Keep track of whether this class has been instantiated.
-
     _is_instantiated = False
 
     def __init__(self, *args, **kwargs) -> None:
         if CFGClass._is_instantiated:
-            raise RuntimeError("Can only instantiate CFGClass once")
+            raise RuntimeError("Can instantiate CFGClass only once!")
 
         super().__init__(*args, **kwargs)
         CFGClass._is_instantiated = True
 
     def from_yaml(self, yaml_file: str) -> None:
-        """
-        Update config with yaml file.
+        """Updates the configuration with the configuration items contained in
+        the yaml file. This calls `dict.update`.
 
-        Parameters:
-            yaml_file: str
-                Path to yaml file.
+        Parameters
+        ----------
+        yaml_file: str
+            Path to yaml file containg the to-be-updated configuration items.
         """
         if(YAML_LOADED):
             yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
             self.update(yaml_config)
         else:
-            raise ImportError(f'Could not import yaml package. Thus can not'
-                              f'import config from yaml file {yaml_file}')
+            raise ImportError(
+                f'Could not import yaml package. Thus cannot'
+                f'import config from yaml file {yaml_file}!')
 
     def from_dict(self, user_dict: Dict[Any, Any]) -> None:
-        """
-        Creates a config from dictionary.
+        """Updates the configuration with the given configuration
+        dictionary. This calls `dict.update`.
 
-        Parameters:
-            user_dict: dict
-
+        Parameters
+        ----------
+        user_dict: dict
+            The dictionary containg the to-be-updated configuration items.
         """
         self.update(user_dict)
 
