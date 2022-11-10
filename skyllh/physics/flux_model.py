@@ -6,7 +6,8 @@ class. It describes a mathematical function for the differential flux:
 
 .. math::
 
-    d^4\Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s) / (dA d\Omega dE dt)
+    \frac{d^4\Phi(\alpha,\delta,E,t | \vec{p}_{\mathrm{s}})}{\mathrm{d}A
+    \mathrm{d}\Omega \mathrm{d}E \mathrm{d}t}
 """
 
 from __future__ import division
@@ -204,10 +205,11 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
     @property
     def math_function_str(self):
         """(read-only) The string representation of the mathematical function of
-        this spatial flux profile instance.
+        this spatial flux profile instance. It is None, if the right-ascention
+        or declination property is set to None.
         """
         if self._ra is None or self._dec is None:
-            return '0'
+            return None
 
         return 'delta(alpha-%g%s)*delta(delta-%g%s)'%(
             self._ra, self._angle_unit.to_string(),
@@ -1009,6 +1011,17 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
 
     At this point the functional form of the flux model is not yet defined.
     """
+    @staticmethod
+    def get_default_units():
+        """Returns the configured default units for flux models.
+
+        Returns
+        -------
+        units_dict : dict
+            The dictionary holding the configured default units used for flux
+            models.
+        """
+        return CFG['units']['defaults']['fluxes']
 
     def __init__(
             self, angle_unit=None, energy_unit=None, length_unit=None,
@@ -1102,16 +1115,26 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
     def unit_str(self):
         """The string representation of the flux unit.
         """
-        return '1/(%s %s %s^2 %s)'%(
-            self.energy_unit.to_string(), (self.angle_unit**2).to_string(),
+        if self.angle_unit == units.radian:
+            angle_unit_sq = units.steradian
+        else:
+            angle_unit_sq = self.angle_unit**2
+
+        return '(%s %s %s^2 %s)^-1'%(
+            self.energy_unit.to_string(), angle_unit_sq.to_string(),
             self.length_unit.to_string(), self.time_unit.to_string())
 
     @property
     def unit_latex_str(self):
         """The latex string representation of the flux unit.
         """
+        if self.angle_unit == units.radian:
+            angle_unit_sq = units.steradian
+        else:
+            angle_unit_sq = self.angle_unit**2
+
         return r'%s$^{-1}$ %s$^{-1}$ %s$^{-2}$ %s$^{-1}$'%(
-            self.energy_unit.to_string(), (self.angle_unit**2).to_string(),
+            self.energy_unit.to_string(), angle_unit_sq.to_string(),
             self.length_unit.to_string(), self.time_unit.to_string())
 
     def __str__(self):
@@ -1161,16 +1184,16 @@ class FactorizedFluxModel(FluxModel):
 
     .. math::
 
-        \Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s) =
+        \Phi(\alpha,\delta,E,t | \vec{p}_\mathrm{s}) =
             \Phi_0
-            \Psi_{\mathrm{S}}(\alpha,\delta|\vec{p}_s)
-            \epsilon_{\mathrm{S}}(E|\vec{p}_s)
-            T_{\mathrm{S}}(t|\vec{p}_s)
+            \Psi(\alpha,\delta|\vec{p}_\mathrm{s})
+            \epsilon(E|\vec{p}_\mathrm{s})
+            T(t|\vec{p}_\mathrm{s})
 
     where, :math:`\Phi_0` is the normalization constant of the flux, and
-    :math:`\Psi_{\mathrm{S}}`, :math:`\epsilon_{\mathrm{S}}`, and
-    :math:`T_{\mathrm{S}}` are the spatial, energy, and time profiles of the
-    flux, respectively.
+    :math:`\Psi`, :math:`\epsilon`, and :math:`T` are the spatial, energy, and
+    time profiles of the flux given the source parameters
+    :math:`\vec{p}_\mathrm{s}`, respectively.
     """
     def __init__(
             self, Phi0, spatial_profile, energy_profile, time_profile,
@@ -1281,13 +1304,20 @@ class FactorizedFluxModel(FluxModel):
     def math_function_str(self):
         """The string showing the mathematical function of the flux.
         """
-        return '%.3e * %s * %s * %s * %s'%(
-            self._Phi0,
-            self.unit_str,
-            self._spatial_profile.math_function_str,
-            self._energy_profile.math_function_str,
-            self._time_profile.math_function_str
-        )
+        s = f'{self._Phi0:.3e}'
+
+        spatial_str = self._spatial_profile.math_function_str
+        if spatial_str is not None:
+            s += f' * {spatial_str}'
+        energy_str = self._energy_profile.math_function_str
+        if energy_str is not None:
+            s += f' * {energy_str}'
+
+        time_str = self._time_profile.math_function_str
+        if time_str is not None:
+            s += f' * {time_str}'
+
+        return s
 
     @property
     def angle_unit(self):
@@ -1484,6 +1514,30 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
             set_dec_func=type(spatial_profile).dec.fset,
             **kwargs
         )
+
+    @property
+    def unit_str(self):
+        """The string representation of the flux unit.
+        """
+        # Note:
+        #    For a point-like differential flux, there is no solid-angle
+        #    element.
+        return '(%s %s^2 %s)^-1'%(
+            self.energy_unit.to_string(),
+            self.length_unit.to_string(),
+            self.time_unit.to_string())
+
+    @property
+    def unit_latex_str(self):
+        """The latex string representation of the flux unit.
+        """
+        # Note:
+        #    For a point-like differential flux, there is no solid-angle
+        #    element.
+        return r'%s$^{-1}$ %s$^{-2}$ %s$^{-1}$'%(
+            self.energy_unit.to_string(),
+            self.length_unit.to_string(),
+            self.time_unit.to_string())
 
 
 class SteadyPointlikeFFM(PointlikeFFM):
