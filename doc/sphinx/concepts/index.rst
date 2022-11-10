@@ -10,4 +10,5 @@ This section covers a few concepts SkyLLH is persuing.
     :caption: SkyLLH concepts
 
     source_definition
+    flux_definition
     parameters
