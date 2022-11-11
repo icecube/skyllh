@@ -15,12 +15,11 @@ The default units are [energy] = GeV, [length] = cm, [time] = s.
 import abc
 import numpy as np
 
-from copy import deepcopy
-
 from astropy import units
 
 from skyllh.core.py import classname, isproperty, float_cast
 from skyllh.core.config import CFG
+from skyllh.physics.flux_model import FluxModel
 
 
 def get_conversion_factor_to_internal_flux_unit(fluxmodel):
@@ -49,148 +48,6 @@ def get_conversion_factor_to_internal_flux_unit(fluxmodel):
 
     unit_conversion_factor = (fluxmodel_flux_unit).to(internal_flux_unit).value
     return unit_conversion_factor
-
-
-class FluxModel(object, metaclass=abc.ABCMeta):
-    """Abstract base class for all flux models.
-    This base class defines the units used for the flux calculation. At this
-    point the function form of the flux model is not yet defined.
-
-    Attributes
-    ----------
-    energy_unit : str
-        The used unit of energy.
-    length_unit : str
-        The used unit of length.
-    time_unit : str
-        The used unit of time.
-    math_function_str : str
-        The string showing the mathematical function of the flux calculation.
-    """
-
-    def __init__(self):
-        super(FluxModel, self).__init__()
-
-        # Define the default units.
-        self.energy_unit = units.GeV
-        self.length_unit = units.cm
-        self.time_unit = units.s
-
-    @property
-    def energy_unit(self):
-        """The unit of energy used for the flux calculation.
-        """
-        return self._energy_unit
-    @energy_unit.setter
-    def energy_unit(self, unit):
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property energy_unit must be of type astropy.units.UnitBase!')
-        self._energy_unit = unit
-
-    @property
-    def length_unit(self):
-        """The unit of length used for the flux calculation.
-        """
-        return self._length_unit
-    @length_unit.setter
-    def length_unit(self, unit):
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property length_unit must be of type astropy.units.UnitBase!')
-        self._length_unit = unit
-
-    @property
-    def time_unit(self):
-        """The unit of length used for the flux calculation.
-        """
-        return self._time_unit
-    @time_unit.setter
-    def time_unit(self, unit):
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property time_unit must be of type astropy.units.UnitBase!')
-        self._time_unit = unit
-
-    @property
-    def unit_str(self):
-        """The string representation of the flux unit.
-        """
-        return '1/(%s %s^2 %s)'%(
-            self.energy_unit.to_string(), self.length_unit.to_string(),
-            self.time_unit.to_string())
-
-    @property
-    def unit_latex_str(self):
-        """The latex string representation of the flux unit.
-        """
-        return r'%s$^{-1}$ %s$^{-2}$ %s$^{-1}$'%(
-            self.energy_unit.to_string(), self.length_unit.to_string(),
-            self.time_unit.to_string())
-
-    @property
-    @abc.abstractmethod
-    def math_function_str(self):
-        """The string showing the mathematical function of the flux calculation.
-        """
-        pass
-
-    @abc.abstractmethod
-    def __call__(self, E):
-        """The call operator to retrieve a flux value for a given energy.
-
-        Parameters
-        ----------
-        E : float | 1d numpy.ndarray of float
-            The energy for which to retrieve the flux value.
-
-        Returns
-        -------
-        flux : ndarray of float
-            Flux at energy E in unit [energy]^-1 [length]^-2 [time]^-1.
-            By default that is GeV^-1 cm^-2 s^-1.
-        """
-        pass
-
-    def __str__(self):
-        """Pretty string representation of this class.
-        """
-        return self.math_function_str + ' ' + self.unit_str
-
-    def copy(self, newprop=None):
-        """Copies this flux model object by calling the copy.deepcopy function,
-        and sets new properties if requested.
-
-        Parameters
-        ----------
-        newprop : dict | None
-            The dictionary with the new property values to set, where the
-            dictionary key is the property name and the dictionary value is the
-            new value of the property.
-        """
-        fluxmodel = deepcopy(self)
-
-        # Set the new property values.
-        if(newprop is not None):
-            fluxmodel.set_properties(newprop)
-
-        return fluxmodel
-
-    def set_properties(self, propdict):
-        """Sets the properties of the flux model to the given property values.
-
-        Parameters
-        ----------
-        propdict : dict (name: value)
-            The dictionary holding the names of the properties and their new
-            values.
-        """
-        if(not isinstance(propdict, dict)):
-            raise TypeError('The propdict argument must be of type dict!')
-        for (prop, val) in propdict.items():
-            if(not hasattr(self, prop)):
-                raise KeyError('The flux model "%s" does not have a property named "%s"!'%(classname(self), prop))
-            if(not isproperty(self, prop)):
-                raise TypeError('The attribute "%s" of flux model "%s" is no property!'%(classname(self), prop))
-            setattr(self, prop, val)
-
 
 class NormedFluxModel(FluxModel, metaclass=abc.ABCMeta):
     """Abstract base class for all normalized flux models of the form
