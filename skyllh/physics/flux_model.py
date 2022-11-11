@@ -1177,6 +1177,32 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         """
         pass
 
+    def get_conversion_factor_to_internal_flux_unit(self):
+        """Calculates the conversion factor to convert the flux unit of this
+        flux model instance to the SkyLLH internally used flux unit.
+
+        Returns
+        -------
+        factor : float
+            The conversion factor.
+        """
+        self_flux_unit = 1 / (
+            self.angle_unit**2 *
+            self.energy_unit *
+            self.length_unit**2 *
+            self.time_unit)
+
+        internal_units = CFG['internal_units']
+        internal_flux_unit = 1 / (
+            internal_units['angle']**2 *
+            internal_units['energy'] *
+            internal_units['length']**2 *
+            internal_units['time'])
+
+        factor = (self_flux_unit).to(internal_flux_unit).value
+
+        return factor
+
 
 class FactorizedFluxModel(FluxModel):
     r"""This class describes a flux model where the spatial, energy, and time
