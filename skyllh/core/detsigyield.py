@@ -9,7 +9,7 @@ from skyllh.core.py import issequenceofsubclass
 from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.livetime import Livetime
 from skyllh.physics.source import SourceModel
-from skyllh.physics.flux import FluxModel
+from skyllh.physics.flux_model import FluxModel
 
 
 def get_integrated_livetime_in_days(livetime):
@@ -47,7 +47,6 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
     Hence, for a given detector, source, flux model, and dataset, an appropriate
     implementation method needs to be chosen.
     """
-
     def __init__(self, implmethod, dataset, fluxmodel, livetime):
         """Constructs a new detector signal yield object. It takes
         the monte-carlo data events, a flux model of the signal, and the live
@@ -190,7 +189,6 @@ class DetSigYieldImplMethod(object, metaclass=abc.ABCMeta):
     instance holding the internal objects to calculate the detector signal
     yield.
     """
-
     def __init__(self, **kwargs):
         super(DetSigYieldImplMethod, self).__init__(**kwargs)
 
