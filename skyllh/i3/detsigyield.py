@@ -20,10 +20,10 @@ from skyllh.core.detsigyield import (
 )
 from skyllh.core.livetime import Livetime
 from skyllh.physics.source import PointLikeSource
+
 from skyllh.physics.flux import (
     FluxModel,
     PowerLawFlux,
-    get_conversion_factor_to_internal_flux_unit
 )
 
 
@@ -350,7 +350,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = get_conversion_factor_to_internal_flux_unit(fluxmodel)
+        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Calculate the detector signal yield contribution of each event.
         # The unit of mcweight is assumed to be GeV cm^2 sr.
@@ -376,38 +376,45 @@ class FixedFluxPointLikeSourceI3DetSigYieldImplMethod(
         return detsigyield
 
 
-class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
+class SingleFloatingParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
     """The detector signal yield class for the
-    PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod detector signal yield
-    implementation method.
+    SingleFloatingParamFluxPointLikeSourceI3DetSigYieldImplMethod detector
+    signal yield implementation method.
     """
     def __init__(self, implmethod, dataset, fluxmodel, livetime,
-                 sin_dec_binning, log_spl_sinDec_gamma):
+                 sin_dec_binning, log_spl_sinDec_param):
         """Constructs the detector signal yield instance.
 
+        Parameters
+        ----------
+        implmethod : instance of I3DetSigYieldImplMethod
+            The instance of
+            SingleFloatingParamFluxPointLikeSourceI3DetSigYieldImplMethod.
         """
-        if(not isinstance(implmethod, PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod)):
+        if not isinstance(
+                implmethod,
+                SingleFloatingParamFluxPointLikeSourceI3DetSigYieldImplMethod):
             raise TypeError('The implmethod argument must be an instance of '
                 'PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod!')
 
-        super(PowerLawFluxPointLikeSourceI3DetSigYield, self).__init__(
+        super().__init__(
             implmethod, dataset, fluxmodel, livetime, sin_dec_binning)
 
-        self.log_spl_sinDec_gamma = log_spl_sinDec_gamma
+        self.log_spl_sinDec_param = log_spl_sinDec_param
 
     @property
-    def log_spl_sinDec_gamma(self):
+    def log_spl_sinDec_param(self):
         """The :class:`scipy.interpolate.RectBivariateSpline` instance
         representing the spline for the log value of the detector signal
-        yield as a function of sin(dec) and gamma.
+        yield as a function of sin(dec) and the floating parameter.
         """
-        return self._log_spl_sinDec_gamma
-    @log_spl_sinDec_gamma.setter
-    def log_spl_sinDec_gamma(self, spl):
+        return self._log_spl_sinDec_param
+    @log_spl_sinDec_param.setter
+    def log_spl_sinDec_param(self, spl):
         if(not isinstance(spl, scipy.interpolate.RectBivariateSpline)):
-            raise TypeError('The log_spl_sinDec_gamma property must be an '
+            raise TypeError('The log_spl_sinDec_param property must be an '
                 'instance of scipy.interpolate.RectBivariateSpline!')
-        self._log_spl_sinDec_gamma = spl
+        self._log_spl_sinDec_param = spl
 
     def __call__(self, src, src_flux_params):
         """Retrieves the detector signal yield for the given list of
@@ -419,20 +426,22 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
             The numpy record ndarray with the field ``dec`` holding the
             declination of the source.
         src_flux_params : (N_sources,)-shaped numpy record ndarray
-            The numpy record ndarray containing the flux parameter ``gamma`` for
-            the sources. ``gamma`` can be different for the different sources.
+            The numpy record ndarray containing the floating flux parameter for
+            the sources. Hence, the floating parameter value can be different
+            for the different sources.
 
         Returns
         -------
         values : numpy (N_sources,)-shaped 1D ndarray
             The array with the detector signal yield for each source.
         grads : numpy (N_sources,N_fitparams)-shaped 2D ndarray
-            The array containing the gradient values for each source and fit
-            parameter. Since, this implementation depends on only one fit
-            parameter, i.e. gamma, the array is (N_sources,1)-shaped.
+            The array containing the gradient values for each source and
+            floating parameter.
+            Since, this implementation depends on only one floating
+            parameter, the array is (N_sources,1)-shaped.
         """
         src_dec = np.atleast_1d(src['dec'])
-        src_gamma = src_flux_params['gamma']
+        src_param = src_flux_params[self.implmethod.param_grid.name]
 
         # Create results array.
         values = np.zeros_like(src_dec, dtype=np.float)
@@ -441,30 +450,31 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         # Calculate the detector signal yield only for the sources for
         # which we actually have detector acceptance. For the other sources,
         # the detector signal yield is zero.
-        mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge)\
-              &(np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
+        mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge) &\
+               (np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
 
-        if len(src_gamma) == len(src_dec):
-            src_gamma = src_gamma[mask]
+        if len(src_param) == len(src_dec):
+            src_param = src_param[mask]
         else:
-            src_gamma = src_gamma[0]
+            src_param = src_param[0]
 
         values[mask] = np.exp(self._log_spl_sinDec_gamma(
-            np.sin(src_dec[mask]), src_gamma, grid=False))
+            np.sin(src_dec[mask]), src_param, grid=False))
         grads[mask] = values[mask] * self._log_spl_sinDec_gamma(
-            np.sin(src_dec[mask]), src_gamma, grid=False, dy=1)
+            np.sin(src_dec[mask]), src_param, grid=False, dy=1)
 
         return (values, np.atleast_2d(grads))
 
 
-class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
+class SingleFloatingParamFluxPointLikeSourceI3DetSigYieldImplMethod(
     PointLikeSourceI3DetSigYieldImplMethod, multiproc.IsParallelizable):
     """This detector signal yield implementation method constructs a
-    detector signal yield for a variable power law flux model, which has
-    the spectral index gamma as fit parameter, assuming a point-like source.
-    It constructs a two-dimensional spline function in sin(dec) and gamma, using
-    a :class:`scipy.interpolate.RectBivariateSpline`. Hence, the detector signal yield
-    can vary with the declination and the spectral index, gamma, of the source.
+    detector signal yield for a variable flux model with a single floating
+    parameter, assuming a point-like source.
+    It constructs a two-dimensional spline function in sin(dec) and the fit
+    parameter, using a :class:`scipy.interpolate.RectBivariateSpline`.
+    Hence, the detector signal yield can vary with the declination and the fit
+    parameter of the source.
 
     This detector signal yield implementation method works with a
     PowerLawFlux flux model.
@@ -474,18 +484,20 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
     declination, of the source.
     """
     def __init__(
-            self, gamma_grid, sin_dec_binning=None, spline_order_sinDec=2,
-            spline_order_gamma=2, ncpu=None):
+            self, param_grid, sin_dec_binning=None, spline_order_sinDec=2,
+            spline_order_param=2, ncpu=None):
         """Creates a new IceCube detector signal yield implementation
-        method object for a power law flux model. It requires a sinDec binning
-        definition to compute the sin(dec) dependency of the detector effective
-        area, and a gamma parameter grid to compute the gamma dependency of the
-        detector signal yield.
+        method object for a flux model with a single floating parameter.
+        It requires a sinDec binning definition to compute the sin(dec)
+        dependency of the detector effective area, and a parameter grid to
+        compute the floating parameter dependency of the detector signal yield.
 
         Parameters
         ----------
-        gamma_grid : ParameterGrid instance
-            The ParameterGrid instance which defines the grid of gamma values.
+        param_grid : ParameterGrid instance
+            The ParameterGrid instance which defines the grid of floating
+            parameter values. The name of the parameter is defined via the name
+            property of the ParameterGrid instance.
         sin_dec_binning : BinningDefinition | None
             The BinningDefinition instance which defines the sin(dec) binning.
             If set to None, the sin(dec) binning will be taken from the
@@ -502,27 +514,27 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
             The number of CPUs to utilize. Global setting will take place if
             not specified, i.e. set to None.
         """
-        super(PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod, self).__init__(
-            sin_dec_binning, ncpu=ncpu)
+        super().__init__(
+            sin_dec_binning,
+            ncpu=ncpu)
 
-        self.supported_fluxmodels = (PowerLawFlux,)
-
-        self.gamma_grid = gamma_grid
+        self.param_grid = param_grid
         self.spline_order_sinDec = spline_order_sinDec
-        self.spline_order_gamma = spline_order_gamma
+        self.spline_order_param = spline_order_param
 
     @property
-    def gamma_grid(self):
-        """The ParameterGrid instance for the gamma grid that should be used for
-        computing the gamma dependency of the detector signal yield.
+    def param_grid(self):
+        """The ParameterGrid instance for the floating parameter grid that
+        should be used for computing the floating parameter dependency of the
+        detector signal yield.
         """
-        return self._gamma_grid
-    @gamma_grid.setter
-    def gamma_grid(self, grid):
+        return self._param_grid
+    @param_grid.setter
+    def param_grid(self, grid):
         if(not isinstance(grid, ParameterGrid)):
-            raise TypeError('The gamma_grid property must be an instance of '
+            raise TypeError('The param_grid property must be an instance of '
                 'ParameterGrid!')
-        self._gamma_grid = grid
+        self._param_grid = grid
 
     @property
     def spline_order_sinDec(self):
@@ -538,28 +550,29 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         self._spline_order_sinDec = order
 
     @property
-    def spline_order_gamma(self):
+    def spline_order_param(self):
         """The order (int) of the logarithmic spline function, that splines the
-        detector signal yield, along the gamma axis.
+        detector signal yield, along the floating parameter axis.
         """
-        return self._spline_order_gamma
-    @spline_order_gamma.setter
-    def spline_order_gamma(self, order):
+        return self._spline_order_param
+    @spline_order_param.setter
+    def spline_order_param(self, order):
         if(not isinstance(order, int)):
-            raise TypeError('The spline_order_gamma property must be of '
+            raise TypeError('The spline_order_param property must be of '
                 'type int!')
-        self._spline_order_gamma = order
+        self._spline_order_param = order
 
     def _get_signal_fitparam_names(self):
         """The list of signal fit parameter names the detector signal yield
         depends on.
         """
-        return ['gamma']
+        return [self.param_grid.name]
 
     def construct_detsigyield(
             self, dataset, data, fluxmodel, livetime, ppbar=None):
         """Constructs a detector signal yield 2-dimensional log spline
-        function for the given power law flux model with varying gamma values.
+        function for the given flux model with varying floating parameter
+        values.
 
         Parameters
         ----------
@@ -588,12 +601,12 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
 
         Returns
         -------
-        detsigyield : PowerLawFluxPointLikeSourceI3DetSigYield instance
-            The DetSigYield instance for a point-like source with a power law
-            flux with variable gamma parameter.
+        detsigyield : SingleFloatingParamFluxPointLikeSourceI3DetSigYield instance
+            The I3DetSigYield instance for a point-like source with a flux model
+            of a single floating parameter.
         """
         # Check for the correct data types of the input arguments.
-        super(PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod, self).construct_detsigyield(
+        super().construct_detsigyield(
             dataset, data, fluxmodel, livetime)
 
         # Get integrated live-time in days.
@@ -605,12 +618,17 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = get_conversion_factor_to_internal_flux_unit(fluxmodel)
+        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Define a function that creates a detector signal yield histogram
         # along sin(dec) for a given flux model, i.e. for given spectral index,
         # gamma.
-        def hist(data_sin_true_dec, data_true_energy, sin_dec_binning, weights, fluxmodel):
+        def _create_hist(
+                data_sin_true_dec,
+                data_true_energy,
+                sin_dec_binning,
+                weights,
+                fluxmodel):
             """Creates a histogram of the detector signal yield with the
             given sin(dec) binning.
 
@@ -634,42 +652,59 @@ class PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
             h : 1d ndarray
                 The numpy array containing the histogram values.
             """
-            (h, edges) = np.histogram(data_sin_true_dec,
-                                      bins = sin_dec_binning.binedges,
-                                      weights = weights * fluxmodel(data_true_energy),
-                                      density = False)
+            weights = weights * fluxmodel(E=data_true_energy)
+            (h, edges) = np.histogram(
+                data_sin_true_dec,
+                bins=sin_dec_binning.binedges,
+                weights=weights,
+                density=False)
             return h
 
         data_sin_true_dec = np.sin(data.mc["true_dec"])
         weights = data.mc["mcweight"] * toGeVcm2s * livetime_days * 86400.
 
-        # Make a copy of the gamma grid and extend the grid by one bin on each
-        # side.
-        gamma_grid = self._gamma_grid.copy()
-        gamma_grid.add_extra_lower_and_upper_bin()
+        # Make a copy of the parameter grid and extend the grid by one bin on
+        # each side.
+        param_grid = self._param_grid.copy()
+        param_grid.add_extra_lower_and_upper_bin()
 
         # Construct the arguments for the hist function to be used in the
         # multiproc.parallelize function.
-        args_list = [ ((data_sin_true_dec,
-                        data.mc['true_energy'],
-                        sin_dec_binning,
-                        weights,
-                        fluxmodel.copy({'gamma':gamma})), {})
-                     for gamma in gamma_grid.grid ]
+        args_list = [
+            ((data_sin_true_dec,
+            data.mc['true_energy'],
+            sin_dec_binning,
+            weights,
+            fluxmodel.copy({param_grid.name:param_val})), {})
+                for param_val in param_grid.grid
+        ]
         h = np.vstack(
             multiproc.parallelize(
-                hist, args_list, self.ncpu, ppbar=ppbar)).T
+                _create_hist, args_list, self.ncpu, ppbar=ppbar)).T
 
         # Normalize by solid angle of each bin along the sin(dec) axis.
-        # The solid angle is given by 2*\pi*(\Delta sin(\delta))
+        # The solid angle is given by 2*\pi*(\Delta sin(\delta)).
         h /= (2.*np.pi * np.diff(sin_dec_binning.binedges)).reshape(
             (sin_dec_binning.nbins,1))
 
-        log_spl_sinDec_gamma = scipy.interpolate.RectBivariateSpline(
-            sin_dec_binning.bincenters, gamma_grid.grid, np.log(h),
-            kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
+        # Create the 2D spline.
+        log_spl_sinDec_param = scipy.interpolate.RectBivariateSpline(
+            sin_dec_binning.bincenters,
+            param_grid.grid,
+            np.log(h),
+            kx=self.spline_order_sinDec,
+            ky=self.spline_order_param,
+            s=0)
 
-        detsigyield = PowerLawFluxPointLikeSourceI3DetSigYield(
-            self, dataset, fluxmodel, livetime, sin_dec_binning, log_spl_sinDec_gamma)
+        detsigyield = SingleFloatingParamFluxPointLikeSourceI3DetSigYield(
+            implmethod=self,
+            dataset=dataset,
+            fluxmodel=fluxmodel,
+            livetime=livetime,
+            sin_dec_binning=sin_dec_binning,
+            log_spl_sinDec_param=log_spl_sinDec_param)
 
         return detsigyield
+# Define alias for backward compatibility.
+PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod =\
+    SingleFloatingParamFluxPointLikeSourceI3DetSigYieldImplMethod
