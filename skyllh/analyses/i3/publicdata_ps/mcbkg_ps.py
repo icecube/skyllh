@@ -312,7 +312,7 @@ def create_analysis(
         with open(bkg_pdf_pathfilename, 'rb') as f:
             bkg_pdf_data = pickle.load(f)
         energy_bkgpdf = PDMCBackgroundI3EnergyPDF(
-            pdf_sindecmu_log10emu=bkg_pdf_data['pdf'],
+            pdf_log10emu_sindecmu=bkg_pdf_data['pdf'],
             sindecmu_binning=bkg_pdf_data['sindecmu_binning'],
             log10emu_binning=bkg_pdf_data['log10emu_binning']
         )
