@@ -20,7 +20,7 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 
 
-class PublicDataDatasetSignalGenerator(object):
+class PDDatasetSignalGenerator(object):
 
     def __init__(self, ds, src_dec, effA=None, sm=None, **kwargs):
         """Creates a new instance of the signal generator for generating
@@ -99,7 +99,8 @@ class PublicDataDatasetSignalGenerator(object):
 
     @staticmethod
     def _eval_spline(x, spl):
-        if (x < 0 or x > 1):
+        x = np.asarray(x)
+        if (x.any() < 0 or x.any() > 1):
             raise ValueError(
                 f'{x} is outside of the valid spline range. '
                 'The valid range is [0,1].')
@@ -259,7 +260,7 @@ class PublicDataDatasetSignalGenerator(object):
         return events
 
 
-class PublicDataSignalGenerator(object):
+class PDSignalGenerator(object):
     """This class provides a signal generation method for a point-like source
     seen in the IceCube detector using the 10 years public data release.
     """
@@ -356,7 +357,7 @@ class PublicDataSignalGenerator(object):
                 events_ = None
                 for (shg_src_idx, src) in enumerate(shg.source_list):
                     ds = self._dataset_list[ds_idx]
-                    sig_gen = PublicDataDatasetSignalGenerator(
+                    sig_gen = PDDatasetSignalGenerator(
                         ds, src.dec, self.effA[ds_idx], self.sm[ds_idx])
                     if self.effA[ds_idx] is None:
                         self.effA[ds_idx] = sig_gen.effA

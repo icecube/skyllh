@@ -73,7 +73,7 @@ from skyllh.datasets.i3 import data_samples
 
 # Analysis specific classes for working with the public data.
 from skyllh.analyses.i3.publicdata_ps.signal_generator import (
-    PublicDataSignalGenerator
+    PDSignalGenerator
 )
 from skyllh.analyses.i3.publicdata_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
@@ -254,7 +254,7 @@ def create_analysis(
         fitparam_ns,
         test_statistic,
         bkg_gen_method,
-        custom_sig_generator=PublicDataSignalGenerator
+        custom_sig_generator=PDSignalGenerator
     )
 
     # Define the event selection method for pure optimization purposes.
