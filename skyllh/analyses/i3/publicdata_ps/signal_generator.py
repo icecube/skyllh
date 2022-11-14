@@ -99,6 +99,10 @@ class PublicDataDatasetSignalGenerator(object):
 
     @staticmethod
     def _eval_spline(x, spl):
+        if (x < 0 or x > 1):
+            raise ValueError(
+                f'{x} is outside of the valid spline range. '
+                'The valid range is [0,1].')
         values = interpolate.splev(x, spl, ext=3)
         return values
 
