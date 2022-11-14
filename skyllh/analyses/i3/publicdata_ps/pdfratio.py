@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Authors:
+#   Dr. Martin Wolf <mail@martin-wolf.org>
 
 import sys
 
@@ -18,7 +20,15 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
 
         Parameters
         ----------
-        sig_pdf_set :
+        sig_pdf_set : instance of PDSignalEnergyPDFSet
+            The PDSignalEnergyPDFSet instance holding the set of signal energy
+            PDFs.
+        bkg_pdf : instance of PDDataBackgroundI3EnergyPDF
+            The PDDataBackgroundI3EnergyPDF instance holding the background
+            energy PDF.
+        cap_ratio : bool
+            Switch whether the S/B PDF ratio should get capped where no
+            background is available. Default is False.
         """
         self._logger = get_logger(module_classname(self))
 
@@ -34,7 +44,7 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
 
         self.cap_ratio = cap_ratio
         if self.cap_ratio:
-            self._logger.info('The PDF ratio will be capped!')
+            self._logger.info('The energy PDF ratio will be capped!')
 
             # Calculate the ratio value for the phase space where no background
             # is available. We will take the p_sig percentile of the signal
@@ -53,8 +63,13 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
                 sigvals = sigpdf.get_pd_by_log10_reco_e(log10_e_bc)
                 sigvals = np.broadcast_to(sigvals, (n_sinDec, n_logE)).T
                 r = sigvals[bd] / bkg_pdf._hist_logE_sinDec[bd]
+                # Remove possible inf values.
+                r = r[np.invert(np.isinf(r))]
                 val = np.percentile(r[r > 1.], ratio_perc)
                 self.ratio_fill_value_dict[sig_pdf_key] = val
+                self._logger.info(
+                    f'The cap value for the energy PDF ratio key {sig_pdf_key} '
+                    f'is {val}.')
 
         # Create cache variables for the last ratio value and gradients in
         # order to avoid the recalculation of the ratio value when the
