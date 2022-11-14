@@ -5,7 +5,7 @@ from skyllh.core.py import issequenceof
 from skyllh.core.detsigyield import DetSigYieldImplMethod
 from skyllh.core.signal_generation import SignalGenerationMethod
 from skyllh.physics.source import SourceModel
-from skyllh.physics.flux import FluxModel
+from skyllh.physics.flux_model import FluxModel
 
 
 class SourceHypoGroup(object):

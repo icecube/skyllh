@@ -93,7 +93,8 @@ class SourceHypoGroupManager(object):
             (self._sidx_to_gidx_gsidx_map_arr, arr))
 
     def add_source_hypo_group(
-        self, sources, fluxmodel, detsigyield_implmethods, sig_gen_method=None
+        self, sources, fluxmodel, detsigyield_implmethods, sig_gen_method=None,
+        source_weights=None
     ):
         """Adds a source hypothesis group to the source hypothesis group
         manager. A source hypothesis group share sources of the same source
@@ -118,9 +119,16 @@ class SourceHypoGroupManager(object):
             The SignalGenerationMethod instance that implements the detector
             and source hypothesis specific signal generation.
             It can be set to None which means no signal can be generated.
+        source_weights : float | sequence of floats | None
+            The sequence of relative source weights, normalized to 1.
         """
         # Create the source group.
-        group = SourceHypoGroup(sources, fluxmodel, detsigyield_implmethods, sig_gen_method)
+        group = SourceHypoGroup(
+            sources=sources,
+            fluxmodel=fluxmodel,
+            detsigyield_implmethods=detsigyield_implmethods,
+            sig_gen_method=sig_gen_method,
+            source_weights=source_weights)
 
         # Add the group.
         self._src_hypo_group_list.append(group)
