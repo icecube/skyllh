@@ -458,9 +458,9 @@ class SingleFloatingParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         else:
             src_param = src_param[0]
 
-        values[mask] = np.exp(self._log_spl_sinDec_gamma(
+        values[mask] = np.exp(self._log_spl_sinDec_param(
             np.sin(src_dec[mask]), src_param, grid=False))
-        grads[mask] = values[mask] * self._log_spl_sinDec_gamma(
+        grads[mask] = values[mask] * self._log_spl_sinDec_param(
             np.sin(src_dec[mask]), src_param, grid=False, dy=1)
 
         return (values, np.atleast_2d(grads))
