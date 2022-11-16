@@ -1475,7 +1475,7 @@ class DatasetCollection(object):
         for (dsname, dataset) in self._datasets.items():
             dataset.add_data_preparation(func)
 
-    def remove_data_preparation(self, index=-1):
+    def remove_data_preparation(self, key=-1):
         """Removes data preparation function from all the datasets of this
         dataset collection.
 
@@ -1486,7 +1486,7 @@ class DatasetCollection(object):
             is the last added function.
         """
         for (dsname, dataset) in self._datasets.items():
-            dataset.remove_data_preparation(index=index)
+            dataset.remove_data_preparation(key=key)
 
     def update_version_qualifiers(self, verqualifiers):
         """Updates the version qualifiers of all datasets of this dataset
