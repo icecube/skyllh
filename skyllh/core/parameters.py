@@ -1532,6 +1532,13 @@ class ParameterModelMapper(object):
         """
         return self._global_paramset.n_floating_params
 
+    @property
+    def unique_model_param_names(self):
+        """(read-only) The unique names of the model parameters.
+        """
+        m = self._model_param_names != None
+        return np.unique(self._model_param_names[m])
+
     def __str__(self):
         """Generates and returns a pretty string representation of this
         parameter model mapper.
@@ -1704,6 +1711,55 @@ class ParameterModelMapper(object):
             zip(model_param_names, model_param_values))
 
         return model_param_dict
+
+    def get_floating_params_recarray(self, global_floating_param_values):
+        """Creates a numpy record ndarray holding the floating parameter names
+        as key and their value for each source. The returned record array is
+        (N_sources,)-shaped.
+
+        Parameters
+        ----------
+        global_floating_param_values : 1D ndarray
+            The array holding the current global fit parameter values.
+
+        Returns
+        -------
+        arr : (N_models,)-shaped numpy record ndarray | None
+            The numpy record ndarray holding the unique model fit parameter
+            names as keys and their value for each model per row.
+            None is returned if no fit parameters were defined.
+        """
+        if self.n_global_floating_params == 0:
+            return None
+
+        # Create the output array with nan as default value.
+        arr = np.full(
+            (self.n_models,),
+            np.nan,
+            dtype=[
+                (name, np.float)
+                    for name in self.unique_model_param_names
+            ])
+
+        for midx in range(self.n_models):
+            # Get the model parameter mask that selects the global parameters
+            # for the requested model.
+            mask = self._model_param_names[midx] != None
+
+            # Create the array of parameter names that belong to the requested
+            # model, where floating parameters are before the fixed parameters.
+            model_param_names = self._model_param_names[
+                midx,
+                self._global_paramset.floating_params_mask & mask
+            ]
+            model_param_values = global_floating_param_values[
+                mask[self._global_paramset.floating_params_mask]]
+
+            # Fill the fit params array.
+            for (name, value) in zip(model_param_names, model_param_values):
+                arr[name][midx] = value
+
+        return arr
 
 
 class FitParameter(object):
