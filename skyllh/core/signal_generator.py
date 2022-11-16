@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import abc
 import itertools
 import numpy as np
 
@@ -17,7 +18,117 @@ from skyllh.physics.flux import (
 )
 
 
-class SignalGenerator(object):
+class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
+    """This is the abstract base class for all signal generator classes in
+    SkyLLH. It defines the interface for signal generators.
+    """
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list,
+                 *args, **kwargs):
+        """Constructs a new signal generator instance.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The SourceHypoGroupManager instance defining the source hypothesis
+            groups.
+        dataset_list : list of Dataset instances
+            The list of Dataset instances for which signal events should get
+            generated for.
+        data_list : list of DatasetData instances
+            The list of DatasetData instances holding the actual data of each
+            dataset. The order must match the order of ``dataset_list``.
+        """
+        super().__init__(*args, **kwargs)
+
+        self.src_hypo_group_manager = src_hypo_group_manager
+        self.dataset_list = dataset_list
+        self.data_list = data_list
+
+    @property
+    def src_hypo_group_manager(self):
+        """The SourceHypoGroupManager instance defining the source hypothesis
+        groups.
+        """
+        return self._src_hypo_group_manager
+    @src_hypo_group_manager.setter
+    def src_hypo_group_manager(self, manager):
+        if(not isinstance(manager, SourceHypoGroupManager)):
+            raise TypeError(
+                'The src_hypo_group_manager property must be an instance of '
+                'SourceHypoGroupManager!')
+        self._src_hypo_group_manager = manager
+
+    @property
+    def dataset_list(self):
+        """The list of Dataset instances for which signal events should get
+        generated for.
+        """
+        return self._dataset_list
+    @dataset_list.setter
+    def dataset_list(self, datasets):
+        if(not issequenceof(datasets, Dataset)):
+            raise TypeError(
+                'The dataset_list property must be a sequence of Dataset '
+                'instances!')
+        self._dataset_list = list(datasets)
+
+    @property
+    def data_list(self):
+        """The list of DatasetData instances holding the actual data of each
+        dataset. The order must match the order of the ``dataset_list``
+        property.
+        """
+        return self._data_list
+    @data_list.setter
+    def data_list(self, datas):
+        if(not issequenceof(datas, DatasetData)):
+            raise TypeError(
+                'The data_list property must be a sequence of DatasetData '
+                'instances!')
+        self._data_list = datas
+
+    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        """Changes the source hypothesis group manager. Derived classes can
+        reimplement this method but this method of the base class must still be
+        called by the derived class.
+        """
+        self.src_hypo_group_manager = src_hypo_group_manager
+
+    @abc.abstractmethod
+    def generate_signal_events(self, rss, mean, poisson=True):
+        """This abstract method must be implemented by the derived class to
+        generate a given number of signal events.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService providing the random number
+            generator state.
+        mean : float
+            The mean number of signal events. If the ``poisson`` argument is set
+            to True, the actual number of generated signal events will be drawn
+            from a Poisson distribution with this given mean value of signal
+            events.
+        poisson : bool
+            If set to True, the actual number of generated signal events will
+            be drawn from a Poisson distribution with the given mean value of
+            signal events.
+            If set to False, the argument ``mean`` specifies the actual number
+            of generated signal events.
+
+        Returns
+        -------
+        n_signal : int
+            The number of generated signal events.
+        signal_events_dict : dict of DataFieldRecordArray
+            The dictionary holding the DataFieldRecordArray instancs with the
+            generated signal events. Each key of this dictionary represents the
+            dataset index for which the signal events have been generated.
+        """
+        pass
+
+
+class SignalGenerator(SignalGeneratorBase):
     """This is the general signal generator class. It does not depend on the
     detector or source hypothesis, because these dependencies are factored out
     into the signal generation method. In fact the construction within this
@@ -25,7 +136,8 @@ class SignalGenerator(object):
     of multiple sources the handling here is very suboptimal. Therefore the
     MultiSourceSignalGenerator should be used instead!
     """
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list):
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list,
+                 *args, **kwargs):
         """Constructs a new signal generator instance.
 
         Parameters
@@ -40,12 +152,12 @@ class SignalGenerator(object):
             The list of DatasetData instances holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
         """
-        super(SignalGenerator, self).__init__()
-
-        self.src_hypo_group_manager = src_hypo_group_manager
-
-        self.dataset_list = dataset_list
-        self.data_list = data_list
+        super().__init__(
+            *args,
+            src_hypo_group_manager=src_hypo_group_manager,
+            dataset_list=dataset_list,
+            data_list=data_list,
+            **kwargs)
 
         self._construct_signal_candidates()
 
@@ -102,51 +214,12 @@ class SignalGenerator(object):
         self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
 
-    @property
-    def src_hypo_group_manager(self):
-        """The SourceHypoGroupManager instance defining the source groups with
-        their spectra.
-        """
-        return self._src_hypo_group_manager
-    @src_hypo_group_manager.setter
-    def src_hypo_group_manager(self, manager):
-        if(not isinstance(manager, SourceHypoGroupManager)):
-            raise TypeError('The src_hypo_group_manager property must be an '
-                            'instance of SourceHypoGroupManager!')
-        self._src_hypo_group_manager = manager
-
-    @property
-    def dataset_list(self):
-        """The list of Dataset instances for which signal events should get
-        generated for.
-        """
-        return self._dataset_list
-    @dataset_list.setter
-    def dataset_list(self, datasets):
-        if(not issequenceof(datasets, Dataset)):
-            raise TypeError('The dataset_list property must be a sequence of '
-                'Dataset instances!')
-        self._dataset_list = list(datasets)
-
-    @property
-    def data_list(self):
-        """The list of DatasetData instances holding the actual data of each
-        dataset. The order must match the order of the ``dataset_list``
-        property.
-        """
-        return self._data_list
-    @data_list.setter
-    def data_list(self, datas):
-        if(not issequenceof(datas, DatasetData)):
-            raise TypeError('The data_list property must be a sequence of '
-                'DatasetData instances!')
-        self._data_list = datas
-
     def change_source_hypo_group_manager(self, src_hypo_group_manager):
         """Recreates the signal candidates with the changed source hypothesis
         group manager.
         """
-        self.src_hypo_group_manager = src_hypo_group_manager
+        super().change_source_hypo_group_manager(src_hypo_group_manager)
+
         self._construct_signal_candidates()
 
     def mu2flux(self, mu, per_source=False):
