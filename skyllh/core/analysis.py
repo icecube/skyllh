@@ -29,13 +29,15 @@ from skyllh.core.pdf import (
 from skyllh.core.pdfratio import PDFRatio
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.random import RandomStateService
+from skyllh.core.dataset_signal_weights import (
+    SingleSourceDatasetSignalWeights,
+    MultiSourceDatasetSignalWeights,
+)
 from skyllh.core.llhratio import (
     LLHRatio,
     MultiDatasetTCLLHRatio,
-    SingleSourceDatasetSignalWeights,
     SingleSourceZeroSigH0SingleDatasetTCLLHRatio,
     MultiSourceZeroSigH0SingleDatasetTCLLHRatio,
-    MultiSourceDatasetSignalWeights
 )
 from skyllh.core.scrambling import DataScramblingMethod
 from skyllh.core.timing import TaskTimer
@@ -62,7 +64,7 @@ logger = get_logger(__name__)
 class Analysis(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for all analysis classes. It contains
     common properties required by all analyses and defines the overall analysis
-    interface howto set-up and run an analysis.
+    interface how to setup and run an analysis.
 
     Note: This analysis base class assumes the analysis to be a log-likelihood
           ratio test, i.e. requires a mathematical log-likelihood ratio
@@ -87,8 +89,14 @@ class Analysis(object, metaclass=abc.ABCMeta):
     any random trial data can be generated.
     """
 
-    def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
-                 test_statistic, bkg_gen_method=None, sig_generator_cls=None):
+    def __init__(
+            self,
+            src_hypo_group_manager,
+            param_model_mapper,
+            test_statistic,
+            bkg_gen_method=None,
+            sig_generator_cls=None,
+            **kwargs):
         """Constructor of the analysis base class.
 
         Parameters
@@ -97,9 +105,9 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
             efficiency implementation method.
-        src_fitparam_mapper : instance of SourceFitParameterMapper
-            The SourceFitParameterMapper instance managing the global fit
-            parameters and their relation to the individual sources.
+        param_model_mapper : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
@@ -113,10 +121,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
             If set to None, the `SignalGenerator` class is used.
         """
         # Call the super function to allow for multiple class inheritance.
-        super(Analysis, self).__init__()
+        super(Analysis, self).__init__(**kwargs)
 
         self.src_hypo_group_manager = src_hypo_group_manager
-        self.src_fitparam_mapper = src_fitparam_mapper
+        self.param_model_mapper = param_model_mapper
         self.test_statistic = test_statistic
         self.bkg_gen_method = bkg_gen_method
         self.sig_generator_cls = sig_generator_cls
@@ -125,10 +133,6 @@ class Analysis(object, metaclass=abc.ABCMeta):
         self._data_list = []
         self._tdm_list = []
         self._event_selection_method_list = []
-
-        # Predefine the variable for the global fit parameter set, which holds
-        # all the global fit parameters.
-        self._fitparamset = None
 
         # Predefine the variable for the log-likelihood ratio function.
         self._llhratio = None
@@ -147,22 +151,24 @@ class Analysis(object, metaclass=abc.ABCMeta):
     @src_hypo_group_manager.setter
     def src_hypo_group_manager(self, manager):
         if(not isinstance(manager, SourceHypoGroupManager)):
-            raise TypeError('The src_hypo_group_manager property must be an '
-                'instance of SourceHypoGroupManager!')
+            raise TypeError(
+                'The src_hypo_group_manager property must be an instance of '
+                'SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
 
     @property
-    def src_fitparam_mapper(self):
-        """The SourceFitParameterMapper instance that manages the global fit
-        parameters and their relation to the sources.
+    def param_model_mapper(self):
+        """The ParameterModelMapper instance that manages the global set of
+        parameters and their relation to individual models, e.g. sources.
         """
-        return self._src_fitparam_mapper
-    @src_fitparam_mapper.setter
-    def src_fitparam_mapper(self, mapper):
-        if(not isinstance(mapper, SourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper property must be an '
-                'instance of SourceFitParameterMapper!')
-        self._src_fitparam_mapper = mapper
+        return self._param_model_mapper
+    @param_model_mapper.setter
+    def param_model_mapper(self, mapper):
+        if(not isinstance(mapper, ParameterModelMapper)):
+            raise TypeError(
+                'The param_model_mapper property must be an instance of '
+                'ParameterModelMapper!')
+        self._param_model_mapper = mapper
 
     @property
     def test_statistic(self):
@@ -224,13 +230,6 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return len(self._dataset_list)
 
     @property
-    def fitparamset(self):
-        """(read-only) The instance of FitParameterSet holding all the global
-        fit parameters of the log-likelihood ratio function.
-        """
-        return self._fitparamset
-
-    @property
     def llhratio(self):
         """The log-likelihood ratio function instance. It is None, if it has
         not been constructed yet.
@@ -287,7 +286,8 @@ class Analysis(object, metaclass=abc.ABCMeta):
             livetime += data.livetime
         return livetime
 
-    def add_dataset(self, dataset, data, tdm=None, event_selection_method=None):
+    def add_dataset(
+            self, dataset, data, tdm=None, event_selection_method=None):
         """Adds the given dataset to the list of datasets for this analysis.
 
         Parameters
@@ -1050,8 +1050,14 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         4. Fit the global fit parameters to the trial data via the
            :meth:`maximize_llhratio` method.
     """
-    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns,
-                 test_statistic, bkg_gen_method=None, sig_generator_cls=None):
+    def __init__(
+            self,
+            src_hypo_group_manager,
+            param_model_mapper,
+            test_statistic,
+            bkg_gen_method=None,
+            sig_generator_cls=None,
+            **kwargs):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
@@ -1061,11 +1067,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
             efficiency implementation method.
-        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
-            The instance of SingleSourceFitParameterMapper defining the global
-            fit parameters and their mapping to the source fit parameters.
-        fitparam_ns : FitParameter instance
-            The FitParameter instance defining the fit parameter ns.
+        param_model_mapper : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
@@ -1078,42 +1082,25 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             instance.
             If set to None, the `SignalGenerator` class is used.
         """
-        if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper argument must be an '
-                'instance of SingleSourceFitParameterMapper!')
-
         super().__init__(
             src_hypo_group_manager=src_hypo_group_manager,
-            src_fitparam_mapper=src_fitparam_mapper,
+            param_model_mapper=param_model_mapper,
             test_statistic=test_statistic,
             bkg_gen_method=bkg_gen_method,
-            sig_generator_cls=sig_generator_cls)
-
-        self.fitparam_ns = fitparam_ns
+            sig_generator_cls=sig_generator_cls,
+            **kwargs)
 
         # Define the member for the list of PDF ratio lists. Each list entry is
         # a list of PDF ratio instances for each data set.
         self._pdfratio_list_list = []
 
-        # Create the FitParameterSet instance holding the fit parameter ns and
-        # all the other additional fit parameters. This set is used by the
-        # ``maximize_llhratio`` method.
-        self._fitparamset = self._src_fitparam_mapper.fitparamset.copy()
-        self._fitparamset.add_fitparam(self._fitparam_ns, atfront=True)
-
-    @property
-    def fitparam_ns(self):
-        """The FitParameter instance for the fit parameter ns.
-        """
-        return self._fitparam_ns
-    @fitparam_ns.setter
-    def fitparam_ns(self, fitparam):
-        if(not isinstance(fitparam, FitParameter)):
-            raise TypeError('The fitparam_ns property must be an instance of FitParameter!')
-        self._fitparam_ns = fitparam
-
-    def add_dataset(self, dataset, data, pdfratios, tdm=None,
-                    event_selection_method=None):
+    def add_dataset(
+            self,
+            dataset,
+            data,
+            pdfratios,
+            tdm=None,
+            event_selection_method=None):
         """Adds a dataset with its PDF ratio instances to the analysis.
 
         Parameters
@@ -1173,7 +1160,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # detector signal yield instances for each source as well.
         detsigyield_list = []
         fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
-        detsigyield_implmethod_list = self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
+        detsigyield_implmethod_list = \
+            self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
         if((len(detsigyield_implmethod_list) != 1) and
            (len(detsigyield_implmethod_list) != self.n_datasets)):
             raise ValueError('The number of detector signal yield '
@@ -1198,7 +1186,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # For multiple datasets we need a dataset signal weights instance in
         # order to distribute ns over the different datasets.
         dataset_signal_weights = SingleSourceDatasetSignalWeights(
-            self._src_hypo_group_manager, self._src_fitparam_mapper,
+            self._src_hypo_group_manager, self._param_model_mapper,
             detsigyield_list)
 
         # Create the list of log-likelihood ratio functions, one for each

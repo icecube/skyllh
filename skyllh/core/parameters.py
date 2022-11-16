@@ -1436,6 +1436,9 @@ class ParameterGridSet(NamedObjectCollection):
         return copy
 
 
+# TODO: save the information which models are SourceModels in order to be able
+#       to generate a recarray with floating parameters only for sources, as
+#       is required by the DatasetSignalWeights class.
 class ParameterModelMapper(object):
     """This class provides the parameter to model mapper.
     The parameter to model mapper provides the functionality to map a global
