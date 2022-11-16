@@ -152,7 +152,12 @@ class SignalGenerator(SignalGeneratorBase):
             The list of DatasetData instances holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            *args,
+            src_hypo_group_manager=src_hypo_group_manager,
+            dataset_list=dataset_list,
+            data_list=data_list,
+            **kwargs)
 
         self._construct_signal_candidates()
 
