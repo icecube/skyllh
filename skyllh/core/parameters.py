@@ -7,10 +7,12 @@ from copy import deepcopy
 
 from skyllh.physics.source import (
     SourceCollection,
-    SourceModel
 )
 from skyllh.core import display
-from skyllh.core.model import ModelCollection
+from skyllh.core.model import (
+    ModelCollection,
+    SourceModel,
+)
 from skyllh.core.py import (
     NamedObjectCollection,
     bool_cast,
@@ -20,9 +22,11 @@ from skyllh.core.py import (
     get_number_of_float_decimals,
     issequence,
     issequenceof,
-    str_cast
+    str_cast,
 )
-from skyllh.core.random import RandomStateService
+from skyllh.core.random import (
+    RandomStateService,
+)
 
 
 def make_linear_parameter_grid_1d(name, low, high, delta):
@@ -1436,16 +1440,13 @@ class ParameterGridSet(NamedObjectCollection):
         return copy
 
 
-# TODO: save the information which models are SourceModels in order to be able
-#       to generate a recarray with floating parameters only for sources, as
-#       is required by the DatasetSignalWeights class.
 class ParameterModelMapper(object):
     """This class provides the parameter to model mapper.
     The parameter to model mapper provides the functionality to map a global
     parameter, usually a fit parameter, to a local parameter of a model, e.g.
     to a source, or a background model parameter.
     """
-    def __init__(self, models, name=None):
+    def __init__(self, models, **kwargs):
         """Constructor of the parameter mapper.
 
         Parameters
@@ -1453,20 +1454,23 @@ class ParameterModelMapper(object):
         models : sequence of Model instances.
             The sequence of Model instances the parameter mapper can map global
             parameters to.
-        name : str | None
-            The name of the model parameter mapper. In practice this is a
-            representative name for the set of global parameters this model
-            parameter mapper holds. For a two-component signal-background
-            likelihood model, "signal", or "background" could be useful names.
-            If set to None, the name of this class will be used as name.
         """
-        super().__init__()
+        super().__init__(**kwargs)
 
-        self.models = models
-        self.name = name
+        models = ModelCollection.cast(
+            models,
+            'The models property must be castable to an instance of '
+            'ModelCollection!')
+        self._models = models
 
         # Create the parameter set for the global parameters.
         self._global_paramset = ParameterSet()
+
+        # Define the attribute holding the boolean mask of the models that are
+        # source models.
+        self._source_model_mask = np.array([
+            isinstance(model, SourceModel) for model in self._models
+            ], dtype=bool)
 
         # Define a (n_models, n_global_params)-shaped numpy ndarray of str
         # objects that will hold the local model parameter names of the global
@@ -1480,29 +1484,10 @@ class ParameterModelMapper(object):
 
     @property
     def models(self):
-        """The ModelCollection instance defining the models the mapper can
-        map global parameters to.
+        """(read-only) The ModelCollection instance defining the models the
+        mapper can map global parameters to.
         """
         return self._models
-    @models.setter
-    def models(self, obj):
-        obj = ModelCollection.cast(obj, 'The models property must '
-            'be castable to an instance of ModelCollection!')
-        self._models = obj
-
-    @property
-    def name(self):
-        """The name of this ParameterModelMapper instance. In practice this is
-        a representative name for the set of global parameters this mapper
-        holds.
-        """
-        return self._name
-    @name.setter
-    def name(self, name):
-        if name is None:
-            name = classname(self)
-        name = str_cast(name, 'The name property must be castable to type str!')
-        self._name = name
 
     @property
     def global_paramset(self):
@@ -1536,11 +1521,25 @@ class ParameterModelMapper(object):
         return self._global_paramset.n_floating_params
 
     @property
+    def n_sources(self):
+        """(read-only) The number of source models the mapper knows about.
+        """
+        return np.count_nonzero(self._source_model_mask)
+
+    @property
     def unique_model_param_names(self):
-        """(read-only) The unique names of the model parameters.
+        """(read-only) The unique parameters names of all the models.
         """
         m = self._model_param_names != None
         return np.unique(self._model_param_names[m])
+
+    @property
+    def unique_source_param_names(self):
+        """(read-only) The unique parameter names of the sources.
+        """
+        src_param_names = self._model_param_names[self._source_model_mask,...]
+        m = src_param_names != None
+        return np.unique(src_param_names[m])
 
     def __str__(self):
         """Generates and returns a pretty string representation of this
@@ -1551,17 +1550,18 @@ class ParameterModelMapper(object):
         # Determine the number of models that have global parameters assigned.
         # Remember self._model_param_names is a (n_models, n_global_params)-
         # shaped 2D ndarray.
-        n_models = 0
-        if n_global_params > 0:
-            n_models = np.sum(
-                np.sum(self._model_param_names != None, axis=1) > 0)
+        n_models = self.n_models
+        n_sources = self.n_sources
 
-        s = classname(self) + ' "%s": '%(self._name)
-        s += '%d global parameter'%(n_global_params)
+        s = f'{classname(self)}: '
+        s += f'{n_global_params} global parameter'
         s += '' if n_global_params == 1 else 's'
         s += ', '
-        s += '%d model'%(n_models)
+        s += f'{n_models} model'
         s += '' if n_models == 1 else 's'
+        s += f' ({n_sources} source'
+        s += '' if n_sources == 1 else 's'
+        s += ')'
 
         if(n_global_params == 0):
             return s
@@ -1715,10 +1715,10 @@ class ParameterModelMapper(object):
 
         return model_param_dict
 
-    def get_floating_params_recarray(self, global_floating_param_values):
+    def get_source_floating_params_recarray(self, global_floating_param_values):
         """Creates a numpy record ndarray holding the floating parameter names
-        as key and their value for each source. The returned record array is
-        (N_sources,)-shaped.
+        as key and their value for each source model. The returned record array
+        is (N_sources,)-shaped.
 
         Parameters
         ----------
@@ -1727,24 +1727,33 @@ class ParameterModelMapper(object):
 
         Returns
         -------
-        arr : (N_models,)-shaped numpy record ndarray | None
-            The numpy record ndarray holding the unique model fit parameter
-            names as keys and their value for each model per row.
+        arr : (N_sources,)-shaped numpy record ndarray | None
+            The numpy record ndarray holding the unique model floating parameter
+            names as keys and their value for each source model per row.
             None is returned if no fit parameters were defined.
         """
-        if self.n_global_floating_params == 0:
+        n_global_floating_params = self.n_global_floating_params
+
+        if n_global_floating_params == 0:
             return None
+
+        if len(global_floating_param_values) != n_global_floating_params:
+            raise ValueError(
+                f'The global_floating_param_values argument is of length '
+                f'{len(global_floating_param_values)}, but must be of length '
+                f'{n_global_floating_params}!')
 
         # Create the output array with nan as default value.
         arr = np.full(
-            (self.n_models,),
+            (self.n_sources,),
             np.nan,
             dtype=[
                 (name, np.float)
-                    for name in self.unique_model_param_names
+                    for name in self.unique_source_param_names
             ])
 
-        for midx in range(self.n_models):
+        midxs = np.arange(self.n_models)[self._source_model_mask]
+        for (sidx, midx) in enumerate(midxs):
             # Get the model parameter mask that selects the global parameters
             # for the requested model.
             mask = self._model_param_names[midx] != None
@@ -1760,7 +1769,7 @@ class ParameterModelMapper(object):
 
             # Fill the fit params array.
             for (name, value) in zip(model_param_names, model_param_values):
-                arr[name][midx] = value
+                arr[name][sidx] = value
 
         return arr
 

@@ -259,8 +259,9 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
             fit parameter. None is returned if there are no fit parameters
             beside ns.
         """
-        fitparams_arr = self._param_model_mapper.get_floating_params_recarray(
-            fitparam_values)
+        fitparams_arr =\
+            self._param_model_mapper.get_source_floating_params_recarray(
+                fitparam_values)
 
         N_datasets = self.n_datasets
 
@@ -360,8 +361,9 @@ class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
             fit parameter. None is returned if there are no fit parameters
             beside ns.
         """
-        fitparams_arr = self._param_model_mapper.get_floating_params_recarray(
-            fitparam_values)
+        fitparams_arr =\
+            self._param_model_mapper.get_source_floating_params_recarray(
+                fitparam_values)
 
         N_datasets = self.n_datasets
 
