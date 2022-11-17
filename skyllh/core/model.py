@@ -6,7 +6,7 @@
 
 from skyllh.core.py import (
     NamedObjectCollection,
-    issequence,
+    issequenceof,
     float_cast,
     str_cast,
     typename,
@@ -164,18 +164,22 @@ class SourceModel(Model):
     """The base class for all source models in SkyLLH. A source can have a
     relative weight w.r.t. other sources.
     """
-    def __init__(self, classification=None, weight=None, **kwargs):
+    def __init__(self, name=None, classification=None, weight=None, **kwargs):
         """Creates a new source model instance.
 
         Parameters
         ----------
+        name : str | None
+            The name of the source model.
         classification : str | None
             The astronomical classification of the source.
         weight : float | None
             The relative weight of the source w.r.t. other sources.
             If set to None, unity will be used.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            name=name,
+            **kwargs)
 
         self.classification = classification
         self.weight = weight
