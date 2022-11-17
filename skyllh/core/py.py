@@ -605,12 +605,14 @@ class NamedObjectCollection(ObjectCollection):
             The type of the objects, which can be added to the collection.
             This type must have an attribute named ``name``.
         """
+        self._obj_name_to_idx = dict()
+
+        # The ObjectCollection class will call the add method to add individual
+        # objects. This will update the _obj_name_to_idx attribute.
         super().__init__(
             objs=objs,
             obj_type=obj_type,
             **kwargs)
-
-        self._obj_name_to_idx = self._create_obj_name_to_idx_dict()
 
     def _create_obj_name_to_idx_dict(self, start=None, end=None):
         """Creates the dictionary {obj.name: index} for object in the interval
