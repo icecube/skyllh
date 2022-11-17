@@ -91,7 +91,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
     def __init__(
             self,
-            src_hypo_group_manager,
+            shg_mgr,
             param_model_mapper,
             test_statistic,
             bkg_gen_method=None,
@@ -101,10 +101,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
-            efficiency implementation method.
+            yield implementation method.
         param_model_mapper : instance of ParameterModelMapper
             The ParameterModelMapper instance managing the global set of
             parameters and their relation to individual models, e.g. sources.
@@ -123,7 +123,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         # Call the super function to allow for multiple class inheritance.
         super(Analysis, self).__init__(**kwargs)
 
-        self.src_hypo_group_manager = src_hypo_group_manager
+        self.shg_mgr = shg_mgr
         self.param_model_mapper = param_model_mapper
         self.test_statistic = test_statistic
         self.bkg_gen_method = bkg_gen_method
@@ -142,19 +142,19 @@ class Analysis(object, metaclass=abc.ABCMeta):
         self._sig_generator = None
 
     @property
-    def src_hypo_group_manager(self):
+    def shg_mgr(self):
         """The SourceHypoGroupManager instance, which defines the groups of
         source hypothesis, their flux model, and their detector signal
-        efficiency implementation method.
+        yield implementation method.
         """
-        return self._src_hypo_group_manager
-    @src_hypo_group_manager.setter
-    def src_hypo_group_manager(self, manager):
+        return self._shg_mgr
+    @shg_mgr.setter
+    def shg_mgr(self, manager):
         if(not isinstance(manager, SourceHypoGroupManager)):
             raise TypeError(
-                'The src_hypo_group_manager property must be an instance of '
+                'The shg_mgr property must be an instance of '
                 'SourceHypoGroupManager!')
-        self._src_hypo_group_manager = manager
+        self._shg_mgr = manager
 
     @property
     def param_model_mapper(self):
@@ -390,7 +390,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         through the source hypothesis group.
         """
         self._sig_generator = self.sig_generator_cls(
-            src_hypo_group_manager=self._src_hypo_group_manager,
+            src_hypo_group_manager=self._shg_mgr,
             dataset_list=self._dataset_list,
             data_list=self._data_list)
 
@@ -430,15 +430,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        fitparamset : FitParameterSet instance
-            The instance of FitParameterSet holding the global fit parameter
-            definitions used in the maximization process.
         log_lambda_max : float
             The value of the log-likelihood ratio function at its maximum.
         fitparam_values : (N_fitparam,)-shaped 1D ndarray
-            The ndarray holding the global fit parameter values.
-            By definition, the first element is the value of the fit parameter
-            ns.
+            The ndarray holding the global floating parameter values.
         status : dict
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
@@ -1052,7 +1047,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
     """
     def __init__(
             self,
-            src_hypo_group_manager,
+            shg_mgr,
             param_model_mapper,
             test_statistic,
             bkg_gen_method=None,
@@ -1063,7 +1058,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
             efficiency implementation method.
@@ -1083,7 +1078,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             If set to None, the `SignalGenerator` class is used.
         """
         super().__init__(
-            src_hypo_group_manager=src_hypo_group_manager,
+            shg_mgr=shg_mgr,
             param_model_mapper=param_model_mapper,
             test_statistic=test_statistic,
             bkg_gen_method=bkg_gen_method,
@@ -1159,9 +1154,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # Since this is for a single source, we don't have to have individual
         # detector signal yield instances for each source as well.
         detsigyield_list = []
-        fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
+        fluxmodel = self._shg_mgr.get_fluxmodel_by_src_idx(0)
         detsigyield_implmethod_list = \
-            self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
+            self._shg_mgr.get_detsigyield_implmethod_list_by_src_idx(0)
         if((len(detsigyield_implmethod_list) != 1) and
            (len(detsigyield_implmethod_list) != self.n_datasets)):
             raise ValueError('The number of detector signal yield '
@@ -1186,8 +1181,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # For multiple datasets we need a dataset signal weights instance in
         # order to distribute ns over the different datasets.
         dataset_signal_weights = SingleSourceDatasetSignalWeights(
-            self._src_hypo_group_manager, self._param_model_mapper,
-            detsigyield_list)
+            shg_mgr=self._shg_mgr,
+            param_model_mapper=self._param_model_mapper,
+            detsigyields=detsigyield_list)
 
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
@@ -1197,8 +1193,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             pdfratio_list = self._pdfratio_list_list[j]
             llhratio = SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
                 minimizer,
-                self._src_hypo_group_manager,
-                self._src_fitparam_mapper,
+                self._shg_mgr,
+                self._param_model_mapper,
                 tdm,
                 pdfratio_list
             )
@@ -1229,77 +1225,29 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # Change the source in the SourceHypoGroupManager instance.
         # Because this is a single source analysis, there can only be one source
         # hypothesis group defined.
-        self._src_hypo_group_manager.src_hypo_group_list[0].source_list[0] = source
+        self._shg_mgr.src_hypo_group_list[0].source_list[0] = source
 
         # Change the source hypo group manager of the EventSelectionMethod
         # instance.
         for event_selection_method in self._event_selection_method_list:
             if(event_selection_method is not None):
                 event_selection_method.change_source_hypo_group_manager(
-                    self._src_hypo_group_manager)
+                    self._shg_mgr)
 
         # Change the source hypo group manager of the LLH ratio function
         # instance.
-        self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
+        self._llhratio.change_source_hypo_group_manager(self._shg_mgr)
 
         # Change the source hypo group manager of the background generator
         # instance.
         if(self._bkg_generator is not None):
             self._bkg_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
+                self._shg_mgr)
 
         # Change the source hypo group manager of the signal generator instance.
         if(self._sig_generator is not None):
             self._sig_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
-
-    def change_sources(self, sources):
-        """Changes the sources of the analysis to the given source list. It
-        makes the necessary changes to all the objects of the analysis.
-
-        Parameters
-        ----------
-        sources : list of SourceModel instances
-            The SourceModel instances describing new sources.
-        """
-        if(isinstance(sources, SourceModel)):
-            sources = [sources]
-        if(not issequenceof(sources, SourceModel)):
-            raise TypeError('The sources argument must be a list of instances '
-                            'of SourceModel')
-
-        if(self._llhratio is None):
-            raise RuntimeError(
-                'The LLH ratio function has to be constructed, '
-                'before the `change_source` method can be called!')
-
-        # Change the source in the SourceHypoGroupManager instance.
-        # Because this is a single type sources analysis, there can only be one
-        # source hypothesis group defined.
-        self._src_hypo_group_manager.src_hypo_group_list[0].source_list = sources
-
-        # Change the source hypo group manager of the EventSelectionMethod
-        # instance.
-        for event_selection_method in self._event_selection_method_list:
-            if(event_selection_method is not None):
-                event_selection_method.change_source_hypo_group_manager(
-                    self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the LLH ratio function
-        # instance.
-        self._llhratio.change_source_hypo_group_manager(
-            self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the background generator
-        # instance.
-        if(self._bkg_generator is not None):
-            self._bkg_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the signal generator instance.
-        if(self._sig_generator is not None):
-            self._sig_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
+                self._shg_mgr)
 
     def initialize_trial(self, events_list, n_events_list=None, tl=None):
         """This method initializes the multi-dataset log-likelihood ratio
@@ -1329,8 +1277,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
             # Initialize the trial data manager with the given raw events.
             self._tdm_list[idx].initialize_trial(
-                self._src_hypo_group_manager, events, n_events, evt_sel_method,
-                tl=tl)
+                self._shg_mgr, events, n_events, evt_sel_method, tl=tl)
 
         self._llhratio.initialize_for_new_trial(tl=tl)
 
@@ -1367,7 +1314,10 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             rss, self._fitparamset, tl=tl)
         return (self._fitparamset, log_lambda_max, fitparam_values, status)
 
-    def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
+    def calculate_fluxmodel_scaling_factor(
+            self,
+            mean_ns,
+            global_floating_param_values):
         """Calculates the factor the source's fluxmodel has to be scaled
         in order to obtain the given mean number of signal events in the
         detector.
@@ -1377,9 +1327,12 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         mean_ns : float
             The mean number of signal events in the detector for which the
             scaling factor is calculated.
-        fitparam_values : (N_fitparams,)-shaped 1D ndarray
-            The ndarray holding the fit parameter values that should be used for
-            the flux calculation.
+        global_floating_param_values : (N_global_floating_params,)-shaped 1D
+                ndarray
+            The ndarray holding the values of the global floating parameters,
+            that should be used for the flux calculation. The order of the
+            values must match the order the floating parameters were defined
+            in the parameter model mapper.
 
         Returns
         -------
@@ -1387,8 +1340,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The factor the given fluxmodel needs to be scaled in order to obtain
             the given mean number of signal events in the detector.
         """
-        fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(
-            fitparam_values)
+        fitparams_recarray =\
+            self._param_model_mapper.get_source_floating_params_recarray(
+                fitparam_values)
 
         # We use the DatasetSignalWeights class instance of this analysis to
         # calculate the detector signal yield for all datasets.
@@ -1400,7 +1354,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         detsigyields = dataset_signal_weights.detsigyield_arr[0]
         for detsigyield in detsigyields:
             (Yj, Yj_grads) = detsigyield(
-                dataset_signal_weights._src_arr_list[0], fitparams_arr)
+                dataset_signal_weights._src_arr_list[0], fitparams_recarray)
             mean_ns_ref += Yj[0]
 
         factor = mean_ns / mean_ns_ref
@@ -1424,22 +1378,25 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
            :meth:`maximize_llhratio` method.
     """
     def __init__(
-            self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns,
-            test_statistic, bkg_gen_method=None, sig_generator_cls=None):
+            self,
+            shg_mgr,
+            param_model_mapper,
+            test_statistic,
+            bkg_gen_method=None,
+            sig_generator_cls=None,
+            **kwargs):
         """Creates a new time-integrated point-like source analysis assuming
         multiple sources.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
             efficiency implementation method.
-        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
-            The instance of SingleSourceFitParameterMapper defining the global
-            fit parameters and their mapping to the source fit parameters.
-        fitparam_ns : FitParameter instance
-            The FitParameter instance defining the fit parameter ns.
+        param_model_mapper : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
@@ -1453,9 +1410,8 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             If set to None, the `SignalGenerator` class is used.
         """
         super().__init__(
-            src_hypo_group_manager=src_hypo_group_manager,
-            src_fitparam_mapper=src_fitparam_mapper,
-            fitparam_ns=fitparam_ns,
+            shg_mgr=shg_mgr,
+            param_model_mapper=param_model_mapper,
             test_statistic=test_statistic,
             bkg_gen_method=bkg_gen_method,
             sig_generator_cls=sig_generator_cls)
@@ -1482,16 +1438,16 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             log-likelihood-ratio function of the analysis.
         """
         # Create the detector signal yield instances for each dataset.
-        # Multi source analysis has to also support multiple source hypothesis
-        # groups.
+        # The multi source analysis needs to also support multiple source
+        # hypothesis groups.
         # Initialize empty (N_source_hypo_groups, N_datasets)-shaped ndarray.
         detsigyield_array = np.empty(
-            (self._src_hypo_group_manager.n_src_hypo_groups,
+            (self._shg_mgr.n_src_hypo_groups,
              len(self.dataset_list)),
             dtype=object
         )
 
-        for (g, shg) in enumerate(self._src_hypo_group_manager._src_hypo_group_list):
+        for (g, shg) in enumerate(self._shg_mgr._src_hypo_group_list):
             fluxmodel = shg.fluxmodel
             detsigyield_implmethod_list = shg.detsigyield_implmethod_list
 
@@ -1505,8 +1461,8 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
                                                       self.data_list)):
                 if(len(detsigyield_implmethod_list) == 1):
-                    # Only one detsigyield implementation method was defined, so we
-                    # use it for all datasets.
+                    # Only one detsigyield implementation method was defined,
+                    # so we use it for all datasets.
                     detsigyield_implmethod = detsigyield_implmethod_list[0]
                 else:
                     detsigyield_implmethod = detsigyield_implmethod_list[j]
@@ -1520,8 +1476,9 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
         # For multiple datasets we need a dataset signal weights instance in
         # order to distribute ns over the different datasets.
         dataset_signal_weights = MultiSourceDatasetSignalWeights(
-            self._src_hypo_group_manager, self._src_fitparam_mapper,
-            detsigyield_array)
+            shg_mgr=self._shg_mgr,
+            param_model_mapper=self._param_model_mapper,
+            detsigyields=detsigyield_array)
 
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
@@ -1531,8 +1488,8 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             pdfratio_list = self._pdfratio_list_list[j]
             llhratio = MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
                 minimizer,
-                self._src_hypo_group_manager,
-                self._src_fitparam_mapper,
+                self._shg_mgr,
+                self._param_model_mapper,
                 tdm,
                 pdfratio_list,
                 detsigyield_array[:, j]
@@ -1573,7 +1530,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
 
             # Initialize the trial data manager with the given raw events.
             self._tdm_list[idx].initialize_trial(
-                self._src_hypo_group_manager, events, n_events, evt_sel_method,
+                self._shg_mgr, events, n_events, evt_sel_method,
                 store_src_ev_idxs=True, tl=tl)
 
         self._llhratio.initialize_for_new_trial(tl=tl)
