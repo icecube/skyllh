@@ -13,9 +13,14 @@ from skyllh.core.py import (
     classname,
     float_cast,
     issequence,
+    issequenceof,
     str_cast,
 )
-from skyllh.core.model import Model
+from skyllh.core.model import (
+    Model,
+    ModelCollection,
+    SourceModel,
+)
 
 
 # NOTE: This class should live somewhere close to the source stacking code.
@@ -65,116 +70,94 @@ class SourceWeights(object):
         self._src_w_W = v
 
 
-class SourceModel(Model):
-    """The base class for all source models in SkyLLH. A source can have a
-    relative weight w.r.t. other sources.
-    """
-    def __init__(self, classification=None, weight=None, *args, **kwargs):
-        """Creates a new source model instance.
-
-        Parameters
-        ----------
-        classification : str | None
-            The astronomical classification of the source.
-        weight : float | None
-            The relative weight of the source w.r.t. other sources.
-            If set to None, unity will be used.
-        """
-        super().__init__(*args, **kwargs)
-
-        self.classification = classification
-        self.weight = weight
-
-    @property
-    def classification(self):
-        """The astronomical classification of the source.
-        """
-        return self._classification
-    @classification.setter
-    def classification(self, c):
-        self._classification = str_cast(
-            c,
-            'The classification property must be castable to type str!',
-            allow_None=True)
-
-    @property
-    def weight(self):
-        """The weight of the source. This can be None,
-        """
-        return self._weight
-    @weight.setter
-    def weight(self, w):
-        if w is None:
-            w = 1.
-        w = float_cast(
-            w, 'The weight property must be castable to type float!')
-        self._weight = w
-
-
-class SourceCollection(ObjectCollection):
+class SourceCollection(ModelCollection):
     """This class describes a collection of sources. It can be used to group
     sources into a single object, for instance for a stacking analysis.
     """
     @staticmethod
-    def cast(obj, errmsg):
+    def cast(obj, errmsg=None, **kwargs):
         """Casts the given object to a SourceCollection object. If the cast
         fails, a TypeError with the given error message is raised.
 
         Parameters
         ----------
-        obj : SourceModel | sequence of SourceModel | SourceCollection
+        obj : SourceModel | sequence of SourceModel | SourceCollection | None
             The object that should be casted to SourceCollection.
-        errmsg : str
+            If set to None, an empty SourceCollection is created.
+        errmsg : str | None
             The error message if the cast fails.
+            If set to None, a generic error message will be used.
+
+        Additional keyword arguments
+        ----------------------------
+        Additional keyword arguments are passed to the constructor of the
+        SourceCollection class.
 
         Raises
         ------
         TypeError
-            If the cast fails.
+            If the cast failed.
         """
-        if(isinstance(obj, SourceModel)):
-            obj = SourceCollection(SourceModel, [obj])
-        if(not isinstance(obj, SourceCollection)):
-            if(issequence(obj)):
-                obj = SourceCollection(SourceModel, obj)
-            else:
-                raise TypeError(errmsg)
-        return obj
+        if obj is None:
+            return SourceCollection(
+                sources=None, source_type=SourceModel, **kwargs)
 
-    def __init__(self, sources=None, source_type=None):
+        if isinstance(obj, SourceModel):
+            return SourceCollection(
+                sources=[obj], source_type=SourceModel, **kwargs)
+
+        if isinstance(obj, SourceCollection):
+            return obj
+
+        if issequenceof(obj, SourceModel):
+            return SourceCollection(
+                sources=obj, source_type=SourceModel, **kwargs)
+
+        if errmsg is None:
+            errmsg = (f'Cast of object "{str(obj)}" of type '
+                      f'"{typename(obj)}" to SourceCollection failed!')
+        raise TypeError(errmsg)
+
+
+    def __init__(self, sources=None, source_type=None, **kwargs):
         """Creates a new source collection.
 
         Parameters
         ----------
         sources : sequence of source_type instances | None
             The sequence of sources this collection should be initalized with.
+            If set to None, an empty SourceCollection is created.
         source_type : type | None
-            The type of the source. If set to None (default), SourceModel will
-            be used.
+            The type of the source.
+            If set to None (default), SourceModel will be used.
         """
         if(source_type is None):
             source_type = SourceModel
-        super(SourceCollection, self).__init__(sources, obj_type=source_type)
+
+        super().__init__(
+            models=sources,
+            model_type=source_type,
+            **kwargs)
 
     @property
     def source_type(self):
         """(read-only) The type of the source model.
         This property is an alias for the `obj_type` property.
         """
-        return self.obj_type
+        return self.model_type
 
     @property
     def sources(self):
         """(read-only) The list of sources of type ``source_type``.
         """
-        return self.objects
+        return self.models
 
 
 class SourceCatalog(SourceCollection):
     """This class describes a catalog of sources. It is derived from
     SourceCollection. A catalog has a name.
     """
-    def __init__(self, name, sources=None, source_type=None):
+    def __init__(self, name, sources=None, source_type=None, **kwargs):
         """Creates a new source catalog.
 
         Parameters
@@ -187,7 +170,10 @@ class SourceCatalog(SourceCollection):
             The type of the source class. If set to None (default), the
             default type defined by SourceCollection will be used.
         """
-        super().__init__(source_type=source_type, sources=sources)
+        super().__init__(
+            sources=sources,
+            source_type=source_type,
+            **kwargs)
 
         self.name = name
 
@@ -198,8 +184,9 @@ class SourceCatalog(SourceCollection):
         return self._name
     @name.setter
     def name(self, name):
-        if(not isinstance(name, str)):
-            raise TypeError('The name property must be of type str!')
+        name = str_cast(
+            name,
+            'The name property must be castable to type str!')
         self._name = name
 
     def __str__(self):
@@ -209,10 +196,9 @@ class SourceCatalog(SourceCollection):
     def as_SourceCollection(self):
         """Creates a SourceCollection object for this catalog and returns it.
         """
-        source_collection = SourceCollection(
-            source_type=self.source_type,
-            sources=self.sources)
-        return source_collection
+        return SourceCollection(
+            sources=self.sources,
+            source_type=self.source_type)
 
 
 class IsPointlike(object):
