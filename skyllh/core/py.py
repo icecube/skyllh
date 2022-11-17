@@ -592,24 +592,44 @@ class NamedObjectCollection(ObjectCollection):
     via the object name is efficient because the index of each object is
     tracked w.r.t. its name.
     """
-    def __init__(self, objs=None, obj_type=None):
+    def __init__(self, objs=None, obj_type=None, **kwargs):
         """Creates a new NamedObjectCollection instance. Must be called by the
         derived class.
 
         Parameters
         ----------
         objs : instance of obj_type | sequence of instances of obj_type | None
-            The sequence of objects of type ``obj_type`` with which this collection
-            should get initialized with.
+            The sequence of objects of type ``obj_type`` with which this
+            collection should get initialized with.
         obj_type : type
             The type of the objects, which can be added to the collection.
             This type must have an attribute named ``name``.
         """
-        self._obj_name_to_idx = dict()
-
-        super(NamedObjectCollection, self).__init__(
+        super().__init__(
             objs=objs,
-            obj_type=obj_type)
+            obj_type=obj_type,
+            **kwargs)
+
+        self._obj_name_to_idx = self._create_obj_name_to_idx_dict()
+
+    def _create_obj_name_to_idx_dict(self, start=None, end=None):
+        """Creates the dictionary {obj.name: index} for object in the interval
+        [`start`, `end`).
+
+        Parameters
+        ----------
+        start : int | None
+            The object start index position, which is inclusive.
+        end : int | None
+            The object end index position, which is exclusive.
+
+        Returns
+        -------
+        obj_name_to_idx : dict
+            The dictionary {obj.name: index}.
+        """
+        return dict([
+            (o.name, idx) for (idx, o) in enumerate(self._objects[start:end])])
 
     def __getitem__(self, key):
         """Returns an object based on its name or index.
@@ -631,8 +651,8 @@ class NamedObjectCollection(ObjectCollection):
             If the given object is not found within this object collection.
         """
         if(isinstance(key, str)):
-            key = self.index_by_name(key)
-        return super(NamedObjectCollection, self).__getitem__(key)
+            key = self.get_index_by_name(key)
+        return super().__getitem__(key)
 
     def add(self, obj):
         """Adds the given object to this named object collection.
@@ -652,20 +672,17 @@ class NamedObjectCollection(ObjectCollection):
             The instance of this NamedObjectCollection, in order to be able to
             chain several ``add`` calls.
         """
-        super(NamedObjectCollection, self).add(obj)
+        n_objs = len(self)
 
-        if(isinstance(obj, NamedObjectCollection)):
-            # Several objects have been added, so we recreate the name to index
-            # dictionary.
-            self._obj_name_to_idx = dict([
-                (o.name,idx) for (idx,o) in enumerate(self._objects) ])
-        else:
-            # Only a single object was added at the end.
-            self._obj_name_to_idx[obj.name] = len(self) - 1
+        super().add(obj)
+
+        self._obj_name_to_idx.update(
+            self._create_obj_name_to_idx_dict(n_objs))
 
         return self
+    __iadd__ = add
 
-    def index_by_name(self, name):
+    def get_index_by_name(self, name):
         """Gets the index of the object with the given name within this named
         object collection.
 
@@ -699,12 +716,11 @@ class NamedObjectCollection(ObjectCollection):
         """
         if(isinstance(index, str)):
             # Get the index of the object given its name.
-            index = self.index_by_name(index)
+            index = self.get_index_by_name(index)
 
-        obj = super(NamedObjectCollection, self).pop(index)
+        obj = super().pop(index)
 
         # Recreate the object name to index dictionary.
-        self._obj_name_to_idx = dict([
-            (o.name,idx) for (idx,o) in enumerate(self._objects) ])
+        self._obj_name_to_idx = self._create_obj_name_to_idx_dict()
 
         return obj
