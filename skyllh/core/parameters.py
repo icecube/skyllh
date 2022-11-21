@@ -626,6 +626,31 @@ class ParameterSet(object):
         """
         return self._floating_param_name_to_idx[param_name]
 
+    def generate_random_floating_param_initials(self, rss):
+        """Generates a set of random initials for all floating parameters.
+        A new random initial is defined as
+
+            lower_bound + RAND * (upper_bound - lower_bound),
+
+        where RAND is a uniform random variable between 0 and 1.
+
+        Parameters
+        ----------
+        rss : RandomStateService instance
+            The RandomStateService instance that should be used for drawing
+            random numbers from.
+
+        Returns
+        -------
+        ri : (N_floating_params,)-shaped numpy ndarray
+            The numpy 1D ndarray holding the generated random initial values.
+        """
+        vb = self.floating_param_bounds
+        # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound).
+        ri = vb[:,0] + rss.random.uniform(size=vb.shape[0])*(vb[:,1] - vb[:,0])
+
+        return ri
+
     def has_fixed_param(self, param_name):
         """Checks if this ParameterSet instance has a fixed parameter named
         ``param_name``.
@@ -1041,7 +1066,7 @@ class ParameterSetArray(object):
 
         return s
 
-    def generate_random_initials(self, rss):
+    def generate_random_floating_param_initials(self, rss):
         """Generates a set of random initials for all global floating
         parameters.
         A new random initial is defined as
