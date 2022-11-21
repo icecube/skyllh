@@ -6,9 +6,8 @@ import abc
 import logging
 import numpy as np
 import scipy.optimize
-from typing import Optional, Dict, Any, List
 
-from skyllh.core.parameters import FitParameterSet
+from skyllh.core.parameters import ParameterSet
 from skyllh.core.py import classname
 
 
@@ -177,7 +176,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
 
         method_supports_bounds = False
 
-        constraints: Optional[List[Dict[str, Any]]]
+        # constraints: List[Dict[str, Any]]
         constraints = None
 
         # Check if method allows for bounds
@@ -808,8 +807,9 @@ class Minimizer(object):
     @minimizer_impl.setter
     def minimizer_impl(self, impl):
         if(not isinstance(impl, MinimizerImpl)):
-            raise TypeError('The minimizer_impl property must be an instance '
-                            'of MinimizerImpl!')
+            raise TypeError(
+                'The minimizer_impl property must be an instance of '
+                'MinimizerImpl!')
         self._minimizer_impl = impl
 
     @property
@@ -823,11 +823,11 @@ class Minimizer(object):
     @max_repetitions.setter
     def max_repetitions(self, n):
         if(not isinstance(n, int)):
-            raise TypeError('The maximal repetitions property must be of type '
-                            'int!')
+            raise TypeError(
+                'The maximal repetitions property must be of type int!')
         self._max_repetitions = n
 
-    def minimize(self, rss, fitparamset, func, args=None, kwargs=None):
+    def minimize(self, rss, paramset, func, args=None, kwargs=None):
         """Minimizes the the given function ``func`` by calling the ``minimize``
         method of the minimizer implementation.
 
@@ -841,8 +841,8 @@ class Minimizer(object):
         ----------
         rss : RandomStateService instance
             The RandomStateService instance to draw random numbers from.
-        fitparamset : instance of FitParameterSet
-            The set of FitParameter instances defining fit parameters of the
+        paramset : instance of ParameterSet
+            The ParameterSet instances holding the floating parameters of the
             function ``func``.
         func : callable ``f(x, *args)``
             The function to be minimized. It must have the call signature
@@ -867,16 +867,16 @@ class Minimizer(object):
             The status dictionary with information about the minimization
             process.
         """
-        if(not isinstance(fitparamset, FitParameterSet)):
-            raise TypeError('The fitparamset argument must be an instance of '
-                            'FitParameterSet!')
+        if not isinstance(paramset, ParameterSet):
+            raise TypeError(
+                'The paramset argument must be an instance of ParameterSet!')
 
         if(kwargs is None):
             kwargs = dict()
 
-        bounds = fitparamset.bounds
-        initials = fitparamset.initials
-        logger.debug('Do function minimization: initials: {}'.format(initials))
+        bounds = paramset.floating_param_bounds
+        initials = paramset.floating_param_initials
+        logger.debug(f'Doing function minimization: initials: {initials}.')
 
         (xmin, fmin, status) = self._minimizer_impl.minimize(
             initials, bounds, func, args, **kwargs)
@@ -892,7 +892,8 @@ class Minimizer(object):
 
             # Create a new set of random parameter initials based on the
             # parameter bounds.
-            initials = fitparamset.generate_random_initials(rss)
+            initials = paramset.generate_random_floating_param_initials(
+                rss=rss)
 
             logger.debug(
                 'Previous rep ({}) status={}, new initials={}'.format(
