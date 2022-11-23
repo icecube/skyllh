@@ -1738,7 +1738,7 @@ class ParameterModelMapper(object):
 
         return model_param_dict
 
-    def get_source_floating_params_recarray(self, gflp_values):
+    def get_source_floating_params_recarray(self, gflp_values, sources=None):
         """Creates a numpy record ndarray holding the floating parameter names
         as key and their value for each source model. The returned record array
         is (N_sources,)-shaped.
@@ -1747,6 +1747,9 @@ class ParameterModelMapper(object):
         ----------
         gflp_values : 1D ndarray
             The array holding the current global fit parameter values.
+        sources : sequence of SourceModel instances | None
+            If not None, specifies the list of sources that should be
+            considered. Sources not part of this list will be ignored.
 
         Returns
         -------
@@ -1766,16 +1769,27 @@ class ParameterModelMapper(object):
                 f'{len(gflp_values)}, but must be of length '
                 f'{n_global_floating_params}!')
 
+        # Get the model indices of all the source models.
+        midxs = np.arange(self.n_models)[self._source_model_mask]
+
+        # Select only the source models of interest.
+        if sources is not None:
+            source_selection_mask = np.zeros((self.n_sources,), dtype=bool)
+            for midx in midxs:
+                src = self._models[midx]
+                if src in sources:
+                    source_selection_mask[midx] = True
+            midxs = midxs[source_selection_mask]
+
         # Create the output array with nan as default value.
         arr = np.full(
-            (self.n_sources,),
+            (len(midxs),),
             np.nan,
             dtype=[
                 (name, np.float)
                     for name in self.unique_source_param_names
             ])
 
-        midxs = np.arange(self.n_models)[self._source_model_mask]
         for (sidx, midx) in enumerate(midxs):
             # Get the model parameter mask that selects the global parameters
             # for the requested model.
