@@ -1690,14 +1690,13 @@ class ParameterModelMapper(object):
 
         return self
 
-    def get_model_param_dict(
-            self, global_floating_param_values, midx=0):
+    def get_model_param_dict(self, gflp_values, midx=0):
         """Creates a dictionary with the fixed and floating parameter names and
         their values for the given model.
 
         Parameters
         ----------
-        global_floating_param_values : 1D ndarray of float
+        gflp_values : 1D ndarray of float
             The ndarray instance holding the current values of the global
             floating parameters.
         midx : int
@@ -1710,8 +1709,7 @@ class ParameterModelMapper(object):
             The dictionary holding the fixed and floating parameter names and
             values of the specified model.
         """
-        global_floating_param_values = np.atleast_1d(
-            global_floating_param_values)
+        gflp_values = np.atleast_1d(gflp_values)
 
         # Get the model parameter mask that masks the global parameters for
         # the requested model.
@@ -1729,7 +1727,7 @@ class ParameterModelMapper(object):
         # Create the array of parameter values that belong to the requested
         # model, where floating parameters are before the fixed parameters.
         model_param_values = np.concatenate((
-            global_floating_param_values[
+            gflp_values[
                 mask[self._global_paramset.floating_params_mask]],
             self._global_paramset.fixed_param_values[
                 mask[self._global_paramset.fixed_params_mask]]
@@ -1740,14 +1738,14 @@ class ParameterModelMapper(object):
 
         return model_param_dict
 
-    def get_source_floating_params_recarray(self, global_floating_param_values):
+    def get_source_floating_params_recarray(self, gflp_values):
         """Creates a numpy record ndarray holding the floating parameter names
         as key and their value for each source model. The returned record array
         is (N_sources,)-shaped.
 
         Parameters
         ----------
-        global_floating_param_values : 1D ndarray
+        gflp_values : 1D ndarray
             The array holding the current global fit parameter values.
 
         Returns
@@ -1762,10 +1760,10 @@ class ParameterModelMapper(object):
         if n_global_floating_params == 0:
             return None
 
-        if len(global_floating_param_values) != n_global_floating_params:
+        if len(gflp_values) != n_global_floating_params:
             raise ValueError(
-                f'The global_floating_param_values argument is of length '
-                f'{len(global_floating_param_values)}, but must be of length '
+                f'The gflp_values argument is of length '
+                f'{len(gflp_values)}, but must be of length '
                 f'{n_global_floating_params}!')
 
         # Create the output array with nan as default value.
@@ -1789,7 +1787,7 @@ class ParameterModelMapper(object):
                 midx,
                 self._global_paramset.floating_params_mask & mask
             ]
-            model_param_values = global_floating_param_values[
+            model_param_values = gflp_values[
                 mask[self._global_paramset.floating_params_mask]]
 
             # Fill the fit params array.
