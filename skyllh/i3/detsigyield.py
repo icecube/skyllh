@@ -456,6 +456,11 @@ class SingleFloatingParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         if len(src_param) == len(src_dec):
             src_param = src_param[mask]
         else:
+            if len(src_param) != 1:
+                raise RuntimeError(
+                    f'The length of the source flux parameter array '
+                    f'({len(src_param)}) does not match the number of sources '
+                    f'({len(src_dec)}) and is not of length 1!')
             src_param = src_param[0]
 
         values[mask] = np.exp(self._log_spl_sinDec_param(
