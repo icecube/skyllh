@@ -593,16 +593,22 @@ Using $\mathcal{R}_i(\ps)$ from equation (\ref{eq:RiStacking}) it simplifies to
 \end{equation}
 with the derivative of equation (\ref{eq:SumOfSourceWeightCoefficients}) given by
 \begin{equation}
- \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} = \sum_{k=1}^{K} \frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}}.
+ \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} = \sum_{k=1}^{K} \frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}},
 \end{equation}
+with
+\begin{equation}
+\frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}} = W_k \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{k}}(\psk)}{\mathrm{d}{p_s}_k},
+\end{equation}
+where the local source parameter $p_{\mathrm{s}_{k}}$ maps to the correct global
+parameter $p_{\mathrm{s}}$.
 
-In case one would fit each source individually with its own set of signal fit
+In case one would fit each source individually with its own set of source fit
 parameters, $\psk$, $\ps$ would be a set of $K$ sets
 of source fit parameters $\psk$, and a derivative for each
-individual source fit parameter $\ps$ would have to be calculated.
+global fit parameter $\ps$ would have to be calculated.
 The expression for such a derivative would be equivalent to equation
 (\ref{eq:gradRi}), but only the summand for the source, which depend on the
-particular fit parameter, would contribute.
+particular global fit parameter, would contribute.
 
 
 \subsection{Multiple Datasets}
