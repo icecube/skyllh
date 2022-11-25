@@ -5,13 +5,11 @@ import itertools
 import numpy as np
 from copy import deepcopy
 
-from skyllh.physics.source import (
-    SourceCollection,
-)
 from skyllh.core import display
 from skyllh.core.model import (
     ModelCollection,
     SourceModel,
+    SourceModelCollection,
 )
 from skyllh.core.py import (
     NamedObjectCollection,
@@ -22,6 +20,7 @@ from skyllh.core.py import (
     get_number_of_float_decimals,
     issequence,
     issequenceof,
+    make_dict_hash,
     str_cast,
 )
 from skyllh.core.random import (
@@ -52,33 +51,6 @@ def make_linear_parameter_grid_1d(name, low, high, delta):
     """
     grid = np.arange(low, high+delta, delta)
     return ParameterGrid(name, grid, delta)
-
-def make_params_hash(params):
-    """Utility function to create a hash value for a given parameter dictionary.
-
-    Parameters
-    ----------
-    params : dict | None
-        The dictionary holding the parameter (name: value) pairs.
-        If set to None, an empty dictionary is used.
-
-    Returns
-    -------
-    hash : int
-        The hash of the parameter dictionary.
-    """
-    if(params is None):
-        params = {}
-
-    if(not isinstance(params, dict)):
-        raise TypeError('The params argument must be of type dict!')
-
-    # A note on the ordering of Python dictionary items: The items are ordered
-    # internally according to the hash value of their keys. Hence, if we don't
-    # insert more dictionary items, the order of the items won't change. Thus,
-    # we can just take the items list and make a tuple to create a hash of it.
-    # The hash will be the same for two dictionaries having the same items.
-    return hash(tuple(params.items()))
 
 
 class Parameter(object):
@@ -2270,12 +2242,15 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
 
     @property
     def sources(self):
-        """The SourceCollection defining the sources.
+        """The SourceModelCollection defining the sources.
         """
         return self._sources
     @sources.setter
     def sources(self, obj):
-        obj = SourceCollection.cast(obj, 'The sources property must be castable to an instance of SourceCollection!')
+        obj = SourceModelCollection.cast(
+            obj,
+            'The sources property must be castable to an instance of '
+            'SourceModelCollection!')
         self._sources = obj
 
     @property
@@ -2297,9 +2272,9 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
             The name of the source parameter. It must match the name of a source
             model property. If set to None (default) the name of the fit
             parameter will be used.
-        sources : SourceCollection | None
-            The instance of SourceCollection with the sources for which the fit
-            parameter applies. If None (the default) is specified, the fit
+        sources : SourceModelCollection | None
+            The instance of SourceModelCollection with the sources for which the
+            fit parameter applies. If None (the default) is specified, the fit
             parameter will apply to all sources.
         """
         self._fitparamset.add_fitparam(fitparam)
@@ -2311,8 +2286,10 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
 
         if(sources is None):
             sources = self.sources
-        sources = SourceCollection.cast(sources,
-            'The sources argument must be castable to an instance of SourceCollection!')
+        sources = SourceModelCollection.cast(
+            sources,
+            'The sources argument must be castable to an instance of '
+            'SourceModelCollection!')
 
         # Append the source parameter name to the internal array and keep track
         # of the unique names.
