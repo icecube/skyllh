@@ -11,6 +11,27 @@ class Livetime(object):
     """The ``Livetime`` class defines an interface to query the up-time of the
     detector.
     """
+
+    @staticmethod
+    def get_integrated_livetime(livetime):
+        """Gets the integrated live-time from the given livetime argument, which
+        is either a scalar value or an instance of Livetime.
+
+        Parameters
+        ----------
+        livetime : float | Livetime instance
+            The live-time in days as float, or an instance of Livetime.
+
+        Returns
+        -------
+        intgrated_livetime : float
+            The integrated live-time.
+        """
+        intgrated_livetime = livetime
+        if isinstance(livetime, Livetime):
+            intgrated_livetime = livetime.livetime
+        return intgrated_livetime
+
     def __init__(self, uptime_mjd_intervals_arr):
         """Creates a new Livetime object from a (N,2)-shaped ndarray holding
         the uptime intervals.
