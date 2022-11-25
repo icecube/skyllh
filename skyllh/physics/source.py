@@ -25,7 +25,8 @@ from skyllh.core.model import (
 
 # NOTE: This class should live somewhere close to the source stacking code.
 class SourceWeights(object):
-    """This is a helper class for the source stacking algorithm.
+    """This class is DEPRECATED!
+    This is a helper class for the source stacking algorithm.
     It stores the relative weights of a source, i.e. weights and gradients.
     There are two weights that should be included. One is the detector weight,
     which is declination dependent, and the other is a hypothesis weight, and
@@ -275,11 +276,11 @@ class IsPointlike(object):
         self._set_dec_func(self._dec_func_instance, v)
 
 
-class PointLikeSource(IsPointlike, SourceModel):
+class PointLikeSource(SourceModel, IsPointlike):
     """The PointLikeSource class is a source model for a point-like source
     object in the sky at a given location (right-ascention and declination).
     """
-    def __init__(self, ra, dec, name=None, weight=None, *args, **kwargs):
+    def __init__(self, ra, dec, name=None, weight=None, **kwargs):
         """Creates a new PointLikeSource instance for defining a point-like
         source.
 
@@ -304,7 +305,6 @@ class PointLikeSource(IsPointlike, SourceModel):
             dec_func_instance=self,
             get_dec_func=type(self)._get_dec,
             set_dec_func=type(self)._set_dec,
-            *args,
             **kwargs,
         )
 
