@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Martin Wolf <mail@martin-wolf.org>
+# Author: Dr. Martin Wolf <mail@martin-wolf.org>
 
 """This module defines the base class for any model class used in SkyLLH.
 """
@@ -209,3 +209,87 @@ class SourceModel(Model):
             w,
             'The weight property must be castable to type float!')
         self._weight = w
+
+
+class SourceModelCollection(ModelCollection):
+    """This class describes a collection of source models. It can be used to
+    group sources into a single object, for instance for a stacking analysis.
+    """
+    @staticmethod
+    def cast(obj, errmsg=None, **kwargs):
+        """Casts the given object to a SourceModelCollection object. If the cast
+        fails, a TypeError with the given error message is raised.
+
+        Parameters
+        ----------
+        obj : SourceModel | sequence of SourceModel | SourceModelCollection |
+                None
+            The object that should be casted to SourceModelCollection.
+            If set to None, an empty SourceModelCollection is created.
+        errmsg : str | None
+            The error message if the cast fails.
+            If set to None, a generic error message will be used.
+
+        Additional keyword arguments
+        ----------------------------
+        Additional keyword arguments are passed to the constructor of the
+        SourceModelCollection class.
+
+        Raises
+        ------
+        TypeError
+            If the cast failed.
+        """
+        if obj is None:
+            return SourceModelCollection(
+                sources=None, source_type=SourceModel, **kwargs)
+
+        if isinstance(obj, SourceModel):
+            return SourceModelCollection(
+                sources=[obj], source_type=SourceModel, **kwargs)
+
+        if isinstance(obj, SourceModelCollection):
+            return obj
+
+        if issequenceof(obj, SourceModel):
+            return SourceModelCollection(
+                sources=obj, source_type=SourceModel, **kwargs)
+
+        if errmsg is None:
+            errmsg = (f'Cast of object "{str(obj)}" of type '
+                      f'"{typename(obj)}" to SourceModelCollection failed!')
+        raise TypeError(errmsg)
+
+
+    def __init__(self, sources=None, source_type=None, **kwargs):
+        """Creates a new source collection.
+
+        Parameters
+        ----------
+        sources : sequence of source_type instances | None
+            The sequence of sources this collection should be initalized with.
+            If set to None, an empty SourceModelCollection instance is created.
+        source_type : type | None
+            The type of the source.
+            If set to None (default), SourceModel will be used.
+        """
+        if(source_type is None):
+            source_type = SourceModel
+
+        super().__init__(
+            models=sources,
+            model_type=source_type,
+            **kwargs)
+
+    @property
+    def source_type(self):
+        """(read-only) The type of the source model.
+        This property is an alias for the `obj_type` property.
+        """
+        return self.model_type
+
+    @property
+    def sources(self):
+        """(read-only) The list of sources of type ``source_type``.
+        """
+        return self.models
