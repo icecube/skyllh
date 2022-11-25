@@ -31,9 +31,7 @@ from skyllh.core.minimizer import (
     NRNsScan2dMinimizerImpl
 )
 from skyllh.core.parameters import (
-    SourceFitParameterMapper,
-    SingleSourceFitParameterMapper,
-    MultiSourceFitParameterMapper
+    ParameterModelMapper,
 )
 from skyllh.core.pdfratio import (
     PDFRatio,
@@ -50,18 +48,40 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
     """Abstract base class for a log-likelihood (LLH) ratio function.
     """
 
-    def __init__(self, minimizer):
+    def __init__(
+            self,
+            param_model_mapper,
+            minimizer,
+            **kwargs):
         """Creates a new LLH ratio function instance.
 
         Parameters
         ----------
+        param_model_mapper : ParameterModelMapper instance
+            The instance of ParameterModelMapper providing the mapping of
+            global floating parameters to individual models.
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of this log-likelihood ratio function.
         """
-        super(LLHRatio, self).__init__()
+        super().__init__(**kwargs)
 
+        self.param_model_mapper = param_model_mapper
         self.minimizer = minimizer
+
+    @property
+    def param_model_mapper(self):
+        """The ParameterModelMapper instance providing the mapping of
+        global floating parameters to individual models.
+        """
+        return self._param_model_mapper
+    @param_model_mapper.setter
+    def param_model_mapper(self, mapper):
+        if not isinstance(mapper, ParameterModelMapper):
+            raise TypeError(
+                'The param_model_mapper property must be an instance of '
+                'ParameterModelMapper!')
+        self._param_model_mapper = mapper
 
     @property
     def minimizer(self):
@@ -72,8 +92,8 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
     @minimizer.setter
     def minimizer(self, minimizer):
         if(not isinstance(minimizer, Minimizer)):
-            raise TypeError('The minimizer property must be an instance '
-                'of Minimizer!')
+            raise TypeError(
+                'The minimizer property must be an instance of Minimizer!')
         self._minimizer = minimizer
 
     def initialize_for_new_trial(self, tl=None):
@@ -89,14 +109,14 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def evaluate(self, fitparam_values, tl=None):
+    def evaluate(self, gflp_values, tl=None):
         """This method evaluates the LLH ratio function for the given set of
         fit parameter values.
 
         Parameters
         ----------
-        fitparam_values : numpy 1D ndarray
-            The ndarray holding the current values of the (global) fit
+        gflp_values : numpy 1D ndarray
+            The ndarray holding the current values of the global floating
             parameters.
         tl : TimeLord | None
             The optional TimeLord instance to use for measuring timeing.
@@ -106,12 +126,12 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
         log_lambda : float
             The calculated log-lambda value.
         grads : (N_fitparams,)-shaped 1D ndarray
-            The ndarray holding the gradient value for each (global) fit
+            The ndarray holding the gradient value for each global floating
             parameter.
         """
         pass
 
-    def maximize(self, rss, fitparamset, tl=None):
+    def maximize(self, rss, tl=None):
         """Maximize the log-likelihood ratio function, by using the ``evaluate``
         method.
 
@@ -120,9 +140,6 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
         rss : RandomStateService instance
             The RandomStateService instance to draw random numbers from.
             This is needed to generate random parameter initial values.
-        fitparamset : FitParameterSet instance
-            The instance of FitParameterSet holding the global fit parameter
-            definitions used in the maximization process.
         tl : TimeLord instance | None
             The optional TimeLord instance that should be used to time the
             maximization process.
@@ -132,8 +149,8 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
         log_lambda_max : float
             The (maximum) value of the log-likelihood ratio (log_lambda)
             function for the best fit parameter values.
-        fitparam_values : (N_fitparam)-shaped 1D ndarray
-            The ndarray holding the global fit parameter values.
+        gflp_values : (N_fitparam)-shaped 1D ndarray
+            The ndarray holding the values of the global floating parameters.
         status : dict
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
@@ -142,30 +159,32 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
 
         # Define the negative llhratio function, that will get minimized.
         self_evaluate = self.evaluate
-        def negative_llhratio_func(fitparam_values, func_stats, tl=None):
+        def negative_llhratio_func(gfp_values, func_stats, tl=None):
             func_stats['n_calls'] += 1
             with TaskTimer(tl, 'Evaluate llh-ratio function.'):
-                (f, grads) = self_evaluate(fitparam_values, tl=tl)
-                if(tracing): logger.debug(
-                    'LLH-ratio func value f={:g}, grads={}'.format(
-                        f, str(grads)))
+                (f, grads) = self_evaluate(gfp_values, tl=tl)
+                if tracing: logger.debug(
+                    f'LLH-ratio func value f={f:g}, grads={str(grads)}')
             return (-f, -grads)
 
         minimize_kwargs = {'func_provides_grads': True}
 
         func_stats = {'n_calls': 0}
         with TaskTimer(tl, 'Minimize -llhratio function.'):
-            (fitparam_values, fmin, status) = self._minimizer.minimize(
-                rss, fitparamset, negative_llhratio_func, args=(func_stats,tl),
+            (gflp_values, fmin, status) = self._minimizer.minimize(
+                rss=rss,
+                paramset=self._param_model_mapper.global_paramset,
+                func=negative_llhratio_func,
+                args=(func_stats,tl),
                 kwargs=minimize_kwargs)
         log_lambda_max = -fmin
         status['n_llhratio_func_calls'] = func_stats['n_calls']
 
         logger.debug(
-            'Maximized LLH ratio function with {:d} calls'.format(
-                status['n_llhratio_func_calls']))
+            f'Maximized LLH ratio function with '
+            f'{status['n_llhratio_func_calls']:d} calls')
 
-        return (log_lambda_max, fitparam_values, status)
+        return (log_lambda_max, gflp_values, status)
 
 
 class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
@@ -173,15 +192,29 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
     components, i.e. signal and background.
     """
 
-    def __init__(self, minimizer, mean_n_sig_0):
+    def __init__(
+            self,
+            param_model_mapper,
+            minimizer,
+            mean_n_sig_0,
+            **kwargs):
         """Creates a new two-component LLH ratio function instance.
 
         Parameters
         ----------
+        param_model_mapper : ParameterModelMapper instance
+            The instance of ParameterModelMapper providing the mapping of
+            global floating parameters to individual models.
+        minimizer : instance of Minimizer
+            The Minimizer instance that should be used to minimize the negative
+            of this log-likelihood ratio function.
         mean_n_sig_0 : float
             The fixed mean number of signal events for the null-hypothesis.
         """
-        super(TCLLHRatio, self).__init__(minimizer)
+        super().__init__(
+            param_model_mapper=param_model_mapper,
+            minimizer=minimizer,
+            **kwargs)
 
         self.mean_n_sig_0 = mean_n_sig_0
 
@@ -193,22 +226,24 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
         return self._mean_n_sig_0
     @mean_n_sig_0.setter
     def mean_n_sig_0(self, v):
-        v = float_cast(v, 'The mean_n_sig_0 property must be castable to a '
-            'float value!')
+        v = float_cast(
+            v,
+            'The mean_n_sig_0 property must be castable to a float value!')
         self._mean_n_sig_0 = v
 
     @abc.abstractmethod
-    def calculate_ns_grad2(self, fitparam_values):
+    def calculate_ns_grad2(self, gflp_values, ns_pidx):
         """This method is supposed to calculate the second derivative of the
         log-likelihood ratio function w.r.t. the fit parameter ns, the number
         of signal events in the data set.
 
         Parameters
         ----------
-        fitparam_values : numpy (N_fitparams,)-shaped 1D ndarray
-            The ndarray holding the current values of the fit parameters.
-            By definition, the first element is the fit parameter for the number
-            of signal events, ns.
+        gflp_values : numpy (N_fitparams,)-shaped 1D ndarray
+            The ndarray holding the current values of the global floating
+            parameters.
+        ns_pidx : int
+            The index of the global ns floating parameter.
 
         Returns
         -------
@@ -218,7 +253,7 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
         """
         pass
 
-    def maximize(self, rss, fitparamset, tl=None):
+    def maximize(self, rss, tl=None):
         """Maximizes this log-likelihood ratio function, by minimizing its
         negative.
         This method has a special implementation when a 1D Newton-Rapson
@@ -231,9 +266,6 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
             The RandomStateService instance that should be used to draw random
             numbers from. It is used by the minimizer to generate random
             fit parameter initial values.
-        fitparamset : FitParameterSet instance
-            The instance of FitParameterSet holding the global fit parameter
-            definitions used in the maximization process.
         tl : TimeLord instance | None
             The optional TimeLord instance that should be used to time the
             maximization of the LLH-ratio function.
@@ -243,8 +275,8 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
         log_lambda_max : float
             The (maximum) value of the log-likelihood ratio (log_lambda)
             function for the best fit parameter values.
-        fitparam_values : (N_fitparam)-shaped 1D ndarray
-            The ndarray holding the global fit parameter values.
+        gflp_values : (N_fitparam)-shaped 1D ndarray
+            The ndarray holding the global floating parameter values.
         status : dict
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
@@ -256,22 +288,33 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
             # depending solely on ns.
             self__evaluate = self.evaluate
             self__calculate_ns_grad2 = self.calculate_ns_grad2
-            def negative_llhratio_func_nr1d_ns(fitparam_values, tl):
+
+            global_paramset = self._param_model_mapper.global_paramset
+
+            # Determine the floating parameter index of the ns parameter.
+            ns_pidx = global_paramset.get_floating_pidx(param_name='ns')
+
+            def negative_llhratio_func_nr1d_ns(gflp_values, tl):
                 with TaskTimer(tl, 'Evaluate llh-ratio function.'):
-                    (f, grads) = self__evaluate(fitparam_values, tl=tl)
+                    (f, grads) = self__evaluate(gflp_values, tl=tl)
                 with TaskTimer(tl, 'Calculate 2nd derivative of llh-ratio '
                         'function w.r.t. ns'):
-                    grad2_ns = self__calculate_ns_grad2(fitparam_values)
+                    grad2_ns = self__calculate_ns_grad2(
+                        gflp_values=gflp_values,
+                        ns_pidx=ns_pidx)
 
-                return (-f, -grads[0], -grad2_ns)
+                return (-f, -grads[ns_pidx], -grad2_ns)
 
-            (fitparam_values, fmin, status) = self._minimizer.minimize(
-                rss, fitparamset, negative_llhratio_func_nr1d_ns, args=(tl,))
+            (gflp_values, fmin, status) = self._minimizer.minimize(
+                rss=rss,
+                paramset=global_paramset,
+                func=negative_llhratio_func_nr1d_ns,
+                args=(tl,))
             log_lambda_max = -fmin
 
-            return (log_lambda_max, fitparam_values, status)
+            return (log_lambda_max, gflp_values, status)
 
-        return super(TCLLHRatio, self).maximize(rss, fitparamset, tl=tl)
+        return super().maximize(rss, tl=tl)
 
 
 class SingleDatasetTCLLHRatio(TCLLHRatio, metaclass=abc.ABCMeta):
@@ -280,67 +323,58 @@ class SingleDatasetTCLLHRatio(TCLLHRatio, metaclass=abc.ABCMeta):
     """
 
     def __init__(
-            self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
-            mean_n_sig_0):
+            self,
+            param_model_mapper,
+            minimizer,
+            shg_mgr,
+            tdm,
+            mean_n_sig_0,
+            **kwargs):
         """Creates a new two-component LLH ratio function instance for a single
         data set.
 
         Parameters
         ----------
+        param_model_mapper : ParameterModelMapper instance
+            The instance of ParameterModelMapper providing the mapping of
+            global floating parameters to individual models.
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of this log-likelihood ratio function.
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance that defines the source
-            hypotheses.
-        src_fitparam_mapper : SourceFitParameterMapper
-            The instance of SourceFitParameterMapper defining the global fit
-            parameters and their mapping to the source fit parameters.
-            The order of the fit parameters defines the order of the fit values
-            during the maximization process of the log-likelihood-ratio
-            function. The names of the source fit parameters must coincide with
-            the signal fit parameter names of the PDF instances.
+            hypothesis groups.
         tdm : instance of TrialDataManager
             The instance of TrialDataManager that holds the trial event data and
             additional data fields for this LLH ratio function.
         mean_n_sig_0 : float
             The fixed mean number of signal events for the null-hypothesis.
         """
-        super(SingleDatasetTCLLHRatio, self).__init__(
-            minimizer, mean_n_sig_0)
+        super().__init__(
+            param_model_mapper=param_model_mapper,
+            minimizer=minimizer,
+            mean_n_sig_0=mean_n_sig_0,
+            **kwargs)
 
-        self.src_hypo_group_manager = src_hypo_group_manager
-        self.src_fitparam_mapper = src_fitparam_mapper
+        self.shg_mgr = shg_mgr
         self.tdm = tdm
 
         # Calculate the data fields that solely depend on source parameters.
-        self._tdm.calculate_source_data_fields(src_hypo_group_manager)
+        self._tdm.calculate_source_data_fields(self.shg_mgr)
 
     @property
-    def src_hypo_group_manager(self):
+    def shg_mgr(self):
         """The SourceHypoGroupManager instance that defines the source
-        hypotheses.
+        hypothesis groups.
         """
-        return self._src_hypo_group_manager
-    @src_hypo_group_manager.setter
-    def src_hypo_group_manager(self, manager):
-        if(not isinstance(manager, SourceHypoGroupManager)):
-            raise TypeError('The src_hypo_group_manager property must be an '
-                'instance of SourceHypoGroupManager!')
-        self._src_hypo_group_manager = manager
-
-    @property
-    def src_fitparam_mapper(self):
-        """The SourceFitParameterMapper instance defining the global fit
-        parameters and their mapping to the source fit parameters.
-        """
-        return self._src_fitparam_mapper
-    @src_fitparam_mapper.setter
-    def src_fitparam_mapper(self, mapper):
-        if(not isinstance(mapper, SourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper property must be an '
-                'instance of SourceFitParameterMapper!')
-        self._src_fitparam_mapper = mapper
+        return self._shg_mgr
+    @shg_mgr.setter
+    def shg_mgr(self, mgr):
+        if(not isinstance(mgr, SourceHypoGroupManager)):
+            raise TypeError(
+                'The shg_mgr property must be an instance of '
+                'SourceHypoGroupManager!')
+        self._shg_mgr = mgr
 
     @property
     def tdm(self):
@@ -351,21 +385,21 @@ class SingleDatasetTCLLHRatio(TCLLHRatio, metaclass=abc.ABCMeta):
     @tdm.setter
     def tdm(self, manager):
         if(not isinstance(manager, TrialDataManager)):
-            raise TypeError('The tdm property must be an instance of '
-                'TrialDataManager!')
+            raise TypeError(
+                'The tdm property must be an instance of TrialDataManager!')
         self._tdm = manager
 
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+    def change_source_hypo_group_manager(self, shg_mgr):
         """Changes the source hypothesis group manager of this two-component LLH
         ratio function.
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : SourceHypoGroupManager instance
             The new SourceHypoGroupManager instance.
         """
-        self.src_hypo_group_manager = src_hypo_group_manager
-        self._tdm.change_source_hypo_group_manager(src_hypo_group_manager)
+        self.shg_mgr = shg_mgr
+        self._tdm.change_source_hypo_group_manager(shg_mgr)
 
 
 class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
@@ -383,25 +417,26 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
     _one_plus_alpha = 1e-3
 
     def __init__(
-            self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
-            pdfratios):
+            self,
+            param_model_mapper,
+            minimizer,
+            shg_mgr,
+            tdm,
+            pdfratios,
+            **kwargs):
         """Constructor of the two-component log-likelihood ratio function.
 
         Parameters
         ----------
+        param_model_mapper : ParameterModelMapper instance
+            The instance of ParameterModelMapper providing the mapping of
+            global floating parameters to individual models.
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of this log-likelihood ratio function.
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance that defines the source
-            hypotheses.
-        src_fitparam_mapper : SourceFitParameterMapper
-            The instance of SourceFitParameterMapper defining the global fit
-            parameters and their mapping to the source fit parameters.
-            The order of the fit parameters defines the order of the fit values
-            during the maximization process of the log-likelihood-ratio
-            function. The names of the source fit parameters must coincide with
-            the signal fit parameter names of the PDF ratio instances.
+            hypothesis groups.
         tdm : instance of TrialDataManager
             The instance of TrialDataManager that holds the trial event data and
             additional data fields for this LLH ratio function.
@@ -409,24 +444,29 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             The sequence of PDFRatio instances. A PDFRatio instance might depend
             on none, one, or several fit parameters.
         """
-        super(ZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
-            minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
-            mean_n_sig_0=0)
+        super().__init__(
+            param_model_mapper=param_model_mapper,
+            minimizer=minimizer,
+            shg_mgr=shg_mgr,
+            tdm=tdm,
+            mean_n_sig_0=0,
+            **kwargs)
 
         self.pdfratio_list = pdfratios
 
-        # Define cache variables for evaluate method to store values needed for
-        # a possible calculation of the second derivative w.r.t. ns of the
+        # Define cache variables for the evaluate method to store values needed
+        # for a possible calculation of the second derivative w.r.t. ns of the
         # log-likelihood ratio function.
-        self._cache_fitparam_values = None
+        self._cache_gflp_values = None
         self._cache_nsgrad_i = None
 
     @SingleDatasetTCLLHRatio.mean_n_sig_0.setter
     def mean_n_sig_0(self, v):
         SingleDatasetTCLLHRatio.mean_n_sig_0.fset(self, v)
         if(self._mean_n_sig_0 != 0):
-            raise ValueError('The %s class is only valid for '
-                'mean_n_sig_0 = 0!'%(classname(self)))
+            raise ValueError(
+                f'The {classname(self)} class is only valid for '
+                f'mean_n_sig_0 = 0!')
 
     @property
     def pdfratio_list(self):
@@ -436,17 +476,19 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
     @pdfratio_list.setter
     def pdfratio_list(self, seq):
         if(not issequenceof(seq, PDFRatio)):
-            raise TypeError('The pdfratio_list property must be a sequence of '
-                'PDFRatio instances!')
+            raise TypeError(
+                'The pdfratio_list property must be a sequence of PDFRatio '
+                'instances!')
         self._pdfratio_list = list(seq)
 
-    def calculate_log_lambda_and_grads(self, fitparam_values, N, ns, Xi, dXi_ps):
+    def calculate_log_lambda_and_grads(
+            self, gflp_values, N, ns_pidx, ns, Xi, dXi_ps):
         """Calculates the log(Lambda) value and its gradient for each global fit
         parameter. This calculation is source and detector independent.
 
         Parameters
         ----------
-        fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
+        gflp_values : numpy (N_fitparams+1)-shaped 1D ndarray
             The ndarray holding the current values of the fit parameters.
             By definition, the first element is the fit parameter for the number
             of signal events, ns.
@@ -456,6 +498,8 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             ratio function.
         N : int
             The total number of events.
+        ns_pidx : int
+            The index of the global floating parameter ns.
         ns : float
             The current fit parameter value for ns.
         Xi : numpy (n_selected_events,)-shaped 1D ndarray
@@ -479,8 +523,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
         if(tracing):
             logger.debug(
-                'N={:d}, Nprime={:d}'.format(
-                    N, Nprime))
+                f'N={N:d}, Nprime={Nprime:d}')
 
         one_plus_alpha = ZeroSigH0SingleDatasetTCLLHRatio._one_plus_alpha
 
@@ -494,8 +537,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
         if(tracing):
             logger.debug(
                 '# of events doing Taylor expansion for (unstable events): '
-                '{:d}'.format(
-                    np.count_nonzero(unstablemask)))
+                f'{np.count_nonzero(unstablemask):d}')
 
         # Allocate memory for the log_lambda_i values.
         log_lambda_i = np.empty_like(alpha_i, dtype=np.float)
@@ -522,23 +564,25 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
         nsgrad_i[unstablemask] = (1 - tildealpha_i)*Xi[unstablemask] / one_plus_alpha
         # Cache the nsgrad_i values for a possible later calculation of the
         # second derivative w.r.t. ns of the log-likelihood ratio function.
-        # Note: We create a copy of the fitparam_values array here to make sure
+        # Note: We create a copy of the gflp_values array here to make sure
         #       that the values don't get changed outside this method before the
         #       calculate_ns_grad2 method is called.
-        self._cache_fitparam_values = fitparam_values.copy()
+        self._cache_gflp_values = gflp_values.copy()
         self._cache_nsgrad_i = nsgrad_i
         # Calculate the first derivative w.r.t. ns.
-        grads[0] = np.sum(nsgrad_i) - (N - Nprime)/(N - ns)
+        grads[ns_pidx] = np.sum(nsgrad_i) - (N - Nprime)/(N - ns)
 
         # For each other fit parameter.
         # For all numerical stable events.
-        grads[1:] = np.sum(ns * one_over_one_plus_alpha_i_stablemask * dXi_ps[:,stablemask], axis=1)
+        m = np.ones((len(grads),), dtype=bool)
+        m[ns_pidx] = False
+        grads[m] = np.sum(ns * one_over_one_plus_alpha_i_stablemask * dXi_ps[:,stablemask], axis=1)
         # For all numerical unstable events.
-        grads[1:] += np.sum(ns*(1 - tildealpha_i)*dXi_ps[:,unstablemask] / one_plus_alpha, axis=1)
+        grads[m] += np.sum(ns*(1 - tildealpha_i)*dXi_ps[:,unstablemask] / one_plus_alpha, axis=1)
 
         return (log_lambda, grads)
 
-    def calculate_ns_grad2(self, fitparam_values):
+    def calculate_ns_grad2(self, gflp_values, ns_pidx):
         """Calculates the second derivative w.r.t. ns of the log-likelihood
         ratio function.
         This method tries to use cached values for the first derivative
@@ -549,10 +593,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
         Parameters
         ----------
-        fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
-            The ndarray holding the current values of the fit parameters.
-            By definition, the first element is the fit parameter for the number
-            of signal events, ns.
+        gflp_values : numpy (N_fitparams+1)-shaped 1D ndarray
+            The ndarray holding the current values of the global floating
+            parameters.
+        ns_pidx : int
+            The parameter index of the global floating parameter ns.
 
         Returns
         -------
@@ -560,14 +605,14 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             The second derivative w.r.t. ns of the log-likelihood ratio function
             for the given fit parameter values.
         """
-        # Check if the cached nsgrad_i values match the given fitparam_values.
-        if((self._cache_fitparam_values is None) or
-           (not np.all(self._cache_fitparam_values == fitparam_values))):
+        # Check if the cached nsgrad_i values match the given gflp_values.
+        if((self._cache_gflp_values is None) or
+           (not np.all(self._cache_gflp_values == gflp_values))):
             # Calculate the cache values by evaluating the log-likelihood ratio
             # function.
-            self.evaluate(fitparam_values)
+            self.evaluate(gflp_values)
 
-        ns = fitparam_values[0]
+        ns = gflp_values[ns_pidx]
         Nprime = self._tdm.n_selected_events
         N = Nprime + self._tdm.n_pure_bkg_events
 
@@ -583,27 +628,29 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
     log-likelihood-ratio function assumes a zero signal null-hypothesis and uses
     a list of independent PDFRatio instances assuming a single source.
     """
+
     def __init__(
-            self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
-            pdfratios):
+            self,
+            param_model_mapper,
+            minimizer,
+            shg_mgr,
+            tdm,
+            pdfratios,
+            **kwargs):
         """Constructor for creating a 2-component, i.e. signal and background,
         log-likelihood ratio function assuming a single source.
 
         Parameters
         ----------
+        param_model_mapper : ParameterModelMapper instance
+            The instance of ParameterModelMapper providing the mapping of
+            global floating parameters to individual models.
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of this log-likelihood ratio function.
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance that defines the source
-            hypotheses.
-        src_fitparam_mapper : SingleSourceFitParameterMapper
-            The instance of SingleSourceFitParameterMapper defining the global
-            fit parameters and their mapping to the source fit parameters.
-            The order of the fit parameters defines the order of the fit values
-            during the maximization process.
-            The names of the source fit parameters must coincide with the signal
-            fit parameter names of the PDF ratio objects.
+            hypothesis groups.
         tdm : instance of TrialDataManager
             The instance of TrialDataManager that holds the trial event data and
             additional data fields for this LLH ratio function.
@@ -611,17 +658,22 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
             The list of PDFRatio instances. A PDFRatio instance might depend on
             none, one, or several fit parameters.
         """
-        if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper argument must be an '
-                'instance of SingleSourceFitParameterMapper!')
+        super().__init__(
+            param_model_mapper=param_model_mapper,
+            minimizer=minimizer,
+            shg_mgr=shg_mgr,
+            tdm=tdm,
+            pdfratios=pdfratios,
+            **kwargs)
 
-        super(SingleSourceZeroSigH0SingleDatasetTCLLHRatio, self).__init__(
-            minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
-            pdfratios)
+        if param_model_mapper.n_sources != 1:
+            raise RuntimeError(
+                f'The LLH ratio function class {classname(self)} can handle '
+                f'only a single source!')
 
         # Construct a PDFRatio array arithmetic object specialized for a single
         # source. This will pre-calculate the PDF ratio values for all PDF ratio
-        # instances, which do not depend on any fit parameters.
+        # instances, which do not depend on any floating parameters.
         self._pdfratioarray = SingleSourcePDFRatioArrayArithmetic(
             self._pdfratio_list,
             self._src_fitparam_mapper.fitparamset.fitparam_list)
@@ -645,8 +697,8 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
         ----------
         fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
             The ndarray holding the current values of the fit parameters.
-            By definition, the first element is the fit parameter for the number
-            of signal events, ns.
+            By definition, the first element is the floating parameter for the
+            number of signal events, ns.
         tl : TimeLord instance | None
             The optional TimeLord instance to measure the timing of evaluating
             the LLH ratio function.
@@ -665,6 +717,14 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
         # Define local variables to avoid (.)-lookup procedure.
         tdm = self._tdm
         pdfratioarray = self._pdfratioarray
+
+        # Determine the index of the global floating parameter ns.
+        ns_pidx = self._param_model_mapper.global_paramset.get_floating_pidx(
+            param_name='ns')
+        if ns_pidx != 0:
+            raise RuntimeError(
+                f'The global floating parameter "ns" must be the first '
+                f'floating parameter! But its index is {ns_pidx}!')
 
         ns = fitparam_values[0]
 
@@ -718,7 +778,7 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
 
         with TaskTimer(tl, 'Calc logLamds and grads'):
             (log_lambda, grads) = self.calculate_log_lambda_and_grads(
-                fitparam_values, N, ns, Xi, dXi_ps)
+                fitparam_values, N, ns_pidx, ns, Xi, dXi_ps)
 
         return (log_lambda, grads)
 
@@ -731,8 +791,13 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
     assuming multiple sources (stacking).
     """
     def __init__(
-            self, minimizer, src_hypo_group_manager, src_fitparam_mapper, tdm,
-            pdfratios, detsigyields):
+            self,
+            minimizer,
+            src_hypo_group_manager,
+            src_fitparam_mapper,
+            tdm,
+            pdfratios,
+            detsigyields):
         """Constructor for creating a 2-component, i.e. signal and background,
         log-likelihood ratio function assuming a single source.
 
