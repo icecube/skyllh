@@ -1,24 +1,30 @@
 # -*- coding: utf-8 -*-
 
-from skyllh.core.binning import BinningDefinition
+from skyllh.core.binning import (
+    BinningDefinition,
+)
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
-    Linear1DGridManifoldInterpolationMethod
+    Linear1DGridManifoldInterpolationMethod,
 )
 from skyllh.core.py import (
     ObjectCollection,
     classname,
     func_has_n_args,
     issequenceof,
-    typename
+    make_dict_hash,
+    typename,
 )
-from skyllh.core.config import CFG
-from skyllh.core.debugging import get_logger
+from skyllh.core.config import (
+    CFG,
+)
+from skyllh.core.debugging import (
+    get_logger,
+)
 from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet,
     ParameterSet,
-    make_params_hash
 )
 from skyllh.core.timing import TaskTimer
 from skyllh.core.trialdata import TrialDataManager
@@ -1428,7 +1434,7 @@ class PDFSet(object):
         if(not isinstance(gridfitparams, dict)):
             raise TypeError('The fitparams argument must be of type dict!')
 
-        gridfitparams_hash = make_params_hash(gridfitparams)
+        gridfitparams_hash = make_dict_hash(gridfitparams)
         if(gridfitparams_hash in self._gridfitparams_hash_pdf_dict):
             raise KeyError('The PDF with grid fit parameters %s was already '
                            'added!' % (str(gridfitparams)))
@@ -1471,7 +1477,7 @@ class PDFSet(object):
         if(isinstance(gridfitparams, int)):
             gridfitparams_hash = gridfitparams
         elif(isinstance(gridfitparams, dict)):
-            gridfitparams_hash = make_params_hash(gridfitparams)
+            gridfitparams_hash = make_dict_hash(gridfitparams)
         else:
             raise TypeError(
                 'The gridfitparams argument must be of type dict or int!')

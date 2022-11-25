@@ -407,6 +407,34 @@ def get_number_of_float_decimals(value):
             return idx+1
     return 0
 
+def make_dict_hash(d):
+    """Creates a hash value for the given dictionary.
+
+    Parameters
+    ----------
+    d : dict | None
+        The dictionary holding (name: value) pairs.
+        If set to None, an empty dictionary is used.
+
+    Returns
+    -------
+    hash : int
+        The hash of the dictionary.
+    """
+    if d is None:
+        d = {}
+
+    if not isinstance(d, dict):
+        raise TypeError(
+            'The d argument must be of type dict!')
+
+    # A note on the ordering of Python dictionary items: The items are ordered
+    # internally according to the hash value of their keys. Hence, if we don't
+    # insert more dictionary items, the order of the items won't change. Thus,
+    # we can just take the items list and make a tuple to create a hash of it.
+    # The hash will be the same for two dictionaries having the same items.
+    return hash(tuple(d.items()))
+
 
 class ObjectCollection(object):
     """This class provides a collection of objects of a specific type. Objects

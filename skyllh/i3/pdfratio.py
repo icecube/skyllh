@@ -4,11 +4,21 @@ import abc
 import numpy as np
 import scipy.interpolate
 
-from skyllh.core.parameters import make_params_hash
-from skyllh.core.multiproc import IsParallelizable, parallelize
-from skyllh.core.pdfratio import SigSetOverBkgPDFRatio, PDFRatioFillMethod, MostSignalLikePDFRatioFillMethod
-
-from skyllh.i3.pdf import I3EnergyPDF
+from skyllh.core.py import (
+    make_dict_hash,
+)
+from skyllh.core.multiproc import (
+    IsParallelizable,
+    parallelize,
+)
+from skyllh.core.pdfratio import (
+    MostSignalLikePDFRatioFillMethod,
+    PDFRatioFillMethod,
+    SigSetOverBkgPDFRatio,
+)
+from skyllh.i3.pdf import (
+    I3EnergyPDF,
+)
 
 
 class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizable):
@@ -124,7 +134,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         # Save all the log_ratio splines in a dictionary.
         self._gridfitparams_hash_log_ratio_spline_dict = dict()
         for (gridfitparams, log_ratio_spline) in zip(gridfitparams_list, log_ratio_spline_list):
-            gridfitparams_hash = make_params_hash(gridfitparams)
+            gridfitparams_hash = make_dict_hash(gridfitparams)
             self._gridfitparams_hash_log_ratio_spline_dict[gridfitparams_hash] = log_ratio_spline
 
         # Save the list of data field names.
@@ -159,7 +169,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         evaluates the spline for all the given events.
         """
         # Get the spline object for the given fit parameter grid values.
-        gridfitparams_hash = make_params_hash(gridfitparams)
+        gridfitparams_hash = make_dict_hash(gridfitparams)
         spline = self._gridfitparams_hash_log_ratio_spline_dict[gridfitparams_hash]
 
         # Evaluate the spline.
@@ -223,7 +233,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
         ratio : 1d ndarray of float
             The PDF ratio value for each given event.
         """
-        fitparams_hash = make_params_hash(fitparams)
+        fitparams_hash = make_dict_hash(fitparams)
 
         # Check if the ratio value is already cached.
         if(self._is_cached(tdm, fitparams_hash)):
@@ -247,7 +257,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
             The name of the fit parameter for which the gradient should get
             calculated.
         """
-        fitparams_hash = make_params_hash(fitparams)
+        fitparams_hash = make_dict_hash(fitparams)
 
         # Convert the fit parameter name into the local fit parameter index.
         pidx = self.convert_signal_fitparam_name_into_index(fitparam_name)

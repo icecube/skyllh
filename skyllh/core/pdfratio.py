@@ -8,22 +8,22 @@ from skyllh.core.py import (
     classname,
     float_cast,
     issequenceof,
-    typename
+    make_dict_hash,
+    typename,
 )
 from skyllh.core.parameters import (
     FitParameter,
-    make_params_hash
 )
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
-    Parabola1DGridManifoldInterpolationMethod
+    Parabola1DGridManifoldInterpolationMethod,
 )
 from skyllh.core.pdf import (
     PDF,
     PDFSet,
     IsBackgroundPDF,
     IsSignalPDF,
-    SpatialPDF
+    SpatialPDF,
 )
 from skyllh.core.timing import TaskTimer
 
@@ -162,7 +162,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
     PDF ratio values of the PDF ratio objects which do not depend on that fit
     parameter is needed.
     """
-    def __init__(self, pdfratios, fitparams):
+    def __init__(self, pdfratios, fitparams, **kwargs):
         """Constructs a PDFRatio array arithmetic object assuming a single
         source.
 
@@ -174,7 +174,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             The list of fit parameters. The order must match the fit parameter
             order of the minimizer.
         """
-        super(SingleSourcePDFRatioArrayArithmetic, self).__init__()
+        super().__init__(**kwargs)
 
         self.pdfratio_list = pdfratios
         self.fitparam_list = fitparams
@@ -274,23 +274,21 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         self._precompute_static_pdfratio_values(tdm)
 
     def get_pdfratio(self, idx):
-        """Returns the PDFRatio instance that corresponds to the given fit
-        parameter index.
+        """Returns the PDFRatio instance that corresponds to the given index.
 
         Parameters
         ----------
-        fitparam_idx : int
-            The index of the fit parameter.
+        idx : int
+            The index of the PDFRatio.
 
         Returns
         -------
         pdfratio : PDFRatio
-            The PDFRatio instance which corresponds to the given fit parameter
-            index.
+            The PDFRatio instance which corresponds to the given index.
         """
         return self._pdfratio_list[idx]
 
-    def calculate_pdfratio_values(self, tdm, fitparams, tl=None):
+    def calculate_pdfratio_values(self, tdm, cflp_values, tl=None):
         """Calculates the PDF ratio values for the PDF ratio objects which
         depend on fit parameters.
 
@@ -299,8 +297,8 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         tdm : instance of TrialDataManager
             The instance of TrialDataManager that holds the trial event data for
             which the PDF ratio values should get calculated.
-        fitparams : dict
-            The dictionary with the fit parameter name-value pairs.
+        cflp_values : dict
+            The dictionary with the current floating parameter name-value pairs.
         tl : TimeLord instance | None
             The optional TimeLord instance that should be used to measure
             timing information.
@@ -311,7 +309,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             # we need to reshape the array, which does not involve any data
             # copying.
             self._ratio_values[i] = np.reshape(
-                _pdfratio_i.get_ratio(tdm, fitparams, tl=tl),
+                _pdfratio_i.get_ratio(tdm, cflp_values, tl=tl),
                 (tdm.n_selected_events,))
 
     def get_ratio_product(self, excluded_idx=None):
@@ -623,7 +621,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         """Returns the list of fit parameter names the signal PDF depends on.
         """
         return self._sig_pdf.param_set.floating_param_name_list
-    
+
     def get_ratio(self, tdm, params=None, tl=None):
         """Calculates the PDF ratio for the given trial events.
 
@@ -666,7 +664,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         # the get_gradient method can verify the consistency of the signal and
         # background probabilities and gradients.
         self._cache_trial_data_state_id = tdm.trial_data_state_id
-        self._cache_params_hash = make_params_hash(params)
+        self._cache_params_hash = make_dict_hash(params)
         self._cache_sigprob = sigprob
         self._cache_bkgprob = bkgprob
 
@@ -693,7 +691,7 @@ class SigOverBkgPDFRatio(PDFRatio):
             The PDF ratio gradient value for each trial event.
         """
         if((tdm.trial_data_state_id != self._cache_trial_data_state_id) or
-           (make_params_hash(params) != self._cache_params_hash)):
+           (make_dict_hash(params) != self._cache_params_hash)):
             raise RuntimeError('The get_ratio method must be called prior to '
                 'the get_gradient method!')
 
