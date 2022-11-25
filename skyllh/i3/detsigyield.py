@@ -312,9 +312,9 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         -------
         values : numpy 1d ndarray
             The array with the detector signal yield for each source.
-        grads : None
+        grads : dict
             This detector signal yield does not depend on any parameters.
-            So there are no gradients and None is returned.
+            So there are no gradients and the dictionary is empty.
         """
         src_dec = np.atleast_1d(src_recarray['dec'])
 
@@ -328,7 +328,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
 
         values[mask] = np.exp(self._log_spl_sinDec(np.sin(src_dec[mask])))
 
-        return (values, None)
+        return (values, {})
 
 
 class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
