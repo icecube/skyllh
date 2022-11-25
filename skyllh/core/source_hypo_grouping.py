@@ -7,19 +7,17 @@ analysis.
 
 import numpy as np
 
-from skyllh.core.parameters import (
-    make_params_hash,
-)
 from skyllh.core.py import (
     issequenceof,
+    make_dict_hash,
 )
 from skyllh.core.detsigyield import (
-    DetSigYieldImplMethod,
+    DetSigYieldBuilder,
 )
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
 )
-from skyllh.physics.source import (
+from skyllh.core.model import (
     SourceModel,
 )
 from skyllh.physics.flux_model import (
@@ -29,11 +27,15 @@ from skyllh.physics.flux_model import (
 class SourceHypoGroup(object):
     """The source hypothesis group class provides a data container to describe
     a group of sources that share the same flux model, detector signal yield,
-    and signal generation implementation methods.
+    and signal generation methods.
     """
     def __init__(
-            self, sources, fluxmodel, detsigyield_implmethods,
-            sig_gen_method=None, source_weights=None):
+            self,
+            sources,
+            fluxmodel,
+            detsigyield_builders,
+            sig_gen_method=None,
+            **kwargs):
         """Constructs a new source hypothesis group.
 
         Parameters
@@ -43,25 +45,23 @@ class SourceHypoGroup(object):
         fluxmodel : instance of FluxModel
             The FluxModel instance that applies to the list of sources of the
             group.
-        detsigyield_implmethods : sequence of DetSigYieldImplMethod instances
-            The sequence of detector signal yield implementation method
-            instances, which should be used to create the detector signal
+        detsigyield_builders : sequence of DetSigYieldBuilder instances
+            The sequence of detector signal yield builder instances,
+            which should be used to create the detector signal
             yield for the sources of this group. Each element is the
-            detector signal yield implementation method for the particular
-            dataset, if several datasets are used. If this list contains only
-            one implementation method, it should be used for all datasets.
+            detector signal yield builder for the particular dataset, if
+            several datasets are used. If this list contains only one builder,
+            it should be used for all datasets.
         sig_gen_method : SignalGenerationMethod instance | None
             The instance of SignalGenerationMethod that implements the signal
             generation for the specific detector and source hypothesis. It can
             be set to None, which means, no signal can be generated. Useful for
             data unblinding and data trial generation, where no signal is
             required.
-        source_weights : float | sequence of floats | None
-            The sequence of relative source weights, normalized to 1.
         """
         self.source_list = sources
         self.fluxmodel = fluxmodel
-        self.detsigyield_implmethod_list = detsigyield_implmethods
+        self.detsigyield_builder_list = detsigyield_builders
         self.sig_gen_method = sig_gen_method
         self.source_weights = source_weights
 
@@ -72,10 +72,12 @@ class SourceHypoGroup(object):
         return self._source_list
     @source_list.setter
     def source_list(self, sources):
-        if(isinstance(sources, SourceModel)):
+        if isinstance(sources, SourceModel):
             sources = [ sources ]
-        if(not issequenceof(sources, SourceModel)):
-            raise TypeError('The source_list property must be an instance of SourceModel or a sequence of SourceModel instances!')
+        if not issequenceof(sources, SourceModel):
+            raise TypeError(
+                'The source_list property must be an instance of SourceModel '
+                'or a sequence of SourceModel instances!')
         self._source_list = list(sources)
 
     @property
@@ -86,29 +88,29 @@ class SourceHypoGroup(object):
         return self._fluxmodel
     @fluxmodel.setter
     def fluxmodel(self, fluxmodel):
-        if(not isinstance(fluxmodel, FluxModel)):
-            raise TypeError('The fluxmodel property must be an instance of '
-                'FluxModel!')
+        if not isinstance(fluxmodel, FluxModel):
+            raise TypeError(
+                'The fluxmodel property must be an instance of FluxModel!')
         self._fluxmodel = fluxmodel
 
     @property
-    def detsigyield_implmethod_list(self):
-        """The list of DetSigYieldImplMethod instances, which should be used to
+    def detsigyield_builder_list(self):
+        """The list of DetSigYieldBuilder instances, which should be used to
         create the detector signal yield for this group of sources. Each
-        element is the detector signal yield implementation method for
-        the particular dataset, if several datasets are used. If this list
-        contains only one implementation method, it should be used for all
-        datasets.
+        element is the detector signal yield builder for the particular dataset,
+        if several datasets are used. If this list contains only one builder,
+        it should be used for all datasets.
         """
-        return self._detsigyield_implmethod_list
-    @detsigyield_implmethod_list.setter
-    def detsigyield_implmethod_list(self, methods):
-        if(isinstance(methods, DetSigYieldImplMethod)):
-            methods = [ methods ]
-        if(not issequenceof(methods, DetSigYieldImplMethod)):
-            raise TypeError('The detsigyield_implmethod_list property must be '
-                'a sequence of DetSigYieldImplMethod instances!')
-        self._detsigyield_implmethod_list = methods
+        return self._detsigyield_builder_list
+    @detsigyield_builder_list.setter
+    def detsigyield_builder_list(self, builders):
+        if isinstance(builders, DetSigYieldBuilder):
+            builders = [ builders ]
+        if not issequenceof(builders, DetSigYieldBuilder):
+            raise TypeError(
+                'The detsigyield_builder_list property must be a sequence of '
+                'DetSigYieldBuilder instances!')
+        self._detsigyield_builder_list = builders
 
     @property
     def sig_gen_method(self):
@@ -128,26 +130,6 @@ class SourceHypoGroup(object):
         self._sig_gen_method = method
 
     @property
-    def source_weights(self):
-        """The 1d array of relative source weights.
-        """
-        return self._source_weights
-    @source_weights.setter
-    def source_weights(self, source_weights):
-        if(source_weights is None):
-            self._source_weights = source_weights
-        else:
-            if(isinstance(source_weights, (int, float))):
-                source_weights = [source_weights]
-            if(not issequenceof(source_weights, (int, float))):
-                raise TypeError(
-                    'The source_weights property must be a sequence of floats!')
-            if not(1.0 - 1e-3 <= np.sum(source_weights) <= 1.0 + 1e-3):
-                raise ValueError(
-                    'The sum of source_weights has to be equal to 1!')
-            self._source_weights = np.array(source_weights)
-
-    @property
     def n_sources(self):
         """(read-only) The number of sources within this source hypothesis
         group.
@@ -163,7 +145,7 @@ class SourceHypoGroupManager(object):
     This helps to evaluate the log-likelihood ratio function in an efficient
     way.
     """
-    def __init__(self, src_hypo_groups=None):
+    def __init__(self, src_hypo_groups=None, **kwargs):
         """Creates a new source hypothesis group manager instance.
 
         Parameters
@@ -172,7 +154,7 @@ class SourceHypoGroupManager(object):
                           sequence of SourceHypoGroup instances | None
             The SourceHypoGroup instances to initialize the manager with.
         """
-        super(SourceHypoGroupManager, self).__init__()
+        super().__init__(**kwargs)
 
         self._src_hypo_group_list = list()
         # Define a 2D numpy array of shape (N_sources,2) that maps the source
@@ -181,13 +163,14 @@ class SourceHypoGroupManager(object):
         self._sidx_to_gidx_gsidx_map_arr = np.empty((0,2), dtype=np.int)
 
         # Add source hypo groups if specified.
-        if(src_hypo_groups is not None):
-            if(isinstance(src_hypo_groups, SourceHypoGroup)):
+        if src_hypo_groups is not None:
+            if isinstance(src_hypo_groups, SourceHypoGroup):
                 src_hypo_groups = [ src_hypo_groups ]
-            if(not issequenceof(src_hypo_groups, SourceHypoGroup)):
-                raise TypeError('The src_hypo_groups argument must be an '
-                    'instance of SourceHypoGroup, or a sequence of '
-                    'SourceHypoGroup instances!')
+            if not issequenceof(src_hypo_groups, SourceHypoGroup):
+                raise TypeError(
+                    'The src_hypo_groups argument must be an instance of '
+                    'SourceHypoGroup, or a sequence of SourceHypoGroup '
+                    'instances!')
             for shg in src_hypo_groups:
                 self._src_hypo_group_list.append(shg)
                 self._extend_sidx_to_gidx_gsidx_map_arr(shg)
@@ -197,8 +180,8 @@ class SourceHypoGroupManager(object):
         """The list of defined SourceModel instances.
         """
         source_list = []
-        for group in self._src_hypo_group_list:
-            source_list += group.source_list
+        for shg in self._src_hypo_group_list:
+            source_list += shg.source_list
         return source_list
 
     @property
@@ -236,14 +219,16 @@ class SourceHypoGroupManager(object):
         self._sidx_to_gidx_gsidx_map_arr = np.vstack(
             (self._sidx_to_gidx_gsidx_map_arr, arr))
 
-    def add_source_hypo_group(
-        self, sources, fluxmodel, detsigyield_implmethods, sig_gen_method=None,
-        source_weights=None
-    ):
-        """Adds a source hypothesis group to the source hypothesis group
-        manager. A source hypothesis group share sources of the same source
-        model with the same flux model and hence the same detector signal
-        yield and signal generation implementation methods.
+    def create_source_hypo_group(
+            self,
+            sources,
+            fluxmodel,
+            detsigyield_builders,
+            sig_gen_method=None):
+        """Creates and adds a source hypothesis group to this source hypothesis
+        group manager. A source hypothesis group shares sources of the same
+        source model with the same flux model and hence the same detector signal
+        yield and signal generation methods.
 
         Parameters
         ----------
@@ -252,27 +237,24 @@ class SourceHypoGroupManager(object):
         fluxmodel : instance of FluxModel
             The FluxModel instance that applies to the list of sources of the
             group.
-        detsigyield_implmethods : sequence of DetSigYieldImplMethod instances
-            The sequence of detector signal yield implementation method
-            instances, which should be used to create the detector signal
-            yield for the sources of the group. Each element is the
-            detector signal yield implementation method for the particular
-            dataset, if several datasets are used. If this list contains only
-            one implementation method, it should be used for all datasets.
+        detsigyield_builders : sequence of DetSigYieldBuilder instances
+            The sequence of detector signal yield builder instances,
+            which should be used to create the detector signal
+            yield for the sources of this group. Each element is the
+            detector signal yield builder for the particular dataset, if
+            several datasets are used. If this list contains only one builder,
+            it should be used for all datasets.
         sig_gen_method : instance of SignalGenerationMethod | None
             The SignalGenerationMethod instance that implements the detector
             and source hypothesis specific signal generation.
             It can be set to None which means no signal can be generated.
-        source_weights : float | sequence of floats | None
-            The sequence of relative source weights, normalized to 1.
         """
         # Create the source group.
         group = SourceHypoGroup(
             sources=sources,
             fluxmodel=fluxmodel,
-            detsigyield_implmethods=detsigyield_implmethods,
-            sig_gen_method=sig_gen_method,
-            source_weights=source_weights)
+            detsigyield_builders=detsigyield_builders,
+            sig_gen_method=sig_gen_method)
 
         # Add the group.
         self._src_hypo_group_list.append(group)
@@ -299,8 +281,8 @@ class SourceHypoGroupManager(object):
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
         return self._src_hypo_group_list[gidx]._fluxmodel
 
-    def get_detsigyield_implmethod_list_by_src_idx(self, src_idx):
-        """Retrieves the list of DetSigYieldImplMethod instances for the source
+    def get_detsigyield_builder_list_by_src_idx(self, src_idx):
+        """Retrieves the list of DetSigYieldBuilder instances for the source
         specified by its source index.
 
         Parameters
@@ -311,12 +293,12 @@ class SourceHypoGroupManager(object):
 
         Returns
         -------
-        detsigyield_implmethod_list : list of DetSigYieldImplMethod instances
-            The list of DetSigYieldImplMethod instances that apply to the
+        detsigyield_builder_list : list of DetSigYieldBuilder instances
+            The list of DetSigYieldBuilder instances that apply to the
             specified source.
         """
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx,0]
-        return self._src_hypo_group_list[gidx]._detsigyield_implmethod_list
+        return self._src_hypo_group_list[gidx]._detsigyield_builder_list
 
     def get_fluxmodel_to_source_mapping(self):
         """Returns the list of tuples mapping fluxmodel to the source indices.
@@ -334,7 +316,7 @@ class SourceHypoGroupManager(object):
             # Mapping tuple.
             fluxmodel_to_source_mapping.append(
                 (
-                    make_params_hash({'fluxmodel': shg.fluxmodel}),
+                    make_dict_hash({'fluxmodel': shg.fluxmodel}),
                     n_sources_offset + np.arange(shg.n_sources)
                 )
             )

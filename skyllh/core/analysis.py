@@ -1155,24 +1155,24 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # detector signal yield instances for each source as well.
         detsigyield_list = []
         fluxmodel = self._shg_mgr.get_fluxmodel_by_src_idx(0)
-        detsigyield_implmethod_list = \
-            self._shg_mgr.get_detsigyield_implmethod_list_by_src_idx(0)
-        if((len(detsigyield_implmethod_list) != 1) and
-           (len(detsigyield_implmethod_list) != self.n_datasets)):
+        detsigyield_builder_list = \
+            self._shg_mgr.get_detsigyield_builder_list_by_src_idx(0)
+        if((len(detsigyield_builder_list) != 1) and
+           (len(detsigyield_builder_list) != self.n_datasets)):
             raise ValueError('The number of detector signal yield '
                 'implementation methods is not 1 and does not match the number '
                 'of used datasets in the analysis!')
         pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
         for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
                                                   self.data_list)):
-            if(len(detsigyield_implmethod_list) == 1):
+            if(len(detsigyield_builder_list) == 1):
                 # Only one detsigyield implementation method was defined, so we
                 # use it for all datasets.
-                detsigyield_implmethod = detsigyield_implmethod_list[0]
+                detsigyield_builder = detsigyield_builder_list[0]
             else:
-                detsigyield_implmethod = detsigyield_implmethod_list[j]
+                detsigyield_builder = detsigyield_builder_list[j]
 
-            detsigyield = detsigyield_implmethod.construct_detsigyield(
+            detsigyield = detsigyield_builder.construct_detsigyield(
                 dataset, data, fluxmodel, data.livetime, ppbar=pbar)
             detsigyield_list.append(detsigyield)
             pbar.increment()
@@ -1297,27 +1297,22 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         Returns
         -------
-        fitparamset : FitParameterSet instance
-            The instance of FitParameterSet holding the global fit parameter
-            definitions used in the maximization process.
         log_lambda_max : float
             The value of the log-likelihood ratio function at its maximum.
-        fitparam_values : (N_fitparam,)-shaped 1D ndarray
-            The ndarray holding the global fit parameter values.
-            By definition, the first element is the value of the fit parameter
-            ns.
+        gflp_values : (N_fitparam,)-shaped 1D ndarray
+            The ndarray holding the global floating parameter values.
         status : dict
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        (log_lambda_max, fitparam_values, status) = self._llhratio.maximize(
-            rss, self._fitparamset, tl=tl)
-        return (self._fitparamset, log_lambda_max, fitparam_values, status)
+        (log_lambda_max, gflp_values, status) =\
+            self._llhratio.maximize(rss=rss, tl=tl)
+        return (log_lambda_max, gflp_values, status)
 
     def calculate_fluxmodel_scaling_factor(
             self,
             mean_ns,
-            global_floating_param_values):
+            gflp_values):
         """Calculates the factor the source's fluxmodel has to be scaled
         in order to obtain the given mean number of signal events in the
         detector.
@@ -1327,7 +1322,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         mean_ns : float
             The mean number of signal events in the detector for which the
             scaling factor is calculated.
-        global_floating_param_values : (N_global_floating_params,)-shaped 1D
+        gflp_values : (N_global_floating_params,)-shaped 1D
                 ndarray
             The ndarray holding the values of the global floating parameters,
             that should be used for the flux calculation. The order of the
@@ -1342,7 +1337,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         """
         fitparams_recarray =\
             self._param_model_mapper.get_source_floating_params_recarray(
-                fitparam_values)
+                gflp_values)
 
         # We use the DatasetSignalWeights class instance of this analysis to
         # calculate the detector signal yield for all datasets.
@@ -1449,25 +1444,25 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
 
         for (g, shg) in enumerate(self._shg_mgr._src_hypo_group_list):
             fluxmodel = shg.fluxmodel
-            detsigyield_implmethod_list = shg.detsigyield_implmethod_list
+            detsigyield_builder_list = shg.detsigyield_builder_list
 
-            if((len(detsigyield_implmethod_list) != 1) and
-               (len(detsigyield_implmethod_list) != self.n_datasets)):
+            if((len(detsigyield_builder_list) != 1) and
+               (len(detsigyield_builder_list) != self.n_datasets)):
                 raise ValueError(
-                    'The number of detector signal yield '
-                    'implementation methods is not 1 and does not match the number '
+                    'The number of detector signal yield implementation '
+                    'methods is not 1 and does not match the number '
                     'of used datasets in the analysis!')
             pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
             for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
                                                       self.data_list)):
-                if(len(detsigyield_implmethod_list) == 1):
+                if(len(detsigyield_builder_list) == 1):
                     # Only one detsigyield implementation method was defined,
                     # so we use it for all datasets.
-                    detsigyield_implmethod = detsigyield_implmethod_list[0]
+                    detsigyield_builder = detsigyield_builder_list[0]
                 else:
-                    detsigyield_implmethod = detsigyield_implmethod_list[j]
+                    detsigyield_builder = detsigyield_builder_list[j]
 
-                detsigyield = detsigyield_implmethod.construct_detsigyield(
+                detsigyield = detsigyield_builder.construct_detsigyield(
                     dataset, data, fluxmodel, data.livetime, ppbar=pbar)
                 detsigyield_array[g, j] = detsigyield
                 pbar.increment()
@@ -1487,10 +1482,10 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             tdm = self._tdm_list[j]
             pdfratio_list = self._pdfratio_list_list[j]
             llhratio = MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
-                minimizer,
-                self._shg_mgr,
-                self._param_model_mapper,
-                tdm,
+                param_model_mapper=self._param_model_mapper,
+                minimizer=minimizer,
+                shg_mgr=self._shg_mgr,
+                tdm=tdm,
                 pdfratio_list,
                 detsigyield_array[:, j]
             )
