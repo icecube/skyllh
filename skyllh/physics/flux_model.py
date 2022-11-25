@@ -10,8 +10,6 @@ class. It describes a mathematical function for the differential flux:
     \mathrm{d}\Omega \mathrm{d}E \mathrm{d}t}
 """
 
-from __future__ import division
-
 import abc
 import numpy as np
 import scipy.stats
@@ -19,9 +17,15 @@ import scipy.stats
 from astropy import units
 from copy import deepcopy
 
-from skyllh.core.config import CFG
-from skyllh.core.math import MathFunction
-from skyllh.core.model import Model
+from skyllh.core.config import (
+    CFG,
+)
+from skyllh.core.math import (
+    MathFunction,
+)
+from skyllh.core.model import (
+    Model,
+)
 from skyllh.core.py import (
     classname,
     isproperty,
@@ -29,7 +33,9 @@ from skyllh.core.py import (
     issequenceof,
     float_cast
 )
-from skyllh.physics.source import IsPointlike
+from skyllh.physics.source_model import (
+    IsPointlike,
+)
 
 
 class FluxProfile(MathFunction, metaclass=abc.ABCMeta):
