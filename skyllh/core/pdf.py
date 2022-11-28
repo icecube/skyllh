@@ -317,11 +317,11 @@ class IsSignalPDF(object):
 
 
 class PDF(object, metaclass=abc.ABCMeta):
-    """This is the abstract base class for all probability distribution
+    r"""This is the abstract base class for all probability distribution
     function (PDF) models.
     All PDF model classes must be derived from this class. Mathematically, it
-    represents :math::`f(\vec{x}|\vec{p})`, where :math::`\vec{x}` is the
-    event data and :math::`\vec{p}` is the set of parameters the PDF is given
+    represents :math:`f(\vec{x}|\vec{p})`, where :math:`\vec{x}` is the
+    event data and :math:`\vec{p}` is the set of parameters the PDF is given
     for.
     """
 
@@ -330,12 +330,12 @@ class PDF(object, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        param_set : Parameter instance | sequence of Parameter instances |
-                   ParameterSet instance | None
+        param_set : Parameter instance | sequence of Parameter instances |  ParameterSet instance | None
             If this PDF depends on parameters, this set of parameters
             defines them. If a single parameter instance is given a ParameterSet
             instance will be created holding this single parameter.
             If set to None, this PDF will not depend on any parameters.
+
         """
         # Make sure that multiple inheritance can be used. This super call will
         # invoke the __init__ method of a possible second inheritance.
@@ -406,9 +406,9 @@ class PDF(object, metaclass=abc.ABCMeta):
         The method must raise a ValueError if the PDF is not valid for the
         given trial data.
         """
-        raise NotImplementedError('The derived PDF class "%s" did not '
-                                  'implement the "assert_is_valid_for_trial_data" method!' % (
-                                      classname(self)))
+        raise NotImplementedError(
+            f'The derived PDF class "{classname(self)}" did not '
+            'implement the "assert_is_valid_for_trial_data" method!')
 
     @abc.abstractmethod
     def get_prob(self, tdm, params=None, tl=None):

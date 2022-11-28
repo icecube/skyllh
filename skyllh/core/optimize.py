@@ -742,7 +742,7 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
 
             - <psi_name> : float
                 The great circle distance of the event with the source.
-            - <*axis_name_list> : float
+            - <axis_name(s)> : float
                 The name of the axis required for the function ``func`` to be
                 evaluated.
 
