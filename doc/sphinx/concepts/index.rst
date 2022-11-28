@@ -12,3 +12,4 @@ This section covers a few concepts SkyLLH is persuing.
     source_definition
     flux_definition
     parameters
+    detsigyield
