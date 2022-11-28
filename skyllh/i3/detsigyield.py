@@ -116,7 +116,7 @@ class I3DetSigYieldBuilder(DetSigYieldBuilder, metaclass=abc.ABCMeta):
         return self._sin_dec_binning
     @sin_dec_binning.setter
     def sin_dec_binning(self, binning):
-        if (binning is not None) and
+        if (binning is not None) and\
            (not isinstance(binning, BinningDefinition)):
             raise TypeError(
                 'The sin_dec_binning property must be None, or an instance of '

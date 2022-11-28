@@ -4,12 +4,11 @@ import numpy as np
 
 from skyllh.core.py import (
     get_smallest_numpy_int_type,
-    float_cast
+    float_cast,
 )
 from skyllh.core.coords import rotate_spherical_vector
 from skyllh.core.signal_generation import SignalGenerationMethod
-from skyllh.physics.source import PointLikeSource
-from skyllh.physics.flux import get_conversion_factor_to_internal_flux_unit
+from skyllh.physics.source_model import PointLikeSource
 
 
 def source_sin_dec_shift_linear(x, w, L, U):
@@ -243,7 +242,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = get_conversion_factor_to_internal_flux_unit(fluxmodel)
+        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Select the events that belong to a given source.
         indices_list = []
@@ -425,7 +424,7 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = get_conversion_factor_to_internal_flux_unit(fluxmodel)
+        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Select the events that belong to a given source.
         ev_indices = np.empty(
@@ -439,9 +438,9 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
         for bi in range(n_batches):
             if(bi != n_batches-1):
                 band_mask = np.logical_and(
-                            (data_mc_sin_true_dec >= 
+                            (data_mc_sin_true_dec >=
                                 src_sin_dec_band_min[bi*self.batch_size:(bi+1)*self.batch_size][:, np.newaxis]),
-                            (data_mc_sin_true_dec <= 
+                            (data_mc_sin_true_dec <=
                                 src_sin_dec_band_max[bi*self.batch_size:(bi+1)*self.batch_size][:, np.newaxis])
                             )
                 if(self.energy_range is not None):
@@ -458,9 +457,9 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
             else:
                 n_final_batch = int(n_sources - bi*self.batch_size)
                 band_mask = np.logical_and(
-                            (data_mc_sin_true_dec >= 
+                            (data_mc_sin_true_dec >=
                                 src_sin_dec_band_min[bi*self.batch_size:][:, np.newaxis]),
-                            (data_mc_sin_true_dec <= 
+                            (data_mc_sin_true_dec <=
                                 src_sin_dec_band_max[bi*self.batch_size:][:, np.newaxis])
                             )
                 if(self.energy_range is not None):

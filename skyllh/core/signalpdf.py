@@ -24,7 +24,7 @@ from skyllh.core.pdf import (
     TimePDF
 )
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
-from skyllh.physics.source import PointLikeSource
+from skyllh.physics.source_model import PointLikeSource
 from skyllh.physics.time_profile import TimeProfileModel
 
 

@@ -5,6 +5,8 @@ on the detector signal yield. This is used split the number of signal events
 fit parameter into its contributions of the individual datasets.
 """
 
+import abc
+
 from skyllh.core.detsigyield import (
     DetSigYield,
 )

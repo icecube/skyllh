@@ -55,7 +55,9 @@ from skyllh.core.signal_generator import (
     SignalGeneratorBase,
     SignalGenerator
 )
-from skyllh.physics.source import SourceModel
+from skyllh.core.model import (
+    SourceModel,
+)
 
 
 logger = get_logger(__name__)
@@ -74,7 +76,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         1. Create an analysis instance.
         2. Add the datasets and their PDF ratio instances via the
-           :meth:`.add_dataset` method.
+           :meth:`skyllh.core.analysis.Analysis.add_dataset` method.
         3. Construct the log-likelihood ratio function via the
            :meth:`.construct_llhratio` method.
         4. Call the :meth:`do_trial` or :meth:`unblind` method to perform a
@@ -1038,7 +1040,9 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
     To run this analysis the following procedure applies:
 
         1. Add the datasets and their spatial and energy PDF ratio instances
-           via the :meth:`.add_dataset` method.
+           via the
+           :meth:`skyllh.core.analysis.TimeIntegratedMultiDatasetSingleSourceAnalysis.add_dataset`
+           method.
         2. Construct the log-likelihood ratio function via the
            :meth:`construct_llhratio` method.
         3. Initialize a trial via the :meth:`initialize_trial` method.
@@ -1365,7 +1369,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
     To run this analysis the following procedure applies:
 
         1. Add the datasets and their spatial and energy PDF ratio instances
-           via the :meth:`.add_dataset` method.
+           via the :meth:`TimeIntegratedMultiDatasetSingleSourceAnalysis.add_dataset` method.
         2. Construct the log-likelihood ratio function via the
            :meth:`construct_llhratio` method.
         3. Initialize a trial via the :meth:`initialize_trial` method.
@@ -1486,8 +1490,8 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
                 tdm=tdm,
-                pdfratio_list,
-                detsigyield_array[:, j]
+                pdfratios=pdfratio_list,
+                detsigyields=detsigyield_array[:, j]
             )
             llhratio_list.append(llhratio)
 

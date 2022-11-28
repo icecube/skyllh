@@ -12,7 +12,7 @@ from skyllh.core.py import (
 )
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.timing import TaskTimer
-from skyllh.physics.source import SourceModel
+from skyllh.core.model import SourceModel
 
 
 class EventSelectionMethod(object, metaclass=abc.ABCMeta):

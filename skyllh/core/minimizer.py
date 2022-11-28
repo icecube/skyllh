@@ -153,12 +153,14 @@ class ScipyMinimizerImpl(MinimizerImpl):
 
         Additional Keyword Arguments
         ----------------------------
+
         Additional keyword arguments include options for this minimizer
         implementation. Possible options are:
 
             func_provides_grads : bool
                 Flag if the function ``func`` also returns its gradients.
                 Default is ``True``.
+
 
         Any additional keyword arguments are passed on to the underlaying
         :func:`scipy.optimize.minimize` minimization function.
@@ -337,6 +339,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             func_provides_grads : bool
                 Flag if the function ``func`` also returns its gradients.
                 Default is ``True``.
+
 
         Any additional keyword arguments are passed on to the underlaying
         :func:`scipy.optimize.fmin_l_bfgs_b` minimization function.

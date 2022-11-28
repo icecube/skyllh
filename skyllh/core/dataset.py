@@ -1689,6 +1689,7 @@ def generate_data_file_root_dir(
 
     The default_sub_path_fmt and sub_path_fmt arguments can contain the
     following wildcards:
+
         - '{version:d}'
         - '{<verqualifiers_key>:d}'
 

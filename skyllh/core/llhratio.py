@@ -38,7 +38,7 @@ from skyllh.core.pdfratio import (
     SingleSourcePDFRatioArrayArithmetic
 )
 from skyllh.core.timing import TaskTimer
-from skyllh.physics.source import SourceModel
+from skyllh.core.model import SourceModel
 
 
 logger = get_logger(__name__)
@@ -182,7 +182,7 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
 
         logger.debug(
             f'Maximized LLH ratio function with '
-            f'{status['n_llhratio_func_calls']:d} calls')
+            f'{status["n_llhratio_func_calls"]:d} calls')
 
         return (log_lambda_max, gflp_values, status)
 

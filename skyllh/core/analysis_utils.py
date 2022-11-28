@@ -18,7 +18,7 @@ from skyllh.core.py import (
 )
 from skyllh.core.session import is_interactive_session
 from skyllh.core.storage import NPYFileLoader
-from skyllh.physics.source import PointLikeSource
+from skyllh.physics.source_model import PointLikeSource
 
 from scipy.interpolate import interp1d
 from scipy.stats import gamma
