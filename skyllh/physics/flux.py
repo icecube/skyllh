@@ -62,14 +62,6 @@ class NormedFluxModel(FluxModel, metaclass=abc.ABCMeta):
 
     The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
-
-    Attributes
-    ----------
-    Phi0 : float
-        Flux value (dN/(dEdAdt)) at E0 in unit
-        [energy]^-1 [length]^-2 [time]^-1.
-    E0 : float
-        Normalization energy in unit of energy.
     """
 
     def __init__(self, Phi0, E0):
@@ -116,24 +108,35 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
 
     Outside of support [crit_log_nu_energy_lower, crit_log_nu_energy_upper] the
     flux will be set to 0.
-
-    Attributes
-    ----------
-    Phi0 : float
-        Flux normalization relative to model prediction.
-    psp_table : object
-        The photospline.SplineTable object.
-    crit_log_nu_energy_lower : float
-        Lower end of energy range (support) of spline flux.
-    crit_log_nu_energy_upper : float
-        Upper end of energy range (support) of spline flux.
     """
-    def __init__(self, Phi0, psp_table, crit_log_nu_energy_lower, crit_log_nu_energy_upper):
-        super(SplineFluxModel, self).__init__()
-        self._psp_table = psp_table
-        self._Phi0 = Phi0
-        self._crit_log_nu_energy_lower = crit_log_nu_energy_lower
-        self._crit_log_nu_energy_upper = crit_log_nu_energy_upper
+    def __init__(
+            self,
+            Phi0,
+            psp_table,
+            crit_log_nu_energy_lower,
+            crit_log_nu_energy_upper,
+            **kwargs):
+        """Creates a new SplineFluxModel instance.
+
+        Parameters
+        ----------
+        Phi0 : float
+            The relative flux normalization. Phi0=1 corresponds to the nominal
+            model flux.
+        psp_table : photospline.SplineTable instance
+            The photospline.SplineTable instance that describes the neutrino
+            flux as function of neutrino energy via B-spline interpolation.
+        crit_log_nu_energy_lower : float
+            The lower bound of the support of the spline interpolator.
+        crit_log_nu_energy_upper : float
+            The upper bound of the support of the spline interpolator.
+        """
+        super().__init__(**kwargs)
+
+        self.Phi0 = Phi0
+        self.psp_table = psp_table
+        self.crit_log_nu_energy_lower = crit_log_nu_energy_lower
+        self.crit_log_nu_energy_upper = crit_log_nu_energy_upper
 
     @property
     def psp_table(self):
@@ -142,8 +145,8 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
         """
         return self._psp_table
     @psp_table.setter
-    def psp_table(self, t):
-        self._psp_table = t
+    def psp_table(self, table):
+        self._psp_table = table
 
     @property
     def Phi0(self):
@@ -153,7 +156,9 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
         return self._Phi0
     @Phi0.setter
     def Phi0(self, v):
-        v = float_cast(v, 'Property Phi0 must be castable to type float!')
+        v = float_cast(
+            v,
+            'Property Phi0 must be castable to type float!')
         self._Phi0 = v
 
     @property
@@ -164,7 +169,8 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
     @crit_log_nu_energy_lower.setter
     def crit_log_nu_energy_lower(self, v):
         v = float_cast(
-            v, 'Property crit_log_nu_energy_lower must be castable to type float!')
+            v,
+            'Property crit_log_nu_energy_lower must be castable to type float!')
         self._crit_log_nu_energy_lower = v
 
     @property
@@ -175,50 +181,60 @@ class SplineFluxModel(FluxModel, metaclass=abc.ABCMeta):
     @crit_log_nu_energy_upper.setter
     def crit_log_nu_energy_upper(self, v):
         v = float_cast(
-            v, 'Property crit_log_nu_energy_upper must be castable to type float!')
+            v,
+            'Property crit_log_nu_energy_upper must be castable to type float!')
         self._crit_log_nu_energy_upper = v
 
 
 class SeyfertCoreCoronaFlux(SplineFluxModel):
     """Implements the Core-Corona Seyfert Galaxy neutrino flux model of
-    A. Kheirandish et al., Astrophys.J. 922 (2021) 45 by means of B-spline
+    A. Kheirandish et al., Astrophys.J. 922 (2021) 45, by means of B-spline
     interpolation.
-
-    Attributes
-    ----------
-    Phi0 : float
-        Flux normalization relative to model prediction.
-    log_xray_lumin : float
-        log10 of intrinsic x-ray luminosity of source in 2-10 keV band.
-    psp_table : object
-        photospline.SplineTable object
-    crit_log_nu_energy_lower : float
-        Lower end of energy range (support) of spline flux.
-    crit_log_nu_energy_upper : float
-        Upper end of energy range (support) of spline flux.
-    src_dist : float
-        Distance to source in units of Mpc.
-    lumin_scale : float
-        A relative flux scaling factor. Can correct cases when the model
-        calculation has a different normalization from what is desired.
-    crit_log_energy_flux : float
-        The spline is parameterized in log10(flux). This value determines
-        when the flux should be considered 0.
     """
     def __init__(
-            self, psp_table, log_xray_lumin, src_dist, Phi0,
+            self,
+            psp_table,
+            log_xray_lumin,
+            src_dist,
+            Phi0,
             lumin_scale=1.0,
             crit_log_energy_flux=-50,
             crit_log_nu_energy_lower=2.0,
             crit_log_nu_energy_upper=7.0):
+        """Creates a new SeyfertCoreCoronaFlux instance.
 
-        super(SeyfertCoreCoronaFlux, self).__init__(
-            Phi0, psp_table, crit_log_nu_energy_lower, crit_log_nu_energy_upper)
+        Parameters
+        ----------
+        psp_table : photospline.SplineTable instance
+            The photospline.SplineTable instance that describes the neutrino
+            flux as function of neutrino energy via B-spline interpolation.
+        log_xray_lumin : float
+            log10 of intrinsic x-ray luminosity of source in 2-10 keV band.
+        src_dist : float
+            Distance to source in units of Mpc.
+        Phi0 : float
+            Flux normalization relative to model prediction.
+        lumin_scale : float
+            A relative flux scaling factor. Can correct cases when the model
+            calculation has a different normalization from what is desired.
+        crit_log_energy_flux : float
+            The spline is parameterized in log10(flux). This value determines
+            when the flux should be considered 0.
+        crit_log_nu_energy_lower : float
+            Lower end of energy range (support) of spline flux.
+        crit_log_nu_energy_upper : float
+            Upper end of energy range (support) of spline flux.
+        """
+        super().__init__(
+            Phi0=Phi0,
+            psp_table=psp_table,
+            crit_log_nu_energy_lower=crit_log_nu_energy_lower,
+            crit_log_nu_energy_upper=crit_log_nu_energy_upper)
 
-        self._lumin_scale = lumin_scale
-        self._crit_log_energy_flux = crit_log_energy_flux
-        self._src_dist = src_dist
-        self._log_xray_lumin = log_xray_lumin
+        self.lumin_scale = lumin_scale
+        self.crit_log_energy_flux = crit_log_energy_flux
+        self.src_dist = src_dist
+        self.log_xray_lumin = log_xray_lumin
 
     @property
     def log_xray_lumin(self):
@@ -228,7 +244,8 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
     @log_xray_lumin.setter
     def log_xray_lumin(self, v):
         v = float_cast(
-            v, 'Property log_xray_lumin must be castable to type float!')
+            v,
+            'Property log_xray_lumin must be castable to type float!')
         self._log_xray_lumin = v
 
     @property
@@ -239,7 +256,8 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
     @lumin_scale.setter
     def lumin_scale(self, v):
         v = float_cast(
-            v, 'Property lumin_scale must be castable to type float!')
+            v,
+            'Property lumin_scale must be castable to type float!')
         self._lumin_scale = v
 
     @property
@@ -250,7 +268,8 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
     @src_dist.setter
     def src_dist(self, v):
         v = float_cast(
-            v, 'Property src_dist must be castable to type float!')
+            v,
+            'Property src_dist must be castable to type float!')
         self._src_dist = v
 
     @property
@@ -261,7 +280,8 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
     @crit_log_energy_flux.setter
     def crit_log_energy_flux(self, v):
         v = float_cast(
-            v, 'Property crit_log_energy_flux must be castable to type float!')
+            v,
+            'Property crit_log_energy_flux must be castable to type float!')
         self._crit_log_energy_flux = v
 
     @property
@@ -303,7 +323,7 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     def __deepcopy__(self, memo):
         """The photospline.SplineTable objects are strictly immutable.
-           Hence no copy should be required, ever!
+        Hence no copy should be required, ever!
         """
         return SeyfertCoreCoronaFlux(
             self.psp_table, self.log_xray_lumin, self.src_dist, self.Phi0,
@@ -391,7 +411,7 @@ class CutoffPowerLawFlux(PowerLawFlux):
     The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
     """
-    def __init__(self, Phi0, E0, gamma, Ecut):
+    def __init__(self, Phi0, E0, gamma, Ecut, **kwargs):
         """Creates a new cut-off power law flux object.
 
         Parameters
@@ -407,20 +427,25 @@ class CutoffPowerLawFlux(PowerLawFlux):
         Ecut : float
             Cut-off energy [GeV]
         """
-        super(CutoffPowerLawFlux, self).__init__(Phi0, E0, gamma)
+        super().__init__(Phi0, E0, gamma, **kwargs)
         self.Ecut = Ecut
 
     @property
     def Ecut(self):
+        """The energy cut value.
+        """
         return self._Ecut
     @Ecut.setter
-    def Ecut(self, val):
-        val = float_cast(val, 'Property val must be castable to type float!')
-        self._Ecut = val
+    def Ecut(self, v):
+        v = float_cast(
+            v,
+            'Property val must be castable to type float!')
+        self._Ecut = v
 
     @property
     def math_function_str(self):
-        return super(CutoffPowerLawFlux, self).math_function_str + ' * exp(-E / %.2e %s)'%(self.Ecut, self.energy_unit)
+        return super().math_function_str + ' * exp(-E / %.2e %s)'%(
+            self.Ecut, self.energy_unit)
 
     def __call__(self, E):
         """The flux value dN/(dEdAdt) at energy E.
@@ -449,8 +474,10 @@ class LogParabolaPowerLawFlux(NormedFluxModel):
     The unit of dN/(dEdAdt) is [energy]^-1 [length]^-2 [time]^-1.
     By default the unit is GeV^-1 cm^-2 s^-1.
     """
-    def __init__(self, Phi0, E0, alpha, beta):
-        super(LogParabolaPowerLawFlux, self).__init__(Phi0, E0)
+    def __init__(self, Phi0, E0, alpha, beta, **kwargs):
+        """Creates a new LogParabolaPowerLawFlux instance.
+        """
+        super().__init__(Phi0, E0, **kwargs)
         self.alpha = alpha
         self.beta = beta
 
@@ -488,5 +515,7 @@ class LogParabolaPowerLawFlux(NormedFluxModel):
             Flux at energy E in unit [energy]^-1 [length]^-2 [time]^-1.
             By default that is GeV^-1 cm^-2 s^-1.
         """
-        flux = self.Phi0 * np.power(E / self.E0, -self.alpha - self.beta * np.log(E / self.E0))
+        flux = self.Phi0 * np.power(
+            E / self.E0,
+            -self.alpha - self.beta * np.log(E / self.E0))
         return flux
