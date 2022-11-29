@@ -61,8 +61,8 @@ apidoc_toc_file = False
 apidoc_extra_args = ['-d', '0']
 
 smv_branch_whitelist = r'^(?!HEAD|gh-pages).*$'
-smv_remote_whitelist = r'^.*$' 
-smv_tag_whitelist = None
+smv_remote_whitelist = r'^.*$'
+#smv_tag_whitelist = None
 smv_outputdir_format = '{ref.name}/html'
 
 autoclass_content = 'both'
@@ -98,7 +98,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
