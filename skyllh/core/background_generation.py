@@ -283,7 +283,7 @@ class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        src_hypo_group_manager : instance of SourceHypoGroupManager
             The new SourceHypoGroupManager instance.
         """
         if(self._pre_event_selection_method is not None):

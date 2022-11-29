@@ -1328,8 +1328,8 @@ class PDFSet(object):
     """
 
     def __init__(self, pdf_type, fitparams_grid_set, *args, **kwargs):
-        """Constructor method. Gets called when the an instance of a class is
-        created which derives from this PDFSet class.
+        """Constructor method. Gets called when a class instance is created
+        which is derived from this PDFSet class.
 
         Parameters
         ----------
