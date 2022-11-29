@@ -106,7 +106,7 @@ def load_pseudo_data(filename, tl=None):
     bkg_events_list : list of DataFieldRecordArray instances
         The list of DataFieldRecordArray instances containing the background
         pseudo data events for each data set.
-    sig_events_list : list of DataFieldRecordArray instances or None
+    sig_events_list : list of DataFieldRecordArray instances | None
         The list of DataFieldRecordArray instances containing the signal
         pseudo data events for each data set. If a particular dataset has
         no signal events, the entry for that dataset can be None.

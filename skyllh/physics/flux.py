@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
-"""Note: This module is deprecated and new flux models should be implemented in
+"""Note:
+
+    This module is deprecated and new flux models should be implemented in
     `flux_model.py`. However, the framework currently doesn't support flux
     models derived from `flux_model.FluxModel`.
 

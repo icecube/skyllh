@@ -40,7 +40,9 @@ def create_NDPhotosplinePDF_from_photosplinefit(
     norm_factor_func : callable | None
         The normalization factor function. It must have the following call
         signature:
+
             __call__(pdf, tdm, params)
+
     tl : TimeLord instance | None
         The optional TimeLord instance to use for measuring timing information.
 

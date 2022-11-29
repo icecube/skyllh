@@ -56,7 +56,9 @@ def create_MultiDimGridPDF_from_photosplinetable(
     norm_factor_func : callable | None
         The normalization factor function. It must have the following call
         signature:
+
             __call__(pdf, tdm, fitparams)
+
     kind : str | None
         The kind of PDF to create. This is either ``'sig'`` for a
         SignalMultiDimGridPDF or ``'bkg'`` for a BackgroundMultiDimGridPDF
@@ -141,7 +143,9 @@ def create_MultiDimGridPDF_from_kde_pdf(
     norm_factor_func : callable | None
         The normalization factor function. It must have the following call
         signature:
+
             __call__(pdf, tdm, fitparams)
+
     kind : str | None
         The kind of PDF to create. This is either ``'sig'`` for a
         SignalMultiDimGridPDF or ``'bkg'`` for a BackgroundMultiDimGridPDF

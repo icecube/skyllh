@@ -337,7 +337,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         self._event_selection_method_list.append(event_selection_method)
 
     def calculate_test_statistic(
-            self, log_lambda, fitparam_values, *args, **kwargs):
+            self, log_lambda, fitparam_values, **kwargs):
         """Calculates the test statistic value by calling the ``evaluate``
         method of the TestStatistic class with the given log_lambda value and
         fit parameter values.
@@ -350,11 +350,9 @@ class Analysis(object, metaclass=abc.ABCMeta):
         fitparam_values : (N_fitparam+1)-shaped 1D ndarray
             The 1D ndarray holding the fit parameter values of the
             log-likelihood ratio function for the given log_lambda value.
-
-        Additional arguments and keyword arguments
-        ------------------------------------------
-        Any additional arguments and keyword arguments are passed to the
-        evaluate method of the TestStatistic class instance.
+        **kwargs
+            Any additional keyword arguments are passed to the
+            ``evaluate`` method of the TestStatistic class instance.
 
         Returns
         -------
@@ -362,7 +360,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The calculated test-statistic value.
         """
         return self._test_statistic.evaluate(
-            self._llhratio, log_lambda, fitparam_values, *args, **kwargs)
+            self._llhratio, log_lambda, fitparam_values, **kwargs)
 
     @abc.abstractmethod
     def construct_llhratio(self):
