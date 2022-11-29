@@ -62,12 +62,25 @@ apidoc_extra_args = ['-d', '0']
 
 smv_branch_whitelist = r'^(?!HEAD|gh-pages).*$'
 smv_remote_whitelist = r'^.*$'
-#smv_tag_whitelist = None
 smv_outputdir_format = '{ref.name}/html'
 
 autoclass_content = 'both'
-autodoc_member_order = 'bysource'
-autodoc_default_flags = ['members', 'show-inheritance']
+autodoc_default_options = {
+    'members': True,
+    'member-order': 'bysource',
+    'special-members': True,
+    'undoc-members': True,
+    'exclude-members': ','.join([
+        '__abstractmethods__',
+        '__dict__',
+        '__hash__',
+        '__init__',
+        '__module__',
+        '__str__',
+        '__weakref__',
+    ]),
+    'show-inheritance': True,
+}
 
 autosummary_generate = True
 
