@@ -149,7 +149,7 @@ class DetectorModel(Model):
     """This class provides a base class for a detector model. It can be used
     in combination with the ParameterModelMapper class.
     """
-    def __init__(self, name):
+    def __init__(self, name, **kwargs):
         """Creates a new DetectorModel instance.
 
         Parameters
@@ -157,7 +157,9 @@ class DetectorModel(Model):
         name : str
             The name of the detector model.
         """
-        super().__init__(name=name)
+        super().__init__(
+            name=name,
+            **kwargs)
 
 
 class SourceModel(Model):
