@@ -1466,7 +1466,8 @@ class ParameterModelMapper(object):
         # Define the attribute holding the boolean mask of the models that are
         # source models.
         self._source_model_mask = np.array([
-            isinstance(model, SourceModel) for model in self._models
+            isinstance(model, SourceModel)
+                for model in self._models
             ], dtype=bool)
 
         # Define a (n_models, n_global_params)-shaped numpy ndarray of str
@@ -1587,6 +1588,43 @@ class ParameterModelMapper(object):
 
         return s
 
+    def get_src_model_idxs(self, sources):
+        """Creates a numpy ndarray holding the indices of the requested source
+        models.
+
+        Parameters
+        ----------
+        sources : instance of SourceModel | sequence of SourceModel
+            The requested sequence of source models. If set to ``None``, all
+            source models will be requested.
+
+        Returns
+        -------
+        src_model_idxs : numpy ndarray
+            The (N_sources,)-shaped 1D ndarray holding the indices of the
+            requested source models.
+        """
+        # Get the model indices of all the source models.
+        src_model_idxs = np.arange(self.n_models)[self._source_model_mask]
+
+        # Select only the source models of interest.
+        if sources is not None:
+            if isinstance(sources, SourceModel):
+                sources = [sources]
+            if not issequenceof(sources, SourceModel):
+                raise TypeError(
+                    'The sources argument must be None, an instance of '
+                    'SourceModel, or a sequence of SourceModel! '
+                    f'Its type is {classname(sources)}')
+            src_selection_mask = np.zeros((len(src_model_idxs),), dtype=bool)
+            for smidx in src_model_idxs:
+                src = self._models[smidx]
+                if src in sources:
+                    src_selection_mask[smidx] = True
+            src_model_idxs = src_model_idxs[src_selection_mask]
+
+        return src_model_idxs
+
     def def_param(self, param, models=None, model_param_names=None):
         """Adds the given Parameter instance to this parameter model mapper and
         maps the parameter to the given sequence of models this parameter model
@@ -1687,8 +1725,9 @@ class ParameterModelMapper(object):
         # the requested model.
         mask = self._model_param_names[midx] != None
 
-        # Create the array of parameter names that belong to the requested
-        # model, where floating parameters are before the fixed parameters.
+        # Create the array of local parameter names that belong to the
+        # requested model, where the floating parameters are before the fixed
+        # parameters.
         model_param_names = np.concatenate(
             (self._model_param_names[midx,
                 self._global_paramset.floating_params_mask & mask],
@@ -1703,12 +1742,127 @@ class ParameterModelMapper(object):
                 mask[self._global_paramset.floating_params_mask]],
             self._global_paramset.fixed_param_values[
                 mask[self._global_paramset.fixed_params_mask]]
-        ))
+            ))
 
         model_param_dict = dict(
             zip(model_param_names, model_param_values))
 
         return model_param_dict
+
+    def get_src_params_recarray(self, gflp_values, sources=None):
+        """Creates a numpy record ndarray with a field for each local source
+        parameter name and parameter's value. In addition each parameter field
+        ``<name>`` has a field named ``<<name>:gpidx>`` which holds the index
+        plus one of the corresponding global parameter for each source value.
+        For values mapping to fixed parameters, the index is negative. Local
+        parameter values that do not apply to a particular source are set to
+        NaN. The parameter index in such cases is undefined.
+        In addition to the parameter fields, the field ``model_idx`` holds the
+        index of the model for which the local parameter values apply.
+
+        Parameters
+        ----------
+        gflp_values : numpy ndarray
+            The (N_floating_param,)-shaped 1D ndarray holding the global
+            floating parameter values. The order must match the order of
+            parameter definition in this ParameterModelMapper instance.
+        sources : SourceModel | sequence of SourceModel | ndarray of int | None
+            The sources which should be considered.
+            If a ndarray of type int is provides, it must contain the global
+            source indices.
+            If set to ``None``, all sources are considered.
+
+        Returns
+        -------
+        recarray : numpy record ndarray
+            The (N_sources,)-shaped numpy record ndarray holding the local
+            parameter names and their values for each requested source.
+            It contains the following fields:
+
+                model_idx
+                    The field holding the index of the model to which the set
+                    of local parameters apply.
+                <name>
+                    The field holding the value for the local parameter <name>.
+                    Not all local parameters apply to all sources.
+                    Example: "gamma".
+                <name>:gpidx
+                    The field holding the global parameter index plus one for
+                    the local parameter <name>. Example: "gamma:gpidx". Indices
+                    for values mapping to fixed parameters are negative.
+        """
+        # Check input.
+        n_global_floating_params = self.n_global_floating_params
+        if len(gflp_values) != n_global_floating_params:
+            raise ValueError(
+                f'The gflp_values argument is of length '
+                f'{len(gflp_values)}, but must be of length '
+                f'{n_global_floating_params}!')
+
+        if isinstance(sources, np.ndarray) and sources.dtype == np.int:
+            # The sources are already specified in terms of their source
+            # indices.
+            smidxs = sources
+        else:
+            # Get the source indices of the requested sources.
+            smidxs = self.get_src_model_idxs(sources=sources)
+
+        # Create the output record array with nan as default value.
+        dtype = [('model_idx', np.int)]
+        for name in self.unique_source_param_names:
+            dtype += [(name, np.float), (f'{name}:gpidx', np.int)]
+
+        recarray = np.full(
+            (len(smidxs),),
+            np.nan,
+            dtype=dtype)
+
+        recarray['model_idx'] = smidxs
+
+        # Loop over the requested sources.
+        _model_param_names = self._model_param_names
+        _global_paramset = self._global_paramset
+        gflp_mask = _global_paramset.floating_params_mask
+        gfxp_mask = _global_paramset.fixed_params_mask
+        for (i, smidx) in enumerate(smidxs):
+            # Get the mask that selects the global parameters for the requested
+            # source.
+            src_gp_mask = _model_param_names[smidx] != None
+
+            # Create the array of local parameter names that belong to the
+            # requested model, where the floating parameters are before the
+            # fixed parameters.
+            model_param_names = np.concatenate(
+                (_model_param_names[smidx, gflp_mask & src_gp_mask],
+                 _model_param_names[smidx, gfxp_mask & src_gp_mask]
+                ))
+
+            # Create the array of local parameter values that belong to the
+            # requested model, where the floating parameters are before the
+            # fixed parameters.
+            model_param_values = np.concatenate((
+                gflp_values[
+                    src_gp_mask[gflp_mask]],
+                _global_paramset.fixed_param_values[
+                    src_gp_mask[gfxp_mask]]
+                ))
+
+            # Create the array of the global parameter indices.
+            gpidxs = np.arange(len(_global_paramset))
+            model_gp_idxs = np.concatenate(
+                (gpidxs[gflp_mask & src_gp_mask] + 1,
+                 -gpidxs[gfxp_mask & src_gp_mask] - 1,
+                )
+            )
+
+            # Loop over the local parameters of the source and fill the
+            # params record array.
+            for (name, value, gpidx) in zip(
+                    model_param_names, model_param_values, model_gp_idxs):
+                recarray[name][i] = value
+                recarray[f'{name}:gpidx'][i] = gpidx
+
+        return recarray
 
     def get_source_floating_params_recarray(self, gflp_values, sources=None):
         """Creates a numpy record ndarray holding the floating parameter names
@@ -1718,7 +1872,7 @@ class ParameterModelMapper(object):
         Parameters
         ----------
         gflp_values : 1D ndarray
-            The array holding the current global fit parameter values.
+            The array holding the current global floating parameter values.
         sources : sequence of SourceModel instances | None
             If not None, specifies the list of sources that should be
             considered. Sources not part of this list will be ignored.
@@ -1741,36 +1895,27 @@ class ParameterModelMapper(object):
                 f'{len(gflp_values)}, but must be of length '
                 f'{n_global_floating_params}!')
 
-        # Get the model indices of all the source models.
-        midxs = np.arange(self.n_models)[self._source_model_mask]
-
-        # Select only the source models of interest.
-        if sources is not None:
-            source_selection_mask = np.zeros((self.n_sources,), dtype=bool)
-            for midx in midxs:
-                src = self._models[midx]
-                if src in sources:
-                    source_selection_mask[midx] = True
-            midxs = midxs[source_selection_mask]
+        # Get the indices of the requested source models.
+        smidxs = self.get_src_model_idxs(sources=sources)
 
         # Create the output array with nan as default value.
         arr = np.full(
-            (len(midxs),),
+            (len(smidxs),),
             np.nan,
             dtype=[
                 (name, np.float)
                     for name in self.unique_source_param_names
             ])
 
-        for (sidx, midx) in enumerate(midxs):
+        for (i, smidx) in enumerate(smidxs):
             # Get the model parameter mask that selects the global parameters
             # for the requested model.
-            mask = self._model_param_names[midx] != None
+            mask = self._model_param_names[smidx] != None
 
             # Create the array of parameter names that belong to the requested
             # model, where floating parameters are before the fixed parameters.
             model_param_names = self._model_param_names[
-                midx,
+                smidx,
                 self._global_paramset.floating_params_mask & mask
             ]
             model_param_values = gflp_values[
@@ -1778,7 +1923,7 @@ class ParameterModelMapper(object):
 
             # Fill the fit params array.
             for (name, value) in zip(model_param_names, model_param_values):
-                arr[name][sidx] = value
+                arr[name][i] = value
 
         return arr
 
