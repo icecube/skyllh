@@ -876,15 +876,17 @@ class MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
         else:
             self._tdm.get_data('src_array')['src_w_grad'] = np.zeros_like(_src_w)
 
-        (log_lambda, grads) = super(
-            MultiSourceZeroSigH0SingleDatasetTCLLHRatio, self).evaluate(
+        (log_lambda, grads) = super().evaluate(
                 fitparam_values, tl)
 
         return (log_lambda, grads)
 
 
 class SourceWeights(object, metaclass=abc.ABCMeta):
-    """Abstract base class for a source weight calculator class.
+    """This class is DEPRECATED!
+    Use :py:class:`skyllh.core.weights.SourceDetectorWeights` instead!
+
+    Abstract base class for a source weight calculator class.
     """
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, detsigyields):
@@ -1036,7 +1038,10 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
 
 
 class MultiPointSourcesRelSourceWeights(SourceWeights):
-    """This class calculates the relative source weights for a group of point
+    """This class is DEPRECATED!
+    Use :py:class:`skyllh.core.weights.SourceDetectorWeights` instead!
+
+    This class calculates the relative source weights for a group of point
     sources.
     """
     def __init__(
