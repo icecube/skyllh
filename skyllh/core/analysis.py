@@ -9,26 +9,35 @@ import pickle
 
 from skyllh.core.py import (
     classname,
-    issequenceof
+    issequenceof,
 )
-from skyllh.core.debugging import get_logger
-from skyllh.core.storage import DataFieldRecordArray
+from skyllh.core.debugging import (
+    get_logger,
+)
+from skyllh.core.storage import (
+    DataFieldRecordArray,
+)
 from skyllh.core.dataset import (
     Dataset,
-    DatasetData
+    DatasetData,
 )
 from skyllh.core.parameters import (
-    FitParameter,
-    SourceFitParameterMapper,
-    SingleSourceFitParameterMapper
+    Parameter,
+    ParameterModelMapper,
 )
 from skyllh.core.pdf import (
     EnergyPDF,
-    SpatialPDF
+    SpatialPDF,
 )
-from skyllh.core.pdfratio import PDFRatio
-from skyllh.core.progressbar import ProgressBar
-from skyllh.core.random import RandomStateService
+from skyllh.core.pdfratio import (
+    PDFRatio,
+)
+from skyllh.core.progressbar import (
+    ProgressBar,
+)
+from skyllh.core.random import (
+    RandomStateService,
+)
 from skyllh.core.dataset_signal_weights import (
     SingleSourceDatasetSignalWeights,
     MultiSourceDatasetSignalWeights,
@@ -39,21 +48,38 @@ from skyllh.core.llhratio import (
     SingleSourceZeroSigH0SingleDatasetTCLLHRatio,
     MultiSourceZeroSigH0SingleDatasetTCLLHRatio,
 )
-from skyllh.core.scrambling import DataScramblingMethod
-from skyllh.core.timing import TaskTimer
-from skyllh.core.trialdata import TrialDataManager
+from skyllh.core.scrambling import (
+    DataScramblingMethod,
+)
+from skyllh.core.timing import (
+    TaskTimer,
+)
+from skyllh.core.trialdata import (
+    TrialDataManager,
+)
 from skyllh.core.optimize import (
     EventSelectionMethod,
-    AllEventSelectionMethod
+    AllEventSelectionMethod,
 )
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
-from skyllh.core.test_statistic import TestStatistic
-from skyllh.core.multiproc import get_ncpu, parallelize
-from skyllh.core.background_generation import BackgroundGenerationMethod
-from skyllh.core.background_generator import BackgroundGenerator
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
+from skyllh.core.test_statistic import (
+    TestStatistic,
+)
+from skyllh.core.multiproc import (
+    get_ncpu,
+    parallelize,
+)
+from skyllh.core.background_generation import (
+    BackgroundGenerationMethod,
+)
+from skyllh.core.background_generator import (
+    BackgroundGenerator,
+)
 from skyllh.core.signal_generator import (
     SignalGeneratorBase,
-    SignalGenerator
+    SignalGenerator,
 )
 from skyllh.core.model import (
     SourceModel,
@@ -123,7 +149,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             If set to None, the `SignalGenerator` class is used.
         """
         # Call the super function to allow for multiple class inheritance.
-        super(Analysis, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.shg_mgr = shg_mgr
         self.param_model_mapper = param_model_mapper
@@ -152,7 +178,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return self._shg_mgr
     @shg_mgr.setter
     def shg_mgr(self, manager):
-        if(not isinstance(manager, SourceHypoGroupManager)):
+        if not isinstance(manager, SourceHypoGroupManager):
             raise TypeError(
                 'The shg_mgr property must be an instance of '
                 'SourceHypoGroupManager!')
@@ -310,23 +336,23 @@ class Analysis(object, metaclass=abc.ABCMeta):
             of log-likelihood-ratio function evaluations. If set to None, all
             events will be evaluated.
         """
-        if(not isinstance(dataset, Dataset)):
+        if not isinstance(dataset, Dataset):
             raise TypeError(
                 'The dataset argument must be an instance of Dataset!')
 
-        if(not isinstance(data, DatasetData)):
+        if not isinstance(data, DatasetData):
             raise TypeError(
                 'The data argument must be an instance of DatasetData!')
 
-        if(tdm is None):
+        if tdm is None:
             tdm = TrialDataManager()
-        if(not isinstance(tdm, TrialDataManager)):
+        if not isinstance(tdm, TrialDataManager):
             raise TypeError(
                 'The tdm argument must be None or an instance of '
                 'TrialDataManager!')
 
-        if(event_selection_method is not None):
-            if(not isinstance(event_selection_method, EventSelectionMethod)):
+        if event_selection_method is not None:
+            if not isinstance(event_selection_method, EventSelectionMethod):
                 raise TypeError(
                     'The event_selection_method argument must be None or an '
                     'instance of EventSelectionMethod!')
