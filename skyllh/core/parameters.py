@@ -7,6 +7,7 @@ from copy import deepcopy
 
 from skyllh.core import display
 from skyllh.core.model import (
+    Model,
     ModelCollection,
     SourceModel,
     SourceModelCollection,
@@ -18,6 +19,7 @@ from skyllh.core.py import (
     const,
     float_cast,
     get_number_of_float_decimals,
+    int_cast,
     issequence,
     issequenceof,
     make_dict_hash,
@@ -1588,6 +1590,33 @@ class ParameterModelMapper(object):
 
         return s
 
+    def get_model_idx_by_name(self, name):
+        """Determines the index within this ParameterModelMapper instance of
+        the model with the given name.
+
+        Parameters
+        ----------
+        name : str
+            The model's name.
+
+        Returns
+        -------
+        model_idx : int
+            The model's index within this ParameterModelMapper instance.
+
+        Raises
+        ------
+        KeyError
+            If there is no model of the given name.
+        """
+        for (model_idx, model) in enumerate(self._models):
+            if model.name == name:
+                return model_idx
+
+        raise KeyError(
+            f'The model with name "{name}" does not exist within the '
+            'ParameterModelMapper instance!')
+
     def get_src_model_idxs(self, sources):
         """Creates a numpy ndarray holding the indices of the requested source
         models.
@@ -1700,7 +1729,7 @@ class ParameterModelMapper(object):
 
         return self
 
-    def get_model_param_dict(self, gflp_values, midx=0):
+    def create_model_params_dict(self, gflp_values, model):
         """Creates a dictionary with the fixed and floating parameter names and
         their values for the given model.
 
@@ -1709,7 +1738,7 @@ class ParameterModelMapper(object):
         gflp_values : 1D ndarray of float
             The ndarray instance holding the current values of the global
             floating parameters.
-        midx : int
+        model : instance of Model | str | int
             The index of the model as it was defined at construction
             time of this ParameterModelMapper instance.
 
@@ -1721,27 +1750,44 @@ class ParameterModelMapper(object):
         """
         gflp_values = np.atleast_1d(gflp_values)
 
+        if isinstance(model, str):
+            midx = self.get_model_idx_by_name(name=model)
+        elif isinstance(model, Model):
+            midx = self.get_model_idx_by_name(name=model.name)
+        else:
+            midx = int_cast(
+                model,
+                'The model argument must be an instance of Model, str, or '
+                'castable to int!')
+            if midx < 0 or midx >= len(self._models):
+                raise IndexError(
+                    f'The model index {midx} is out of range '
+                    f'[0,{len(self._models)-1}]!')
+
         # Get the model parameter mask that masks the global parameters for
         # the requested model.
-        mask = self._model_param_names[midx] != None
+        m_gp_mask = self._model_param_names[midx] != None
+
+        _model_param_names = self._model_param_names
+        _global_paramset = self._global_paramset
+        gflp_mask = _global_paramset.floating_params_mask
+        gfxp_mask = _global_paramset.fixed_params_mask
 
         # Create the array of local parameter names that belong to the
         # requested model, where the floating parameters are before the fixed
         # parameters.
         model_param_names = np.concatenate(
-            (self._model_param_names[midx,
-                self._global_paramset.floating_params_mask & mask],
-             self._model_param_names[midx,
-                self._global_paramset.fixed_params_mask & mask]
+            (_model_param_names[midx,
+                gflp_mask & m_gp_mask],
+             _model_param_names[midx,
+                gfxp_mask & m_gp_mask]
             ))
 
         # Create the array of parameter values that belong to the requested
         # model, where floating parameters are before the fixed parameters.
         model_param_values = np.concatenate((
-            gflp_values[
-                mask[self._global_paramset.floating_params_mask]],
-            self._global_paramset.fixed_param_values[
-                mask[self._global_paramset.fixed_params_mask]]
+            gflp_values[m_gp_mask[gflp_mask]],
+            _global_paramset.fixed_param_values[m_gp_mask[gfxp_mask]]
             ))
 
         model_param_dict = dict(
@@ -1791,6 +1837,8 @@ class ParameterModelMapper(object):
                     the local parameter <name>. Example: "gamma:gpidx". Indices
                     for values mapping to fixed parameters are negative.
         """
+        gflp_values = np.atleast_1d(gflp_values)
+
         # Check input.
         n_global_floating_params = self.n_global_floating_params
         if len(gflp_values) != n_global_floating_params:
