@@ -11,14 +11,15 @@ from skyllh.core.parameters import (
     ParameterModelMapper,
 )
 
+
 class SourceDetectorWeights(object):
-    """This class provides the source detector weights, which are the product
+    r"""This class provides the source detector weights, which are the product
     of the source weights with the detector signal yield, denoted with
-    a_k(p_s_k) in the mathematics documentation.
+    :math:`a_k({p_s}_k)` in the math formalism documentation.
 
-    :math::
+    .. math::
 
-        a_k({p_{s}}_k) = W_k {Y_s}_k
+        a_k({p_{s}}_k) = W_k {\mathcal{Y}_s}_k
 
     """
 
@@ -193,7 +194,7 @@ class SourceDetectorWeights(object):
             global floating parameter.
         """
         a = np.empty((self.shg_mgr.n_sources,), dtype=np.double)
-        a_grads = np.empty(
+        a_grads = np.zeros(
             (self.shg_mgr.n_sources, len(gflp_values)),
             dtype=np.double)
 
@@ -206,17 +207,22 @@ class SourceDetectorWeights(object):
 
             shg_n_src = shg.n_sources
 
-            src_flp_recarray =\
-                self._param_model_mapper.get_source_floating_params_recarray(
+            src_params_recarray =\
+                self._param_model_mapper.create_src_params_recarray(
                     gflp_values=gflp_values,
                     sources=shg.source_list)
-            # TODO: The shape of Yg_grads is not well defined, because it's
-            #       not clear on which global floating parameters the detector
-            #       signal yield depends.
-            (Yg, Yg_grads) = detsigyield(src_recarray, src_flp_recarray)
 
-            a[sidx:sidx+shg_n_src] = src_weights * Yg
+            (Yg, Yg_grads) = detsigyield(
+                src_recarray=src_recarray,
+                src_params_recarray=src_params_recarray)
 
-            a_grads[sidx:sidx+shg_n_src] = src_weights * Yg_grads
+            shg_src_slice = slice(sidx, sidx+shg_n_src)
+
+            a[shg_src_slice] = src_weights * Yg
+
+            for gpidx in Yg_grads.keys():
+                a_grads[shg_src_slice][gpidx] = src_weights * Yg_grads[gpidx]
 
             sidx += shg_n_src
+
+        return (a, a_grads)

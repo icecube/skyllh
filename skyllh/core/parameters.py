@@ -1749,7 +1749,7 @@ class ParameterModelMapper(object):
 
         return model_param_dict
 
-    def get_src_params_recarray(self, gflp_values, sources=None):
+    def create_src_params_recarray(self, gflp_values, sources=None):
         """Creates a numpy record ndarray with a field for each local source
         parameter name and parameter's value. In addition each parameter field
         ``<name>`` has a field named ``<<name>:gpidx>`` which holds the index

@@ -558,10 +558,10 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         values : numpy (N_sources,)-shaped 1D ndarray
             The array with the detector signal yield for each source.
         grads : dict
-            The dictionary holding the gradient values for each global fit
-            parameter. The key is the global fit parameter index and the value
-            is the (N_sources,)-shaped numpy ndarray holding the gradient value
-            dY_k/dp_s.
+            The dictionary holding the gradient values for each global floating
+            parameter. The key is the global floating parameter index and the
+            value is the (N_sources,)-shaped numpy ndarray holding the gradient
+            value dY_k/dp_s.
         """
         local_param_name = self.param_names[0]
 
