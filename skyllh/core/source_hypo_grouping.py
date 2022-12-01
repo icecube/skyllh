@@ -136,6 +136,24 @@ class SourceHypoGroup(object):
         """
         return len(self._source_list)
 
+    def get_source_weights(self):
+        """Gets the weight from each source of this source hypothesis group.
+
+        Returns
+        -------
+        weights : numpy ndarray | None
+            The (N_sources,)-shaped numpy ndarray holding the theoretical
+            weight of each source.
+            It is ``None`` if any of the individual source weights is None.
+        """
+        weights = []
+        for src in self._source_list:
+            if src.weight is None:
+                return None
+            weights.append(src.weight)
+
+        return np.array(weights)
+
 
 class SourceHypoGroupManager(object):
     """The source hypothesis group manager provides the functionality to group
