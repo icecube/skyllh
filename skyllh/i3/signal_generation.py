@@ -93,7 +93,8 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         self,
         src_sin_dec_half_bandwidth=np.sin(np.radians(1)),
         src_sin_dec_shift_func=None,
-        energy_range=None
+        energy_range=None,
+        **kwargs
     ):
         """Constructs a new signal generation method instance for a point-like
         source detected with IceCube.
@@ -113,8 +114,9 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             signal event generation.
             If set to None, the entire energy range [0, +inf] is used.
         """
-        super(PointLikeSourceI3SignalGenerationMethod, self).__init__(
-            energy_range=energy_range)
+        super().__init__(
+            energy_range=energy_range,
+            **kwargs)
 
         self.src_sin_dec_half_bandwidth = src_sin_dec_half_bandwidth
 
@@ -262,7 +264,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
                 )
 
             indices_list.append(indices[src_event_mask])
-            flux = fluxmodel(data_mc_true_energy[src_event_mask])*toGeVcm2s / src_dec_band_omega[k]
+            flux = fluxmodel(E=data_mc_true_energy[src_event_mask])*toGeVcm2s / src_dec_band_omega[k]
             flux_list.append(flux)
 
         return (indices_list, flux_list)
@@ -365,33 +367,27 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
 
     def calc_source_signal_mc_event_flux(self, data_mc, shg):
         """Calculates the signal flux of each given MC event for each source
-        hypothesis of the given source hypothesis group. The unit of the signal
-        flux must be 1/(GeV cm^2 s sr).
+        hypothesis of the given source hypothesis group.
 
         Parameters
         ----------
         data_mc : numpy record ndarray
             The numpy record array holding the MC events of a dataset.
-        shg : SourceHypoGroup instance
+        shg : instance of SourceHypoGroup instance
             The source hypothesis group, which defines the list of sources, and
             their flux model.
 
         Returns
         -------
-        ev_indices : 1D ndarray
-            Event indices array specifying which MC events have been selected as
-            signal candidate events for each source of the given source
-            hypothesis group. The length of the 1D ndarray is variable and
-            depends on the source.
-        src_indices : 1D ndarray
-            Source indices array specifying which source corresponds to the
-            event in ev_indices array.
-        flux_list : list of 1D ndarrays
-            The list of 1D ndarrays holding the flux value of the selected
-            signal candidate events. One array for each source of the given
-            source hypothesis group. Hence, the length of that list is the
-            number of sources of the source hypothesis group. The length of the
-            different 1D ndarrays is variable and depends on the source.
+        ev_idx_arr : ndarray
+            The (N_events,)-shaped 1D ndarray holding the index of the MC event.
+        src_idx_arr : ndarray
+            The (N_events,)-shaped 1D ndarray holding the index of the source
+            within the given source hypothesis group for each signal candidate
+            event.
+        flux_arr : ndarray
+            The (N_events,)-shaped 1D ndarray holding the flux value of each
+            signal candidate event.
         """
         indices = np.arange(
             0, len(data_mc),
@@ -420,11 +416,12 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
 
         # Get the flux model and source weights of this source hypo group.
         fluxmodel = shg.fluxmodel
-        src_weights = shg.source_weights
+        src_weights = shg.get_source_weights()
 
         # Calculate conversion factor from the flux model unit into the internal
-        # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
+        # flux unit.
+        to_internal_flux_unit =\
+            fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Select the events that belong to a given source.
         ev_indices = np.empty(
@@ -475,10 +472,18 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
                 del band_mask
 
             if(src_weights is None):
-                fluxi = fluxmodel(data_mc_true_energy[ev_indi])*toGeVcm2s / src_dec_band_omega[src_indi]
+                fluxi = (
+                    fluxmodel(E=data_mc_true_energy[ev_indi]) *
+                    to_internal_flux_unit /
+                    src_dec_band_omega[src_indi]
+                )
             else:
-                fluxi = src_weights[src_indi]*fluxmodel(data_mc_true_energy[ev_indi])*toGeVcm2s / src_dec_band_omega[src_indi]
-
+                fluxi = (
+                    src_weights[src_indi] *
+                    fluxmodel(E=data_mc_true_energy[ev_indi]) *
+                    to_internal_flux_unit /
+                    src_dec_band_omega[src_indi]
+                )
             ev_indices = np.append(ev_indices, ev_indi)
             src_indices = np.append(src_indices, src_indi)
             flux = np.append(flux, fluxi)
