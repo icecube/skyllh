@@ -1990,6 +1990,27 @@ class ParameterModelMapper(object):
 
         return arr
 
+    def gflp_values_to_dict(self, gflp_values):
+        """Converts the given global floating parameter values into a dictionary
+        holding the names and values of all floating and fixed parameters.
+
+        Parameters
+        ----------
+        gflp_values : numpy ndarray
+            The (n_global_floating_params,)-shaped 1D numpy ndarray holding the
+            values of the global floating parameters.
+
+        Returns
+        -------
+        param_dict : dict
+            The dictionary holding the parameter name and values of all
+            floating and fixed parameters.
+        """
+        param_dict = self._global_paramset.floating_param_values_to_dict(
+            floating_param_values=gflp_values)
+
+        return param_dict
+
 
 class FitParameter(object):
     """This class is DEPRECATED! Use class Parameter instead!
