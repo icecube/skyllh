@@ -12,26 +12,36 @@ class TestStatistic(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for a test statistic class.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         """Constructs the test-statistic function instance.
         """
-        super(TestStatistic, self).__init__()
+        super().__init__(**kwargs)
 
     @abc.abstractmethod
-    def evaluate(self, llhratio, log_lambda, fitparam_values, *args, **kwargs):
+    def __call__(
+            self,
+            param_model_mapper,
+            llhratio,
+            log_lambda,
+            gflp_values,
+            **kwargs):
         """This method is supposed to evaluate the test-statistic function.
 
         Parameters
         ----------
-        llhratio : LLHRatio instance
+        param_model_mapper : instance of ParameterModelMapper
+            The ParameterModelMapper instance that defines the global
+            parameter set.
+        llhratio : instance of LLHRatio
             The log-likelihood ratio function, which should be used for the
             test-statistic function.
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_values : (N_fitparams+1)-shaped 1D numpy ndarray
-            The numpy ndarray holding the fit parameter values of the
-            log-likelihood ratio function for the given log_lambda value.
+        gflp_values : numpy ndarray
+            The (N_global_floating_params,)-shaped 1D numpy ndarray holding the
+            global floating parameter values of the log-likelihood ratio
+            function for the given log_lambda value.
 
         Returns
         -------
@@ -42,39 +52,63 @@ class TestStatistic(object, metaclass=abc.ABCMeta):
 
 
 class TestStatisticWilks(TestStatistic):
-    """This class implements the standard Wilks theorem test-statistic function:
+    r"""This class implements the standard Wilks theorem test-statistic function:
 
-        TS = 2 * sign(ns_best) * log( L(fitparam_best) / L(ns = 0) )
+    .. math::
 
-    where the sign(ns_best) is negative for ns_best < 0, and positive otherwise.
+        TS = 2 \text{sign}(\hat{n}_{\text{s}}) \log \left(
+        \frac{\mathcal{L}(\hat{\vec{p}})}{\mathcal{L}(n_{\text{s}} = 0)} \right)
+
+    where the :math:`\text{sign}(\hat{n}_{\text{s}})` is negative for
+    :math:`\hat{n}_{\text{s}} < 0`, and positive otherwise.
     """
-    def __init__(self):
+    def __init__(self, ns_gflp_name='ns', **kwargs):
         """Constructs the test-statistic function instance.
-        """
-        super(TestStatisticWilks, self).__init__()
-
-    def evaluate(self, llhratio, log_lambda, fitparam_values):
-        """Evaluates this test-statistic function.
 
         Parameters
         ----------
-        llhratio : LLHRatio instance
+        ns_gflp_name : str
+            The name of the global floating parameter for the number of signal
+            events in the detector, ns.
+        """
+        super().__init__(**kwargs)
+
+        self._ns_gflp_name = ns_gflp_name
+
+    def __call__(
+            self,
+            param_model_mapper,
+            llhratio,
+            log_lambda,
+            gflp_values,
+            **kwargs):
+        """Evaluates the test-statistic function.
+
+        Parameters
+        ----------
+        param_model_mapper : instance of ParameterModelMapper
+            The ParameterModelMapper instance that defines the global
+            parameter set.
+        llhratio : instance of LLHRatio
             The log-likelihood ratio function, which should be used for the
             test-statistic function.
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_values : (N_fitparams+1)-shaped 1D numpy ndarray
-            The numpy ndarray holding the fit parameter values of the
-            log-likelihood ratio function for the given log_lambda value.
-            By definition, the first element is the value of 'ns'.
+        gflp_values : numpy ndarray
+            The (N_global_floating_params,)-shaped 1D numpy ndarray holding the
+            global floating parameter values of the log-likelihood ratio
+            function for the given log_lambda value.
 
         Returns
         -------
         TS : float
             The calculated test-statistic value.
         """
-        ns = fitparam_values[0]
+        ns_gflp_idx = param_model_mapper.get_gflp_idx(
+            name=self._ns_gflp_name)
+
+        ns = gflp_values[ns_gflp_idx]
 
         # We need to distinguish between ns=0 and ns!=0, because the np.sign(ns)
         # function returns 0 for ns=0, but we want it to be 1 in such cases.
@@ -86,64 +120,95 @@ class TestStatisticWilks(TestStatistic):
 
 
 class TestStatisticWilksZeroNsTaylor(TestStatistic):
-    """Similar to the TestStatisticWilks class, this class implements the
+    r"""Similar to the TestStatisticWilks class, this class implements the
     standard Wilks theorem test-statistic function. But for zero ns values, the
     log-likelihood ratio function is taylored up to second order and the
     resulting apex is used as log_lambda value. Hence, the TS function is
     defined as:
 
-        TS = 2 * sign(ns_best) * log( L(fitparam_best) / L(ns = 0) )
+    .. math::
 
-    for ns_best != 0, and
+        TS = 2 \text{sign}(\hat{n}_{\text{s}}) \log \left(
+        \frac{\mathcal{L}(\hat{\vec{p}})}{\mathcal{L}(n_{\text{s}} = 0)} \right)
 
-        TS = 2 * a^2 / (4*b)
+    for :math:`\hat{n}_{\text{s}} \neq 0`, and
 
-    for ns_best == 0, with
+    .. math::
 
-        a = d/dns ( L(fitparam_best) / L(ns = 0) )
+        TS = -2 \frac{a^2}{4b}
 
-    being the derivative w.r.t. ns of the log-likelihood ratio function, and
+    for :math:`\hat{n}_{\text{s}} = 0`, with
 
-        b = d/dns ( a )
+    .. math::
+
+        a = \frac{\text{d}}{\text{d}n_{\text{s}}} \left(
+        \frac{\mathcal{L}(\hat{\vec{p}})}{\mathcal{L}(n_{\text{s}} = 0)} \right)
+
+    being the derivative w.r.t. :math:`n_{\text{s}}` of the log-likelihood ratio
+    function, and
+
+    .. math::
+
+        b = \frac{\text{d}a}{\text{d}n_{\text{s}}}
 
     being its second derivative w.r.t. ns.
     """
-    def __init__(self):
+    def __init__(self, ns_gflp_name='ns', **kwargs):
         """Constructs the test-statistic function instance.
-        """
-        super(TestStatisticWilksZeroNsTaylor, self).__init__()
-
-    def evaluate(self, llhratio, log_lambda, fitparam_values, grads):
-        """Evaluates this test-statistic function.
 
         Parameters
         ----------
-        llhratio : LLHRatio instance
+        ns_gflp_name : str
+            The name of the global floating parameter for the number of signal
+            events in the detector, ns.
+        """
+        super().__init__(**kwargs)
+
+        self._ns_gflp_name = ns_gflp_name
+
+    def __call__(
+            self,
+            param_model_mapper,
+            llhratio,
+            log_lambda,
+            gflp_values,
+            grads,
+            **kwargs):
+        """Evaluates the test-statistic function.
+
+        Parameters
+        ----------
+        param_model_mapper : instance of ParameterModelMapper
+            The ParameterModelMapper instance that defines the global
+            parameter set.
+        llhratio : instance of LLHRatio
             The log-likelihood ratio function, which should be used for the
             test-statistic function.
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_values : (N_fitparams+1)-shaped 1D numpy ndarray
-            The numpy ndarray holding the fit parameter values of the
-            log-likelihood ratio function for the given log_lambda value.
-            By definition, the first element is the value of 'ns'.
-        grads : (N_fitparams+1)-shaped 1D ndarray
-            The ndarray holding the values of the first derivative of the
-            log-likelihood ratio function w.r.t. each global fit parameter.
-            By definition the first element is the first derivative
-            w.r.t. the fit parameter ns.
+        gflp_values : numpy ndarray
+            The (N_global_floating_params,)-shaped 1D numpy ndarray holding the
+            global floating parameter values of the log-likelihood ratio
+            function for the given log_lambda value.
+        grads : numpy ndarray
+            The (N_global_floating_params,)-shaped 1D numpy ndarray holding the
+            values of the first derivative of the log-likelihood ratio function
+            w.r.t. each global floating parameter.
 
         Returns
         -------
         TS : float
             The calculated test-statistic value.
         """
-        ns = fitparam_values[0]
+        ns_gflp_idx = param_model_mapper.get_gflp_idx(
+            name=self._ns_gflp_name)
 
-        if(ns == 0):
-            nsgrad = grads[0]
-            nsgrad2 = llhratio.calculate_ns_grad2(fitparam_values)
+        ns = gflp_values[ns_gflp_idx]
+
+        if ns == 0:
+            nsgrad = grads[ns_gflp_idx]
+            nsgrad2 = llhratio.calculate_ns_grad2(gflp_values)
 
             TS = -2 * nsgrad**2 / (4*nsgrad2)
         else:
