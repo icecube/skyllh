@@ -94,9 +94,11 @@ class Analysis(object, metaclass=abc.ABCMeta):
     common properties required by all analyses and defines the overall analysis
     interface how to setup and run an analysis.
 
-    Note: This analysis base class assumes the analysis to be a log-likelihood
-          ratio test, i.e. requires a mathematical log-likelihood ratio
-          function.
+    Note:
+
+        This analysis base class assumes the analysis to be a log-likelihood
+        ratio test, i.e. requires a mathematical log-likelihood ratio
+        function.
 
     To set-up and run an analysis the following procedure applies:
 
@@ -113,8 +115,8 @@ class Analysis(object, metaclass=abc.ABCMeta):
     In order to calculate sensitivities and discovery potentials, analysis
     trials have to be performed on random data samples with injected signal
     events. To perform a trial with injected signal events, the signal generator
-    has to be constructed via the ``construct_signal_generator`` method before
-    any random trial data can be generated.
+    has to be constructed via the :py:meth:`construct_signal_generator` method
+    before any random trial data can be generated.
     """
 
     def __init__(
@@ -143,7 +145,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The instance of BackgroundGenerationMethod that should be used to
             generate background events for pseudo data. This can be set to None,
             if there is no need to generate background events.
-        sig_generator_cls : SignalGeneratorBase class | None
+        sig_generator_cls : class of SignalGeneratorBase | None
             The signal generator class used to create the signal generator
             instance.
             If set to None, the `SignalGenerator` class is used.
@@ -315,17 +317,21 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return livetime
 
     def add_dataset(
-            self, dataset, data, tdm=None, event_selection_method=None):
+            self,
+            dataset,
+            data,
+            tdm=None,
+            event_selection_method=None):
         """Adds the given dataset to the list of datasets for this analysis.
 
         Parameters
         ----------
-        dataset : Dataset instance
+        dataset : instance of Dataset
             The Dataset instance that should get added.
-        data : DatasetData instance
+        data : instance of DatasetData
             The DatasetData instance holding the original (prepared) data of the
             dataset.
-        tdm : TrialDataManager instance | None
+        tdm : instance of TrialDataManager | None
             The TrialDataManager instance managing the trial data and additional
             data fields of the data set. If set to None, it means that no
             additional data fields are defined.
@@ -363,7 +369,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         self._event_selection_method_list.append(event_selection_method)
 
     def calculate_test_statistic(
-            self, log_lambda, fitparam_values, **kwargs):
+            self, log_lambda, gflp_values, **kwargs):
         """Calculates the test statistic value by calling the ``evaluate``
         method of the TestStatistic class with the given log_lambda value and
         fit parameter values.
@@ -373,20 +379,25 @@ class Analysis(object, metaclass=abc.ABCMeta):
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_values : (N_fitparam+1)-shaped 1D ndarray
-            The 1D ndarray holding the fit parameter values of the
-            log-likelihood ratio function for the given log_lambda value.
+        gflp_values : numpy ndarray
+            The (N_global_floating_params,)-shaped 1D ndarray holding the global
+            floating parameter values of the log-likelihood ratio function for
+            the given log_lambda value.
         **kwargs
             Any additional keyword arguments are passed to the
-            ``evaluate`` method of the TestStatistic class instance.
+            ``__call__`` method of the TestStatistic instance.
 
         Returns
         -------
         TS : float
             The calculated test-statistic value.
         """
-        return self._test_statistic.evaluate(
-            self._llhratio, log_lambda, fitparam_values, **kwargs)
+        return self._test_statistic(
+            param_model_mapper=self._param_model_mapper,
+            llhratio=self._llhratio,
+            log_lambda=log_lambda,
+            gflp_values=gflp_values,
+            **kwargs)
 
     @abc.abstractmethod
     def construct_llhratio(self):
@@ -479,9 +490,9 @@ class Analysis(object, metaclass=abc.ABCMeta):
         -------
         TS : float
             The test-statistic value.
-        fitparam_dict : dict
-            The dictionary holding the global fit parameter names and their best
-            fit values.
+        gflp_dict : dict
+            The dictionary holding the global floating parameter names and their
+            best fit values.
         status : dict
             The status dictionary with information about the performed
             minimization process of the negative of the log-likelihood ratio
@@ -489,12 +500,17 @@ class Analysis(object, metaclass=abc.ABCMeta):
         """
         events_list = [ data.exp for data in self._data_list ]
         self.initialize_trial(events_list)
-        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
-        TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
 
-        fitparam_dict = fitparamset.fitparam_values_to_dict(fitparam_values)
+        (log_lambda, gflp_values, status) = self.maximize_llhratio(rss)
 
-        return (TS, fitparam_dict, status)
+        TS = self.calculate_test_statistic(
+            log_lambda=log_lambda,
+            gflp_values=gflp_values)
+
+        gflp_dict = self._param_model_mapper.gflp_values_to_dict(
+            gflp_values=gflp_values)
+
+        return (TS, gflp_dict, status)
 
     def generate_background_events(
             self, rss, mean_n_bkg_list=None, bkg_kwargs=None, tl=None):
@@ -662,8 +678,13 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return (n_sig, n_events_list, events_list)
 
     def generate_pseudo_data(
-            self, rss, mean_n_bkg_list=None, mean_n_sig=0, bkg_kwargs=None,
-            sig_kwargs=None, tl=None):
+            self,
+            rss,
+            mean_n_bkg_list=None,
+            mean_n_sig=0,
+            bkg_kwargs=None,
+            sig_kwargs=None,
+            tl=None):
         """Generates pseudo data with background and possible signal
         events for each data set using the background and signal generation
         methods of the analysis.
@@ -727,7 +748,12 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return (n_sig, n_events_list, events_list)
 
     def do_trial_with_given_pseudo_data(
-            self, rss, mean_n_sig, n_sig, n_events_list, events_list,
+            self,
+            rss,
+            mean_n_sig,
+            n_sig,
+            n_events_list,
+            events_list,
             mean_n_sig_0=None,
             minimizer_status_dict=None,
             tl=None):
@@ -763,8 +789,8 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        result : structured numpy ndarray
-            The structured numpy ndarray holding the result of the trial. It
+        recarray : numpy record ndarray
+            The numpy record ndarray holding the result of the trial. It
             contains the following data fields:
 
             rss_seed : int
@@ -777,10 +803,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
                 The fixed mean number of signal events for the null-hypothesis.
             ts : float
                 The test-statistic value.
-            [<fitparam_name> ... : float ]
-                Any additional fit parameters of the LLH function.
+            [<global_param_name> : float ]
+                Any additional parameters of the LLH function.
         """
-        if(mean_n_sig_0 is not None):
+        if mean_n_sig_0 is not None:
             self._llhratio.mean_n_sig_0 = mean_n_sig_0
         else:
             mean_n_sig_0 = 0
@@ -789,38 +815,52 @@ class Analysis(object, metaclass=abc.ABCMeta):
             self.initialize_trial(events_list, n_events_list)
 
         with TaskTimer(tl, 'Maximizing LLH ratio function.'):
-            (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss, tl=tl)
-        if(isinstance(minimizer_status_dict, dict)):
+            (log_lambda, gflp_values, status) = self.maximize_llhratio(
+                rss=rss, tl=tl)
+        if isinstance(minimizer_status_dict, dict):
             minimizer_status_dict.update(status)
 
         with TaskTimer(tl, 'Calculating test statistic.'):
-            ts = self.calculate_test_statistic(log_lambda_max, fitparam_values)
+            ts = self.calculate_test_statistic(
+                log_lambda=log_lambda,
+                gflp_values=gflp_values)
+
+        # Get the dictionary holding all floating and fixed parameter names
+        # and values.
+        param_dict = self._param_model_mapper.gflp_values_to_dict(
+            gflp_values=gflp_values)
 
         # Create the structured array data type for the result array.
-        result_dtype = [
+        recarray_dtype = [
             ('seed', np.int),
             ('mean_n_sig', np.float),
             ('n_sig', np.int),
             ('mean_n_sig_0', np.float),
             ('ts', np.float)
         ] + [
-            (fitparam_name, np.float)
-                for fitparam_name in fitparamset.fitparam_name_list
+            (param_name, np.float)
+                for param_name in param_dict.keys()
         ]
-        result = np.empty((1,), dtype=result_dtype)
-        result['seed'] = rss.seed
-        result['mean_n_sig'] = mean_n_sig
-        result['n_sig'] = n_sig
-        result['mean_n_sig_0'] = mean_n_sig_0
-        result['ts'] = ts
-        for (idx, fitparam_name) in enumerate(fitparamset.fitparam_name_list):
-            result[fitparam_name] = fitparam_values[idx]
+        recarray = np.empty((1,), dtype=recarray_dtype)
+        recarray['seed'] = rss.seed
+        recarray['mean_n_sig'] = mean_n_sig
+        recarray['n_sig'] = n_sig
+        recarray['mean_n_sig_0'] = mean_n_sig_0
+        recarray['ts'] = ts
+        for (param_name, param_value) in param_dict.items():
+            recarray[param_name] = param_value
 
-        return result
+        return recarray
 
     def do_trial_with_given_bkg_and_sig_pseudo_data(
-            self, rss, mean_n_sig, n_sig, n_bkg_events_list, n_sig_events_list,
-            bkg_events_list, sig_events_list,
+            self,
+            rss,
+            mean_n_sig,
+            n_sig,
+            n_bkg_events_list,
+            n_sig_events_list,
+            bkg_events_list,
+            sig_events_list,
             mean_n_sig_0=None,
             minimizer_status_dict=None,
             tl=None):
@@ -868,9 +908,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        result : structured numpy ndarray
-            The structured numpy ndarray holding the result of the trial.
-            See the documentation of the ``do_trial_with_given_pseudo_data``
+        recarray : numpy record ndarray
+            The numpy record ndarray holding the result of the trial.
+            See the documentation of the
+            :py:meth:`~skyllh.core.analysis.Analysis.do_trial_with_given_pseudo_data`
             method for further information.
         """
         n_events_list = list(
@@ -888,7 +929,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
                 else:
                     events_list[ds_idx].append(sig_events_list[ds_idx])
 
-        return self.do_trial_with_given_pseudo_data(
+        recarray = self.do_trial_with_given_pseudo_data(
             rss = rss,
             mean_n_sig = mean_n_sig,
             n_sig = n_sig,
@@ -899,9 +940,17 @@ class Analysis(object, metaclass=abc.ABCMeta):
             tl = tl
         )
 
+        return recarray
+
     def do_trial(
-            self, rss, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
-            bkg_kwargs=None, sig_kwargs=None, minimizer_status_dict=None,
+            self,
+            rss,
+            mean_n_bkg_list=None,
+            mean_n_sig=0,
+            mean_n_sig_0=None,
+            bkg_kwargs=None,
+            sig_kwargs=None,
+            minimizer_status_dict=None,
             tl=None):
         """Performs an analysis trial by generating a pseudo data sample with
         background events and possible signal events, and performs the LLH
@@ -941,8 +990,8 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        result : structured numpy ndarray
-            The structured numpy ndarray holding the result of the trial. It
+        recarray : numpy record ndarray
+            The numpy record ndarray holding the result of the trial. It
             contains the following data fields:
 
             mean_n_sig : float
@@ -953,20 +1002,24 @@ class Analysis(object, metaclass=abc.ABCMeta):
                 The fixed mean number of signal events for the null-hypothesis.
             ts : float
                 The test-statistic value.
-            [<fitparam_name> ... : float ]
-                Any additional fit parameters of the LLH function.
+            [<global_param_name> : float ]
+                Any additional global parameters of the LLH function.
         """
-        if(mean_n_sig_0 is not None):
+        if mean_n_sig_0 is not None:
             self._llhratio.mean_n_sig_0 = mean_n_sig_0
         else:
             mean_n_sig_0 = 0
 
         with TaskTimer(tl, 'Generating pseudo data.'):
             (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
-                rss=rss, mean_n_bkg_list=mean_n_bkg_list, mean_n_sig=mean_n_sig,
-                bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, tl=tl)
+                rss=rss,
+                mean_n_bkg_list=mean_n_bkg_list,
+                mean_n_sig=mean_n_sig,
+                bkg_kwargs=bkg_kwargs,
+                sig_kwargs=sig_kwargs,
+                tl=tl)
 
-        result = self.do_trial_with_given_pseudo_data(
+        recarray = self.do_trial_with_given_pseudo_data(
             rss=rss,
             mean_n_sig=mean_n_sig,
             n_sig=n_sig,
@@ -977,12 +1030,22 @@ class Analysis(object, metaclass=abc.ABCMeta):
             tl=tl
         )
 
-        return result
+        return recarray
 
     def do_trials(
-            self, rss, n, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
-            bkg_kwargs=None, sig_kwargs=None, ncpu=None, tl=None, ppbar=None):
-        """Executes `do_trial` method `N` times with possible multi-processing.
+            self,
+            rss,
+            n,
+            mean_n_bkg_list=None,
+            mean_n_sig=0,
+            mean_n_sig_0=None,
+            bkg_kwargs=None,
+            sig_kwargs=None,
+            ncpu=None,
+            tl=None,
+            ppbar=None):
+        """Executes ``do_trial`` method ``N`` times with possible
+        multi-processing.
         One trial performs an analysis trial by generating a pseudo data sample
         with background events and possible signal events, and performs the LLH
         analysis on that random pseudo data sample.
@@ -1028,18 +1091,14 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        result : structured numpy ndarray
-            The structured numpy ndarray holding the result of the trial. It
-            contains the following data fields:
-
-            n_sig : int
-                The actual number of injected signal events.
-            ts : float
-                The test-statistic value.
-            [<fitparam_name> ... : float ]
-                Any additional fit parameters of the LLH function.
+        recarray : numpy record ndarray
+            The numpy record ndarray holding the result of all trials.
+            See the documentation of the
+            :py:meth:`~skyllh.core.analysis.Analysis.do_trial` method for the
+            list of data fields.
         """
         ncpu = get_ncpu(ncpu)
+
         args_list = [((), {
             'mean_n_bkg_list': mean_n_bkg_list,
             'mean_n_sig': mean_n_sig,
@@ -1051,10 +1110,11 @@ class Analysis(object, metaclass=abc.ABCMeta):
         result_list = parallelize(
             self.do_trial, args_list, ncpu, rss=rss, tl=tl, ppbar=ppbar)
 
-        result_dtype = result_list[0].dtype
-        result = np.empty(n, dtype=result_dtype)
-        result[:] = result_list[:]
-        return result
+        recarray_dtype = result_list[0].dtype
+        recarray = np.empty(n, dtype=recarray_dtype)
+        recarray[:] = result_list[:]
+
+        return recarray
 
 
 class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
