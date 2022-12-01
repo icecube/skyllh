@@ -1590,6 +1590,21 @@ class ParameterModelMapper(object):
 
         return s
 
+    def get_gflp_idx(self, name):
+        """Gets the index of the global floating parameter of the given name.
+
+        Parameters
+        ----------
+        name : str
+            The global floating parameter's name.
+
+        Returns
+        -------
+        idx : int
+            The index of the global floating parameter.
+        """
+        return self._global_paramset.get_floating_pidx(name=name)
+
     def get_model_idx_by_name(self, name):
         """Determines the index within this ParameterModelMapper instance of
         the model with the given name.
