@@ -20,7 +20,7 @@ class TestStatistic(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __call__(
             self,
-            param_model_mapper,
+            pmm,
             llhratio,
             log_lambda,
             gflp_values,
@@ -29,7 +29,7 @@ class TestStatistic(object, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        param_model_mapper : instance of ParameterModelMapper
+        pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance that defines the global
             parameter set.
         llhratio : instance of LLHRatio
@@ -77,7 +77,7 @@ class TestStatisticWilks(TestStatistic):
 
     def __call__(
             self,
-            param_model_mapper,
+            pmm,
             llhratio,
             log_lambda,
             gflp_values,
@@ -86,7 +86,7 @@ class TestStatisticWilks(TestStatistic):
 
         Parameters
         ----------
-        param_model_mapper : instance of ParameterModelMapper
+        pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance that defines the global
             parameter set.
         llhratio : instance of LLHRatio
@@ -105,7 +105,7 @@ class TestStatisticWilks(TestStatistic):
         TS : float
             The calculated test-statistic value.
         """
-        ns_gflp_idx = param_model_mapper.get_gflp_idx(
+        ns_gflp_idx = pmm.get_gflp_idx(
             name=self._ns_gflp_name)
 
         ns = gflp_values[ns_gflp_idx]
@@ -168,7 +168,7 @@ class TestStatisticWilksZeroNsTaylor(TestStatistic):
 
     def __call__(
             self,
-            param_model_mapper,
+            pmm,
             llhratio,
             log_lambda,
             gflp_values,
@@ -178,7 +178,7 @@ class TestStatisticWilksZeroNsTaylor(TestStatistic):
 
         Parameters
         ----------
-        param_model_mapper : instance of ParameterModelMapper
+        pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance that defines the global
             parameter set.
         llhratio : instance of LLHRatio
@@ -201,7 +201,7 @@ class TestStatisticWilksZeroNsTaylor(TestStatistic):
         TS : float
             The calculated test-statistic value.
         """
-        ns_gflp_idx = param_model_mapper.get_gflp_idx(
+        ns_gflp_idx = pmm.get_gflp_idx(
             name=self._ns_gflp_name)
 
         ns = gflp_values[ns_gflp_idx]

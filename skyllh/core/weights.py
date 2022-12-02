@@ -76,7 +76,7 @@ class SourceDetectorWeights(object):
         ]
         return src_weight_array_list
 
-    def __init__(self, shg_mgr, param_model_mapper, detsigyields):
+    def __init__(self, shg_mgr, pmm, detsigyields):
         """Creates a new SourceDetectorWeights instance.
 
         Parameters
@@ -84,7 +84,7 @@ class SourceDetectorWeights(object):
         shg_mgr : SourceHypoGroupManager instance
             The instance of SourceHypoGroupManager defining the sources and
             their source hypothesis groups.
-        param_model_mapper : ParameterModelMapper instance
+        pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper defining the mapping of the
             global parameters to the individual sources.
         detsigyields : sequence of DetSigYield instances
@@ -93,11 +93,11 @@ class SourceDetectorWeights(object):
         """
         self._set_shg_mgr(shg_mgr=shg_mgr)
 
-        if not isinstance(param_model_mapper, ParameterModelMapper):
+        if not isinstance(pmm, ParameterModelMapper):
             raise TypeError(
-                'The param_model_mapper argument must be an instance of '
+                'The pmm argument must be an instance of '
                 'ParameterModelMapper!')
-        self._param_model_mapper = param_model_mapper
+        self._pmm = pmm
 
         if not issequence(detsigyields):
             detsigyields = [detsigyields]
@@ -130,11 +130,11 @@ class SourceDetectorWeights(object):
         return self._shg_mgr
 
     @property
-    def param_model_mapper(self):
+    def pmm(self):
         """(read-only) The ParameterModelMapper instance mapping the global set
         of parameters to the individual sources.
         """
-        return self._param_model_mapper
+        return self._pmm
 
     @property
     def detsigyield_arr(self):
@@ -208,7 +208,7 @@ class SourceDetectorWeights(object):
             shg_n_src = shg.n_sources
 
             src_params_recarray =\
-                self._param_model_mapper.create_src_params_recarray(
+                self._pmm.create_src_params_recarray(
                     gflp_values=gflp_values,
                     sources=shg.source_list)
 

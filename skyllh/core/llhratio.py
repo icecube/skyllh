@@ -50,14 +50,14 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
 
     def __init__(
             self,
-            param_model_mapper,
+            pmm,
             minimizer,
             **kwargs):
         """Creates a new LLH ratio function instance.
 
         Parameters
         ----------
-        param_model_mapper : ParameterModelMapper instance
+        pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper providing the mapping of
             global floating parameters to individual models.
         minimizer : instance of Minimizer
@@ -66,22 +66,22 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
         """
         super().__init__(**kwargs)
 
-        self.param_model_mapper = param_model_mapper
+        self.pmm = pmm
         self.minimizer = minimizer
 
     @property
-    def param_model_mapper(self):
+    def pmm(self):
         """The ParameterModelMapper instance providing the mapping of
         global floating parameters to individual models.
         """
-        return self._param_model_mapper
-    @param_model_mapper.setter
-    def param_model_mapper(self, mapper):
+        return self._pmm
+    @pmm.setter
+    def pmm(self, mapper):
         if not isinstance(mapper, ParameterModelMapper):
             raise TypeError(
-                'The param_model_mapper property must be an instance of '
+                'The pmm property must be an instance of '
                 'ParameterModelMapper!')
-        self._param_model_mapper = mapper
+        self._pmm = mapper
 
     @property
     def minimizer(self):
@@ -173,7 +173,7 @@ class LLHRatio(object, metaclass=abc.ABCMeta):
         with TaskTimer(tl, 'Minimize -llhratio function.'):
             (gflp_values, fmin, status) = self._minimizer.minimize(
                 rss=rss,
-                paramset=self._param_model_mapper.global_paramset,
+                paramset=self._pmm.global_paramset,
                 func=negative_llhratio_func,
                 args=(func_stats,tl),
                 kwargs=minimize_kwargs)
@@ -194,7 +194,7 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
 
     def __init__(
             self,
-            param_model_mapper,
+            pmm,
             minimizer,
             mean_n_sig_0,
             **kwargs):
@@ -202,7 +202,7 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        param_model_mapper : ParameterModelMapper instance
+        pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper providing the mapping of
             global floating parameters to individual models.
         minimizer : instance of Minimizer
@@ -212,7 +212,7 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
             The fixed mean number of signal events for the null-hypothesis.
         """
         super().__init__(
-            param_model_mapper=param_model_mapper,
+            pmm=pmm,
             minimizer=minimizer,
             **kwargs)
 
@@ -289,7 +289,7 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
             self__evaluate = self.evaluate
             self__calculate_ns_grad2 = self.calculate_ns_grad2
 
-            global_paramset = self._param_model_mapper.global_paramset
+            global_paramset = self._pmm.global_paramset
 
             # Determine the floating parameter index of the ns parameter.
             ns_pidx = global_paramset.get_floating_pidx(param_name='ns')
@@ -324,7 +324,7 @@ class SingleDatasetTCLLHRatio(TCLLHRatio, metaclass=abc.ABCMeta):
 
     def __init__(
             self,
-            param_model_mapper,
+            pmm,
             minimizer,
             shg_mgr,
             tdm,
@@ -335,7 +335,7 @@ class SingleDatasetTCLLHRatio(TCLLHRatio, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        param_model_mapper : ParameterModelMapper instance
+        pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper providing the mapping of
             global floating parameters to individual models.
         minimizer : instance of Minimizer
@@ -351,7 +351,7 @@ class SingleDatasetTCLLHRatio(TCLLHRatio, metaclass=abc.ABCMeta):
             The fixed mean number of signal events for the null-hypothesis.
         """
         super().__init__(
-            param_model_mapper=param_model_mapper,
+            pmm=pmm,
             minimizer=minimizer,
             mean_n_sig_0=mean_n_sig_0,
             **kwargs)
@@ -418,7 +418,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
     def __init__(
             self,
-            param_model_mapper,
+            pmm,
             minimizer,
             shg_mgr,
             tdm,
@@ -428,13 +428,13 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
         Parameters
         ----------
-        param_model_mapper : ParameterModelMapper instance
+        pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper providing the mapping of
             global floating parameters to individual models.
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of this log-likelihood ratio function.
-        shg_mgr : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The SourceHypoGroupManager instance that defines the source
             hypothesis groups.
         tdm : instance of TrialDataManager
@@ -445,7 +445,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             on none, one, or several fit parameters.
         """
         super().__init__(
-            param_model_mapper=param_model_mapper,
+            pmm=pmm,
             minimizer=minimizer,
             shg_mgr=shg_mgr,
             tdm=tdm,
@@ -631,7 +631,7 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
 
     def __init__(
             self,
-            param_model_mapper,
+            pmm,
             minimizer,
             shg_mgr,
             tdm,
@@ -642,13 +642,13 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
 
         Parameters
         ----------
-        param_model_mapper : ParameterModelMapper instance
+        pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper providing the mapping of
             global floating parameters to individual models.
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of this log-likelihood ratio function.
-        shg_mgr : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The SourceHypoGroupManager instance that defines the source
             hypothesis groups.
         tdm : instance of TrialDataManager
@@ -659,14 +659,14 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
             none, one, or several fit parameters.
         """
         super().__init__(
-            param_model_mapper=param_model_mapper,
+            pmm=pmm,
             minimizer=minimizer,
             shg_mgr=shg_mgr,
             tdm=tdm,
             pdfratios=pdfratios,
             **kwargs)
 
-        if param_model_mapper.n_sources != 1:
+        if pmm.n_sources != 1:
             raise RuntimeError(
                 f'The LLH ratio function class {classname(self)} can handle '
                 f'only a single source!')
@@ -719,7 +719,7 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
         pdfratioarray = self._pdfratioarray
 
         # Determine the index of the global floating parameter ns.
-        ns_pidx = self._param_model_mapper.global_paramset.get_floating_pidx(
+        ns_pidx = self._pmm.global_paramset.get_floating_pidx(
             param_name='ns')
         if ns_pidx != 0:
             raise RuntimeError(

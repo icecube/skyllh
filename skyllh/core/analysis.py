@@ -122,7 +122,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
     def __init__(
             self,
             shg_mgr,
-            param_model_mapper,
+            pmm,
             test_statistic,
             bkg_gen_method=None,
             sig_generator_cls=None,
@@ -135,7 +135,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
             yield implementation method.
-        param_model_mapper : instance of ParameterModelMapper
+        pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance managing the global set of
             parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
@@ -154,7 +154,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         super().__init__(**kwargs)
 
         self.shg_mgr = shg_mgr
-        self.param_model_mapper = param_model_mapper
+        self.pmm = pmm
         self.test_statistic = test_statistic
         self.bkg_gen_method = bkg_gen_method
         self.sig_generator_cls = sig_generator_cls
@@ -187,18 +187,18 @@ class Analysis(object, metaclass=abc.ABCMeta):
         self._shg_mgr = manager
 
     @property
-    def param_model_mapper(self):
+    def pmm(self):
         """The ParameterModelMapper instance that manages the global set of
         parameters and their relation to individual models, e.g. sources.
         """
-        return self._param_model_mapper
-    @param_model_mapper.setter
-    def param_model_mapper(self, mapper):
-        if(not isinstance(mapper, ParameterModelMapper)):
+        return self._pmm
+    @pmm.setter
+    def pmm(self, mapper):
+        if not isinstance(mapper, ParameterModelMapper):
             raise TypeError(
-                'The param_model_mapper property must be an instance of '
+                'The pmm property must be an instance of '
                 'ParameterModelMapper!')
-        self._param_model_mapper = mapper
+        self._pmm = mapper
 
     @property
     def test_statistic(self):
@@ -208,9 +208,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return self._test_statistic
     @test_statistic.setter
     def test_statistic(self, ts):
-        if(not isinstance(ts, TestStatistic)):
-            raise TypeError('The test_statistic property must be an instance '
-                'of TestStatistic, but is %s!'%(classname(ts)))
+        if not isinstance(ts, TestStatistic):
+            raise TypeError(
+                'The test_statistic property must be an instance of '
+                f'TestStatistic, but is {classname(ts)}!')
         self._test_statistic = ts
 
     @property
@@ -222,10 +223,11 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return self._bkg_gen_method
     @bkg_gen_method.setter
     def bkg_gen_method(self, method):
-        if(method is not None):
-            if(not isinstance(method, BackgroundGenerationMethod)):
-                raise TypeError('The bkg_gen_method property must be an '
-                    'instance of BackgroundGenerationMethod!')
+        if method is not None:
+            if not isinstance(method, BackgroundGenerationMethod):
+                raise TypeError(
+                    'The bkg_gen_method property must be an instance of '
+                    f'BackgroundGenerationMethod, but is {classname(method)}!')
         self._bkg_gen_method = method
 
     @property
@@ -235,9 +237,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return self._dataset_list
     @dataset_list.setter
     def dataset_list(self, datasets):
-        if(not issequenceof(datasets, Dataset)):
-            raise TypeError('The dataset_list property must be a sequence '
-                'of Dataset instances!')
+        if not issequenceof(datasets, Dataset):
+            raise TypeError(
+                'The dataset_list property must be a sequence of Dataset '
+                'instances!')
         self._dataset_list = list(datasets)
 
     @property
@@ -248,9 +251,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return self._data_list
     @data_list.setter
     def data_list(self, datas):
-        if(not issequenceof(datas, DatasetData)):
-            raise TypeError('The data_list property must be a sequence '
-                'of DatasetData instances!')
+        if not issequenceof(datas, DatasetData):
+            raise TypeError(
+                'The data_list property must be a sequence of DatasetData '
+                'instances!')
         self._data_list = list(datas)
 
     @property
@@ -264,15 +268,16 @@ class Analysis(object, metaclass=abc.ABCMeta):
         """The log-likelihood ratio function instance. It is None, if it has
         not been constructed yet.
         """
-        if(self._llhratio is None):
-            raise RuntimeError('The log-likelihood ratio function is not '
-                'defined yet. Call the construct_analysis method first!')
+        if self._llhratio is None:
+            raise RuntimeError(
+                'The log-likelihood ratio function is not defined yet. '
+                'Call the construct_analysis method first!')
         return self._llhratio
     @llhratio.setter
     def llhratio(self, obj):
-        if(not isinstance(obj, LLHRatio)):
-            raise TypeError('The llhratio property must be an instance of '
-                'LLHRatio!')
+        if not isinstance(obj, LLHRatio):
+            raise TypeError(
+                'The llhratio property must be an instance of LLHRatio!')
         self._llhratio = obj
 
     @property
@@ -393,7 +398,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The calculated test-statistic value.
         """
         return self._test_statistic(
-            param_model_mapper=self._param_model_mapper,
+            pmm=self._pmm,
             llhratio=self._llhratio,
             log_lambda=log_lambda,
             gflp_values=gflp_values,
@@ -507,7 +512,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             log_lambda=log_lambda,
             gflp_values=gflp_values)
 
-        gflp_dict = self._param_model_mapper.gflp_values_to_dict(
+        gflp_dict = self._pmm.gflp_values_to_dict(
             gflp_values=gflp_values)
 
         return (TS, gflp_dict, status)
@@ -827,7 +832,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         # Get the dictionary holding all floating and fixed parameter names
         # and values.
-        param_dict = self._param_model_mapper.gflp_values_to_dict(
+        param_dict = self._pmm.gflp_values_to_dict(
             gflp_values=gflp_values)
 
         # Create the structured array data type for the result array.
@@ -1136,7 +1141,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
     def __init__(
             self,
             shg_mgr,
-            param_model_mapper,
+            pmm,
             test_statistic,
             bkg_gen_method=None,
             sig_generator_cls=None,
@@ -1150,7 +1155,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
             efficiency implementation method.
-        param_model_mapper : instance of ParameterModelMapper
+        pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance managing the global set of
             parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
@@ -1167,7 +1172,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         """
         super().__init__(
             shg_mgr=shg_mgr,
-            param_model_mapper=param_model_mapper,
+            pmm=pmm,
             test_statistic=test_statistic,
             bkg_gen_method=bkg_gen_method,
             sig_generator_cls=sig_generator_cls,
@@ -1270,7 +1275,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         # order to distribute ns over the different datasets.
         dataset_signal_weights = SingleSourceDatasetSignalWeights(
             shg_mgr=self._shg_mgr,
-            param_model_mapper=self._param_model_mapper,
+            pmm=self._pmm,
             detsigyields=detsigyield_list)
 
         # Create the list of log-likelihood ratio functions, one for each
@@ -1282,7 +1287,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             llhratio = SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
                 minimizer,
                 self._shg_mgr,
-                self._param_model_mapper,
+                self._pmm,
                 tdm,
                 pdfratio_list
             )
@@ -1424,8 +1429,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             the given mean number of signal events in the detector.
         """
         fitparams_recarray =\
-            self._param_model_mapper.get_source_floating_params_recarray(
-                gflp_values)
+            self._pmm.get_source_floating_params_recarray(gflp_values)
 
         # We use the DatasetSignalWeights class instance of this analysis to
         # calculate the detector signal yield for all datasets.
@@ -1463,7 +1467,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
     def __init__(
             self,
             shg_mgr,
-            param_model_mapper,
+            pmm,
             test_statistic,
             bkg_gen_method=None,
             sig_generator_cls=None,
@@ -1477,7 +1481,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
             efficiency implementation method.
-        param_model_mapper : instance of ParameterModelMapper
+        pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance managing the global set of
             parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
@@ -1494,7 +1498,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
         """
         super().__init__(
             shg_mgr=shg_mgr,
-            param_model_mapper=param_model_mapper,
+            pmm=pmm,
             test_statistic=test_statistic,
             bkg_gen_method=bkg_gen_method,
             sig_generator_cls=sig_generator_cls)
@@ -1560,7 +1564,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
         # order to distribute ns over the different datasets.
         dataset_signal_weights = MultiSourceDatasetSignalWeights(
             shg_mgr=self._shg_mgr,
-            param_model_mapper=self._param_model_mapper,
+            pmm=self._pmm,
             detsigyields=detsigyield_array)
 
         # Create the list of log-likelihood ratio functions, one for each
@@ -1570,7 +1574,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             tdm = self._tdm_list[j]
             pdfratio_list = self._pdfratio_list_list[j]
             llhratio = MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
-                param_model_mapper=self._param_model_mapper,
+                pmm=self._pmm,
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
                 tdm=tdm,
