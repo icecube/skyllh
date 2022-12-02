@@ -177,7 +177,7 @@ class SignalGenerator(SignalGeneratorBase):
             ('shg_idx', get_smallest_numpy_int_type((0, n_sources))),
             ('shg_src_idx', get_smallest_numpy_int_type(
                 [0]+[shg.n_sources for shg in shg_list])),
-            ('weight', np.float)
+            ('weight', np.double)
         ]
         self._sig_candidates = np.empty(
             (0,), dtype=sig_candidates_dtype, order='F')
@@ -389,12 +389,12 @@ class SignalGenerator(SignalGeneratorBase):
 class MultiSourceSignalGenerator(SignalGenerator):
     """More optimal signal generator for multiple sources.
     """
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list):
+    def __init__(self, shg_mgr, dataset_list, data_list):
         """Constructs a new signal generator instance.
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : SourceHypoGroupManager instance
             The SourceHypoGroupManager instance defining the source groups with
             their spectra.
         dataset_list : list of Dataset instances
@@ -405,7 +405,7 @@ class MultiSourceSignalGenerator(SignalGenerator):
             dataset. The order must match the order of ``dataset_list``.
         """
         super().__init__(
-            src_hypo_group_manager, dataset_list, data_list)
+            shg_mgr, dataset_list, data_list)
 
     def _construct_signal_candidates(self):
         """Constructs an array holding pointer information of signal candidate

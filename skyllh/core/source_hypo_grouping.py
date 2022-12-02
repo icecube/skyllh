@@ -29,6 +29,7 @@ class SourceHypoGroup(object):
     a group of sources that share the same flux model, detector signal yield,
     and signal generation methods.
     """
+
     def __init__(
             self,
             sources,
@@ -63,7 +64,6 @@ class SourceHypoGroup(object):
         self.fluxmodel = fluxmodel
         self.detsigyield_builder_list = detsigyield_builders
         self.sig_gen_method = sig_gen_method
-        self.source_weights = source_weights
 
     @property
     def source_list(self):

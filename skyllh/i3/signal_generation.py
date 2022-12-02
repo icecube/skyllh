@@ -243,8 +243,9 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         fluxmodel = shg.fluxmodel
 
         # Calculate conversion factor from the flux model unit into the internal
-        # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
+        # flux unit.
+        to_internal_flux_unit =\
+            fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Select the events that belong to a given source.
         indices_list = []
@@ -264,7 +265,8 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
                 )
 
             indices_list.append(indices[src_event_mask])
-            flux = fluxmodel(E=data_mc_true_energy[src_event_mask])*toGeVcm2s / src_dec_band_omega[k]
+            flux = fluxmodel(E=data_mc_true_energy[src_event_mask]).squeeze()
+            flux *= to_internal_flux_unit / src_dec_band_omega[k]
             flux_list.append(flux)
 
         return (indices_list, flux_list)
@@ -471,19 +473,14 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
                 )
                 del band_mask
 
-            if(src_weights is None):
-                fluxi = (
-                    fluxmodel(E=data_mc_true_energy[ev_indi]) *
-                    to_internal_flux_unit /
-                    src_dec_band_omega[src_indi]
-                )
-            else:
-                fluxi = (
-                    src_weights[src_indi] *
-                    fluxmodel(E=data_mc_true_energy[ev_indi]) *
-                    to_internal_flux_unit /
-                    src_dec_band_omega[src_indi]
-                )
+            fluxi = (
+                fluxmodel(E=data_mc_true_energy[ev_indi]).squeeze() *
+                to_internal_flux_unit /
+                src_dec_band_omega[src_indi]
+            )
+            if src_weights is not None:
+                fluxi *= src_weights[src_indi]
+
             ev_indices = np.append(ev_indices, ev_indi)
             src_indices = np.append(src_indices, src_indi)
             flux = np.append(flux, fluxi)

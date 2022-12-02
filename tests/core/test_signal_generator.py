@@ -9,25 +9,26 @@ from skyllh.core.parameters import (
     ParameterGrid,
 )
 from skyllh.core.signal_generator import (
+    MultiSourceSignalGenerator,
     SignalGenerator,
 )
-from skyllh.core.source_hypothesis import (
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroup,
     SourceHypoGroupManager,
 )
-from skyllh.core.source_hypo_group import (
-    SourceHypoGroup,
-)
 from skyllh.i3.detsigyield import (
-    PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod,
+    SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
 )
 from skyllh.i3.signal_generation import (
+    MultiPointLikeSourceI3SignalGenerationMethod,
     PointLikeSourceI3SignalGenerationMethod,
 )
-from skyllh.physics.source import (
+from skyllh.physics.source_model import (
     PointLikeSource,
 )
-from skyllh.physics.flux import (
-    PowerLawFlux,
+from skyllh.physics.flux_model import (
+    PowerLawEnergyFluxProfile,
+    SteadyPointlikeFFM,
 )
 
 DATA_SAMPLES_IMPORTED = True
@@ -36,6 +37,59 @@ try:
     from i3skyllh.datasets import data_samples
 except:
     DATA_SAMPLES_IMPORTED = False
+
+def create_signal_generator(sig_generator_cls, sig_gen_method):
+    """Creates a SignalGenerator instance of the given class
+    ``sig_generator_cls`` using the signal generation method instance
+    ``sig_gen_method``.
+
+    Parameters
+    ----------
+    sig_generator_cls : class of SignalGeneratorBase
+        The class object of the signal generator.
+    sig_gen_method : instance of SignalGenerationMethod
+        The SignalGenerationMethod instance that should be used for the
+        signal generation.
+
+    Returns
+    -------
+    sig_gen : instance of ``sig_generator_cls``
+        The created instance of ``sig_generator_cls`` which is derived from
+        SignalGeneratorBase.
+    """
+    dataset_name = 'PointSourceTracks_v004p00'
+    dsc = data_samples[dataset_name].create_dataset_collection()
+    ds_list = dsc.get_datasets(['IC86, 2018', 'IC86, 2019'])
+
+    data_list = [ds.load_and_prepare_data() for ds in ds_list]
+
+    sources = [
+        PointLikeSource(ra=np.deg2rad(0), dec=np.deg2rad(10)),
+        PointLikeSource(ra=np.deg2rad(30), dec=np.deg2rad(2)),
+    ]
+
+    fluxmodel = SteadyPointlikeFFM(
+        Phi0=1,
+        energy_profile=PowerLawEnergyFluxProfile(E0=1000, gamma=2)
+    )
+
+    gamma_grid = ParameterGrid(name='gamma', grid=np.arange(1, 4.1, 0.1))
+    detsigyield_builder = SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
+        param_grid=gamma_grid)
+
+    shg_mgr = SourceHypoGroupManager(
+        SourceHypoGroup(
+            sources=sources,
+            fluxmodel=fluxmodel,
+            detsigyield_builders=detsigyield_builder,
+            sig_gen_method=sig_gen_method))
+
+    sig_gen = sig_generator_cls(
+        shg_mgr=shg_mgr,
+        dataset_list=ds_list,
+        data_list=data_list)
+
+    return sig_gen
 
 
 class TestSignalGenerator(unittest.TestCase):
@@ -46,39 +100,9 @@ class TestSignalGenerator(unittest.TestCase):
         if not DATA_SAMPLES_IMPORTED:
             return
 
-        dataset_name = 'PointSourceTracks_v004p00'
-        dsc = data_samples[dataset_name].create_dataset_collection()
-        ds_list = dsc.get_datasets(['IC86, 2018', 'IC86, 2019'])
-
-        data_list = [ds.load_and_prepare_data() for ds in ds_list]
-
-        sources = [
-            PointLikeSource(ra=np.deg2rad(0), dec=np.deg2rad(10)),
-            PointLikeSource(ra=np.deg2rad(30), dec=np.deg2rad(2)),
-        ]
-
-        fluxmodel = PowerLawFlux(
-            Phi0=1,
-            E0=1000,
-            gamma=2)
-
-        gamma_grid = ParameterGrid(name='gamma', grid=np.arange(1, 4.1, 0.1))
-        detsigyield_builder = PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
-            gamma_grid=gamma_grid)
-
-        sig_gen_method = PointLikeSourceI3SignalGenerationMethod()
-
-        shg_mgr = SourceHypoGroupManager(
-            SourceHypoGroup(
-                sources=sources,
-                fluxmodel=fluxmodel,
-                detsigyield_implmethods=detsigyield_builder,
-                sig_gen_method=sig_gen_method))
-
-        cls._sig_gen = SignalGenerator(
-            src_hypo_group_manager=shg_mgr,
-            dataset_list=ds_list,
-            data_list=data_list)
+        cls._sig_gen = create_signal_generator(
+            sig_generator_cls=SignalGenerator,
+            sig_gen_method=PointLikeSourceI3SignalGenerationMethod())
 
     @unittest.skipIf(not DATA_SAMPLES_IMPORTED, 'Data samples not imported!')
     def testSigCandidatesArray(self):
@@ -140,9 +164,24 @@ class TestSignalGenerator(unittest.TestCase):
 
     @unittest.skipIf(not DATA_SAMPLES_IMPORTED, 'Data samples not imported!')
     def testSigCandidatesWeightSum(self):
+        weight_sum = type(self)._sig_gen._sig_candidates_weight_sum
         self.assertTrue(
-            type(self)._sig_gen._sig_candidates_weight_sum == 7884630181096259,
+            np.isclose(weight_sum, 7884630181096259),
+            f'weight sum is {weight_sum}'
         )
+
+
+class TestMultiSourceSignalGenerator(TestSignalGenerator):
+    @classmethod
+    def setUpClass(cls):
+        """This class method will run only once for this TestCase.
+        """
+        if not DATA_SAMPLES_IMPORTED:
+            return
+
+        cls._sig_gen = create_signal_generator(
+            sig_generator_cls=MultiSourceSignalGenerator,
+            sig_gen_method=MultiPointLikeSourceI3SignalGenerationMethod())
 
 
 if(__name__ == '__main__'):
