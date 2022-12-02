@@ -9,7 +9,6 @@ from skyllh.core.parameters import (
     ParameterGrid,
 )
 from skyllh.core.signal_generator import (
-    MultiSourceSignalGenerator,
     SignalGenerator,
 )
 from skyllh.core.source_hypo_grouping import (
@@ -20,7 +19,6 @@ from skyllh.i3.detsigyield import (
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
 )
 from skyllh.i3.signal_generation import (
-    MultiPointLikeSourceI3SignalGenerationMethod,
     PointLikeSourceI3SignalGenerationMethod,
 )
 from skyllh.physics.source_model import (
@@ -169,19 +167,6 @@ class TestSignalGenerator(unittest.TestCase):
             np.isclose(weight_sum, 7884630181096259),
             f'weight sum is {weight_sum}'
         )
-
-
-class TestMultiSourceSignalGenerator(TestSignalGenerator):
-    @classmethod
-    def setUpClass(cls):
-        """This class method will run only once for this TestCase.
-        """
-        if not DATA_SAMPLES_IMPORTED:
-            return
-
-        cls._sig_gen = create_signal_generator(
-            sig_generator_cls=MultiSourceSignalGenerator,
-            sig_gen_method=MultiPointLikeSourceI3SignalGenerationMethod())
 
 
 if(__name__ == '__main__'):

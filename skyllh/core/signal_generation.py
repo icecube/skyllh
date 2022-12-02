@@ -7,6 +7,7 @@ from skyllh.core.py import (
     float_cast,
 )
 
+
 class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
     """This is a base class for a source and detector specific signal generation
     method, that calculates the source flux for a given monte-carlo event, which
@@ -72,12 +73,16 @@ class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        flux_list : list of 2-element tuples
-            The list of 2-element tuples with one tuple for each source. Each
-            tuple must be made of two 1D ndarrays of size
-            N_selected_signal_events, where the first array contains the global
-            MC data event indices and the second array the flux of each selected
-            signal event.
+        ev_idx_arr : ndarray
+            The (N_selected_signal_events,)-shaped 1D ndarray holding the index
+            of the MC event.
+        shg_src_idx_arr : ndarray
+            The (N_selected_signal_events,)-shaped 1D ndarray holding the index
+            of the source within the given source hypothesis group for each
+            signal candidate event.
+        flux_arr : ndarray
+            The (N_selected_signal_events,)-shaped 1D ndarray holding the flux
+            value of each signal candidate event.
         """
         pass
 
@@ -99,8 +104,9 @@ class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
             The length of this array must be the same as shg_sig_events.
             It needs to contain the following data fields:
 
-            - 'shg_src_idx' : int
-                The source index within the source hypothesis group.
+                shg_src_idx : int
+                    The source index within the source hypothesis group.
+
         shg_sig_events : numpy record ndarray
             The numpy record ndarray holding the generated signal events for
             the given source hypothesis group and in the format of the original
