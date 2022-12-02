@@ -193,30 +193,32 @@ class SignalGenerator(SignalGeneratorBase):
                     'No signal generation method has been specified for the '
                     f'source hypothesis group with index {shg_idx}!')
             data_mc = data.mc
-            (ev_indices_list, flux_list) =\
+
+            (ev_idx_arr, src_idx_arr, flux_arr) =\
                 sig_gen_method.calc_source_signal_mc_event_flux(
-                    data_mc, shg)
-            for (k, (ev_indices, flux)) in enumerate(
-                    zip(ev_indices_list, flux_list)):
-                ev = data_mc[ev_indices]
-                # The weight of the event specifies the number of signal events
-                # this one event corresponds to for the given reference flux.
-                # [weight] = GeV cm^2 sr * s * 1/(GeV cm^2 s sr)
-                weight = ev['mcweight'] * data.livetime * 86400 * flux
+                    data_mc=data_mc,
+                    shg=shg)
 
-                sig_candidates = np.empty(
-                    (len(ev_indices),),
-                    dtype=sig_candidates_dtype,
-                    order='F'
-                )
-                sig_candidates['ds_idx'] = j
-                sig_candidates['ev_idx'] = ev_indices
-                sig_candidates['shg_idx'] = shg_idx
-                sig_candidates['shg_src_idx'] = k
-                sig_candidates['weight'] = weight
+            weight = (
+                data_mc[ev_idx_arr]['mcweight'] *
+                flux_arr *
+                data.livetime * 86400
+            )
 
-                self._sig_candidates = np.append(
-                    self._sig_candidates, sig_candidates)
+            sig_candidates = np.empty(
+                (len(ev_idx_arr),),
+                dtype=sig_candidates_dtype,
+                order='F'
+            )
+            sig_candidates['ds_idx'] = j
+            sig_candidates['ev_idx'] = ev_idx_arr
+            sig_candidates['shg_idx'] = shg_idx
+            sig_candidates['shg_src_idx'] = src_idx_arr
+            sig_candidates['weight'] = weight
+
+            self._sig_candidates = np.append(
+                self._sig_candidates, sig_candidates)
+            del sig_candidates
 
         # Normalize the signal candidate weights.
         self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
