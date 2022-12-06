@@ -16,7 +16,7 @@ from skyllh.core.parameters import (
 from skyllh.core.py import (
     issequenceof,
 )
-from skyllh.core.source_hypothesis import (
+from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
 
