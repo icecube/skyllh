@@ -179,34 +179,35 @@ class PointLikeSourceI3DetSigYield(I3DetSigYield):
             sin_dec_binning=sin_dec_binning,
             **kwargs)
 
-    def source_to_array(self, source):
+    def sources_to_recarray(self, sources):
         """Converts the sequence of PointLikeSource sources into a numpy record
         array holding the information of the sources needed for the
         detector signal yield calculation.
 
         Parameters
         ----------
-        source : SourceModel | sequence of SourceModel
+        sources : SourceModel | sequence of SourceModel
             The source model(s) containing the information of the source(s).
 
         Returns
         -------
-        arr : numpy record ndarray
-            The generated numpy record ndarray holding the information
-            for each source.
+        recarr : numpy record ndarray
+            The generated (N_sources,)-shaped 1D numpy record ndarray holding
+            the information for each source.
         """
-        if isinstance(source, PointLikeSource):
-            source = [ source ]
-        if not issequenceof(source, PointLikeSource):
+        if isinstance(sources, PointLikeSource):
+            sources = [ sources ]
+        if not issequenceof(sources, PointLikeSource):
             raise TypeError(
-                'The source argument must be an instance or a sequence of '
+                'The sources argument must be an instance or a sequence of '
                 'instances of PointLikeSource!')
 
-        arr = np.empty((len(source),), dtype=[('dec', np.float)])
+        recarr = np.empty((len(sources),), dtype=[('dec', np.float)])
         for (i, src) in enumerate(source):
-            arr['dec'][i] = src.dec
+            recarr['dec'][i] = src.dec
 
-        return arr
+        return recarr
+
 
 class PointLikeSourceI3DetSigYieldBuilder(
         I3DetSigYieldBuilder, metaclass=abc.ABCMeta):

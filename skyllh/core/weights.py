@@ -47,7 +47,7 @@ class SourceDetectorWeights(object):
             signal yield instance.
         """
         src_recarray_list = [
-            detsigyield_arr[gidx].source_to_array(shg.source_list)
+            detsigyield_arr[gidx].sources_to_recarray(shg.source_list)
                 for (gidx, shg) in enumerate(shg_mgr.src_hypo_group_list)
         ]
 

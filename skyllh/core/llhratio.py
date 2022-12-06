@@ -922,7 +922,7 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
         self._src_arr_list = self._create_src_arr_list(
             self._src_hypo_group_manager, self._detsigyield_arr)
 
-    def _create_src_arr_list(self, src_hypo_group_manager, detsigyield_arr):
+    def _create_src_arr_list(self, shg_mgr, detsigyield_arr):
         """Pre-convert the source list of each source hypothesis group into a
         source array needed for the detector signal yield evaluation.
         Since all the detector signal yield instances must be of the same
@@ -931,13 +931,13 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The SourceHypoGroupManager instance defining the sources.
-
         detsigyield_arr : (N_source_hypo_groups,)-shaped 1D ndarray of
                 DetSigYield instances
             The collection of DetSigYield instances for each source hypothesis
             group.
+
         Returns
         -------
         src_arr_list : list of numpy record ndarrays
@@ -946,9 +946,9 @@ class SourceWeights(object, metaclass=abc.ABCMeta):
             instance.
         """
         src_arr_list = []
-        for (gidx, src_hypo_group) in enumerate(src_hypo_group_manager.src_hypo_group_list):
+        for (gidx, shg) in enumerate(shg_mgr.src_hypo_group_list):
             src_arr_list.append(
-                detsigyield_arr[gidx].source_to_array(src_hypo_group.source_list)
+                detsigyield_arr[gidx].sources_to_recarray(shg.source_list)
             )
 
         return src_arr_list

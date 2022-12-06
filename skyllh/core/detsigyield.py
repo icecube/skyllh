@@ -122,7 +122,7 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         self._livetime = lt
 
     @abc.abstractmethod
-    def source_to_array(self, source):
+    def sources_to_recarray(self, sources):
         """This method is supposed to convert a (list of) source model(s) into
         a numpy record array that is understood by the detector signal yield
         class.
@@ -136,14 +136,14 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        source : SourceModel | sequence of SourceModel
-            The source model containing the spatial information of the source.
+        sources : SourceModel | sequence of SourceModel
+            The source model(s) containing the information of the source(s).
 
         Returns
         -------
-        arr : numpy record ndarray
-            The generated numpy record ndarray holding the information
-            for each source.
+        recarr : numpy record ndarray
+            The generated (N_sources,)-shaped 1D numpy record ndarray holding
+            the information for each source.
         """
         pass
 

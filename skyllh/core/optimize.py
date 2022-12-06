@@ -8,11 +8,17 @@ import scipy.sparse
 from skyllh.core.py import (
     classname,
     float_cast,
-    issequenceof
+    issequenceof,
 )
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
-from skyllh.core.timing import TaskTimer
-from skyllh.core.model import SourceModel
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
+from skyllh.core.timing import (
+    TaskTimer,
+)
+from skyllh.core.model import (
+    SourceModel,
+)
 
 
 class EventSelectionMethod(object, metaclass=abc.ABCMeta):
