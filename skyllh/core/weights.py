@@ -15,16 +15,16 @@ from skyllh.core.parameters import (
 class SourceDetectorWeights(object):
     r"""This class provides the source detector weights, which are the product
     of the source weights with the detector signal yield, denoted with
-    :math:`a_k({p_s}_k)` in the math formalism documentation.
+    :math:`a_{j,k}({p_s}_k)` in the math formalism documentation.
 
     .. math::
 
-        a_k({p_{s}}_k) = W_k {\mathcal{Y}_s}_k
+        a_{j,k}({p_{s}}_k) = W_k {\mathcal{Y}_s}_{j,k}({p_{s}}_k)
 
     """
 
     @staticmethod
-    def create_src_recarray_list(shg_mgr, detsigyield_arr):
+    def create_src_recarray_list_list(shg_mgr, detsigyield_arr):
         """Creates a list of numpy record ndarrays, one for each source
         hypothesis group suited for evaluating the detector signal yield
         instance of that source hypothesis group.
@@ -34,24 +34,35 @@ class SourceDetectorWeights(object):
         shg_mgr : SourceHypoGroupManager instance
             The instance of SourceHypoGroupManager defining the source
             hypothesis groups with their sources.
-        detsigyield_arr : (N_source_hypo_groups,)-shaped 1D ndarray of
-                DetSigYield instances
-            The array of DetSigYield instances, one for each source hypothesis
-            group.
+        detsigyield_arr : ndarray of instance of DetSigYield
+            The (N_datasets,N_source_hypo_groups)-shaped 1D ndarray of
+            DetSigYield instances, one for each dataset and source hypothesis
+            group combination.
 
         Returns
         -------
-        src_recarray_list : list of numpy record ndarrays
-            The list of the source numpy record ndarrays, one for each source
-            hypothesis group, which is needed for evaluating the detector
-            signal yield instance.
+        src_recarray_list_list : list of list of numpy record ndarrays
+            The (N_datasets,N_source_hypo_groups)-shaped list of list of the
+            source numpy record ndarrays, one for each dataset and source
+            hypothesis group combination, which is needed for
+            evaluating a particular detector signal yield instance.
         """
-        src_recarray_list = [
-            detsigyield_arr[gidx].sources_to_recarray(shg.source_list)
-                for (gidx, shg) in enumerate(shg_mgr.src_hypo_group_list)
-        ]
+        n_datasets = detsigyield_arr.shape[0]
+        n_shgs = detsigyield_arr.shape[1]
+        shg_list = shg_mgr.src_hypo_group_list
 
-        return src_recarray_list
+        src_recarray_list_list = []
+        for ds_idx in range(n_datasets):
+            src_recarray_list = []
+            for shg_idx in range(n_shgs):
+                shg = shg_list[shg_idx]
+                src_recarray_list.append(
+                    detsigyield_arr[ds_idx][shg_idx].sources_to_recarray(
+                        shg.source_list))
+
+            src_recarray_list_list.append(src_recarray_list)
+
+        return src_recarray_list_list
 
     @staticmethod
     def create_src_weight_array_list(shg_mgr):
@@ -87,9 +98,10 @@ class SourceDetectorWeights(object):
         pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper defining the mapping of the
             global parameters to the individual sources.
-        detsigyields : sequence of DetSigYield instances
-            The sequence of DetSigYield instances, one instance for each
-            source hypothesis group.
+        detsigyields : sequence of sequence of instance of DetSigYield
+            The (N_datasets,N_source_hypo_groups)-shaped sequence of sequence of
+            DetSigYield instances, one instance for each combination of dataset
+            and source hypothesis group.
         """
         self._set_shg_mgr(shg_mgr=shg_mgr)
 
@@ -101,19 +113,21 @@ class SourceDetectorWeights(object):
 
         if not issequence(detsigyields):
             detsigyields = [detsigyields]
-        if not issequenceof(detsigyields, DetSigYield):
-            raise TypeError(
-                'The detsigyields argument must be a sequence of DetSigYield '
-                'instances!')
-        self._detsigyield_arr = np.array(detsigyields)
-        if len(self._detsigyield_arr) != self._shg_mgr.n_src_hypo_groups:
-            raise ValueError('The detsigyields array must have the same number '
-                'of source hypothesis groups as the source hypothesis group '
-                'manager defines!')
+        for item in detsigyields:
+            if not issequenceof(item, DetSigYield):
+                raise TypeError(
+                    'The detsigyields argument must be a sequence of sequence '
+                    'of DetSigYield instances!')
+        self._detsigyield_arr = np.atleast_2d(detsigyields)
+        if self._detsigyield_arr.shape[1] != self._shg_mgr.n_src_hypo_groups:
+            raise ValueError(
+                'The length of the second dimension of the detsigyields array '
+                'must be equal to the number of source hypothesis groups which '
+                'the source hypothesis group manager defines!')
 
-        # Create the list of source record arrays for each source hypothesis
-        # group.
-        self._src_recarray_list = type(self).create_src_recarray_list(
+        # Create the list of list of source record arrays for each combination
+        # of dataset and source hypothesis group.
+        self._src_recarray_list_list = type(self).create_src_recarray_list(
             shg_mgr=self._shg_mgr,
             detsigyield_arr=self._detsigyield_arr)
 
@@ -169,7 +183,7 @@ class SourceDetectorWeights(object):
             The new SourceHypoGroupManager instance.
         """
         self._set_shg_mgr(shg_mgr=shg_mgr)
-        self._src_recarray_list = type(self).create_src_recarray_list(
+        self._src_recarray_list_list = type(self).create_src_recarray_list_list(
             shg_mgr=self._shg_mgr,
             detsigyield_arr=self._detsigyield_arr)
         self._src_weight_array_list = type(self).create_src_weight_array_list(
@@ -186,43 +200,57 @@ class SourceDetectorWeights(object):
 
         Returns
         -------
-        a : (N_sources,)-shaped numpy ndarray
+        a : (N_datasets,N_sources)-shaped numpy ndarray
             The numpy ndarray holding the source detector weight for each
-            source.
-        a_grads : (N_sources,N_gfl_params)-shaped numpy ndarray
-            The derivative of the source detector weight for each source and
-            global floating parameter.
+            combination of dataset and source.
+        a_grads : (N_datasets,N_sources,N_gfl_params)-shaped numpy ndarray
+            The derivative of the source detector weight for each combination
+            of dataset and source for each global floating parameter.
         """
-        a = np.empty((self.shg_mgr.n_sources,), dtype=np.double)
+        n_datasets = self._detsigyield_arr.shape[0]
+
+        a = np.empty(
+            (n_datasets, self.shg_mgr.n_sources,),
+            dtype=np.double)
         a_grads = np.zeros(
-            (self.shg_mgr.n_sources, len(gflp_values)),
+            (n_datasets, self.shg_mgr.n_sources, len(gflp_values)),
             dtype=np.double)
 
-        sidx = 0
-        for (shg, detsigyield, src_recarray, src_weights) in zip(
-                self.shg_mgr.src_hypo_group_list,
-                self.detsigyield_arr,
-                self._src_recarray_list,
-                self._src_weight_array_list):
+        shg_list = self.shg_mgr.src_hypo_group_list
 
-            shg_n_src = shg.n_sources
+        # Create a list of src_params_recarray instances, one for each SHG.
+        # This will be the same for all datasets.
+        src_params_recarray_list = [
+            self._pmm.create_src_params_recarray(
+                gflp_values=gflp_values,
+                sources=shg.source_list)
+            for shg in shg_list
+        ]
 
-            src_params_recarray =\
-                self._pmm.create_src_params_recarray(
-                    gflp_values=gflp_values,
-                    sources=shg.source_list)
+        for ds_idx in range(n_datasets):
+            sidx = 0
+            for (shg, detsigyield, src_recarray, src_params_recarray,
+                 src_weights) in zip(
+                    shg_list,
+                    self.detsigyield_arr[ds_idx],
+                    self._src_recarray_list_list[ds_idx],
+                    src_params_recarray_list,
+                    self._src_weight_array_list):
 
-            (Yg, Yg_grads) = detsigyield(
-                src_recarray=src_recarray,
-                src_params_recarray=src_params_recarray)
+                shg_n_src = shg.n_sources
 
-            shg_src_slice = slice(sidx, sidx+shg_n_src)
+                (Yg, Yg_grads) = detsigyield(
+                    src_recarray=src_recarray,
+                    src_params_recarray=src_params_recarray)
 
-            a[shg_src_slice] = src_weights * Yg
+                shg_src_slice = slice(sidx, sidx+shg_n_src)
 
-            for gpidx in Yg_grads.keys():
-                a_grads[shg_src_slice][gpidx] = src_weights * Yg_grads[gpidx]
+                a[ds_idx][shg_src_slice] = src_weights * Yg
 
-            sidx += shg_n_src
+                for gpidx in Yg_grads.keys():
+                    a_grads[ds_idx,shg_src_slice,gpidx] =\
+                        src_weights * Yg_grads[gpidx]
+
+                sidx += shg_n_src
 
         return (a, a_grads)
