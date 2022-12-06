@@ -1,28 +1,44 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import division
-
+import itertools
 import logging
 import numpy as np
 from numpy.lib import recfunctions as np_rfn
-import itertools
 from os import makedirs
 import os.path
+from scipy.interpolate import interp1d
+from scipy.stats import gamma
 
-from skyllh.core.progressbar import ProgressBar
+try:
+    from iminuit import minimize
+except:
+    IMINUIT_LOADED=False
+else:
+    IMINUIT_LOADED=True
+
+from skyllh.core.progressbar import (
+    ProgressBar,
+)
 from skyllh.core.py import (
     float_cast,
     int_cast,
     issequence,
-    issequenceof
+    issequenceof,
 )
-from skyllh.core.session import is_interactive_session
-from skyllh.core.storage import NPYFileLoader
-from skyllh.physics.source_model import PointLikeSource
+from skyllh.core.session import (
+    is_interactive_session,
+)
+from skyllh.core.storage import (
+    NPYFileLoader,
+)
+from skyllh.core.utils.spline import (
+    make_spline_1d,
+)
+from skyllh.physics.source_model import (
+    PointLikeSource,
+)
 
-from scipy.interpolate import interp1d
-from scipy.stats import gamma
-from iminuit import minimize
+
 
 """This module contains common utility functions useful for an analysis.
 """
@@ -136,6 +152,12 @@ def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold,
     -------
     p, p_sigma: tuple(float, float)
     """
+    if not IMINUIT_LOADED:
+        raise ImportError(
+            'The iminuit module was not imported! '
+            'This module is a requirement for the function '
+            '"calculate_pval_from_gammafit_to_trials"!')
+
     if(ts_threshold < eta):
         raise ValueError(
             'ts threshold value = %e, eta = %e. The calculation of the p-value'
@@ -264,6 +286,12 @@ def calculate_critical_ts_from_gamma(
     -------
     critical_ts : float
     """
+    if not IMINUIT_LOADED:
+        raise ImportError(
+            'The iminuit module was not imported! '
+            'This module is a requirement of the function '
+            '"calculate_critical_ts_from_gamma"!')
+
     Ntot = len(ts)
     ts_eta = ts[ts > eta]
     N_prime = len(ts_eta)
@@ -1046,16 +1074,11 @@ def generate_mu_of_p_spline_interpolation(
             pbar.increment()
 
     # Make a mu(p) spline via interp1d.
-    # The interp1d function requires unique x values. So we need to sort the
-    # p_vals in increasing order and mask out repeating p values.
-    p_mu_vals = np.array(sorted(zip(p_vals, mu_vals)), dtype=np.float)
-    p_vals = p_mu_vals[:,0]
-    unique_pval_mask = np.concatenate(([True], np.invert(
-        p_vals[1:] <= p_vals[:-1])))
-    p_vals = p_vals[unique_pval_mask]
-    mu_vals = p_mu_vals[:,1][unique_pval_mask]
-
-    spline = interp1d(p_vals, mu_vals, kind=kind, copy=False,
+    spline = make_spline_1d(
+        p_vals,
+        mu_vals,
+        kind=kind,
+        copy=False,
         assume_sorted=True)
 
     if(pbar is not None):
