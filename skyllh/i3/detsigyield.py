@@ -580,11 +580,6 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
                 f'source parameter "{local_param_name}" does not match the '
                 f'number of sources ({n_sources})!')
 
-        # Determine the number of global parameters the local parameter is
-        # made of.
-        gfp_idxs = np.unique(src_param_gp_idxs)
-        gfp_idxs = gfp_idxs[gfp_idxs > 0] - 1
-
         # Calculate the detector signal yield only for the sources for
         # which we actually have detector acceptance. For the other sources,
         # the detector signal yield is zero.
@@ -595,9 +590,19 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         values[src_mask] = np.exp(self._log_spl_sinDec_param(
             np.sin(src_dec[src_mask]), src_param[src_mask], grid=False))
 
+        # Determine the number of global parameters the local parameter is
+        # made of.
+        gfp_idxs = np.unique(src_param_gp_idxs)
+        gfp_idxs = gfp_idxs[gfp_idxs > 0] - 1
+
         # Calculate the gradients for each global fit parameter.
-        grads = {}
+        grads = dict()
         for gfp_idx in gfp_idxs:
+            # Create the gradient array of shape (n_sources,). This could be
+            # a masked array to save memory, when there are many sources and
+            # global fit parameters.
+            grads[gfp_idx] = np.zeros((n_sources,), dtype=np.double)
+
             # Create a mask to select the sources that depend on the global
             # fit parameter with index gfp_idx.
             gfp_src_mask = (src_param_gp_idxs == gfp_idx+1)
@@ -606,11 +611,6 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
             # that have detector exceptance and depend on the global fit
             # parameter gfp_idx.
             m = src_mask & gfp_src_mask
-
-            # Create the gradient array of shape (n_sources,). This could be
-            # a masked array to save memory, when there are many sources and
-            # global fit parameters.
-            grads[gfp_idx] = np.zeros((n_sources,), dtype=np.double)
 
             grads[gfp_idx][m] = values[m] * self._log_spl_sinDec_param(
                 np.sin(src_dec[m]), src_param[m], grid=False, dy=1)
