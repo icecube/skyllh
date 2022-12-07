@@ -72,6 +72,9 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
 
     @property
     def param_names(self):
+        """The tuple of parameter names this detector signal yield instance
+        is a function of.
+        """
         return self._param_names
     @param_names.setter
     def param_names(self, names):
@@ -80,7 +83,7 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         if not issequenceof(names, str):
             raise TypeError(
                 'The param_names property must be a sequence of str instances!')
-        self._param_names = names
+        self._param_names = tuple(names)
 
     @property
     def dataset(self):
