@@ -3,12 +3,21 @@
 """This module contains utility classes related to calculate weights.
 """
 
-from skyllh.core.source_hypo_grouping import (
-    SourceHypoGroup,
-    SourceHypoGroupManager,
+import numpy as np
+
+from skyllh.core.detsigyield import (
+    DetSigYield,
 )
 from skyllh.core.parameters import (
     ParameterModelMapper,
+)
+from skyllh.core.py import (
+    issequence,
+    issequenceof,
+)
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroup,
+    SourceHypoGroupManager,
 )
 
 
@@ -128,7 +137,7 @@ class SourceDetectorWeights(object):
 
         # Create the list of list of source record arrays for each combination
         # of dataset and source hypothesis group.
-        self._src_recarray_list_list = type(self).create_src_recarray_list(
+        self._src_recarray_list_list = type(self).create_src_recarray_list_list(
             shg_mgr=self._shg_mgr,
             detsigyield_arr=self._detsigyield_arr)
 
