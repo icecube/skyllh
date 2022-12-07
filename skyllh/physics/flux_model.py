@@ -1263,10 +1263,10 @@ class FactorizedFluxModel(FluxModel):
 
         # The base class will set the default (internally used) flux unit, which
         # will be set automatically to the particular profile.
-        super(FactorizedFluxModel, self).__init__(
-            angle_unit=spatial_profile.angle_unit,
-            energy_unit=energy_profile.energy_unit,
-            time_unit=time_profile.time_unit,
+        super().__init__(
+            angle_unit=self._spatial_profile.angle_unit,
+            energy_unit=self._energy_profile.energy_unit,
+            time_unit=self._time_profile.time_unit,
             length_unit=length_unit,
             **kwargs
         )
