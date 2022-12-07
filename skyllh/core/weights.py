@@ -15,11 +15,12 @@ from skyllh.core.parameters import (
 class SourceDetectorWeights(object):
     r"""This class provides the source detector weights, which are the product
     of the source weights with the detector signal yield, denoted with
-    :math:`a_{j,k}({p_s}_k)` in the math formalism documentation.
+    :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})` in the math formalism documentation.
 
     .. math::
 
-        a_{j,k}({p_{s}}_k) = W_k {\mathcal{Y}_s}_{j,k}({p_{s}}_k)
+        a_{j,k}(\vec{p}_{\mathrm{s}_k}) = W_k
+            \mathcal{Y}_{\mathrm{s}_{j,k}}(\vec{p}_{\mathrm{s}_k})
 
     """
 
@@ -200,44 +201,42 @@ class SourceDetectorWeights(object):
 
         Returns
         -------
-        a : (N_datasets,N_sources)-shaped numpy ndarray
-            The numpy ndarray holding the source detector weight for each
-            combination of dataset and source.
-        a_grads : (N_datasets,N_sources,N_gfl_params)-shaped numpy ndarray
-            The derivative of the source detector weight for each combination
-            of dataset and source for each global floating parameter.
+        a_jk : instance of ndarray
+            The (N_datasets,N_sources)-shaped numpy ndarray holding the source
+            detector weight for each combination of dataset and source.
+        a_jk_grads : instance of ndarray | None
+            The (N_gfl_params,N_datasets,N_sources)-shaped numpy ndarray
+            holding the derivative of the source detector weight for each
+            combination of dataset and source w.r.t. each global floating
+            parameter.
+            It is ``None`` if the there are no global floating parameters.
         """
         n_datasets = self._detsigyield_arr.shape[0]
 
-        a = np.empty(
+        a_jk = np.empty(
             (n_datasets, self.shg_mgr.n_sources,),
             dtype=np.double)
-        a_grads = np.zeros(
-            (n_datasets, self.shg_mgr.n_sources, len(gflp_values)),
-            dtype=np.double)
 
-        shg_list = self.shg_mgr.src_hypo_group_list
+        a_jk_grads = None
+        if len(gflp_values) > 0:
+            a_jk_grads = np.zeros(
+                (len(gflp_values), n_datasets, self.shg_mgr.n_sources),
+                dtype=np.double)
 
-        # Create a list of src_params_recarray instances, one for each SHG.
-        # This will be the same for all datasets.
-        src_params_recarray_list = [
-            self._pmm.create_src_params_recarray(
+        sidx = 0
+        for (shg_idx, (shg, src_weights)) in enumerate(zip(
+                self.shg_mgr.src_hypo_group_list,
+                self._src_weight_array_list)):
+
+            shg_n_src = shg.n_sources
+
+            src_params_recarray = self._pmm.create_src_params_recarray(
                 gflp_values=gflp_values,
                 sources=shg.source_list)
-            for shg in shg_list
-        ]
 
-        for ds_idx in range(n_datasets):
-            sidx = 0
-            for (shg, detsigyield, src_recarray, src_params_recarray,
-                 src_weights) in zip(
-                    shg_list,
-                    self.detsigyield_arr[ds_idx],
-                    self._src_recarray_list_list[ds_idx],
-                    src_params_recarray_list,
-                    self._src_weight_array_list):
-
-                shg_n_src = shg.n_sources
+            for ds_idx in range(n_datasets):
+                detsigyield = self._detsigyield_arr[ds_idx,shg_idx]
+                src_recarray = self._src_recarray_list_list[ds_idx][shg_idx]
 
                 (Yg, Yg_grads) = detsigyield(
                     src_recarray=src_recarray,
@@ -245,12 +244,88 @@ class SourceDetectorWeights(object):
 
                 shg_src_slice = slice(sidx, sidx+shg_n_src)
 
-                a[ds_idx][shg_src_slice] = src_weights * Yg
+                a_jk[ds_idx][shg_src_slice] = src_weights * Yg
 
                 for gpidx in Yg_grads.keys():
-                    a_grads[ds_idx,shg_src_slice,gpidx] =\
+                    a_jk_grads[gpidx,ds_idx,shg_src_slice] =\
                         src_weights * Yg_grads[gpidx]
 
-                sidx += shg_n_src
+            sidx += shg_n_src
 
-        return (a, a_grads)
+        return (a_jk, a_jk_grads)
+
+
+class DatasetSignalWeightFactors(object):
+    r"""This class calculates the dataset signal weight factors,
+    :math:`f_j(\vec{p}_\mathrm{s})`, for each dataset. It utilizes the source
+    detector weights :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`, provided by the
+    :class:`~SourceDetectorWeights` class.
+    """
+
+    def __init__(self, src_det_weights):
+        r"""Creates a new DatasetSignalWeightFactors instance.
+
+        Parameters
+        ----------
+        src_det_weights : instance of SourceDetectorWeights
+            The instance of SourceDetectorWeights for calculating the source
+            detector weights :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`.
+        """
+        self.src_det_weights = src_det_weights
+
+    @property
+    def src_det_weights(self):
+        r"""The instance of SourceDetectorWeights providing the calculation of
+        the source detector weights :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`.
+        """
+        return self._src_det_weights
+    @src_det_weights.setter
+    def src_det_weights(self, w):
+        if not isinstance(w, SourceDetectorWeights):
+            raise TypeError(
+                'The src_det_weights property must be an instance of '
+                'SourceDetectorWeights!')
+
+    def __call__(self, gflp_values):
+        r"""Calculates the dataset signal weight factors,
+        :math:`f_j(\vec{p}_\mathrm{s})`.
+
+        Parameters
+        ----------
+        gflp_values : instance of ndarray
+            The (N_gfl_params,)-shaped 1D numpy ndarray holding the global
+            floating parameter values.
+
+        Returns
+        -------
+        f_j : instance of ndarray
+            The (N_datasets,)-shaped 1D numpy ndarray holding the dataset signal
+            weight factor for each dataset.
+        f_j_grads : instance of ndarray | None
+            The (N_gfl_params,N_datasets)-shaped 2D numpy ndarray holding the
+            derivative for each dataset w.r.t. each global floating parameter.
+            It is ``None`` if there are no global floating parameters.
+        """
+        (a_jk, a_jk_grads) = self._src_det_weights(gflp_values=gflp_values)
+
+        a_j = np.sum(a_jk, axis=1)
+        a = np.sum(a_jk)
+
+        f_j = a_j / a
+
+        if len(gflp_values) == 0:
+            return (f_j, None)
+
+        # Calculate the derivative of f_j w.r.t. all floating parameters using
+        # the quotient rule of differentation.
+        # a is a scalar.
+        # a_j is a (N_datasets)-shaped ndarray.
+        # a_jk_grads is a (N_gfl_params,N_datasets,N_sources)-shaped ndarray.
+        # a_j_grads is a (N_gfl_params,N_datasets)-shaped ndarray.
+        # a_grads is a (N_gfl_params,)-shaped ndarray.
+        a_j_grads = np.sum(a_jk_grads, axis=2)
+        a_grads = np.sum(a_jk_grads, axis=(1,2))
+        f_j_grads = (
+            a_j_grads * a - a_j[np.newaxis,:]*a_grads[:,np.newaxis]) / a**2
+
+        return (f_j, f_j_grads)
