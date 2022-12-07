@@ -232,37 +232,6 @@ class DetSigYieldBuilder(object, metaclass=abc.ABCMeta):
                 'FluxModel instances!')
         self._supported_fluxmodels = models
 
-    @property
-    def n_params(self):
-        """(read-only) The number of parameters the detector signal yield
-        depends on.
-        """
-        return len(self._get_signal_param_names())
-
-    @property
-    def signal_fitparam_names(self):
-        """(read-only) The list of fit parameter names the detector signal
-        yield depends on. An empty list indicates that it does not depend
-        on any fit parameter.
-        """
-        return self._get_signal_fitparam_names()
-
-    def _get_signal_fitparam_names(self):
-        """This method must be re-implemented by the derived class and needs to
-        return the list of fit parameter names, this detector signal yield
-        is a function of. If it returns an empty list, the detector signal
-        yield is independent of any fit parameters.
-
-        Returns
-        -------
-        list of str
-            The list of the fit parameter names, this detector signal yield
-            is a function of. By default this method returns an empty list
-            indicating that the detector signal yield depends on no fit
-            parameter.
-        """
-        return []
-
     def supports_sourcemodel(self, sourcemodel):
         """Checks if the given source model is supported by this detected signal
         yield implementation method.
