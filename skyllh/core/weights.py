@@ -42,7 +42,7 @@ class SourceDetectorWeights(object):
 
         Parameters
         ----------
-        shg_mgr : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager defining the source
             hypothesis groups with their sources.
         detsigyield_arr : ndarray of instance of DetSigYield
@@ -82,7 +82,7 @@ class SourceDetectorWeights(object):
 
         Parameters
         ----------
-        shg_mgr : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager defining the source
             hypothesis groups with their sources.
 
@@ -103,7 +103,7 @@ class SourceDetectorWeights(object):
 
         Parameters
         ----------
-        shg_mgr : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager defining the sources and
             their source hypothesis groups.
         pmm : instance of ParameterModelMapper
@@ -149,15 +149,15 @@ class SourceDetectorWeights(object):
 
     @property
     def shg_mgr(self):
-        """(read-only) The SourceHypoGroupManager instance defining the source
-        hypothesis groups.
+        """(read-only) The instance of SourceHypoGroupManager defining the
+        source hypothesis groups.
         """
         return self._shg_mgr
 
     @property
     def pmm(self):
-        """(read-only) The ParameterModelMapper instance mapping the global set
-        of parameters to the individual sources.
+        """(read-only) The instance of ParameterModelMapper mapping the global
+        set of parameters to the individual sources.
         """
         return self._pmm
 
@@ -173,7 +173,7 @@ class SourceDetectorWeights(object):
 
         Parameters
         ----------
-        shg_mgr : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager that should be set.
         """
         if not isinstance(shg_mgr, SourceHypoGroupManager):
@@ -190,7 +190,7 @@ class SourceDetectorWeights(object):
 
         Parameters
         ----------
-        shg_mgr : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The new SourceHypoGroupManager instance.
         """
         self._set_shg_mgr(shg_mgr=shg_mgr)
