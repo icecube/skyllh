@@ -446,16 +446,31 @@ background PDFs.
 In general a likelihood value can be calculated for a set of $K$ stacked
 sources in a weighted fashion. In this case the signal PDF expression of
 equation (\ref{eq:Si}) becomes a bit more complicated due to the relative
-source weighting. The sources must be weighted according to their signal detection
-efficiency, $\mathcal{Y}_{\mathrm{s},k}$, and a relative strength weight of the
-sources, $W_k$, with $\sum_{k=1}^{K} W_k = 1$. Hence, the combined signal PDF is
-given as
+source weighting. The sources must be weighted according to their signal
+detector yield, $\mathcal{Y}_{\mathrm{s}_k}$, and a relative strength weight of
+the sources, $W_k$. Hence, the combined signal PDF is given as
 \begin{equation}
- \mathcal{S}_i(\ps) \equiv \frac{\sum_{k=1}^{K} W_k \mathcal{Y}_{\mathrm{s}}(\xsk,\psk) \mathcal{S}_{i}(\psk)}{\sum_{k=1}^{K}W_k\mathcal{Y}_{\mathrm{s}}(\xsk,\psk)}.
+ \mathcal{S}_i(\ps) \equiv \frac{\sum_{k=1}^{K} W_k \mathcal{Y}_{\mathrm{s}_k}(\psk) \mathcal{S}_{i}(\psk)}{\sum_{k=1}^{K}W_k\mathcal{Y}_{\mathrm{s}_k}(\psk)}.
  \label{eq:SiStacking}
 \end{equation}
 One should note that this formalism allows for different source properties, e.g.
 energy spectra, for the various sources.
+
+With the definitions
+\begin{equation}
+a_k(\psk) \equiv W_k \mathcal{Y}_{\mathrm{s}_k}(\psk),
+\label{eq:SourceWeightCoefficient}
+\end{equation}
+and
+\begin{equation}
+A(\ps) \equiv \sum_{k=1}^{K} a_k(\psk),
+\label{eq:SumOfSourceWeightCoefficients}
+\end{equation}
+equation (\ref{eq:SiStacking}) reads
+\begin{equation}
+\mathcal{S}_i(\ps) \equiv \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\psk) \mathcal{S}_{i}(\psk).
+\label{eq:SiStackingA}
+\end{equation}
 
 
 \subsection{Gradients of the Log-Likelihood Ratio}
@@ -555,45 +570,45 @@ and
 For stacked sources the expression for $\mathcal{R}_i(\ps)$ in equation (\ref{eq:Ri})
 becomes slightly more complicated due to the source strength weighting.
 With equation (\ref{eq:SiStacking}) and the definitions
+(\ref{eq:SourceWeightCoefficient}), and
+(\ref{eq:SumOfSourceWeightCoefficients}), it is given by
 \begin{equation}
- a_k(\xsk,\psk) = W_k\mathcal{Y}_{\mathrm{s}}(\xsk,\psk),
-\end{equation}
-and
-\begin{equation}
- A(\ps) = \sum_{k=1}^{K} a_k(\xsk,\psk),
-\end{equation}
-it is given by
-\begin{equation}
-\mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\xsk,\psk) \frac{\mathcal{S}_{i}(\psk)}{\mathcal{B}_{i}}.
+\mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\psk) \frac{\mathcal{S}_{i}(\psk)}{\mathcal{B}_{i}}.
 \label{eq:RiStacking}
 \end{equation}
-The signal over background ratio $\mathcal{S}_{i}(\psk) / \mathcal{B}_{i} \equiv \mathcal{R}_{k,i}(\psk)$
-for the single source $k$ is then given by equation (\ref{eq:Ri}).
+The signal over background ratio $\mathcal{S}_{i}(\psk) / \mathcal{B}_{i} \equiv \mathcal{R}_{i,k}(\psk)$
+for the source $k$ is then given by equation (\ref{eq:Ri}).
 
-Using the same set of source fit parameters $\ps$ for all sources, i.e. called
-global source fit parameters, the derivative of $\mathcal{R}_i(\ps)$ for
-all stacked sources w.r.t. the single global source fit parameter,
+Using the same set of source fit parameters $\ps$ for all sources, the
+derivative of $\mathcal{R}_i(\ps)$ for
+all stacked sources w.r.t. the single source fit parameter,
 $p_{\mathrm{s}}$, is then given by
 \begin{equation}
- \frac{\mathrm{d} \mathcal{R}_{i}(\ps)}{\mathrm{d} p_{\mathrm{s}}} = - \frac{1}{A^2} \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} \sum_{k=1}^{K} a_{k} \mathcal{R}_{k,i}(\psk) + \frac{1}{A}\sum_{k=1}^{K} \left( \frac{\mathrm{d} a_{k}}{\mathrm{d} p_{\mathrm{s}}}\mathcal{R}_{k,i}(\psk) + a_{k}\frac{\mathrm{d} \mathcal{R}_{k,i}(\psk)}{\mathrm{d} p_{\mathrm{s}}} \right).
+ \frac{\mathrm{d} \mathcal{R}_{i}(\ps)}{\mathrm{d} p_{\mathrm{s}}} = - \frac{1}{A^2} \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} \sum_{k=1}^{K} a_{k} \mathcal{R}_{i,k}(\psk) + \frac{1}{A}\sum_{k=1}^{K} \left( \frac{\mathrm{d} a_{k}}{\mathrm{d} p_{\mathrm{s}}}\mathcal{R}_{i,k}(\psk) + a_{k}\frac{\mathrm{d} \mathcal{R}_{i,k}(\psk)}{\mathrm{d} p_{\mathrm{s}}} \right).
 \end{equation}
 Using $\mathcal{R}_i(\ps)$ from equation (\ref{eq:RiStacking}) it simplifies to
 \begin{equation}
- \frac{\mathrm{d} \mathcal{R}_{i}(\ps)}{\mathrm{d} p_{\mathrm{s}}} = \frac{1}{A(\ps)}\left[ -\mathcal{R}_i(\ps)\frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} + \sum_{k=1}^{K} \left( \frac{\mathrm{d} a_{k}}{\mathrm{d} p_{\mathrm{s}}}\mathcal{R}_{k,i}(\psk) + a_{k}\frac{\mathrm{d} \mathcal{R}_{k,i}(\psk)}{\mathrm{d} p_{\mathrm{s}}} \right) \right],
+ \frac{\mathrm{d} \mathcal{R}_{i}(\ps)}{\mathrm{d} p_{\mathrm{s}}} = \frac{1}{A(\ps)}\left[ -\mathcal{R}_i(\ps)\frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} + \sum_{k=1}^{K} \left( \frac{\mathrm{d} a_{k}}{\mathrm{d} p_{\mathrm{s}}}\mathcal{R}_{i,k}(\psk) + a_{k}\frac{\mathrm{d} \mathcal{R}_{i,k}(\psk)}{\mathrm{d} p_{\mathrm{s}}} \right) \right],
  \label{eq:gradRi}
 \end{equation}
-with the derivative of $A(\ps)$ given by
+with the derivative of equation (\ref{eq:SumOfSourceWeightCoefficients}) given by
 \begin{equation}
- \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} = \sum_{k=1}^{K} \frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}}.
+ \frac{\mathrm{d} A}{\mathrm{d} p_{\mathrm{s}}} = \sum_{k=1}^{K} \frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}},
 \end{equation}
+with
+\begin{equation}
+\frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}} = W_k \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{k}}(\psk)}{\mathrm{d}{p_s}_k},
+\end{equation}
+where the local source parameter $p_{\mathrm{s}_{k}}$ maps to the correct global
+parameter $p_{\mathrm{s}}$.
 
-In case one would fit each source individually with its own set of signal fit
-parameters, $\vec{p}_{\mathrm{s},k}$, $\ps$ would be a set of $K$ sets
-of source fit parameters $\vec{p}_{\mathrm{s},k}$, and a derivative for each
-individual source fit parameter $p_{\mathrm{s},k}$ would have to be calculated.
-The expression for such a derivative would be similar to equation (\ref{eq:gradRi}),
-but only the summand for the particular source, for which the fit parameter is for, would
-contribute.
+In case one would fit each source individually with its own set of source fit
+parameters, $\psk$, $\ps$ would be a set of $K$ sets
+of source fit parameters $\psk$, and a derivative for each
+global fit parameter $\ps$ would have to be calculated.
+The expression for such a derivative would be equivalent to equation
+(\ref{eq:gradRi}), but only the summand for the source, which depend on the
+particular global fit parameter, would contribute.
 
 
 \subsection{Multiple Datasets}

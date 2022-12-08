@@ -49,7 +49,10 @@ from skyllh.core.test_statistic import TestStatistic
 from skyllh.core.multiproc import get_ncpu, parallelize
 from skyllh.core.background_generation import BackgroundGenerationMethod
 from skyllh.core.background_generator import BackgroundGenerator
-from skyllh.core.signal_generator import SignalGenerator
+from skyllh.core.signal_generator import (
+    SignalGeneratorBase,
+    SignalGenerator
+)
 from skyllh.physics.source import SourceModel
 
 
@@ -85,7 +88,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
-                 test_statistic, bkg_gen_method=None, custom_sig_generator=None):
+                 test_statistic, bkg_gen_method=None, sig_generator_cls=None):
         """Constructor of the analysis base class.
 
         Parameters
@@ -104,9 +107,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The instance of BackgroundGenerationMethod that should be used to
             generate background events for pseudo data. This can be set to None,
             if there is no need to generate background events.
-        custom_sig_generator : SignalGenerator class | None
-            The signal generator class used to create `_sig_generator` instance.
-            Uses default `SignalGenerator` implementation if set to None.
+        sig_generator_cls : SignalGeneratorBase class | None
+            The signal generator class used to create the signal generator
+            instance.
+            If set to None, the `SignalGenerator` class is used.
         """
         # Call the super function to allow for multiple class inheritance.
         super(Analysis, self).__init__()
@@ -115,6 +119,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         self.src_fitparam_mapper = src_fitparam_mapper
         self.test_statistic = test_statistic
         self.bkg_gen_method = bkg_gen_method
+        self.sig_generator_cls = sig_generator_cls
 
         self._dataset_list = []
         self._data_list = []
@@ -131,7 +136,6 @@ class Analysis(object, metaclass=abc.ABCMeta):
         # Predefine the variable for the background and signal generators.
         self._bkg_generator = None
         self._sig_generator = None
-        self._custom_sig_generator = custom_sig_generator
 
     @property
     def src_hypo_group_manager(self):
@@ -249,6 +253,22 @@ class Analysis(object, metaclass=abc.ABCMeta):
         `construct_background_generator` method.
         """
         return self._bkg_generator
+
+    @property
+    def sig_generator_cls(self):
+        """The signal generator class that should be used to construct the
+        signal generator instance.
+        """
+        return self._sig_generator_cls
+    @sig_generator_cls.setter
+    def sig_generator_cls(self, cls):
+        if cls is None:
+            cls = SignalGenerator
+        if not issubclass(cls, SignalGeneratorBase):
+            raise TypeError(
+                'The sig_generator_cls property must be an subclass of '
+                'SignalGeneratorBase!')
+        self._sig_generator_cls = cls
 
     @property
     def sig_generator(self):
@@ -369,14 +389,10 @@ class Analysis(object, metaclass=abc.ABCMeta):
         Analysis class instance. The signal generation method has to be set
         through the source hypothesis group.
         """
-        if self._custom_sig_generator is None:
-            self._sig_generator = SignalGenerator(
-                self._src_hypo_group_manager, self._dataset_list, self._data_list,
-                llhratio=self.llhratio)
-        else:
-            self._sig_generator = self._custom_sig_generator(
-                self._src_hypo_group_manager, self._dataset_list, self._data_list,
-                llhratio=self.llhratio)
+        self._sig_generator = self.sig_generator_cls(
+            src_hypo_group_manager=self._src_hypo_group_manager,
+            dataset_list=self._dataset_list,
+            data_list=self._data_list)
 
     @abc.abstractmethod
     def initialize_trial(self, events_list, n_events_list=None):
@@ -538,7 +554,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             Poisson distribution with this given signal mean as mean.
         sig_kwargs : dict | None
             Additional keyword arguments for the `generate_signal_events` method
-            of the `SignalGenerator` class. An usual keyword argument is
+            of the `sig_generator_cls` class. An usual keyword argument is
             `poisson`.
         n_events_list : list of int | None
             If given, it specifies the number of events of each data set already
@@ -1035,7 +1051,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
            :meth:`maximize_llhratio` method.
     """
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns,
-                 test_statistic, bkg_gen_method=None, custom_sig_generator=None):
+                 test_statistic, bkg_gen_method=None, sig_generator_cls=None):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
@@ -1057,17 +1073,21 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The instance of BackgroundGenerationMethod that will be used to
             generate background events for a new analysis trial. This can be set
             to None, if no background events have to get generated.
-        custom_sig_generator : SignalGenerator class | None
-            The signal generator class used to create `_sig_generator` instance.
-            Uses default `SignalGenerator` implementation if set to None.
+        sig_generator_cls : SignalGeneratorBase class | None
+            The signal generator class used to create the signal generator
+            instance.
+            If set to None, the `SignalGenerator` class is used.
         """
         if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
             raise TypeError('The src_fitparam_mapper argument must be an '
                 'instance of SingleSourceFitParameterMapper!')
 
-        super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).__init__(
-            src_hypo_group_manager, src_fitparam_mapper, test_statistic,
-            bkg_gen_method, custom_sig_generator)
+        super().__init__(
+            src_hypo_group_manager=src_hypo_group_manager,
+            src_fitparam_mapper=src_fitparam_mapper,
+            test_statistic=test_statistic,
+            bkg_gen_method=bkg_gen_method,
+            sig_generator_cls=sig_generator_cls)
 
         self.fitparam_ns = fitparam_ns
 
@@ -1417,7 +1437,7 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
     """
     def __init__(
             self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns,
-            test_statistic, bkg_gen_method=None, custom_sig_generator=None):
+            test_statistic, bkg_gen_method=None, sig_generator_cls=None):
         """Creates a new time-integrated point-like source analysis assuming
         multiple sources.
 
@@ -1439,17 +1459,18 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             The instance of BackgroundGenerationMethod that will be used to
             generate background events for a new analysis trial. This can be set
             to None, if no background events have to get generated.
-        custom_sig_generator : SignalGenerator class | None
-            The signal generator class used to create `_sig_generator` instance.
-            Uses default `SignalGenerator` implementation if set to None.
+        sig_generator_cls : SignalGeneratorBase class | None
+            The signal generator class used to create the signal generator
+            instance.
+            If set to None, the `SignalGenerator` class is used.
         """
-        if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper argument must be an '
-                            'instance of SingleSourceFitParameterMapper!')
-
-        super(TimeIntegratedMultiDatasetMultiSourceAnalysis, self).__init__(
-            src_hypo_group_manager, src_fitparam_mapper,
-            fitparam_ns, test_statistic, bkg_gen_method, custom_sig_generator)
+        super().__init__(
+            src_hypo_group_manager=src_hypo_group_manager,
+            src_fitparam_mapper=src_fitparam_mapper,
+            fitparam_ns=fitparam_ns,
+            test_statistic=test_statistic,
+            bkg_gen_method=bkg_gen_method,
+            sig_generator_cls=sig_generator_cls)
 
     def construct_llhratio(self, minimizer, ppbar=None):
         """Constructs the log-likelihood-ratio (LLH-ratio) function of the
