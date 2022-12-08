@@ -19,6 +19,7 @@ from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
 from skyllh.core.weights import (
+    DatasetSignalWeightFactors,
     SourceDetectorWeights,
 )
 from skyllh.physics.flux_model import (
@@ -31,8 +32,8 @@ from skyllh.physics.source_model import (
 # Define a DetSigYield class that is a simple function of the source declination
 # position.
 class SimpleDetSigYieldWithoutGrads(DetSigYield):
-    def __init__(self, **kwargs):
-        pass
+    def __init__(self, scale=1, **kwargs):
+        self._scale = scale
 
     def sources_to_recarray(self, sources):
         recarr = np.empty((len(sources),), dtype=[('dec', np.double),])
@@ -62,7 +63,7 @@ class SimpleDetSigYieldWithoutGrads(DetSigYield):
 
         Returns
         -------
-        detsigyield : (N_sources,)-shaped 1D ndarray of float
+        values : (N_sources,)-shaped 1D ndarray of float
             The array with the mean number of signal in the detector for each
             given source.
         grads : dict
@@ -71,13 +72,15 @@ class SimpleDetSigYieldWithoutGrads(DetSigYield):
             is the (N_sources,)-shaped numpy ndarray holding the gradient value
             dY_k/dp_s.
         """
-        detsigyield = np.rad2deg(src_recarray['dec'])
+        values = self._scale * np.rad2deg(src_recarray['dec'])
         grads = dict()
 
-        return (detsigyield, grads)
+        return (values, grads)
 
 class SimpleDetSigYieldWithGrads(SimpleDetSigYieldWithoutGrads):
     def __init__(self, pname, **kwargs):
+        super().__init__(**kwargs)
+
         self.param_names = (pname,)
 
     def __call__(self, src_recarray, src_params_recarray):
@@ -127,7 +130,7 @@ class SimpleDetSigYieldWithGrads(SimpleDetSigYieldWithoutGrads):
                 f'source parameter "{local_param_name}" does not match the '
                 f'number of sources ({n_sources})!')
 
-        values = np.rad2deg(src_dec)
+        values = self._scale * np.rad2deg(src_dec)
 
         # Determine the number of global parameters the local parameter is
         # made of.
@@ -154,34 +157,41 @@ class NoDetSigYieldBuilder(DetSigYieldBuilder):
         pass
 
 
+def create_shg_mgr_and_pmm():
+    """Creates a SourceHypoGroupManager and a ParameterModelMapper instance.
+    """
+    sources = [
+        PointLikeSource(
+            name='PS1', ra=0, dec=np.deg2rad(10), weight=1),
+        PointLikeSource(
+            name='PS2', ra=0, dec=np.deg2rad(20), weight=2),
+        PointLikeSource(
+            name='PS3', ra=0, dec=np.deg2rad(30), weight=3),
+    ]
+    fluxmodel = SteadyPointlikeFFM(Phi0=1, energy_profile=None)
+
+    shg_mgr = SourceHypoGroupManager(
+        SourceHypoGroup(
+            sources=sources,
+            fluxmodel=fluxmodel,
+            detsigyield_builders=NoDetSigYieldBuilder(),
+            sig_gen_method=None))
+
+    p1 = Parameter('p1', 141, 99, 199)
+    p2 = Parameter('p2', 142, 100, 200)
+
+    pmm = ParameterModelMapper(models=sources)
+    pmm.def_param(p1).def_param(p2)
+
+    return (shg_mgr, pmm)
+
+
 class TestSourceDetectorWeights(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """This class method will run only once for this TestCase.
         """
-        sources = [
-            PointLikeSource(
-                name='PS1', ra=0, dec=np.deg2rad(10), weight=1),
-            PointLikeSource(
-                name='PS2', ra=0, dec=np.deg2rad(20), weight=2),
-            PointLikeSource(
-                name='PS3', ra=0, dec=np.deg2rad(30), weight=3),
-        ]
-        fluxmodel = SteadyPointlikeFFM(Phi0=1, energy_profile=None)
-
-        cls._shg_mgr = SourceHypoGroupManager(
-            SourceHypoGroup(
-                sources=sources,
-                fluxmodel=fluxmodel,
-                detsigyield_builders=NoDetSigYieldBuilder(),
-                sig_gen_method=None))
-
-        p1 = Parameter('p1', 141, 99, 199)
-        p2 = Parameter('p2', 142, 100, 200)
-
-        pmm = ParameterModelMapper(models=sources)
-        pmm.def_param(p1).def_param(p2)
-        cls._pmm = pmm
+        (cls._shg_mgr, cls._pmm) = create_shg_mgr_and_pmm()
 
     def test_without_grads(self):
         """Tests the __call__ method of the SourceDetectorWeights class
@@ -201,13 +211,13 @@ class TestSourceDetectorWeights(unittest.TestCase):
         gflp_values = np.array([120.0, 177.7])
         (a_jk, a_jk_grads) = src_det_weights(gflp_values)
 
+        self.assertIsInstance(
+            a_jk, np.ndarray,
+            'instance of a_jk')
+
         self.assertEqual(
             a_jk.shape, (2,3),
             'a_jk.shape')
-
-        self.assertEqual(
-            a_jk_grads.shape, (2,2,3),
-            'a_jk_grads.shape')
 
         self.assertTrue(
             np.all(np.isclose(a_jk, np.array(
@@ -216,9 +226,13 @@ class TestSourceDetectorWeights(unittest.TestCase):
                 ]))),
             'a_jk values')
 
-        self.assertTrue(
-            np.all(np.isclose(a_jk_grads, np.zeros((2,2,3)))),
-            'a_jk_grads values')
+        self.assertIsInstance(
+            a_jk_grads, dict,
+            'instance of a_jk_grads')
+
+        self.assertEqual(
+            len(a_jk_grads), 0,
+            'length of a_jk_grads')
 
     def test_with_grads_p1(self):
         """Tests the __call__ method of the SourceDetectorWeights class
@@ -238,13 +252,13 @@ class TestSourceDetectorWeights(unittest.TestCase):
         gflp_values = np.array([120.0, 177.7])
         (a_jk, a_jk_grads) = src_det_weights(gflp_values)
 
+        self.assertIsInstance(
+            a_jk, np.ndarray,
+            'instance of a_jk')
+
         self.assertEqual(
             a_jk.shape, (2,3),
             'a_jk.shape')
-
-        self.assertEqual(
-            a_jk_grads.shape, (2,2,3),
-            'a_jk_grads.shape')
 
         self.assertTrue(
             np.all(np.isclose(a_jk, np.array(
@@ -253,13 +267,23 @@ class TestSourceDetectorWeights(unittest.TestCase):
                 ]))),
             'a_jk values')
 
+        self.assertIsInstance(
+            a_jk_grads, dict,
+            'instance of a_jk_grads')
+
+        self.assertEqual(
+            len(a_jk_grads), 1,
+            'length of a_jk_grads')
+
+        self.assertIn(
+            0, a_jk_grads,
+            '0 in a_jk_grads')
+
         self.assertTrue(
-            np.all(np.isclose(a_jk_grads, np.array(
-                [[[1*120., 2*120., 3*120.],
-                  [1*120., 2*120., 3*120.]],
-                 [[    0.,     0.,     0.],
-                  [    0.,     0.,     0.]]
-                ]))),
+            np.all(np.isclose(a_jk_grads[0], np.array(
+                [[1*120., 2*120., 3*120.],
+                 [1*120., 2*120., 3*120.]]
+                ))),
             'a_jk_grads values')
 
     def test_with_grads_p2(self):
@@ -280,13 +304,13 @@ class TestSourceDetectorWeights(unittest.TestCase):
         gflp_values = np.array([120., 177.])
         (a_jk, a_jk_grads) = src_det_weights(gflp_values)
 
+        self.assertIsInstance(
+            a_jk, np.ndarray,
+            'instance of a_jk')
+
         self.assertEqual(
             a_jk.shape, (2,3),
             'a_jk.shape')
-
-        self.assertEqual(
-            a_jk_grads.shape, (2,2,3),
-            'a_jk_grads.shape')
 
         self.assertTrue(
             np.all(np.isclose(a_jk, np.array(
@@ -295,14 +319,181 @@ class TestSourceDetectorWeights(unittest.TestCase):
                 ]))),
             'a_jk values')
 
+        self.assertIsInstance(
+            a_jk_grads, dict,
+            'instance of a_jk_grads')
+
+        self.assertEqual(
+            len(a_jk_grads), 1,
+            'length of a_jk_grads')
+
+        self.assertIn(
+            1, a_jk_grads,
+            '1 in a_jk_grads')
+
         self.assertTrue(
-            np.all(np.isclose(a_jk_grads, np.array(
-                [[[  0.,   0.,   0.],
-                  [  0.,   0.,   0.]],
-                 [[1*177., 2*177., 3*177.],
-                  [1*177., 2*177., 3*177.]]
-                ]))),
+            np.all(np.isclose(a_jk_grads[1], np.array(
+                [[1*177., 2*177., 3*177.],
+                 [1*177., 2*177., 3*177.]]
+                ))),
             'a_jk_grads values')
+
+class TestDatasetSignalWeightFactors(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """This class method will run only once for this TestCase.
+        """
+        (cls._shg_mgr, cls._pmm) = create_shg_mgr_and_pmm()
+
+    def test_without_grads(self):
+        """Tests the __call__ method of the DatasetSignalWeightFactors class
+        using a DetSigYield instance without any gradients.
+        """
+        # detsigyields is (N_datasets, N_shgs)-shaped.
+        detsigyields = [
+            [SimpleDetSigYieldWithoutGrads(scale=1)],
+            [SimpleDetSigYieldWithoutGrads(scale=2)]
+        ]
+
+        src_det_weights = SourceDetectorWeights(
+            shg_mgr=type(self)._shg_mgr,
+            pmm=type(self)._pmm,
+            detsigyields=detsigyields)
+
+        ds_sig_weigh_factors = DatasetSignalWeightFactors(
+            src_det_weights=src_det_weights)
+
+        gflp_values = np.array([120.0, 177.7])
+        (f_j, f_j_grads) = ds_sig_weigh_factors(gflp_values)
+
+        self.assertIsInstance(
+            f_j, np.ndarray,
+            'instance of f_j')
+
+        self.assertEqual(
+            f_j.shape, (2,),
+            'f_j.shape')
+
+        self.assertTrue(
+            np.all(np.isclose(f_j, np.array(
+                [1/3, 2/3]
+                ))),
+            'f_j values')
+
+        self.assertIsInstance(
+            f_j_grads, dict,
+            'instance of f_j_grads')
+
+        self.assertEqual(
+            len(f_j_grads), 0,
+            'length of f_j_grads')
+
+    def test_with_grads_p1(self):
+        """Tests the __call__ method of the DatasetSignalWeightFactors class
+        using a DetSigYield instance with gradients for the parameter p1.
+        """
+        # detsigyields is (N_datasets, N_shgs)-shaped.
+        detsigyields = [
+            [SimpleDetSigYieldWithGrads(pname='p1', scale=1)],
+            [SimpleDetSigYieldWithGrads(pname='p1', scale=2)]
+        ]
+
+        src_det_weights = SourceDetectorWeights(
+            shg_mgr=type(self)._shg_mgr,
+            pmm=type(self)._pmm,
+            detsigyields=detsigyields)
+
+        ds_sig_weigh_factors = DatasetSignalWeightFactors(
+            src_det_weights=src_det_weights)
+
+        gflp_values = np.array([120.0, 177.7])
+        (f_j, f_j_grads) = ds_sig_weigh_factors(gflp_values)
+
+        self.assertIsInstance(
+            f_j, np.ndarray,
+            'instance of f_j')
+
+        self.assertEqual(
+            f_j.shape, (2,),
+            'f_j.shape')
+
+        self.assertTrue(
+            np.all(np.isclose(f_j, np.array(
+                [1/3, 2/3]
+                ))),
+            'f_j values')
+
+        self.assertIsInstance(
+            f_j_grads, dict,
+            'instance of f_j_grads')
+
+        self.assertEqual(
+            len(f_j_grads), 1,
+            'length of f_j_grads')
+
+        self.assertIn(
+            0, f_j_grads,
+            '0 in f_j_grads')
+
+        self.assertTrue(
+            np.all(np.isclose(f_j_grads[0], np.array(
+                [0.57142857, -0.57142857],
+                ))),
+            'f_j_grads values')
+
+    def test_with_grads_p2(self):
+        """Tests the __call__ method of the DatasetSignalWeightFactors class
+        using a DetSigYield instance with gradients for the parameter p2.
+        """
+        # detsigyields is (N_datasets, N_shgs)-shaped.
+        detsigyields = [
+            [SimpleDetSigYieldWithGrads(pname='p2', scale=1)],
+            [SimpleDetSigYieldWithGrads(pname='p2', scale=2)]
+        ]
+
+        src_det_weights = SourceDetectorWeights(
+            shg_mgr=type(self)._shg_mgr,
+            pmm=type(self)._pmm,
+            detsigyields=detsigyields)
+
+        ds_sig_weigh_factors = DatasetSignalWeightFactors(
+            src_det_weights=src_det_weights)
+
+        gflp_values = np.array([120.0, 177.7])
+        (f_j, f_j_grads) = ds_sig_weigh_factors(gflp_values)
+
+        self.assertIsInstance(
+            f_j, np.ndarray,
+            'instance of f_j')
+
+        self.assertEqual(
+            f_j.shape, (2,),
+            'f_j.shape')
+
+        self.assertTrue(
+            np.all(np.isclose(f_j, np.array(
+                [1/3, 2/3]
+                ))),
+            'f_j values')
+
+        self.assertIsInstance(
+            f_j_grads, dict,
+            'instance of f_j_grads')
+
+        self.assertEqual(
+            len(f_j_grads), 1,
+            'length of f_j_grads')
+
+        self.assertIn(
+            1, f_j_grads,
+            '1 in f_j_grads')
+
+        self.assertTrue(
+            np.all(np.isclose(f_j_grads[1], np.array(
+                [0.84619048, -0.84619048],
+                ))),
+            'f_j_grads values')
+
 
 if(__name__ == '__main__'):
     unittest.main()

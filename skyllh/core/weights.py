@@ -3,6 +3,7 @@
 """This module contains utility classes related to calculate weights.
 """
 
+from collections import defaultdict
 import numpy as np
 
 from skyllh.core.detsigyield import (
@@ -213,12 +214,11 @@ class SourceDetectorWeights(object):
         a_jk : instance of ndarray
             The (N_datasets,N_sources)-shaped numpy ndarray holding the source
             detector weight for each combination of dataset and source.
-        a_jk_grads : instance of ndarray | None
-            The (N_gfl_params,N_datasets,N_sources)-shaped numpy ndarray
-            holding the derivative of the source detector weight for each
-            combination of dataset and source w.r.t. each global floating
-            parameter.
-            It is ``None`` if the there are no global floating parameters.
+        a_jk_grads : dict
+            The dictionary holding the (N_datasets,N_sources)-shaped numpy
+            ndarray with the derivatives w.r.t. the global floating parameter
+            the SourceDetectorWeights depend on. The dictionary's key is the
+            index of the global floating parameter.
         """
         n_datasets = self._detsigyield_arr.shape[0]
 
@@ -226,11 +226,10 @@ class SourceDetectorWeights(object):
             (n_datasets, self.shg_mgr.n_sources,),
             dtype=np.double)
 
-        a_jk_grads = None
-        if len(gflp_values) > 0:
-            a_jk_grads = np.zeros(
-                (len(gflp_values), n_datasets, self.shg_mgr.n_sources),
-                dtype=np.double)
+        a_jk_grads = defaultdict(
+            lambda: np.zeros(
+                (n_datasets, self.shg_mgr.n_sources),
+                dtype=np.double))
 
         sidx = 0
         for (shg_idx, (shg, src_weights)) in enumerate(zip(
@@ -256,7 +255,7 @@ class SourceDetectorWeights(object):
                 a_jk[ds_idx][shg_src_slice] = src_weights * Yg
 
                 for gpidx in Yg_grads.keys():
-                    a_jk_grads[gpidx,ds_idx,shg_src_slice] =\
+                    a_jk_grads[gpidx][ds_idx,shg_src_slice] =\
                         src_weights * Yg_grads[gpidx]
 
             sidx += shg_n_src
@@ -294,6 +293,7 @@ class DatasetSignalWeightFactors(object):
             raise TypeError(
                 'The src_det_weights property must be an instance of '
                 'SourceDetectorWeights!')
+        self._src_det_weights = w
 
     def __call__(self, gflp_values):
         r"""Calculates the dataset signal weight factors,
@@ -310,10 +310,11 @@ class DatasetSignalWeightFactors(object):
         f_j : instance of ndarray
             The (N_datasets,)-shaped 1D numpy ndarray holding the dataset signal
             weight factor for each dataset.
-        f_j_grads : instance of ndarray | None
-            The (N_gfl_params,N_datasets)-shaped 2D numpy ndarray holding the
-            derivative for each dataset w.r.t. each global floating parameter.
-            It is ``None`` if there are no global floating parameters.
+        f_j_grads : dict
+            The dictionary holding the (N_datasets,)-shaped numpy
+            ndarray with the derivatives w.r.t. the global floating parameter
+            the DatasetSignalWeightFactors depend on. The dictionary's key is
+            the index of the global floating parameter.
         """
         (a_jk, a_jk_grads) = self._src_det_weights(gflp_values=gflp_values)
 
@@ -322,19 +323,18 @@ class DatasetSignalWeightFactors(object):
 
         f_j = a_j / a
 
-        if len(gflp_values) == 0:
-            return (f_j, None)
-
-        # Calculate the derivative of f_j w.r.t. all floating parameters using
-        # the quotient rule of differentation.
-        # a is a scalar.
-        # a_j is a (N_datasets)-shaped ndarray.
-        # a_jk_grads is a (N_gfl_params,N_datasets,N_sources)-shaped ndarray.
-        # a_j_grads is a (N_gfl_params,N_datasets)-shaped ndarray.
-        # a_grads is a (N_gfl_params,)-shaped ndarray.
-        a_j_grads = np.sum(a_jk_grads, axis=2)
-        a_grads = np.sum(a_jk_grads, axis=(1,2))
-        f_j_grads = (
-            a_j_grads * a - a_j[np.newaxis,:]*a_grads[:,np.newaxis]) / a**2
+        # Calculate the derivative of f_j w.r.t. all floating parameters present
+        # in the a_jk_grads using the quotient rule of differentation.
+        f_j_grads = dict()
+        for gpidx in a_jk_grads.keys():
+            # a is a scalar.
+            # a_j is a (N_datasets)-shaped ndarray.
+            # a_jk_grads is a dict of length N_gfl_params with values of
+            #    (N_datasets,N_sources)-shaped ndarray.
+            # a_j_grads is a (N_datasets,)-shaped ndarray.
+            # a_grads is a scalar.
+            a_j_grads = np.sum(a_jk_grads[gpidx], axis=1)
+            a_grads = np.sum(a_jk_grads[gpidx])
+            f_j_grads[gpidx] = (a_j_grads * a - a_j * a_grads) / a**2
 
         return (f_j, f_j_grads)
