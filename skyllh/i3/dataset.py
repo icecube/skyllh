@@ -300,17 +300,20 @@ class I3Dataset(Dataset):
             # Append sin(dec) data field to the experimental data.
             task = 'Appending IceCube-specific data fields to exp data.'
             with TaskTimer(tl, task):
-                data.exp.append_field(
-                    'sin_dec', np.sin(data.exp['dec']))
+                if 'sin_dec' not in data.exp.field_name_list:
+                    data.exp.append_field(
+                        'sin_dec', np.sin(data.exp['dec']))
 
         if(data.mc is not None):
             # Append sin(dec) and sin(true_dec) to the MC data.
             task = 'Appending IceCube-specific data fields to MC data.'
             with TaskTimer(tl, task):
-                data.mc.append_field(
-                    'sin_dec', np.sin(data.mc['dec']))
-                data.mc.append_field(
-                    'sin_true_dec', np.sin(data.mc['true_dec']))
+                if 'sin_dec' not in data.mc.field_name_list:
+                    data.mc.append_field(
+                        'sin_dec', np.sin(data.mc['dec']))
+                if 'sin_true_dec' not in data.mc.field_name_list:
+                    data.mc.append_field(
+                        'sin_true_dec', np.sin(data.mc['true_dec']))
 
         # Set the livetime of the dataset from the GRL data when no livetime
         # was specified previously.
