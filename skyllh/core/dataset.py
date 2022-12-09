@@ -741,6 +741,10 @@ class Dataset(object):
                         keep_fields,
                         self._exp_field_name_renaming_dict) +
                     _conv_new2orig_field_names(
+                        # Special case when exp and mc files have different
+                        # renaming dictionaries.
+                        CFG['dataset']['analysis_required_exp_field_names'] +
+                        self._loading_extra_exp_field_name_list +
                         CFG['dataset']['analysis_required_mc_field_names'] +
                         self._loading_extra_mc_field_name_list +
                         keep_fields,
