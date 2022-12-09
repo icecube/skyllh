@@ -709,7 +709,7 @@ class Dataset(object):
                 fileloader_exp = create_FileLoader(
                     self.exp_abs_pathfilename_list)
                 # Create the list of field names that should get kept.
-                keep_fields = list(set(
+                keep_fields_exp = list(set(
                     _conv_new2orig_field_names(
                         CFG['dataset']['analysis_required_exp_field_names'] +
                         self._loading_extra_exp_field_name_list +
@@ -719,7 +719,7 @@ class Dataset(object):
                 ))
 
                 data_exp = fileloader_exp.load_data(
-                    keep_fields=keep_fields,
+                    keep_fields=keep_fields_exp,
                     dtype_convertions=dtc_dict,
                     dtype_convertion_except_fields=_conv_new2orig_field_names(
                         dtc_except_fields,
@@ -734,7 +734,7 @@ class Dataset(object):
             with TaskTimer(tl, 'Loading mc data from disk.'):
                 fileloader_mc = create_FileLoader(
                     self.mc_abs_pathfilename_list)
-                keep_fields = list(set(
+                keep_fields_mc = list(set(
                     _conv_new2orig_field_names(
                         CFG['dataset']['analysis_required_exp_field_names'] +
                         self._loading_extra_exp_field_name_list +
@@ -747,7 +747,7 @@ class Dataset(object):
                         self._mc_field_name_renaming_dict)
                 ))
                 data_mc = fileloader_mc.load_data(
-                    keep_fields=keep_fields,
+                    keep_fields=keep_fields_mc,
                     dtype_convertions=dtc_dict,
                     dtype_convertion_except_fields=_conv_new2orig_field_names(
                         dtc_except_fields,
