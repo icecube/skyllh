@@ -270,8 +270,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC40 = I3Dataset(
         name = 'IC40',
         exp_pathfilenames = 'events/IC40_exp.csv',
+        mc_pathfilenames = 'sim/IC40_MC.npy',
         grl_pathfilenames = 'uptime/IC40_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC40.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -296,8 +296,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC59 = I3Dataset(
         name = 'IC59',
         exp_pathfilenames = 'events/IC59_exp.csv',
+        mc_pathfilenames = 'sim/IC59_MC.npy',
         grl_pathfilenames = 'uptime/IC59_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC59.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -323,8 +323,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC79 = I3Dataset(
         name = 'IC79',
         exp_pathfilenames = 'events/IC79_exp.csv',
+        mc_pathfilenames = 'sim/IC79_MC.npy',
         grl_pathfilenames = 'uptime/IC79_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC79.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -349,8 +349,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_I = I3Dataset(
         name = 'IC86_I',
         exp_pathfilenames = 'events/IC86_I_exp.csv',
+        mc_pathfilenames = 'sim/IC86_I_MC.npy',
         grl_pathfilenames = 'uptime/IC86_I_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC86_I.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -377,8 +377,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_II = I3Dataset(
         name = 'IC86_II',
         exp_pathfilenames = 'events/IC86_II_exp.csv',
+        mc_pathfilenames = 'sim/IC86_II-VII_MC.npy',
         grl_pathfilenames = 'uptime/IC86_II_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC86_II.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -406,8 +406,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_III = I3Dataset(
         name = 'IC86_III',
         exp_pathfilenames = 'events/IC86_III_exp.csv',
+        mc_pathfilenames = 'sim/IC86_II-VII_MC.npy',
         grl_pathfilenames = 'uptime/IC86_III_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC86_III.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -427,8 +427,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_IV = I3Dataset(
         name = 'IC86_IV',
         exp_pathfilenames = 'events/IC86_IV_exp.csv',
+        mc_pathfilenames = 'sim/IC86_II-VII_MC.npy',
         grl_pathfilenames = 'uptime/IC86_IV_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC86_IV.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -448,8 +448,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_V = I3Dataset(
         name = 'IC86_V',
         exp_pathfilenames = 'events/IC86_V_exp.csv',
+        mc_pathfilenames = 'sim/IC86_II-VII_MC.npy',
         grl_pathfilenames = 'uptime/IC86_V_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC86_V.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -469,8 +469,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_VI = I3Dataset(
         name = 'IC86_VI',
         exp_pathfilenames = 'events/IC86_VI_exp.csv',
+        mc_pathfilenames = 'sim/IC86_II-VII_MC.npy',
         grl_pathfilenames = 'uptime/IC86_VI_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC86_VI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -490,8 +490,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_VII = I3Dataset(
         name = 'IC86_VII',
         exp_pathfilenames = 'events/IC86_VII_exp.csv',
+        mc_pathfilenames = 'sim/IC86_II-VII_MC.npy',
         grl_pathfilenames = 'uptime/IC86_VII_exp.csv',
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC86_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -519,8 +519,8 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_II_VII = I3Dataset(
         name = 'IC86_II-VII',
         exp_pathfilenames = I3Dataset.get_combined_exp_pathfilenames(ds_list),
+        mc_pathfilenames = IC86_II.mc_pathfilename_list,
         grl_pathfilenames = I3Dataset.get_combined_grl_pathfilenames(ds_list),
-        mc_pathfilenames = None,
         **ds_kwargs
     )
     IC86_II_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
@@ -563,9 +563,27 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'Zenith[deg]':  'zen'
     })
 
+#    dsc.set_mc_field_name_renaming_dict({
+#        'true_dec':     'true_dec',
+#        'true_ra':      'true_ra',
+#        'true_energy':  'true_energy',
+#        'log_energy':   'log_energy',
+#        'ra':           'ra',
+#        'dec':          'dec',
+#        'ang_err':      'ang_err',
+#        'mcweight':     'mcweight'
+#    })
+
     def add_run_number(data):
         exp = data.exp
+        mc = data.mc
         exp.append_field('run', np.repeat(0, len(exp)))
+        mc.append_field('run', np.repeat(0, len(mc)))
+
+    def add_time(data):
+        mc = data.mc
+        mc.append_field('time', np.repeat(0, len(mc)))
+
     def convert_deg2rad(data):
         exp = data.exp
         exp['ang_err'] = np.deg2rad(exp['ang_err'])
@@ -575,6 +593,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         exp['zen'] = np.deg2rad(exp['zen'])
 
     dsc.add_data_preparation(add_run_number)
+    dsc.add_data_preparation(add_time)
     dsc.add_data_preparation(convert_deg2rad)
 
     return dsc
