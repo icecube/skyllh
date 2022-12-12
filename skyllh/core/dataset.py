@@ -734,6 +734,9 @@ class Dataset(object):
             with TaskTimer(tl, 'Loading mc data from disk.'):
                 fileloader_mc = create_FileLoader(
                     self.mc_abs_pathfilename_list)
+                # Determine `keep_fields_mc` for the generic case, where MC
+                # field names are an union of exp and mc field names.
+                # But the renaming dictionary can differ for exp and MC fields.
                 keep_fields_mc = list(set(
                     _conv_new2orig_field_names(
                         CFG['dataset']['analysis_required_exp_field_names'] +
@@ -741,8 +744,6 @@ class Dataset(object):
                         keep_fields,
                         self._exp_field_name_renaming_dict) +
                     _conv_new2orig_field_names(
-                        # Special case when exp and mc files have different
-                        # renaming dictionaries.
                         CFG['dataset']['analysis_required_exp_field_names'] +
                         self._loading_extra_exp_field_name_list +
                         CFG['dataset']['analysis_required_mc_field_names'] +
