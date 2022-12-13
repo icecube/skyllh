@@ -6,8 +6,5 @@ import logging
 # be able to log messages when user has not set up any handler for the logger.
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-
-from ._version import get_version
-
-__version__ = get_version()
-del get_version
+from . import _version
+__version__ = _version.get_versions()['version']
