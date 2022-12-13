@@ -219,12 +219,13 @@ class TestSourceDetectorWeights(unittest.TestCase):
             a_jk.shape, (2,3),
             'a_jk.shape')
 
-        self.assertTrue(
-            np.all(np.isclose(a_jk, np.array(
+        np.testing.assert_allclose(
+            a_jk,
+            np.array(
                 [[1*10,2*20,3*30],
                  [1*10,2*20,3*30]
-                ]))),
-            'a_jk values')
+                ]),
+            err_msg='a_jk values')
 
         self.assertIsInstance(
             a_jk_grads, dict,
@@ -260,12 +261,13 @@ class TestSourceDetectorWeights(unittest.TestCase):
             a_jk.shape, (2,3),
             'a_jk.shape')
 
-        self.assertTrue(
-            np.all(np.isclose(a_jk, np.array(
-                [[1*10,2*20,3*30],
-                 [1*10,2*20,3*30]
-                ]))),
-            'a_jk values')
+        np.testing.assert_allclose(
+            a_jk,
+            [
+                [1*10,2*20,3*30],
+                [1*10,2*20,3*30]
+            ],
+            err_msg='a_jk values')
 
         self.assertIsInstance(
             a_jk_grads, dict,
@@ -279,12 +281,13 @@ class TestSourceDetectorWeights(unittest.TestCase):
             0, a_jk_grads,
             '0 in a_jk_grads')
 
-        self.assertTrue(
-            np.all(np.isclose(a_jk_grads[0], np.array(
-                [[1*120., 2*120., 3*120.],
-                 [1*120., 2*120., 3*120.]]
-                ))),
-            'a_jk_grads values')
+        np.testing.assert_allclose(
+            a_jk_grads[0],
+            [
+                [1*120., 2*120., 3*120.],
+                [1*120., 2*120., 3*120.]
+            ],
+            err_msg='a_jk_grads[0] values')
 
     def test_with_grads_p2(self):
         """Tests the __call__ method of the SourceDetectorWeights class
@@ -312,12 +315,13 @@ class TestSourceDetectorWeights(unittest.TestCase):
             a_jk.shape, (2,3),
             'a_jk.shape')
 
-        self.assertTrue(
-            np.all(np.isclose(a_jk, np.array(
-                [[1*10,2*20,3*30],
-                 [1*10,2*20,3*30]
-                ]))),
-            'a_jk values')
+        np.testing.assert_allclose(
+            a_jk,
+            [
+                [1*10,2*20,3*30],
+                [1*10,2*20,3*30]
+            ],
+            err_msg='a_jk values')
 
         self.assertIsInstance(
             a_jk_grads, dict,
@@ -331,12 +335,14 @@ class TestSourceDetectorWeights(unittest.TestCase):
             1, a_jk_grads,
             '1 in a_jk_grads')
 
-        self.assertTrue(
-            np.all(np.isclose(a_jk_grads[1], np.array(
-                [[1*177., 2*177., 3*177.],
-                 [1*177., 2*177., 3*177.]]
-                ))),
-            'a_jk_grads values')
+        np.testing.assert_allclose(
+            a_jk_grads[1],
+            [
+                [1*177., 2*177., 3*177.],
+                [1*177., 2*177., 3*177.]
+            ],
+            err_msg='a_jk_grads[1] values')
+
 
 class TestDatasetSignalWeightFactors(unittest.TestCase):
     @classmethod
@@ -374,11 +380,10 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             f_j.shape, (2,),
             'f_j.shape')
 
-        self.assertTrue(
-            np.all(np.isclose(f_j, np.array(
-                [1/3, 2/3]
-                ))),
-            'f_j values')
+        np.testing.assert_allclose(
+            f_j,
+            [1/3, 2/3],
+            err_msg='f_j values')
 
         self.assertIsInstance(
             f_j_grads, dict,
@@ -417,11 +422,10 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             f_j.shape, (2,),
             'f_j.shape')
 
-        self.assertTrue(
-            np.all(np.isclose(f_j, np.array(
-                [1/3, 2/3]
-                ))),
-            'f_j values')
+        np.testing.assert_allclose(
+            f_j,
+            [1/3, 2/3],
+            err_msg='f_j values')
 
         self.assertIsInstance(
             f_j_grads, dict,
@@ -435,11 +439,10 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             0, f_j_grads,
             '0 in f_j_grads')
 
-        self.assertTrue(
-            np.all(np.isclose(f_j_grads[0], np.array(
-                [0.57142857, -0.57142857],
-                ))),
-            'f_j_grads values')
+        np.testing.assert_allclose(
+            f_j_grads[0],
+            [0.57142857, -0.57142857],
+            err_msg='f_j_grads[0] values')
 
     def test_with_grads_p2(self):
         """Tests the __call__ method of the DatasetSignalWeightFactors class
@@ -470,11 +473,10 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             f_j.shape, (2,),
             'f_j.shape')
 
-        self.assertTrue(
-            np.all(np.isclose(f_j, np.array(
-                [1/3, 2/3]
-                ))),
-            'f_j values')
+        np.testing.assert_allclose(
+            f_j,
+            [1/3, 2/3],
+            err_msg='f_j values')
 
         self.assertIsInstance(
             f_j_grads, dict,
@@ -488,11 +490,10 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             1, f_j_grads,
             '1 in f_j_grads')
 
-        self.assertTrue(
-            np.all(np.isclose(f_j_grads[1], np.array(
-                [0.84619048, -0.84619048],
-                ))),
-            'f_j_grads values')
+        np.testing.assert_allclose(
+            f_j_grads[1],
+            [0.84619048, -0.84619048],
+            err_msg='f_j_grads[1] values')
 
 
 if(__name__ == '__main__'):
