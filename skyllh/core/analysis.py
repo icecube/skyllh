@@ -1211,8 +1211,11 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             of log-likelihood-ratio function evaluations. If set to None, all
             events will be evaluated.
         """
-        super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(
-            dataset, data, tdm, event_selection_method)
+        super().add_dataset(
+            dataset=dataset,
+            data=data,
+            tdm=tdm,
+            event_selection_method=event_selection_method)
 
         if(isinstance(pdfratios, PDFRatio)):
             pdfratios = [pdfratios]
