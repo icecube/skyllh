@@ -12,6 +12,7 @@ from skyllh.core.py import (
     typename,
 )
 from skyllh.core.parameters import (
+    ParameterModelMapper,
     FitParameter,
 )
 from skyllh.core.interpolate import (
@@ -29,8 +30,8 @@ from skyllh.core.timing import TaskTimer
 
 
 class PDFRatio(object, metaclass=abc.ABCMeta):
-    """Abstract base class for a PDF ratio class. It defines the interface
-    of a PDF ratio class.
+    """Abstract base class for a signal over background PDF ratio class.
+    It defines the interface of a signal over background PDF ratio class.
     """
 
     def __init__(self, pdf_type, *args, **kwargs):
@@ -41,43 +42,52 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
         pdf_type : type
             The Python type of the PDF object the PDF ratio is made for.
         """
-        super(PDFRatio, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._pdf_type = pdf_type
 
     @property
-    def n_fitparams(self):
-        """(read-only) The number of fit parameters the PDF ratio depends on.
-        This is the sum of signal and background fit parameters. At the moment
-        only signal fit parameters are supported, so this property is equivalent
-        to the n_signal_fitparams property. But this might change in the future.
+    def n_params(self):
+        """(read-only) The number of parameters the PDF ratio depends on.
+        This is the sum of signal and background parameters.
         """
-        return self.n_signal_fitparams
+        return self.n_sig_params + self.n_bkg_params
 
     @property
-    def fitparam_names(self):
-        """(read-only) The list of fit parameter names this PDF ratio is a
-        function of.
-        This is the superset of signal and background fit parameter names.
-        At the moment only signal fit parameters are supported, so this property
-        is equivalent to the signal_fitparam_names property. But this might
-        change in the future.
+    def param_names(self):
+        """(read-only) The list of parameter names this PDF ratio is a
+        function of. This is the superset of signal and background parameter
+        names.
         """
-        return self.signal_fitparam_names
+        return list(set(self.sig_param_names + self.bkg_param_names))
 
     @property
-    def n_signal_fitparams(self):
-        """(read-only) The number of signal fit parameters the PDF ratio depends
+    def n_sig_params(self):
+        """(read-only) The number of signal parameters the PDF ratio depends
         on.
         """
-        return len(self._get_signal_fitparam_names())
+        return len(self._get_sig_param_names())
 
     @property
-    def signal_fitparam_names(self):
-        """(read-only) The list of signal fit parameter names this PDF ratio is
+    def n_bkg_params(self):
+        """(read-only) The number of background parameters the PDF ratio depends
+        on.
+        """
+        return len(self._get_bkg_param_names())
+
+    @property
+    def sig_param_names(self):
+        """(read-only) The list of signal parameter names this PDF ratio is
         a function of.
         """
-        return self._get_signal_fitparam_names()
+        return self._get_sig_param_names()
+
+    @property
+    def bkg_param_names(self):
+        """(read-only) The list of background parameter names this PDF ratio is
+        a function of.
+        """
+        return self._get_bkg_param_names()
 
     @property
     def pdf_type(self):
@@ -86,16 +96,31 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
         """
         return self._pdf_type
 
-    def _get_signal_fitparam_names(self):
+    def _get_sig_param_names(self):
         """This method must be re-implemented by the derived class and needs to
-        return the list of signal fit parameter names, this PDF ratio is a
+        return the list of signal parameter names, this PDF ratio is a
         function of. If it returns an empty list, the PDF ratio is independent
-        of any signal fit parameters.
+        of any signal parameters.
 
         Returns
         -------
         list of str
-            The list of the signal fit parameter names, this PDF ratio is a
+            The list of the signal parameter names, this PDF ratio is a
+            function of. By default this method returns an empty list indicating
+            that the PDF ratio depends on no signal parameter.
+        """
+        return []
+
+    def _get_bkg_param_names(self):
+        """This method must be re-implemented by the derived class and needs to
+        return the list of background parameter names, this PDF ratio is a
+        function of. If it returns an empty list, the PDF ratio is independent
+        of any background parameters.
+
+        Returns
+        -------
+        list of str
+            The list of the background parameter names, this PDF ratio is a
             function of. By default this method returns an empty list indicating
             that the PDF ratio depends on no signal parameter.
         """
@@ -104,8 +129,8 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_ratio(self, tdm, params=None, tl=None):
         """Retrieves the PDF ratio value for each given trial data event, given
-        the given set of fit parameters. This method is called during the
-        likelihood maximization process.
+        the given set of parameters.
+        This method is called during the likelihood maximization process.
 
         Parameters
         ----------
@@ -128,9 +153,10 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_gradient(self, tdm, params, fitparam_name):
-        """Retrieves the PDF ratio gradient for the parameter ``fitparam_name``
-        for each given trial event, given the given set of fit parameters.
+    def get_gradient(self, tdm, params, param_name):
+        """Retrieves the PDF ratio gradient for the parameter ``param_name``
+        for each given trial event, given the given set of parameters
+        ``params``.
         This method is called during the likelihood maximization process.
 
         Parameters
@@ -140,14 +166,15 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
             which the PDF ratio values should get calculated.
         params : dict
             The dictionary with the parameter names and values.
-        fitparam_name : str
-            The name of the fit parameter for which the gradient should
+        param_name : str
+            The name of the parameter for which the gradient should
             get calculated.
 
         Returns
         -------
-        gradient : (N_events,)-shaped 1d numpy ndarray of float
-            The PDF ratio gradient value for each trial event.
+        gradient : instance of ndarray
+            The (N_events,)-shaped 1d numpy ndarray of float holding the PDF
+            ratio gradient value for each trial event.
         """
         pass
 
@@ -157,7 +184,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
     It has methods to calculate the product of the ratio values for a given set
     of PDFRatio objects. This class assumes a single source.
 
-    The rational is that in the calculation of the derivates of the
+    The rational is that in the calculation of the derivatives of the
     log-likelihood-ratio function for a given fit parameter, the product of the
     PDF ratio values of the PDF ratio objects which do not depend on that fit
     parameter is needed.
@@ -315,7 +342,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
     def get_ratio_product(self, excluded_idx=None):
         """Calculates the product of the of the PDF ratio values of each event,
         but excludes the PDF ratio values that correspond to the given excluded
-        fit parameter index. This is useful for calculating the derivates of
+        fit parameter index. This is useful for calculating the derivatives of
         the log-likelihood ratio function.
 
         Parameters
@@ -339,6 +366,141 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         pdfratio_indices = list(range(self._ratio_values.shape[0]))
         pdfratio_indices.pop(excluded_idx)
         return np.prod(self._ratio_values[pdfratio_indices], axis=0)
+
+
+class SourceWeightedPDFRatio(object):
+    r"""This class provides the calculation of a source weighted PDF ratio for
+    multiple sources:
+
+    .. math::
+
+        \mathcal{R}_i(\vec{p}_{\mathrm{s}}) = \frac{1}{A(\vec{p}_{\mathrm{s}})}
+            \sum_{k=1}^{K} a_k(\vec{p}_{\mathrm{s}_k}) \mathcal{R}_{i,k}
+            (\vec{p}_{\mathrm{s}_k})
+
+    """
+    def __init__(self, pmm, pdfratio, **kwargs):
+        """Creates a new SourceWeightedPDFRatio instance.
+
+        Parameters
+        ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper providing the global parameters
+            and their mapping to local source parameters.
+        pdfratio : instance of PDFRatio
+            The instance of PDFRatio providing the PDF ratio values and
+            derivatives.
+        """
+        super().__init__(**kwargs)
+
+        self.pmm = pmm
+        self.pdfratio = pdfratio
+
+    @property
+    def pmm(self):
+        """The ParameterModelMapper which defines the global parameters and
+        thier mapping to local source parameters.
+        """
+        return self._pmm
+    @pmm.setter
+    def pmm(self, m):
+        if not isinstance(m, ParameterModelMapper):
+            raise TypeError(
+                'The pmm property must be an instance of ParameterModelMapper!')
+        self._pmm = m
+
+    @property
+    def pdfratio(self):
+        """The PDFRatio instance that is used to calculate the source weighted
+        PDF ratio.
+        """
+        return self._pdfratio
+    @pdfratio.setter
+    def pdfratio(self, r):
+        if not isinstance(r, PDFRatio):
+            raise TypeError(
+                'The pdfratio property must be an instance of PDFRatio!')
+        self._pdfratio = r
+
+    def __call__(self, tdm, a_k, a_k_grads, fitparam_values, tl=None):
+        """Calculates the source weighted PDF ratio.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data for
+            which the source weighted PDF ratio values should get calculated.
+        a_k : instance of ndarray
+            The (N_sources,)-shaped numpy ndarray holding the source detector
+            weight for each source.
+        a_k_grads : dict
+            The dictionary holding the (N_sources,)-shaped ndarray with the
+            derivatives of the source detector weights w.r.t. the global fit
+            parameter. The key of the dictionary is the index of the global
+            fit parameter.
+        fitparam_values : instance of ndarray
+            The (N_fitparams,)-shaped 1D numpy ndarray holding the global
+            fit parameter values.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to measure timing
+            information.
+
+        Returns
+        -------
+        R_i : instance of ndarray
+            The (N_events,)-shaped numpy ndarray holding the source weighted
+            PDF ratio values.
+        R_i_grads : dict
+            The dictionary holding the (N_events,)-shaped numpy ndarray holding
+            the derivatives w.r.t. the global fit parameter, the PDF ratio
+            depends on. The dictionary's key is the index of the global fit
+            parameter.
+        """
+        n_sources = len(a_k)
+
+        A = np.sum(a_k)
+
+        R_i_k = np.zeros((tdm.n_selected_events, n_sources), dtype=np.double)
+
+        src_model_idxs = self._pmm.get_src_model_idxs()
+
+        params_list = []
+        for (k, sidx) in enumerate(src_model_idxs):
+            params = self._pmm.create_model_params_dict(
+                gflp_values=fitparam_values,
+                model=sidx)
+            params_list.append(params)
+            R_i_k[:,k] = self._pdfratio.get_ratio(
+                tdm=tdm,
+                params=params,
+                tl=tl)
+
+        R_i = np.sum(a_k[np.newaxis,:] * R_i_k, axis=1) / A
+
+        R_i_grads = dict()
+        for gflp_idx in self._pmm.global_paramset.floating_params_idxs:
+            a_k_grad = a_k_grads.get(gflp_idx, np.zeros((n_sources,)))
+            dAdp = np.sum(a_k_grad)
+
+            R_i_k_grads = np.zeros(
+                (tdm.n_selected_events, n_sources, dtype=np.double))
+            for (k, sidx) in enumerate(src_model_idxs):
+                param_name = self._pmm.get_model_param_name(
+                    model_idx=sidx,
+                    gp_idx=gflp_idx)
+                R_i_k_grads[:,k] = self._pdfratio.get_gradient(
+                    tdm=tdm,
+                    params=params_list[k],
+                    param_name=param_name)
+
+            src_sum = np.sum(
+                a_k_grad[np.newaxis,:] * R_i_k +
+                a_k[np.newaxis,:] * R_i_k_grads,
+                axis=1)
+
+            R_i_grads[gflp_idx] = (-R_i * dAdp + src_sum) / A
+
+        return (R_i, R_i_grads)
 
 
 class PDFRatioFillMethod(object, metaclass=abc.ABCMeta):
