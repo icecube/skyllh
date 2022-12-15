@@ -458,6 +458,13 @@ class ParameterSet(object):
         return self._params_fixed_mask
 
     @property
+    def fixed_params_idxs(self):
+        """The numpy ndarray holding the indices of the fixed parameters.
+        """
+        idxs = np.argwhere(self._params_fixed_mask == True).flatten()
+        return idxs
+
+    @property
     def floating_params(self):
         """(read-only) The 1D ndarray holding the Parameter instances,
         whose values are floating.
@@ -470,6 +477,13 @@ class ParameterSet(object):
         parameters of this parameter set.
         """
         return np.invert(self._params_fixed_mask)
+
+    @property
+    def floating_params_idxs(self):
+        """The numpy ndarray holding the indices of the floating parameters.
+        """
+        idxs = np.argwhere(self.floating_params_mask == True).flatten()
+        return idxs
 
     @property
     def n_params(self):
@@ -1590,6 +1604,27 @@ class ParameterModelMapper(object):
 
         return s
 
+    def get_model_param_name(self, model_idx, gp_idx):
+        """Retrieves the local parameter name of a given model and global
+        parameter index.
+
+        Parameters
+        ----------
+        model_idx : int
+            The index of the model.
+        gp_idx : int
+            The index of the global parameter.
+
+        Returns
+        -------
+        param_name : str | None
+            The name of the local model parameter. It is ``None``, if the given
+            global parameter is not mapped to the given model.
+        """
+        param_name = self._model_param_names[model_idx,gp_idx]
+
+        return param_name
+
     def get_gflp_idx(self, name):
         """Gets the index of the global floating parameter of the given name.
 
@@ -1632,15 +1667,15 @@ class ParameterModelMapper(object):
             f'The model with name "{name}" does not exist within the '
             'ParameterModelMapper instance!')
 
-    def get_src_model_idxs(self, sources):
+    def get_src_model_idxs(self, sources=None):
         """Creates a numpy ndarray holding the indices of the requested source
         models.
 
         Parameters
         ----------
-        sources : instance of SourceModel | sequence of SourceModel
-            The requested sequence of source models. If set to ``None``, all
-            source models will be requested.
+        sources : instance of SourceModel | sequence of SourceModel | None
+            The requested sequence of source models.
+            If set to ``None``, all source models will be requested.
 
         Returns
         -------
@@ -1651,21 +1686,25 @@ class ParameterModelMapper(object):
         # Get the model indices of all the source models.
         src_model_idxs = np.arange(self.n_models)[self._source_model_mask]
 
+        if sources is None:
+            return src_model_idxs
+
         # Select only the source models of interest.
-        if sources is not None:
-            if isinstance(sources, SourceModel):
-                sources = [sources]
-            if not issequenceof(sources, SourceModel):
-                raise TypeError(
-                    'The sources argument must be None, an instance of '
-                    'SourceModel, or a sequence of SourceModel! '
-                    f'Its type is {classname(sources)}')
-            src_selection_mask = np.zeros((len(src_model_idxs),), dtype=bool)
-            for smidx in src_model_idxs:
-                src = self._models[smidx]
-                if src in sources:
-                    src_selection_mask[smidx] = True
-            src_model_idxs = src_model_idxs[src_selection_mask]
+        if isinstance(sources, SourceModel):
+            sources = [sources]
+        if not issequenceof(sources, SourceModel):
+            raise TypeError(
+                'The sources argument must be None, an instance of '
+                'SourceModel, or a sequence of SourceModel! '
+                f'Its type is {classname(sources)}')
+
+        src_selection_mask = np.zeros((len(src_model_idxs),), dtype=bool)
+        for smidx in src_model_idxs:
+            src = self._models[smidx]
+            if src in sources:
+                src_selection_mask[smidx] = True
+
+        src_model_idxs = src_model_idxs[src_selection_mask]
 
         return src_model_idxs
 
