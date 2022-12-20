@@ -202,7 +202,7 @@ class PointLikeSourceI3DetSigYield(I3DetSigYield):
                 'The sources argument must be an instance or a sequence of '
                 'instances of PointLikeSource!')
 
-        recarr = np.empty((len(sources),), dtype=[('dec', np.float)])
+        recarr = np.empty((len(sources),), dtype=[('dec', np.float64)])
         for (i, src) in enumerate(source):
             recarr['dec'][i] = src.dec
 
@@ -586,7 +586,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         src_mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge) &\
                    (np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
 
-        values = np.zeros((n_sources,), dtype=np.double)
+        values = np.zeros((n_sources,), dtype=np.float64)
         values[src_mask] = np.exp(self._log_spl_sinDec_param(
             np.sin(src_dec[src_mask]), src_param[src_mask], grid=False))
 
@@ -601,7 +601,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
             # Create the gradient array of shape (n_sources,). This could be
             # a masked array to save memory, when there are many sources and
             # global fit parameters.
-            grads[gfp_idx] = np.zeros((n_sources,), dtype=np.double)
+            grads[gfp_idx] = np.zeros((n_sources,), dtype=np.float64)
 
             # Create a mask to select the sources that depend on the global
             # fit parameter with index gfp_idx.

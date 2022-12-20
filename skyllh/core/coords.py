@@ -59,7 +59,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
 
     # Calculate the rotation matrix R_i for each event i and perform the
     # rotation on vector 3 for each event.
-    vec = np.empty((N_event,3), dtype=np.float)
+    vec = np.empty((N_event,3), dtype=np.float64)
 
     sin_alpha = np.sin(alpha)
     twopi = 2*np.pi

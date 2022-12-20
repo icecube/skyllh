@@ -251,7 +251,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         n_sources = shg.n_sources
 
         # Get 1D array of source declination.
-        src_dec = np.empty((n_sources,), dtype=np.float)
+        src_dec = np.empty((n_sources,), dtype=np.float64)
         for (k, source) in enumerate(shg.source_list):
             if not isinstance(source, PointLikeSource):
                 raise TypeError(

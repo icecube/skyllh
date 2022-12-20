@@ -93,7 +93,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(SigSetOverBkgPDFRatio, IsParallelizabl
 
             # Create the ratio array with the same shape than the background pdf
             # histogram.
-            ratio = np.ones_like(bkgpdf.hist, dtype=np.float)
+            ratio = np.ones_like(bkgpdf.hist, dtype=np.float64)
 
             # Fill the ratio array.
             ratio = fillmethod.fill_ratios(ratio,

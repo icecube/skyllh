@@ -837,13 +837,13 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         # Create the structured array data type for the result array.
         recarray_dtype = [
-            ('seed', np.int),
-            ('mean_n_sig', np.float),
-            ('n_sig', np.int),
-            ('mean_n_sig_0', np.float),
-            ('ts', np.float)
+            ('seed', np.int64),
+            ('mean_n_sig', np.float64),
+            ('n_sig', np.int64),
+            ('mean_n_sig_0', np.float64),
+            ('ts', np.float64)
         ] + [
-            (param_name, np.float)
+            (param_name, np.float64)
                 for param_name in param_dict.keys()
         ]
         recarray = np.empty((1,), dtype=recarray_dtype)

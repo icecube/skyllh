@@ -80,8 +80,11 @@ def pointlikesource_to_data_field_array(
 
     arr = np.empty(
         (len(sources),),
-        dtype=[('ra', np.float), ('dec', np.float),
-               ('src_w', np.float), ('src_w_grad', np.float), ('src_w_W', np.float)]
+        dtype=[('ra', np.float64),
+               ('dec', np.float64),
+               ('src_w', np.float64),
+               ('src_w_grad', np.float64),
+               ('src_w_W', np.float64)]
               , order='F')
 
     for (i, src) in enumerate(sources):
@@ -1182,7 +1185,7 @@ def create_trial_data_file(
 
         mean_n_sig = np.arange(
             mean_n_sig_min, mean_n_sig_max+1, mean_n_sig_step,
-            dtype=np.float)
+            dtype=np.float64)
 
     if(not isinstance(mean_n_sig_null, np.ndarray)):
         if(not issequence(mean_n_sig_null)):
@@ -1204,7 +1207,7 @@ def create_trial_data_file(
 
         mean_n_sig_null = np.arange(
             mean_n_sig_null_min, mean_n_sig_null_max+1, mean_n_sig_null_step,
-            dtype=np.float)
+            dtype=np.float64)
 
     pbar = ProgressBar(
         len(mean_n_sig)*len(mean_n_sig_null), parent=ppbar).start()

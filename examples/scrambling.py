@@ -7,7 +7,7 @@ from skyllh.core.scrambling import DataScrambler, RAScramblingMethod
 
 def gen_data(rss, N=100, window=(0,365)):
     """Create uniformly distributed data on sphere. """
-    arr = np.empty((N,), dtype=[("ra", np.float), ("dec", np.float)])
+    arr = np.empty((N,), dtype=[("ra", np.float64), ("dec", np.float64)])
 
     arr["ra"] = rss.random.uniform(0., 2.*np.pi, N)
     arr["dec"] = rss.random.uniform(-np.pi, np.pi, N)

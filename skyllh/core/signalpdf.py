@@ -164,7 +164,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         # If the signal hypothesis contains single source
         # return the output here.
         if(len(get_data('src_array')['ra']) == 1):
-            grads = np.array([], dtype=np.float)
+            grads = np.array([], dtype=np.float64)
             # The new interface returns the pdf only for a single source.
             return (prob[0], grads)
         else:
@@ -345,7 +345,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
         # The sum of the on-time integrals of the time profile, A, will be zero
         # if the time profile is entirly during detector off-time.
-        prob = np.zeros((tdm.n_selected_events,), dtype=np.float)
+        prob = np.zeros((tdm.n_selected_events,), dtype=np.float64)
         if(self._S > 0):
             prob[on] = self._time_profile.get_value(
                 events_time[on]) / (self._I * self._S)

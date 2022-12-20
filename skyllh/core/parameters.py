@@ -407,10 +407,10 @@ class ParameterSet(object):
         """
         # Define the list of parameters.
         # Define the (n_params,)-shaped numpy array of Parameter objects.
-        self._params = np.empty((0,), dtype=np.object)
+        self._params = np.empty((0,), dtype=np.object_)
         # Define the (n_params,)-shaped numpy mask array that masks the fixed
         # parameters in the list of all parameters.
-        self._params_fixed_mask = np.empty((0,), dtype=np.bool)
+        self._params_fixed_mask = np.empty((0,), dtype=np.bool_)
 
         # Define two lists for the parameter names. One for the fixed
         # parameters, and one for the floating parameters.
@@ -425,7 +425,7 @@ class ParameterSet(object):
 
         # Define a (n_fixed_params,)-shaped ndarray holding the values of the
         # fixed parameters. This is for optimization purpose only.
-        self._fixed_param_values = np.empty((0,), dtype=np.float)
+        self._fixed_param_values = np.empty((0,), dtype=np.float64)
 
         # Add the initial Parameter instances.
         if(params is not None):
@@ -531,10 +531,10 @@ class ParameterSet(object):
         """
         floating_params = self.floating_params
         if(len(floating_params) == 0):
-            return np.empty((0,), dtype=np.float)
+            return np.empty((0,), dtype=np.float64)
         return np.array(
             [ param.initial
-             for param in floating_params ], dtype=np.float)
+             for param in floating_params ], dtype=np.float64)
 
     @property
     def floating_param_bounds(self):
@@ -543,10 +543,10 @@ class ParameterSet(object):
         """
         floating_params = self.floating_params
         if(len(floating_params) == 0):
-            return np.empty((0,2), dtype=np.float)
+            return np.empty((0,2), dtype=np.float64)
         return np.array(
             [ (param.valmin, param.valmax)
-             for param in floating_params ], dtype=np.float)
+             for param in floating_params ], dtype=np.float64)
 
     def __iter__(self):
         """Returns an iterator over the Parameter instances of this ParameterSet
@@ -692,7 +692,7 @@ class ParameterSet(object):
         self._floating_param_name_list = []
         self._fixed_param_name_to_idx = dict()
         self._floating_param_name_to_idx = dict()
-        self._fixed_param_values = np.empty((0,), dtype=np.float)
+        self._fixed_param_values = np.empty((0,), dtype=np.float64)
         for (pidx, param) in enumerate(self._params):
             pname = param.name
             if(pname in fix_params_keys):
@@ -764,7 +764,7 @@ class ParameterSet(object):
         self._floating_param_name_list = []
         self._fixed_param_name_to_idx = dict()
         self._floating_param_name_to_idx = dict()
-        self._fixed_param_values = np.empty((0,), dtype=np.float)
+        self._fixed_param_values = np.empty((0,), dtype=np.float64)
         for (pidx, param) in enumerate(self._params):
             pname = param.name
             if(pname in float_params_keys):
@@ -1242,7 +1242,7 @@ class ParameterGrid(object):
         if(not issequence(arr)):
             raise TypeError('The grid property must be a sequence!')
         if(not isinstance(arr, np.ndarray)):
-            arr = np.array(arr, dtype=np.float)
+            arr = np.array(arr, dtype=np.float64)
         if(arr.ndim != 1):
             raise ValueError('The grid property must be a 1D numpy.ndarray!')
         self._grid = self.round_to_nearest_grid_point(arr)
@@ -1292,7 +1292,7 @@ class ParameterGrid(object):
 
         floatD = value/self._delta - self._lower_bound/self._delta
         floatD = np.around(floatD, 9)
-        intD = floatD.astype(np.int)
+        intD = floatD.astype(np.int64)
 
         return (floatD, intD)
 
@@ -1759,7 +1759,7 @@ class ParameterModelMapper(object):
                 'maps, cannot be empty!')
 
         # Get the list of model indices to which the parameter maps.
-        mask = np.zeros((self.n_models,), dtype=bool)
+        mask = np.zeros((self.n_models,), dtype=np.bool_)
         for ((midx,model), applied_model) in itertools.product(
                 enumerate(self._models), models):
             if(applied_model.id == model.id):
@@ -2153,7 +2153,7 @@ class FitParameterSet(object):
         """
         # Define the list of fit parameters.
         # Define the (N_fitparams,)-shaped numpy array of FitParameter objects.
-        self._fitparams = np.empty((0,), dtype=np.object)
+        self._fitparams = np.empty((0,), dtype=np.object_)
         # Define a list for the fit parameter names. This is for optimization
         # purpose only.
         self._fitparam_name_list = []
@@ -2182,7 +2182,7 @@ class FitParameterSet(object):
         global fit parameters.
         """
         return np.array([ fitparam.initial
-                         for fitparam in self._fitparams ], dtype=np.float)
+                         for fitparam in self._fitparams ], dtype=np.float64)
 
     @property
     def bounds(self):
@@ -2190,7 +2190,7 @@ class FitParameterSet(object):
         boundaries for all the global fit parameters.
         """
         return np.array([ (fitparam.valmin, fitparam.valmax)
-                         for fitparam in self._fitparams ], dtype=np.float)
+                         for fitparam in self._fitparams ], dtype=np.float64)
 
     def copy(self):
         """Creates a deep copy of this FitParameterSet instance.
@@ -2260,7 +2260,7 @@ class FitParameterSet(object):
             The ndarray holding the fit parameter values in the order that the
             fit parameters are defined.
         """
-        fitparam_values = np.empty_like(self._fitparams, dtype=np.float)
+        fitparam_values = np.empty_like(self._fitparams, dtype=np.float64)
         for (i, fitparam) in enumerate(self._fitparams):
             fitparam_values[i] = fitparam_dict[fitparam.name]
         return fitparam_values
@@ -2301,7 +2301,7 @@ class SourceFitParameterMapper(object, metaclass=abc.ABCMeta):
         # Define the list of source parameter names, which map to the fit
         # parameters.
         # Define the (N_fitparams,)-shaped numpy array of str objects.
-        self._src_param_names = np.empty((0,), dtype=np.object)
+        self._src_param_names = np.empty((0,), dtype=np.object_)
 
     @property
     def fitparamset(self):
@@ -2471,7 +2471,7 @@ class SingleSourceFitParameterMapper(SourceFitParameterMapper):
             return None
 
         fitparams_arr = np.array([tuple(fitparam_values)],
-                                 dtype=[ (name, np.float)
+                                 dtype=[ (name, np.float64)
                                         for name in self._src_param_names ])
         return fitparams_arr
 
@@ -2503,10 +2503,11 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
 
         # (N_fitparams, N_sources) shaped boolean ndarray defining what fit
         # parameter applies to which source.
-        self._fit_param_2_src_mask = np.zeros((0, len(self.sources)), dtype=np.bool)
+        self._fit_param_2_src_mask = np.zeros(
+            (0, len(self.sources)), dtype=np.bool_)
 
         # Define an array, which will hold the unique source parameter names.
-        self._unique_src_param_names = np.empty((0,), dtype=np.object)
+        self._unique_src_param_names = np.empty((0,), dtype=np.object_)
 
     @property
     def sources(self):
@@ -2565,7 +2566,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         self._unique_src_param_names = np.unique(self._src_param_names)
 
         # Get the list of source indices for which the fit parameter applies.
-        mask = np.zeros((len(self.sources),), dtype=np.bool)
+        mask = np.zeros((len(self.sources),), dtype=np.bool_)
         for ((idx,src), applied_src) in itertools.product(enumerate(self.sources), sources):
             if(applied_src.id == src.id):
                 mask[idx] = True
@@ -2624,7 +2625,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
             return None
 
         fitparams_arr = np.empty((self.N_sources,),
-                                 dtype=[ (name, np.float)
+                                 dtype=[ (name, np.float64)
                                          for name in self._unique_src_param_names ])
 
         for src_idx in range(self.N_sources):

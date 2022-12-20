@@ -34,6 +34,29 @@ On cobalt and NPX servers we can use CVMFS Python 3 virtual environment with all
 Setup
 =====
 
+Using pip
+---------
+
+The `skyllh` package can be installed using pip:
+
+.. code:: bash
+
+    pip install git+https://github.com/icecube/skyllh.git#egg=skyllh 
+
+Optionally, the editable package version with a specified reference can be installed by:
+
+.. code:: bash
+
+    pip install -e git+https://github.com/icecube/skyllh.git@ref#egg=skyllh 
+
+where
+
+* `-e` is an editable flag
+* `ref` in `@ref` is an optional argument containing a specific commit hash, branch name or tag
+
+Cloning from GitHub
+-------------------
+
 The framework is split into two packages:
 
 1. `github.com/icecube/skyllh <https://github.com/icecube/skyllh>`_

@@ -551,7 +551,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
         ns_tol = self.ns_tol
 
         niter = 0
-        x = np.copy(initials).astype(np.float)
+        x = np.copy(initials).astype(np.float64)
         ns = x[0]
 
         # Initialize stepsize to be larger than ns tolerance.
