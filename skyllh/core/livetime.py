@@ -281,7 +281,7 @@ class Livetime(object):
 
         # Mask odd indices as on-time (True) MJD values and even indices as
         # off-time (False).
-        is_on = np.array(onoff_idxs & 0x1, dtype=np.bool)
+        is_on = np.array(onoff_idxs & 0x1, dtype=np.bool_)
 
         return is_on
 
@@ -304,7 +304,10 @@ class Livetime(object):
         # Create bin array with only on-time bins. We have to mask out the
         # off-time bins.
         ontime_bins = np.diff(self._onoff_intervals)
-        mask = np.invert(np.array(np.linspace(0,ontime_bins.size-1,ontime_bins.size)%2, dtype=np.bool))
+        mask = np.invert(
+            np.array(
+                np.linspace(0, ontime_bins.size-1, ontime_bins.size)%2,
+                dtype=np.bool_))
         ontime_bins = ontime_bins[mask]
 
         # Create the cumulative array of the on-time bins.

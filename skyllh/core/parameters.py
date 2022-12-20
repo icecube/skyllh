@@ -432,7 +432,7 @@ class ParameterSet(object):
         self._params = np.empty((0,), dtype=np.object_)
         # Define the (n_params,)-shaped numpy mask array that masks the fixed
         # parameters in the list of all parameters.
-        self._params_fixed_mask = np.empty((0,), dtype=np.bool)
+        self._params_fixed_mask = np.empty((0,), dtype=np.bool_)
 
         # Define two lists for the parameter names. One for the fixed
         # parameters, and one for the floating parameters.
@@ -1470,7 +1470,7 @@ class ModelParameterMapper(object, metaclass=abc.ABCMeta):
         # (N_params, N_models) shaped boolean ndarray defining what global
         # parameter maps to which model.
         self._global_param_2_model_mask = np.zeros(
-            (0, len(self._models)), dtype=np.bool)
+            (0, len(self._models)), dtype=np.bool_)
 
     @property
     def name(self):
@@ -1686,7 +1686,7 @@ class SingleModelParameterMapper(ModelParameterMapper):
         self._model_param_names = np.concatenate(
             (self._model_param_names,[model_param_name]))
 
-        mask = np.ones((1,), dtype=np.bool)
+        mask = np.ones((1,), dtype=np.bool_)
         self._global_param_2_model_mask = np.vstack(
             (self._global_param_2_model_mask, mask))
 
@@ -1815,7 +1815,7 @@ class MultiModelParameterMapper(ModelParameterMapper):
                 'maps, cannot be empty!')
 
         # Get the list of model indices to which the parameter maps.
-        mask = np.zeros((self.n_models,), dtype=np.bool)
+        mask = np.zeros((self.n_models,), dtype=np.bool_)
         for ((midx,model), applied_model) in itertools.product(
                 enumerate(self._models), models):
             if(applied_model.id == model.id):
@@ -2431,7 +2431,8 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
 
         # (N_fitparams, N_sources) shaped boolean ndarray defining what fit
         # parameter applies to which source.
-        self._fit_param_2_src_mask = np.zeros((0, len(self.sources)), dtype=np.bool)
+        self._fit_param_2_src_mask = np.zeros(
+            (0, len(self.sources)), dtype=np.bool_)
 
         # Define an array, which will hold the unique source parameter names.
         self._unique_src_param_names = np.empty((0,), dtype=np.object_)
@@ -2488,7 +2489,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         self._unique_src_param_names = np.unique(self._src_param_names)
 
         # Get the list of source indices for which the fit parameter applies.
-        mask = np.zeros((len(self.sources),), dtype=np.bool)
+        mask = np.zeros((len(self.sources),), dtype=np.bool_)
         for ((idx,src), applied_src) in itertools.product(enumerate(self.sources), sources):
             if(applied_src.id == src.id):
                 mask[idx] = True
