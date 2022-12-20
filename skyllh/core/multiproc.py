@@ -215,7 +215,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
 
     # Return result list if only one CPU is used.
     if(ncpu == 1):
-        sarr = np.zeros((1,), dtype=[('n_finished_tasks', np.int)])
+        sarr = np.zeros((1,), dtype=[('n_finished_tasks', np.int64)])
         result_list = master_wrapper(
             pbar, sarr, func, args_list, squeue=None, rss=rss, tl=tl)
 
@@ -286,7 +286,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
         logger.addHandler(orig_handler)
 
     # Compute the first chunk in the main process.
-    sarr = np.zeros((len(processes)+1,), dtype=[('n_finished_tasks', np.int)])
+    sarr = np.zeros((len(processes)+1,), dtype=[('n_finished_tasks', np.int64)])
     result_list_0 = master_wrapper(
         pbar, sarr, func, sub_args_list_list[0], squeue=squeue, rss=rss_list[0],
         tl=tl_list[0])

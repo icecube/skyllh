@@ -117,8 +117,9 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         events = DataFieldRecordArray(
             np.zeros(
                 (ratios.size,),
-                dtype=[('ira', np.int), ('ra', np.float),
-                       ('idec', np.int), ('dec', np.float), ('sin_dec', np.float),
+                dtype=[('ira', np.int64), ('ra', np.float),
+                       ('idec', np.int64), ('dec', np.float),
+                       ('sin_dec', np.float),
                        ('ang_err', np.float)]))
         for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
                                                 enumerate(ra_bincenters),

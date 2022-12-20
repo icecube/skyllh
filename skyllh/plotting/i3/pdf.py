@@ -93,8 +93,8 @@ class I3EnergyPDFPlotter(object):
 
         pdf_values = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float)
         events = DataFieldRecordArray(np.zeros((pdf_values.size,),
-            dtype=[('ix', np.int), (xbinning.name, np.float),
-                   ('iy', np.int), (ybinning.name, np.float)]))
+            dtype=[('ix', np.int64), (xbinning.name, np.float),
+                   ('iy', np.int64), (ybinning.name, np.float)]))
         for (i, ((ix,x),(iy,y))) in enumerate(itertools.product(
                 enumerate(xbinning.bincenters),
                 enumerate(ybinning.bincenters))):

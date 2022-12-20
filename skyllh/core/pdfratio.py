@@ -189,7 +189,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         # initialize the mapping with -1 first in order to be able to check in
         # the end if all fit parameters found a PDF ratio object.
         self._fitparam_idx_2_pdfratio_idx = np.repeat(
-            np.array([-1], dtype=np.int), len(self._fitparam_list))
+            np.array([-1], dtype=np.int64), len(self._fitparam_list))
         for ((fpidx, fitparam), (pridx, pdfratio)) in itertools.product(
                 enumerate(self._fitparam_list), enumerate(self.pdfratio_list)):
             if(fitparam.name in pdfratio.fitparam_names):
@@ -623,7 +623,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         """Returns the list of fit parameter names the signal PDF depends on.
         """
         return self._sig_pdf.param_set.floating_param_name_list
-    
+
     def get_ratio(self, tdm, params=None, tl=None):
         """Calculates the PDF ratio for the given trial events.
 

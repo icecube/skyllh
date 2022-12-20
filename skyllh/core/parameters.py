@@ -429,7 +429,7 @@ class ParameterSet(object):
         """
         # Define the list of parameters.
         # Define the (n_params,)-shaped numpy array of Parameter objects.
-        self._params = np.empty((0,), dtype=np.object)
+        self._params = np.empty((0,), dtype=np.object_)
         # Define the (n_params,)-shaped numpy mask array that masks the fixed
         # parameters in the list of all parameters.
         self._params_fixed_mask = np.empty((0,), dtype=np.bool)
@@ -1269,7 +1269,7 @@ class ParameterGrid(object):
 
         floatD = value/self._delta - self._lower_bound/self._delta
         floatD = np.around(floatD, 9)
-        intD = floatD.astype(np.int)
+        intD = floatD.astype(np.int64)
 
         return (floatD, intD)
 
@@ -1465,7 +1465,7 @@ class ModelParameterMapper(object, metaclass=abc.ABCMeta):
         # The local model parameter names are the names used by the internal
         # math objects, like PDFs. Thus, the global parameter names can be
         # aliases of such local model parameter names.
-        self._model_param_names = np.empty((0,), dtype=np.object)
+        self._model_param_names = np.empty((0,), dtype=np.object_)
 
         # (N_params, N_models) shaped boolean ndarray defining what global
         # parameter maps to which model.
@@ -2084,7 +2084,7 @@ class FitParameterSet(object):
         """
         # Define the list of fit parameters.
         # Define the (N_fitparams,)-shaped numpy array of FitParameter objects.
-        self._fitparams = np.empty((0,), dtype=np.object)
+        self._fitparams = np.empty((0,), dtype=np.object_)
         # Define a list for the fit parameter names. This is for optimization
         # purpose only.
         self._fitparam_name_list = []
@@ -2231,7 +2231,7 @@ class SourceFitParameterMapper(object, metaclass=abc.ABCMeta):
         # Define the list of source parameter names, which map to the fit
         # parameters.
         # Define the (N_fitparams,)-shaped numpy array of str objects.
-        self._src_param_names = np.empty((0,), dtype=np.object)
+        self._src_param_names = np.empty((0,), dtype=np.object_)
 
     @property
     def fitparamset(self):
@@ -2434,7 +2434,7 @@ class MultiSourceFitParameterMapper(SourceFitParameterMapper):
         self._fit_param_2_src_mask = np.zeros((0, len(self.sources)), dtype=np.bool)
 
         # Define an array, which will hold the unique source parameter names.
-        self._unique_src_param_names = np.empty((0,), dtype=np.object)
+        self._unique_src_param_names = np.empty((0,), dtype=np.object_)
 
     @property
     def sources(self):

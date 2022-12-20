@@ -777,9 +777,9 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         # Create the structured array data type for the result array.
         result_dtype = [
-            ('seed', np.int),
+            ('seed', np.int64),
             ('mean_n_sig', np.float),
-            ('n_sig', np.int),
+            ('n_sig', np.int64),
             ('mean_n_sig_0', np.float),
             ('ts', np.float)
         ] + [

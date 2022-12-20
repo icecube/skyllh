@@ -125,8 +125,8 @@ class SignalSpatialPDFPlotter(object):
 
         # Generate events that fall into the probability bins.
         events = DataFieldRecordArray(np.zeros((probs.size,),
-            dtype=[('ira', np.int), ('ra', np.float),
-                   ('idec', np.int), ('dec', np.float),
+            dtype=[('ira', np.int64), ('ra', np.float),
+                   ('idec', np.int64), ('dec', np.float),
                    ('ang_err', np.float)]))
         for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
                 enumerate(ra_bincenters),
