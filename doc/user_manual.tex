@@ -578,10 +578,11 @@ With equation (\ref{eq:SiStacking}) and the definitions
 (\ref{eq:SourceWeightCoefficient}), and
 (\ref{eq:SumOfSourceWeightCoefficients}), it is given by
 \begin{equation}
-\mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\psk) \frac{\mathcal{S}_{i}(\psk)}{\mathcal{B}_{i}}.
+\mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\psk) \mathcal{R}_{i,k}(\psk),
 \label{eq:RiStacking}
 \end{equation}
-The signal over background ratio $\mathcal{S}_{i}(\psk) / \mathcal{B}_{i} \equiv \mathcal{R}_{i,k}(\psk)$
+where the signal over background PDF ratio
+$\mathcal{R}_{i,k}(\psk) \equiv \mathcal{S}_{i}(\psk) / \mathcal{B}_{i}$
 for the source $k$ is then given by equation (\ref{eq:Ri}).
 
 Using the same set of source fit parameters $\ps$ for all sources, the
@@ -602,10 +603,8 @@ with the derivative of equation (\ref{eq:SumOfSourceWeightCoefficients}) given b
 \end{equation}
 with
 \begin{equation}
-\frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}} = W_k \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{k}}(\psk)}{\mathrm{d}{p_s}_k},
+\frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}} = W_k \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{k}}(\psk)}{\mathrm{d}p_{\mathrm{s}}}.
 \end{equation}
-where the local source parameter $p_{\mathrm{s}_{k}}$ maps to the correct global
-parameter $p_{\mathrm{s}}$.
 
 In case one would fit each source individually with its own set of source fit
 parameters, $\psk$, $\ps$ would be a set of $K$ sets
