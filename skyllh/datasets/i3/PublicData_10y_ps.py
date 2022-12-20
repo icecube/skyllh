@@ -584,6 +584,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         mc = data.mc
         mc.append_field('time', np.repeat(0, len(mc)))
 
+    def add_azimuth_and_zenith(data):
+        mc = data.mc
+        mc.append_field('azi', np.repeat(0, len(mc)))
+        mc.append_field('zen', np.repeat(0, len(mc)))
+
     def convert_deg2rad(data):
         exp = data.exp
         exp['ang_err'] = np.deg2rad(exp['ang_err'])
@@ -594,6 +599,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     dsc.add_data_preparation(add_run_number)
     dsc.add_data_preparation(add_time)
+    dsc.add_data_preparation(add_azimuth_and_zenith)
     dsc.add_data_preparation(convert_deg2rad)
 
     return dsc
