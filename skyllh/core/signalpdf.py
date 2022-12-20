@@ -117,7 +117,6 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         try:
             # angular difference is pre calculated
             prob = get_data('spatial_pdf_gauss')
-            src_ra = get_data('src_array')['ra']
 
             if src_ev_idxs is None:
                 prob = prob.reshape((len(get_data('src_array')), len(ra)))
