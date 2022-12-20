@@ -166,8 +166,8 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
             The numpy record ndarray containing the parameter values of the
             sources. The parameter values can be different for the different
             sources.
-            The record array needs to contain two fields for each source
-            parameter, one named <name> with the source's local parameter name
+            The record array must contain two fields for each source parameter,
+            one named <name> with the source's local parameter name
             holding the source's local parameter value, and one named
             <name:gpidx> holding the global parameter index plus one for each
             source value. For values mapping to non-fit parameters, the index
