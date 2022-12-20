@@ -201,7 +201,8 @@ class Livetime(object):
         # The t_start_idx and t_end_idx variables hold even indices.
         N_ontime_intervals = int((t_end_idx - t_start_idx)/2)
 
-        ontime_intervals_flat = np.empty((N_ontime_intervals*2,), dtype=np.float)
+        ontime_intervals_flat = np.empty(
+            (N_ontime_intervals*2,), dtype=np.float64)
         # Set the first and last on-time interval edges.
         ontime_intervals_flat[0] = t_start
         ontime_intervals_flat[-1] = t_end

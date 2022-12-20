@@ -175,7 +175,7 @@ class SignalGenerator(SignalGeneratorBase):
             ('shg_idx', get_smallest_numpy_int_type((0, n_sources))),
             ('shg_src_idx', get_smallest_numpy_int_type(
                 [0]+[shg.n_sources for shg in shg_list])),
-            ('weight', np.float)
+            ('weight', np.float64)
         ]
         self._sig_candidates = np.empty(
             (0,), dtype=sig_candidates_dtype, order='F')
@@ -255,7 +255,7 @@ class SignalGenerator(SignalGeneratorBase):
         # The mu_fluxes array is the flux of each source for mu mean detected
         # signal events.
         n_sources = self._src_hypo_group_manager.n_sources
-        mu_fluxes = np.empty((n_sources,), dtype=np.float)
+        mu_fluxes = np.empty((n_sources,), dtype=np.float64)
 
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
         mu_fluxes_idx_offset = 0
@@ -408,7 +408,7 @@ class MultiSourceSignalGenerator(SignalGenerator):
             ('shg_idx', get_smallest_numpy_int_type((0, n_sources))),
             ('shg_src_idx', get_smallest_numpy_int_type(
                 [0]+[shg.n_sources for shg in shg_list])),
-            ('weight', np.float)
+            ('weight', np.float64)
         ]
         self._sig_candidates = np.empty(
             (0,), dtype=sig_candidates_dtype, order='F')

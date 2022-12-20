@@ -105,7 +105,7 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         rabins = int(np.ceil(raaxis.length / np.deg2rad(delta_ra_deg)))
         decbins = int(np.ceil(decaxis.length / np.deg2rad(delta_dec_deg)))
 
-        ratios = np.zeros((rabins,decbins), dtype=np.float)
+        ratios = np.zeros((rabins,decbins), dtype=np.float64)
 
         ra_binedges = np.linspace(raaxis.vmin, raaxis.vmax, rabins+1)
         ra_bincenters = 0.5*(ra_binedges[:-1] + ra_binedges[1:])
@@ -117,10 +117,10 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         events = DataFieldRecordArray(
             np.zeros(
                 (ratios.size,),
-                dtype=[('ira', np.int64), ('ra', np.float),
-                       ('idec', np.int64), ('dec', np.float),
-                       ('sin_dec', np.float),
-                       ('ang_err', np.float)]))
+                dtype=[('ira', np.int64), ('ra', np.float64),
+                       ('idec', np.int64), ('dec', np.float64),
+                       ('sin_dec', np.float64),
+                       ('ang_err', np.float64)]))
         for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
                                                 enumerate(ra_bincenters),
                                                 enumerate(dec_bincenters))):

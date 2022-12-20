@@ -98,10 +98,10 @@ class I3EnergySigSetOverBkgPDFRatioSplinePlotter(object):
 
         # Create a 2D array with the ratio values. We put one event into each
         # bin.
-        ratios = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float)
+        ratios = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float64)
         events = DataFieldRecordArray(np.zeros((ratios.size,),
-            dtype=[('ix', np.int64), (xbinning.name, np.float),
-                   ('iy', np.int64), (ybinning.name, np.float)]))
+            dtype=[('ix', np.int64), (xbinning.name, np.float64),
+                   ('iy', np.int64), (ybinning.name, np.float64)]))
         for (i, ((ix,x),(iy,y))) in enumerate(itertools.product(
                 enumerate(xbinning.bincenters),
                 enumerate(ybinning.bincenters))):

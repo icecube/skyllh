@@ -121,13 +121,13 @@ class SignalSpatialPDFPlotter(object):
         dec_binedges = np.linspace(dec_min, dec_max, decbins+1)
         dec_bincenters = 0.5*(dec_binedges[:-1] + dec_binedges[1:])
 
-        probs = np.zeros((rabins,decbins), dtype=np.float)
+        probs = np.zeros((rabins,decbins), dtype=np.float64)
 
         # Generate events that fall into the probability bins.
         events = DataFieldRecordArray(np.zeros((probs.size,),
-            dtype=[('ira', np.int64), ('ra', np.float),
-                   ('idec', np.int64), ('dec', np.float),
-                   ('ang_err', np.float)]))
+            dtype=[('ira', np.int64), ('ra', np.float64),
+                   ('idec', np.int64), ('dec', np.float64),
+                   ('ang_err', np.float64)]))
         for (i, ((ira,ra),(idec,dec))) in enumerate(itertools.product(
                 enumerate(ra_bincenters),
                 enumerate(dec_bincenters))):

@@ -269,7 +269,8 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             # Create a (N_pdfratios,N_events)-shaped array to hold the PDF ratio
             # values of each PDF ratio object for each event.
             self._ratio_values = np.empty(
-                (len(self._pdfratio_list), tdm.n_selected_events), dtype=np.float)
+                (len(self._pdfratio_list), tdm.n_selected_events),
+                dtype=np.float64)
 
         self._precompute_static_pdfratio_values(tdm)
 
@@ -698,7 +699,7 @@ class SigOverBkgPDFRatio(PDFRatio):
                 'the get_gradient method!')
 
         # Create the 1D return array for the gradient.
-        grad = np.zeros((tdm.n_selected_events,), dtype=np.float)
+        grad = np.zeros((tdm.n_selected_events,), dtype=np.float64)
 
         # Calculate the gradient for the given fit parameter.
         # There are four cases:

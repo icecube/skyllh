@@ -87,7 +87,7 @@ class BackgroundI3SpatialPDFPlotter(object):
 
         sin_dec_points = sin_dec_binning.bincenters
         events = DataFieldRecordArray(np.zeros((pdfprobs.size,),
-                          dtype=[('sin_dec', np.float)]))
+                          dtype=[('sin_dec', np.float64)]))
         for (i, sin_dec) in enumerate(sin_dec_points):
             events['sin_dec'][i] = sin_dec
 

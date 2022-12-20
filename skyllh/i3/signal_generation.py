@@ -221,7 +221,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         n_sources = shg.n_sources
 
         # Get 1D array of source declination.
-        src_dec = np.empty((n_sources,), dtype=np.float)
+        src_dec = np.empty((n_sources,), dtype=np.float64)
         for (k, source) in enumerate(shg.source_list):
             if(not isinstance(source, PointLikeSource)):
                 raise TypeError('The source instance must be an instance of '
@@ -401,7 +401,7 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
         n_sources = shg.n_sources
 
         # Get 1D array of source declination.
-        src_dec = np.empty((n_sources,), dtype=np.float)
+        src_dec = np.empty((n_sources,), dtype=np.float64)
         for (k, source) in enumerate(shg.source_list):
             if(not isinstance(source, PointLikeSource)):
                 raise TypeError(
@@ -439,9 +439,9 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
         for bi in range(n_batches):
             if(bi != n_batches-1):
                 band_mask = np.logical_and(
-                            (data_mc_sin_true_dec >= 
+                            (data_mc_sin_true_dec >=
                                 src_sin_dec_band_min[bi*self.batch_size:(bi+1)*self.batch_size][:, np.newaxis]),
-                            (data_mc_sin_true_dec <= 
+                            (data_mc_sin_true_dec <=
                                 src_sin_dec_band_max[bi*self.batch_size:(bi+1)*self.batch_size][:, np.newaxis])
                             )
                 if(self.energy_range is not None):
@@ -458,9 +458,9 @@ class MultiPointLikeSourceI3SignalGenerationMethod(
             else:
                 n_final_batch = int(n_sources - bi*self.batch_size)
                 band_mask = np.logical_and(
-                            (data_mc_sin_true_dec >= 
+                            (data_mc_sin_true_dec >=
                                 src_sin_dec_band_min[bi*self.batch_size:][:, np.newaxis]),
-                            (data_mc_sin_true_dec <= 
+                            (data_mc_sin_true_dec <=
                                 src_sin_dec_band_max[bi*self.batch_size:][:, np.newaxis])
                             )
                 if(self.energy_range is not None):

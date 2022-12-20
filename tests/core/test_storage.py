@@ -9,9 +9,9 @@ from skyllh.core.storage import DataFieldRecordArray
 
 class DataFieldRecordArray_TestCase(unittest.TestCase):
     def setUp(self):
-        self.field1 = np.array([1.4, 1.3, 1.5, 1.1, 1.2], dtype=np.float)
-        self.field2 = np.array([2.5, 2.1, 2.3, 2.4, 2.2], dtype=np.float)
-        self.field3 = np.array([3.2, 3.5, 3.1, 3.3, 3.4], dtype=np.float)
+        self.field1 = np.array([1.4, 1.3, 1.5, 1.1, 1.2], dtype=np.float64)
+        self.field2 = np.array([2.5, 2.1, 2.3, 2.4, 2.2], dtype=np.float64)
+        self.field3 = np.array([3.2, 3.5, 3.1, 3.3, 3.4], dtype=np.float64)
         data = dict(
             field1 = self.field1,
             field2 = self.field2,
@@ -53,11 +53,11 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
     def test__setitem__(self):
         # Set an entire field with data of not the same length.
         with self.assertRaises(ValueError):
-            new_field2 = np.array([2.51, 2.12, 2.33, 2.44], dtype=np.float)
+            new_field2 = np.array([2.51, 2.12, 2.33, 2.44], dtype=np.float64)
             self.arr['field2'] = new_field2
 
         # Set an entire field with new values.
-        new_field2 = np.array([2.51, 2.12, 2.33, 2.44, 2.25], dtype=np.float)
+        new_field2 = np.array([2.51, 2.12, 2.33, 2.44, 2.25], dtype=np.float64)
         self.arr['field2'] = new_field2
         assert_array_almost_equal(self.arr['field2'], new_field2)
 
@@ -76,7 +76,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         assert_array_almost_equal(self.arr['field1'], self.field1)
         assert_array_almost_equal(
             self.arr['field2'],
-            np.array([2.5, 2.12, 2.33, 2.4, 2.25], dtype=np.float))
+            np.array([2.5, 2.12, 2.33, 2.4, 2.25], dtype=np.float64))
         assert_array_almost_equal(self.arr['field3'], self.field3)
 
         # Reset the array.
@@ -94,14 +94,14 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         assert_array_almost_equal(self.arr['field1'], self.field1)
         assert_array_almost_equal(
             self.arr['field2'],
-            np.array([2.51, 2.12, 2.3, 2.44, 2.2], dtype=np.float))
+            np.array([2.51, 2.12, 2.3, 2.44, 2.2], dtype=np.float64))
         assert_array_almost_equal(self.arr['field3'], self.field3)
 
         # Reset the array.
         self.setUp()
 
         # Add a new field.
-        new_field = np.array([4.2, 4.5, 4.1, 4.3, 4.4], dtype=np.float)
+        new_field = np.array([4.2, 4.5, 4.1, 4.3, 4.4], dtype=np.float64)
         self.arr['field4'] = new_field
         self.assertTrue('field4' in self.arr)
         self.assertTrue('field4' in self.arr.field_name_list)
@@ -144,13 +144,13 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.arr.sort_by_field('field2')
         assert_array_almost_equal(
             self.arr['field1'],
-            np.array([1.3, 1.2, 1.5, 1.1, 1.4], dtype=np.float))
+            np.array([1.3, 1.2, 1.5, 1.1, 1.4], dtype=np.float64))
         assert_array_almost_equal(
             self.arr['field2'],
-            np.array([2.1, 2.2, 2.3, 2.4, 2.5], dtype=np.float))
+            np.array([2.1, 2.2, 2.3, 2.4, 2.5], dtype=np.float64))
         assert_array_almost_equal(
             self.arr['field3'],
-            np.array([3.5, 3.4, 3.1, 3.3, 3.2], dtype=np.float))
+            np.array([3.5, 3.4, 3.1, 3.3, 3.2], dtype=np.float64))
 
     def test_tidy_up(self):
         self.arr.tidy_up('field2')

@@ -45,7 +45,7 @@ class SourceLocation(object):
 
 class SourceWeights(object):
     """Stores the relative weights of a source, i.e. weights and gradients.
-       There are two weights that should be included. one is the detector weight, 
+       There are two weights that should be included. one is the detector weight,
        which is declination dependent, and the other is a hypothesis weight, and that
        is provided by the user.
     """
@@ -90,11 +90,11 @@ class SourceModel(object):
     """
     def __init__(self, ra, dec, src_w=None, src_w_grad=None, src_w_W=None):
         self.loc = SourceLocation(ra, dec)
-        src_w = np.ones_like(self.loc.ra, dtype=np.float)
-        src_w_grad = np.zeros_like(self.loc.ra, dtype=np.float)
+        src_w = np.ones_like(self.loc.ra, dtype=np.float64)
+        src_w_grad = np.zeros_like(self.loc.ra, dtype=np.float64)
 
         if (src_w_W is None):
-            src_w_W    = np.ones_like(self.loc.ra, dtype=np.float)
+            src_w_W = np.ones_like(self.loc.ra, dtype=np.float64)
 
         self.weight = SourceWeights(src_w, src_w_grad, src_w_W)
 

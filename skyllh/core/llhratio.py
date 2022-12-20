@@ -495,7 +495,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
                     np.count_nonzero(unstablemask)))
 
         # Allocate memory for the log_lambda_i values.
-        log_lambda_i = np.empty_like(alpha_i, dtype=np.float)
+        log_lambda_i = np.empty_like(alpha_i, dtype=np.float64)
 
         # Calculate the log_lambda_i value for the numerical stable events.
         log_lambda_i[stablemask] = np.log1p(alpha_i[stablemask])
@@ -507,14 +507,14 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
         log_lambda = np.sum(log_lambda_i) + (N - Nprime)*np.log1p(-ns/N)
 
         # Calculate the gradient for each fit parameter.
-        grads = np.empty((dXi_ps.shape[0]+1,), dtype=np.float)
+        grads = np.empty((dXi_ps.shape[0]+1,), dtype=np.float64)
 
         # Pre-calculate value that is used twice for the gradients of the
         # numerical stable events.
         one_over_one_plus_alpha_i_stablemask = 1 / (1 + alpha_i[stablemask])
 
         # For ns.
-        nsgrad_i = np.empty_like(alpha_i, dtype=np.float)
+        nsgrad_i = np.empty_like(alpha_i, dtype=np.float64)
         nsgrad_i[stablemask] = Xi[stablemask] * one_over_one_plus_alpha_i_stablemask
         nsgrad_i[unstablemask] = (1 - tildealpha_i)*Xi[unstablemask] / one_plus_alpha
         # Cache the nsgrad_i values for a possible later calculation of the
@@ -694,11 +694,11 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
             logger.debug('dtype(Xi)={:s}'.format(str(Xi.dtype)))
 
         # Calculate the gradients of Xi for each fit parameter (without ns).
-        dXi_ps = np.empty((len(fitparam_values)-1,len(Xi)), dtype=np.float)
+        dXi_ps = np.empty((len(fitparam_values)-1,len(Xi)), dtype=np.float64)
         for (idx, fitparam_value) in enumerate(fitparam_values[1:]):
             fitparam_name = self._src_fitparam_mapper.get_src_fitparam_name(idx)
 
-            dRi = np.zeros((len(Xi),), dtype=np.float)
+            dRi = np.zeros((len(Xi),), dtype=np.float64)
             for (num_k) in np.arange(len(pdfratioarray._pdfratio_list)):
                 # Get the PDFRatio instance from which we need the derivative from.
                 pdfratio = pdfratioarray.get_pdfratio(num_k)
@@ -1041,9 +1041,9 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         N_datasets = self.n_datasets
         N_fitparams = self._src_fitparam_mapper.n_global_fitparams
 
-        Y = np.empty((N_datasets,), dtype=np.float)
+        Y = np.empty((N_datasets,), dtype=np.float64)
         if(N_fitparams > 0):
-            Y_grads = np.empty((N_datasets, N_fitparams), dtype=np.float)
+            Y_grads = np.empty((N_datasets, N_fitparams), dtype=np.float64)
 
         # Loop over the detector signal efficiency instances for the first and
         # only source hypothesis group.
@@ -1134,9 +1134,9 @@ class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
         N_datasets = self.n_datasets
         N_fitparams = self._src_fitparam_mapper.n_global_fitparams
 
-        Y = np.empty((N_datasets, len(self._src_arr_list[0])), dtype=np.float)
+        Y = np.empty((N_datasets, len(self._src_arr_list[0])), dtype=np.float64)
         if(N_fitparams > 0):
-            Y_grads = np.empty((N_datasets, len(self._src_arr_list[0]), N_fitparams), dtype=np.float)
+            Y_grads = np.empty((N_datasets, len(self._src_arr_list[0]), N_fitparams), dtype=np.float64)
 
         # Loop over the detector signal efficiency instances for the first and
         # only source hypothesis group.
@@ -1563,13 +1563,14 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
         # Allocate an array for the gradients of the composite log-likelihood
         # function. It is always at least one element long, i.e. the gradient
         # for ns.
-        grads = np.zeros((len(fitparam_values),), dtype=np.float)
+        grads = np.zeros((len(fitparam_values),), dtype=np.float64)
 
         # Create an array holding the fit parameter values for a particular
         # llh ratio function. Since we need to adjust ns with nsj it's more
         # efficient to create this array once and use it within the for loop
         # over the llh ratio functions.
-        llhratio_fitparam_values = np.empty((len(fitparam_values),), dtype=np.float)
+        llhratio_fitparam_values = np.empty(
+            (len(fitparam_values),), dtype=np.float64)
         # Loop over the llh ratio functions.
         for (j, llhratio) in enumerate(self._llhratio_list):
             if(tracing):
@@ -1624,9 +1625,10 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
 
         nsf = ns * self._cache_f
 
-        nsgrad2j = np.empty((len(self._llhratio_list),), dtype=np.float)
+        nsgrad2j = np.empty((len(self._llhratio_list),), dtype=np.float64)
         # Loop over the llh ratio functions and their second derivative.
-        llhratio_fitparam_values = np.empty((len(fitparam_values),), dtype=np.float)
+        llhratio_fitparam_values = np.empty(
+            (len(fitparam_values),), dtype=np.float64)
         for (j, llhratio) in enumerate(self._llhratio_list):
             llhratio_fitparam_values[0] = nsf[j]
             llhratio_fitparam_values[1:] = fitparam_values[1:]
@@ -1718,7 +1720,7 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
 
         # Compute the constant log-likelihood function value for the
         # null-hypothesis.
-        fitparam_values_0 = np.array([self._mean_n_sig_0], dtype=np.float)
+        fitparam_values_0 = np.array([self._mean_n_sig_0], dtype=np.float64)
         (self._logL_0, grads_0) = self._llhratio.evaluate(fitparam_values_0)
 
     def evaluate(self, fitparam_values):

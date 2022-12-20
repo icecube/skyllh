@@ -778,12 +778,12 @@ class Analysis(object, metaclass=abc.ABCMeta):
         # Create the structured array data type for the result array.
         result_dtype = [
             ('seed', np.int64),
-            ('mean_n_sig', np.float),
+            ('mean_n_sig', np.float64),
             ('n_sig', np.int64),
-            ('mean_n_sig_0', np.float),
-            ('ts', np.float)
+            ('mean_n_sig_0', np.float64),
+            ('ts', np.float64)
         ] + [
-            (fitparam_name, np.float)
+            (fitparam_name, np.float64)
                 for fitparam_name in fitparamset.fitparam_name_list
         ]
         result = np.empty((1,), dtype=result_dtype)

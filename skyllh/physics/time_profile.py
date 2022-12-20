@@ -245,7 +245,7 @@ class BoxTimeProfile(TimeProfileModel):
         t1 = np.atleast_1d(t1)
         t2 = np.atleast_1d(t2)
 
-        integrals = np.zeros((t1.shape[0],), dtype=np.float)
+        integrals = np.zeros((t1.shape[0],), dtype=np.float64)
 
         m = (t2 > self._t_start) & (t1 < self._t_end)
         N = np.count_nonzero(m)
@@ -288,7 +288,7 @@ class BoxTimeProfile(TimeProfileModel):
         """
         t = np.atleast_1d(t)
 
-        values = np.zeros((t.shape[0],), dtype=np.float)
+        values = np.zeros((t.shape[0],), dtype=np.float64)
         m = (t >= self._t_start) & (t < self._t_end)
         values[m] = 1./self.duration
 
