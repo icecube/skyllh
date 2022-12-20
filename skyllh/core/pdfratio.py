@@ -189,7 +189,7 @@ class SingleSourcePDFRatioArrayArithmetic(object):
         # initialize the mapping with -1 first in order to be able to check in
         # the end if all fit parameters found a PDF ratio object.
         self._fitparam_idx_2_pdfratio_idx = np.repeat(
-            np.array([-1], dtype=np.int), len(self._fitparam_list))
+            np.array([-1], dtype=np.int64), len(self._fitparam_list))
         for ((fpidx, fitparam), (pridx, pdfratio)) in itertools.product(
                 enumerate(self._fitparam_list), enumerate(self.pdfratio_list)):
             if(fitparam.name in pdfratio.fitparam_names):
@@ -269,7 +269,8 @@ class SingleSourcePDFRatioArrayArithmetic(object):
             # Create a (N_pdfratios,N_events)-shaped array to hold the PDF ratio
             # values of each PDF ratio object for each event.
             self._ratio_values = np.empty(
-                (len(self._pdfratio_list), tdm.n_selected_events), dtype=np.float)
+                (len(self._pdfratio_list), tdm.n_selected_events),
+                dtype=np.float64)
 
         self._precompute_static_pdfratio_values(tdm)
 
@@ -623,7 +624,7 @@ class SigOverBkgPDFRatio(PDFRatio):
         """Returns the list of fit parameter names the signal PDF depends on.
         """
         return self._sig_pdf.param_set.floating_param_name_list
-    
+
     def get_ratio(self, tdm, params=None, tl=None):
         """Calculates the PDF ratio for the given trial events.
 
@@ -698,7 +699,7 @@ class SigOverBkgPDFRatio(PDFRatio):
                 'the get_gradient method!')
 
         # Create the 1D return array for the gradient.
-        grad = np.zeros((tdm.n_selected_events,), dtype=np.float)
+        grad = np.zeros((tdm.n_selected_events,), dtype=np.float64)
 
         # Calculate the gradient for the given fit parameter.
         # There are four cases:

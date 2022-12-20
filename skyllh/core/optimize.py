@@ -217,7 +217,7 @@ class SpatialEventSelectionMethod(EventSelectionMethod, metaclass=abc.ABCMeta):
 
         arr = np.empty(
             (len(sources),),
-            dtype=[('ra', np.float), ('dec', np.float)],
+            dtype=[('ra', np.float64), ('dec', np.float64)],
             order='F')
 
         for (i, src) in enumerate(sources):

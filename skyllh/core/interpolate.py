@@ -178,7 +178,7 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
 
         value = self._f(tdm, gridparams, eventdata)
         gradients = np.zeros(
-            (len(params), tdm.n_selected_events), dtype=np.float)
+            (len(params), tdm.n_selected_events), dtype=np.float64)
 
         return (value, gradients)
 
