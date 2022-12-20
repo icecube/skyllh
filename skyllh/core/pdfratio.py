@@ -34,17 +34,26 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
     It defines the interface of a signal over background PDF ratio class.
     """
 
-    def __init__(self, pdf_type, *args, **kwargs):
+    def __init__(
+            self,
+            sig_param_names=None,
+            bkg_param_names=None,
+            **kwargs):
         """Constructor for a PDF ratio class.
 
         Parameters
         ----------
-        pdf_type : type
-            The Python type of the PDF object the PDF ratio is made for.
+        sig_param_names : sequence of str | str | None
+            The sequence of signal parameter names this PDFRatio instance is a
+            function of.
+        bkg_param_names : sequence of str | str | None
+            The sequence of background parameter names this PDFRatio instance
+            is a function of.
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-        self._pdf_type = pdf_type
+        self.sig_param_names = sig_param_names
+        self.bkg_param_names = bkg_param_names
 
     @property
     def n_params(self):
@@ -59,78 +68,68 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
         function of. This is the superset of signal and background parameter
         names.
         """
-        return list(set(self.sig_param_names + self.bkg_param_names))
+        return list(set(self._sig_param_names + self._bkg_param_names))
 
     @property
     def n_sig_params(self):
         """(read-only) The number of signal parameters the PDF ratio depends
         on.
         """
-        return len(self._get_sig_param_names())
+        return len(self._sig_param_names)
 
     @property
     def n_bkg_params(self):
         """(read-only) The number of background parameters the PDF ratio depends
         on.
         """
-        return len(self._get_bkg_param_names())
+        return len(self._bkg_param_names)
 
     @property
     def sig_param_names(self):
-        """(read-only) The list of signal parameter names this PDF ratio is
-        a function of.
+        """The list of signal parameter names this PDF ratio is a function of.
         """
-        return self._get_sig_param_names()
+        return self._sig_param_names
+    @sig_param_names.setter
+    def sig_param_names(self, names):
+        if names is None:
+            names = []
+        if not issequence(names):
+            names = [names]
+        if not issequenceof(names, str):
+            raise TypeError(
+                'The sig_param_names property must be a sequence of str '
+                'instances!')
+        self._sig_param_names = names
 
     @property
     def bkg_param_names(self):
-        """(read-only) The list of background parameter names this PDF ratio is
-        a function of.
+        """The list of background parameter names this PDF ratio is a function
+        of.
         """
-        return self._get_bkg_param_names()
+        return self._bkg_param_names
+    @bkg_param_names.setter
+    def bkg_param_names(self, names):
+        if names is None:
+            names = []
+        if not issequence(names):
+            names = [names]
+        if not issequenceof(names, str):
+            raise TypeError(
+                'The bkg_param_names property must be a sequence of str '
+                'instances!')
+        self._bkg_param_names = names
 
-    @property
-    def pdf_type(self):
-        """(read-only) The Python type of the PDF object for which the PDF
-        ratio is made for.
+    def initialize_for_new_trial(self, tdm, tl=None):
+        """Initializes the PDFRatio instance for a new trial. This method can
+        be utilized to pre-calculate PDFRatio values that do not depend on any
+        fit parameters.
         """
-        return self._pdf_type
-
-    def _get_sig_param_names(self):
-        """This method must be re-implemented by the derived class and needs to
-        return the list of signal parameter names, this PDF ratio is a
-        function of. If it returns an empty list, the PDF ratio is independent
-        of any signal parameters.
-
-        Returns
-        -------
-        list of str
-            The list of the signal parameter names, this PDF ratio is a
-            function of. By default this method returns an empty list indicating
-            that the PDF ratio depends on no signal parameter.
-        """
-        return []
-
-    def _get_bkg_param_names(self):
-        """This method must be re-implemented by the derived class and needs to
-        return the list of background parameter names, this PDF ratio is a
-        function of. If it returns an empty list, the PDF ratio is independent
-        of any background parameters.
-
-        Returns
-        -------
-        list of str
-            The list of the background parameter names, this PDF ratio is a
-            function of. By default this method returns an empty list indicating
-            that the PDF ratio depends on no signal parameter.
-        """
-        return []
+        pass
 
     @abc.abstractmethod
     def get_ratio(self, tdm, params=None, tl=None):
         """Retrieves the PDF ratio value for each given trial data event, given
         the given set of parameters.
-        This method is called during the likelihood maximization process.
 
         Parameters
         ----------
@@ -153,11 +152,10 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_gradient(self, tdm, params, param_name):
+    def get_gradient(self, tdm, params, param_name, tl=None):
         """Retrieves the PDF ratio gradient for the parameter ``param_name``
         for each given trial event, given the given set of parameters
         ``params``.
-        This method is called during the likelihood maximization process.
 
         Parameters
         ----------
@@ -169,6 +167,9 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
         param_name : str
             The name of the parameter for which the gradient should
             get calculated.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
@@ -177,6 +178,137 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
             ratio gradient value for each trial event.
         """
         pass
+
+    def __mul__(self, other):
+        """Implements the mathematical operation ``new = self * other``, where
+        ``other`` is an instance of PDFRatio. It creates an instance of
+        PDFRatioProduct holding the two PDFRatio instances.
+        """
+        return PDFRatioProduct(self, other)
+
+
+class PDFRatioProduct(PDFRatio):
+    """This is the mathematical product of two PDFRatio instances, which is a
+    PDFRatio instance again.
+    """
+    def __init__(self, pdfratio1, pdfratio2, **kwargs):
+        """Creates a new PDFRatioProduct instance representing the product of
+        two PDFRatio instances.
+        """
+        self.pdfratio1 = pdfratio1
+        self.pdfratio2 = pdfratio2
+
+        sig_param_names = set(
+            pdfratio1.sig_param_names + pdfratio2.sig_param_names)
+        bkg_param_names = set(
+            pdfratio1.bkg_param_names + pdfratio2.bkg_param_names)
+
+        super().__init__(
+            sig_param_names=sig_param_names,
+            bkg_param_names=bkg_param_names,
+            **kwargs)
+
+    @property
+    def pdfratio1(self):
+        """The first PDFRatio instance in the muliplication
+        ``pdfratio1 * pdfratio2``.
+        """
+        return self._pdfratio1
+    @pdfratio1.setter
+    def pdfratio1(self, pdfratio):
+        if not isinstance(pdfratio, PDFRatio):
+            raise TypeError(
+                'The pdfratio1 property must be an instance of PDFRatio!')
+        self._pdfratio1 = pdfratio
+
+    @property
+    def pdfratio2(self):
+        """The second PDFRatio instance in the muliplication
+        ``pdfratio1 * pdfratio2``.
+        """
+        return self._pdfratio2
+    @pdfratio2.setter
+    def pdfratio2(self, pdfratio):
+        if not isinstance(pdfratio, PDFRatio):
+            raise TypeError(
+                'The pdfratio2 property must be an instance of PDFRatio!')
+        self._pdfratio2 = pdfratio
+
+    def get_ratio(self, tdm, params=None, tl=None):
+        """Retrieves the PDF ratio product value for each given trial data
+        event, given the given set of parameters.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial data events for
+            which the PDF ratio values should get calculated.
+        params : dict | None
+            The dictionary with the parameter name-value pairs.
+            It can be ``None``, if the PDF ratio does not depend on any
+            parameters.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        ratios : (N_events,)-shaped 1d numpy ndarray of float
+            The PDF ratio product value for each trial event.
+        """
+        r1 = self._pdfratio1.get_ratio(
+            tdm=tdm,
+            params=params,
+            tl=tl)
+        r2 = self._pdfratio2.get_ratio(
+            tdm=tdm,
+            params=params,
+            tl=tl)
+
+        return r1 * r2
+
+    def get_gradient(self, tdm, params, param_name, tl=None):
+        """Retrieves the PDF ratio product gradient for the parameter
+        ``param_name`` for each given trial event, given the given set of
+        parameters ``params``.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial data events for
+            which the PDF ratio values should get calculated.
+        params : dict
+            The dictionary with the parameter names and values.
+        param_name : str
+            The name of the parameter for which the gradient should
+            get calculated.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        gradient : instance of ndarray
+            The (N_events,)-shaped 1d numpy ndarray of float holding the PDF
+            ratio gradient value for each trial event.
+        """
+        (r1, r2) = self.get_ratio(
+            tdm=tdm,
+            params=params,
+            tl=tl)
+        r1_grad = self._pdfratio1.get_gradient(
+            tdm=tdm,
+            params=params,
+            param_name=param_name,
+            tl=tl)
+        r2_grad = self._pdfratio2.get_gradient(
+            tdm=tdm,
+            params=params,
+            param_name=param_name,
+            tl=tl)
+
+        return r1*r2_grad + r1_grad*r2
+
 
 
 class SingleSourcePDFRatioArrayArithmetic(object):
@@ -483,7 +615,7 @@ class SourceWeightedPDFRatio(object):
             dAdp = np.sum(a_k_grad)
 
             R_i_k_grads = np.zeros(
-                (tdm.n_selected_events, n_sources, dtype=np.double))
+                (tdm.n_selected_events, n_sources), dtype=np.double)
             for (k, sidx) in enumerate(src_model_idxs):
                 param_name = self._pmm.get_model_param_name(
                     model_idx=sidx,

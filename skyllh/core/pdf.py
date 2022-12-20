@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import abc
+import numpy as np
+from scipy.interpolate import RegularGridInterpolator
+
 from skyllh.core.binning import (
     BinningDefinition,
 )
@@ -24,17 +28,16 @@ from skyllh.core.debugging import (
 from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet,
+    ParameterModelMapper,
     ParameterSet,
 )
-from skyllh.core.timing import TaskTimer
-from skyllh.core.trialdata import TrialDataManager
+from skyllh.core.timing import (
+    TaskTimer,
+)
+from skyllh.core.trialdata import (
+    TrialDataManager,
+)
 
-
-import abc
-import numpy as np
-import scipy as scp
-
-from scipy.interpolate import RegularGridInterpolator
 
 # Try to load the photospline tool.
 PHOTOSPLINE_LOADED = True
@@ -271,7 +274,7 @@ class IsBackgroundPDF(object):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsBackgroundPDF class.
         """
-        super(IsBackgroundPDF, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __mul__(self, other):
         """Creates a BackgroundPDFProduct instance for the multiplication of
@@ -282,9 +285,9 @@ class IsBackgroundPDF(object):
         other : instance of IsBackgroundPDF
             The instance of IsBackgroundPDF, which is the other background PDF.
         """
-        if(not isinstance(other, IsBackgroundPDF)):
-            raise TypeError('The other PDF must be an instance of '
-                            'IsBackgroundPDF!')
+        if not isinstance(other, IsBackgroundPDF):
+            raise TypeError(
+                'The other PDF must be an instance of IsBackgroundPDF!')
 
         return BackgroundPDFProduct(self, other)
 
@@ -298,7 +301,7 @@ class IsSignalPDF(object):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsSignalPDF class.
         """
-        super(IsSignalPDF, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __mul__(self, other):
         """Creates a SignalPDFProduct instance for the multiplication of this
@@ -309,9 +312,9 @@ class IsSignalPDF(object):
         other : instance of IsSignalPDF
             The instance of IsSignalPDF, which is the other signal PDF.
         """
-        if(not isinstance(other, IsSignalPDF)):
-            raise TypeError('The other PDF must be an instance of '
-                            'IsSignalPDF!')
+        if not isinstance(other, IsSignalPDF):
+            raise TypeError(
+                'The other PDF must be an instance of IsSignalPDF!')
 
         return SignalPDFProduct(self, other)
 
@@ -325,23 +328,28 @@ class PDF(object, metaclass=abc.ABCMeta):
     for.
     """
 
-    def __init__(self, param_set=None, **kwargs):
+    def __init__(self, pmm, param_set=None, **kwargs):
         """Creates a new PDF instance.
 
         Parameters
         ----------
-        param_set : Parameter instance | sequence of Parameter instances |  ParameterSet instance | None
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the global parameters
+            and their mapping to local model/source parameters.
+        param_set : Parameter instance | sequence of Parameter instances |
+                    ParameterSet instance | None
             If this PDF depends on parameters, this set of parameters
             defines them. If a single parameter instance is given a ParameterSet
             instance will be created holding this single parameter.
             If set to None, this PDF will not depend on any parameters.
-
         """
         # Make sure that multiple inheritance can be used. This super call will
         # invoke the __init__ method of a possible second inheritance.
-        super(PDF, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
+        self.pmm = pmm
         self.param_set = param_set
+
         self._axes = PDFAxes()
 
     @property
@@ -360,6 +368,19 @@ class PDF(object, metaclass=abc.ABCMeta):
         return len(self._axes)
 
     @property
+    def pmm(self):
+        """The instance of ParameterModelMapper that defines the global
+        parameters and their mapping to local model/source parameters.
+        """
+        return self._pmm
+    @pmm.setter
+    def pmm(self, mapper):
+        if not isinstance(mapper, ParameterModelMapper):
+            raise TypeError(
+                'The pmm property must be an instance of ParameterModelMapper!')
+        self._pmm = mapper
+
+    @property
     def param_set(self):
         """The ParameterSet instance defining the set of parameters this PDF
         depends on. It is ``None``, if this PDF does not depend on any
@@ -369,9 +390,9 @@ class PDF(object, metaclass=abc.ABCMeta):
 
     @param_set.setter
     def param_set(self, param_set):
-        if(param_set is None):
+        if param_set is None:
             param_set = ParameterSet()
-        elif(not isinstance(param_set, ParameterSet)):
+        elif not isinstance(param_set, ParameterSet):
             param_set = ParameterSet(param_set)
         self._param_set = param_set
 
@@ -393,7 +414,7 @@ class PDF(object, metaclass=abc.ABCMeta):
     def add_axis(self, axis):
         """Adds the given PDFAxis object to this PDF.
         """
-        if(not isinstance(axis, PDFAxis)):
+        if not isinstance(axis, PDFAxis):
             raise TypeError(
                 'The axis argument must be an instance of PDFAxis!')
         self._axes += axis
@@ -403,7 +424,7 @@ class PDF(object, metaclass=abc.ABCMeta):
         all the given trial data. This means, it needs to check if there
         is a PDF value for each trial data event that will be used in the
         likelihood evaluation. This is just a seatbelt.
-        The method must raise a ValueError if the PDF is not valid for the
+        The method must raise a ``ValueError`` if the PDF is not valid for the
         given trial data.
         """
         raise NotImplementedError(
@@ -411,7 +432,7 @@ class PDF(object, metaclass=abc.ABCMeta):
             'implement the "assert_is_valid_for_trial_data" method!')
 
     @abc.abstractmethod
-    def get_prob(self, tdm, params=None, tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """This abstract method is supposed to calculate the probability density
         for the specified events given the specified parameter values.
 
@@ -419,11 +440,21 @@ class PDF(object, metaclass=abc.ABCMeta):
         ----------
         tdm : TrialDataManager instance
             The TrialDataManager instance holding the data events for which the
-            probability should be calculated for. What data fields are required
-            is defined by the derived PDF class and depends on the application.
-        params : dict | None
-            The dictionary containing the parameter names and values for which
-            the probability should get calculated.
+            probability density should be calculated.
+            What data fields are required is defined by the derived PDF class
+            and depends on the application.
+        params_recarray : numpy record ndarray | None
+            The (N_models,)-shaped numpy record ndarray holding the parameter
+            values of the models. The models are defined by the
+            ParameterModelMapper instance. The parameter values can be different
+            for the different models. In case of the signal PDF, the models are
+            the sources.
+            The record array must contain two fields for each source parameter,
+            one named <name> with the source's local parameter name
+            holding the source's local parameter value, and one named
+            <name:gpidx> holding the global parameter index plus one for each
+            source value. For values mapping to non-fit parameters, the index
+            should be negative.
             This can be ``Ǹone`` for PDFs that do not depend on any parameters.
         tl : TimeLord instance | None
             The optional TimeLord instance that should be used to measure
@@ -431,45 +462,54 @@ class PDF(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        prob : (N_events,)-shaped numpy ndarray
-            The 1D numpy ndarray with the probability density for each event.
-        grads : (N_fitparams,N_events)-shaped ndarray | None
-            The 2D numpy ndarray holding the gradients of the PDF w.r.t.
-            each fit parameter for each event. The order of the gradients
-            is the same as the order of floating parameters specified through
-            the ``param_set`` property.
-            It is ``None``, if this PDF does not depend on any parameters.
+        pd : instance of numpy ndarray
+            The (N_events,)-shaped numpy ndarray holding the probability density
+            for each event. In case of a signal PDF the shape will be
+            (N_sources,N_events).
+        grads : dict
+            The dictionary holding the gradients of the probability density
+            w.r.t. each fit parameter. The key of the dictionary is the id
+            of the global fit parameter. The value is the (N_events,)-shaped
+            numpy ndarray. In case of a signal PDF, the value is a
+            (N_sources,N_events)-shaped ndarray.
         """
         pass
 
 
 class PDFProduct(PDF, metaclass=abc.ABCMeta):
-    """The PDFProduct class represents the product of two PDF instances. It
-    is derived from the PDF class and hence is a PDF itself.
+    """The PDFProduct class represents the product of two PDF instances, i.e.
+    ``pdf1 * pdf2``. It is derived from the PDF class and hence is a PDF itself.
     """
 
-    def __init__(self, pdf1, pdf2):
+    def __init__(self, pdf1, pdf2, **kwargs):
         """Creates a new PDFProduct instance, which implements the operation
-        `pdf1 * pdf2`.
+        ``pdf1 * pdf2``.
         The axes of the two PDF instances will be merged.
 
         Parameters
         ----------
         pdf1 : instance of PDF
-            The left-hand-side PDF in the operation `pdf1 op pdf2`.
+            The left-hand-side PDF in the operation ``pdf1 * pdf2``.
         pdf2 : instance of PDF
-            The right-hand-side PDF in the operation `pdf1 op pdf2`.
+            The right-hand-side PDF in the operation ``pdf1 * pdf2``.
         """
         self.pdf1 = pdf1
         self.pdf2 = pdf2
+
+        if pdf1.pmm is not pdf2.pmm:
+            raise ValueError(
+                'The ParameterModelMapper instance of pdf1 is not the same as '
+                'for pdf2!')
 
         # Create the ParameterSet instance that is the union of the ParameterSet
         # instances of the two PDFs.
         param_set = ParameterSet.union(
             self._pdf1.param_set, self._pdf2.param_set)
 
-        super(PDFProduct, self).__init__(
-            param_set=param_set)
+        super().__init__(
+            pmm=pdf1.pmm,
+            param_set=param_set,
+            **kwargs)
 
         # The resulting PDFAxes object of this PDF instance is the union of the
         # two PDFAxes instances of the two PDF instances.
@@ -477,39 +517,41 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
 
     @property
     def pdf1(self):
-        """The left-hand-side PDF in the operation `pdf1 op pdf2`. It must be an
-        instance of PDF.
+        """The left-hand-side PDF in the operation ``pdf1 * pdf2``.
+        It must be an instance of PDF.
         """
         return self._pdf1
 
     @pdf1.setter
     def pdf1(self, pdf):
-        if(not isinstance(pdf, PDF)):
-            raise TypeError('The pdf1 property must be an instance of PDF!')
+        if not isinstance(pdf, PDF):
+            raise TypeError(
+                'The pdf1 property must be an instance of PDF!')
         self._pdf1 = pdf
 
     @property
     def pdf2(self):
-        """The right-hand-side PDF in the operation `pdf1 op pdf2`. It must be
-        an instance of PDF.
+        """The right-hand-side PDF in the operation ``pdf1 * pdf2``.
+        It must be an instance of PDF.
         """
         return self._pdf2
 
     @pdf2.setter
     def pdf2(self, pdf):
-        if(not isinstance(pdf, PDF)):
-            raise TypeError('The pdf2 property must be an instance of PDF!')
+        if not isinstance(pdf, PDF):
+            raise TypeError(
+                'The pdf2 property must be an instance of PDF!')
         self._pdf2 = pdf
 
     def assert_is_valid_for_trial_data(self, tdm):
-        """Calls the ``assert_is_valid_for_trial_data`` method of ``pdf1`` and
-        ``pdf2``.
+        """Calls the :meth:`assert_is_valid_for_trial_data` method of ``pdf1``
+        and ``pdf2``.
 
         Parameters
         ----------
-        tdm : TrialDataManager instance
-            The TrialDataManager instance that should be used to get the trial
-            data from.
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that should be used to get the
+            trial data from.
 
         Raises
         ------
@@ -519,9 +561,9 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
         self._pdf1.assert_is_valid_for_trial_data(tdm)
         self._pdf2.assert_is_valid_for_trial_data(tdm)
 
-    def get_prob(self, tdm, params=None, tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """Calculates the probability density for the trial events given the
-        specified parameters by calling the `get_prob` method of `pdf1`
+        specified parameters by calling the `get_pd` method of `pdf1`
         and `pdf2` and combining the two property densities by multiplication.
         The gradients will be calculated using the product rule of
         differentiation.
@@ -531,109 +573,76 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial event data for which
             the PDF values should get calculated.
-        params : dict | None
-            The dictionary containing the parameter names and values for
-            which the probability should get calculated.
+        params_recarray : numpy record ndarray | None
+            The (N_models,)-shaped numpy record ndarray holding the parameter
+            values of the models. The the documentation of the
+            :meth:`~skyllh.core.pdf.PDF.get_pd` method of the
+            :class:`~skyllh.core.pdf.PDF` class for further information.
         tl : TimeLord instance | None
             The optional TimeLord instance to use for measuring timing
             information.
 
         Returns
         -------
-        prob : (N_events,)-shaped numpy ndarray
-            The 1D numpy ndarray with the probability for each trial event.
-        grads : (N_fitparams,N_events)-shaped numpy ndarray
-            The gradients of the PDF product w.r.t. the fit parameter of this
-            PDFProduct instance.
-
+        pd : instance of numpy ndarray
+            The (N_events,)-shaped numpy ndarray holding the probability density
+            for each event. In case of a signal PDF product the shape will be
+            (N_sources,N_events).
+        grads : dict
+            The dictionary holding the gradients of the probability density
+            w.r.t. each fit parameter. The key of the dictionary is the id
+            of the global fit parameter. The value is the (N_events,)-shaped
+            numpy ndarray. In case of a signal PDF product, the value is a
+            (N_sources,N_events)-shaped ndarray.
         """
         pdf1 = self._pdf1
         pdf2 = self._pdf2
 
-        with TaskTimer(tl, 'Get signal prob from table.'):
-            (prob1, grads1) = pdf1.get_prob(tdm, params, tl=tl)
-            (prob2, grads2) = pdf2.get_prob(tdm, params, tl=tl)
+        with TaskTimer(
+                tl,
+                f'Get probability densities from {classname(pdf1)} (pdf1) and '
+                f'{classname(pdf2)} (pdf2).'):
+            (pd1, grads1) = pdf1.get_pd(
+                tdm=tdm,
+                params_recarray=params_recarray,
+                tl=tl)
+            (pd2, grads2) = pdf2.get_pd(
+                tdm=tdm,
+                params_recarray=params_recarray,
+                tl=tl)
 
-        prob = prob1 * prob2
+        pd = pd1 * pd2
 
-        pdf1_param_set = pdf1.param_set
-        pdf2_param_set = pdf2.param_set
-
-        N_events = prob.shape[0]
-        fitparam_names = self.param_set.floating_param_name_list
-        grads = np.zeros((len(fitparam_names), N_events), dtype=np.float)
-        for (pidx, fitparam_name) in enumerate(fitparam_names):
-            # Calculate the gradient w.r.t. fitparam.
+        # Loop over the set of global fit parameter gradients.
+        grads = dict()
+        for gpid in set(list(grads1.keys()) + list(grads2.keys())):
+            # Calculate the gradient w.r.t. the fit parameter of id ``pgid``.
 
             # There are four possible cases to calculate the gradient for
-            # the parameter fitparam:
+            # the parameter gpid:
             #     1. Both PDFs depend on this fit parameter, the gradient is
             #        calculated through the product rule of differentiation.
             #     2. Only PDF1 depends on this fit parameter.
             #     3. Only PDF2 depends on this fit parameter.
             #     4. Both PDFs are independ of this fit parameter, the gradient
             #        is 0.
-            pdf1_has_fitparam = pdf1_param_set.has_floating_param(
-                fitparam_name)
-            pdf2_has_fitparam = pdf2_param_set.has_floating_param(
-                fitparam_name)
+            pdf1_has_fitparam = gpid in grads1
+            pdf2_has_fitparam = gpid in grads2
             if(pdf1_has_fitparam and pdf2_has_fitparam):
                 # Case 1
-                grad1 = grads1[pdf1.param_set.get_floating_pidx(fitparam_name)]
-                grad2 = grads2[pdf2.param_set.get_floating_pidx(fitparam_name)]
-                grads[pidx] = prob2*grad1 + prob1*grad2
+                grad1 = grads1[gpid]
+                grad2 = grads2[gpid]
+                grads[gpid] = pd1*grad2 + pd2*grad1
             elif(pdf1_has_fitparam):
                 # Case 2
-                grad1 = grads1[pdf1.param_set.get_floating_pidx(fitparam_name)]
-                grads[pidx] = prob2*grad1
+                grad1 = grads1[gpid]
+                grads[gpid] = pd2*grad1
             elif(pdf2_has_fitparam):
                 # Case 3
-                grad2 = grads2[pdf2.param_set.get_floating_pidx(fitparam_name)]
-                grads[pidx] = prob1*grad2
+                grad2 = grads2[gpid]
+                grads[gpid] = pd1*grad2
 
-        n_src = len(tdm.get_data('src_array')['ra'])
-        if(n_src == 1):
-            # Only one source in the signal hypothesis.
-            return (prob, grads)
-        else:
-            # Signal hypothesis contains multiple sources, and the overall weight is obtained by
-            # multiplying the detector weight src_w, and the hypothesis weight src_w_W.
-
-            src_w = tdm.get_data('src_array')['src_w'] * tdm.get_data('src_array')['src_w_W']
-            src_w_grad = tdm.get_data('src_array')['src_w_grad'] * tdm.get_data('src_array')['src_w_W']
-
-            # Normalize source weights and grads.
-            norm_src_w_temp = src_w.sum()
-            src_w /= norm_src_w_temp
-            src_w_grad /= norm_src_w_temp
-
-            src_ev_idxs = tdm.src_ev_idxs
-
-            if src_ev_idxs is not None:
-                (src_idxs, ev_idxs) = src_ev_idxs
-                prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
-            else:
-                prob = prob.reshape((n_src, int(prob.shape[0]/n_src))).T
-            prob_res = prob.dot(src_w)
-
-            n_ev = tdm.n_selected_events
-            norm_w = src_w.sum()
-
-            grads_tot = np.zeros((len(fitparam_names), n_ev), dtype=np.float)
-            for (pidx, fitparam_name) in enumerate(fitparam_names):
-                if src_ev_idxs is not None:
-                    grad_i = scp.sparse.csr_matrix((grads[pidx], (ev_idxs, src_idxs)))
-                else:
-                    grad_i = prob.reshape((n_src, int(grads[pidx].shape[0]/n_src))).T
-
-                if fitparam_name == 'gamma':
-                    d_wf = prob.dot(src_w_grad) + grad_i.dot(src_w)
-                    grads_tot[pidx] = (d_wf * norm_w - src_w_grad.sum() * prob_res) / norm_w**2
-                else:
-                    d_wf = grad_i.dot(src_w)
-                    grads_tot[pidx] = (d_wf * norm_w) / norm_w**2
-
-            return (prob_res, grads_tot)
+        return (pd, grads)
 
 
 class SignalPDFProduct(PDFProduct, IsSignalPDF):
@@ -641,8 +650,13 @@ class SignalPDFProduct(PDFProduct, IsSignalPDF):
     instances.
     """
 
-    def __init__(self, pdf1, pdf2):
-        super(SignalPDFProduct, self).__init__(pdf1, pdf2)
+    def __init__(self, pdf1, pdf2, **kwargs):
+        """Creates a new PDF product of two signal PDFs.
+        """
+        super().__init__(
+            pdf1=pdf1,
+            pdf2=pdf2,
+            **kwargs)
 
 
 class BackgroundPDFProduct(PDFProduct, IsBackgroundPDF):
@@ -650,8 +664,13 @@ class BackgroundPDFProduct(PDFProduct, IsBackgroundPDF):
     background PDF instances.
     """
 
-    def __init__(self, pdf1, pdf2):
-        super(BackgroundPDFProduct, self).__init__(pdf1, pdf2)
+    def __init__(self, pdf1, pdf2, **kwargs):
+        """Creates a new PDF product of two background PDFs.
+        """
+        super().__init__(
+            pdf1=pdf1,
+            pdf2=pdf2,
+            **kwargs)
 
 
 class SpatialPDF(PDF, metaclass=abc.ABCMeta):
@@ -670,14 +689,20 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
         dec_range : 2-element tuple
             The tuple specifying the declination range this PDF covers.
         """
-        super(SpatialPDF, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-        self.add_axis(PDFAxis(name='ra',
-                              vmin=ra_range[0], vmax=ra_range[1]))
-        self.add_axis(PDFAxis(name='dec',
-                              vmin=dec_range[0], vmax=dec_range[1]))
+        self.add_axis(
+            PDFAxis(
+                name='ra',
+                vmin=ra_range[0],
+                vmax=ra_range[1]))
+        self.add_axis(
+            PDFAxis(
+                name='dec',
+                vmin=dec_range[0],
+                vmax=dec_range[1]))
 
-    def assert_is_valid_for_exp_data(self, data_exp):
+    def assert_is_valid_for_trial_data(self, tdm):
         """Checks if this spatial PDF is valid for all the given experimental
         data.
         It checks if all the data is within the right-ascention and declination
@@ -685,9 +710,9 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        data_exp : numpy record ndarray
-            The array holding the experimental data. The following data fields
-            must exist:
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data.
+            The following data fields must exist:
 
             - 'ra' : float
                 The right-ascention of the data event.
@@ -703,20 +728,20 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
         ra_axis = self.get_axis('ra')
         dec_axis = self.get_axis('dec')
 
-        sinDec_binning = self.get_binning('sin_dec')
-        exp_sinDec = np.sin(data_exp['dec'])
+        ra = tdm.get_data('ra')
+        dec = tdm.get_data('dec')
 
         # Check if all the data is within the right-ascention range.
-        if(np.any((data_exp['ra'] < ra_axis.vmin) |
-                  (data_exp['ra'] > ra_axis.vmax))):
+        if np.any((ra < ra_axis.vmin) | (ra > ra_axis.vmax)):
             raise ValueError(
-                'Some data is outside the right-ascention range (%.3f, %.3f)!' % (ra_axis.vmin, ra_axis.vmax))
+                'Some data is outside the right-ascention range '
+                f'({ra_axis.vmin:.3f}, {ra_axis.vmax:.3f})!')
 
         # Check if all the data is within the declination range.
-        if(np.any((data_exp['dec'] < dec_axis.vmin) |
-                  (data_exp['dec'] > dec_axis.vmax))):
-            raise ValueError('Some data is outside the declination range (%.3f, %.3f)!' % (
-                dec_axis.vmin, dec_axis.vmax))
+        if np.any((dec < dec_axis.vmin) | (dec > dec_axis.vmax)):
+            raise ValueError(
+                'Some data is outside the declination range '
+                f'({dec_axis.vmin:.3f}, {dec_axis.vmax:.3f})!')
 
 
 class EnergyPDF(PDF, metaclass=abc.ABCMeta):
@@ -724,7 +749,7 @@ class EnergyPDF(PDF, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, *args, **kwargs):
-        super(EnergyPDF, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class TimePDF(PDF, metaclass=abc.ABCMeta):
@@ -732,7 +757,7 @@ class TimePDF(PDF, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, *args, **kwargs):
-        super(TimePDF, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class MultiDimGridPDF(PDF):
@@ -913,9 +938,8 @@ class MultiDimGridPDF(PDF):
                np.any(data > axis.vmax)
                ):
                 raise ValueError(
-                    'Some of the trial data for PDF axis '
-                    '"%s" is out of range (%g,%g)!' % (
-                        axis.name, axis.vmin, axis.vmax))
+                    f'Some of the trial data for PDF axis "{axis.name}" is out'
+                    f'of range ({axis.vmin:g},{axis.vmax:g})!')
 
     def get_prob_with_eventdata(self, tdm, params, eventdata, tl=None):
         """Calculates the probability for the trial events given the specified
@@ -1061,7 +1085,7 @@ class MultiDimGridPDF(PDF):
             self._cache_tdm_trial_data_state_id = tdm_trial_data_state_id
             self._cache_prob = prob
 
-        return (prob, None)
+        return (prob, dict())
 
 
 class NDPhotosplinePDF(PDF):
