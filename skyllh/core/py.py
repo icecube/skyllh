@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import division
-
 import abc
 import copy
 import inspect
 import numpy as np
 import sys
 
+from collections import OrderedDict
 
 from skyllh.core.display import INDENTATION_WIDTH
 
@@ -633,7 +632,7 @@ class NamedObjectCollection(ObjectCollection):
             The type of the objects, which can be added to the collection.
             This type must have an attribute named ``name``.
         """
-        self._obj_name_to_idx = dict()
+        self._obj_name_to_idx = OrderedDict()
 
         # The ObjectCollection class will call the add method to add individual
         # objects. This will update the _obj_name_to_idx attribute.
@@ -641,6 +640,15 @@ class NamedObjectCollection(ObjectCollection):
             objs=objs,
             obj_type=obj_type,
             **kwargs)
+
+    @property
+    def name_list(self):
+        """(read-only) The list of the names of all the objects of this
+        NamedObjectCollection instance.
+        The order of this list of names is preserved to the order objects were
+        added to this collection.
+        """
+        return list(self._obj_name_to_idx.keys())
 
     def _create_obj_name_to_idx_dict(self, start=None, end=None):
         """Creates the dictionary {obj.name: index} for object in the interval
@@ -658,8 +666,25 @@ class NamedObjectCollection(ObjectCollection):
         obj_name_to_idx : dict
             The dictionary {obj.name: index}.
         """
-        return dict([
+        return OrderedDict([
             (o.name, idx) for (idx, o) in enumerate(self._objects[start:end])])
+
+    def __contains__(self, name):
+        """Retruns ``True`` if an object of the given name exists in this
+        NamedObjectCollection instance, ``False`` otherwise.
+
+        Parameters
+        ----------
+        name : str
+            The name of the object.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if an object of name ``name`` exists in this
+            NamedObjectCollection instance, ``False`` otherwise.
+        """
+        return name in self._obj_name_to_idx
 
     def __getitem__(self, key):
         """Returns an object based on its name or index.
