@@ -96,8 +96,8 @@ class SpatialSigOverBkgPDFRatioPlotter(object):
         delta_ra_deg = 0.5
         delta_dec_deg = 0.5
 
-        raaxis = self._pdfratio.signalpdf.axes.get_axis('ra')
-        decaxis = self._pdfratio.signalpdf.axes.get_axis('dec')
+        raaxis = self._pdfratio.signalpdf.axes['ra']
+        decaxis = self._pdfratio.signalpdf.axes['dec']
 
         # Create a grid of ratio in right-ascention and declination and fill it
         # with PDF ratio values from events that fall into these bins.

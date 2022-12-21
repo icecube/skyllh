@@ -98,7 +98,7 @@ class BackgroundI3SpatialPDFPlotter(object):
         for i in range(len(events)):
             pdfprobs[0,i] = event_probs[i]
 
-        ra_axis = self.pdf.axes.get_axis('ra')
+        ra_axis = self.pdf.axes['ra']
         (left, right, bottom, top) = (
             ra_axis.vmin, ra_axis.vmax,
             sin_dec_binning.lower_edge, sin_dec_binning.upper_edge)

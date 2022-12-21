@@ -106,12 +106,12 @@ class SignalSpatialPDFPlotter(object):
         # Create a grid of signal probabilities in right-ascention and
         # declination/sin(declination) and fill it with probabilities from
         # events that fall into these bins.
-        raaxis = self.pdf.axes.get_axis('ra')
+        raaxis = self.pdf.axes['ra']
         rabins = int(np.ceil(raaxis.length / np.deg2rad(delta_ra_deg)))
         ra_binedges = np.linspace(raaxis.vmin, raaxis.vmax, rabins+1)
         ra_bincenters = 0.5*(ra_binedges[:-1] + ra_binedges[1:])
 
-        decaxis = self.pdf.axes.get_axis('dec')
+        decaxis = self.pdf.axes['dec']
         if(sin_dec is True):
             (dec_min, dec_max) = (np.sin(decaxis.vmin), np.sin(decaxis.vmax))
             decbins = int(np.ceil((dec_max-dec_min) / delta_sin_dec))

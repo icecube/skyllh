@@ -19,7 +19,7 @@ def kde_pdf_sig_spatial_norm_factor_func(pdf, tdm, fitparams, eventdata):
     It can be used for the ``norm_factor_func`` argument of the
     ``create_MultiDimGridPDF_from_kde_pdf`` function.
     """
-    log10_psi_idx = pdf._axes.axis_name_list.index('log10_psi')
+    log10_psi_idx = pdf._axes.get_index_by_name('log10_psi')
     # psi = tdm.get_data('psi')
     # Convert to psi.
     psi = 10**eventdata[:, log10_psi_idx]

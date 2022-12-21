@@ -302,7 +302,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         ValueError
             If some of the data is outside the time range of the PDF.
         """
-        time_axis = self.get_axis('time')
+        time_axis = self.axes['time']
 
         if(np.any((data_exp['time'] < time_axis.vmin) |
                   (data_exp['time'] > time_axis.vmax))):
