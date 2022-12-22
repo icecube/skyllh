@@ -909,7 +909,7 @@ class ParameterSet(object):
 
         return False
 
-    def floating_param_values_to_dict(self, floating_param_values):
+    def get_params_dict(self, floating_param_values):
         """Converts the given floating parameter values into a dictionary with
         the floating parameter names and values and also adds the fixed
         parameter names and their values to this dictionary.
@@ -922,15 +922,38 @@ class ParameterSet(object):
 
         Returns
         -------
-        param_dict : dict
+        params_dict : dict
             The dictionary with the floating and fixed parameter names and
             values.
         """
-        param_dict = dict(
+        params_dict = dict(
             list(zip(self._floating_param_name_list, floating_param_values)) +
-            list(zip(self._fixed_param_name_list, self._fixed_param_values)))
+            list(zip(self._fixed_param_name_list, self._fixed_param_values))
+        )
 
-        return param_dict
+        return params_dict
+
+    def get_floating_params_dict(self, floating_param_values):
+        """Converts the given floating parameter values into a dictionary with
+        the floating parameter names and values.
+
+        Parameters
+        ----------
+        floating_param_values : 1D ndarray
+            The ndarray holding the values of the floating parameters in the
+            order that the floating parameters are defined.
+
+        Returns
+        -------
+        params_dict : dict
+            The dictionary with the floating and fixed parameter names and
+            values.
+        """
+        params_dict = dict(
+            list(zip(self._floating_param_name_list, floating_param_values))
+        )
+
+        return params_dict
 
 
 class ParameterSetArray(object):
@@ -2029,7 +2052,7 @@ class ParameterModelMapper(object):
 
         return arr
 
-    def gflp_values_to_dict(self, gflp_values):
+    def get_global_params_dict(self, gflp_values):
         """Converts the given global floating parameter values into a dictionary
         holding the names and values of all floating and fixed parameters.
 
@@ -2041,14 +2064,35 @@ class ParameterModelMapper(object):
 
         Returns
         -------
-        param_dict : dict
+        params_dict : dict
             The dictionary holding the parameter name and values of all
             floating and fixed parameters.
         """
-        param_dict = self._global_paramset.floating_param_values_to_dict(
+        params_dict = self._global_paramset.get_params_dict(
             floating_param_values=gflp_values)
 
-        return param_dict
+        return params_dict
+
+    def get_global_floating_params_dict(self, gflp_values):
+        """Converts the given global floating parameter values into a dictionary
+        holding the names and values of all floating parameters.
+
+        Parameters
+        ----------
+        gflp_values : numpy ndarray
+            The (n_global_floating_params,)-shaped 1D numpy ndarray holding the
+            values of the global floating parameters.
+
+        Returns
+        -------
+        params_dict : dict
+            The dictionary holding the parameter name and values of all
+            floating parameters.
+        """
+        params_dict = self._global_paramset.get_floating_params_dict(
+            floating_param_values=gflp_values)
+
+        return params_dict
 
 
 class FitParameter(object):
