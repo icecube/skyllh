@@ -423,8 +423,12 @@ class PDF(object, metaclass=abc.ABCMeta):
         -------
         pd : instance of numpy ndarray
             The (N_events,)-shaped numpy ndarray holding the probability density
-            for each event. In case of a signal PDF the shape will be
-            (N_sources,N_events).
+            for each event. The length of this 1D array depends on the number
+            of sources and the events belonging to those sources. In the worst
+            case the length is N_sources * N_trial_events. The assignment of
+            values to sources is given by the
+            :py:attr:`~skyllh.core.trialdata.TrialDataManager.src_ev_idxs`
+            property.
         grads : dict
             The dictionary holding the gradients of the probability density
             w.r.t. each fit parameter. The key of the dictionary is the id
@@ -1777,6 +1781,7 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         pdf = next(iter(self.items()))[1]
         pdf.assert_is_valid_for_trial_data(tdm)
 
+    # FIXME
     def get_prob(self, tdm, params, tl=None):
         """Calculates the probability density for each event, given the given
         parameter values.
