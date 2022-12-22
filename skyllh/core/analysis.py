@@ -512,7 +512,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             log_lambda=log_lambda,
             gflp_values=gflp_values)
 
-        gflp_dict = self._pmm.gflp_values_to_dict(
+        gflp_dict = self._pmm.get_global_params_dict(
             gflp_values=gflp_values)
 
         return (TS, gflp_dict, status)
@@ -832,7 +832,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         # Get the dictionary holding all floating and fixed parameter names
         # and values.
-        param_dict = self._pmm.gflp_values_to_dict(
+        global_params_dict = self._pmm.get_global_params_dict(
             gflp_values=gflp_values)
 
         # Create the structured array data type for the result array.
@@ -844,7 +844,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
             ('ts', np.float64)
         ] + [
             (param_name, np.float64)
-                for param_name in param_dict.keys()
+                for param_name in global_params_dict.keys()
         ]
         recarray = np.empty((1,), dtype=recarray_dtype)
         recarray['seed'] = rss.seed
@@ -852,7 +852,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         recarray['n_sig'] = n_sig
         recarray['mean_n_sig_0'] = mean_n_sig_0
         recarray['ts'] = ts
-        for (param_name, param_value) in param_dict.items():
+        for (param_name, param_value) in global_params_dict.items():
             recarray[param_name] = param_value
 
         return recarray
