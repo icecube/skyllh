@@ -726,20 +726,23 @@ class SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
                 f'The global floating parameter "ns" must be the first '
                 f'floating parameter! But its index is {ns_pidx}!')
 
-        ns = fitparam_values[0]
+        ns = fitparam_values[ns_pidx]
 
         N = tdm.n_events
 
-        # Create the fitparams dictionary with the fit parameter names and
-        # values.
-        with TaskTimer(tl, 'Create fitparams dictionary.'):
-            fitparams = self._src_fitparam_mapper.get_src_fitparams(
-                fitparam_values[1:])
+        # Create the global_fitparams dictionary with the global fit parameter
+        # names and values.
+        global_fitparams = self._pmm.get_global_floating_params_dict(
+            gflp_values=fitparam_values)
 
-        # Calculate the data fields that depend on fit parameter values.
-        with TaskTimer(tl, 'Calc fit param dep data fields.'):
-            tdm.calculate_fitparam_data_fields(
-                self._src_hypo_group_manager, fitparams)
+        # Calculate the data fields that depend on global fit parameters.
+        with TaskTimer(
+                tl,
+                'Calculate global fit parameter dependent data fields.'):
+            tdm.calculate_global_fitparam_data_fields(
+                shg_mgr=self._shg_mgr,
+                pmm=self._pmm,
+                global_fitparams=global_fitparams)
 
         # Calculate the PDF ratio values of all PDF ratio objects, which depend
         # on any fit parameter.
