@@ -620,6 +620,7 @@ class TrialDataManager(object):
         # Set the events property, so that the calculation functions of the data
         # fields can access them.
         self.events = events
+        self._src_ev_idxs = None
 
         if n_events is None:
             n_events = len(self._events)
@@ -649,7 +650,11 @@ class TrialDataManager(object):
         if self._index_field_name is not None:
             logger.debug(
                 f'Sorting events in index field "{self._index_field_name}"')
-            self._events.sort_by_field(self._index_field_name)
+            sorted_idxs = self._events.sort_by_field(self._index_field_name)
+            # If event indices are stored, we need to re-assign also those event
+            # indices according to the new order.
+            if self._src_ev_idxs is not None:
+                self._src_ev_idxs[1] = sorted_idxs[self._src_ev_idxs[1]]
 
         # Now calculate all the static data fields. This will increment the
         # trial data state ID.
