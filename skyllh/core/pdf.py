@@ -378,6 +378,7 @@ class PDF(object, metaclass=abc.ABCMeta):
                 'The axis argument must be an instance of PDFAxis!')
         self._axes += axis
 
+    @abc.abstractmethod
     def assert_is_valid_for_trial_data(self, tdm):
         """This method is supposed to check if this PDF is valid for
         all the given trial data. This means, it needs to check if there
@@ -385,10 +386,18 @@ class PDF(object, metaclass=abc.ABCMeta):
         likelihood evaluation. This is just a seatbelt.
         The method must raise a ``ValueError`` if the PDF is not valid for the
         given trial data.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data events.
+
+        Raises
+        ------
+        ValueError
+            If some of the trial data is outside the PDF's value space.
         """
-        raise NotImplementedError(
-            f'The derived PDF class "{classname(self)}" did not '
-            'implement the "assert_is_valid_for_trial_data" method!')
+        pass
 
     @abc.abstractmethod
     def get_pd(self, tdm, params_recarray=None, tl=None):
@@ -397,9 +406,9 @@ class PDF(object, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        tdm : TrialDataManager instance
-            The TrialDataManager instance holding the data events for which the
-            probability density should be calculated.
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the data events for which
+            the probability density should be calculated.
             What data fields are required is defined by the derived PDF class
             and depends on the application.
         params_recarray : numpy record ndarray | None
@@ -439,7 +448,7 @@ class PDF(object, metaclass=abc.ABCMeta):
         pass
 
 
-class PDFProduct(PDF, metaclass=abc.ABCMeta):
+class PDFProduct(PDF):
     """The PDFProduct class represents the product of two PDF instances, i.e.
     ``pdf1 * pdf2``. It is derived from the PDF class and hence is a PDF itself.
     """
@@ -731,7 +740,7 @@ class MultiDimGridPDF(PDF):
 
     def __init__(
             self, axis_binnings, path_to_pdf_splinetable=None,
-            pdf_grid_data=None, norm_factor_func=None):
+            pdf_grid_data=None, norm_factor_func=None, **kwargs):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid. The grid data is interpolated with a
         :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
@@ -759,7 +768,7 @@ class MultiDimGridPDF(PDF):
             event data for which to calculate the PDF values, and `params` is a
             dictionary with the current parameter names and values.
         """
-        super(MultiDimGridPDF, self).__init__()
+        super().__init__(**kwargs)
 
         # Need either splinetable or grid of pdf values.
         if (path_to_pdf_splinetable is None) and (pdf_grid_data is None):
