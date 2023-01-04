@@ -12,7 +12,7 @@ from skyllh.core.py import (
     get_byte_size_prefix,
     getsizeof,
     issequence,
-    issequenceof
+    issequenceof,
 )
 from skyllh.core import display as dsp
 
@@ -718,7 +718,8 @@ class DataFieldRecordArray(object):
         name : str
             The name of the new data field.
         data : numpy ndarray
-            The numpy ndarray holding the data.
+            The numpy ndarray holding the data. The length of the ndarray must
+            match the current length of this DataFieldRecordArray instance.
 
         Raises
         ------
@@ -741,10 +742,10 @@ class DataFieldRecordArray(object):
             raise KeyError(
                 'The data field "%s" already exists in this %s instance!'%(
                     name, classname(self)))
-        #if(len(data) != self._len):
-        #    raise ValueError(
-        #        'The length of the given data is %d, but must be %d!'%(
-        #            len(data), self._len))
+        if(len(data) != self._len):
+            raise ValueError(
+                'The length of the given data is %d, but must be %d!'%(
+                    len(data), self._len))
 
         self._data_fields[name] = data
         self._field_name_list.append(name)
