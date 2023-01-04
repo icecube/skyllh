@@ -10,9 +10,12 @@ import scipy as scp
 from skyllh.core import display
 from skyllh.core.py import (
     classname,
-    issequenceof
+    issequenceof,
+    str_cast,
 )
-from skyllh.core.livetime import Livetime
+from skyllh.core.livetime import (
+    Livetime,
+)
 from skyllh.core.pdf import (
     PDFAxis,
     IsSignalPDF,
@@ -21,30 +24,43 @@ from skyllh.core.pdf import (
     MappedMultiDimGridPDFSet,
     NDPhotosplinePDF,
     SpatialPDF,
-    TimePDF
+    TimePDF,
 )
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
-from skyllh.physics.source_model import PointLikeSource
-from skyllh.physics.time_profile import TimeProfileModel
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
+from skyllh.physics.source_model import (
+    PointLikeSource,
+)
+from skyllh.physics.flux_model import (
+    TimeFluxProfile,
+)
 
 
 class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
-    """This spatial signal PDF model describes the spatial PDF for a point
+    r"""This spatial signal PDF model describes the spatial PDF for a point
     source smeared with a 2D gaussian point-spread-function (PSF).
     Mathematically, it's the convolution of a point in the sky, i.e. the source
     location, with the PSF. The result of this convolution has the gaussian form
 
-        1/(2*\pi*\sigma^2) * exp(-1/2*(r / \sigma)**2),
+    .. math::
 
-    where \sigma is the spatial uncertainty of the event and r the distance on
-    the sphere between the source and the data event.
+        \frac{1}{2\pi\sigma^2} \exp(-\frac{r^2}{2\sigma^2}),
+
+    where :math:`\sigma` is the spatial uncertainty of the event and :math:`r`
+    the distance on the sphere between the source and the data event.
 
     This PDF requires the `src_array` data field, that is numpy record ndarray
     with the data fields `ra` and `dec` holding the right-ascention and
     declination of the point-like sources, respectively.
     """
 
-    def __init__(self, ra_range=None, dec_range=None, **kwargs):
+    def __init__(
+            self,
+            ra_range=None,
+            dec_range=None,
+            pd_event_data_field_name=None,
+            **kwargs):
         """Creates a new spatial signal PDF for point-like sources with a
         gaussian point-spread-function (PSF).
 
@@ -56,43 +72,66 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         dec_range : 2-element tuple | None
             The range in declination this spatial PDF is valid for.
             If set to None, the range (-pi/2, +pi/2) is used.
+        pd_event_data_field_name : str | None
+            The probability density values can be pre-calculated by the user.
+            This specifies the name of the event data field, where these values
+            are stored.
         """
-        if(ra_range is None):
+        if ra_range is None:
             ra_range = (0, 2*np.pi)
-        if(dec_range is None):
+        if dec_range is None:
             dec_range = (-np.pi/2, np.pi/2)
 
-        super(GaussianPSFPointLikeSourceSignalSpatialPDF, self).__init__(
+        super().__init__(
             ra_range=ra_range,
             dec_range=dec_range,
             **kwargs)
 
-    def get_prob(self, tdm, fitparams=None, tl=None):
-        """Calculates the spatial signal probability of each event for all given
-        sources.
+        self.pd_event_data_field_name = pd_event_data_field_name
+
+    @property
+    def pd_event_data_field_name(self):
+        """The event data field name where pre-calculated probability density
+        values are stored.
+        """
+        return self._pd_event_data_field_name
+
+    @pd_event_data_field_name.setter
+    def pd_event_data_field_name(self, name):
+        name = str_cast(
+            name,
+            'The pd_event_data_field_name property must be castable to type '
+            f'str! Its current type is {classname(name)}!')
+        self._pd_event_data_field_name = name
+
+    def get_pd(self, tdm, params_recarray=None, tl=None):
+        """Calculates the spatial signal probability density of each event for
+        all sources.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
-            The TrialDataManager instance holding the trial event data for which
-            to calculate the PDF values. The following data fields need to be
-            present:
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF values. The following data fields need to
+            be present:
 
-            'src_array' : numpy record ndarray
+            src_array : numpy record ndarray
                 The numpy record ndarray with the following data fields:
 
-                `ra`: float
+                ra : float
                     The right-ascention of the point-like source.
-                `dec`: float
+                dec : float
                     The declination of the point-like source.
 
-            'ra' : float
+            ra : float
                 The right-ascention in radian of the data event.
-            'dec' : float
+            dec : float
                 The declination in radian of the data event.
-            'ang_err': float
+            ang_err: float
                 The reconstruction uncertainty in radian of the data event.
-        fitparams : None
+
+            In case the probability density values were pre-calculated,
+        params_recarray : None
             Unused interface argument.
         tl : TimeLord instance | None
             The optional TimeLord instance to use for measuring timing
@@ -100,92 +139,64 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
         Returns
         -------
-        prob : (N_sources,N_events) shaped 2D ndarray
-            The ndarray holding the spatial signal probability on the sphere for
-            each source and event.
+        pd : instance of numpy ndarray
+            The (N_events,)-shaped numpy ndarray holding the probability density
+            for each event. The length of this 1D array depends on the number
+            of sources and the events belonging to those sources. In the worst
+            case the length is N_sources * N_trial_events.
+        grads : dict
+            The dictionary holding the gradients of the probability density
+            w.r.t. each fit parameter. By definition this PDF does not depend
+            on any fit parameters and hence, this dictionary is empty.
         """
         get_data = tdm.get_data
-        src_ev_idxs = tdm.src_ev_idxs
 
+        # Check if the probability density was pre-calculated.
+        if self._pd_event_data_field_name in tdm:
+            pd = get_data(self._pd_event_data_field_name)
+            return (pd, dict())
+
+        src_array = get_data('src_array')
         ra = get_data('ra')
         dec = get_data('dec')
         sigma = get_data('ang_err')
 
-        if len(ra) == 1:
-            self.param_set = None
-
-        try:
-            # angular difference is pre calculated
-            prob = get_data('spatial_pdf_gauss')
-
-            if src_ev_idxs is None:
-                prob = prob.reshape((len(get_data('src_array')), len(ra)))
-            else:
-                (src_idxs, ev_idxs) = src_ev_idxs
-                sigma = np.take(sigma, src_ev_idxs[1])
-
-        except:
-            # psi is calculated here
-            if src_ev_idxs is None:
-                # Make the source position angles two-dimensional so the PDF value can
-                # be calculated via numpy broadcasting automatically for several
-                # sources. This is useful for stacking analyses.
-                src_ra = get_data('src_array')['ra'][:, np.newaxis]
-                src_dec = get_data('src_array')['dec'][:, np.newaxis]
-
-                delta_dec = np.abs(dec - src_dec)
-                delta_ra = np.abs(ra - src_ra)
-                x = (np.sin(delta_dec / 2.))**2. + np.cos(dec) *\
-                    np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
-            else:
-                # Calculate the angular difference only for events that are close
-                # to the respective source poisition. This is useful for stacking
-                # analyses.
-                (src_idxs, ev_idxs) = src_ev_idxs
-                src_ra = get_data('src_array')['ra'][src_idxs]
-                src_dec = get_data('src_array')['dec'][src_idxs]
-
-                delta_dec = np.abs(np.take(dec, ev_idxs) - src_dec)
-                delta_ra = np.abs(np.take(ra, ev_idxs) - src_ra)
-                x = (np.sin(delta_dec / 2.))**2. + np.cos(np.take(dec, ev_idxs)) *\
-                    np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
-
-                # also extend the sigma array to account for all relevant events
-                sigma = np.take(sigma, ev_idxs)
-
-                # Handle possible floating precision errors.
-            x[x < 0.] = 0.
-            x[x > 1.] = 1.
-
-            psi = (2.0*np.arcsin(np.sqrt(x)))
-
-            prob = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
-
-        # If the signal hypothesis contains single source
-        # return the output here.
-        if(len(get_data('src_array')['ra']) == 1):
-            grads = np.array([], dtype=np.float64)
-            # The new interface returns the pdf only for a single source.
-            return (prob[0], grads)
+        src_evt_idxs = tdm.src_evt_idxs
+        if src_evt_idxs is None:
+            # Make the source position angles two-dimensional so the PDF value
+            # can be calculated via numpy broadcasting automatically for several
+            # sources.
+            src_ra = src_array['ra'][:, np.newaxis]
+            src_dec = src_array['dec'][:, np.newaxis]
         else:
-            # If the signal hypothesis contains multiple sources convolve
-            # the pdfs with the source weights.
-            src_w = get_data('src_array')['src_w'] * tdm.get_data('src_array')['src_w_W']
-            src_w_grads = get_data('src_array')['src_w_grad'] * tdm.get_data('src_array')['src_w_W']
+            # Pick the event values based on the event selection.
+            (src_idxs, evt_idxs) = src_evt_idxs
+            src_ra = np.take(src_array['ra'], src_idxs)
+            src_dec = np.take(src_array['dec'], src_idxs)
 
-            norm = src_w.sum()
-            src_w /= norm
-            src_w_grads /= norm
+            dec = np.take(dec, evt_idxs)
+            ra = np.take(ra, evt_idxs)
+            sigma = np.take(sigma, evt_idxs)
 
-            if src_ev_idxs is not None:
-                prob = scp.sparse.csr_matrix((prob, (ev_idxs, src_idxs)))
-            else:
-                prob = prob.T
-            prob_res = prob.dot(src_w)
-            grads = (prob.dot(src_w_grads) -
-                     prob_res*src_w_grads.sum())
+        delta_dec = np.abs(dec - src_dec)
+        delta_ra = np.abs(ra - src_ra)
 
-            return (prob_res, np.atleast_2d(grads))
+        x = (np.sin(delta_dec / 2.))**2. +\
+            np.cos(dec) * np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
+
+        # Handle possible floating precision errors.
+        x[x < 0.] = 0.
+        x[x > 1.] = 1.
+
+        psi = 2. * np.arcsin(np.sqrt(x))
+
+        pd = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
+
+        # In case the src_evt_idxs was None, pd is a N_sources,N_events array,
+        # which needs to be flatten.
+        pd = pd.flatten()
+
+        return (pd, dict())
 
 
 class SignalTimePDF(TimePDF, IsSignalPDF):
@@ -195,19 +206,19 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
     account.
     """
 
-    def __init__(self, livetime, time_profile):
+    def __init__(self, livetime, time_profile, **kwargs):
         """Creates a new signal time PDF instance for a given time profile of
         the source.
 
         Parameters
         ----------
-        livetime : Livetime instance
+        livetime : instance of Livetime
             An instance of Livetime, which provides the detector live-time
             information.
-        time_profile : TimeProfileModel instance
-            The time profile of the source.
+        time_profile : instance of TimeFluxProfile
+            The time flux profile of the source.
         """
-        super(SignalTimePDF, self).__init__()
+        super().__init__(**kwargs)
 
         self.livetime = livetime
         self.time_profile = time_profile
@@ -247,21 +258,21 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
     @time_profile.setter
     def time_profile(self, tp):
-        if(not isinstance(tp, TimeProfileModel)):
+        if not isinstance(tp, TimeFluxProfile):
             raise TypeError(
                 'The time_profile property must be an instance of '
-                'TimeProfileModel!')
+                'TimeFluxProfile!')
         self._time_profile = tp
 
     def __str__(self):
         """Pretty string representation of the signal time PDF.
         """
-        s = '%s(\n' % (classname(self))
-        s += ' '*display.INDENTATION_WIDTH + \
-            'livetime = %s,\n' % (str(self._livetime))
-        s += ' '*display.INDENTATION_WIDTH + \
-            'time_profile = %s\n' % (str(self._time_profile))
-        s += ')'
+        s = f'{classname(self)}(\n' +\
+            ' '*display.INDENTATION_WIDTH +\
+            f'livetime = {str(self._livetime)},\n' +\
+            ' '*display.INDENTATION_WIDTH +\
+            f'time_profile = {str(self._time_profile)}\n' +\
+            ')'
         return s
 
     def _calculate_time_profile_I_and_S(self):
@@ -283,18 +294,18 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
             ontime_intervals[:, 0], ontime_intervals[:, 1]))
         return (I, S)
 
-    def assert_is_valid_for_exp_data(self, data_exp):
-        """Checks if the time PDF is valid for all the given experimental data.
+    def assert_is_valid_for_trial_data(self, tdm):
+        """Checks if the time PDF is valid for all the given trial data.
         It checks if the time of all events is within the defined time axis of
         the PDF.
 
         Parameters
         ----------
-        data_exp : numpy record ndarray
-            The array holding the experimental data. The following data fields
-            must exist:
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial data.
+            The following data fields must exist:
 
-            - 'time' : float
+            'time' : float
                 The MJD time of the data event.
 
         Raises
@@ -304,14 +315,18 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         """
         time_axis = self.axes['time']
 
-        if(np.any((data_exp['time'] < time_axis.vmin) |
-                  (data_exp['time'] > time_axis.vmax))):
-            raise ValueError('Some data is outside the time range (%.3f, %.3f)!' % (
-                time_axis.vmin, time_axis.vmax))
+        time = tdm.get_data('time')
 
-    def get_prob(self, tdm, fitparams):
-        """Calculates the signal time probability of each event for the given
-        set of signal time fit parameter values.
+        if np.any((time < time_axis.vmin) |
+                  (time > time_axis.vmax)):
+            raise ValueError(
+                'Some data is outside the time range '
+                f'({time_axis.vmin:.3f}, {time_axis.vmax:.3f})!')
+
+    def get_pd(self, tdm, params_recarray, tl=None):
+        """Calculates the signal time probability density of each event for the
+        given
+        set of signal time parameter values.
 
         Parameters
         ----------
@@ -322,35 +337,60 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
             - 'time' : float
                 The MJD time of the event.
-        fitparams : dict
-            The dictionary holding the signal time parameter values for which
-            the signal time probability should be calculated.
+        params_recarray : instance of numpy record ndarray
+            The numpy record ndarray holding the local parameter values for each
+            source.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
-        prob : array of float
-            The (N,)-shaped ndarray holding the probability for each event.
+        pd : instance of numpy ndarray
+            The (N_values,)-shaped 1D numpy ndarray holding the probability
+            density value for each trial event and source.
+        grads : dict
+            The dictionary holding the gradients of the probability density
+            w.r.t. each fit parameter.
         """
-        # Update the time-profile if its fit-parameter values have changed and
-        # recalculate self._I and self._S if an updated was actually performed.
-        updated = self._time_profile.update(fitparams)
-        if(updated):
-            (self._I, self._S) = self._calculate_time_profile_I_and_S()
+        n_sources = len(params_recarray)
+
+        if tdm.src_evt_idxs is None:
+            src_idxs = np.repeat(np.arange(n_sources), tdm.n_selected_events)
+            evt_idxs = np.tile(np.arange(tdm.n_selected_events), n_sources)
+            n_vals = tdm.n_selected_events * n_sources
+        else:
+            (src_idxs, evt_idxs) = tdm.src_evt_idxs
+            n_vals = len(evt_idxs)
+
+        pd = np.zeros((n_vals,), dtype=np.float64)
 
         events_time = tdm.get_data('time')
+        for (src_idx, params_row) in enumerate(params_recarray):
+            params = dict(zip(params_recarray.dtype.fields.keys(), params_row))
 
-        # Get a mask of the event times which fall inside a detector on-time
-        # interval.
-        on = self._livetime.is_on(events_time)
+            # Update the time-profile if its parameter values have changed and
+            # recalculate self._I and self._S if an update was actually
+            # performed.
+            updated = self._time_profile.set_params(params)
+            if updated:
+                (self._I, self._S) = self._calculate_time_profile_I_and_S()
 
-        # The sum of the on-time integrals of the time profile, A, will be zero
-        # if the time profile is entirly during detector off-time.
-        prob = np.zeros((tdm.n_selected_events,), dtype=np.float64)
-        if(self._S > 0):
-            prob[on] = self._time_profile.get_value(
-                events_time[on]) / (self._I * self._S)
+            src_m = src_idxs == src_idx
+            idxs = evt_idxs[src_m]
 
-        return prob
+            times = events_time[idxs]
+
+            # Get a mask of the event times which fall inside a detector on-time
+            # interval.
+            on = self._livetime.is_on(times)
+
+            # The sum of the on-time integrals of the time profile, A, will be
+            # zero if the time profile is entirly during detector off-time.
+            if(self._S > 0):
+                pd[src_m] = self._time_profile(times[on]) / (self._I * self._S)
+
+        return (pd, dict())
 
 
 class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
