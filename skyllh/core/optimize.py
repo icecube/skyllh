@@ -95,7 +95,7 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def select_events(self, events, ret_src_ev_idxs=False, tl=None):
+    def select_events(self, events, ret_src_evt_idxs=False, tl=None):
         """This method selects the events, which will contribute to the
         log-likelihood ratio function.
 
@@ -103,9 +103,9 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
         ----------
         events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the events.
-        ret_src_ev_idxs : bool
+        ret_src_evt_idxs : bool
             Flag if also the indices of the selected events should get
-            returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
+            returned as a (src_idxs, evt_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
@@ -116,10 +116,10 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
         selected_events : DataFieldRecordArray
             The instance of DataFieldRecordArray holding the selected events,
             i.e. a subset of the `events` argument.
-        (src_idxs, ev_idxs) : 1d ndarrays of ints | None
+        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
             The indices of sources and selected events, in case
-            `ret_src_ev_idxs` is set to True. Returns None, in case
-            `ret_src_ev_idxs` is set to False.
+            `ret_src_evt_idxs` is set to True. Returns None, in case
+            `ret_src_evt_idxs` is set to False.
         """
         pass
 
@@ -144,7 +144,7 @@ class AllEventSelectionMethod(EventSelectionMethod):
     def source_to_array(self, sources):
         return None
 
-    def select_events(self, events, ret_src_ev_idxs=False, tl=None):
+    def select_events(self, events, ret_src_evt_idxs=False, tl=None):
         """Selects all of the given events. Hence, the returned event array is
         the same as the given array.
 
@@ -153,7 +153,7 @@ class AllEventSelectionMethod(EventSelectionMethod):
         events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the events, for which
             the selection method should get applied.
-        ret_src_ev_idxs : bool
+        ret_src_evt_idxs : bool
             Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
@@ -168,10 +168,10 @@ class AllEventSelectionMethod(EventSelectionMethod):
             i.e. a subset of the `events` argument.
         (src_idxs, ev_idxs) : 1d ndarrays of ints | None
             The indices of sources and selected events, in case
-            `ret_src_ev_idxs` is set to True. Returns None, in case
-            `ret_src_ev_idxs` is set to False.
+            `ret_src_evt_idxs` is set to True. Returns None, in case
+            `ret_src_evt_idxs` is set to False.
         """
-        if(ret_src_ev_idxs):
+        if(ret_src_evt_idxs):
             # Calculate events indices.
             with TaskTimer(tl, 'ESM: Calculate indices of selected events.'):
                 n_sources = self.src_hypo_group_manager.n_sources
@@ -268,7 +268,7 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         self._delta_angle = angle
 
     def select_events(
-            self, events, ret_src_ev_idxs=False,
+            self, events, ret_src_evt_idxs=False,
             ret_mask_idxs=False, tl=None):
         """Selects the events within the declination band.
 
@@ -280,7 +280,7 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
 
             - 'dec' : float
                 The declination of the event.
-        ret_src_ev_idxs : bool
+        ret_src_evt_idxs : bool
             Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
@@ -298,14 +298,14 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             The instance of DataFieldRecordArray holding only the selected
             events.
         idxs: where idxs is one of the following:
-            - (src_idxs, ev_idxs) : 1d ndarrays of ints
+            - (src_idxs, evt_idxs) : 1d ndarrays of ints
                 The indices of sources and selected events, in case
-                `ret_src_ev_idxs` is set to True.
+                `ret_src_evt_idxs` is set to True.
             - mask_idxs : 1d ndarrays of ints
                 The indices of selected events mask, in case
                 `ret_mask_idxs` is set to True.
             - None
-                In case both `ret_src_ev_idxs` and `ret_mask_idxs` are set to
+                In case both `ret_src_evt_idxs` and `ret_mask_idxs` are set to
                 False.
         """
         delta_angle = self._delta_angle
@@ -336,11 +336,11 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             mask_idxs = events.indices[mask]
             selected_events = events[mask_idxs]
 
-        if(ret_src_ev_idxs and ret_mask_idxs):
+        if(ret_src_evt_idxs and ret_mask_idxs):
             raise ValueError(
-                'Only one of `ret_src_ev_idxs` and `ret_mask_idxs` can be set '
+                'Only one of `ret_src_evt_idxs` and `ret_mask_idxs` can be set '
                 'to True.')
-        elif(ret_src_ev_idxs):
+        elif(ret_src_evt_idxs):
             # Get selected events indices.
             idxs = np.argwhere(mask_dec[:, mask])
             src_idxs = idxs[:, 0]
@@ -386,7 +386,7 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
             'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
-    def select_events(self, events, ret_src_ev_idxs=False, tl=None):
+    def select_events(self, events, ret_src_evt_idxs=False, tl=None):
         """Selects the events within the right-ascention band.
 
         The solid angle dOmega = dRA * dSinDec = dRA * dDec * cos(dec) is a
@@ -403,7 +403,7 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
                 The right-ascention of the event.
             - 'dec' : float
                 The declination of the event.
-        ret_src_ev_idxs : bool
+        ret_src_evt_idxs : bool
             Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
@@ -416,10 +416,10 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        (src_idxs, ev_idxs) : 1d ndarrays of ints | None
+        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
             The indices of sources and selected events, in case
-            `ret_src_ev_idxs` is set to True. Returns None, in case
-            `ret_src_ev_idxs` is set to False.
+            `ret_src_evt_idxs` is set to True. Returns None, in case
+            `ret_src_evt_idxs` is set to False.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -466,7 +466,7 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
             # factors faster than using a boolean array.
             selected_events = events[events.indices[mask]]
 
-        if(ret_src_ev_idxs):
+        if(ret_src_evt_idxs):
             # Get selected events indices.
             idxs = np.argwhere(mask_ra[:, mask])
             src_idxs = idxs[:, 0]
@@ -511,7 +511,7 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
             'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
-    def select_events(self, events, ret_src_ev_idxs=False, tl=None):
+    def select_events(self, events, ret_src_evt_idxs=False, tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination.
 
@@ -529,7 +529,7 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
                 The right-ascention of the event.
             - 'dec' : float
                 The declination of the event.
-        ret_src_ev_idxs : bool
+        ret_src_evt_idxs : bool
             Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
@@ -542,10 +542,10 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        (src_idxs, ev_idxs) : 1d ndarrays of ints | None
+        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
             The indices of sources and selected events, in case
-            `ret_src_ev_idxs` is set to True. Returns None, in case
-            `ret_src_ev_idxs` is set to False.
+            `ret_src_evt_idxs` is set to True. Returns None, in case
+            `ret_src_evt_idxs` is set to False.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -617,7 +617,7 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
             # factors faster than using a boolean array.
             selected_events = events[events.indices[mask]]
 
-        if(ret_src_ev_idxs):
+        if(ret_src_evt_idxs):
             # Get selected events indices.
             idxs = np.argwhere(mask_sky[:, mask])
             src_idxs = idxs[:, 0]
@@ -736,7 +736,7 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         """
         return None
 
-    def select_events(self, events, ret_src_ev_idxs=False, tl=None):
+    def select_events(self, events, ret_src_evt_idxs=False, tl=None):
         """Selects the events whose psi value is smaller than the value of the
         predefined function.
 
@@ -752,7 +752,7 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
                 The name of the axis required for the function ``func`` to be
                 evaluated.
 
-        ret_src_ev_idxs : bool
+        ret_src_evt_idxs : bool
             Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
@@ -765,33 +765,33 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        (src_idxs, ev_idxs) : 1d ndarrays of ints | None
+        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
             The indices of sources and selected events, in case
-            `ret_src_ev_idxs` is set to True. Returns None, in case
-            `ret_src_ev_idxs` is set to False.
+            `ret_src_evt_idxs` is set to True. Returns None, in case
+            `ret_src_evt_idxs` is set to False.
         """
         cls_name = classname(self)
 
-        with TaskTimer(tl, '%s: Get psi values.'%(cls_name)):
+        with TaskTimer(tl, f'{cls_name}: Get psi values.'):
             psi = events[self._psi_name]
 
-        with TaskTimer(tl, '%s: Get axis data values.'%(cls_name)):
+        with TaskTimer(tl, f'{cls_name}: Get axis data values.'):
             func_args = [ events[axis] for axis in self._axis_name_list ]
 
-        with TaskTimer(tl, '%s: Creating mask.'%(cls_name)):
+        with TaskTimer(tl, f'{cls_name}: Creating mask.'):
             mask = psi < self._func(*func_args)
 
-        with TaskTimer(tl, '%s: Create selected_events.'%(cls_name)):
+        with TaskTimer(tl, f'{cls_name}: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
             selected_events = events[events.indices[mask]]
 
-        if(ret_src_ev_idxs):
+        if(ret_src_evt_idxs):
             # Get selected events indices.
             idxs =  np.argwhere(np.atleast_2d(mask))
             src_idxs = idxs[:, 0]
-            ev_idxs = idxs[:, 1]
-            return (selected_events, (src_idxs, ev_idxs))
+            evt_idxs = idxs[:, 1]
+            return (selected_events, (src_idxs, evt_idxs))
 
         return (selected_events, None)
 
@@ -908,13 +908,13 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         ra = events['ra']
         dec = events['dec']
 
-        src_idxs, ev_idxs = idxs
+        src_idxs, evt_idxs = idxs
         src_ra = self._src_arr['ra'][src_idxs]
         src_dec = self._src_arr['dec'][src_idxs]
 
-        delta_dec = np.abs(np.take(dec, ev_idxs) - src_dec)
-        delta_ra = np.abs(np.take(ra, ev_idxs) - src_ra)
-        x = (np.sin(delta_dec / 2.))**2. + np.cos(np.take(dec, ev_idxs)) *\
+        delta_dec = np.abs(np.take(dec, evt_idxs) - src_dec)
+        delta_ra = np.abs(np.take(ra, evt_idxs) - src_ra)
+        x = (np.sin(delta_dec / 2.))**2. + np.cos(np.take(dec, evt_idxs)) *\
             np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
 
         # Handle possible floating precision errors.
@@ -930,7 +930,7 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
 
         return psi
 
-    def select_events(self, events, ret_src_ev_idxs=False, tl=None):
+    def select_events(self, events, ret_src_evt_idxs=False, tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination and performs an additional selection of events whose ang_err
         value is larger than the value of the provided function at a given psi
@@ -950,7 +950,7 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
                 The right-ascention of the event.
             - 'dec' : float
                 The declination of the event.
-        ret_src_ev_idxs : bool
+        ret_src_evt_idxs : bool
             Flag if also the indices of the selected events should get
             returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
             Default is False.
@@ -963,10 +963,10 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        (src_idxs, ev_idxs) : 1d ndarrays of ints | None
+        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
             The indices of sources and selected events, in case
-            `ret_src_ev_idxs` is set to True. Returns None, in case
-            `ret_src_ev_idxs` is set to False.
+            `ret_src_evt_idxs` is set to True. Returns None, in case
+            `ret_src_evt_idxs` is set to False.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -1067,12 +1067,12 @@ class SpatialBoxAndPsiFuncEventSelectionMethod(SpatialBoxEventSelectionMethod):
             # factors faster than using a boolean array.
             final_selected_events = selected_events[selected_events.indices[final_mask]]
 
-        if(ret_src_ev_idxs):
+        if(ret_src_evt_idxs):
             # Get final selected events indices.
             idxs = np.argwhere(final_mask_sky[:, final_mask])
             src_idxs = idxs[:, 0]
-            ev_idxs = idxs[:, 1]
+            evt_idxs = idxs[:, 1]
 
-            return (final_selected_events, (src_idxs, ev_idxs))
+            return (final_selected_events, (src_idxs, evt_idxs))
 
         return (final_selected_events, None)

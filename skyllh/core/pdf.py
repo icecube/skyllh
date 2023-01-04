@@ -436,7 +436,7 @@ class PDF(object, metaclass=abc.ABCMeta):
             of sources and the events belonging to those sources. In the worst
             case the length is N_sources * N_trial_events. The assignment of
             values to sources is given by the
-            :py:attr:`~skyllh.core.trialdata.TrialDataManager.src_ev_idxs`
+            :py:attr:`~skyllh.core.trialdata.TrialDataManager.src_evt_idxs`
             property.
         grads : dict
             The dictionary holding the gradients of the probability density
@@ -1007,8 +1007,8 @@ class MultiDimGridPDF(PDF):
             if self.is_signal_pdf:
                 # Evaluate the relevant quantities for
                 # all events and sources (relevant for stacking analyses).
-                if tdm.src_ev_idxs is not None:
-                    (src_idxs, ev_idxs) = tdm.src_ev_idxs
+                if tdm.src_evt_idxs is not None:
+                    (src_idxs, ev_idxs) = tdm.src_evt_idxs
                     eventdata = np.array(
                         [
                             # Check `psi` axis name.
@@ -1165,10 +1165,10 @@ class NDPhotosplinePDF(PDF):
             # event.
             def func(pdf, tdm, fitparams):
                 n_src = len(tdm.get_data('src_array')['ra'])
-                if tdm.src_ev_idxs is None:
+                if tdm.src_evt_idxs is None:
                     n = tdm.n_selected_events * n_src
                 else:
-                    n = len(tdm.src_ev_idxs[0])
+                    n = len(tdm.src_evt_idxs[0])
                 return np.ones((n,), dtype=np.float64)
 
         if not callable(func):
@@ -1205,13 +1205,13 @@ class NDPhotosplinePDF(PDF):
     def _generate_eventdata_list_for_sig(self, tdm, params_recarray):
         """Generates a list of axis data for the signal PDF evaluation.
         """
-        if tdm.src_ev_idxs is None:
+        if tdm.src_evt_idxs is None:
             raise RuntimeError(
-                'The src_ev_idxs property of the TrialDataManager is None!')
+                'The src_evt_idxs property of the TrialDataManager is None!')
 
         eventdata_list = []
 
-        (src_idxs, ev_idxs) = tdm.src_ev_idxs
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
         for axis_name in self._axes.name_list:
 
             if axis_name in tdm:
@@ -1220,7 +1220,7 @@ class NDPhotosplinePDF(PDF):
                 elif 'psi' in axis_name:
                     axis_data = tdm.get_data(axis_name)
                 else:
-                    axis_data = tdm.get_data(axis_name)[ev_idxs]
+                    axis_data = tdm.get_data(axis_name)[evt_idxs]
 
                 eventdata_list.append(axis_data)
                 continue
@@ -1233,7 +1233,7 @@ class NDPhotosplinePDF(PDF):
                     'the trial data and is not a parameter!')
 
             axis_data = np.full(
-                (len(ev_idxs),), params_recarray[axis_name][0],
+                (len(evt_idxs),), params_recarray[axis_name][0],
                 dtype=np.float64)
             eventdata_list.append(axis_data)
 
@@ -1649,8 +1649,8 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         if isinstance(self, IsSignalPDF):
             # Evaluate the relevant quantities for
             # all events and sources (relevant for stacking analyses).
-            if tdm.src_ev_idxs is not None:
-                (src_idxs, ev_idxs) = tdm.src_ev_idxs
+            if tdm.src_evt_idxs is not None:
+                (src_idxs, ev_idxs) = tdm.src_evt_idxs
                 eventdata = np.array(
                     [
                         # Check `psi` axis name.
@@ -1822,8 +1822,8 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         if isinstance(self, IsSignalPDF):
             # Evaluate the relevant quantities for
             # all events and sources (relevant for stacking analyses).
-            if tdm.src_ev_idxs is not None:
-                (src_idxs, ev_idxs) = tdm.src_ev_idxs
+            if tdm.src_evt_idxs is not None:
+                (src_idxs, ev_idxs) = tdm.src_evt_idxs
                 eventdata = np.array(
                     [
                         # Check `psi` axis name.

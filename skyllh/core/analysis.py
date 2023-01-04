@@ -1621,6 +1621,6 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             # Initialize the trial data manager with the given raw events.
             self._tdm_list[idx].initialize_trial(
                 self._shg_mgr, events, n_events, evt_sel_method,
-                store_src_ev_idxs=True, tl=tl)
+                store_src_evt_idxs=True, tl=tl)
 
         self._llhratio.initialize_for_new_trial(tl=tl)

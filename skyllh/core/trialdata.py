@@ -356,7 +356,7 @@ class TrialDataManager(object):
     The data trial manager is provided to the PDF evaluation method.
     Hence, data fields are calculated only once.
     """
-    def __init__(self, index_field_name=None):
+    def __init__(self, index_field_name=None, **kwargs):
         """Creates a new TrialDataManager instance.
 
         Parameters
@@ -366,7 +366,7 @@ class TrialDataManager(object):
             If provided, the events will be sorted along this data field. This
             might be useful for run-time performance.
         """
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.index_field_name = index_field_name
 
@@ -394,7 +394,7 @@ class TrialDataManager(object):
 
         # Define the member variable that holds the source to event index
         # mapping.
-        self._src_ev_idxs = None
+        self._src_evt_idxs = None
 
         # We store an integer number for the trial data state and increase it
         # whenever the state of the trial data changed. This way other code,
@@ -460,12 +460,12 @@ class TrialDataManager(object):
         return self._n_events - len(self._events)
 
     @property
-    def src_ev_idxs(self):
-        """(read-only) The 2-tuple holding the source index and event index
+    def src_evt_idxs(self):
+        """(read-only) The 2-tuple holding the source indices and event indices
         1d ndarray arrays. This can be ``None``, indicating that all trial data
         events should be considered for all sources.
         """
-        return self._src_ev_idxs
+        return self._src_evt_idxs
 
     @property
     def trial_data_state_id(self):
@@ -585,7 +585,7 @@ class TrialDataManager(object):
 
     def initialize_trial(
             self, shg_mgr, pmm, events, n_events=None,
-            evt_sel_method=None, store_src_ev_idxs=False, tl=None):
+            evt_sel_method=None, store_src_evt_idxs=False, tl=None):
         """Initializes the trial data manager for a new trial. It sets the raw
         events, calculates pre-event-selection data fields, performs a possible
         event selection and calculates the static data fields for the left-over
@@ -609,7 +609,7 @@ class TrialDataManager(object):
         evt_sel_method : EventSelectionMethod | None
             The optional event selection method that should be used to select
             potential signal events.
-        store_src_ev_idxs : bool
+        store_src_evt_idxs : bool
             If the evt_sel_method is not None, it determines if source and
             event indices of the selected events should get calculated and
             stored.
@@ -620,7 +620,7 @@ class TrialDataManager(object):
         # Set the events property, so that the calculation functions of the data
         # fields can access them.
         self.events = events
-        self._src_ev_idxs = None
+        self._src_evt_idxs = None
 
         if n_events is None:
             n_events = len(self._events)
@@ -636,15 +636,15 @@ class TrialDataManager(object):
             logger.debug(
                 f'Performing event selection method '
                 f'"{classname(evt_sel_method)}".')
-            (selected_events, src_ev_idxs) = evt_sel_method.select_events(
+            (selected_events, src_evt_idxs) = evt_sel_method.select_events(
                 self._events,
                 tl=tl,
-                ret_src_ev_idxs=store_src_ev_idxs)
+                ret_src_evt_idxs=store_src_evt_idxs)
             logger.debug(
                 f'Selected {len(selected_events)} out of {len(self._events)} '
                 'events.')
             self.events = selected_events
-            self._src_ev_idxs = src_ev_idxs
+            self._src_evt_idxs = src_evt_idxs
 
         # Sort the events by the index field, if a field was provided.
         if self._index_field_name is not None:
@@ -653,8 +653,9 @@ class TrialDataManager(object):
             sorted_idxs = self._events.sort_by_field(self._index_field_name)
             # If event indices are stored, we need to re-assign also those event
             # indices according to the new order.
-            if self._src_ev_idxs is not None:
-                self._src_ev_idxs[1] = sorted_idxs[self._src_ev_idxs[1]]
+            if self._src_evt_idxs is not None:
+                self._src_evt_idxs[1] = np.take(
+                    sorted_idxs, self._src_evt_idxs[1])
 
         # Now calculate all the static data fields. This will increment the
         # trial data state ID.
