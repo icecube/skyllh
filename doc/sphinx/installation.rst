@@ -37,7 +37,12 @@ Setup
 Using pip
 ---------
 
-The `skyllh` package can be installed using pip:
+The latest `skyllh` release can be installed from `PyPI <https://pypi.org/project/skyllh/>`_ repository:
+
+.. code:: bash
+    pip install skyllh
+
+The current development version can be installed using pip:
 
 .. code:: bash
 
@@ -47,12 +52,12 @@ Optionally, the editable package version with a specified reference can be insta
 
 .. code:: bash
 
-    pip install -e git+https://github.com/icecube/skyllh.git@ref#egg=skyllh 
+    pip install -e git+https://github.com/icecube/skyllh.git@[ref]#egg=skyllh 
 
 where
 
 * `-e` is an editable flag
-* `ref` in `@ref` is an optional argument containing a specific commit hash, branch name or tag
+* `[ref]` is an optional argument containing a specific commit hash, branch name or tag
 
 Cloning from GitHub
 -------------------
