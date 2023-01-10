@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from skyllh.core.scrambling import TimeScramblingMethod
-from skyllh.i3.coords import hor_to_equ_transform, azi_to_ra_transform
+from skyllh.core.scrambling import (
+    TimeScramblingMethod,
+)
+from skyllh.i3.utils.coords import (
+    hor_to_equ_transform,
+    azi_to_ra_transform,
+)
 
 
 class I3TimeScramblingMethod(TimeScramblingMethod):
