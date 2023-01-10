@@ -200,7 +200,7 @@ class SourceModel(Model):
 
     @property
     def weight(self):
-        """The weight of the source. This can be None,
+        """The weight of the source.
         """
         return self._weight
     @weight.setter
