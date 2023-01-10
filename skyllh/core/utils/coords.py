@@ -87,3 +87,37 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     dec = np.arcsin(vec[:, 2])
 
     return (ra, dec)
+
+def angular_separation(ra1, dec1, ra2, dec2):
+    """Calculates the angular separation on the shpere between two vectors on
+    the sphere.
+
+    Parameters
+    ----------
+    ra1 : float | array of float
+        The right-ascention coordinate of the first vector in radians.
+    dec1 : float | array of float
+        The declination coordinate of the first vector in radians.
+    ra2 : float | array of float
+        The right-ascention coordinate of the second vector in radians.
+    dec2 : float | array of float
+        The declination coordinate of the second vector in radians.
+
+    Returns
+    -------
+    psi : float | array of float
+        The calculated angular separation value(s).
+    """
+    delta_ra = np.abs(ra1 - ra2)
+    delta_dec = np.abs(dec1 - dec2)
+
+    x = np.sin(delta_dec / 2.)**2. +\
+        np.cos(dec1) * np.cos(dec2) * np.sin(delta_ra / 2.)**2.
+
+    # Handle possible floating precision errors.
+    x[x < 0.] = 0.
+    x[x > 1.] = 1.
+
+    psi = 2. * np.arcsin(np.sqrt(x))
+
+    return psi

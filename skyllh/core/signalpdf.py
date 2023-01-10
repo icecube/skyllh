@@ -29,6 +29,9 @@ from skyllh.core.pdf import (
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
+from skyllh.core.utils.coords import (
+    angular_separation,
+)
 from skyllh.physics.source_model import (
     PointLikeSource,
 )
@@ -178,17 +181,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             ra = np.take(ra, evt_idxs)
             sigma = np.take(sigma, evt_idxs)
 
-        delta_dec = np.abs(dec - src_dec)
-        delta_ra = np.abs(ra - src_ra)
-
-        x = (np.sin(delta_dec / 2.))**2. +\
-            np.cos(dec) * np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
-
-        # Handle possible floating precision errors.
-        x[x < 0.] = 0.
-        x[x > 1.] = 1.
-
-        psi = 2. * np.arcsin(np.sqrt(x))
+        psi = angular_separation(src_ra, src_dec, ra, dec)
 
         pd = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
 
