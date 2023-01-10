@@ -7,7 +7,7 @@ from skyllh.core.py import (
     float_cast,
     int_cast,
 )
-from skyllh.core.coords import (
+from skyllh.core.utils.coords import (
     rotate_spherical_vector,
 )
 from skyllh.core.signal_generation import (
