@@ -39,12 +39,11 @@ from skyllh.physics.source_model import (
 )
 
 
-
 """This module contains common utility functions useful for an analysis.
 """
 
 def pointlikesource_to_data_field_array(
-        tdm, src_hypo_group_manager):
+        tdm, shg_mgr):
     """Function to transform a list of PointLikeSource sources into a numpy
     record ndarray. The resulting numpy record ndarray contains the following
     fields:
@@ -53,46 +52,41 @@ def pointlikesource_to_data_field_array(
             The right-ascention of the point-like source.
         `dec`: float
             The declination of the point-like source.
-        `src_w`: float
-            The nomalized detector weight of the point-like source.
-        `src_w_grad`: float
-            The normalized weight gradient of the point-like source.
-        `src_w_W`: float
-            The nomalized hypothesis weight of the point-like source.
+        `weight`: float
+            The weight of the point-like source.
 
     Parameters
     ----------
     tdm : instance of TrialDataManager
         The TrialDataManager instance.
-    src_hypo_group_manager : instance of SourceHypoGroupManager
+    shg_mgr : instance of SourceHypoGroupManager
         The instance of SourceHypoGroupManager that defines the sources.
 
     Returns
     -------
     arr : (N_sources,)-shaped numpy record ndarray
-        The numpy record ndarray holding the source parameters `ra` and `dec`.
+        The numpy record ndarray holding the source parameters.
     """
-    sources = src_hypo_group_manager.source_list
+    sources = shg_mgr.source_list
 
     if(not issequenceof(sources, PointLikeSource)):
-        raise TypeError('The sources of the SourceHypoGroupManager must be '
+        raise TypeError(
+            'The sources of the SourceHypoGroupManager must be '
             'PointLikeSource instances!')
 
     arr = np.empty(
         (len(sources),),
         dtype=[('ra', np.float64),
                ('dec', np.float64),
-               ('src_w', np.float64),
-               ('src_w_grad', np.float64),
-               ('src_w_W', np.float64)]
-              , order='F')
+               ('weight', np.float64),
+        ],
+        order='F')
 
     for (i, src) in enumerate(sources):
-        arr['ra'][i]         = src.ra
-        arr['dec'][i]        = src.dec
-        arr['src_w'][i]      = src.weight.src_w
-        arr['src_w_grad'][i] = src.weight.src_w_grad
-        arr['src_w_W'][i]    = src.weight.src_w_W
+        arr['ra'][i] = src.ra
+        arr['dec'][i] = src.dec
+        arr['weight'][i] = src.weight
+
     return arr
 
 
