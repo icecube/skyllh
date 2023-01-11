@@ -60,6 +60,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
     def __init__(
             self,
+            pmm,
             ra_range=None,
             dec_range=None,
             pd_event_data_field_name=None,
@@ -69,6 +70,9 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
         Parameters
         ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the global parameters
+            and their mapping to local model/source parameters.
         ra_range : 2-element tuple | None
             The range in right-ascention this spatial PDF is valid for.
             If set to None, the range (0, 2pi) is used.
@@ -86,6 +90,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             dec_range = (-np.pi/2, np.pi/2)
 
         super().__init__(
+            pmm=pmm,
             ra_range=ra_range,
             dec_range=dec_range,
             **kwargs)
@@ -106,6 +111,74 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             'The pd_event_data_field_name property must be castable to type '
             f'str! Its current type is {classname(name)}!')
         self._pd_event_data_field_name = name
+
+    def calculate_pd(self, tdm):
+        """Calculates the gaussian PSF probability density values for all events
+        and sources.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF values. The following data fields need to
+            be present:
+
+            src_array : numpy record ndarray
+                The numpy record ndarray with the following data fields:
+
+                ra : float
+                    The right-ascention of the point-like source.
+                dec : float
+                    The declination of the point-like source.
+
+            ra : float
+                The right-ascention in radian of the data event.
+            dec : float
+                The declination in radian of the data event.
+            ang_err: float
+                The reconstruction uncertainty in radian of the data event.
+
+        Returns
+        -------
+        pd : instance of numpy ndarray
+            The (N,)-shaped numpy ndarray holding the probability density
+            for each event. The length of this 1D array depends on the number
+            of sources and the events belonging to those sources. In the worst
+            case the length is N_sources * N_trial_events.
+        """
+        get_data = tdm.get_data
+
+        src_array = get_data('src_array')
+        ra = get_data('ra')
+        dec = get_data('dec')
+        sigma = get_data('ang_err')
+
+        src_evt_idxs = tdm.src_evt_idxs
+        if src_evt_idxs is None:
+            # Make the source position angles two-dimensional so the PDF value
+            # can be calculated via numpy broadcasting automatically for several
+            # sources.
+            src_ra = src_array['ra'][:, np.newaxis]
+            src_dec = src_array['dec'][:, np.newaxis]
+        else:
+            # Pick the event values based on the event selection.
+            (src_idxs, evt_idxs) = src_evt_idxs
+            src_ra = np.take(src_array['ra'], src_idxs)
+            src_dec = np.take(src_array['dec'], src_idxs)
+
+            dec = np.take(dec, evt_idxs)
+            ra = np.take(ra, evt_idxs)
+            sigma = np.take(sigma, evt_idxs)
+
+        psi = angular_separation(src_ra, src_dec, ra, dec)
+
+        pd = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
+
+        # In case the src_evt_idxs was None, pd is a (N_sources,N_events) array,
+        # which needs to be flatten.
+        pd = pd.flatten()
+
+        return pd
 
     def get_pd(self, tdm, params_recarray=None, tl=None):
         """Calculates the spatial signal probability density of each event for
@@ -143,7 +216,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         Returns
         -------
         pd : instance of numpy ndarray
-            The (N_events,)-shaped numpy ndarray holding the probability density
+            The (N,)-shaped numpy ndarray holding the probability density
             for each event. The length of this 1D array depends on the number
             of sources and the events belonging to those sources. In the worst
             case the length is N_sources * N_trial_events.
@@ -159,35 +232,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             pd = get_data(self._pd_event_data_field_name)
             return (pd, dict())
 
-        src_array = get_data('src_array')
-        ra = get_data('ra')
-        dec = get_data('dec')
-        sigma = get_data('ang_err')
-
-        src_evt_idxs = tdm.src_evt_idxs
-        if src_evt_idxs is None:
-            # Make the source position angles two-dimensional so the PDF value
-            # can be calculated via numpy broadcasting automatically for several
-            # sources.
-            src_ra = src_array['ra'][:, np.newaxis]
-            src_dec = src_array['dec'][:, np.newaxis]
-        else:
-            # Pick the event values based on the event selection.
-            (src_idxs, evt_idxs) = src_evt_idxs
-            src_ra = np.take(src_array['ra'], src_idxs)
-            src_dec = np.take(src_array['dec'], src_idxs)
-
-            dec = np.take(dec, evt_idxs)
-            ra = np.take(ra, evt_idxs)
-            sigma = np.take(sigma, evt_idxs)
-
-        psi = angular_separation(src_ra, src_dec, ra, dec)
-
-        pd = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
-
-        # In case the src_evt_idxs was None, pd is a N_sources,N_events array,
-        # which needs to be flatten.
-        pd = pd.flatten()
+        pd = self.calculate_pd(tdm)
 
         return (pd, dict())
 
