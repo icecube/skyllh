@@ -95,11 +95,13 @@ def angular_separation(ra1, dec1, ra2, dec2):
     Parameters
     ----------
     ra1 : float | array of float
-        The right-ascention coordinate of the first vector in radians.
+        The right-ascention or longitude coordinate of the first vector in
+        radians.
     dec1 : float | array of float
-        The declination coordinate of the first vector in radians.
+        The declination or latitude coordinate of the first vector in radians.
     ra2 : float | array of float
-        The right-ascention coordinate of the second vector in radians.
+        The right-ascention or longitude coordinate of the second vector in
+        radians.
     dec2 : float | array of float
         The declination coordinate of the second vector in radians.
 
