@@ -431,19 +431,18 @@ class PDF(object, metaclass=abc.ABCMeta):
         Returns
         -------
         pd : instance of numpy ndarray
-            The (N_events,)-shaped numpy ndarray holding the probability density
+            The (N,)-shaped numpy ndarray holding the probability density
             for each event. The length of this 1D array depends on the number
             of sources and the events belonging to those sources. In the worst
-            case the length is N_sources * N_trial_events. The assignment of
+            case the length is N = N_sources * N_trial_events. The assignment of
             values to sources is given by the
             :py:attr:`~skyllh.core.trialdata.TrialDataManager.src_evt_idxs`
             property.
         grads : dict
             The dictionary holding the gradients of the probability density
             w.r.t. each fit parameter. The key of the dictionary is the id
-            of the global fit parameter. The value is the (N_events,)-shaped
-            numpy ndarray. In case of a signal PDF, the value is a
-            (N_sources,N_events)-shaped ndarray.
+            of the global fit parameter. The value is a (N,)-shaped numpy
+            ndarray.
         """
         pass
 
@@ -650,7 +649,7 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
     has two axes, right-ascention (ra) and declination (dec).
     """
 
-    def __init__(self, ra_range, dec_range, *args, **kwargs):
+    def __init__(self, ra_range, dec_range, **kwargs):
         """Constructor of a spatial PDF. It adds the PDF axes "ra" and "dec"
         with the specified ranges of coverage.
 
@@ -661,7 +660,7 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
         dec_range : 2-element tuple
             The tuple specifying the declination range this PDF covers.
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
         self.add_axis(
             PDFAxis(
@@ -717,7 +716,7 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
 
 
 class EnergyPDF(PDF, metaclass=abc.ABCMeta):
-    """This is the abstract base class for an energy PDF model.
+    """This is the abstract base class for an energy PDF.
     """
 
     def __init__(self, *args, **kwargs):
@@ -725,7 +724,7 @@ class EnergyPDF(PDF, metaclass=abc.ABCMeta):
 
 
 class TimePDF(PDF, metaclass=abc.ABCMeta):
-    """This is the abstract base class for a time PDF model.
+    """This is the abstract base class for a time PDF.
     """
 
     def __init__(self, *args, **kwargs):
