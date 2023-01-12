@@ -92,13 +92,14 @@ class BinningDefinition(object):
         """
         return (self.lower_edge, self.upper_edge)
 
-    def any_data_out_of_binning_range(self, data):
-        """Checks if any of the given data is outside of the binning range.
+    def any_data_out_of_range(self, data):
+        """Checks if any of the given data is outside the range of this binning
+        definition.
 
         Parameters
         ----------
-        data : 1d ndarray
-            The array with the data values to check.
+        data : instance of ndarray
+            The 1D ndarray with the data values to check.
 
         Returns
         -------
@@ -109,6 +110,29 @@ class BinningDefinition(object):
         outofrange = np.any((data < self.lower_edge) |
                             (data > self.upper_edge))
         return outofrange
+
+    def get_out_of_range_data(self, data):
+        """Returns the data values which are outside the range of this binning
+        definition.
+
+        Parameters
+        ----------
+        data : instance of ndarray
+            The 1D ndarray with the data values to check.
+
+        Returns
+        -------
+        oor_data : instance of ndarray
+            The 1D ndarray with data outside the range of this binning
+            definition.
+        """
+        oor_mask = (
+            (data < self.lower_edge) |
+            (data > self.upper_edge)
+        )
+        oor_data = data[oor_mask]
+
+        return oor_data
 
     def get_subset(self, lower_edge, upper_edge):
         """Creates a new BinningDefinition instance which contains only a subset
