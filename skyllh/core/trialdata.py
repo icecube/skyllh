@@ -502,6 +502,12 @@ class TrialDataManager(object):
 
         return False
 
+    def __getitem__(self, name):
+        """Implements the evaluation of ``self[name]`` to access data fields.
+        This method calls the :meth:`get_data` method of this class.
+        """
+        return self.get_data(name)
+
     def __str__(self):
         """Implements pretty string representation of this TrialDataManager
         instance.
