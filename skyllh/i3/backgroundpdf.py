@@ -38,6 +38,7 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     """
     def __init__(
             self,
+            pmm,
             data_sin_dec,
             data_weights,
             sin_dec_binning,
@@ -46,6 +47,9 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
 
         Parameters
         ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the global parameters
+            and their mapping to local model/source parameters.
         data_sin_dec : 1d ndarray
             The array holding the sin(dec) values of the events.
         data_weights : 1d ndarray
@@ -57,6 +61,7 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             spatial background PDF along the sin(dec) axis.
         """
         super().__init__(
+            pmm=pmm,
             ra_range=(0, 2*np.pi),
             dec_range=(
                 np.arcsin(sin_dec_binning.lower_edge),
@@ -122,15 +127,16 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             The array holding the event data. The following data fields must
             exist:
 
-            - 'sin_dec' : float
-                The sin(declination) value of the event.
+                sin_dec : float
+                    The sin(declination) value of the event.
+
         """
-        data = events['sin_dec']
+        data_sin_dec = events['sin_dec']
 
         sin_dec_binning = self.get_binning('sin_dec')
 
         (h_upd, bins) = np.histogram(
-            data,
+            data_sin_dec,
             bins=sin_dec_binning.binedges,
             range=sin_dec_binning.range)
 
@@ -160,8 +166,9 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             The TrialDataManager instance holding the trial event data for which
             to calculate the PDF values. The following data fields must exist:
 
-            - 'sin_dec' : float
-                The sin(declination) value of the event.
+                sin_dec : float
+                    The sin(declination) value of the event.
+
         params_recarray : None
             Unused interface parameter.
         tl : instance of TimeLord | None
@@ -192,6 +199,7 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """
     def __init__(
             self,
+            pmm,
             data_exp,
             sin_dec_binning,
             spline_order_sin_dec=2):
@@ -200,12 +208,15 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
 
         Parameters
         ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the global parameters
+            and their mapping to local model/source parameters.
         data_exp : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the experimental data.
             The following data fields must exist:
 
-            - 'dec' : float
-                The declination of the data event.
+                sin_dec : float
+                    The sin(declination) of the data event.
 
         sin_dec_binning : BinningDefinition
             The binning definition for the sin(declination).
@@ -220,11 +231,12 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
                 'DataFieldRecordArray! '
                 f'It is of type "{classname(data_exp)}"!')
 
-        data_sin_dec = np.sin(data_exp['dec'])
+        data_sin_dec = data_exp['sin_dec']
         data_weights = np.ones((len(data_exp),))
 
         # Create the PDF using the base class.
         super().__init__(
+            pmm=pmm,
             data_sin_dec=data_sin_dec,
             data_weights=data_weights,
             sin_dec_binning=sin_dec_binning,
@@ -237,6 +249,7 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """
     def __init__(
             self,
+            pmm,
             data_mc,
             physics_weight_field_names,
             sin_dec_binning,
@@ -246,12 +259,15 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
 
         Parameters
         ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the global parameters
+            and their mapping to local model/source parameters.
         data_mc : instance of DataFieldRecordArray
             The array holding the monte-carlo data. The following data fields
             must exist:
 
-            - 'sin_dec' : float
-                The sine of the reconstructed declination of the data event.
+                sin_dec : float
+                    The sine of the reconstructed declination of the data event.
 
         physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
@@ -292,6 +308,7 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
 
         # Create the PDF using the base class.
         super().__init__(
+            pmm=pmm,
             data_sin_dec=data_sin_dec,
             data_weights=data_weights,
             sin_dec_binning=sin_dec_binning,
@@ -304,6 +321,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """
     def __init__(
             self,
+            pmm,
             data_exp,
             log_energy_binning,
             sin_dec_binning,
@@ -313,15 +331,18 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         Parameters
         ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the global parameters
+            and their mapping to local model/source parameters.
         data_exp : instance of DataFieldRecordArray
             The array holding the experimental data. The following data fields
             must exist:
 
-            - 'log_energy' : float
-                The logarithm of the reconstructed energy value of the data
-                event.
-            - 'sin_dec' : float
-                The sine of the reconstructed declination of the data event.
+                log_energy : float
+                    The logarithm of the reconstructed energy value of the data
+                    event.
+                sin_dec : float
+                    The sine of the reconstructed declination of the data event.
 
         log_energy_binning : instance of BinningDefinition
             The binning definition for the binning in log10(E).
@@ -345,32 +366,47 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         # Create the PDF using the base class.
         super().__init__(
-            data_log_energy, data_sin_dec, data_mcweight, data_physicsweight,
-            log_energy_binning, sin_dec_binning, smoothing_filter)
+            pmm=pmm,
+            data_log_energy=data_log_energy,
+            data_sin_dec=data_sin_dec,
+            data_mcweight=data_mcweight,
+            data_physicsweight=data_physicsweight,
+            log_energy_binning=log_energy_binning,
+            sin_dec_binning=sin_dec_binning,
+            smoothing_filter=smoothing_filter)
 
 
 class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     monte-carlo data. This class is derived from I3EnergyPDF.
     """
-    def __init__(self, data_mc, physics_weight_field_names, log_energy_binning,
-                 sin_dec_binning, smoothing_filter=None):
+    def __init__(
+            self,
+            pmm,
+            data_mc,
+            physics_weight_field_names,
+            log_energy_binning,
+            sin_dec_binning,
+            smoothing_filter=None):
         """Constructs a new IceCube energy background PDF from monte-carlo
         data.
 
         Parameters
         ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the global parameters
+            and their mapping to local model/source parameters.
         data_mc : instance of DataFieldRecordArray
             The array holding the monte-carlo data. The following data fields
             must exist:
 
-            - 'log_energy' : float
-                The logarithm of the reconstructed energy value of the data
-                event.
-            - 'sin_dec' : float
-                The sine of the reconstructed declination of the data event.
-            - 'mcweight': float
-                The monte-carlo weight of the event.
+                log_energy : float
+                    The logarithm of the reconstructed energy value of the data
+                    event.
+                sin_dec : float
+                    The sine of the reconstructed declination of the data event.
+                mcweight: float
+                    The monte-carlo weight of the event.
 
         physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
@@ -414,5 +450,11 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         # Create the PDF using the base class.
         super().__init__(
-            data_log_energy, data_sin_dec, data_mcweight, data_physicsweight,
-            log_energy_binning, sin_dec_binning, smoothing_filter)
+            pmm=pmm,
+            data_log_energy=data_log_energy,
+            data_sin_dec=data_sin_dec,
+            data_mcweight=data_mcweight,
+            data_physicsweight=data_physicsweight,
+            log_energy_binning=log_energy_binning,
+            sin_dec_binning=sin_dec_binning,
+            smoothing_filter=smoothing_filter)
