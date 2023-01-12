@@ -175,7 +175,7 @@ class AllEventSelectionMethod(EventSelectionMethod):
             # Calculate events indices.
             with TaskTimer(tl, 'ESM: Calculate indices of selected events.'):
                 n_sources = self.src_hypo_group_manager.n_sources
-                src_idxs = np.repeat(np.arange(n_sources), len(events.indices))
+                src_idxs = np.repeat(np.arange(n_sources), len(events))
                 ev_idxs = np.tile(events.indices, n_sources)
 
             return (events, (src_idxs, ev_idxs))
@@ -227,8 +227,8 @@ class SpatialEventSelectionMethod(EventSelectionMethod, metaclass=abc.ABCMeta):
             order='F')
 
         for (i, src) in enumerate(sources):
-            arr['ra'][i] = src.loc.ra
-            arr['dec'][i] = src.loc.dec
+            arr['ra'][i] = src.ra
+            arr['dec'][i] = src.dec
 
         return arr
 
