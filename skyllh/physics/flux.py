@@ -2,7 +2,7 @@
 
 """Note:
 
-    This module is deprecated and new flux models should be implemented in
+    This module is DEPRECATED and new flux models should be implemented in
     `flux_model.py`. However, the framework currently doesn't support flux
     models derived from `flux_model.FluxModel`.
 
@@ -333,8 +333,8 @@ class SeyfertCoreCoronaFlux(SplineFluxModel):
 
     def __hash__(self):
         """We use hash in
-        `skyllh.core.source_hypothesis.get_fluxmodel_to_source_mapping()` for
-        mapping fluxes to KDE PDFs. Seyfert model KDEs only depend on the
+        :meth:`skyllh.core.source_hypo_grouping.SourceHypoGroupManager.get_fluxmodel_to_source_mapping()`
+        for mapping fluxes to KDE PDFs. Seyfert model KDEs only depend on the
         `log_xray_lumin` parameter.
         """
         hash_arg = (self.log_xray_lumin,)

@@ -22,7 +22,9 @@ from skyllh.core.py import (
 from skyllh.core.dataset_signal_weights import (
     DatasetSignalWeights,
 )
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
 from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.detsigyield import DetSigYield
 from skyllh.core.minimizer import (
