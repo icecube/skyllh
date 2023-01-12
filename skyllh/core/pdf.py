@@ -1355,97 +1355,80 @@ class PDFSet(object):
     via the ``add_pdf`` method and retrieved via the ``get_pdf`` method.
     """
 
-    def __init__(self, pdf_type, fitparams_grid_set, *args, **kwargs):
-        """Constructor method. Gets called when a class instance is created
-        which is derived from this PDFSet class.
+    def __init__(self, param_grid_set, **kwargs):
+        """Constructs a new PDFSet instance.
 
         Parameters
         ----------
-        pdf_type : type
-            The PDF class that can be added to the set.
-        fitparams_grid_set : ParameterGridSet | ParameterGrid
-            The ParameterGridSet with the fit parameter grids defining the
-            descrete fit parameter values for which the PDFs of this PDF set
+        param_grid_set : instance of ParameterGrid |
+                         instance of ParameterGridSet
+            The instance of ParameterGridSet with the parameter grids defining
+            the descrete parameter values for which the PDFs of this PDF set
             are made for.
         """
         # Call super to support multiple class inheritance.
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-        if not issubclass(pdf_type, PDF):
-            raise TypeError(
-                'The pdf_type argument must be a subclass of PDF!')
-        self._pdf_type = pdf_type
-        self.fitparams_grid_set = fitparams_grid_set
-        self._gridfitparams_hash_pdf_dict = dict()
+        self.param_grid_set = param_grid_set
 
-    @property
-    def pdf_type(self):
-        """(read-only) The PDF type which can be added to the PDF set.
-        """
-        return self._pdf_type
-
-    @property
-    def fitparams_grid_set(self):
-        """ DEPRECATED (Use param_grid_set instead!)
-        The ParameterGridSet object defining the value grids of
-        the different fit parameters.
-        """
-        return self._fitparams_grid_set
-
-    @fitparams_grid_set.setter
-    def fitparams_grid_set(self, obj):
-        if isinstance(obj, ParameterGrid):
-            obj = ParameterGridSet([obj])
-        # Allow None for the MappedMultiDimGridPDFSet construction.
-        # Could create an unexpected behavior in other analyses!
-        if not isinstance(obj, ParameterGridSet) and obj is not None:
-            raise TypeError(
-                'The fitparams_grid_set property must be an object '
-                'of type ParameterGridSet!')
-        self._fitparams_grid_set = obj
+        self._gridparams_hash_pdf_dict = dict()
 
     @property
     def param_grid_set(self):
-        return self._fitparams_grid_set
+        """The ParameterGridSet instance defining the grid values of
+        the different parameters.
+        """
+        return self._param_grid_set
+
+    @param_grid_set.setter
+    def param_grid_set(self, obj):
+        if isinstance(obj, ParameterGrid):
+            obj = ParameterGridSet([obj])
+        if obj is not None:
+            if not isinstance(obj, ParameterGridSet):
+                raise TypeError(
+                    'The params_grid_set property must be an instance of type '
+                    'ParameterGridSet!')
+        self._param_grid_set = obj
 
     @property
-    def gridfitparams_list(self):
-        """(read-only) The list of dictionaries of all the fit parameter
+    def gridparams_list(self):
+        """(read-only) The list of dictionaries of all the parameter
         permutations on the grid.
         """
-        return self._fitparams_grid_set.parameter_permutation_dict_list
+        return self._param_grid_set.parameter_permutation_dict_list
 
     @property
     def pdf_keys(self):
         """(read-only) The list of stored PDF object keys.
         """
-        return list(self._gridfitparams_hash_pdf_dict.keys())
+        return list(self._gridparams_hash_pdf_dict.keys())
 
     @property
     def pdf_axes(self):
         """(read-only) The PDFAxes object of one of the PDFs of this PDF set.
         All PDFs of this set are supposed to have the same axes.
         """
-        key = next(iter(self._gridfitparams_hash_pdf_dict.keys()))
-        return self._gridfitparams_hash_pdf_dict[key].axes
+        key = next(iter(self._gridparams_hash_pdf_dict.keys()))
+        return self._gridparams_hash_pdf_dict[key].axes
 
     def items(self):
         """Returns the list of 2-element tuples for the PDF stored in this
         PDFSet object.
         """
-        return self._gridfitparams_hash_pdf_dict.items()
+        return self._gridparams_hash_pdf_dict.items()
 
-    def add_pdf(self, pdf, gridfitparams):
+    def add_pdf(self, pdf, gridparams):
         """Adds the given PDF object for the given parameters to the internal
         registry. If this PDF set is not empty, the to-be-added PDF must have
         the same axes than the already added PDFs.
 
         Parameters
         ----------
-        pdf : pdf_type
-            The object derived from ``pdf_type`` that should be added.
-        gridfitparams : dict
-            The dictionary with the grid fit parameter values, which identify
+        pdf : instance of PDF
+            The PDF instance, that should be added
+        gridparams : dict
+            The dictionary with the grid parameter values, which identify
             the PDF object.
 
         Raises
@@ -1458,24 +1441,25 @@ class PDFSet(object):
             If the axes of the given PDFs are not the same as the axes of the
             already added PDFs.
         """
-        if not isinstance(pdf, self.pdf_type):
+        if not isinstance(pdf, PDF):
             raise TypeError(
-                'The pdf argument must be an instance of '
-                f'{typename(self.pdf_type)}!')
-        if not isinstance(gridfitparams, dict):
+                'The pdf argument must be an instance of PDF!'
+                f'But its type is "{classname(pdf)}!')
+        if not isinstance(gridparams, dict):
             raise TypeError(
-                'The fitparams argument must be of type dict!')
+                'The gridparams argument must be of type dict!'
+                f'But its type is "{classname(gridparams)}"!')
 
-        gridfitparams_hash = make_dict_hash(gridfitparams)
-        if gridfitparams_hash in self._gridfitparams_hash_pdf_dict:
+        gridparams_hash = make_dict_hash(gridparams)
+        if gridparams_hash in self._gridparams_hash_pdf_dict:
             raise KeyError(
-                f'The PDF with grid fit parameters {str(gridfitparams)} was '
+                f'The PDF with grid parameters {str(gridparams)} was '
                 'already added!')
 
         # Check that the new PDF has the same axes than the already added PDFs.
-        if len(self._gridfitparams_hash_pdf_dict) > 0:
-            some_pdf = self._gridfitparams_hash_pdf_dict[
-                next(iter(self._gridfitparams_hash_pdf_dict.keys()))]
+        if len(self._gridparams_hash_pdf_dict) > 0:
+            some_pdf = self._gridparams_hash_pdf_dict[
+                next(iter(self._gridparams_hash_pdf_dict.keys()))]
             if not pdf.axes.is_same_as(some_pdf.axes):
                 raise ValueError(
                     'The given PDF does not have the same axes than the '
@@ -1483,42 +1467,43 @@ class PDFSet(object):
                     f'New axes:\n{str(pdf.axes)}\n'
                     f'Old axes:\n{str(some_pdf.axes)}')
 
-        self._gridfitparams_hash_pdf_dict[gridfitparams_hash] = pdf
+        self._gridparams_hash_pdf_dict[gridparams_hash] = pdf
 
-    def get_pdf(self, gridfitparams):
+    def get_pdf(self, gridparams):
         """Retrieves the PDF object for the given set of fit parameters.
 
         Parameters
         ----------
-        gridfitparams : dict | int
-            The dictionary with the grid fit parameters for which the PDF object
-            should get retrieved. If an integer is given, it is assumed to be
-            the PDF key.
+        gridparams : dict | int
+            The dictionary with the grid parameter names and values for which
+            the PDF object should get retrieved. If an integer is given, it is
+            assumed to be the PDF key.
 
         Returns
         -------
-        pdf : pdf_type
-            The pdf_type object for the given parameters.
+        pdf : instance if PDF
+            The PDF instance for the given parameters.
 
         Raises
         ------
         KeyError
-            If no PDF object was created for the given set of parameters.
+            If no PDF instance was created for the given set of parameters.
         """
-        if isinstance(gridfitparams, int):
-            gridfitparams_hash = gridfitparams
-        elif isinstance(gridfitparams, dict):
-            gridfitparams_hash = make_dict_hash(gridfitparams)
+        if isinstance(gridparams, int):
+            gridparams_hash = gridparams
+        elif isinstance(gridparams, dict):
+            gridparams_hash = make_dict_hash(gridparams)
         else:
             raise TypeError(
-                'The gridfitparams argument must be of type dict or int!')
+                'The gridparams argument must be of type dict or int!')
 
-        if gridfitparams_hash not in self._gridfitparams_hash_pdf_dict:
+        if gridparams_hash not in self._gridparams_hash_pdf_dict:
             raise KeyError(
                 'No PDF was created for the parameter set '
-                f'"{str(gridfitparams)}"!')
+                f'"{str(gridparams)}"!')
 
-        pdf = self._gridfitparams_hash_pdf_dict[gridfitparams_hash]
+        pdf = self._gridparams_hash_pdf_dict[gridparams_hash]
+
         return pdf
 
 
