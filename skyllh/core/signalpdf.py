@@ -60,7 +60,6 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
     def __init__(
             self,
-            pmm,
             ra_range=None,
             dec_range=None,
             pd_event_data_field_name=None,
@@ -70,9 +69,6 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the global parameters
-            and their mapping to local model/source parameters.
         ra_range : 2-element tuple | None
             The range in right-ascention this spatial PDF is valid for.
             If set to None, the range (0, 2pi) is used.
@@ -90,7 +86,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             dec_range = (-np.pi/2, np.pi/2)
 
         super().__init__(
-            pmm=pmm,
+            pmm=None,
             ra_range=ra_range,
             dec_range=dec_range,
             **kwargs)
@@ -225,11 +221,9 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             w.r.t. each fit parameter. By definition this PDF does not depend
             on any fit parameters and hence, this dictionary is empty.
         """
-        get_data = tdm.get_data
-
         # Check if the probability density was pre-calculated.
         if self._pd_event_data_field_name in tdm:
-            pd = get_data(self._pd_event_data_field_name)
+            pd = tdm[self._pd_event_data_field_name]
             return (pd, dict())
 
         pd = self.calculate_pd(tdm)

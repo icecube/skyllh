@@ -51,9 +51,10 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
+        pmm : instance of ParameterModelMapper | None
             The instance of ParameterModelMapper defining the global parameters
             and their mapping to local model/source parameters.
+            It can be ``None``, if the PDF does not depend on any parameters.
         data_log_energy : 1d ndarray
             The array holding the log10(E) values of the events.
         data_sin_dec : 1d ndarray

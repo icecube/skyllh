@@ -291,9 +291,10 @@ class PDF(object, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
+        pmm : instance of ParameterModelMapper | None
             The instance of ParameterModelMapper defining the global parameters
             and their mapping to local model/source parameters.
+            It can be ``None``, if the PDF does not depend on any parameters.
         param_set : Parameter instance | sequence of Parameter instances |
                     ParameterSet instance | None
             If this PDF depends on parameters, this set of parameters
@@ -329,14 +330,17 @@ class PDF(object, metaclass=abc.ABCMeta):
     def pmm(self):
         """The instance of ParameterModelMapper that defines the global
         parameters and their mapping to local model/source parameters.
+        It can be ``None`` if the PDF does not depend on any parameters.
         """
         return self._pmm
 
     @pmm.setter
     def pmm(self, mapper):
-        if not isinstance(mapper, ParameterModelMapper):
-            raise TypeError(
-                'The pmm property must be an instance of ParameterModelMapper!')
+        if mapper is not None:
+            if not isinstance(mapper, ParameterModelMapper):
+                raise TypeError(
+                    'The pmm property must be an instance of '
+                    f'ParameterModelMapper! Its type is "{classname(mapper)}"!')
         self._pmm = mapper
 
     @property

@@ -38,7 +38,6 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     """
     def __init__(
             self,
-            pmm,
             data_sin_dec,
             data_weights,
             sin_dec_binning,
@@ -47,9 +46,6 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the global parameters
-            and their mapping to local model/source parameters.
         data_sin_dec : 1d ndarray
             The array holding the sin(dec) values of the events.
         data_weights : 1d ndarray
@@ -61,7 +57,7 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             spatial background PDF along the sin(dec) axis.
         """
         super().__init__(
-            pmm=pmm,
+            pmm=None,
             ra_range=(0, 2*np.pi),
             dec_range=(
                 np.arcsin(sin_dec_binning.lower_edge),
@@ -199,7 +195,6 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """
     def __init__(
             self,
-            pmm,
             data_exp,
             sin_dec_binning,
             spline_order_sin_dec=2):
@@ -208,9 +203,6 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the global parameters
-            and their mapping to local model/source parameters.
         data_exp : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the experimental data.
             The following data fields must exist:
@@ -236,7 +228,6 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
 
         # Create the PDF using the base class.
         super().__init__(
-            pmm=pmm,
             data_sin_dec=data_sin_dec,
             data_weights=data_weights,
             sin_dec_binning=sin_dec_binning,
@@ -249,7 +240,6 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """
     def __init__(
             self,
-            pmm,
             data_mc,
             physics_weight_field_names,
             sin_dec_binning,
@@ -259,9 +249,6 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the global parameters
-            and their mapping to local model/source parameters.
         data_mc : instance of DataFieldRecordArray
             The array holding the monte-carlo data. The following data fields
             must exist:
@@ -308,7 +295,6 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
 
         # Create the PDF using the base class.
         super().__init__(
-            pmm=pmm,
             data_sin_dec=data_sin_dec,
             data_weights=data_weights,
             sin_dec_binning=sin_dec_binning,
@@ -321,7 +307,6 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """
     def __init__(
             self,
-            pmm,
             data_exp,
             log_energy_binning,
             sin_dec_binning,
@@ -331,9 +316,6 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the global parameters
-            and their mapping to local model/source parameters.
         data_exp : instance of DataFieldRecordArray
             The array holding the experimental data. The following data fields
             must exist:
@@ -366,7 +348,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         # Create the PDF using the base class.
         super().__init__(
-            pmm=pmm,
+            pmm=None,
             data_log_energy=data_log_energy,
             data_sin_dec=data_sin_dec,
             data_mcweight=data_mcweight,
@@ -382,7 +364,6 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """
     def __init__(
             self,
-            pmm,
             data_mc,
             physics_weight_field_names,
             log_energy_binning,
@@ -393,9 +374,6 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the global parameters
-            and their mapping to local model/source parameters.
         data_mc : instance of DataFieldRecordArray
             The array holding the monte-carlo data. The following data fields
             must exist:
@@ -450,7 +428,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
 
         # Create the PDF using the base class.
         super().__init__(
-            pmm=pmm,
+            pmm=None,
             data_log_energy=data_log_energy,
             data_sin_dec=data_sin_dec,
             data_mcweight=data_mcweight,
