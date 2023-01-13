@@ -1344,15 +1344,14 @@ class NDPhotosplinePDF(PDF):
 
 class PDFSet(object):
     """This class describes a set of PDF objects which are related to each other
-    via different values of a set of fit parameters. A signal PDF usually
-    consists of multiple same-kind PDFs for different signal fit parameters.
-    In general background PDFs could have fit parameters, too.
+    via different values of a set of parameters. A signal PDF usually
+    consists of multiple same-kind PDFs for different signal parameters.
+    In general background PDFs could have parameters, too.
 
-    This class has the ``fitparams_grid_set`` property holding the set of fit
+    This class has the ``params_grid_set`` property holding the set of
     parameter grids. Also it holds a dictionary with the PDFs for the different
-    sets of fit parameter values. The type of the PDF objects is defined through
-    the ``pdf_type`` property. PDF objects of type ``pdf_type`` can be added
-    via the ``add_pdf`` method and retrieved via the ``get_pdf`` method.
+    sets of parameter values. PDF instances can be added via the :meth:`add_pdf`
+    method and can be retrieved via the :meth:`get_pdf` method.
     """
 
     def __init__(self, param_grid_set, **kwargs):
@@ -1505,6 +1504,63 @@ class PDFSet(object):
         pdf = self._gridparams_hash_pdf_dict[gridparams_hash]
 
         return pdf
+
+    def assert_is_valid_for_trial_data(self, tdm):
+        """Checks if the PDFs of this PDFSet instance are valid for all the
+        given trial data events.
+        Since all PDFs should have the same axes, only the first PDF will be
+        checked.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data events.
+
+        Raises
+        ------
+        ValueError
+            If some of the data is outside the axes range of the PDF.
+        """
+        key = next(iter(self._gridparams_hash_pdf_dict.keys()))
+        pdf = self._gridparams_hash_pdf_dict[key]
+        pdf.assert_is_valid_for_trial_data(tdm=tdm)
+
+    def get_pd(self, gridparams, tdm, params_recarray=None, tl=None):
+        """Calls the ``get_pd`` method of the PDF instance that belongs to the
+        given grid parameter values ``gridparams``.
+
+        Parameters
+        ----------
+        gridparams : dict
+            The dictionary holding the parameter values, which define PDF
+            instance within this PDFSet instance.
+            Note, that the parameter values must match a set of parameter grid
+            values for which a PDF instance has been created and added to this
+            PDFSet instance.
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the data events for which the
+            probability density of the events should be calculated.
+        params_recarray : instance of ndarray | None
+            The numpy record ndarray holding the parameter name and values for
+            each source model.
+
+        Returns
+        -------
+        pd : numpy ndarray
+            The 1D numpy ndarray holding the probability density values for each
+            event and source.
+            See :meth:`skyllh.core.pdf.PDF.get_pd` for further information.
+        grads : dict
+            The dictionary holding the gradient values for each global fit
+            parameter.
+            See :meth:`skyllh.core.pdf.PDF.get_pd` for further information.
+        """
+        pdf = self.get_pdf(gridparams)
+
+        return pdf.get_pd(
+            tdm=tdm,
+            params_recarray=params_recarray,
+            tl=tl)
 
 
 class MultiDimGridPDFSet(PDF, PDFSet):
