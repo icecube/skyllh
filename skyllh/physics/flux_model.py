@@ -391,7 +391,7 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
         self.E0 = E0
         self.gamma = gamma
 
-        # Define the parameters which can be set via the `set_parameters`
+        # Define the parameters which can be set via the `set_params`
         # method.
         self.param_names = ('E0', 'gamma',)
 
@@ -481,7 +481,7 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         self.t_start = t_start
         self.t_end = t_end
 
-        # Define the parameters which can be set via the `set_parameters`
+        # Define the parameters which can be set via the `set_params`
         # method.
         self.param_names = ('t_start', 't_end')
 
@@ -720,7 +720,7 @@ class BoxTimeFluxProfile(TimeFluxProfile):
             time_unit=time_unit,
             **kwargs)
 
-        # Define the parameters which can be set via the `set_parameters`
+        # Define the parameters which can be set via the `set_params`
         # method.
         self.param_names = ('t0', 'tw')
 
@@ -888,7 +888,7 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         self.t0 = t0
         self.sigma_t = sigma_t
 
-        # Define the parameters which can be set via the `set_parameters`
+        # Define the parameters which can be set via the `set_params`
         # method.
         self.param_names = ('t0', 'sigma_t')
 
@@ -1271,7 +1271,7 @@ class FactorizedFluxModel(FluxModel):
             **kwargs
         )
 
-        # Define the parameters which can be set via the `set_parameters`
+        # Define the parameters which can be set via the `set_params`
         # method.
         self.param_names = ('Phi0',)
 
@@ -1459,7 +1459,7 @@ class FactorizedFluxModel(FluxModel):
 
         return flux
 
-    def set_parameters(self, pdict):
+    def set_params(self, pdict):
         """Sets the parameters of the flux model. For this factorized flux model
         it means that it sets the parameters of the spatial, energy, and time
         profiles.
@@ -1476,11 +1476,11 @@ class FactorizedFluxModel(FluxModel):
         """
         updated = False
 
-        updated |= super().set_parameters(pdict)
+        updated |= super().set_params(pdict)
 
-        updated |= self._spatial_profile.set_parameters(pdict)
-        updated |= self._energy_profile.set_parameters(pdict)
-        updated |= self._time_profile.set_parameters(pdict)
+        updated |= self._spatial_profile.set_params(pdict)
+        updated |= self._energy_profile.set_params(pdict)
+        updated |= self._time_profile.set_params(pdict)
 
         return updated
 
