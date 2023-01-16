@@ -18,7 +18,6 @@ from skyllh.core.py import (
     func_has_n_args,
     issequenceof,
     make_dict_hash,
-    typename,
 )
 from skyllh.core.config import (
     CFG,
@@ -1411,11 +1410,26 @@ class PDFSet(object):
         key = next(iter(self._gridparams_hash_pdf_dict.keys()))
         return self._gridparams_hash_pdf_dict[key].axes
 
+    def __getitem__(self, key):
+        """Implements the access operator ``self[gridparams_hash]``.
+        """
+        return self.get_pdf(key)
+
+    def __iter__(self):
+        """Returns an iterator of the PDF dictionary of this PDFSet.
+        """
+        return iter(self._gridparams_hash_pdf_dict)
+
     def items(self):
-        """Returns the list of 2-element tuples for the PDF stored in this
-        PDFSet object.
+        """Returns an iterator over the (gridparams_hash, PDF) pairs of this
+        PDFSet instance.
         """
         return self._gridparams_hash_pdf_dict.items()
+
+    def values(self):
+        """Returns an iterator over the PDF instances of the PDFSet instance.
+        """
+        return self._gridparams_hash_pdf_dict.values()
 
     def add_pdf(self, pdf, gridparams):
         """Adds the given PDF object for the given parameters to the internal
@@ -1765,7 +1779,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         # index.
         paramgridset_pname_to_pidx = dict([
             (pname, pidx)
-                for (pidx, pname) in enumerate(param_grid_set_pnames)
+            for (pidx, pname) in enumerate(param_grid_set_pnames)
         ])
 
         for (pidx, fitparam) in enumerate(fitparams):
