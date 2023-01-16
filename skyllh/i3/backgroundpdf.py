@@ -308,7 +308,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     def __init__(
             self,
             data_exp,
-            log_energy_binning,
+            log10_energy_binning,
             sin_dec_binning,
             smoothing_filter=None):
         """Constructs a new IceCube energy background PDF from experimental
@@ -326,7 +326,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
                 sin_dec : float
                     The sine of the reconstructed declination of the data event.
 
-        log_energy_binning : instance of BinningDefinition
+        log10_energy_binning : instance of BinningDefinition
             The binning definition for the binning in log10(E).
         sin_dec_binning : instance of BinningDefinition
             The binning definition for the sin(declination).
@@ -340,7 +340,7 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
                 'DataFieldRecordArray! '
                 f'It is of type "{classname(data_exp)}"!')
 
-        data_log_energy = data_exp['log_energy']
+        data_log10_energy = data_exp['log_energy']
         data_sin_dec = data_exp['sin_dec']
         # For experimental data, the MC and physics weight are unity.
         data_mcweight = np.ones((len(data_exp),))
@@ -349,11 +349,11 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         # Create the PDF using the base class.
         super().__init__(
             pmm=None,
-            data_log_energy=data_log_energy,
+            data_log10_energy=data_log10_energy,
             data_sin_dec=data_sin_dec,
             data_mcweight=data_mcweight,
             data_physicsweight=data_physicsweight,
-            log_energy_binning=log_energy_binning,
+            log10_energy_binning=log10_energy_binning,
             sin_dec_binning=sin_dec_binning,
             smoothing_filter=smoothing_filter)
 
@@ -366,7 +366,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             self,
             data_mc,
             physics_weight_field_names,
-            log_energy_binning,
+            log10_energy_binning,
             sin_dec_binning,
             smoothing_filter=None):
         """Constructs a new IceCube energy background PDF from monte-carlo
@@ -391,7 +391,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             should be used as physics event weights. If a list is given, the
             weight values of all the fields will be summed to construct the
             final event physics weight.
-        log_energy_binning : BinningDefinition
+        log10_energy_binning : BinningDefinition
             The binning definition for the binning in log10(E).
         sin_dec_binning : BinningDefinition
             The binning definition for the sin(declination).
@@ -413,7 +413,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
                 'of type str or a sequence of type str! '
                 f'It is of type {classname(physics_weight_field_names)}')
 
-        data_log_energy = data_mc['log_energy']
+        data_log10_energy = data_mc['log_energy']
         data_sin_dec = data_mc['sin_dec']
         data_mcweight = data_mc['mcweight']
 
@@ -429,10 +429,10 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         # Create the PDF using the base class.
         super().__init__(
             pmm=None,
-            data_log_energy=data_log_energy,
+            data_log10_energy=data_log_energy,
             data_sin_dec=data_sin_dec,
             data_mcweight=data_mcweight,
             data_physicsweight=data_physicsweight,
-            log_energy_binning=log_energy_binning,
+            log10_energy_binning=log10_energy_binning,
             sin_dec_binning=sin_dec_binning,
             smoothing_filter=smoothing_filter)
