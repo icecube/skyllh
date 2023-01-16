@@ -576,6 +576,9 @@ class TrialDataManager(object):
         """This method is called when the source hypothesis group manager has
         changed. Hence, the source data fields need to get recalculated.
 
+        After calling this method, a new trial should be initialized via the
+        :meth:`initialize_trial` method!
+
         Parameters
         ----------
         shg_mgr : instance of SourceHypoGroupManager
@@ -628,6 +631,9 @@ class TrialDataManager(object):
         self.events = events
         self._src_evt_idxs = None
 
+        # Save the number of sources.
+        self._n_sources = shg_mgr.n_sources
+
         if n_events is None:
             n_events = len(self._events)
         self.n_events = n_events
@@ -668,6 +674,23 @@ class TrialDataManager(object):
         self.calculate_static_data_fields(
             shg_mgr=shg_mgr,
             pmm=pmm)
+
+    def get_expected_events_array_size(self):
+        """Returns the expected size of the events array after a PDF
+        evaluation, which will include PDF values for all trial data events and
+        all sources.
+
+        Returns
+        -------
+        n : int
+            The length of the expected events array after a PDF evaluation.
+        """
+        n = len(self._src_evt_idxs)
+
+        if n is None:
+            return self._n_sources * self.n_selected_events
+
+        return n
 
     def add_source_data_field(
             self,
