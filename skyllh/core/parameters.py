@@ -548,6 +548,23 @@ class ParameterSet(object):
             [ (param.valmin, param.valmax)
              for param in floating_params ], dtype=np.float64)
 
+    def __contains__(self, param_name):
+        """Implements the ``param_name in self`` expression. It calls the
+        :meth:`has_param` method of this class.
+
+        Parameters
+        ----------
+        param_name : str
+            The name of the parameter.
+
+        Returns
+        -------
+        check : bool
+            Returns ``True`` if the given parameter is part of this ParameterSet
+            instance, ``False`` otherwise.
+        """
+        return self.has_param(param_name)
+
     def __iter__(self):
         """Returns an iterator over the Parameter instances of this ParameterSet
         instance.
@@ -1440,7 +1457,7 @@ class ParameterGridSet(NamedObjectCollection):
         return len(self)
 
     @property
-    def parameter_names(self):
+    def param_names(self):
         """(read-only) The list of the parameter names.
         """
         return [ paramgrid.name for paramgrid in self.objects ]
