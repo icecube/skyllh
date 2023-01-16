@@ -417,7 +417,7 @@ class PDF(object, metaclass=abc.ABCMeta):
             and depends on the application.
         params_recarray : numpy record ndarray | None
             The (N_models,)-shaped numpy record ndarray holding the parameter
-            values of the models. The models are defined by the
+            names and values of the models. The models are defined by the
             ParameterModelMapper instance. The parameter values can be different
             for the different models. In case of the signal PDF, the models are
             the sources.
@@ -1751,10 +1751,10 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         # Handle the special (common) case were there is only one fit parameter
         # and it coincides with the only grid parameter of this PDFSet.
         fitparams = self.param_set.floating_params
-        params_grid_set_pnames = self.param_grid_set.parameter_names
+        param_grid_set_pnames = self.param_grid_set.param_names
 
-        if (len(fitparams) == 1) and (len(params_grid_set_pnames) == 1) and\
-           (params_grid_set_pnames[0] == fitparams[0].name):
+        if (len(fitparams) == 1) and (len(param_grid_set_pnames) == 1) and\
+           (param_grid_set_pnames[0] == fitparams[0].name):
             return (prob, grads_)
 
         # Create an array for the gradients, which will only contain the
@@ -1763,9 +1763,10 @@ class MultiDimGridPDFSet(PDF, PDFSet):
 
         # Create a dictionary to map the name of the grid parameter to its
         # index.
-        paramgridset_pname_to_pidx = dict(
-            [(pname, pidx) for (pidx, pname) in
-             enumerate(params_grid_set_pnames)])
+        paramgridset_pname_to_pidx = dict([
+            (pname, pidx)
+                for (pidx, pname) in enumerate(param_grid_set_pnames)
+        ])
 
         for (pidx, fitparam) in enumerate(fitparams):
             pname = fitparam.name
