@@ -9,7 +9,6 @@ from skyllh.core.py import (
     float_cast,
     issequence,
     issequenceof,
-    make_dict_hash,
 )
 from skyllh.core.parameters import (
     ParameterModelMapper,
@@ -127,32 +126,35 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_ratio(self, tdm, params=None, tl=None):
-        """Retrieves the PDF ratio value for each given trial data event, given
-        the given set of parameters.
+    def get_ratio(self, tdm, params_recarray=None, tl=None):
+        """Retrieves the PDF ratio value for each given trial data event (and
+        source), given the given set of parameters.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should get calculated.
-        params : dict | None
-            The dictionary with the parameter name-value pairs.
-            It can be ``None``, if the PDF ratio does not depend on any
-            parameters.
-        tl : TimeLord instance | None
+        params_recarray : instance of numpy record ndarray | None
+            The (N_models,)-shaped numpy record ndarray holding the parameter
+            names and values of the models.
+            See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
+            This can be ``None``, if the signal and background PDFs do not
+            depend on any parameters.
+        tl : instance of TimeLord | None
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratios : (N_events,)-shaped 1d numpy ndarray of float
-            The PDF ratio value for each trial event.
+        ratios : instance of ndarray
+            The (N,)-shaped 1d numpy ndarray of float holding the PDF ratio
+            value for each trial event (and source).
         """
         pass
 
     @abc.abstractmethod
-    def get_gradient(self, tdm, params, param_name, tl=None):
+    def get_gradient(self, tdm, params_recarray, fitparam_id, tl=None):
         """Retrieves the PDF ratio gradient for the parameter ``param_name``
         for each given trial event, given the given set of parameters
         ``params``.
@@ -162,20 +164,24 @@ class PDFRatio(object, metaclass=abc.ABCMeta):
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should get calculated.
-        params : dict
-            The dictionary with the parameter names and values.
-        param_name : str
-            The name of the parameter for which the gradient should
+        params_recarray : instance of numpy record ndarray | None
+            The (N_models,)-shaped numpy record ndarray holding the parameter
+            names and values of the models.
+            See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
+            This can be ``None``, if the signal and background PDFs do not
+            depend on any parameters.
+        fitparam_id : int
+            The ID of the global fit parameter for which the gradient should
             get calculated.
-        tl : TimeLord instance | None
+        tl : instance of TimeLord | None
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
         gradient : instance of ndarray
-            The (N_events,)-shaped 1d numpy ndarray of float holding the PDF
-            ratio gradient value for each trial event.
+            The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
+            ratio gradient value for each source and trial event.
         """
         pass
 
@@ -313,7 +319,9 @@ class PDFRatioProduct(PDFRatio):
 
 
 class SingleSourcePDFRatioArrayArithmetic(object):
-    """This class provides arithmetic methods for arrays of PDFRatio instances.
+    """This class is DEPRECATED! Use PDFRatioProduct instead!
+
+    This class provides arithmetic methods for arrays of PDFRatio instances.
     It has methods to calculate the product of the ratio values for a given set
     of PDFRatio objects. This class assumes a single source.
 
@@ -909,7 +917,10 @@ class SigOverBkgPDFRatio(PDFRatio):
             The value of the PDF ratio to take when the background PDF value
             is zero. This is to avoid division by zero. Default is 1.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            sig_param_names=sig_pdf.param_set.param_names,
+            bkg_param_names=bkg_pdf.param_set.param_names,
+            **kwargs)
 
         self.sig_pdf = sig_pdf
         self.bkg_pdf = bkg_pdf
@@ -924,11 +935,11 @@ class SigOverBkgPDFRatio(PDFRatio):
 
         # Define cache member variables to calculate gradients efficiently.
         self._cache_trial_data_state_id = None
-        self._cache_params_hash = None
-        self._cache_sigprob = None
-        self._cache_bkgprob = None
-        self._cache_siggrads = None
-        self._cache_bkggrads = None
+        self._cache_params_recarray = None
+        self._cache_sig_pd = None
+        self._cache_bkg_pd = None
+        self._cache_sig_grads = None
+        self._cache_bkg_grads = None
 
     @property
     def sig_pdf(self):
@@ -972,12 +983,7 @@ class SigOverBkgPDFRatio(PDFRatio):
             'The zero_bkg_ratio_value must be castable to type float!')
         self._zero_bkg_ratio_value = v
 
-    def _get_signal_fitparam_names(self):
-        """Returns the list of fit parameter names the signal PDF depends on.
-        """
-        return self._sig_pdf.param_set.floating_param_name_list
-
-    def get_ratio(self, tdm, params=None, tl=None):
+    def get_ratio(self, tdm, params_recarray=None, tl=None):
         """Calculates the PDF ratio for the given trial events.
 
         Parameters
@@ -985,121 +991,125 @@ class SigOverBkgPDFRatio(PDFRatio):
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should be calculated.
-        params : dict | None
-            The dictionary holding the parameter names and values for which the
-            probability ratio should get calculated.
+        params_recarray : instance of numpy record ndarray | None
+            The (N_models,)-shaped numpy record ndarray holding the parameter
+            names and values of the models.
+            See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
             This can be ``None``, if the signal and background PDFs do not
             depend on any parameters.
-        tl : TimeLord instance | None
+        tl : instance of TimeLord | None
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratios : (N_events)-shaped numpy ndarray
-            The ndarray holding the probability ratio for each event (and each
-            source). The dimensionality of the returned ndarray depends on the
-            dimensionality of the probability ndarray returned by the
-            ``get_prob`` method of the signal PDF object.
+        ratios : instance of ndarray
+            The (N,)-shaped numpy ndarray holding the probability density ratio
+            for each event (and each source).
         """
-        with TaskTimer(tl, 'Get sig prob.'):
-            (sigprob, self._cache_siggrads) = self._sig_pdf.get_prob(
-                tdm, params, tl=tl)
-        with TaskTimer(tl, 'Get bkg prob.'):
-            (bkgprob, self._cache_bkggrads) = self._bkg_pdf.get_prob(
-                tdm, params, tl=tl)
+        with TaskTimer(tl, 'Get sig probability densities and grads.'):
+            (sig_pd, self._cache_sig_grads) = self._sig_pdf.get_pd(
+                tdm=tdm,
+                params_recarray=params_recarray,
+                tl=tl)
+        with TaskTimer(tl, 'Get bkg probability densities and grads.'):
+            (bkg_pd, self._cache_bkg_grads) = self._bkg_pdf.get_pd(
+                tdm=tdm,
+                params_recarray=params_recarray,
+                tl=tl)
 
-        with TaskTimer(tl, 'Calc PDF ratios.'):
-            # Select only the events, where background pdf is greater than zero.
-            m = (bkgprob > 0)
-            ratios = np.full_like(sigprob, self._zero_bkg_ratio_value)
-            ratios[m] = sigprob[m] / bkgprob[m]
+        with TaskTimer(tl, 'Calculate PDF ratios.'):
+            # Select only the events, where the background pdf is greater than
+            # zero.
+            ratios = np.full_like(sig_pd, self._zero_bkg_ratio_value)
+            m = (bkg_pd > 0)
+            ratios[m] = sig_pd[m] / bkg_pd[m]
 
         # Store the current state of parameter values and trial data, so that
         # the get_gradient method can verify the consistency of the signal and
         # background probabilities and gradients.
         self._cache_trial_data_state_id = tdm.trial_data_state_id
-        self._cache_params_hash = make_dict_hash(params)
-        self._cache_sigprob = sigprob
-        self._cache_bkgprob = bkgprob
+        self._cache_params_recarray = None
+        if params_recarray is not None:
+            self._cache_params_recarray = np.copy(params_recarray)
+        self._cache_sig_pd = sig_pd
+        self._cache_bkg_pd = bkg_pd
 
         return ratios
 
-    def get_gradient(self, tdm, params, fitparam_name):
-        """Retrieves the gradient of the PDF ratio w.r.t. the given fit
-        parameter. This method must be called after the ``get_ratio`` method.
+    def get_gradient(self, tdm, params_recarray, fitparam_id, tl=None):
+        """Retrieves the gradient of the PDF ratio w.r.t. the given parameter.
+        This method must be called after the ``get_ratio`` method.
 
         Parameters
         ----------
-        tdm : TrialDataManager instance
-            The instance of TrialDataManager that should be used to get the
-            trial data from.
-        params : dict
-            The dictionary with the parameter names and values.
-        fitparam_name : str
-            The name of the fit parameter for which the gradient should
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data.
+        params_recarray : instance of numpy record ndarray | None
+            The (N_models,)-shaped numpy record ndarray holding the parameter
+            names and values of the models.
+            See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
+            This can be ``None``, if the signal and background PDFs do not
+            depend on any parameters.
+        fitparam_id : int
+            The ID of the global fit parameter for which the gradient should
             get calculated.
+        tl : instance of TimeLord | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
 
         Returns
         -------
-        gradient : (N_events,)-shaped 1d numpy ndarray of float
-            The PDF ratio gradient value for each trial event.
+        grad : instance of ndarray
+            The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
+            ratio gradient value for each source and trial event.
         """
         if (tdm.trial_data_state_id != self._cache_trial_data_state_id) or\
-           (make_dict_hash(params) != self._cache_params_hash):
+           (np.all(np.isclose(params_recarray, self._cache_params_recarray))):
             raise RuntimeError(
                 'The get_ratio method must be called prior to the get_gradient '
                 'method!')
 
         # Create the 1D return array for the gradient.
-        grad = np.zeros((tdm.n_selected_events,), dtype=np.float64)
+        grad = np.zeros_like(self._cache_sig_pd, dtype=np.float64)
 
-        # Calculate the gradient for the given fit parameter.
+        # Calculate the gradient for the given parameter.
         # There are four cases:
-        #   1) Neither the signal nor the background PDF depend on the fit
+        #   1) Neither the signal nor the background PDF depend on the
         #      parameter.
-        #   2) Only the signal PDF depends on the fit parameter.
-        #   3) Only the background PDF depends on the fit parameter.
-        #   4) Both, the signal and the background PDF depend on the fit
+        #   2) Only the signal PDF depends on the parameter.
+        #   3) Only the background PDF depends on the parameter.
+        #   4) Both, the signal and the background PDF depend on the
         #      parameter.
-        sig_pdf_param_set = self._sig_pdf.param_set
-        bkg_pdf_param_set = self._bkg_pdf.param_set
-
-        sig_dep = sig_pdf_param_set.has_floating_param(fitparam_name)
-        bkg_dep = bkg_pdf_param_set.has_floating_param(fitparam_name)
+        sig_dep = fitparam_id in self._cache_sig_grads
+        bkg_dep = fitparam_id in self._cache_bkg_grads
 
         if sig_dep and not bkg_dep:
             # Case 2, which should be the most common case.
-            # Get the signal grad idx for that fit parameter.
-            sig_pidx = sig_pdf_param_set.get_floating_pidx(fitparam_name)
-            bkgprob = self._cache_bkgprob
-            m = bkgprob > 0
-            grad[m] = self._cache_siggrads[sig_pidx][m] / bkgprob[m]
+            bkg_pd = self._cache_bkg_pd
+            m = bkg_pd > 0
+            grad[m] = self._cache_sig_grads[fitparam_id][m] / bkg_pd[m]
             return grad
         if (not sig_dep) and (not bkg_dep):
-            # Case 1. Returns zeros.
+            # Case 1. Return zeros.
             return grad
 
         if sig_dep and bkg_dep:
             # Case 4.
-            sig_pidx = sig_pdf_param_set.get_floating_pidx(fitparam_name)
-            bkg_pidx = bkg_pdf_param_set.get_floating_pidx(fitparam_name)
-            m = self._cache_bkgprob > 0
-            s = self._cache_sigprob[m]
-            b = self._cache_bkgprob[m]
-            sgrad = self._cache_siggrads[sig_pidx][m]
-            bgrad = self._cache_bkggrads[bkg_pidx][m]
+            m = self._cache_bkg_pd > 0
+            s = self._cache_sig_pd[m]
+            b = self._cache_bkg_pd[m]
+            sgrad = self._cache_sig_grads[fitparam_id][m]
+            bgrad = self._cache_bkg_grads[fitparam_id][m]
             # Make use of quotient rule of differentiation.
             grad[m] = (sgrad * b - bgrad * s) / b**2
             return grad
 
         # Case 3.
-        bkg_pidx = bkg_pdf_param_set.get_floating_pidx(fitparam_name)
-        bkgprob = self._cache_bkgprob
-        m = bkgprob > 0
+        m = self._cache_bkg_pd > 0
         grad[m] = (
-            -self._cache_sigprob[m] / bkgprob[m]**2 *
-            self._cache_bkggrads[bkg_pidx][m]
+            -self._cache_sig_pd[m] / self._cache_bkg_pd[m]**2 *
+            self._cache_bkg_grads[fitparam_id][m]
         )
         return grad
 
@@ -1137,86 +1147,83 @@ class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
 
 
 class SigSetOverBkgPDFRatio(PDFRatio):
-    """Class for a PDF ratio class that takes a PDFSet of PDF type
-    *pdf_type* as signal PDF and a PDF of type *pdf_type* as background PDF.
-    The signal PDF depends on signal fit parameters and a interpolation method
-    defines how the PDF ratio gets interpolated between the fit parameter
+    """Class for a PDF ratio class that takes a PDFSet as signal PDF and a PDF
+    as background PDF.
+    The signal PDF depends on signal parameters and an interpolation method
+    defines how the PDF ratio gets interpolated between the parameter grid
     values.
     """
     def __init__(
             self,
-            signalpdfset,
-            backgroundpdf,
-            interpolmethod=None,
+            sig_pdf_set,
+            bkg_pdf,
+            interpolmethod_cls=None,
             **kwargs):
         """Constructor called by creating an instance of a class which is
         derived from this PDFRatio class.
 
         Parameters
         ----------
-        signalpdfset : class instance derived from PDFSet (for PDF type
-                       ``pdf_type``), and IsSignalPDF
+        sig_pdf_set : instance of PDFSet and instance of IsSignalPDF
             The PDF set, which provides signal PDFs for a set of
-            discrete signal fit parameters.
-        backgroundpdf : class instance derived from ``pdf_type``, and
-                        IsBackgroundPDF
+            discrete signal parameter values.
+        bkg_pdf : instance of PDF and instance of IsBackgroundPDF
             The background PDF instance.
-        interpolmethod : class of GridManifoldInterpolationMethod | None
-            The class implementing the fit parameter interpolation method for
-            the PDF ratio manifold grid.
-            If set to None (default), the
-            Parabola1DGridManifoldInterpolationMethod will be used for
-            1-dimensional parameter manifolds.
+        interpolmethod_cls : class of GridManifoldInterpolationMethod | None
+            The class implementing the parameter interpolation method for
+            the PDF ratio manifold grid. If set to ``None`` (default), the
+            :class:`skyllh.core.interpolate.Parabola1DGridManifoldInterpolationMethod`
+            will be used for 1-dimensional parameter manifolds.
         """
-        # Call super to allow for multiple class inheritance.
-        super().__init__(**kwargs)
+        super().__init__(
+            sig_param_names=sig_pdf_set.param_grid_set.param_names,
+            bkg_param_names=bkg_pdf.param_set.param_names,
+            **kwargs)
 
-        self.signalpdfset = signalpdfset
-        self.backgroundpdf = backgroundpdf
+        self.sig_pdf_set = sig_pdf_set
+        self.bkg_pdf = bkg_pdf
 
-        # Define the default fit parameter interpolation method. The default
-        # depends on the dimensionality of the fit parameter manifold.
-        if interpolmethod is None:
-            ndim = signalpdfset.fitparams_grid_set.ndim
+        # Define the default parameter interpolation method. The default
+        # depends on the dimensionality of the parameter manifold.
+        if interpolmethod_cls is None:
+            ndim = self._sig_pdf_set.param_grid_set.ndim
             if ndim == 1:
-                interpolmethod = Parabola1DGridManifoldInterpolationMethod
+                interpolmethod_cls = Parabola1DGridManifoldInterpolationMethod
             else:
                 raise ValueError(
-                    'There is no default fit parameter manifold grid '
-                    f'interpolation method available for {ndim} dimensions!')
-        self.interpolmethod = interpolmethod
-
-        # Generate the list of signal fit parameter names once here.
-        self._cache_signal_fitparam_name_list = self.signal_fitparam_names
+                    'There is no default parameter manifold grid '
+                    f'interpolation method class available for {ndim} '
+                    'dimensions!')
+        self.interpolmethod_cls = interpolmethod_cls
 
     @property
-    def backgroundpdf(self):
+    def bkg_pdf(self):
         """The background PDF instance, derived from IsBackgroundPDF.
         """
-        return self._bkgpdf
+        return self._bkg_pdf
 
-    @backgroundpdf.setter
-    def backgroundpdf(self, pdf):
+    @bkg_pdf.setter
+    def bkg_pdf(self, pdf):
         if not isinstance(pdf, IsBackgroundPDF):
             raise TypeError(
-                'The backgroundpdf property must be an object derived '
+                'The bkg_pdf property must be an instance derived from '
                 'IsBackgroundPDF!')
-        self._bkgpdf = pdf
+        self._bkg_pdf = pdf
 
     @property
-    def signalpdfset(self):
+    def sig_pdf_set(self):
         """The signal PDFSet instance, derived from IsSignalPDF.
         """
-        return self._sigpdfset
+        return self._sig_pdf_set
 
-    @signalpdfset.setter
-    def signalpdfset(self, pdfset):
+    @sig_pdf_set.setter
+    def sig_pdf_set(self, pdfset):
         if not (isinstance(pdfset, PDFSet) and
                 isinstance(pdfset, IsSignalPDF)):
             raise TypeError(
-                'The signalpdfset property must be a class instance which is '
+                'The sig_pdf_set property must be a class instance which is '
                 'derived from PDFSet and IsSignalPDF!')
-        self._sigpdfset = pdfset
+        self._sig_pdf_set = pdfset
 
     @property
     def interpolmethod(self):
@@ -1232,40 +1239,3 @@ class SigSetOverBkgPDFRatio(PDFRatio):
                 'The interpolmethod property must be a sub-class '
                 'of GridManifoldInterpolationMethod!')
         self._interpolmethod = cls
-
-    def _get_signal_fitparam_names(self):
-        """Returns the list of signal fit parameter names this PDF ratio is a
-        function of. The list is taken from the fit parameter grid set of the
-        signal PDFSet object. By construction this parameter grid set defines
-        the signal fit parameters.
-        """
-        return self._sigpdfset.fitparams_grid_set.parameter_names
-
-    def convert_signal_fitparam_name_into_index(self, signal_fitparam_name):
-        """Converts the given signal fit parameter name into the parameter
-        index, i.e. the position of parameter in the signal parameter grid set.
-
-        Parameters
-        ----------
-        signal_fitparam_name : str
-            The name of the signal fit parameter.
-
-        Returns
-        -------
-        index : int
-            The index of the signal fit parameter.
-        """
-        # If there is only one signal fit parameter, we just return index 0.
-        if len(self._cache_signal_fitparam_name_list) == 1:
-            return 0
-
-        # At this point we have to loop through the list and do name
-        # comparisons.
-        for (index, name) in enumerate(self._cache_signal_fitparam_name_list):
-            if name == signal_fitparam_name:
-                return index
-
-        # At this point there is no parameter defined.
-        raise KeyError(
-            f'The PDF ratio "{classname(self)}" has no signal fit parameter '
-            f'named "{signal_fitparam_name}"!')
