@@ -388,6 +388,13 @@ class TrialDataManager(object):
         # parameter value changes.
         self._global_fitparam_data_fields_dict = OrderedDict()
 
+        # Define the member variable that will hold the number of sources.
+        self._n_sources = None
+
+        # Define the member variable that will hold the total number of events
+        # of the dataset this TrialDataManager belongs to.
+        self._n_events = None
+
         # Define the member variable that will hold the raw events for which the
         # data fields get calculated.
         self._events = None
@@ -432,6 +439,13 @@ class TrialDataManager(object):
                 'The events property must be an instance of '
                 f'DataFieldRecordArray! It is of type {classname(arr)}!')
         self._events = arr
+
+    @property
+    def n_sources(self):
+        """(read-only) The number of sources. This information is taken from
+        the source hypo group manager when a new trial is initialized.
+        """
+        return self._n_sources
 
     @property
     def n_events(self):
@@ -675,22 +689,53 @@ class TrialDataManager(object):
             shg_mgr=shg_mgr,
             pmm=pmm)
 
-    def get_expected_events_array_size(self):
-        """Returns the expected size of the events array after a PDF
+    def get_n_values(self):
+        """Returns the expected size of the values array after a PDF
         evaluation, which will include PDF values for all trial data events and
         all sources.
 
         Returns
         -------
         n : int
-            The length of the expected events array after a PDF evaluation.
+            The length of the expected values array after a PDF evaluation.
         """
-        n = len(self._src_evt_idxs)
-
-        if n is None:
+        if self._src_evt_idxs is None:
             return self._n_sources * self.n_selected_events
 
-        return n
+        return len(self._src_evt_idxs[0])
+
+    def get_values_mask_for_source_mask(self, src_mask):
+        """Creates a boolean mask for the values array where entries belonging
+        to the sources given by the source mask are selected.
+
+        Parameters
+        ----------
+        src_mask : instance of numpy ndarray
+            The (N_sources,)-shaped numpy ndarray holding the boolean selection
+            of the sources.
+
+        Returns
+        -------
+        values_mask : instance of numpy ndarray
+            The (N_values,)-shaped numpy ndarray holding the boolean selection
+            of the values.
+        """
+        if self._src_evt_idxs is None:
+            values_mask = np.repeat(src_mask, self.n_selected_events)
+            return values_mask
+
+        tdm_src_idxs = self.src_evt_idxs[0]
+        src_idxs = np.arange(self.n_sources)[src_mask]
+
+        values_mask = np.zeros((self.get_n_values(),), dtype=np.bool_)
+
+        def make_values_mask(src_idx):
+            global values_mask
+            values_mask |= tdm_src_idxs == src_idx
+
+        np.vectorize(make_values_mask)(src_idxs)
+
+        return values_mask
 
     def add_source_data_field(
             self,
