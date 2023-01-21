@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from numpy.lib.recfunctions import repack_fields
 import scipy.interpolate
 
 from skyllh.core.py import (
@@ -205,33 +206,49 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
                 'PDFRatioFillMethod!')
         self._fillmethod = obj
 
-    def _create_cache(self, trial_data_state_id, params_recarray, ratio, grads):
+    def _create_cache(
+            self,
+            trial_data_state_id,
+            params_recarray,
+            ratio,
+            grads):
         """Creates a cache dictionary holding cache data.
-        """
-        params = dict()
-        if params_recarray is not None:
-            for pname in self.param_names:
-                params[pname] = np.copy(params_recarray[pname])
 
+        Parameters
+        ----------
+        trial_data_state_id : int | None
+            The trial data state ID of the TrialDataManager.
+        params_recarray : instance of numpy record ndarray | None
+            The numpy record ndarray of length N_sources holding the parameter
+            names and values necessary for the interpolation for all sources.
+        ratio : instance of numpy ndarray
+            The (N_values,)-shaped numpy ndarray holding the PDF ratio values
+            for all sources and trial events.
+        grads : instance of numpy ndarray
+            The (D,N_values)-shaped numpy ndarray holding the gradients for each
+            PDF ratio value w.r.t. each interpolation parameter.
+        """
         cache = {
             'trial_data_state_id': trial_data_state_id,
-            'params': params,
+            'params_recarray': params_recarray,
             'ratio': ratio,
             'grads': grads
         }
 
         return cache
 
-    def _is_cached(self, tdm, params_recarray):
-        """Checks if the ratio and gradients for the given set of parameters
-        are already cached.
+    def _is_cached(self, trial_data_state_id, params_recarray):
+        """Checks if the ratio and gradients for the given set of interpolation
+        parameters are already cached.
         """
-        if self._cache['trial_data_state_id'] != tdm.trial_data_state_id:
+        if self._cache['trial_data_state_id'] is None:
             return False
 
-        for (pname, pvals) in self._cache['params'].items():
-            if not np.all(np.isclose(pvals, params_recarray[pname])):
-                return False
+        if self._cache['trial_data_state_id'] != trial_data_state_id:
+            return False
+
+        if not np.all(self._cache['params_recarray'] == params_recarray):
+            return False
 
         return True
 
@@ -257,8 +274,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             N_events is the number of events, and V the dimensionality of the
             event data.
         gridparams_recarray : instance of numpy record ndarray
-            The numpy record ndarray with the parameter names and values on the
-            grid for all sources.
+            The numpy record ndarray with the parameter names and values needed
+            for the interpolation on the grid for all sources.
         src_idxs : instance of numpy ndarray
             The (N_sources,)-shaped ndarray holding the indices of the sources
             for which the splines should get evaluated.
@@ -300,6 +317,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
         for (sidx, p_values) in zip(src_idxs, gridparams_recarray):
             gridparams = dict(zip(self._interpol_param_names, p_values))
             gridparams_hash = make_dict_hash(gridparams)
+
             spline = self._gridparams_hash_log_ratio_spline_dict[
                 gridparams_hash]
 
@@ -327,10 +345,19 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
 
         return values
 
-    def _calculate_ratio_and_gradients(self, tdm, params_recarray):
-        """Calculates the ratio values and ratio gradients for all the trial
-        events and sources given the source parameter values.
-        It caches the results.
+    def _calculate_ratio_and_grads(self, tdm, interpol_params_recarray):
+        """Calculates the ratio values and ratio gradients for all the sources
+        and trial events given the source parameter values.
+        The result is stored in the class member variable ``_cache``.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial data.
+        interpol_params_recarray : instance of numpy record ndarray
+            The numpy record ndarray of length N_sources holding the parameter
+            names and values for all sources.
+            It must contain only the parameters necessary for the interpolation.
         """
         # Create a 2D event data array holding only the needed event data fields
         # for the PDF ratio spline evaluation.
@@ -339,7 +366,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
         (ratio, grads) = self._interpolmethod(
             tdm=tdm,
             eventdata=eventdata,
-            params_recarray=params_recarray)
+            params_recarray=interpol_params_recarray)
 
         # The interpolation works on the logarithm of the ratio spline, hence
         # we need to transform it using the exp function, and we need to account
@@ -350,12 +377,12 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
         # Cache the value and the gradients.
         self._cache = self._create_cache(
             trial_data_state_id=tdm.trial_data_state_id,
-            params_recarray=params_recarray,
+            params_recarray=interpol_params_recarray,
             ratio=ratio,
             grads=grads
         )
 
-    def get_ratio(self, tdm, params_recarray=None, tl=None):
+    def get_ratio(self, tdm, params_recarray, tl=None):
         """Retrieves the PDF ratio values for each given trial event data, given
         the given set of fit parameters. This method is called during the
         likelihood maximization process.
@@ -371,26 +398,31 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             The (N_models,)-shaped numpy record ndarray holding the parameter
             names and values of the models.
             See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
-            This can be ``None``, if the signal and background PDFs do not
-            depend on any parameters.
-        tl : TimeLord instance | None
+        tl : instance of TimeLord | None
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratio : 1d ndarray of float
-            The PDF ratio value for each given event.
+        ratio : instance of numpy ndarray
+            The (N_values,)-shaped numpy ndarray of float holding the PDF ratio
+            value for each source and trial event.
         """
+        # Select only the parameters necessary for the interpolation.
+        interpol_params_recarray = repack_fields(
+            params_recarray[self._interpol_param_names])
+
         # Check if the ratio values are already cached.
-        if self._is_cached(tdm=tdm, params_recarray=params_recarray):
-            return self._cache_ratio
+        if self._is_cached(
+               trial_data_state_id=tdm.trial_data_state_id,
+               params_recarray=interpol_params_recarray):
+            return self._cache['ratio']
 
-        self._calculate_ratio_and_gradients(
+        self._calculate_ratio_and_grads(
             tdm=tdm,
-            params_recarray=params_recarray)
+            params_recarray=interpol_params_recarray)
 
-        return self._cache_ratio
+        return self._cache['ratio']
 
     def get_gradient(self, tdm, params_recarray, fitparam_id, tl=None):
         """Retrieves the PDF ratio gradient for the given fit parameter.
@@ -401,11 +433,9 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             The TrialDataManager instance holding the trial event data for which
             the PDF ratio gradient values should get calculated.
         params_recarray : instance of numpy record ndarray | None
-            The (N_models,)-shaped numpy record ndarray holding the parameter
-            names and values of the models.
+            The (N_sources,)-shaped numpy record ndarray holding the parameter
+            names and values of all sources.
             See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
-            This can be ``None``, if the signal and background PDFs do not
-            depend on any parameters.
         fitparam_id : int
             The ID of the global fit parameter for which the gradient should
             get calculated.
@@ -420,10 +450,18 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             for all sources and trial events w.r.t. the given global fit
             parameter.
         """
+        # Select only the parameters necessary for the interpolation.
+        interpol_params_recarray = repack_fields(
+            params_recarray[self._interpol_param_names])
+
         # Calculate the gradients if necessary.
-        if not self._is_cached(tdm=tdm, params_recarray=params_recarray):
-            self._calculate_ratio_and_gradients(
-                tdm=tdm, params_recarray=params_recarray)
+        if not self._is_cached(
+            trial_data_state_id=tdm.trial_data_state_id,
+            params_recarray=interpol_params_recarray
+        ):
+            self._calculate_ratio_and_grads(
+                tdm=tdm,
+                params_recarray=interpol_params_recarray)
 
         tdm_n_sources = tdm.n_sources
 
@@ -443,11 +481,11 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
                 # This parameter applies to all sources, hence to all values,
                 # and hence it's the only local parameter contributing to the
                 # global parameter fitparam_id.
-                return self._cache_grads[pidx]
+                return self._cache['grads'][pidx]
 
             # The current parameter does not apply to all sources.
             # Create a values mask that matches a given source mask.
             values_mask = tdm.get_values_mask_for_source_mask(src_mask)
-            grad[values_mask] = self._cache_grads[pidx][values_mask]
+            grad[values_mask] = self._cache['grads'][pidx][values_mask]
 
         return grad
