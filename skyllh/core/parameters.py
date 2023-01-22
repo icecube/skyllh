@@ -974,7 +974,8 @@ class ParameterSet(object):
 
 
 class ParameterSetArray(object):
-    """This class provides a data holder for an array of ParameterSet instances.
+    """This class is DEPRECATED!
+    This class provides a data holder for an array of ParameterSet instances.
     Given an array of global floating parameter values, it can split that array
     into floating parameter value sub arrays, one for each ParameterSet instance
     of this ParameterSetArray instance. This functionality is required in
@@ -1441,8 +1442,7 @@ class ParameterGridSet(NamedObjectCollection):
 
         Parameters
         ----------
-        param_grids : sequence of ParameterGrid instances |
-                ParameterGrid instance | None
+        param_grids : sequence of ParameterGrid instances | ParameterGrid instance | None
             The ParameterGrid instances this ParameterGridSet instance should
             get initialized with.
         """
