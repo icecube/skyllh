@@ -641,6 +641,11 @@ class NamedObjectCollection(ObjectCollection):
             obj_type=obj_type,
             **kwargs)
 
+        if not hasattr(self.obj_type, 'name'):
+            raise TypeError(
+                f'The object type {classname(self.obj_type)} has no attribute '
+                'named "name"!')
+
     @property
     def name_list(self):
         """(read-only) The list of the names of all the objects of this
