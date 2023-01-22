@@ -459,7 +459,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         src_idxs = all_src_idxs[src_mask]
 
         values_mask = get_make_values_mask(src_idxs)(tdm_src_idxs)
-        N_values = np.count_nonzero(values_mask)
+        n_values = np.count_nonzero(values_mask)
 
         gridparams_recarray_x0 = np.array(
             x0[src_mask],
@@ -469,7 +469,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray_x0,
             src_idxs=src_idxs,
-            N_values=N_values,
+            n_values=n_values,
             ret_gridparams_recarray=False)
 
         gridparams_recarray_x0 = np.array(
@@ -480,7 +480,8 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray_x0,
-            N_values=N_values,
+            src_idxs=src_idxs,
+            n_values=n_values,
             ret_gridparams_recarray=True)
 
         gridparams_recarray_x1 = np.array(
@@ -491,7 +492,8 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray_x1,
-            N_values=N_values,
+            src_idxs=src_idxs,
+            n_values=n_values,
             ret_gridparams_recarray=True)
 
         m[values_mask] = (M1 - M0) / (x1_recarr[xname] - x0_recarr[xname])
@@ -504,7 +506,7 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         src_idxs = all_src_idxs[src_mask]
 
         values_mask = get_make_values_mask(src_idxs)(tdm_src_idxs)
-        N_values = np.count_nonzero(values_mask)
+        n_values = np.count_nonzero(values_mask)
 
         gridparams_recarray_x0 = np.array(
             x0[src_mask],
@@ -513,7 +515,8 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray_x0,
-            N_values=N_values,
+            src_idxs=src_idxs,
+            n_values=n_values,
             ret_gridparams_recarray=True)
 
         gridparams_recarray_x1 = np.array(
@@ -523,7 +526,8 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray_x1,
-            N_values=N_values,
+            src_idxs=src_idxs,
+            n_values=n_values,
             ret_gridparams_recarray=True)
 
         m[values_mask] = (M1 - M0) / (x1_recarr[xname] - x0_recarr[xname])
