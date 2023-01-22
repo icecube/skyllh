@@ -398,12 +398,22 @@ def get_number_of_float_decimals(value):
     -------
     decimals : int
         The number of decimals of value which are non-zero.
+
+    Raises
+    ------
+    ValueError
+        If a nan value was provided.
     """
+    if np.isnan(value):
+        raise ValueError(
+            'The provided value is nan!')
+
     val_str = '{:.16f}'.format(value)
     (val_num_str, val_decs_str) = val_str.split('.', 1)
     for idx in range(len(val_decs_str)-1, -1, -1):
-        if(int(val_decs_str[idx]) != 0):
+        if int(val_decs_str[idx]) != 0:
             return idx+1
+
     return 0
 
 def make_dict_hash(d):
