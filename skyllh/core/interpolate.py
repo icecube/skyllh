@@ -37,23 +37,44 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
             trial event and source.
             The call signature of func must be:
 
-                ``__call__(tdm, eventdata, gridparams_recarray, src_idxs)``
+                ``__call__(tdm, eventdata, gridparams_recarray, src_idxs,
+                n_values, ret_gridparams_recarray)``
 
-            where ``tdm`` is the TrialDataManager instance holding the trial
-            data, ``gridparams_recarray`` is the numpy record ndarray of length
-            ``len(src_idxs)`` with the D parameter names and values on the grid
-            for all sources, and ``eventdata`` is a 2-dimensional
-            (N_events,V)-shaped numpy ndarray holding the event data, where
-            N_events is the number of events, and V the dimensionality of the
-            event data.
-            The return value of ``func`` should be the (N,)-shaped 1D ndarray
-            holding the values for each set of parameter values of the sources
-            given via the ``gridparams_recarray``. The length of the array, i.e.
-            N, depends on the ``src_evt_idx`` property of the TrialDataManager
-            and the requested set of sources via the ``src_idxs`` argument.
-            In the worst case N is N_sources * N_events.
-        param_grid_set : instance of ParameterGrid |
-                         instance of ParameterGridSet
+            The arguments are as follows:
+
+                tdm : instance of TrialDataManager
+                    The TrialDataManager instance holding the trial event data.
+                eventdata : instance of numpy ndarray
+                    A two-dimensional (N_events,V)-shaped numpy ndarray holding
+                    the event data, where N_events is the number of trial
+                    events, and V the dimensionality of the event data.
+                gridparams_recarray : instance of numpy record ndarray
+                    The numpy record ndarray of length ``len(src_idxs)`` with
+                    the D parameter names and values on the grid for all
+                    sources.
+                src_idxs : instance of numpy ndarray
+                    The (N_sources,)-shaped numpy ndarray holding the indices of
+                    the sources for which the function should be applied.
+                n_values : int
+                    The length of the output numpy ndarray of shape (n_values,).
+                ret_gridparams_recarray : bool
+                    The switch if the function should also return a numpy record
+                    ndarray of length ``n_values`` with the parameter values of
+                    ``gridparams_recarray`` are broadcasted to each value of the
+                    return array.
+
+            The return value of ``func`` should be the (n_values,)-shaped
+            one-dimensional ndarray holding the values for each set of parameter
+            values of the sources given via the ``gridparams_recarray``.
+            The length of the array, i.e. n_values, depends on the
+            ``src_evt_idx`` property of the TrialDataManager and the requested
+            set of sources via the ``src_idxs`` argument. In the worst case
+            n_values is N_sources * N_events.
+            In case ``ret_gridparams_recarray`` is set to ``True``, also a
+            numpy record ndarray of length ``n_values`` should be returned, that
+            holds the parameter values of ``gridparams_recarray`` broadcasted to
+            each value of the return array.
+        param_grid_set : instance of ParameterGrid | instance of ParameterGridSet
             The set of D parameter grids. This defines the grid of the
             manifold.
         """
