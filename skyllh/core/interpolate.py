@@ -283,7 +283,8 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         return (values, grads)
 
 
-class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
+class Linear1DGridManifoldInterpolationMethod(
+        GridManifoldInterpolationMethod):
     """This grid manifold interpolation method interpolates the 1-dimensional
     grid manifold using a line.
     """
@@ -547,7 +548,8 @@ class Linear1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         return (values, np.atleast_2d(m))
 
 
-class Parabola1DGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
+class Parabola1DGridManifoldInterpolationMethod(
+        GridManifoldInterpolationMethod):
     """This grid manifold interpolation method interpolates the 1-dimensional
     grid manifold using a parabola.
     """
