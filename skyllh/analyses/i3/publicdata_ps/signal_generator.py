@@ -8,6 +8,7 @@ from skyllh.core.py import (
     float_cast,
     int_cast
 )
+from skyllh.core.signal_generator import SignalGeneratorBase
 from skyllh.core.llhratio import LLHRatio
 from skyllh.core.dataset import Dataset
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
@@ -260,7 +261,7 @@ class PDDatasetSignalGenerator(object):
         return events
 
 
-class PDSignalGenerator(object):
+class PDSignalGenerator(SignalGeneratorBase):
     """This class provides a signal generation method for a point-like source
     seen in the IceCube detector using the 10 years public data release.
     """

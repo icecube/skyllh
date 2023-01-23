@@ -254,7 +254,7 @@ def create_analysis(
         fitparam_ns,
         test_statistic,
         bkg_gen_method,
-        custom_sig_generator=PDSignalGenerator
+        sig_generator_cls=PDSignalGenerator
     )
 
     # Define the event selection method for pure optimization purposes.
