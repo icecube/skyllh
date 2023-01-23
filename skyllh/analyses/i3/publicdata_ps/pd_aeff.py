@@ -115,12 +115,12 @@ class PDAeff(object):
             should get pre-calculated using the ``get_detection_prob_for_decnu``
             method.
         min_log10enu : float | None
-            The minimum log10(E_nu/GeV) value that should get used for
+            The minimum log10(E_nu/GeV) value that should be used for
             calculating the detection probability.
             If None, the lowest available neutrino energy bin edge of the
             effective area is used.
         max_log10enu : float | None
-            The maximum log10(E_nu/GeV) value that should get used for
+            The maximum log10(E_nu/GeV) value that should be used for
             calculating the detection probability.
             If None, the highest available neutrino energy bin edge of the
             effective area is used.
@@ -153,13 +153,24 @@ class PDAeff(object):
              self._log10_enu_binedges_upper[-1:])
         )
 
-        # Pre-calculate detection probabilities for certain neutrino
-        # declinations if requested.
+        # Pre-calculate detection probabilities for a certain neutrino
+        # declination if requested.
         if src_dec is not None:
+            # Ignore bins where Aeff = 0.
+            m = self.get_aeff_for_decnu(src_dec) > 0
             if min_log10enu is None:
-                min_log10enu = self._log10_enu_binedges_lower[0]
+                min_log10enu = self._log10_enu_binedges_lower[m][0]
+            else:
+                min_log10enu = max(
+                    self._log10_enu_binedges_lower[m][0],
+                    min_log10enu)
+
             if max_log10enu is None:
-                max_log10enu = self._log10_enu_binedges_upper[-1]
+                max_log10enu = self._log10_enu_binedges_upper[m][-1]
+            else:
+                max_log10enu = min(
+                    self._log10_enu_binedges_upper[m][-1],
+                    max_log10enu)
 
             m = (
                 (self.log10_enu_bincenters >= min_log10enu) &
@@ -267,24 +278,24 @@ class PDAeff(object):
 
         return aeff
 
-    #def get_detection_pd_for_sin_true_dec(self, sin_true_dec, true_e):
-        #"""Calculates the detection probability density p(E_nu|sin_dec) in
-        #unit GeV^-1 for the given true energy values.
+    # def get_detection_pd_for_sin_true_dec(self, sin_true_dec, true_e):
+        # """Calculates the detection probability density p(E_nu|sin_dec) in
+        # unit GeV^-1 for the given true energy values.
 
-        #Parameters
-        #----------
+        # Parameters
+        # ----------
         #sin_true_dec : float
-            #The sin of the true declination.
-        #true_e : (n,)-shaped 1d numpy ndarray of float
-            #The values of the true energy in GeV for which the probability
-            #density value should get calculated.
+        # The sin of the true declination.
+        # true_e : (n,)-shaped 1d numpy ndarray of float
+        # The values of the true energy in GeV for which the probability
+        # density value should get calculated.
 
-        #Returns
-        #-------
-        #det_pd : (n,)-shaped 1d numpy ndarray of float
-            #The detection probability density values for the given true energy
-            #value.
-        #"""
+        # Returns
+        # -------
+        # det_pd : (n,)-shaped 1d numpy ndarray of float
+        # The detection probability density values for the given true energy
+        # value.
+        # """
         #aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
 
         #dE = np.diff(np.power(10, self.log_true_e_binedges))
@@ -297,39 +308,39 @@ class PDAeff(object):
 
         #det_pd = interpolate.splev(true_e, tck, der=0)
 
-        #return det_pd
+        # return det_pd
 
-    #def get_detection_pd_in_log10E_for_sin_true_dec(
-            #self, sin_true_dec, log10_true_e):
-        #"""Calculates the detection probability density p(E_nu|sin_dec) in
-        #unit log10(GeV)^-1 for the given true energy values.
+    # def get_detection_pd_in_log10E_for_sin_true_dec(
+        # self, sin_true_dec, log10_true_e):
+        # """Calculates the detection probability density p(E_nu|sin_dec) in
+        # unit log10(GeV)^-1 for the given true energy values.
 
-        #Parameters
-        #----------
+        # Parameters
+        # ----------
         #sin_true_dec : float
-            #The sin of the true declination.
-        #log10_true_e : (n,)-shaped 1d numpy ndarray of float
-            #The log10 values of the true energy in GeV for which the
-            #probability density value should get calculated.
+        # The sin of the true declination.
+        # log10_true_e : (n,)-shaped 1d numpy ndarray of float
+        # The log10 values of the true energy in GeV for which the
+        # probability density value should get calculated.
 
-        #Returns
-        #-------
-        #det_pd : (n,)-shaped 1d numpy ndarray of float
-            #The detection probability density values for the given true energy
-            #value.
-        #"""
+        # Returns
+        # -------
+        # det_pd : (n,)-shaped 1d numpy ndarray of float
+        # The detection probability density values for the given true energy
+        # value.
+        # """
         #aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
 
         #dlog10E = np.diff(self.log_true_e_binedges)
 
         #det_pdf = aeff / np.sum(aeff) / dlog10E
 
-        #spl = interpolate.splrep(
-            #self.log_true_e_bincenters, det_pdf, k=1, s=0)
+        # spl = interpolate.splrep(
+        # self.log_true_e_bincenters, det_pdf, k=1, s=0)
 
         #det_pd = interpolate.splev(log10_true_e, spl, der=0)
 
-        #return det_pd
+        # return det_pd
 
     def get_detection_prob_for_decnu(
             self, decnu, enu_min, enu_max, enu_range_min, enu_range_max):
@@ -430,58 +441,58 @@ class PDAeff(object):
 
         return det_prob
 
-    #def get_aeff_integral_for_sin_true_dec(
-            #self, sin_true_dec, log_true_e_min, log_true_e_max):
-        #"""Calculates the integral of the effective area using the trapezoid
-        #method.
+    # def get_aeff_integral_for_sin_true_dec(
+        # self, sin_true_dec, log_true_e_min, log_true_e_max):
+        # """Calculates the integral of the effective area using the trapezoid
+        # method.
 
-        #Returns
-        #-------
+        # Returns
+        # -------
         #integral : float
-            #The integral in unit cm^2 GeV.
-        #"""
+        # The integral in unit cm^2 GeV.
+        # """
         #aeff = self.get_aeff_for_sin_true_dec(sin_true_dec)
 
-        #integral = (
-            #(np.power(10, log_true_e_max) -
-             #np.power(10, log_true_e_min)) *
-            #0.5 *
-            #(np.interp(log_true_e_min, self.log_true_e_bincenters, aeff) +
-             #np.interp(log_true_e_max, self.log_true_e_bincenters, aeff))
-        #)
+        # integral = (
+        # (np.power(10, log_true_e_max) -
+        # np.power(10, log_true_e_min)) *
+        # 0.5 *
+        # (np.interp(log_true_e_min, self.log_true_e_bincenters, aeff) +
+        # np.interp(log_true_e_max, self.log_true_e_bincenters, aeff))
+        # )
 
-        #return integral
+        # return integral
 
-    #def get_aeff(self, sin_true_dec, log_true_e):
-        #"""Retrieves the effective area for the given sin(dec_true) and
-        #log(E_true) value pairs.
+    # def get_aeff(self, sin_true_dec, log_true_e):
+        # """Retrieves the effective area for the given sin(dec_true) and
+        # log(E_true) value pairs.
 
-        #Parameters
-        #----------
-        #sin_true_dec : (n,)-shaped 1D ndarray
-            #The sin(dec_true) values.
-        #log_true_e : (n,)-shaped 1D ndarray
-            #The log(E_true) values.
+        # Parameters
+        # ----------
+        # sin_true_dec : (n,)-shaped 1D ndarray
+        # The sin(dec_true) values.
+        # log_true_e : (n,)-shaped 1D ndarray
+        # The log(E_true) values.
 
-        #Returns
-        #-------
-        #aeff : (n,)-shaped 1D ndarray
-            #The 1D ndarray holding the effective area values for each value
-            #pair. For value pairs outside the effective area data zero is
-            #returned.
-        #"""
-        #valid = (
-            #(sin_true_dec >= self.sin_true_dec_binedges[0]) &
-            #(sin_true_dec <= self.sin_true_dec_binedges[-1]) &
-            #(log_true_e >= self.log_true_e_binedges[0]) &
-            #(log_true_e <= self.log_true_e_binedges[-1])
-        #)
-        #sin_true_dec_idxs = np.digitize(
-            #sin_true_dec[valid], self.sin_true_dec_binedges) - 1
-        #log_true_e_idxs = np.digitize(
-            #log_true_e[valid], self.log_true_e_binedges) - 1
+        # Returns
+        # -------
+        # aeff : (n,)-shaped 1D ndarray
+        # The 1D ndarray holding the effective area values for each value
+        # pair. For value pairs outside the effective area data zero is
+        # returned.
+        # """
+        # valid = (
+        # (sin_true_dec >= self.sin_true_dec_binedges[0]) &
+        # (sin_true_dec <= self.sin_true_dec_binedges[-1]) &
+        # (log_true_e >= self.log_true_e_binedges[0]) &
+        #(log_true_e <= self.log_true_e_binedges[-1])
+        # )
+        # sin_true_dec_idxs = np.digitize(
+        # sin_true_dec[valid], self.sin_true_dec_binedges) - 1
+        # log_true_e_idxs = np.digitize(
+        # log_true_e[valid], self.log_true_e_binedges) - 1
 
         #aeff = np.zeros((len(valid),), dtype=np.double)
         #aeff[valid] = self.aeff_arr[sin_true_dec_idxs,log_true_e_idxs]
 
-        #return aeff
+        # return aeff
