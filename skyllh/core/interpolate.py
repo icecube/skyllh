@@ -37,8 +37,8 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
             trial event and source.
             The call signature of func must be:
 
-                ``__call__(tdm, eventdata, gridparams_recarray, src_idxs,
-                n_values, ret_gridparams_recarray)``
+                ``__call__(tdm, eventdata, gridparams_recarray, n_values,
+                ret_gridparams_recarray)``
 
             The arguments are as follows:
 
@@ -52,9 +52,6 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
                     The numpy record ndarray of length ``len(src_idxs)`` with
                     the D parameter names and values on the grid for all
                     sources.
-                src_idxs : instance of numpy ndarray
-                    The (N_sources,)-shaped numpy ndarray holding the indices of
-                    the sources for which the function should be applied.
                 n_values : int
                     The length of the output numpy ndarray of shape (n_values,).
                 ret_gridparams_recarray : bool
@@ -67,8 +64,7 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
             one-dimensional ndarray holding the values for each set of parameter
             values of the sources given via the ``gridparams_recarray``.
             The length of the array, i.e. n_values, depends on the
-            ``src_evt_idx`` property of the TrialDataManager and the requested
-            set of sources via the ``src_idxs`` argument. In the worst case
+            ``src_evt_idx`` property of the TrialDataManager. In the worst case
             n_values is N_sources * N_events.
             In case ``ret_gridparams_recarray`` is set to ``True``, also a
             numpy record ndarray of length ``n_values`` should be returned, that
@@ -412,11 +408,9 @@ class Linear1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 params_recarray=params_recarray)
 
-        self__p_grid = self.p_grid
-
         # Determine the nearest grid point that is lower than x and use that as
         # x0.
-        x0 = self__p_grid.round_to_lower_grid_point(x)
+        x0 = self.p_grid.round_to_lower_grid_point(x)
 
         # Check if the line parametrization for x0 is already cached.
         if self._is_cached(tdm.trial_data_state_id, x0):
@@ -432,107 +426,36 @@ class Linear1DGridManifoldInterpolationMethod(
         # Calculate the line parametrization for all the given events.
         self__func = self._func
 
-        x1 = self__p_grid.round_to_upper_grid_point(x)
+        x1 = self.p_grid.round_to_upper_grid_point(x)
 
         n_values = tdm.get_n_values()
-        N_sources = len(params_recarray)
-
-        all_src_idxs = np.arange(N_sources)
+        n_sources = len(params_recarray)
 
         values = np.empty((n_values,), dtype=np.float64)
         m = np.empty((n_values,), dtype=np.float64)
 
-        if tdm.src_evt_idxs is None:
-            tdm_src_idxs = np.repeat(all_src_idxs, N_sources)
-        else:
-            tdm_src_idxs = tdm.src_evt_idxs[0]
-
-        def get_make_values_mask(src_idxs):
-            return np.vectorize(lambda sidx: sidx in src_idxs)
-
-        # Calculate the values where the parameter values fall onto a grid
-        # point.
-        # In that case x0 and x1 are equal.
-        # The value will be of that grid point x0, but the gradient is
-        # calculated based on the two neighboring grid points of x0.
-        src_mask = x1 == x0
-
-        src_idxs = all_src_idxs[src_mask]
-
-        values_mask = get_make_values_mask(src_idxs)(tdm_src_idxs)
-        n_values = np.count_nonzero(values_mask)
-
-        gridparams_recarray_x0 = np.array(
-            x0[src_mask],
-            dtype=[(xname, np.float64)])
-        values[values_mask] = self__func(
-            tdm=tdm,
-            eventdata=eventdata,
-            gridparams_recarray=gridparams_recarray_x0,
-            src_idxs=src_idxs,
-            n_values=n_values,
-            ret_gridparams_recarray=False)
-
-        gridparams_recarray_x0 = np.array(
-            self__p_grid.round_to_nearest_grid_point(
-                x0[src_mask] - self__p_grid.delta),
+        gridparams_recarray = np.array(
+            x0,
             dtype=[(xname, np.float64)])
         (M0, x0_recarr) = self__func(
             tdm=tdm,
             eventdata=eventdata,
-            gridparams_recarray=gridparams_recarray_x0,
-            src_idxs=src_idxs,
+            gridparams_recarray=gridparams_recarray,
             n_values=n_values,
             ret_gridparams_recarray=True)
 
-        gridparams_recarray_x1 = np.array(
-            self__p_grid.round_to_nearest_grid_point(
-                x1[src_mask] + self__p_grid.delta),
+        gridparams_recarray = np.array(
+            x1,
             dtype=[(xname, np.float64)])
         (M1, x1_recarr) = self__func(
             tdm=tdm,
             eventdata=eventdata,
-            gridparams_recarray=gridparams_recarray_x1,
-            src_idxs=src_idxs,
+            gridparams_recarray=gridparams_recarray,
             n_values=n_values,
             ret_gridparams_recarray=True)
 
-        m[values_mask] = (M1 - M0) / (x1_recarr[xname] - x0_recarr[xname])
-
-        # Calculate the values where the parameter values do not fall onto a
-        # grid point.
-        # In that case x0 and x1 are not equal.
-        src_mask = np.invert(src_mask)
-
-        src_idxs = all_src_idxs[src_mask]
-
-        values_mask = get_make_values_mask(src_idxs)(tdm_src_idxs)
-        n_values = np.count_nonzero(values_mask)
-
-        gridparams_recarray_x0 = np.array(
-            x0[src_mask],
-            dtype=[(xname, np.float64)])
-        (M0, x0_recarr) = self__func(
-            tdm=tdm,
-            eventdata=eventdata,
-            gridparams_recarray=gridparams_recarray_x0,
-            src_idxs=src_idxs,
-            n_values=n_values,
-            ret_gridparams_recarray=True)
-
-        gridparams_recarray_x1 = np.array(
-            x1[src_mask],
-            dtype=[(xname, np.float64)])
-        (M1, x1_recarr) = self__func(
-            tdm=tdm,
-            eventdata=eventdata,
-            gridparams_recarray=gridparams_recarray_x1,
-            src_idxs=src_idxs,
-            n_values=n_values,
-            ret_gridparams_recarray=True)
-
-        m[values_mask] = (M1 - M0) / (x1_recarr[xname] - x0_recarr[xname])
-        b = M0 - m[values_mask]*x0_recarr[xname]
+        m = (M1 - M0) / (x1_recarr[xname] - x0_recarr[xname])
+        b = M0 - m*x0_recarr[xname]
 
         # Cache the line parametrization.
         self._cache = self._create_cache(
@@ -703,7 +626,6 @@ class Parabola1DGridManifoldInterpolationMethod(
             # Parameterize the parabola with parameters a, b, and M1.
             self__func = self._func
 
-            src_idxs = np.arange(tdm.n_sources)
             n_values = tdm.get_n_values()
 
             gridparams_recarray = np.array(
@@ -713,7 +635,6 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                src_idxs=src_idxs,
                 n_values=n_values,
                 ret_gridparams_recarray=False)
 
@@ -724,7 +645,6 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                src_idxs=src_idxs,
                 n_values=n_values,
                 ret_gridparams_recarray=False)
 
@@ -735,7 +655,6 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                src_idxs=src_idxs,
                 n_values=n_values,
                 ret_gridparams_recarray=False)
 
@@ -752,7 +671,7 @@ class Parabola1DGridManifoldInterpolationMethod(
 
         # Broadcast x and x1 to the values array.
         x_x1 = np.array(
-            np.vstack((x, x1)).T,
+            list(zip(x, x1)),
             dtype=[('x', np.float64), ('x1', np.float64)])
         x_x1_recarr = self._broadcast_params_recarray_to_values_array(
             tdm=tdm,

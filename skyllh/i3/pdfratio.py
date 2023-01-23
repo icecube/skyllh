@@ -257,7 +257,6 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             tdm,
             eventdata,
             gridparams_recarray,
-            src_idxs,
             n_values,
             ret_gridparams_recarray):
         """For each set of parameter values given by ``gridparams_recarray``,
@@ -276,9 +275,6 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
         gridparams_recarray : instance of numpy record ndarray
             The numpy record ndarray with the parameter names and values needed
             for the interpolation on the grid for all sources.
-        src_idxs : instance of numpy ndarray
-            The (N_sources,)-shaped ndarray holding the indices of the sources
-            for which the splines should get evaluated.
         n_values : int
             The size of the output array.
         ret_gridparams_recarray : bool
@@ -297,12 +293,6 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             this is the numpy record array of length N with the input grid
             parameters from ``gridparams_recarray`` broadcasted to each value.
         """
-        if len(gridparams_recarray) != len(src_idxs):
-            raise ValueError(
-                'The length of the gridparams_recarray argument '
-                f'({len(len(gridparams_recarray))}) must be equal to the '
-                f'length of the src_idxs argument ({len(src_idxs)})!')
-
         if tdm.src_evt_idx is not None:
             (_src_idxs, _evt_idxs) = tdm.src_evt_idxs
 
@@ -314,7 +304,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
                 dtype=gridparams_recarray.dtype)
 
         v_start = 0
-        for (sidx, p_values) in zip(src_idxs, gridparams_recarray):
+        for (sidx, p_values) in enumerate(gridparams_recarray):
             gridparams = dict(zip(self._interpol_param_names, p_values))
             gridparams_hash = make_dict_hash(gridparams)
 
