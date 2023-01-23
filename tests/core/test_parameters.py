@@ -421,11 +421,12 @@ class ParameterGrid_TestCase(unittest.TestCase):
     def test_round_to_nearest_grid_point(self):
         # Test values outside the grid range.
         x = 1.49999999999
-        with self.assertRaises(ValueError):
-            gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
+        gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
+        np.testing.assert_almost_equal(gp, [1.5])
+
         x = 3.50000000001
-        with self.assertRaises(ValueError):
-            gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
+        gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
+        np.testing.assert_almost_equal(gp, [3.5])
 
         # Test a value between two grid points.
         x = [2.1, 2.4, 2.2, 2.3]

@@ -1315,23 +1315,10 @@ class ParameterGrid(object):
         """Calculates the number of delta intervals of the given values counted
         from the lower bound of the grid. It returns its float and integer
         representation.
-
-        Raises
-        ------
-        ValueError
-            If one of the values are below or above the grid range.
         """
         value = np.atleast_1d(value).astype(np.float64)
 
-        if(hasattr(self, '_grid')):
-            m = (value >= self._lower_bound) & (value <= self._grid[-1])
-            if(not np.all(m)):
-                raise ValueError('The following values are outside the range '
-                    'of the parameter grid "%s": %s'%(
-                        self.name,
-                        ','.join(str(v) for v in value[np.invert(m)])))
-
-        floatD = value/self._delta - self._lower_bound/self._delta
+        floatD = (value - self._lower_bound)/self._delta
         floatD = np.around(floatD, 9)
         intD = floatD.astype(np.int64)
 
