@@ -64,7 +64,7 @@ def generate_ps_sin_dec_h0_ts_values(
         int((sin_dec_max-sin_dec_min)/sin_dec_step)+1, endpoint=True)
 
     h0_ts_vals_arr = np.empty(
-        (len(sin_dec_arr), n_iter, n_bkg_trials), dtype=np.float)
+        (len(sin_dec_arr), n_iter, n_bkg_trials), dtype=np.float64)
 
     logger.debug(
         'Generating %d null-hypothesis trials for %d sin(dec) values, '

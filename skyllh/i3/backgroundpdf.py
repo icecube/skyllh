@@ -153,7 +153,7 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
 
         prob = 0.5 / np.pi * np.exp(log_spline_val)
 
-        grads = np.array([], dtype=np.float)
+        grads = np.array([], dtype=np.float64)
 
         return (prob, grads)
 

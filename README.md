@@ -10,7 +10,29 @@ The SkyLLH framework is an open-source Python3-based package licensed under the 
 
 # Installation
 
-The `skyllh` (and an optional private [i3skyllh](#i3skyllh)) package is installed by cloning the GitHub repository and adding it to the Python path:
+## Using pip
+
+The latest `skyllh` release can be installed from [PyPI](https://pypi.org/project/skyllh/) repository:
+```bash
+pip install skyllh
+```
+
+The current development version can be installed using pip:
+```bash
+pip install git+https://github.com/icecube/skyllh.git#egg=skyllh 
+```
+
+Optionally, the editable package version with a specified reference can be installed by:
+```bash
+pip install -e git+https://github.com/icecube/skyllh.git@[ref]#egg=skyllh 
+```
+where
+- `-e` is an editable flag
+- `[ref]` is an optional argument containing a specific commit hash, branch name or tag
+
+## Cloning from GitHub
+
+The `skyllh` (and an optional private [i3skyllh](#i3skyllh)) package can be installed by cloning the GitHub repository and adding it to the Python path:
 
 ```python
 import sys

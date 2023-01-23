@@ -34,7 +34,7 @@ class SourceHypoGroupManager(object):
         # Define a 2D numpy array of shape (N_sources,2) that maps the source
         # index (0 to N_sources-1) to the index of the group and the source
         # index within the group for fast access.
-        self._sidx_to_gidx_gsidx_map_arr = np.empty((0,2), dtype=np.int)
+        self._sidx_to_gidx_gsidx_map_arr = np.empty((0,2), dtype=np.int64)
 
         # Add source hypo groups if specified.
         if(src_hypo_groups is not None):
@@ -86,7 +86,7 @@ class SourceHypoGroupManager(object):
             The SourceHypoGroup instance for which the map array should get
             extented.
         """
-        arr = np.empty((shg.n_sources,2), dtype=np.int)
+        arr = np.empty((shg.n_sources,2), dtype=np.int64)
         arr[:,0] = self.n_src_hypo_groups-1 # Group index.
         arr[:,1] = np.arange(shg.n_sources) # Group source index.
         self._sidx_to_gidx_gsidx_map_arr = np.vstack(

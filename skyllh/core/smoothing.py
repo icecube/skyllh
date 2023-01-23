@@ -155,7 +155,7 @@ class BlockSmoothingFilter(SmoothingFilter):
         if(nbins <= 0):
             raise ValueError('The nbins argument must be greater zero!')
 
-        arr = np.ones(2*nbins + 1, dtype=np.float)
+        arr = np.ones(2*nbins + 1, dtype=np.float64)
 
         super(BlockSmoothingFilter, self).__init__(arr)
 

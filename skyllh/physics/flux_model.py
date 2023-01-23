@@ -811,7 +811,7 @@ class BoxTimeFluxProfile(TimeFluxProfile):
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
 
-        integral = np.zeros((t1.shape[0],), dtype=np.float)
+        integral = np.zeros((t1.shape[0],), dtype=np.float64)
 
         m = (t2 >= self._t_start) & (t1 <= self._t_end)
         N = np.count_nonzero(m)

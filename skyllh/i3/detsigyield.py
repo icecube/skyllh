@@ -154,7 +154,7 @@ class PointLikeSourceI3DetSigYieldImplMethod(
         if(not issequenceof(sources, PointLikeSource)):
             raise TypeError('The source argument must be an instance of PointLikeSource!')
 
-        arr = np.empty((len(sources),), dtype=[('dec', np.float)])
+        arr = np.empty((len(sources),), dtype=[('dec', np.float64)])
         for (i, src) in enumerate(sources):
             arr['dec'][i] = src.dec
 
@@ -440,8 +440,8 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
             src_gamma = src_flux_params['gamma']
 
         # Create results array.
-        values = np.zeros_like(src_dec, dtype=np.float)
-        grads = np.zeros_like(src_dec, dtype=np.float)
+        values = np.zeros_like(src_dec, dtype=np.float64)
+        grads = np.zeros_like(src_dec, dtype=np.float64)
 
         # Calculate the detector signal yield only for the sources for
         # which we actually have detector acceptance. For the other sources,

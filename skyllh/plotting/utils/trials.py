@@ -120,9 +120,9 @@ def plot_ns_fit_vs_mean_ns_inj(
     hist_weights = np.ones_like(trials[mean_n_sig_key])
     (mean_n_sig, n_trials) = np.unique(
         trials[mean_n_sig_key], return_counts=True)
-    ns_fit_median = np.empty_like(mean_n_sig, dtype=np.float)
-    ns_fit_uq = np.empty_like(mean_n_sig, dtype=np.float)
-    ns_fit_lq = np.empty_like(mean_n_sig, dtype=np.float)
+    ns_fit_median = np.empty_like(mean_n_sig, dtype=np.float64)
+    ns_fit_uq = np.empty_like(mean_n_sig, dtype=np.float64)
+    ns_fit_lq = np.empty_like(mean_n_sig, dtype=np.float64)
     for (idx, (mean_n_sig_,n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
         m = trials[mean_n_sig_key] == mean_n_sig_
         hist_weights[m] /= n_trials_
@@ -329,9 +329,9 @@ def plot_gamma_fit_vs_mean_ns_inj(
     hist_weights = np.ones_like(trials[mean_n_sig_key])
     (mean_n_sig, n_trials) = np.unique(
         trials[mean_n_sig_key], return_counts=True)
-    gamma_fit_median = np.empty_like(mean_n_sig, dtype=np.float)
-    gamma_fit_uq = np.empty_like(mean_n_sig, dtype=np.float)
-    gamma_fit_lq = np.empty_like(mean_n_sig, dtype=np.float)
+    gamma_fit_median = np.empty_like(mean_n_sig, dtype=np.float64)
+    gamma_fit_uq = np.empty_like(mean_n_sig, dtype=np.float64)
+    gamma_fit_lq = np.empty_like(mean_n_sig, dtype=np.float64)
     for (idx, (mean_n_sig_,n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
         m = trials[mean_n_sig_key] == mean_n_sig_
         hist_weights[m] /= n_trials_

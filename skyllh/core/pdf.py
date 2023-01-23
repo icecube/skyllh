@@ -564,7 +564,7 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
 
         N_events = prob.shape[0]
         fitparam_names = self.param_set.floating_param_name_list
-        grads = np.zeros((len(fitparam_names), N_events), dtype=np.float)
+        grads = np.zeros((len(fitparam_names), N_events), dtype=np.float64)
         for (pidx, fitparam_name) in enumerate(fitparam_names):
             # Calculate the gradient w.r.t. fitparam.
 
@@ -622,7 +622,7 @@ class PDFProduct(PDF, metaclass=abc.ABCMeta):
             n_ev = tdm.n_selected_events
             norm_w = src_w.sum()
 
-            grads_tot = np.zeros((len(fitparam_names), n_ev), dtype=np.float)
+            grads_tot = np.zeros((len(fitparam_names), n_ev), dtype=np.float64)
             for (pidx, fitparam_name) in enumerate(fitparam_names):
                 if src_ev_idxs is not None:
                     grad_i = scp.sparse.csr_matrix((grads[pidx], (ev_idxs, src_idxs)))
@@ -883,7 +883,7 @@ class MultiDimGridPDF(PDF):
                     n_dim = tdm.n_selected_events
                 else:
                     n_dim = eventdata.shape[0]
-                return np.ones((n_dim,), dtype=np.float)
+                return np.ones((n_dim,), dtype=np.float64)
 
         if(not callable(func)):
             raise TypeError(
@@ -1171,7 +1171,7 @@ class NDPhotosplinePDF(PDF):
                         n_dim = tdm.n_selected_events * n_src
                     else:
                         n_dim = len(tdm.src_ev_idxs[0])
-                return np.ones((n_dim,), dtype=np.float)
+                return np.ones((n_dim,), dtype=np.float64)
 
         if(not callable(func)):
             raise TypeError(
@@ -1239,7 +1239,7 @@ class NDPhotosplinePDF(PDF):
                 if tdm.src_ev_idxs is not None:
                     (src_idxs, ev_idxs) = tdm.src_ev_idxs
                     eventdata = np.empty(
-                        (len(ev_idxs), len(self._axes)), dtype=np.float)
+                        (len(ev_idxs), len(self._axes)), dtype=np.float64)
                     for (axis_idx, axis) in enumerate(self._axes):
                         axis_name = axis.name
                         if(axis_name in tdm):
@@ -1260,12 +1260,12 @@ class NDPhotosplinePDF(PDF):
 
                             axis_data = np.full(
                                 (len(ev_idxs),), params[axis_name],
-                                dtype=np.float)
+                                dtype=np.float64)
                         eventdata[:, axis_idx] = axis_data
 
             elif self.is_background_pdf:
                 eventdata = np.empty(
-                    (tdm.n_selected_events, len(self._axes)), dtype=np.float)
+                    (tdm.n_selected_events, len(self._axes)), dtype=np.float64)
 
                 for (axis_idx, axis) in enumerate(self._axes):
                     axis_name = axis.name
@@ -1282,7 +1282,7 @@ class NDPhotosplinePDF(PDF):
 
                         axis_data = np.full(
                             (tdm.n_selected_events,), params[axis_name],
-                            dtype=np.float)
+                            dtype=np.float64)
                 eventdata[:, axis_idx] = axis_data
         self__pdf_evaluate_simple = self._pdf.evaluate_simple
 
@@ -1301,7 +1301,7 @@ class NDPhotosplinePDF(PDF):
 
         with TaskTimer(tl, 'Get grads from photospline fit.'):
             self__param_set = self._param_set
-            grads = np.empty((self._n_fitparams, len(prob)), dtype=np.float)
+            grads = np.empty((self._n_fitparams, len(prob)), dtype=np.float64)
             # Loop through the fit parameters of this PDF and calculate their
             # derivative.
             for (fitparam_idx, fitparam_name) in enumerate(
@@ -1716,7 +1716,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
 
         # Create an array for the gradients, which will only contain the
         # gradients for the fit (floating) parameters.
-        grads = np.zeros((len(fitparams), prob.shape[0]), dtype=np.float)
+        grads = np.zeros((len(fitparams), prob.shape[0]), dtype=np.float64)
 
         # Create a dictionary to map the name of the grid parameter to its
         # index.
