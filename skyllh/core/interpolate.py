@@ -165,6 +165,44 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
 
         return values_params_recarray
 
+    def _broadcast_arrays_to_values_array(
+            self,
+            tdm,
+            arrays):
+        """Broadcasts the 1d numpy ndarrays to the values array and returns the
+        result as a numpy record ndarray.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the trial events and the
+            mapping of trial events to the sources.
+        arrays : sequence of numpy 1d ndarrays
+            The sequence of (N_sources,)-shaped numpy ndarrays holding the
+            parameter values.
+
+        Returns
+        -------
+        out_arrays : sequence of (N_values,)-shaped numpy ndarrays holding the
+            broadcasted parameter values.
+        """
+        n_x = len(arrays)
+
+        dt = [(f'{i}', np.float64) for i in range(n_x)]
+        in_recarray = np.empty(
+            (len(arrays[0]),),
+            dtype=dt)
+        for (i, x) in enumerate(arrays):
+            in_recarray[f'{i}'] = x
+
+        out_recarray = self._broadcast_params_recarray_to_values_array(
+            tdm=tdm,
+            params_recarray=in_recarray)
+
+        out_arrays = [out_recarray[f'{i}'] for i in range(n_x)]
+
+        return out_arrays
+
     @abc.abstractmethod
     def __call__(self, tdm, eventdata, params_recarray):
         """Retrieves the interpolated value of the manifold at the D-dimensional
@@ -270,7 +308,9 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         values = self._func(
             tdm=tdm,
             eventdata=eventdata,
-            gridparams_recarray=params_recarray)
+            gridparams_recarray=params_recarray,
+            n_values=tdm.get_n_values(),
+            ret_gridparams_recarray=False)
 
         grads = np.zeros(
             (len(params_recarray.dtype.fields), len(values)),
@@ -402,12 +442,6 @@ class Linear1DGridManifoldInterpolationMethod(
         xname = next(iter(params_recarray.dtype.fields.keys()))
         x = params_recarray[xname]
 
-        # Broadcast params_recarray to all sources and trial events.
-        values_params_recarray = \
-            self._broadcast_params_recarray_to_values_array(
-                tdm=tdm,
-                params_recarray=params_recarray)
-
         # Determine the nearest grid point that is lower than x and use that as
         # x0.
         x0 = self.p_grid.round_to_lower_grid_point(x)
@@ -417,7 +451,8 @@ class Linear1DGridManifoldInterpolationMethod(
             m = self._cache['m']
             b = self._cache['b']
 
-            x = values_params_recarray[xname]
+            (x,) = self._broadcast_arrays_to_values_array(tdm, (x,))
+
             values = m*x + b
 
             return (values, np.atleast_2d(m))
@@ -454,8 +489,12 @@ class Linear1DGridManifoldInterpolationMethod(
             n_values=n_values,
             ret_gridparams_recarray=True)
 
-        m = (M1 - M0) / (x1_recarr[xname] - x0_recarr[xname])
-        b = M0 - m*x0_recarr[xname]
+        # Broadcast x0 and x1 to the values array.
+        (v_x, v_x0, v_x1) = self._broadcast_arrays_to_values_array(
+            tdm, (x, x0, x1))
+
+        m = (M1 - M0) / (v_x1 - v_x0)
+        b = M0 - m*v_x0
 
         # Cache the line parametrization.
         self._cache = self._create_cache(
@@ -465,8 +504,7 @@ class Linear1DGridManifoldInterpolationMethod(
             b=b)
 
         # Calculate the interpolated manifold values. The gradient is m.
-        x = values_params_recarray[xname]
-        values = m*x + b
+        values = m*v_x + b
 
         return (values, np.atleast_2d(m))
 
@@ -603,13 +641,8 @@ class Parabola1DGridManifoldInterpolationMethod(
         xname = next(iter(params_recarray.dtype.fields.keys()))
         x = params_recarray[xname]
 
-        # Create local variable name alias to avoid Python dot lookups.
-        self__p_grid = self._p_grid
-        self__p_grid__round_to_nearest_grid_point = \
-            self__p_grid.round_to_nearest_grid_point
-
         # Determine the nearest grid point x1.
-        x1 = self__p_grid__round_to_nearest_grid_point(x)
+        x1 = self._p_grid.round_to_nearest_grid_point(x)
 
         # Check if the parabola parametrization for x1 is already cached.
         if self._is_cached(tdm.trial_data_state_id, x1):
@@ -617,11 +650,11 @@ class Parabola1DGridManifoldInterpolationMethod(
             a = self._cache['a']
             b = self._cache['b']
         else:
-            dx = self__p_grid.delta
+            dx = self._p_grid.delta
 
             # Calculate the neighboring grid points to x1: x0 and x2.
-            x0 = self__p_grid__round_to_nearest_grid_point(x1 - dx)
-            x2 = self__p_grid__round_to_nearest_grid_point(x1 + dx)
+            x0 = self._p_grid.round_to_nearest_grid_point(x1 - dx)
+            x2 = self._p_grid.round_to_nearest_grid_point(x1 + dx)
 
             # Parameterize the parabola with parameters a, b, and M1.
             self__func = self._func
@@ -670,14 +703,7 @@ class Parabola1DGridManifoldInterpolationMethod(
                 b=b)
 
         # Broadcast x and x1 to the values array.
-        x_x1 = np.array(
-            list(zip(x, x1)),
-            dtype=[('x', np.float64), ('x1', np.float64)])
-        x_x1_recarr = self._broadcast_params_recarray_to_values_array(
-            tdm=tdm,
-            params_recarray=x_x1)
-        x = x_x1_recarr['x']
-        x1 = x_x1_recarr['x1']
+        (x, x1) = self._broadcast_arrays_to_values_array(tdm, (x, x1))
 
         # Calculate the interpolated manifold values.
         values = a * (x - x1)**2 + b * (x - x1) + M1
