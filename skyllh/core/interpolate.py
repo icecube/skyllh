@@ -365,7 +365,6 @@ class Linear1DGridManifoldInterpolationMethod(
         x1 = self.p_grid.round_to_upper_grid_point(x)
 
         n_values = tdm.get_n_values()
-        n_sources = len(params_recarray)
 
         values = np.empty((n_values,), dtype=np.float64)
         m = np.empty((n_values,), dtype=np.float64)
