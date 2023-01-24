@@ -26,8 +26,7 @@ def line_manifold_func(
         tdm,
         eventdata,
         gridparams_recarray,
-        n_values,
-        ret_gridparams_recarray):
+        n_values):
     """This function will calculate the line value of f=2p+1 for the parameter
     p. The values will be the same for each event.
     """
@@ -41,9 +40,6 @@ def line_manifold_func(
     values = np.repeat(line(m=2, p=p, b=1), n_selected_events)
 
     assert len(values) == len(gridparams_recarray)*n_selected_events
-
-    if ret_gridparams_recarray:
-        return (values, np.repeat(gridparams_recarray, n_selected_events))
 
     return values
 

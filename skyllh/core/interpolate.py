@@ -37,8 +37,7 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
             trial event and source.
             The call signature of func must be:
 
-                ``__call__(tdm, eventdata, gridparams_recarray, n_values,
-                ret_gridparams_recarray)``
+                ``__call__(tdm, eventdata, gridparams_recarray, n_values)``
 
             The arguments are as follows:
 
@@ -54,11 +53,6 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
                     sources.
                 n_values : int
                     The length of the output numpy ndarray of shape (n_values,).
-                ret_gridparams_recarray : bool
-                    The switch if the function should also return a numpy record
-                    ndarray of length ``n_values`` with the parameter values of
-                    ``gridparams_recarray`` are broadcasted to each value of the
-                    return array.
 
             The return value of ``func`` should be the (n_values,)-shaped
             one-dimensional ndarray holding the values for each set of parameter
@@ -66,10 +60,6 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
             The length of the array, i.e. n_values, depends on the
             ``src_evt_idx`` property of the TrialDataManager. In the worst case
             n_values is N_sources * N_events.
-            In case ``ret_gridparams_recarray`` is set to ``True``, also a
-            numpy record ndarray of length ``n_values`` should be returned, that
-            holds the parameter values of ``gridparams_recarray`` broadcasted to
-            each value of the return array.
         param_grid_set : instance of ParameterGrid | instance of ParameterGridSet
             The set of D parameter grids. This defines the grid of the
             manifold.
@@ -309,8 +299,7 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=params_recarray,
-            n_values=tdm.get_n_values(),
-            ret_gridparams_recarray=False)
+            n_values=tdm.get_n_values())
 
         grads = np.zeros(
             (len(params_recarray.dtype.fields), len(values)),
@@ -472,22 +461,20 @@ class Linear1DGridManifoldInterpolationMethod(
         gridparams_recarray = np.array(
             x0,
             dtype=[(xname, np.float64)])
-        (M0, x0_recarr) = self__func(
+        M0 = self__func(
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray,
-            n_values=n_values,
-            ret_gridparams_recarray=True)
+            n_values=n_values)
 
         gridparams_recarray = np.array(
             x1,
             dtype=[(xname, np.float64)])
-        (M1, x1_recarr) = self__func(
+        M1 = self__func(
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray,
-            n_values=n_values,
-            ret_gridparams_recarray=True)
+            n_values=n_values)
 
         # Broadcast x0 and x1 to the values array.
         (v_x, v_x0, v_x1) = self._broadcast_arrays_to_values_array(
@@ -668,8 +655,7 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                n_values=n_values,
-                ret_gridparams_recarray=False)
+                n_values=n_values)
 
             gridparams_recarray = np.array(
                 x1,
@@ -678,8 +664,7 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                n_values=n_values,
-                ret_gridparams_recarray=False)
+                n_values=n_values)
 
             gridparams_recarray = np.array(
                 x2,
@@ -688,8 +673,7 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                n_values=n_values,
-                ret_gridparams_recarray=False)
+                n_values=n_values)
 
             a = 0.5*(M0 - 2.*M1 + M2) / dx**2
             b = 0.5*(M2 - M0) / dx

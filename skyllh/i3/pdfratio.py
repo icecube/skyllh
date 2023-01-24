@@ -257,8 +257,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             tdm,
             eventdata,
             gridparams_recarray,
-            n_values,
-            ret_gridparams_recarray):
+            n_values):
         """For each set of parameter values given by ``gridparams_recarray``,
         the spline is retrieved and evaluated for the events suitable for that
         source model.
@@ -273,13 +272,11 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             N_events is the number of events, and V the dimensionality of the
             event data.
         gridparams_recarray : instance of numpy record ndarray
-            The numpy record ndarray with the parameter names and values needed
-            for the interpolation on the grid for all sources.
+            The numpy record ndarray of length N_sources with the parameter
+            names and values needed for the interpolation on the grid for all
+            sources.
         n_values : int
             The size of the output array.
-        ret_gridparams_recarray : bool
-            Switch if the gridparams_recarray should be returned, where the
-            source parameter values are broadcasted to each value.
 
         Returns
         -------
@@ -288,20 +285,11 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             of parameter values of the ``gridparams_recarray``. The length of
             the array depends on the ``src_evt_idx`` property of the
             TrialDataManager. In the worst case it is N_sources * N_events.
-        gridparams_recarray_output : instance of numpy record array
-            If the ``ret_gridparams_recarray`` argument is set to ``True``,
-            this is the numpy record array of length N with the input grid
-            parameters from ``gridparams_recarray`` broadcasted to each value.
         """
         if tdm.src_evt_idx is not None:
             (_src_idxs, _evt_idxs) = tdm.src_evt_idxs
 
         values = np.empty(n_values, dtype=np.float64)
-
-        if ret_gridparams_recarray:
-            gridparams_recarray_output = np.empty(
-                (n_values,),
-                dtype=gridparams_recarray.dtype)
 
         v_start = 0
         for (sidx, p_values) in enumerate(gridparams_recarray):
@@ -321,17 +309,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             sl = slice(v_start, v_start+n)
             values[sl] = spline(src_eventdata)
 
-            if ret_gridparams_recarray:
-                src_gridparams_recarray = np.array(
-                    [tuple(p_values)],
-                    dtype=gridparams_recarray_output.dtype)
-                gridparams_recarray_output[sl] = np.tile(
-                    src_gridparams_recarray, n)
-
             v_start += n
-
-        if ret_gridparams_recarray:
-            return (values, gridparams_recarray_output)
 
         return values
 
