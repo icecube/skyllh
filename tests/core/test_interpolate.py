@@ -83,16 +83,15 @@ def create_tdm(n_sources, n_selected_events):
     return tdm
 
 
+class NullGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
+    def setUp(self):
+        param_grid = ParameterGrid.from_range('p', -3, 3, 0.1)
+
+
+
 class Linear1DGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
     def setUp(self):
-        p_min = -3
-        p_max = 3
-        dp = 0.1
-        p_grid = np.arange(p_min, p_max+dp, dp)
-
-        param_grid = ParameterGrid(
-            name='p',
-            grid=p_grid)
+        param_grid = ParameterGrid.from_range('p', -3, 3, 0.1)
 
         self.interpolmethod = Linear1DGridManifoldInterpolationMethod(
             func=line_manifold_func,
@@ -164,14 +163,7 @@ class Linear1DGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
 
 class Parabola1DGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
     def setUp(self):
-        p_min = -3
-        p_max = 3
-        dp = 0.1
-        p_grid = np.arange(p_min, p_max+dp, dp)
-
-        param_grid = ParameterGrid(
-            name='p',
-            grid=p_grid)
+        param_grid = ParameterGrid.from_range('p', -3, 3, 0.1)
 
         self.interpolmethod = Parabola1DGridManifoldInterpolationMethod(
             func=line_manifold_func,
