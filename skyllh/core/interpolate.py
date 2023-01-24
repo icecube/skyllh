@@ -142,7 +142,7 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
 class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
     """This grid manifold interpolation method performes no interpolation. When
     the
-    :meth:`~skyllh.core.interpolate.NullGridManifoldInterpolationMethod.get_value_and_gradients`
+    :meth:`~skyllh.core.interpolate.NullGridManifoldInterpolationMethod.__call__`
     method is called, it rounds the parameter values to their nearest grid
     point values. All gradients are set to zero.
     """
