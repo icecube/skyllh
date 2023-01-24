@@ -1189,7 +1189,7 @@ class ParameterGrid(object):
 
         Returns
         -------
-        param_grid : ParameterGrid instance
+        param_grid : instance of ParameterGrid
             The created ParameterGrid instance.
         """
         return ParameterGrid(
@@ -1197,6 +1197,56 @@ class ParameterGrid(object):
             grid=binning.binedges,
             delta=delta,
             decimals=decimals)
+
+    @staticmethod
+    def from_range(name, start, stop, delta, decimals=None):
+        """Creates a ParameterGrid instance from a range definition. The stop
+        value will be the last grid point.
+
+        Parameters
+        ----------
+        name : str
+            The name of the parameter grid.
+        start : float
+            The start value of the range.
+        stop : float
+            The end value of the range.
+        delta : float
+            The width between the grid values.
+        decimals : int | None
+            The number of decimals the grid values should get rounded to.
+            The maximal number of decimals is 16.
+            If set to None, the number of decimals will be the maximum of the
+            number of decimals of the first grid value and the number of
+            decimals of the delta value.
+
+        Returns
+        -------
+        param_grid : instance of ParameterGrid
+            The created ParameterGrid instance.
+        """
+        start = float_cast(
+            start,
+            'The start argument must be castable to type float!')
+        stop = float_cast(
+            stop,
+            'The stop argument must be castable to type float!')
+        delta = float_cast(
+            delta,
+            'The delta argument must be castable to type float!')
+        decimals = int_cast(
+            decimals,
+            'The decimals argument must be castable to type int!',
+            allow_None=True)
+
+        grid = np.arange(start, stop+delta, delta)
+
+        return ParameterGrid(
+            name=name,
+            grid=grid,
+            delta=delta,
+            decimals=decimals)
+
 
     def __init__(self, name, grid, delta=None, decimals=None):
         """Creates a new parameter grid.
