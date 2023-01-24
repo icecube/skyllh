@@ -586,6 +586,85 @@ class TrialDataManager(object):
 
         return s
 
+    def broadcast_params_recarray_to_values_array(
+            self,
+            params_recarray):
+        """Broadcasts the given source parameter record array to all values of
+        a PDF evaluation, i.e. to all sources and trial events. The result is
+        a numpy record array of length N_values.
+
+        Parameters
+        ----------
+        params_recarray : instance of numpy record array
+            The numpy record array of length N_sources holding the parameter
+            names and values for all sources.
+
+        Returns
+        -------
+        values_params_recarray : instance of numpy record ndarray
+            The numpy record array of length N_values holding the source
+            parameter names and values for all sources and trial events.
+        """
+        if len(params_recarray) != self.n_sources:
+            raise ValueError(
+                f'The length of params_recarray array ({len(params_recarray)}) '
+                f'must be equal to the number of sources ({self.n_sources})!')
+
+        if self.src_evt_idxs is None:
+            # All trial events contibute to all sources.
+            values_params_recarray = np.repeat(
+                params_recarray, self.n_selected_events)
+
+            return values_params_recarray
+
+        # A mapping of trial events to sources is defined.
+        (src_idxs, evt_idxs) = self.src_evt_idxs
+        values_params_recarray = np.empty(
+            (len(src_idxs),), dtype=params_recarray.dtype)
+
+        v_start = 0
+        for (src_idx, src_params_recarray) in enumerate(params_recarray):
+            n = len(evt_idxs[src_idxs == src_idx])
+            values_params_recarray[v_start:v_start+n] = np.tile(
+                src_params_recarray, n)
+            v_start += n
+
+        return values_params_recarray
+
+    def broadcast_arrays_to_values_array(
+            self,
+            arrays):
+        """Broadcasts the 1d numpy ndarrays to the values array and returns the
+        result as a numpy record ndarray.
+
+        Parameters
+        ----------
+        arrays : sequence of numpy 1d ndarrays
+            The sequence of (N_sources,)-shaped numpy ndarrays holding the
+            parameter values.
+
+        Returns
+        -------
+        out_arrays : list of numpy 1d ndarrays
+            The list of (N_values,)-shaped numpy ndarrays holding the
+            broadcasted array values.
+        """
+        n_x = len(arrays)
+
+        dt = [(f'{i}', np.float64) for i in range(n_x)]
+        in_recarray = np.empty(
+            (len(arrays[0]),),
+            dtype=dt)
+        for (i, x) in enumerate(arrays):
+            in_recarray[f'{i}'] = x
+
+        out_recarray = self.broadcast_params_recarray_to_values_array(
+            params_recarray=in_recarray)
+
+        out_arrays = [out_recarray[f'{i}'] for i in range(n_x)]
+
+        return out_arrays
+
     def change_shg_mgr(self, shg_mgr, pmm):
         """This method is called when the source hypothesis group manager has
         changed. Hence, the source data fields need to get recalculated.

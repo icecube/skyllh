@@ -105,94 +105,6 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
         """
         return len(self._param_grid_set)
 
-    def _broadcast_params_recarray_to_values_array(
-            self,
-            tdm,
-            params_recarray):
-        """Broadcasts the given source parameter record array to all values of
-        a PDF evaluation, i.e. to all sources and trial events. The result is
-        a numpy record array of length N_values.
-
-        Parameters
-        ----------
-        tdm : instance of TrialDataManager
-            The TrialDataManager instance holding the trial events and the
-            mapping of trial events to the sources.
-        params_recarray : instance of numpy record array
-            The numpy record array of length N_sources holding the parameter
-            names and values for all sources.
-
-        Returns
-        -------
-        values_params_recarray : instance of numpy record ndarray
-            The numpy record array of length N_values holding the source
-            parameter names and values for all sources and trial events.
-        """
-        if len(params_recarray) != tdm.n_sources:
-            raise ValueError(
-                f'The length of params_recarray array ({len(params_recarray)}) '
-                f'must be equal to the number of sources ({tdm.n_sources})!')
-
-        tdm_src_evt_idxs = tdm.src_evt_idxs
-        if tdm_src_evt_idxs is None:
-            # All trial events contibute to all sources.
-            values_params_recarray = np.repeat(
-                params_recarray, tdm.n_selected_events)
-
-            return values_params_recarray
-
-        # A mapping of trial events to sources is defined.
-        (src_idxs, evt_idxs) = tdm_src_evt_idxs
-        values_params_recarray = np.empty(
-            (len(src_idxs),), dtype=params_recarray.dtype)
-
-        v_start = 0
-        for (src_idx, src_params_recarray) in enumerate(params_recarray):
-            n = len(evt_idxs[src_idxs == src_idx])
-            values_params_recarray[v_start:v_start+n] = np.tile(
-                src_params_recarray, n)
-            v_start += n
-
-        return values_params_recarray
-
-    def _broadcast_arrays_to_values_array(
-            self,
-            tdm,
-            arrays):
-        """Broadcasts the 1d numpy ndarrays to the values array and returns the
-        result as a numpy record ndarray.
-
-        Parameters
-        ----------
-        tdm : instance of TrialDataManager
-            The TrialDataManager instance holding the trial events and the
-            mapping of trial events to the sources.
-        arrays : sequence of numpy 1d ndarrays
-            The sequence of (N_sources,)-shaped numpy ndarrays holding the
-            parameter values.
-
-        Returns
-        -------
-        out_arrays : sequence of (N_values,)-shaped numpy ndarrays holding the
-            broadcasted parameter values.
-        """
-        n_x = len(arrays)
-
-        dt = [(f'{i}', np.float64) for i in range(n_x)]
-        in_recarray = np.empty(
-            (len(arrays[0]),),
-            dtype=dt)
-        for (i, x) in enumerate(arrays):
-            in_recarray[f'{i}'] = x
-
-        out_recarray = self._broadcast_params_recarray_to_values_array(
-            tdm=tdm,
-            params_recarray=in_recarray)
-
-        out_arrays = [out_recarray[f'{i}'] for i in range(n_x)]
-
-        return out_arrays
-
     @abc.abstractmethod
     def __call__(self, tdm, eventdata, params_recarray):
         """Retrieves the interpolated value of the manifold at the D-dimensional
@@ -440,7 +352,7 @@ class Linear1DGridManifoldInterpolationMethod(
             m = self._cache['m']
             b = self._cache['b']
 
-            (x,) = self._broadcast_arrays_to_values_array(tdm, (x,))
+            (x,) = tdm.broadcast_arrays_to_values_array((x,))
 
             values = m*x + b
 
@@ -477,8 +389,7 @@ class Linear1DGridManifoldInterpolationMethod(
             n_values=n_values)
 
         # Broadcast x0 and x1 to the values array.
-        (v_x, v_x0, v_x1) = self._broadcast_arrays_to_values_array(
-            tdm, (x, x0, x1))
+        (v_x, v_x0, v_x1) = tdm.broadcast_arrays_to_values_array((x, x0, x1))
 
         m = (M1 - M0) / (v_x1 - v_x0)
         b = M0 - m*v_x0
@@ -687,7 +598,7 @@ class Parabola1DGridManifoldInterpolationMethod(
                 b=b)
 
         # Broadcast x and x1 to the values array.
-        (x, x1) = self._broadcast_arrays_to_values_array(tdm, (x, x1))
+        (x, x1) = tdm.broadcast_arrays_to_values_array((x, x1))
 
         # Calculate the interpolated manifold values.
         values = a * (x - x1)**2 + b * (x - x1) + M1
