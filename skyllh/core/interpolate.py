@@ -310,8 +310,6 @@ class Linear1DGridManifoldInterpolationMethod(
 
         return False
 
-    # TODO: Implement optimization when all x values are the same, i.e.
-    #       all sources share the same parameter.
     def __call__(self, tdm, eventdata, params_recarray):
         """Calculates the interpolated manifold value and its gradient for each
         given source and trial event at the point ``params_recarray``.
@@ -329,6 +327,8 @@ class Linear1DGridManifoldInterpolationMethod(
             names and values for each source, defining the point on the manifold
             for which the value should get calculated.
             It must contain only the parameters necessary for the interpolation.
+            This record ndarray can be of length 1. In that case the single set
+            of parameters is used for all sources.
 
         Returns
         -------
@@ -388,7 +388,7 @@ class Linear1DGridManifoldInterpolationMethod(
             n_values=n_values)
 
         # Broadcast x0 and x1 to the values array.
-        (v_x, v_x0, v_x1) = tdm.broadcast_arrays_to_values_array((x, x0, x1))
+        (x, v_x0, v_x1) = tdm.broadcast_arrays_to_values_array((x, x0, x1))
 
         m = (M1 - M0) / (v_x1 - v_x0)
         b = M0 - m*v_x0
@@ -401,7 +401,7 @@ class Linear1DGridManifoldInterpolationMethod(
             b=b)
 
         # Calculate the interpolated manifold values. The gradient is m.
-        values = m*v_x + b
+        values = m*x + b
 
         return (values, np.atleast_2d(m))
 
@@ -507,8 +507,6 @@ class Parabola1DGridManifoldInterpolationMethod(
 
         return False
 
-    # TODO: Implement optimization when all parameter values are the same
-    #       for all sources.
     def __call__(self, tdm, eventdata, params_recarray):
         """Calculates the interpolated manifold value and its gradient for each
         given source and trial event at the point ``params_recarray``.
@@ -526,6 +524,8 @@ class Parabola1DGridManifoldInterpolationMethod(
             names and values for each source, defining the point on the manifold
             for which the value should get calculated.
             It must contain only the parameters necessary for the interpolation.
+            This record ndarray can be of length 1. In that case the single set
+            of parameters is used for all sources.
 
         Returns
         -------
@@ -596,12 +596,13 @@ class Parabola1DGridManifoldInterpolationMethod(
                 a=a,
                 b=b)
 
-        # Broadcast x and x1 to the values array.
-        (x, x1) = tdm.broadcast_arrays_to_values_array((x, x1))
+        # Broadcast x, x1, and (x-x1) to the values array.
+        (x, x1, x_minus_x1) = tdm.broadcast_arrays_to_values_array(
+            (x, x1, x-x1))
 
         # Calculate the interpolated manifold values.
-        values = a * (x - x1)**2 + b * (x - x1) + M1
+        values = a * x_minus_x1**2 + b * x_minus_x1 + M1
         # Calculate the gradient of the manifold for all values.
-        grads = 2. * a * (x - x1) + b
+        grads = 2. * a * x_minus_x1 + b
 
         return (values, np.atleast_2d(grads))
