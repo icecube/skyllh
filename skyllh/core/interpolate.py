@@ -210,7 +210,7 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
         values = self._func(
             tdm=tdm,
             eventdata=eventdata,
-            gridparams_recarray=params_recarray,
+            gridparams_recarray=gridparams_recarray,
             n_values=tdm.get_n_values())
 
         grads = np.zeros(
