@@ -597,7 +597,9 @@ class TrialDataManager(object):
         ----------
         params_recarray : instance of numpy record array
             The numpy record array of length N_sources holding the parameter
-            names and values for all sources.
+            names and values for all sources. The length of this record ndarray
+            can be 1. In that case the same set of parameter values is used for
+            all sources.
 
         Returns
         -------
@@ -605,6 +607,11 @@ class TrialDataManager(object):
             The numpy record array of length N_values holding the source
             parameter names and values for all sources and trial events.
         """
+        if len(params_recarray) == 1:
+            values_params_recarray = np.tile(
+                params_recarray, self.get_n_values())
+            return values_params_recarray
+
         if len(params_recarray) != self.n_sources:
             raise ValueError(
                 f'The length of params_recarray array ({len(params_recarray)}) '
