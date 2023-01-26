@@ -11,6 +11,7 @@ from unittest.mock import Mock
 
 from skyllh.core.interpolate import (
     Linear1DGridManifoldInterpolationMethod,
+    NullGridManifoldInterpolationMethod,
     Parabola1DGridManifoldInterpolationMethod,
 )
 from skyllh.core.parameters import (
@@ -38,6 +39,29 @@ def line_manifold_func(
     p = gridparams_recarray['p']
 
     values = np.repeat(line(m=2, p=p, b=1), n_selected_events)
+
+    assert len(values) == len(gridparams_recarray)*n_selected_events
+
+    return values
+
+
+def param_product_func(
+        tdm,
+        eventdata,
+        gridparams_recarray,
+        n_values):
+    """This function calculates the product of two parameter values p1 and p2.
+    The result will be the same for each event.
+    """
+    def product(p1, p2):
+        return p1 * p2
+
+    n_selected_events = eventdata.shape[0]
+
+    p1 = gridparams_recarray['p1']
+    p2 = gridparams_recarray['p2']
+
+    values = np.repeat(product(p1, p2), n_selected_events)
 
     assert len(values) == len(gridparams_recarray)*n_selected_events
 
@@ -85,8 +109,85 @@ def create_tdm(n_sources, n_selected_events):
 
 class NullGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
     def setUp(self):
-        param_grid = ParameterGrid.from_range('p', -3, 3, 0.1)
+        param1_grid = ParameterGrid.from_range('p1', -3, 3, 0.1)
+        param2_grid = ParameterGrid.from_range('p2', -1.5, 2.3, 0.1)
 
+        self.interpolmethod = NullGridManifoldInterpolationMethod(
+            func=param_product_func,
+            param_grid_set=ParameterGridSet((param1_grid, param2_grid)))
+
+        self.tdm = create_tdm(n_sources=3, n_selected_events=2)
+
+        self.eventdata = np.zeros(
+            (self.tdm.n_selected_events, 1), dtype=np.float64)
+
+    def test__call__with_different_source_values(self):
+        """Test for when the interpolation parameters have different values for
+        different sources.
+        """
+        params_recarray = np.empty(
+            (self.tdm.n_sources,),
+            dtype=[('p1', np.float64), ('p2', np.float64)])
+        params_recarray['p1'] = [-2.12, 1.36, 2.4]
+        params_recarray['p2'] = [-1.06, 2.1, 1.33]
+
+        (values, grads) = self.interpolmethod(
+            tdm=self.tdm,
+            eventdata=self.eventdata,
+            params_recarray=params_recarray)
+
+        np.testing.assert_almost_equal(
+            values,
+            [2.31, 2.31, 2.94, 2.94, 3.12, 3.12])
+        np.testing.assert_almost_equal(
+            grads,
+            [[0., 0., 0., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0.]])
+
+    def test__call__with_same_source_values(self):
+        """Test for when the interpolation parameter has the same values for all
+        sources.
+        """
+        params_recarray = np.empty(
+            (self.tdm.n_sources,),
+            dtype=[('p1', np.float64), ('p2', np.float64)])
+        params_recarray['p1'] = [2.12, 2.12, 2.12]
+        params_recarray['p2'] = [-1.06, -1.06, -1.06]
+
+        (values, grads) = self.interpolmethod(
+            tdm=self.tdm,
+            eventdata=self.eventdata,
+            params_recarray=params_recarray)
+
+        np.testing.assert_almost_equal(
+            values,
+            [-2.31, -2.31, -2.31, -2.31, -2.31, -2.31])
+        np.testing.assert_almost_equal(
+            grads,
+            [[0., 0., 0., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0.]])
+
+    def test__call__with_grid_edge_values(self):
+        """Test for when the interpolation parameters fall on the grid edges.
+        """
+        params_recarray = np.empty(
+            (self.tdm.n_sources,),
+            dtype=[('p1', np.float64), ('p2', np.float64)])
+        params_recarray['p1'] = [-2.1, 1.4, 2.4]
+        params_recarray['p2'] = [-1.1, 2.1, 1.3]
+
+        (values, grads) = self.interpolmethod(
+            tdm=self.tdm,
+            eventdata=self.eventdata,
+            params_recarray=params_recarray)
+
+        np.testing.assert_almost_equal(
+            values,
+            [2.31, 2.31, 2.94, 2.94, 3.12, 3.12])
+        np.testing.assert_almost_equal(
+            grads,
+            [[0., 0., 0., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0.]])
 
 
 class Linear1DGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
