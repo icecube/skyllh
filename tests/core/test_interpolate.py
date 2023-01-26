@@ -34,9 +34,14 @@ def line_manifold_func(
     def line(m, p, b):
         return m*p + b
 
-    n_selected_events = eventdata.shape[0]
+    # Check for special case, when only one set of parameters is provided for
+    # all sources.
+    if len(gridparams_recarray) == 1:
+        gridparams_recarray = np.tile(gridparams_recarray, tdm.n_sources)
 
     p = gridparams_recarray['p']
+
+    n_selected_events = eventdata.shape[0]
 
     values = np.repeat(line(m=2, p=p, b=1), n_selected_events)
 
@@ -56,10 +61,15 @@ def param_product_func(
     def product(p1, p2):
         return p1 * p2
 
-    n_selected_events = eventdata.shape[0]
+    # Check for special case, when only one set of parameters is provided for
+    # all sources.
+    if len(gridparams_recarray) == 1:
+        gridparams_recarray = np.tile(gridparams_recarray, tdm.n_sources)
 
     p1 = gridparams_recarray['p1']
     p2 = gridparams_recarray['p2']
+
+    n_selected_events = eventdata.shape[0]
 
     values = np.repeat(product(p1, p2), n_selected_events)
 
@@ -167,6 +177,29 @@ class NullGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
             [[0., 0., 0., 0., 0., 0.],
              [0., 0., 0., 0., 0., 0.]])
 
+    def test__call__with_single_value(self):
+        """Test for when the interpolation parameters have the same values for
+        all sources and is provided as a single set.
+        """
+        params_recarray = np.empty(
+            (self.tdm.n_sources,),
+            dtype=[('p1', np.float64), ('p2', np.float64)])
+        params_recarray['p1'] = [2.12]
+        params_recarray['p2'] = [-1.06]
+
+        (values, grads) = self.interpolmethod(
+            tdm=self.tdm,
+            eventdata=self.eventdata,
+            params_recarray=params_recarray)
+
+        np.testing.assert_almost_equal(
+            values,
+            [-2.31, -2.31, -2.31, -2.31, -2.31, -2.31])
+        np.testing.assert_almost_equal(
+            grads,
+            [[0., 0., 0., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0.]])
+
     def test__call__with_grid_edge_values(self):
         """Test for when the interpolation parameters fall on the grid edges.
         """
@@ -243,6 +276,26 @@ class Linear1DGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
             grads,
             [[2., 2., 2., 2., 2., 2.]])
 
+    def test__call__with_single_value(self):
+        """Test for when the interpolation parameter has the same values for all
+        sources and is provided as a single value.
+        """
+        params_recarray = np.empty(
+            (self.tdm.n_sources,), dtype=[('p', np.float64)])
+        params_recarray['p'] = [1.36]
+
+        (values, grads) = self.interpolmethod(
+            tdm=self.tdm,
+            eventdata=self.eventdata,
+            params_recarray=params_recarray)
+
+        np.testing.assert_almost_equal(
+            values,
+            [3.72, 3.72, 3.72, 3.72, 3.72, 3.72])
+        np.testing.assert_almost_equal(
+            grads,
+            [[2., 2., 2., 2., 2., 2.]])
+
     def test__call__with_grid_edge_values(self):
         """Test for when the interpolation parameters fall on the grid edges.
         """
@@ -303,6 +356,26 @@ class Parabola1DGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
         params_recarray = np.empty(
             (self.tdm.n_sources,), dtype=[('p', np.float64)])
         params_recarray['p'] = [1.36, 1.36, 1.36]
+
+        (values, grads) = self.interpolmethod(
+            tdm=self.tdm,
+            eventdata=self.eventdata,
+            params_recarray=params_recarray)
+
+        np.testing.assert_almost_equal(
+            values,
+            [3.72, 3.72, 3.72, 3.72, 3.72, 3.72])
+        np.testing.assert_almost_equal(
+            grads,
+            [[2., 2., 2., 2., 2., 2.]])
+
+    def test__call__with_single_value(self):
+        """Test for when the interpolation parameter has the same values for all
+        sources and is provided as a single value.
+        """
+        params_recarray = np.empty(
+            (self.tdm.n_sources,), dtype=[('p', np.float64)])
+        params_recarray['p'] = [1.36]
 
         (values, grads) = self.interpolmethod(
             tdm=self.tdm,
