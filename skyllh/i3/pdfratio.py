@@ -252,6 +252,16 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
 
         return True
 
+    def _get_spline_for_param_values(self, param_values):
+        """Retrieves the spline for a given set of parameter values.
+        """
+        gridparams = dict(zip(self._interpol_param_names, param_values))
+        gridparams_hash = make_dict_hash(gridparams)
+
+        spline = self._gridparams_hash_log_ratio_spline_dict[gridparams_hash]
+
+        return spline
+
     def _evaluate_splines(
             self,
             tdm,
@@ -274,7 +284,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
         gridparams_recarray : instance of numpy record ndarray
             The numpy record ndarray of length N_sources with the parameter
             names and values needed for the interpolation on the grid for all
-            sources.
+            sources. If the length of this record array is 1, the set of
+            parameters will be used for all sources.
         n_values : int
             The size of the output array.
 
@@ -289,15 +300,25 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
         if tdm.src_evt_idx is not None:
             (_src_idxs, _evt_idxs) = tdm.src_evt_idxs
 
+        # Check for special case when a single set of parameters are provided.
+        if len(gridparams_recarray) == 1:
+            # We got a single parameter set. We will use it for all sources.
+            spline = self._get_spline_for_param_values(gridparams_recarray[0])
+
+            if tdm.src_evt_idx is None:
+                values = spline(eventdata)
+                values = np.tile(values, tdm.n_sources)
+            else:
+                eventdata = np.take(eventdata, _evt_idxs, axis=0)
+                values = spline(eventdata)
+
+            return values
+
         values = np.empty(n_values, dtype=np.float64)
 
         v_start = 0
-        for (sidx, p_values) in enumerate(gridparams_recarray):
-            gridparams = dict(zip(self._interpol_param_names, p_values))
-            gridparams_hash = make_dict_hash(gridparams)
-
-            spline = self._gridparams_hash_log_ratio_spline_dict[
-                gridparams_hash]
+        for (sidx, param_values) in enumerate(gridparams_recarray):
+            spline = self._get_spline_for_param_values(param_values)
 
             # Select the eventdata that belongs to the current source.
             src_eventdata = eventdata
@@ -312,6 +333,38 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             v_start += n
 
         return values
+
+    def _create_interpol_params_recarray(self, params_recarray):
+        """Creates the params_recarray needed for the interpolation. It selects
+        The interpolation parameters from the ``params_recarray`` argument.
+        If all parameters have the same value for all sources, the length will
+        be 1.
+
+        Parameters
+        ----------
+        params_recarray : instance of numpy record ndarray
+            The numpy record ndarray of length N_sources holding all parameter
+            names and values.
+
+        Returns
+        -------
+        interpol_params_recarray : instance of numpy record ndarray
+            The numpy record ndarray of length N_sources or 1 holding only the
+            parameters needed for the interpolation.
+        """
+        interpol_params_recarray = repack_fields(
+            params_recarray[self._interpol_param_names])
+
+        all_params_are_equal_for_all_sources = True
+        for pname in self._interpol_param_names:
+            if not np.all(
+                    np.isclose(np.diff(interpol_params_recarray[pname]), 0)):
+                all_params_are_equal_for_all_sources = False
+                break
+        if all_params_are_equal_for_all_sources:
+            return interpol_params_recarray[:1]
+
+        return interpol_params_recarray
 
     def _calculate_ratio_and_grads(self, tdm, interpol_params_recarray):
         """Calculates the ratio values and ratio gradients for all the sources
@@ -377,8 +430,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             value for each source and trial event.
         """
         # Select only the parameters necessary for the interpolation.
-        interpol_params_recarray = repack_fields(
-            params_recarray[self._interpol_param_names])
+        interpol_params_recarray = self._create_interpol_params_recarray(
+            params_recarray)
 
         # Check if the ratio values are already cached.
         if self._is_cached(
@@ -419,8 +472,8 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             parameter.
         """
         # Select only the parameters necessary for the interpolation.
-        interpol_params_recarray = repack_fields(
-            params_recarray[self._interpol_param_names])
+        interpol_params_recarray = self._create_interpol_params_recarray(
+            params_recarray)
 
         # Calculate the gradients if necessary.
         if not self._is_cached(
