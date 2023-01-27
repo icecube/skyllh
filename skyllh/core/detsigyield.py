@@ -1,22 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import abc
-import numpy as np
-
-from astropy import units
 
 from skyllh.core.py import (
     classname,
     issequence,
     issequenceof,
-    issequenceofsubclass,
 )
 from skyllh.core.dataset import (
     Dataset,
     DatasetData,
 )
-from skyllh.core.model import (
-    SourceModel,
+from skyllh.core.livetime import (
+    Livetime,
 )
 from skyllh.core.progressbar import (
     ProgressBar,
@@ -76,13 +72,16 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         is a function of.
         """
         return self._param_names
+
     @param_names.setter
     def param_names(self, names):
         if not issequence(names):
             names = [names]
         if not issequenceof(names, str):
             raise TypeError(
-                'The param_names property must be a sequence of str instances!')
+                'The param_names property must be a sequence of str '
+                'instances! '
+                f'Its current type is {classname(names)}.')
         self._param_names = tuple(names)
 
     @property
@@ -91,11 +90,13 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         for.
         """
         return self._dataset
+
     @dataset.setter
     def dataset(self, ds):
         if not isinstance(ds, Dataset):
             raise TypeError(
-                'The dataset property must be an instance of Dataset!')
+                'The dataset property must be an instance of Dataset! '
+                f'Its current type is {classname(ds)}.')
         self._dataset = ds
 
     @property
@@ -104,11 +105,13 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         signal yield.
         """
         return self._fluxmodel
+
     @fluxmodel.setter
     def fluxmodel(self, model):
         if not isinstance(model, FluxModel):
-           raise TypeError(
-               'The fluxmodel property must be an instance of FluxModel!')
+            raise TypeError(
+                'The fluxmodel property must be an instance of FluxModel! '
+                f'Its current type is {classname(model)}.')
         self._fluxmodel = model
 
     @property
@@ -116,12 +119,14 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         """The live-time in days.
         """
         return self._livetime
+
     @livetime.setter
     def livetime(self, lt):
         if not (isinstance(lt, float) or isinstance(lt, Livetime)):
             raise TypeError(
                 'The livetime property must be of type float or an instance '
-                'of Livetime!')
+                'of Livetime! '
+                f'Its current type is {classname(lt)}.')
         self._livetime = lt
 
     @abc.abstractmethod
@@ -198,61 +203,6 @@ class DetSigYieldBuilder(object, metaclass=abc.ABCMeta):
         """
         super().__init__(**kwargs)
 
-        self.supported_sourcemodels = ()
-        self.supported_fluxmodels = ()
-
-    @property
-    def supported_sourcemodels(self):
-        """The tuple with the SourceModel classes, which are supported by this
-        detector signal yield implementation method.
-        """
-        return self._supported_sourcemodels
-    @supported_sourcemodels.setter
-    def supported_sourcemodels(self, models):
-        if not isinstance(models, tuple):
-            raise TypeError(
-                'The supported_sourcemodels property must be of type tuple!')
-        if not issequenceofsubclass(models, SourceModel):
-            raise TypeError(
-                'The supported_sourcemodels property must be a sequence of '
-                'SourceModel classes!')
-        self._supported_sourcemodels = models
-
-    @property
-    def supported_fluxmodels(self):
-        """The tuple with the FluxModel classes, which are supported by this
-        detector signal yield implementation method.
-        """
-        return self._supported_fluxmodels
-    @supported_fluxmodels.setter
-    def supported_fluxmodels(self, models):
-        if not isinstance(models, tuple):
-            raise TypeError(
-                'The supported_fluxmodels property must be of type tuple!')
-        if not issequenceofsubclass(models, FluxModel):
-            raise TypeError(
-                'The supported_fluxmodels property must be a sequence of '
-                'FluxModel instances!')
-        self._supported_fluxmodels = models
-
-    def supports_sourcemodel(self, sourcemodel):
-        """Checks if the given source model is supported by this detected signal
-        yield implementation method.
-        """
-        for ssm in self._supported_sourcemodels:
-            if isinstance(sourcemodel, ssm):
-                return True
-        return False
-
-    def supports_fluxmodel(self, fluxmodel):
-        """Checks if the given flux model is supported by this detector signal
-        yield implementation method.
-        """
-        for sfm in self._supported_fluxmodels:
-            if isinstance(fluxmodel, sfm):
-                return True
-        return False
-
     @abc.abstractmethod
     def construct_detsigyield(
             self, dataset, data, fluxmodel, livetime, ppbar=None):
@@ -281,24 +231,28 @@ class DetSigYieldBuilder(object, metaclass=abc.ABCMeta):
         """
         if not isinstance(dataset, Dataset):
             raise TypeError(
-                'The dataset argument must be an instance of Dataset!')
+                'The dataset argument must be an instance of Dataset! '
+                f'Its current type is {classname(dataset)}.')
 
         if not isinstance(data, DatasetData):
             raise TypeError(
-                'The data argument must be an instance of DatasetData!')
+                'The data argument must be an instance of DatasetData! '
+                f'Its current type is {classname(data)}.')
 
-        if not self.supports_fluxmodel(fluxmodel):
+        if not isinstance(fluxmodel, FluxModel):
             raise TypeError(
-                f'The DetSigYieldBuilder "{classname(self)}" does not support '
-                f'the flux model "{classname(fluxmodel)}"!')
+                'The fluxmodel argument must be an instance of FluxModel! '
+                f'Its current type is {classname(fluxmodel)}.')
 
         if (not isinstance(livetime, float)) and\
            (not isinstance(livetime, Livetime)):
             raise TypeError(
                 'The livetime argument must be an instance of float or '
-                f'Livetime! It is {classname(livetime)}')
+                'Livetime! '
+                f'Its current type is {classname(livetime)}.')
 
         if ppbar is not None:
             if not isinstance(ppbar, ProgressBar):
                 raise TypeError(
-                    'The ppbar argument must be an instance of ProgressBar!')
+                    'The ppbar argument must be an instance of ProgressBar! '
+                    f'Its current type is {classname(ppbar)}.')
