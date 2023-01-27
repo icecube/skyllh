@@ -180,7 +180,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
 
         # Save the parameter names needed for the interpolation for later usage.
         self._interpol_param_names = \
-            self._sig_pdf_set.param_grid_set.param_names
+            self._sig_pdf_set.param_grid_set.params_name_list
 
         # Create cache variable for the last ratio values and gradients in order
         # to avoid the recalculation of the ratio value when the
