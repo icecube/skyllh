@@ -444,11 +444,23 @@ class ParameterSet(object):
         return self._params
 
     @property
+    def params_name_list(self):
+        """(read-only) The list of str holding the names of all the parameters.
+        """
+        return self._fixed_param_name_list + self._floating_param_name_list
+
+    @property
     def fixed_params(self):
         """(read-only) The 1D ndarray holding the Parameter instances, whose
         values are fixed.
         """
         return self._params[self._params_fixed_mask]
+
+    @property
+    def fixed_params_name_list(self):
+        """(read-only) The list of the fixed parameter names.
+        """
+        return self._fixed_param_name_list
 
     @property
     def fixed_params_mask(self):
@@ -470,6 +482,12 @@ class ParameterSet(object):
         whose values are floating.
         """
         return self._params[np.invert(self._params_fixed_mask)]
+
+    @property
+    def floating_params_name_list(self):
+        """(read-only) The list of the floating parameter names.
+        """
+        return self._floating_param_name_list
 
     @property
     def floating_params_mask(self):
@@ -504,18 +522,6 @@ class ParameterSet(object):
         parameter set.
         """
         return len(self._floating_param_name_list)
-
-    @property
-    def fixed_param_name_list(self):
-        """(read-only) The list of the fixed parameter names.
-        """
-        return self._fixed_param_name_list
-
-    @property
-    def floating_param_name_list(self):
-        """(read-only) The list of the floating parameter names.
-        """
-        return self._floating_param_name_list
 
     @property
     def fixed_param_values(self):
@@ -1494,7 +1500,7 @@ class ParameterGridSet(NamedObjectCollection):
         return len(self)
 
     @property
-    def param_names(self):
+    def params_name_list(self):
         """(read-only) The list of the parameter names.
         """
         return [ paramgrid.name for paramgrid in self.objects ]
