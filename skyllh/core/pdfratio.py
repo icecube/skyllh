@@ -681,8 +681,8 @@ class SigOverBkgPDFRatio(PDFRatio):
             is zero. This is to avoid division by zero. Default is 1.
         """
         super().__init__(
-            sig_param_names=sig_pdf.param_set.param_names,
-            bkg_param_names=bkg_pdf.param_set.param_names,
+            sig_param_names=sig_pdf.param_set.params_name_list,
+            bkg_param_names=bkg_pdf.param_set.params_name_list,
             **kwargs)
 
         self.sig_pdf = sig_pdf
@@ -939,8 +939,8 @@ class SigSetOverBkgPDFRatio(PDFRatio):
             will be used for 1-dimensional parameter manifolds.
         """
         super().__init__(
-            sig_param_names=sig_pdf_set.param_grid_set.param_names,
-            bkg_param_names=bkg_pdf.param_set.param_names,
+            sig_param_names=sig_pdf_set.param_grid_set.params_name_list,
+            bkg_param_names=bkg_pdf.param_set.params_name_list,
             **kwargs)
 
         self.sig_pdf_set = sig_pdf_set
@@ -970,7 +970,8 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         if not isinstance(pdf, IsBackgroundPDF):
             raise TypeError(
                 'The bkg_pdf property must be an instance derived from '
-                'IsBackgroundPDF!')
+                'IsBackgroundPDF! '
+                f'Its current type is {classname(pdf)}.')
         self._bkg_pdf = pdf
 
     @property
@@ -985,20 +986,22 @@ class SigSetOverBkgPDFRatio(PDFRatio):
                 isinstance(pdfset, IsSignalPDF)):
             raise TypeError(
                 'The sig_pdf_set property must be a class instance which is '
-                'derived from PDFSet and IsSignalPDF!')
+                'derived from PDFSet and IsSignalPDF! '
+                f'Its current type is {classname(pdfset)}.')
         self._sig_pdf_set = pdfset
 
     @property
-    def interpolmethod(self):
+    def interpolmethod_cls(self):
         """The class derived from GridManifoldInterpolationMethod
-        implementing the interpolation of the fit parameter manifold.
+        implementing the interpolation of the parameter manifold.
         """
-        return self._interpolmethod
+        return self._interpolmethod_cls
 
-    @interpolmethod.setter
-    def interpolmethod(self, cls):
+    @interpolmethod_cls.setter
+    def interpolmethod_cls(self, cls):
         if not issubclass(cls, GridManifoldInterpolationMethod):
             raise TypeError(
-                'The interpolmethod property must be a sub-class '
-                'of GridManifoldInterpolationMethod!')
-        self._interpolmethod = cls
+                'The interpolmethod_cls property must be a sub-class '
+                'of GridManifoldInterpolationMethod! '
+                f'Its current type is {classname(cls)}.')
+        self._interpolmethod_cls = cls
