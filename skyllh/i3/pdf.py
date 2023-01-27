@@ -179,7 +179,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
     def hist(self):
         """(read-only) The 2D logE-sinDec histogram array.
         """
-        return self._hist_logE_sinDec
+        return self._hist_log10_energy_sin_dec
 
     @property
     def hist_mask_mc_covered(self):
