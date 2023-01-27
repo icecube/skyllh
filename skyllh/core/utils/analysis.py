@@ -43,7 +43,7 @@ from skyllh.physics.source_model import (
 """
 
 def pointlikesource_to_data_field_array(
-        tdm, shg_mgr):
+        tdm, shg_mgr, pmm):
     """Function to transform a list of PointLikeSource sources into a numpy
     record ndarray. The resulting numpy record ndarray contains the following
     fields:
@@ -61,6 +61,9 @@ def pointlikesource_to_data_field_array(
         The TrialDataManager instance.
     shg_mgr : instance of SourceHypoGroupManager
         The instance of SourceHypoGroupManager that defines the sources.
+    pmm : instance of ParameterModelMapper
+        The instance of ParameterModelMapper that defines the mapping of global
+        parameters to local model parameters.
 
     Returns
     -------
