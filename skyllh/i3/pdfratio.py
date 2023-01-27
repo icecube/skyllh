@@ -12,9 +12,11 @@ from skyllh.core.multiproc import (
     parallelize,
 )
 from skyllh.core.pdfratio import (
+    SigSetOverBkgPDFRatio,
+)
+from skyllh.core.pdfratio_fill import (
     MostSignalLikePDFRatioFillMethod,
     PDFRatioFillMethod,
-    SigSetOverBkgPDFRatio,
 )
 
 
@@ -108,7 +110,7 @@ class I3EnergySigSetOverBkgPDFRatioSpline(
             ratio = np.ones_like(bkg_pdf.hist, dtype=np.float64)
 
             # Fill the ratio array.
-            ratio = fillmethod.fill_ratios(
+            ratio = fillmethod(
                 ratio,
                 sig_pdf.hist,
                 bkg_pdf.hist,
