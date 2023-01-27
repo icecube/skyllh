@@ -6,6 +6,8 @@ fit parameter into its contributions of the individual datasets.
 """
 
 import abc
+import numpy as np
+
 
 from skyllh.core.detsigyield import (
     DetSigYield,
@@ -14,6 +16,7 @@ from skyllh.core.parameters import (
     ParameterModelMapper,
 )
 from skyllh.core.py import (
+    classname,
     issequenceof,
 )
 from skyllh.core.source_hypo_grouping import (
@@ -55,7 +58,7 @@ class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
         self.pmm = pmm
         self.detsigyield_arr = detsigyields
 
-        if(self._detsigyield_arr.shape[0] != self._shg_mgr.n_src_hypo_groups):
+        if self._detsigyield_arr.shape[0] != self._shg_mgr.n_src_hypo_groups:
             raise ValueError(
                 'The detsigyields array must have the same number of source '
                 'hypothesis groups as the source hypothesis group manager '
@@ -95,7 +98,7 @@ class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
         src_arr_list = []
         for (gidx, shg) in enumerate(shg_mgr.src_hypo_group_list):
             src_arr_list.append(
-                detsigyield_arr[gidx,0].sources_to_recarray(shg.source_list)
+                detsigyield_arr[gidx, 0].sources_to_recarray(shg.source_list)
             )
 
         return src_arr_list
@@ -106,12 +109,14 @@ class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
         hypothesis groups.
         """
         return self._shg_mgr
+
     @shg_mgr.setter
     def shg_mgr(self, mgr):
-        if(not isinstance(mgr, SourceHypoGroupManager)):
+        if not isinstance(mgr, SourceHypoGroupManager):
             raise TypeError(
                 'The shg_mgr property must be an instance of '
-                'SourceHypoGroupManager!')
+                'SourceHypoGroupManager! '
+                f'Its current type is {classname(mgr)}.')
         self._shg_mgr = mgr
 
     @property
@@ -120,11 +125,14 @@ class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
         parameters and their mapping to individual models, e.g. sources.
         """
         return self._pmm
+
     @pmm.setter
     def pmm(self, mapper):
         if not isinstance(mapper, ParameterModelMapper):
             raise TypeError(
-                'The pmm property must be an instance of ParameterModelMapper!')
+                'The pmm property must be an instance of '
+                'ParameterModelMapper! '
+                f'Its current type is {classname(mapper)}.')
         self._pmm = mapper
 
     @property
@@ -133,6 +141,7 @@ class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
         DetSigYield instances.
         """
         return self._detsigyield_arr
+
     @detsigyield_arr.setter
     def detsigyield_arr(self, detsigyields):
         detsigyields = np.atleast_2d(detsigyields)
@@ -286,7 +295,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         if N_gflp > 1:
             # sumj_Y_grads is a (N_global_floating_params,)-shaped 1D array.
             sumj_Y_grads = np.sum(Y_grads, axis=0)
-            f_grads = (Y_grads*sumj_Y - Y[...,np.newaxis]*sumj_Y_grads) / sumj_Y**2
+            f_grads = (Y_grads*sumj_Y - Y[..., np.newaxis]*sumj_Y_grads) / sumj_Y**2
 
         return (f, f_grads)
 
@@ -388,7 +397,7 @@ class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
         if N_fitparams > 0:
             # sum_Y_grads is a (N_datasets, N_fitparams,)-shaped 2D array.
             sum_Y_grads = np.sum(Y_grads, axis=1)
-            f_grads = (sum_Y_grads*sum_Y - (f*sum_Y)[...,np.newaxis]*np.sum(sum_Y_grads, axis=0)) / sum_Y**2
+            f_grads = (sum_Y_grads*sum_Y - (f*sum_Y)[..., np.newaxis]*np.sum(sum_Y_grads, axis=0)) / sum_Y**2
         else:
             f_grads = None
 
