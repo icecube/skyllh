@@ -839,10 +839,12 @@ class TrialDataManager(object):
         func : callable
             The function that calculates the data field values. The call
             signature must be
-            `__call__(tdm, src_hypo_group_manager, fitparams)`, where
-            `tdm` is the TrialDataManager instance holding the event data,
-            `src_hypo_group_manager` is the SourceHypoGroupManager instance,
-            and `fitparams` is an unused interface argument.
+
+                __call__(tdm, shg_mgr, pmm)
+
+            where ``tdm`` is the TrialDataManager instance holding the event
+            data, ``shg_mgr`` is the instance of SourceHypoGroupManager,
+            and ``pmm`` is the instance of ParameterModelMapper.
         dt : numpy dtype | str | None
             If specified it defines the data type this data field should have.
             If a str instance is given, it defines the name of the data field
