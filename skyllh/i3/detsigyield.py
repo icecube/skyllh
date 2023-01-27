@@ -30,12 +30,11 @@ from skyllh.core.livetime import (
 from skyllh.physics.source_model import (
     PointLikeSource,
 )
-from skyllh.physics.flux_model import (
-    FluxModel,
-)
 
 
-class I3DetSigYield(DetSigYield, metaclass=abc.ABCMeta):
+class I3DetSigYield(
+        DetSigYield,
+        metaclass=abc.ABCMeta):
     """Abstract base class for all IceCube specific detector signal yield
     classes. It assumes that sin(dec) binning is required for calculating the
     detector effective area and hence the detector signal yield.
@@ -80,15 +79,19 @@ class I3DetSigYield(DetSigYield, metaclass=abc.ABCMeta):
         """The BinningDefinition instance defining the sin(dec) binning.
         """
         return self._sin_dec_binning
+
     @sin_dec_binning.setter
     def sin_dec_binning(self, bd):
         if not isinstance(bd, BinningDefinition):
-            raise TypeError('The sin_dec_binning property must be an instance '
-                'of BinningDefinition!')
+            raise TypeError(
+                'The sin_dec_binning property must be an instance of '
+                f'BinningDefinition! Its current type is {classname(bd)}.')
         self._sin_dec_binning = bd
 
 
-class I3DetSigYieldBuilder(DetSigYieldBuilder, metaclass=abc.ABCMeta):
+class I3DetSigYieldBuilder(
+        DetSigYieldBuilder,
+        metaclass=abc.ABCMeta):
     """Abstract base class for an IceCube specific detector signal yield
     builder class.
     """
@@ -114,13 +117,15 @@ class I3DetSigYieldBuilder(DetSigYieldBuilder, metaclass=abc.ABCMeta):
         binning definitions.
         """
         return self._sin_dec_binning
+
     @sin_dec_binning.setter
     def sin_dec_binning(self, binning):
         if (binning is not None) and\
            (not isinstance(binning, BinningDefinition)):
             raise TypeError(
                 'The sin_dec_binning property must be None, or an instance of '
-                f'BinningDefinition! It is "{classname(binning)}"!')
+                'BinningDefinition! '
+                f'Its current type is "{classname(binning)}".')
         self._sin_dec_binning = binning
 
     def get_sin_dec_binning(self, dataset):
@@ -140,12 +145,14 @@ class I3DetSigYieldBuilder(DetSigYieldBuilder, metaclass=abc.ABCMeta):
         return sin_dec_binning
 
 
-class PointLikeSourceI3DetSigYield(I3DetSigYield):
+class PointLikeSourceI3DetSigYield(
+        I3DetSigYield):
     """Abstract base class for all IceCube specific detector signal yield
     classes for point-like sources.
     """
 
-    def __init__(self,
+    def __init__(
+            self,
             param_names,
             dataset,
             fluxmodel,
@@ -196,21 +203,22 @@ class PointLikeSourceI3DetSigYield(I3DetSigYield):
             the information for each source.
         """
         if isinstance(sources, PointLikeSource):
-            sources = [ sources ]
+            sources = [sources]
         if not issequenceof(sources, PointLikeSource):
             raise TypeError(
                 'The sources argument must be an instance or a sequence of '
                 'instances of PointLikeSource!')
 
         recarr = np.empty((len(sources),), dtype=[('dec', np.float64)])
-        for (i, src) in enumerate(source):
+        for (i, src) in enumerate(sources):
             recarr['dec'][i] = src.dec
 
         return recarr
 
 
 class PointLikeSourceI3DetSigYieldBuilder(
-        I3DetSigYieldBuilder, metaclass=abc.ABCMeta):
+        I3DetSigYieldBuilder,
+        metaclass=abc.ABCMeta):
     """Abstract base class for all IceCube specific detector signal yield
     builders for point-like sources. All IceCube detector signal
     yield builders require a sin(dec) binning definition for
@@ -234,11 +242,9 @@ class PointLikeSourceI3DetSigYieldBuilder(
             sin_dec_binning=sin_dec_binning,
             **kwargs)
 
-        # Define the supported source models.
-        self.supported_sourcemodels = (PointLikeSource,)
 
-
-class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
+class FixedFluxPointLikeSourceI3DetSigYield(
+        PointLikeSourceI3DetSigYield):
     """The detector signal yield class for a point-source with a fixed flux.
     """
     def __init__(
@@ -289,6 +295,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         yield as a function of sin(dec).
         """
         return self._log_spl_sinDec
+
     @log_spl_sinDec.setter
     def log_spl_sinDec(self, spl):
         if not isinstance(spl, scipy.interpolate.InterpolatedUnivariateSpline):
@@ -324,8 +331,10 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
 
         # Create mask for all source declinations which are inside the
         # declination range.
-        mask = (np.sin(src_dec) >= self._sin_dec_binning.lower_edge)\
-              &(np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
+        mask = (
+            (np.sin(src_dec) >= self._sin_dec_binning.lower_edge) &
+            (np.sin(src_dec) <= self._sin_dec_binning.upper_edge)
+        )
 
         values[mask] = np.exp(self._log_spl_sinDec(np.sin(src_dec[mask])))
 
@@ -333,7 +342,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
 
 
 class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
-    PointLikeSourceI3DetSigYieldBuilder):
+        PointLikeSourceI3DetSigYieldBuilder):
     """This detector signal yield builder constructs a
     detector signal yield for a fixed flux model, assuming a point-like
     source. This means that the detector signal yield does not depend on
@@ -372,8 +381,6 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             sin_dec_binning=sin_dec_binning,
             **kwargs)
 
-        self.supported_fluxmodels = (FluxModel,)
-
         self.spline_order_sinDec = spline_order_sinDec
 
     @property
@@ -382,11 +389,13 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         detector signal yield, along the sin(dec) axis.
         """
         return self._spline_order_sinDec
+
     @spline_order_sinDec.setter
     def spline_order_sinDec(self, order):
-        if(not isinstance(order, int)):
-            raise TypeError('The spline_order_sinDec property must be of '
-                'type int!')
+        if not isinstance(order, int):
+            raise TypeError(
+                'The spline_order_sinDec property must be of type int! '
+                f'Its current type is {classname(order)}.')
         self._spline_order_sinDec = order
 
     def construct_detsigyield(
@@ -477,7 +486,8 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         return detsigyield
 
 
-class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
+class SingleParamFluxPointLikeSourceI3DetSigYield(
+        PointLikeSourceI3DetSigYield):
     """The detector signal yield class for a flux that depends on a single
     source parameter.
     """
@@ -526,12 +536,14 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
         yield as a function of sin(dec) and the floating parameter.
         """
         return self._log_spl_sinDec_param
+
     @log_spl_sinDec_param.setter
     def log_spl_sinDec_param(self, spl):
         if not isinstance(spl, scipy.interpolate.RectBivariateSpline):
             raise TypeError(
                 'The log_spl_sinDec_param property must be an instance of '
-                'scipy.interpolate.RectBivariateSpline!')
+                'scipy.interpolate.RectBivariateSpline! '
+                f'Its current type is {classname(spl)}.')
         self._log_spl_sinDec_param = spl
 
     def __call__(self, src_recarray, src_params_recarray):
@@ -619,7 +631,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
 
 
 class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
-    PointLikeSourceI3DetSigYieldBuilder, multiproc.IsParallelizable):
+        PointLikeSourceI3DetSigYieldBuilder,
+        multiproc.IsParallelizable):
     """This detector signal yield builder constructs a
     detector signal yield for a variable flux model with a single parameter,
     assuming a point-like source.
@@ -627,9 +640,6 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
     parameter, using a :class:`scipy.interpolate.RectBivariateSpline`.
     Hence, the detector signal yield can vary with the declination and the fit
     parameter of the source.
-
-    This detector signal yield implementation method works with a
-    PowerLawFlux flux model.
 
     It is tailored to the IceCube detector at the South Pole, where the
     effective area depends soley on the zenith angle, and hence on the
@@ -686,11 +696,14 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         for computing the parameter dependency of the detector signal yield.
         """
         return self._param_grid
+
     @param_grid.setter
     def param_grid(self, grid):
         if not isinstance(grid, ParameterGrid):
             raise TypeError(
-                'The param_grid property must be an instance of ParameterGrid!')
+                'The param_grid property must be an instance of '
+                'ParameterGrid! '
+                f'Its current type is {classname(grid)}.')
         self._param_grid = grid
 
     @property
@@ -699,11 +712,13 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         detector signal yield, along the sin(dec) axis.
         """
         return self._spline_order_sinDec
+
     @spline_order_sinDec.setter
     def spline_order_sinDec(self, order):
         if not isinstance(order, int):
             raise TypeError(
-                'The spline_order_sinDec property must be of type int!')
+                'The spline_order_sinDec property must be of type int! '
+                f'Its current type is {classname(order)}.')
         self._spline_order_sinDec = order
 
     @property
@@ -712,11 +727,13 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         detector signal yield, along the parameter axis.
         """
         return self._spline_order_param
+
     @spline_order_param.setter
     def spline_order_param(self, order):
         if not isinstance(order, int):
             raise TypeError(
-                'The spline_order_param property must be of type int!')
+                'The spline_order_param property must be of type int! '
+                f'Its current type is {classname(order)}.')
         self._spline_order_param = order
 
     def construct_detsigyield(
@@ -807,7 +824,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             h : 1d ndarray
                 The numpy array containing the histogram values.
             """
-            weights = weights * fluxmodel(E=data_true_energy)
+            weights = weights * fluxmodel(E=data_true_energy).squeeze()
             (h, edges) = np.histogram(
                 data_sin_true_dec,
                 bins=sin_dec_binning.binedges,
@@ -826,12 +843,17 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         # Construct the arguments for the hist function to be used in the
         # multiproc.parallelize function.
         args_list = [
-            ((data_sin_true_dec,
-            data.mc['true_energy'],
-            sin_dec_binning,
-            weights,
-            fluxmodel.copy({param_grid.name:param_val})), {})
-                for param_val in param_grid.grid
+            (
+                (
+                    data_sin_true_dec,
+                    data.mc['true_energy'],
+                    sin_dec_binning,
+                    weights,
+                    fluxmodel.copy({param_grid.name: param_val})
+                ),
+                {}
+            )
+            for param_val in param_grid.grid
         ]
         h = np.vstack(
             multiproc.parallelize(
@@ -840,7 +862,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         # Normalize by solid angle of each bin along the sin(dec) axis.
         # The solid angle is given by 2*\pi*(\Delta sin(\delta)).
         h /= (2.*np.pi * np.diff(sin_dec_binning.binedges)).reshape(
-            (sin_dec_binning.nbins,1))
+            (sin_dec_binning.nbins, 1))
 
         # Create the 2D spline.
         log_spl_sinDec_param = scipy.interpolate.RectBivariateSpline(
