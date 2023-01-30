@@ -441,6 +441,13 @@ class TrialDataManager(object):
         self._events = arr
 
     @property
+    def has_global_fitparam_data_fields(self):
+        """(read-only) ``True`` if the TrialDataManager has global fit parameter
+        data fields defined, ``False`` otherwise.
+        """
+        return len(self._global_fitparam_data_fields_dict) > 0
+
+    @property
     def n_sources(self):
         """(read-only) The number of sources. This information is taken from
         the source hypo group manager when a new trial is initialized.
@@ -572,11 +579,11 @@ class TrialDataManager(object):
         s += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s1)
         s += '\n'
 
-        s1 = 'Fitparam data fields:\n'
+        s1 = 'Global fitparam data fields:\n'
         s2 = '\n'.join(
             [
                 str(df)
-                for (_, df) in self._fitparam_data_fields_dict.items()
+                for (_, df) in self._global_fitparam_data_fields_dict.items()
             ]
         )
         if s2 == '':
@@ -921,7 +928,7 @@ class TrialDataManager(object):
         elif global_fitparam_names is None:
             self._static_data_fields_dict[name] = data_field
         else:
-            self._fitparam_data_fields_dict[name] = data_field
+            self._global_fitparam_data_fields_dict[name] = data_field
 
     def calculate_source_data_fields(self, shg_mgr, pmm):
         """Calculates the data values of the data fields that solely depend on
