@@ -37,7 +37,7 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
             The instance of SourceHypoGroupManager that defines the list of
             sources, i.e. the list of SourceModel instances.
         """
-        super(EventSelectionMethod, self).__init__()
+        super().__init__()
 
         self.src_hypo_group_manager = src_hypo_group_manager
 
@@ -60,18 +60,19 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
                 'SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
 
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+    def change_shg_mgr(self, shg_mgr):
         """Changes the SourceHypoGroupManager instance of the event selection
         method. This will also recreate the internal source numpy record array.
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The new SourceHypoGroupManager instance, that should be used for
             this event selection method.
         """
-        self.src_hypo_group_manager = src_hypo_group_manager
-        self._src_arr = self.source_to_array(self._src_hypo_group_manager.source_list)
+        self.src_hypo_group_manager = shg_mgr
+        self._src_arr = self.source_to_array(
+            self._src_hypo_group_manager.source_list)
 
     @abc.abstractmethod
     def source_to_array(self, sources):
