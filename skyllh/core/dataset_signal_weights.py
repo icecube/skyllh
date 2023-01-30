@@ -300,7 +300,7 @@ class SingleSourceDatasetSignalWeights(DatasetSignalWeights):
         return (f, f_grads)
 
 
-class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
+class MultiSourceDatasetSignalWeights(DatasetSignalWeights):
     """This class calculates the dataset signal weight factors for each dataset
     assuming multiple sources.
     """
@@ -361,7 +361,8 @@ class MultiSourceDatasetSignalWeights(SingleSourceDatasetSignalWeights):
         # Loop over the SHGs and calculate detsigyield for each group of sources
         # NOTE Source weights are not incorporated in here.
         fitparams_arr =\
-            self._pmm.get_source_floating_params_recarray(fitparam_values)
+            self._pmm.create_src_floating_params_recarray(
+                gflp_values=fitparam_values)
 
         N_datasets = self.n_datasets
 
