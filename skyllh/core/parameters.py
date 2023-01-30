@@ -1542,6 +1542,41 @@ class ParameterModelMapper(object):
     parameter, usually a fit parameter, to a local parameter of a model, e.g.
     to a source, or a background model parameter.
     """
+
+    @staticmethod
+    def is_global_fitparam_a_local_param(
+            fitparam_id,
+            params_recarray,
+            local_param_names):
+        """Determines if the given global fit parameter is a local parameter of
+        the given list of local parameter names.
+
+        Parameters
+        ----------
+        fitparam_id : int
+            The ID of the global fit parameter.
+        params_recarray : instance of numpy record ndarray
+            The (N_models,)-shaped numpy record ndarray holding the local
+            parameter names and values of the models. See the
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            method for the format of this record array.
+        local_param_names : list of str
+            The list of local parameters.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the global fit parameter translates to a local parameter
+            contained in the ``local_param_names`` list, ``False`` otherwise.
+        """
+        for pname in local_param_names:
+            if not pname in params_recarray.dtype.fields:
+                continue
+            if np.any(params_recarray[f'{pname}:gpidx'] == fitparam_id):
+                return True
+
+        return False
+
     def __init__(self, models, **kwargs):
         """Constructor of the parameter mapper.
 
@@ -2049,7 +2084,10 @@ class ParameterModelMapper(object):
 
         return recarray
 
-    def get_source_floating_params_recarray(self, gflp_values, sources=None):
+    def create_src_floating_params_recarray(
+            self,
+            gflp_values,
+            sources=None):
         """Creates a numpy record ndarray holding the floating parameter names
         as key and their value for each source model. The returned record array
         is (N_sources,)-shaped.
