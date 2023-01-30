@@ -1122,7 +1122,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return recarray
 
 
-class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
+class SingleSourceTimeIntegratedMultiDatasetAnalysis(Analysis):
     """This is an analysis class that implements a time-integrated LLH ratio
     analysis for multiple datasets assuming a single source.
 
@@ -1130,7 +1130,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         1. Add the datasets and their spatial and energy PDF ratio instances
            via the
-           :meth:`skyllh.core.analysis.TimeIntegratedMultiDatasetSingleSourceAnalysis.add_dataset`
+           :meth:`skyllh.core.analysis.SingleSourceTimeIntegratedMultiDatasetAnalysis.add_dataset`
            method.
         2. Construct the log-likelihood ratio function via the
            :meth:`construct_llhratio` method.
@@ -1178,15 +1178,15 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             sig_generator_cls=sig_generator_cls,
             **kwargs)
 
-        # Define the member for the list of PDF ratio lists. Each list entry is
-        # a list of PDF ratio instances for each data set.
-        self._pdfratio_list_list = []
+        # Define the member for the list of PDFRatio instances, one for each
+        # dataset.
+        self._pdfratio_list = []
 
     def add_dataset(
             self,
             dataset,
             data,
-            pdfratios,
+            pdfratio,
             tdm=None,
             event_selection_method=None):
         """Adds a dataset with its PDF ratio instances to the analysis.
@@ -1198,7 +1198,7 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         data : DatasetData instance
             The DatasetData instance holding the original (prepared) data of the
             dataset.
-        pdfratios : PDFRatio instance | sequence of PDFRatio instances
+        pdfratio : PDFRatio instance | sequence of PDFRatio instances
             The PDFRatio instance or the sequence of PDFRatio instances for the
             to-be-added data set.
         tdm : TrialDataManager instance | None
@@ -1217,13 +1217,12 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             tdm=tdm,
             event_selection_method=event_selection_method)
 
-        if(isinstance(pdfratios, PDFRatio)):
-            pdfratios = [pdfratios]
-        if(not issequenceof(pdfratios, PDFRatio)):
-            raise TypeError('The pdfratios argument must be an instance of '
-                'PDFRatio or a sequence of PDFRatio!')
+        if not isinstance(pdfratio, PDFRatio):
+            raise TypeError(
+                'The pdfratio argument must be an instance of PDFRatio! '
+                f'Its current type is {classname(pdfratio)}')
 
-        self._pdfratio_list_list.append(list(pdfratios))
+        self._pdfratio_list.append(pdfratio)
 
     def construct_llhratio(self, minimizer, ppbar=None):
         """Constructs the log-likelihood-ratio (LLH-ratio) function of the
@@ -1269,53 +1268,65 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
                 detsigyield_builder = detsigyield_builder_list[j]
 
             detsigyield = detsigyield_builder.construct_detsigyield(
-                dataset, data, fluxmodel, data.livetime, ppbar=pbar)
+                dataset=dataset,
+                data=data,
+                fluxmodel=fluxmodel,
+                livetime=data.livetime,
+                ppbar=pbar)
             detsigyield_list.append(detsigyield)
             pbar.increment()
         pbar.finish()
 
-        # For multiple datasets we need a dataset signal weights instance in
-        # order to distribute ns over the different datasets.
-        dataset_signal_weights = SingleSourceDatasetSignalWeights(
+        src_det_weights = SourceDetectorWeights(
             shg_mgr=self._shg_mgr,
             pmm=self._pmm,
             detsigyields=detsigyield_list)
 
+        # For multiple datasets we need a dataset signal weights instance in
+        # order to distribute ns over the different datasets.
+        ds_sig_weight_factors = DatasetSignalWeightFactors(
+            src_det_weights=src_det_weights)
+
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
-        llhratio_list = []
-        for j in range(self.n_datasets):
-            tdm = self._tdm_list[j]
-            pdfratio_list = self._pdfratio_list_list[j]
-            llhratio = SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
-                minimizer,
-                self._shg_mgr,
-                self._pmm,
-                tdm,
-                pdfratio_list
+        llhratio_list = [
+            SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
+                pmm=self._pmm,
+                minimizer=minimizer,
+                shg_mgr=self._shg_mgr,
+                tdm=tdm,
+                pdfratio=pdfratio
             )
-            llhratio_list.append(llhratio)
+            for (tdm, pdfratio) in zip(self._tdm_list, self._pdfratio_list)
+        ]
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
-            minimizer, dataset_signal_weights, llhratio_list)
+            minimizer=minimizer,
+            ds_sig_weight_factors=ds_sig_weight_factors,
+            llhratios=llhratio_list)
 
         return llhratio
 
-    def change_source(self, source):
+    def change_source(
+            self,
+            source):
         """Changes the source of the analysis to the given source. It makes the
         necessary changes to all the objects of the analysis.
 
         Parameters
         ----------
-        source : SourceModel instance
-            The SourceModel instance describing the new source.
+        source : instance of SourceModel
+            The instance of SourceModel describing the new source.
         """
-        if(not isinstance(source, SourceModel)):
-            raise TypeError('The source argument must be an instance of SourceModel')
+        if not isinstance(source, SourceModel):
+            raise TypeError(
+                'The source argument must be an instance of SourceModel! '
+                f'Its current type is {classname(source)}.')
 
-        if(self._llhratio is None):
-            raise RuntimeError('The LLH ratio function has to be constructed, '
+        if self._llhratio is None:
+            raise RuntimeError(
+                'The LLH ratio function has to be constructed '
                 'before the `change_source` method can be called!')
 
         # Change the source in the SourceHypoGroupManager instance.
@@ -1325,27 +1336,29 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
 
         # Change the source hypo group manager of the EventSelectionMethod
         # instance.
-        for event_selection_method in self._event_selection_method_list:
-            if(event_selection_method is not None):
-                event_selection_method.change_source_hypo_group_manager(
-                    self._shg_mgr)
+        for evt_selection_method in self._event_selection_method_list:
+            if evt_selection_method is not None:
+                evt_selection_method.change_shg_mgr(
+                    shg_mgr=self._shg_mgr)
 
         # Change the source hypo group manager of the LLH ratio function
         # instance.
-        self._llhratio.change_source_hypo_group_manager(self._shg_mgr)
+        self._llhratio.change_shg_mgr(shg_mgr=self._shg_mgr)
 
         # Change the source hypo group manager of the background generator
         # instance.
-        if(self._bkg_generator is not None):
-            self._bkg_generator.change_source_hypo_group_manager(
-                self._shg_mgr)
+        if self._bkg_generator is not None:
+            self._bkg_generator.change_shg_mgr(shg_mgr=self._shg_mgr)
 
         # Change the source hypo group manager of the signal generator instance.
-        if(self._sig_generator is not None):
-            self._sig_generator.change_source_hypo_group_manager(
-                self._shg_mgr)
+        if self._sig_generator is not None:
+            self._sig_generator.change_shg_mgr(shg_mgr=self._shg_mgr)
 
-    def initialize_trial(self, events_list, n_events_list=None, tl=None):
+    def initialize_trial(
+            self,
+            events_list,
+            n_events_list=None,
+            tl=None):
         """This method initializes the multi-dataset log-likelihood ratio
         function with a new set of given trial data. This is a low-level method.
         For convenient methods see the `unblind` and `do_trial` methods.
@@ -1360,55 +1373,67 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The list of the number of events of each data set. If set to None,
             the number of events is taken from the size of the given events
             arrays.
-        tl : TimeLord | None
-            The optional TimeLord instance that should be used for timing
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used for timing
             measurements.
         """
-        if(n_events_list is None):
+        if n_events_list is None:
             n_events_list = [None] * len(events_list)
 
-        for (idx, (tdm, events, n_events, evt_sel_method)) in enumerate(zip(
+        for (tdm, events, n_events, evt_sel_method) in zip(
                 self._tdm_list, events_list, n_events_list,
-                self._event_selection_method_list)):
+                self._event_selection_method_list):
 
             # Initialize the trial data manager with the given raw events.
-            self._tdm_list[idx].initialize_trial(
-                self._shg_mgr, events, n_events, evt_sel_method, tl=tl)
+            tdm.initialize_trial(
+                shg_mgr=self._shg_mgr,
+                pmm=self._pmm,
+                events=events,
+                n_events=n_events,
+                evt_sel_method=evt_sel_method,
+                store_src_evt_idxs=False,
+                tl=tl)
 
         self._llhratio.initialize_for_new_trial(tl=tl)
 
-    def maximize_llhratio(self, rss, tl=None):
+    def maximize_llhratio(
+            self,
+            rss,
+            tl=None):
         """Maximizes the log-likelihood ratio function, by minimizing its
         negative.
 
         Parameters
         ----------
-        rss : RandomStateService instance
-            The RandomStateService instance that should be used to draw random
-            numbers from. It is used by the minimizer to generate random
+        rss : instance of RandomStateService
+            The instance of RandomStateService that should be used to draw
+            random numbers from. It is used by the minimizer to generate random
             fit parameter initial values.
-        tl : TimeLord instance | None
-            The optional TimeLord instance that should be used to time the
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to time the
             maximization of the LLH ratio function.
 
         Returns
         -------
         log_lambda_max : float
             The value of the log-likelihood ratio function at its maximum.
-        gflp_values : (N_fitparam,)-shaped 1D ndarray
-            The ndarray holding the global floating parameter values.
+        fitparam_values : (N_fitparam,)-shaped 1D ndarray
+            The N_fitparam,)-shaped 1D ndarray holding the global fit
+            parameter values.
         status : dict
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        (log_lambda_max, gflp_values, status) =\
-            self._llhratio.maximize(rss=rss, tl=tl)
-        return (log_lambda_max, gflp_values, status)
+        (log_lambda_max, fitparam_values, status) = self._llhratio.maximize(
+            rss=rss,
+            tl=tl)
+
+        return (log_lambda_max, fitparam_values, status)
 
     def calculate_fluxmodel_scaling_factor(
             self,
             mean_ns,
-            gflp_values):
+            fitparam_values):
         """Calculates the factor the source's fluxmodel has to be scaled
         in order to obtain the given mean number of signal events in the
         detector.
@@ -1418,12 +1443,11 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         mean_ns : float
             The mean number of signal events in the detector for which the
             scaling factor is calculated.
-        gflp_values : (N_global_floating_params,)-shaped 1D
-                ndarray
-            The ndarray holding the values of the global floating parameters,
-            that should be used for the flux calculation. The order of the
-            values must match the order the floating parameters were defined
-            in the parameter model mapper.
+        fitparam_values : instance of numpy ndarray
+            The (N_fitparam,)-shaped 1D ndarray holding the values of the global
+            fit parameters, that should be used for the flux calculation.
+            The order of the values must match the order the fit parameters were
+            defined in the parameter model mapper.
 
         Returns
         -------
@@ -1432,8 +1456,10 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             the given mean number of signal events in the detector.
         """
         fitparams_recarray =\
-            self._pmm.get_source_floating_params_recarray(gflp_values)
+            self._pmm.create_src_params_recarray(
+                gflp_values=fitparam_values)
 
+        # FIXME This should use the
         # We use the DatasetSignalWeights class instance of this analysis to
         # calculate the detector signal yield for all datasets.
         dataset_signal_weights = self._llhratio.dataset_signal_weights
@@ -1444,7 +1470,8 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         detsigyields = dataset_signal_weights.detsigyield_arr[0]
         for detsigyield in detsigyields:
             (Yj, Yj_grads) = detsigyield(
-                dataset_signal_weights._src_arr_list[0], fitparams_recarray)
+                src_recarray=dataset_signal_weights._src_arr_list[0],
+                src_params_recarray=fitparams_recarray)
             mean_ns_ref += Yj[0]
 
         factor = mean_ns / mean_ns_ref
