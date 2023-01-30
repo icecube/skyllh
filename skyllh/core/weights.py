@@ -200,14 +200,15 @@ class SourceDetectorWeights(object):
         self._src_weight_array_list = type(self).create_src_weight_array_list(
             shg_mgr=self._shg_mgr)
 
-    def __call__(self, gflp_values):
+    def __call__(self, fitparam_values):
         """Calculates the source detector weights for each source and their
         derivative w.r.t. each global floating parameter.
 
         Parameters
         ----------
-        gflp_values : (N_gfl_params,)-shaped numpy ndarray
-            The ndarray holding the global floating parameter values.
+        fitparam_values : instance of numpy ndarray
+            The (N_fitparams,)-shaped ndarray holding the global fit parameter
+            values.
 
         Returns
         -------
@@ -239,7 +240,7 @@ class SourceDetectorWeights(object):
             shg_n_src = shg.n_sources
 
             src_params_recarray = self._pmm.create_src_params_recarray(
-                gflp_values=gflp_values,
+                gflp_values=fitparam_values,
                 sources=shg.source_list)
 
             for ds_idx in range(n_datasets):
@@ -295,15 +296,21 @@ class DatasetSignalWeightFactors(object):
                 'SourceDetectorWeights!')
         self._src_det_weights = w
 
-    def __call__(self, gflp_values):
+    @property
+    def n_datasets(self):
+        """(read-only) The number of datasets.
+        """
+        return self._src_det_weights.detsigyield_arr.shape[0]
+
+    def __call__(self, fitparam_values):
         r"""Calculates the dataset signal weight factors,
         :math:`f_j(\vec{p}_\mathrm{s})`.
 
         Parameters
         ----------
-        gflp_values : instance of ndarray
-            The (N_gfl_params,)-shaped 1D numpy ndarray holding the global
-            floating parameter values.
+        fitparam_values : instance of ndarray
+            The (N_fitparams,)-shaped 1D numpy ndarray holding the global
+            fit parameter values.
 
         Returns
         -------
@@ -316,7 +323,8 @@ class DatasetSignalWeightFactors(object):
             the DatasetSignalWeightFactors depend on. The dictionary's key is
             the index of the global floating parameter.
         """
-        (a_jk, a_jk_grads) = self._src_det_weights(gflp_values=gflp_values)
+        (a_jk, a_jk_grads) = self._src_det_weights(
+            fitparam_values=fitparam_values)
 
         a_j = np.sum(a_jk, axis=1)
         a = np.sum(a_jk)
