@@ -200,6 +200,9 @@ class SourceDetectorWeights(object):
         self._src_weight_array_list = type(self).create_src_weight_array_list(
             shg_mgr=self._shg_mgr)
 
+    # TODO: Use params_recarray with all sources as argument and mask for each
+    #       SHG the required rows. This will save expensive calls to
+    #       pmm.create_src_params_recarray.
     def __call__(self, fitparam_values):
         """Calculates the source detector weights for each source and their
         derivative w.r.t. each global floating parameter.
