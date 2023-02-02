@@ -2150,7 +2150,7 @@ class ParameterModelMapper(object):
 
         return arr
 
-    def get_global_params_dict(self, gflp_values):
+    def create_global_params_dict(self, gflp_values):
         """Converts the given global floating parameter values into a dictionary
         holding the names and values of all floating and fixed parameters.
 
@@ -2171,7 +2171,7 @@ class ParameterModelMapper(object):
 
         return params_dict
 
-    def get_global_floating_params_dict(self, gflp_values):
+    def create_global_floating_params_dict(self, gflp_values):
         """Converts the given global floating parameter values into a dictionary
         holding the names and values of all floating parameters.
 
