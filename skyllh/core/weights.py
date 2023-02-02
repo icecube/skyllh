@@ -163,10 +163,20 @@ class SourceDetectorWeights(object):
 
     @property
     def detsigyield_arr(self):
-        """(read-only) The numpy ndarray holding the DetSigYield instances for
-        each source hypothesis group.
+        """(read-only) The (N_datasets,N_source_hypo_groups)-shaped 1D numpy
+        ndarray holding the DetSigYield instances for each source hypothesis
+        group.
         """
         return self._detsigyield_arr
+
+    @property
+    def src_recarray_list_list(self):
+        """(read-only) The (N_datasets,N_source_hypo_groups)-shaped list of list
+        of the source numpy record ndarrays, one for each dataset and source
+        hypothesis group combination, which is needed for evaluating a
+        particular detector signal yield instance.
+        """
+        return self._src_recarray_list_list
 
     def _set_shg_mgr(self, shg_mgr):
         """Sets the _shg_mgr class attribute and checks for the correct type.
