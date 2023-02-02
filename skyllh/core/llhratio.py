@@ -885,7 +885,7 @@ class MultiDatasetTCLLHRatio(
             pmm,
             minimizer,
             ds_sig_weight_factors,
-            llhratios,
+            llhratio_list,
             **kwargs):
         """Creates a new composite two-component log-likelihood ratio function.
 
@@ -900,8 +900,8 @@ class MultiDatasetTCLLHRatio(
         ds_sig_weight_factors : instance of DatasetSignalWeightFactors
             An instance of DatasetSignalWeightFactors, which calculates the
             relative dataset signal weight factors.
-        llhratios : sequence of instance of SingleDatasetTCLLHRatio
-            The sequence of the two-component log-likelihood ratio functions,
+        llhratio_list : list of instance of SingleDatasetTCLLHRatio
+            The list of the two-component log-likelihood ratio functions,
             one for each dataset.
         """
         super().__init__(
@@ -911,7 +911,7 @@ class MultiDatasetTCLLHRatio(
             **kwargs)
 
         self.ds_sig_weight_factors = ds_sig_weight_factors
-        self.llhratio_list = llhratios
+        self.llhratio_list = llhratio_list
 
         if self.ds_sig_weight_factors.n_datasets != len(self._llhratio_list):
             raise ValueError(
