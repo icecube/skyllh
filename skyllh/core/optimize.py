@@ -269,8 +269,10 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         self._delta_angle = angle
 
     def select_events(
-            self, events, ret_src_evt_idxs=False,
-            ret_mask_idxs=False, tl=None):
+            self,
+            events,
+            ret_src_evt_idxs=False,
+            tl=None):
         """Selects the events within the declination band.
 
         Parameters
@@ -279,15 +281,12 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             The instance of DataFieldRecordArray that holds the event data.
             The following data fields must exist:
 
-            - 'dec' : float
-                The declination of the event.
+                dec : float
+                    The declination of the event.
+
         ret_src_evt_idxs : bool
             Flag if also the indices of the selected events should get
-            returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
-            Default is False.
-        ret_mask_idxs : bool
-            Flag if also the indices of the selected events mask should get
-            returned as a mask_idxs 1d ndarray.
+            returned as a (src_idxs, evt_idxs) tuple of 1d ndarrays.
             Default is False.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
@@ -301,13 +300,9 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         idxs: where idxs is one of the following:
             - (src_idxs, evt_idxs) : 1d ndarrays of ints
                 The indices of sources and selected events, in case
-                `ret_src_evt_idxs` is set to True.
-            - mask_idxs : 1d ndarrays of ints
-                The indices of selected events mask, in case
-                `ret_mask_idxs` is set to True.
+                ``ret_src_evt_idxs`` is set to True.
             - None
-                In case both `ret_src_evt_idxs` and `ret_mask_idxs` are set to
-                False.
+                In case ``ret_src_evt_idxs`` is set to ``False``.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -337,18 +332,12 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             mask_idxs = events.indices[mask]
             selected_events = events[mask_idxs]
 
-        if(ret_src_evt_idxs and ret_mask_idxs):
-            raise ValueError(
-                'Only one of `ret_src_evt_idxs` and `ret_mask_idxs` can be set '
-                'to True.')
-        elif(ret_src_evt_idxs):
+        if ret_src_evt_idxs:
             # Get selected events indices.
             idxs = np.argwhere(mask_dec[:, mask])
             src_idxs = idxs[:, 0]
             ev_idxs = idxs[:, 1]
             return (selected_events, (src_idxs, ev_idxs))
-        elif(ret_mask_idxs):
-            return (selected_events, mask_idxs)
 
         return (selected_events, None)
 
