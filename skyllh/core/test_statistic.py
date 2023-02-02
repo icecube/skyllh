@@ -23,7 +23,6 @@ class TestStatistic(
     def __call__(
             self,
             pmm,
-            llhratio,
             log_lambda,
             fitparam_values,
             **kwargs):
@@ -34,9 +33,6 @@ class TestStatistic(
         pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance that defines the global
             parameter set.
-        llhratio : instance of LLHRatio
-            The log-likelihood ratio function, which should be used for the
-            test-statistic function.
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
@@ -53,7 +49,7 @@ class TestStatistic(
         pass
 
 
-class TestStatisticWilks(
+class WilksTestStatistic(
         TestStatistic):
     r"""This class implements the standard Wilks theorem test-statistic function:
 
@@ -88,7 +84,6 @@ class TestStatisticWilks(
     def __call__(
             self,
             pmm,
-            llhratio,
             log_lambda,
             fitparam_values,
             **kwargs):
@@ -99,9 +94,6 @@ class TestStatisticWilks(
         pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance that defines the global
             parameter set.
-        llhratio : instance of LLHRatio
-            The log-likelihood ratio function, which should be used for the
-            test-statistic function.
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
@@ -129,7 +121,7 @@ class TestStatisticWilks(
         return TS
 
 
-class TestStatisticWilksZeroNsTaylor(
+class LLHRatioZeroNsTaylorWilksTestStatistic(
         TestStatistic):
     r"""Similar to the TestStatisticWilks class, this class implements the
     standard Wilks theorem test-statistic function. But for zero ns values, the
@@ -187,9 +179,9 @@ class TestStatisticWilksZeroNsTaylor(
     def __call__(
             self,
             pmm,
-            llhratio,
             log_lambda,
             fitparam_values,
+            llhratio,
             grads,
             tl=None,
             **kwargs):
@@ -200,9 +192,6 @@ class TestStatisticWilksZeroNsTaylor(
         pmm : instance of ParameterModelMapper
             The ParameterModelMapper instance that defines the global
             parameter set.
-        llhratio : instance of LLHRatio
-            The log-likelihood ratio function, which should be used for the
-            test-statistic function.
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
@@ -210,6 +199,9 @@ class TestStatisticWilksZeroNsTaylor(
             The (N_fitparam,)-shaped 1D numpy ndarray holding the
             global fit parameter values of the log-likelihood ratio
             function for the given log_lambda value.
+        llhratio : instance of LLHRatio
+            The log-likelihood ratio function, which should be used for the
+            test-statistic function.
         grads : instance of numpy ndarray
             The (N_fitparam,)-shaped 1D numpy ndarray holding the
             values of the first derivative of the log-likelihood ratio function
