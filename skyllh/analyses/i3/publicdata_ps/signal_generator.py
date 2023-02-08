@@ -42,7 +42,6 @@ class PDDatasetSignalGenerator(object):
              max_log_true_e) = \
                 self.smearing_matrix.get_true_log_e_range_with_valid_log_e_pdfs(
                     dec_idx)
-            print(f"Detection probability to be computed in log10(E) [{min_log_true_e}, {max_log_true_e}]")
             kwargs = {
                 'src_dec': src_dec,
                 'min_log10enu': min_log_true_e,

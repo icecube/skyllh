@@ -177,8 +177,6 @@ class PDAeff(object):
             bin_centers = self.log10_enu_bincenters[m]
             low_bin_edges = self._log10_enu_binedges_lower[m]
             high_bin_edges = self._log10_enu_binedges_upper[m]
-            
-            print(f"\nActual bin_edges for det_prob calculation: [{low_bin_edges[0]}, {high_bin_edges[-1]}]")
 
             # Get the detection probability P(E_nu | sin(dec)) per bin.
             self.det_prob = self.get_detection_prob_for_decnu(
