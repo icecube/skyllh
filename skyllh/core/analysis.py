@@ -369,7 +369,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         """
         pass
 
-    def construct_background_generator(self):
+    def construct_background_generator(self, **kwargs):
         """Constructs the background generator for all added datasets.
         This method must be called after all the datasets were added via the
         add_dataset method. It sets the `bkg_generator` property of this
@@ -380,7 +380,8 @@ class Analysis(object, metaclass=abc.ABCMeta):
                 'defined for this analysis!')
 
         self._bkg_generator = BackgroundGenerator(
-            self._bkg_gen_method, self._dataset_list, self._data_list)
+            self._bkg_gen_method, self._dataset_list, self._data_list,
+            **kwargs)
 
     def construct_signal_generator(self, **kwargs):
         """Constructs the signal generator for all added datasets.
