@@ -317,6 +317,7 @@ def create_analysis(
     pbar.finish()
 
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
+    analysis.construct_signal_generator(llhratio=analysis.llhratio)
 
     return analysis
 
