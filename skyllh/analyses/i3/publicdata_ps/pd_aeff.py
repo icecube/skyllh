@@ -156,20 +156,18 @@ class PDAeff(object):
         # Pre-calculate detection probabilities for a certain neutrino
         # declination if requested.
         if src_dec is not None:
-            # Ignore bins where Aeff = 0.
-            m = self.get_aeff_for_decnu(src_dec) > 0
             if min_log10enu is None:
-                min_log10enu = self._log10_enu_binedges_lower[m][0]
+                min_log10enu = self._log10_enu_binedges_lower[0]
             else:
                 min_log10enu = max(
-                    self._log10_enu_binedges_lower[m][0],
+                    self._log10_enu_binedges_lower[0],
                     min_log10enu)
 
             if max_log10enu is None:
-                max_log10enu = self._log10_enu_binedges_upper[m][-1]
+                max_log10enu = self._log10_enu_binedges_upper[-1]
             else:
                 max_log10enu = min(
-                    self._log10_enu_binedges_upper[m][-1],
+                    self._log10_enu_binedges_upper[-1],
                     max_log10enu)
 
             m = (
@@ -179,6 +177,8 @@ class PDAeff(object):
             bin_centers = self.log10_enu_bincenters[m]
             low_bin_edges = self._log10_enu_binedges_lower[m]
             high_bin_edges = self._log10_enu_binedges_upper[m]
+            
+            print(f"\nActual bin_edges for det_prob calculation: [{low_bin_edges[0]}, {high_bin_edges[-1]}]")
 
             # Get the detection probability P(E_nu | sin(dec)) per bin.
             self.det_prob = self.get_detection_prob_for_decnu(
@@ -375,7 +375,7 @@ class PDAeff(object):
             np.array([enu_range_min])
         )
         if enu_range_max >= enu_binedges[-1]:
-            uidx = len(enu_binedges)-2
+            uidx = len(enu_binedges)-1
         else:
             (uidx,) = get_bin_indices_from_lower_and_upper_binedges(
                 enu_binedges[:-1],
@@ -385,11 +385,11 @@ class PDAeff(object):
             # Note: The get_bin_indices_from_lower_and_upper_binedges function
             #       is based on the lower edges. So by definition the upper bin
             #       index is one too large.
-            uidx -= 1
+            # uidx -= 1
 
         aeff = self.get_aeff_for_decnu(decnu)
-        aeff = aeff[lidx:uidx+1]
-        enu_binedges = enu_binedges[lidx:uidx+2]
+        aeff = aeff[lidx:uidx]
+        enu_binedges = enu_binedges[lidx:uidx+1]
 
         dE = np.diff(enu_binedges)
 
@@ -423,7 +423,7 @@ class PDAeff(object):
             limit=200,
             full_output=1
         )[0]
-
+        
         enu_min = np.atleast_1d(enu_min)
         enu_max = np.atleast_1d(enu_max)
 
