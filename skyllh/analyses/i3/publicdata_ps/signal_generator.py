@@ -209,9 +209,22 @@ class PDDatasetSignalGenerator(object):
         events['run'] = -1 * np.ones(n_events)
 
         return events
+    
+    @staticmethod
+    @np.vectorize
+    def energy_filter(events, spline, cut_sindec):
+        # The energy filter will cut all events below cut_sindec
+        # that have an energy smaller than the energy spline at
+        # their declination.
+        energy_filter = np.logical_and(
+            events['sin_dec']<cut_sindec,
+            events['log_energy']<spline(events['sin_dec']))
+        
+        return energy_filter
 
     def generate_signal_events(
-            self, rss, src_dec, src_ra, flux_model, n_events):
+            self, rss, src_dec, src_ra, flux_model, n_events,
+            energy_cut_spline=None, cut_sindec=None):
         """Generates ``n_events`` signal events for the given source location
         and flux model.
 
@@ -250,7 +263,12 @@ class PDDatasetSignalGenerator(object):
                 rss, src_dec, src_ra, dec_idx, log_true_e_inv_cdf_spl, n_evt)
 
             # Cut events that failed to be generated due to missing PDFs.
+            # Also cut low energy events if generating in the southern sky.
             events_ = events_[events_['isvalid']]
+            if energy_cut_spline is not None:
+                to_cut = self.energy_filter(
+                    events_, energy_cut_spline, cut_sindec)
+                events_ = events_[~to_cut]
             if not len(events_) == 0:
                 n_evt_generated += len(events_)
                 if events is None:
@@ -266,7 +284,8 @@ class PDSignalGenerator(SignalGeneratorBase):
     seen in the IceCube detector using the 10 years public data release.
     """
 
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list=None, llhratio=None):
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list=None,
+                 llhratio=None, energy_cut_splines=None, cut_sindec=None):
         """Constructs a new signal generator instance.
         
         Parameters
@@ -284,6 +303,9 @@ class PDSignalGenerator(SignalGeneratorBase):
             The likelihood ratio object contains the datasets signal weights
             needed for distributing the event generation among the different
             datsets.
+        energy_cut_splines : dict
+        cut_energy_min : dict
+        
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self.dataset_list = dataset_list
@@ -291,6 +313,8 @@ class PDSignalGenerator(SignalGeneratorBase):
         self.llhratio = llhratio
         self.effA = [None] * len(self._dataset_list)
         self.sm = [None] * len(self._dataset_list)
+        self.splines = energy_cut_splines
+        self.cut_sindec = cut_sindec
 
     @property
     def src_hypo_group_manager(self):
@@ -389,7 +413,9 @@ class PDSignalGenerator(SignalGeneratorBase):
                         src.dec,
                         src.ra,
                         shg.fluxmodel,
-                        n_events
+                        n_events,
+                        energy_cut_spline=self.splines[ds_idx],
+                        cut_sindec=self.cut_sindec[ds_idx]
                     )
                     if events_ is None:
                         continue

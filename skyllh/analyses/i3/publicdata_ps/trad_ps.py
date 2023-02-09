@@ -8,6 +8,7 @@ event PDF.
 import argparse
 import logging
 import numpy as np
+from scipy.interpolate import UnivariateSpline
 
 from skyllh.core.progressbar import ProgressBar
 
@@ -87,6 +88,10 @@ from skyllh.analyses.i3.publicdata_ps.pdfratio import (
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF
 )
+
+# Dataset specific features for the energy cut splines
+cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
+spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
 
 
 def psi_func(tdm, src_hypo_group_manager, fitparams):
@@ -265,7 +270,8 @@ def create_analysis(
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
-    for ds in datasets:
+    energy_cut_splines = []
+    for idx,ds in enumerate(datasets):
         # Load the data of the data set.
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
@@ -312,12 +318,44 @@ def create_analysis(
 
         analysis.add_dataset(
             ds, data, pdfratios, tdm, event_selection_method)
+        
+        # Create the spline for the declination-dependent energy cut
+        # that the signal generator needs for injection in the southern sky
+        
+        # Some special conditions are needed for IC79 and IC86_I, because
+        # their experimental dataset shows events that should probably have
+        # been cut by the IceCube selection.
+        # ToDo: Move this to the dataset definition as a ds preparation step
+        if ds.name == 'IC79':
+            m = np.logical_and(
+                data.exp['sin_dec']<-0.75,
+                data.exp['log_energy'] < 4.2)
+            data.exp = data.exp[~m]
+        if ds.name == 'IC86_I':
+            m = np.logical_and(
+                data.exp['sin_dec']<-0.2,
+                data.exp['log_energy'] < 2.5)
+            data.exp = data.exp[~m]
+            
+        sin_dec_binning = ds.get_binning_definition('sin_dec')
+        edges = sin_dec_binning.binedges
+        e_filter = np.zeros(len(edges)-1, dtype=float)
+        for i in range(len(edges)-1):
+            mask = np.logical_and(
+                data.exp['sin_dec']>=edges[i], data.exp['sin_dec']<edges[i+1])
+            e_filter[i] = np.min(data.exp['log_energy'][mask])
+        centers = 0.5 * (edges[1:]+edges[:-1])
+
+        energy_cut_splines.append(UnivariateSpline(
+            centers, e_filter, k=2, s=spl_smooth[idx]))
 
         pbar.increment()
     pbar.finish()
 
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
-    analysis.construct_signal_generator(llhratio=analysis.llhratio)
+    analysis.construct_signal_generator(
+        llhratio=analysis.llhratio, energy_cut_splines=energy_cut_splines,
+        cut_sindec=cut_sindec)
 
     return analysis
 
@@ -390,7 +428,6 @@ if(__name__ == '__main__'):
         ('PublicData_10y_ps', 'IC79'),
         ('PublicData_10y_ps', 'IC86_I'),
         ('PublicData_10y_ps', 'IC86_II-VII'),
-        #('PublicData_10y_ps', 'IC86_II'),
     ]
 
     datasets = []
