@@ -177,7 +177,8 @@ def create_analysis(
         sin(dec) values at which the energy cut in the southern sky should
         start. If None, np.sin(np.radians([-2, 0, -3, 0, 0])) is used.
     spl_smooth : list of float
-        
+        Smoothing parameters for the 1D spline for the energy cut. If None,
+        [0., 0.005, 0.05, 0.2, 0.3] is used.
     cap_ratio : bool
         If set to True, the energy PDF ratio will be capped to a finite value
         where no background energy PDF information is available. This will
@@ -338,13 +339,12 @@ def create_analysis(
         # Some special conditions are needed for IC79 and IC86_I, because
         # their experimental dataset shows events that should probably have
         # been cut by the IceCube selection.
-        # ToDo: Move this to the dataset definition as a ds preparation step
         data_exp = data.exp.copy(keep_fields=['sin_dec', 'log_energy'])
         if ds.name == 'IC79':
             m = np.invert(np.logical_and(
                 data_exp['sin_dec']<-0.75,
                 data_exp['log_energy'] < 4.2))
-            data.exp = data.exp[m]
+            data_exp = data_exp[m]
         if ds.name == 'IC86_I':
             m = np.invert(np.logical_and(
                 data_exp['sin_dec']<-0.2,
@@ -352,17 +352,18 @@ def create_analysis(
             data_exp = data_exp[m]
             
         sin_dec_binning = ds.get_binning_definition('sin_dec')
-        edges = sin_dec_binning.binedges
-        e_filter = np.zeros(len(edges)-1, dtype=float)
-        for i in range(len(edges)-1):
+        sindec_edges = sin_dec_binning.binedges
+        min_log_e = np.zeros(len(sindec_edges)-1, dtype=float)
+        for i in range(len(sindec_edges)-1):
             mask = np.logical_and(
-                data_exp['sin_dec']>=edges[i], data_exp['sin_dec']<edges[i+1])
-            e_filter[i] = np.min(data_exp['log_energy'][mask])
+                data_exp['sin_dec']>=sindec_edges[i],
+                data_exp['sin_dec']<sindec_edges[i+1])
+            min_log_e[i] = np.min(data_exp['log_energy'][mask])
         del data_exp
-        centers = 0.5 * (edges[1:]+edges[:-1])
+        sindec_centers = 0.5 * (sindec_edges[1:]+sindec_edges[:-1])
 
         energy_cut_splines.append(UnivariateSpline(
-            centers, e_filter, k=2, s=spl_smooth[idx]))
+            sindec_centers, min_log_e, k=2, s=spl_smooth[idx]))
 
         pbar.increment()
     pbar.finish()
