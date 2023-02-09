@@ -216,6 +216,8 @@ class PDDatasetSignalGenerator(object):
         # The energy filter will cut all events below cut_sindec
         # that have an energy smaller than the energy spline at
         # their declination.
+        if cut_sindec is None:
+            cut_sindec = 0
         energy_filter = np.logical_and(
             events['sin_dec']<cut_sindec,
             events['log_energy']<spline(events['sin_dec']))
