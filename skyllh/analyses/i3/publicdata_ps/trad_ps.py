@@ -89,10 +89,6 @@ from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF
 )
 
-# Dataset specific features for the energy cut splines
-cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
-spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
-
 
 def psi_func(tdm, src_hypo_group_manager, fitparams):
     """Function to calculate the opening angle between the source position
@@ -140,6 +136,8 @@ def create_analysis(
     gamma_seed=3,
     kde_smoothing=False,
     minimizer_impl="LBFGS",
+    cut_sindec = None,
+    spl_smooth = None,
     cap_ratio=False,
     compress_data=False,
     keep_data_fields=None,
@@ -175,6 +173,11 @@ def create_analysis(
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
         "minuit" (Minuit minimizer used by the :mod:`iminuit` module).
         Default: "LBFGS".
+    cut_sindec : list of float | None
+        sin(dec) values at which the energy cut in the southern sky should
+        start. If None, np.sin(np.radians([-2, 0, -3, 0, 0])) is used.
+    spl_smooth : list of float
+        
     cap_ratio : bool
         If set to True, the energy PDF ratio will be capped to a finite value
         where no background energy PDF information is available. This will
@@ -267,7 +270,17 @@ def create_analysis(
     event_selection_method = SpatialBoxEventSelectionMethod(
         src_hypo_group_manager, delta_angle=np.deg2rad(optimize_delta_angle))
     #event_selection_method = None
-
+    
+    # Prepare the spline parameters.
+    if cut_sindec is None:
+        cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
+    if spl_smooth is None:
+        spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
+    if len(spl_smooth) != len(datasets) or len(cut_sindec) != len(datasets):
+        raise AssertionError("The length of the spl_smooth and of the "
+            "cut_sindec must be equal to the length of datasets: "
+            f"{len(datasets)}.")
+        
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     energy_cut_splines = []
@@ -326,24 +339,26 @@ def create_analysis(
         # their experimental dataset shows events that should probably have
         # been cut by the IceCube selection.
         # ToDo: Move this to the dataset definition as a ds preparation step
+        data_exp = data.exp.copy(keep_fields=['sin_dec', 'log_energy'])
         if ds.name == 'IC79':
-            m = np.logical_and(
-                data.exp['sin_dec']<-0.75,
-                data.exp['log_energy'] < 4.2)
-            data.exp = data.exp[~m]
+            m = np.invert(np.logical_and(
+                data_exp['sin_dec']<-0.75,
+                data_exp['log_energy'] < 4.2))
+            data.exp = data.exp[m]
         if ds.name == 'IC86_I':
-            m = np.logical_and(
-                data.exp['sin_dec']<-0.2,
-                data.exp['log_energy'] < 2.5)
-            data.exp = data.exp[~m]
+            m = np.invert(np.logical_and(
+                data_exp['sin_dec']<-0.2,
+                data_exp['log_energy'] < 2.5))
+            data_exp = data_exp[m]
             
         sin_dec_binning = ds.get_binning_definition('sin_dec')
         edges = sin_dec_binning.binedges
         e_filter = np.zeros(len(edges)-1, dtype=float)
         for i in range(len(edges)-1):
             mask = np.logical_and(
-                data.exp['sin_dec']>=edges[i], data.exp['sin_dec']<edges[i+1])
-            e_filter[i] = np.min(data.exp['log_energy'][mask])
+                data_exp['sin_dec']>=edges[i], data_exp['sin_dec']<edges[i+1])
+            e_filter[i] = np.min(data_exp['log_energy'][mask])
+        del data_exp
         centers = 0.5 * (edges[1:]+edges[:-1])
 
         energy_cut_splines.append(UnivariateSpline(
