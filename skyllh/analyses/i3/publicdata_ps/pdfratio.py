@@ -2,8 +2,6 @@
 # Authors:
 #   Dr. Martin Wolf <mail@martin-wolf.org>
 
-import sys
-
 import numpy as np
 
 from skyllh.core.py import module_classname

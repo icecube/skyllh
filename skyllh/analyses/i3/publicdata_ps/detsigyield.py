@@ -15,9 +15,6 @@ from skyllh.core.parameters import ParameterGrid
 from skyllh.core.detsigyield import (
     get_integrated_livetime_in_days
 )
-from skyllh.core.storage import (
-    create_FileLoader
-)
 from skyllh.physics.flux import (
     PowerLawFlux,
     get_conversion_factor_to_internal_flux_unit

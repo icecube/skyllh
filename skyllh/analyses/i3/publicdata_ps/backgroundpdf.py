@@ -11,7 +11,6 @@ from skyllh.core.pdf import (
     IsBackgroundPDF,
     PDFAxis
 )
-from skyllh.core.py import issequenceof
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.timing import TaskTimer
 from skyllh.core.smoothing import (
@@ -64,7 +63,7 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         kde_smoothing : bool
-            Apply a kde smoothing to the enrgy pdf for each sine of the
+            Apply a kde smoothing to the energy pdf for each sine of the
             muon declination.
             Default: False.
         """
@@ -143,8 +142,6 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
 
         # If a bandwidth is passed, apply a KDE-based smoothing with the given
         # bw parameter as bandwidth for the fit.
-        # Warning: right now this implies an additional dependency on an
-        # external package for KDE analysis.
         if kde_smoothing:
             if not isinstance(kde_smoothing, bool):
                 raise ValueError(

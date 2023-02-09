@@ -368,7 +368,7 @@ class PDSignalGenerator(SignalGeneratorBase):
 
     @sig_gen_list.setter
     def sig_gen_list(self, sig_gen_list):
-        if(not issequenceof(sig_gen_list, PublicDataDatasetSignalGenerator)):
+        if(not issequenceof(sig_gen_list, PDDatasetSignalGenerator)):
             raise TypeError('The sig_gen_list property must be a sequence of '
                             'PublicDataDatasetSignalGenerator instances!')
 
