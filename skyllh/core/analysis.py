@@ -72,8 +72,8 @@ from skyllh.core.trialdata import (
     TrialDataManager,
 )
 from skyllh.core.weights import (
-    DatasetSignalWeightFactors,
-    SourceDetectorWeights,
+    DatasetSignalWeightFactorsService,
+    SrcDetSigYieldWeightsService,
 )
 
 
@@ -533,6 +533,41 @@ class Analysis(
                 Any additional parameters of the analysis.
         """
         pass
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
+        """If the SourceHypoGroupManager instance changed, this method needs to
+        be called to propagate the change to all components of the analysis.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The new instance of SourceHypoGroupManager.
+        """
+        # Change the source hypo group manager of the EventSelectionMethod
+        # instance.
+        for evt_selection_method in self._event_selection_method_list:
+            if evt_selection_method is not None:
+                evt_selection_method.change_shg_mgr(
+                    shg_mgr=shg_mgr)
+
+        # Change the source hypo group manager of TrialDataManager for all
+        # data sets.
+        for tdm in self._tdm_list:
+            tdm.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+        # Change the source hypo group manager of the background generator
+        # instance.
+        if self._bkg_generator is not None:
+            self._bkg_generator.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+        # Change the source hypo group manager of the signal generator instance.
+        if self._sig_generator is not None:
+            self._sig_generator.change_shg_mgr(
+                shg_mgr=shg_mgr)
 
     def do_trial_with_given_bkg_and_sig_pseudo_data(
             self,
@@ -1040,16 +1075,20 @@ class LLHRatioAnalysis(
            :meth:`skyllh.core.analysis.Analysis.add_dataset` method.
         3. Construct the log-likelihood ratio function via the
            :meth:`construct_llhratio` method.
-        4. Call the :meth:`do_trial` or :meth:`unblind` method to perform a
-           random trial or to unblind the data, respectively. Both methods will
-           fit the global fit parameters using the set up data. Finally, the
-           test statistic is calculated via the :meth:`calculate_test_statistic`
-           method.
+        4. Initialize a trial via the :meth:`initialize_trial` method.
+        5. Fit the global fit parameters to the trial data via the
+           :meth:`maximize` method of the ``llhratio`` property.
+
+    Alternatively, one can use the convenient methods :meth:`do_trial` or
+    :meth:`unblind` to perform a random trial or to unblind the data,
+    respectively. Both methods will fit the global fit parameters using the set
+    up data. Finally, the test statistic is calculated via the
+    :meth:`calculate_test_statistic` method.
 
     In order to calculate sensitivities and discovery potentials, analysis
     trials have to be performed on random data samples with injected signal
     events. To perform a trial with injected signal events, the signal generator
-    has to be constructed via the :py:meth:`construct_signal_generator` method
+    has to be constructed via the :meth:`construct_signal_generator` method
     before any random trial data can be generated.
     """
 
@@ -1062,7 +1101,7 @@ class LLHRatioAnalysis(
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
-        """Constructor of the analysis base class.
+        """Constructs a new instance of LLHRatioAnalysis.
 
         Parameters
         ----------
@@ -1100,6 +1139,10 @@ class LLHRatioAnalysis(
             sig_generator_cls=sig_generator_cls,
             **kwargs)
 
+        # Define the member variable for the list of PDFRatio instances, one for
+        # each dataset.
+        self._pdfratio_list = []
+
         self._llhratio = None
 
     @property
@@ -1122,40 +1165,84 @@ class LLHRatioAnalysis(
         self._llhratio = obj
 
     @abc.abstractmethod
-    def construct_llhratio(self):
-        """This method is supposed to construct the log-likelihood ratio
-        function and sets it as the _llhratio property.
-        """
-        pass
-
-    @abc.abstractmethod
-    def maximize_llhratio(
+    def construct_llhratio(
             self,
-            rss,
-            tl=None):
-        """This method is supposed to maximize the log-likelihood ratio
-        function, by calling the ``maximize`` method of the LLHRatio class.
-
-        Parameters
-        ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService to draw random numbers from.
-        tl : instance of TimeLord | None
-            The optional instance of TimeLord that should be used to time the
-            maximization of the LLH ratio function.
+            minimizer,
+            ppbar=None):
+        """This method is supposed to construct the LLH ratio function.
 
         Returns
         -------
-        log_lambda_max : float
-            The value of the log-likelihood ratio function at its maximum.
-        fitparam_values : instance of numpy ndarray
-            The (N_fitparam,)-shaped 1D numpy ndarray holding the global fit
-            parameter values.
-        status : dict
-            The dictionary with status information about the maximization
-            process, i.e. from the minimizer.
+        llhratio : instance of LLHRatio
+            The instance of LLHRatio that implements the
+            log-likelihood-ratio function of this LLH ratio analysis.
         """
         pass
+
+    def add_dataset(
+            self,
+            dataset,
+            data,
+            pdfratio,
+            tdm=None,
+            event_selection_method=None):
+        """Adds a dataset with its PDF ratio instances to the analysis.
+
+        Parameters
+        ----------
+        dataset : instance of Dataset
+            The instance of Dataset that should get added.
+        data : instance of DatasetData
+            The instance of DatasetData holding the original (prepared) data of
+            the dataset.
+        pdfratio : instance of PDFRatio
+            The instance of PDFRatio for the to-be-added data set.
+        tdm : TrialDataManager instance | None
+            The TrialDataManager instance that manages the trial data and
+            additional data fields for this data set.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod to use to select only
+            signal-like events from the trial data. All other events
+            will be treated as pure background events. This reduces the amount
+            of log-likelihood-ratio function evaluations. If set to None, all
+            events will be evaluated.
+        """
+        super().add_dataset(
+            dataset=dataset,
+            data=data,
+            tdm=tdm,
+            event_selection_method=event_selection_method)
+
+        if not isinstance(pdfratio, PDFRatio):
+            raise TypeError(
+                'The pdfratio argument must be an instance of PDFRatio! '
+                f'Its current type is {classname(pdfratio)}')
+
+        self._pdfratio_list.append(pdfratio)
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
+        """If the SourceHypoGroupManager instance changed, this method needs to
+        be called to propagate the change to all components of the analysis.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The new instance of SourceHypoGroupManager.
+        """
+        if self._llhratio is None:
+            raise RuntimeError(
+                'The LLH ratio function has to be constructed '
+                'before the `change_shg_mgr` method can be called!')
+
+        super().change_shg_mgr(
+            shg_mgr=shg_mgr)
+
+        # Change the source hypo group manager of the LLH ratio function
+        # instance.
+        self._llhratio.change_shg_mgr(
+            shg_mgr=shg_mgr)
 
     def initialize_trial(
             self,
@@ -1234,7 +1321,7 @@ class LLHRatioAnalysis(
         events_list = [data.exp for data in self._data_list]
         self.initialize_trial(events_list)
 
-        (log_lambda, fitparam_values, status) = self.maximize_llhratio(
+        (log_lambda, fitparam_values, status) = self._llhratio.maximize(
             rss=rss,
             tl=tl)
 
@@ -1315,7 +1402,7 @@ class LLHRatioAnalysis(
             self.initialize_trial(events_list, n_events_list)
 
         with TaskTimer(tl, 'Maximizing LLH ratio function.'):
-            (log_lambda, fitparam_values, status) = self.maximize_llhratio(
+            (log_lambda, fitparam_values, status) = self._llhratio.maximize(
                 rss=rss,
                 tl=tl)
         if isinstance(minimizer_status_dict, dict):
@@ -1354,23 +1441,166 @@ class LLHRatioAnalysis(
         return recarray
 
 
+class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
+        LLHRatioAnalysis,
+        metaclass=abc.ABCMeta):
+    """This is the abstract base class for all log-likelihood ratio analysis
+    classes that use multiple dataset, i.e. multiple LLH-ratio functions, one
+    for each dataset and multiple sources.
+
+    For more information how to construct and run the analysis see the
+    documentation of the :class:`~skyllh.core.analysis.LLHRatioAnalysis` class.
+    """
+    def __init__(
+            self,
+            shg_mgr,
+            pmm,
+            test_statistic,
+            bkg_gen_method=None,
+            bkg_generator_cls=None,
+            sig_generator_cls=None,
+            **kwargs):
+        """Constructs a new instance of MultiDatasetLLHRatioAnalysis.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            yield implementation method.
+        pmm : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
+            The instance of BackgroundGenerationMethod that should be used to
+            generate background events for pseudo data. This can be set to None,
+            if there is no need to generate background events.
+        bkg_generator_cls : class of BackgroundGeneratorBase | None
+            The background generator class used to create the background
+            generator instance.
+            If set to ``None``, the
+            :class:`skyllh.core.background_generator.BackgroundGenerator` class
+            is used.
+        sig_generator_cls : class of SignalGeneratorBase | None
+            The signal generator class used to create the signal generator
+            instance.
+            If set to None, the `SignalGenerator` class is used.
+        """
+        super().__init__(
+            shg_mgr=shg_mgr,
+            pmm=pmm,
+            test_statistic=test_statistic,
+            bkg_gen_method=bkg_gen_method,
+            bkg_generator_cls=bkg_generator_cls,
+            sig_generator_cls=sig_generator_cls,
+            **kwargs)
+
+    def construct_llhratio(
+            self,
+            minimizer,
+            ppbar=None):
+        """Constructs the log-likelihood (LLH) ratio function of the analysis.
+        This setups all the necessary analysis objects like detector signal
+        yields and dataset signal weights, constructs the log-likelihood ratio
+        functions for each dataset and the final composite LLH ratio function.
+
+        Parameters
+        ----------
+        minimizer : instance of Minimizer
+            The instance of Minimizer that should be used to minimize the
+            negative of the log-likelihood ratio function.
+        ppbar : instance of ProgressBar | None
+            The instance of ProgressBar of the optional parent progress bar.
+
+        Returns
+        -------
+        llhratio : instance of MultiDatasetTCLLHRatio
+            The instance of MultiDatasetTCLLHRatio that implements the
+            log-likelihood-ratio function of the analysis.
+        """
+        # Create the detector signal yield instances for each dataset.
+        # The multi source analysis needs to also support multiple source
+        # hypothesis groups.
+        # Initialize empty (N_source_hypo_groups, N_datasets)-shaped ndarray.
+        detsigyield_arr = np.empty(
+            (len(self.dataset_list),
+             self._shg_mgr.n_src_hypo_groups),
+            dtype=object
+        )
+
+        for (g, shg) in enumerate(self._shg_mgr._src_hypo_group_list):
+            fluxmodel = shg.fluxmodel
+            detsigyield_builder_list = shg.detsigyield_builder_list
+
+            if (len(detsigyield_builder_list) != 1) and\
+               (len(detsigyield_builder_list) != self.n_datasets):
+                raise ValueError(
+                    'The number of detector signal yield builders is not 1 and '
+                    'does not match the number of used datasets in the '
+                    'analysis!')
+
+            pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
+            for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
+                                                      self.data_list)):
+                if len(detsigyield_builder_list) == 1:
+                    # Only one detsigyield builder was defined,
+                    # so we use it for all datasets.
+                    detsigyield_builder = detsigyield_builder_list[0]
+                else:
+                    detsigyield_builder = detsigyield_builder_list[j]
+
+                detsigyield = detsigyield_builder.construct_detsigyield(
+                    dataset=dataset,
+                    data=data,
+                    fluxmodel=fluxmodel,
+                    livetime=data.livetime,
+                    ppbar=pbar)
+                detsigyield_arr[j, g] = detsigyield
+                pbar.increment()
+            pbar.finish()
+
+        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
+            shg_mgr=self._shg_mgr,
+            detsigyields=detsigyield_arr)
+
+        ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
+            src_detsigyield_weights_service=src_detsigyield_weights_service)
+
+        # Create the list of log-likelihood ratio functions, one for each
+        # dataset.
+        llhratio_list = [
+            ZeroSigH0SingleDatasetTCLLHRatio(
+                pmm=self._pmm,
+                minimizer=minimizer,
+                shg_mgr=self._shg_mgr,
+                tdm=tdm,
+                pdfratio=pdfratio
+            )
+            for (tdm, pdfratio) in zip(self._tdm_list, self._pdfratio_list)
+        ]
+
+        # Create the final multi-dataset log-likelihood ratio function.
+        llhratio = MultiDatasetTCLLHRatio(
+            pmm=self._pmm,
+            minimizer=minimizer,
+            src_detsigyield_weights_service=src_detsigyield_weights_service,
+            ds_sig_weight_factors_service=ds_sig_weight_factors_service,
+            llhratio_list=llhratio_list)
+
+        return llhratio
+
+
 class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
-        LLHRatioAnalysis):
+        MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis):
     """This is an analysis class that implements a time-integrated
     log-likelihood ratio analysis for multiple datasets assuming a single
-    source.
+    source. It is a special case of the multi-source analysis.
 
-    To run this analysis the following procedure applies:
-
-        1. Add the datasets and their spatial and energy PDF ratio instances
-           via the
-           :meth:`skyllh.core.analysis.SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis.add_dataset`
-           method.
-        2. Construct the log-likelihood ratio function via the
-           :meth:`construct_llhratio` method.
-        3. Initialize a trial via the :meth:`initialize_trial` method.
-        4. Fit the global fit parameters to the trial data via the
-           :meth:`maximize_llhratio` method.
+    For more information how to construct and run the analysis see the
+    documentation of the :class:`~skyllh.core.analysis.LLHRatioAnalysis` class.
     """
     def __init__(
             self,
@@ -1420,141 +1650,6 @@ class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
             sig_generator_cls=sig_generator_cls,
             **kwargs)
 
-        # Define the member for the list of PDFRatio instances, one for each
-        # dataset.
-        self._pdfratio_list = []
-
-    def add_dataset(
-            self,
-            dataset,
-            data,
-            pdfratio,
-            tdm=None,
-            event_selection_method=None):
-        """Adds a dataset with its PDF ratio instances to the analysis.
-
-        Parameters
-        ----------
-        dataset : instance of Dataset
-            The instance of Dataset that should get added.
-        data : instance of DatasetData
-            The instance of DatasetData holding the original (prepared) data of
-            the dataset.
-        pdfratio : instance of PDFRatio
-            The instance of PDFRatio for the to-be-added data set.
-        tdm : TrialDataManager instance | None
-            The TrialDataManager instance that manages the trial data and
-            additional data fields for this data set.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod to use to select only
-            signal-like events from the trial data. All other events
-            will be treated as pure background events. This reduces the amount
-            of log-likelihood-ratio function evaluations. If set to None, all
-            events will be evaluated.
-        """
-        super().add_dataset(
-            dataset=dataset,
-            data=data,
-            tdm=tdm,
-            event_selection_method=event_selection_method)
-
-        if not isinstance(pdfratio, PDFRatio):
-            raise TypeError(
-                'The pdfratio argument must be an instance of PDFRatio! '
-                f'Its current type is {classname(pdfratio)}')
-
-        self._pdfratio_list.append(pdfratio)
-
-    def construct_llhratio(
-            self,
-            minimizer,
-            ppbar=None):
-        """Constructs the log-likelihood-ratio (LLH-ratio) function of the
-        analysis. This sets up all the necessary analysis
-        objects like detector signal yields and dataset signal weight factors,
-        constructs the log-likelihood ratio functions for each dataset and the
-        final composite LLH ratio function.
-
-        Parameters
-        ----------
-        minimizer : instance of Minimizer
-            The instance of Minimizer that should be used to minimize the
-            negative of the log-likelihood ratio function.
-        ppbar : instance of ProgressBar | None
-            The instance of ProgressBar of the optional parent progress bar.
-
-        Returns
-        -------
-        llhratio : instance of MultiDatasetTCLLHRatio
-            The instance of MultiDatasetTCLLHRatio that implements the
-            log-likelihood-ratio function of the analysis.
-        """
-        # Create the detector signal yield instances for each dataset.
-        # Since this is for a single source, we don't have to have individual
-        # detector signal yield instances for each source as well.
-        detsigyield_list = []
-        fluxmodel = self._shg_mgr.get_fluxmodel_by_src_idx(0)
-        detsigyield_builder_list = \
-            self._shg_mgr.get_detsigyield_builder_list_by_src_idx(0)
-
-        if (len(detsigyield_builder_list) != 1) and\
-           (len(detsigyield_builder_list) != self.n_datasets):
-            raise ValueError(
-                'The number of detector signal yield builder instances is not '
-                '1 and does not match the number of used datasets in the '
-                'analysis!')
-
-        pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
-        for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
-                                                  self.data_list)):
-            if len(detsigyield_builder_list) == 1:
-                # Only one detsigyield implementation method was defined, so we
-                # use it for all datasets.
-                detsigyield_builder = detsigyield_builder_list[0]
-            else:
-                detsigyield_builder = detsigyield_builder_list[j]
-
-            detsigyield = detsigyield_builder.construct_detsigyield(
-                dataset=dataset,
-                data=data,
-                fluxmodel=fluxmodel,
-                livetime=data.livetime,
-                ppbar=pbar)
-            detsigyield_list.append(detsigyield)
-            pbar.increment()
-        pbar.finish()
-
-        src_det_weights = SourceDetectorWeights(
-            shg_mgr=self._shg_mgr,
-            pmm=self._pmm,
-            detsigyields=detsigyield_list)
-
-        # For multiple datasets we need a dataset signal weights instance in
-        # order to distribute ns over the different datasets.
-        ds_sig_weight_factors = DatasetSignalWeightFactors(
-            src_det_weights=src_det_weights)
-
-        # Create the list of log-likelihood ratio functions, one for each
-        # dataset.
-        llhratio_list = [
-            ZeroSigH0SingleDatasetTCLLHRatio(
-                pmm=self._pmm,
-                minimizer=minimizer,
-                shg_mgr=self._shg_mgr,
-                tdm=tdm,
-                pdfratio=pdfratio
-            )
-            for (tdm, pdfratio) in zip(self._tdm_list, self._pdfratio_list)
-        ]
-
-        # Create the final multi-dataset log-likelihood ratio function.
-        llhratio = MultiDatasetTCLLHRatio(
-            minimizer=minimizer,
-            ds_sig_weight_factors=ds_sig_weight_factors,
-            llhratio_list=llhratio_list)
-
-        return llhratio
-
     def change_source(
             self,
             source):
@@ -1571,69 +1666,13 @@ class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
                 'The source argument must be an instance of SourceModel! '
                 f'Its current type is {classname(source)}.')
 
-        if self._llhratio is None:
-            raise RuntimeError(
-                'The LLH ratio function has to be constructed '
-                'before the `change_source` method can be called!')
-
         # Change the source in the SourceHypoGroupManager instance.
         # Because this is a single source analysis, there can only be one source
         # hypothesis group defined.
         self._shg_mgr.src_hypo_group_list[0].source_list[0] = source
 
-        # Change the source hypo group manager of the EventSelectionMethod
-        # instance.
-        for evt_selection_method in self._event_selection_method_list:
-            if evt_selection_method is not None:
-                evt_selection_method.change_shg_mgr(
-                    shg_mgr=self._shg_mgr)
-
-        # Change the source hypo group manager of the LLH ratio function
-        # instance.
-        self._llhratio.change_shg_mgr(shg_mgr=self._shg_mgr)
-
-        # Change the source hypo group manager of the background generator
-        # instance.
-        if self._bkg_generator is not None:
-            self._bkg_generator.change_shg_mgr(shg_mgr=self._shg_mgr)
-
-        # Change the source hypo group manager of the signal generator instance.
-        if self._sig_generator is not None:
-            self._sig_generator.change_shg_mgr(shg_mgr=self._shg_mgr)
-
-    def maximize_llhratio(
-            self,
-            rss,
-            tl=None):
-        """Maximizes the log-likelihood ratio function, by minimizing its
-        negative.
-
-        Parameters
-        ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService that should be used to draw
-            random numbers from. It is used by the minimizer to generate random
-            fit parameter initial values.
-        tl : instance of TimeLord | None
-            The optional instance of TimeLord that should be used to time the
-            maximization of the LLH ratio function.
-
-        Returns
-        -------
-        log_lambda_max : float
-            The value of the log-likelihood ratio function at its maximum.
-        fitparam_values : (N_fitparam,)-shaped 1D ndarray
-            The N_fitparam,)-shaped 1D ndarray holding the global fit
-            parameter values.
-        status : dict
-            The dictionary with status information about the maximization
-            process, i.e. from the minimizer.
-        """
-        (log_lambda_max, fitparam_values, status) = self._llhratio.maximize(
-            rss=rss,
-            tl=tl)
-
-        return (log_lambda_max, fitparam_values, status)
+        self.change_shg_mgr(
+            shg_mgr=self._shg_mgr)
 
     def calculate_fluxmodel_scaling_factor(
             self,
@@ -1660,168 +1699,28 @@ class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
             The factor the given fluxmodel needs to be scaled in order to obtain
             the given mean number of signal events in the detector.
         """
-        fitparams_recarray =\
+        src_params_recarray =\
             self._pmm.create_src_params_recarray(
                 gflp_values=fitparam_values)
 
-        ds_sig_weight_factors = self._llhratio.ds_sig_weight_factors
-        src_det_weights = ds_sig_weight_factors.src_det_weights
+        ds_sig_weight_factors_service =\
+            self._llhratio.ds_sig_weight_factors_service
+        src_detsigyield_weights_service =\
+            ds_sig_weight_factors_service.src_detsigyield_weights_service
 
         # Calculate the detector signal yield, i.e. the mean number of signal
         # events in the detector, for the given reference flux model.
         mean_ns_ref = 0
 
-        detsigyields = src_det_weights.detsigyield_arr[:, 0]
+        detsigyields = src_detsigyield_weights_service.detsigyield_arr[:, 0]
         for (j, detsigyield) in enumerate(detsigyields):
-            src_recarray = src_det_weights.src_recarray_list_list[j][0]
+            src_recarray =\
+                src_detsigyield_weights_service.src_recarray_list_list[j][0]
             (Yj, Yj_grads) = detsigyield(
                 src_recarray=src_recarray,
-                src_params_recarray=fitparams_recarray)
+                src_params_recarray=src_params_recarray)
             mean_ns_ref += Yj[0]
 
         factor = mean_ns / mean_ns_ref
 
         return factor
-
-
-# FIXME
-class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
-        LLHRatioAnalysis):
-    """This is an analysis class that implements a time-integrated
-    log-likelihood ratio analysis for multiple datasets assuming multiple
-    sources.
-
-    To run this analysis the following procedure applies:
-
-        1. Add the datasets and their spatial and energy PDF ratio instances
-           via the :meth:`add_dataset` method.
-        2. Construct the log-likelihood ratio function via the
-           :meth:`construct_llhratio` method.
-        3. Initialize a trial via the :meth:`initialize_trial` method.
-        4. Fit the global fit parameters to the trial data via the
-           :meth:`maximize_llhratio` method.
-    """
-    def __init__(
-            self,
-            shg_mgr,
-            pmm,
-            test_statistic,
-            bkg_gen_method=None,
-            sig_generator_cls=None,
-            **kwargs):
-        """Creates a new time-integrated point-like source analysis assuming
-        multiple sources.
-
-        Parameters
-        ----------
-        shg_mgr : instance of SourceHypoGroupManager
-            The instance of SourceHypoGroupManager, which defines the groups of
-            source hypotheses, their flux model, and their detector signal
-            efficiency implementation method.
-        pmm : instance of ParameterModelMapper
-            The ParameterModelMapper instance managing the global set of
-            parameters and their relation to individual models, e.g. sources.
-        test_statistic : TestStatistic instance
-            The TestStatistic instance that defines the test statistic function
-            of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial. This can be set
-            to None, if no background events have to get generated.
-        sig_generator_cls : SignalGeneratorBase class | None
-            The signal generator class used to create the signal generator
-            instance.
-            If set to None, the `SignalGenerator` class is used.
-        """
-        super().__init__(
-            shg_mgr=shg_mgr,
-            pmm=pmm,
-            test_statistic=test_statistic,
-            bkg_gen_method=bkg_gen_method,
-            sig_generator_cls=sig_generator_cls)
-
-    def construct_llhratio(self, minimizer, ppbar=None):
-        """Constructs the log-likelihood-ratio (LLH-ratio) function of the
-        analysis. This setups all the necessary analysis
-        objects like detector signal efficiencies and dataset signal weights,
-        constructs the log-likelihood ratio functions for each dataset and the
-        final composite llh ratio function.
-
-        Parameters
-        ----------
-        minimizer : instance of Minimizer
-            The instance of Minimizer that should be used to minimize the
-            negative of the log-likelihood ratio function.
-        ppbar : ProgressBar instance | None
-            The instance of ProgressBar of the optional parent progress bar.
-
-        Returns
-        -------
-        llhratio : instance of MultiDatasetTCLLHRatio
-            The instance of MultiDatasetTCLLHRatio that implements the
-            log-likelihood-ratio function of the analysis.
-        """
-        # Create the detector signal yield instances for each dataset.
-        # The multi source analysis needs to also support multiple source
-        # hypothesis groups.
-        # Initialize empty (N_source_hypo_groups, N_datasets)-shaped ndarray.
-        detsigyield_array = np.empty(
-            (self._shg_mgr.n_src_hypo_groups,
-             len(self.dataset_list)),
-            dtype=object
-        )
-
-        for (g, shg) in enumerate(self._shg_mgr._src_hypo_group_list):
-            fluxmodel = shg.fluxmodel
-            detsigyield_builder_list = shg.detsigyield_builder_list
-
-            if((len(detsigyield_builder_list) != 1) and
-               (len(detsigyield_builder_list) != self.n_datasets)):
-                raise ValueError(
-                    'The number of detector signal yield implementation '
-                    'methods is not 1 and does not match the number '
-                    'of used datasets in the analysis!')
-            pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
-            for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
-                                                      self.data_list)):
-                if(len(detsigyield_builder_list) == 1):
-                    # Only one detsigyield implementation method was defined,
-                    # so we use it for all datasets.
-                    detsigyield_builder = detsigyield_builder_list[0]
-                else:
-                    detsigyield_builder = detsigyield_builder_list[j]
-
-                detsigyield = detsigyield_builder.construct_detsigyield(
-                    dataset, data, fluxmodel, data.livetime, ppbar=pbar)
-                detsigyield_array[g, j] = detsigyield
-                pbar.increment()
-            pbar.finish()
-
-        # For multiple datasets we need a dataset signal weights instance in
-        # order to distribute ns over the different datasets.
-        dataset_signal_weights = MultiSourceDatasetSignalWeights(
-            shg_mgr=self._shg_mgr,
-            pmm=self._pmm,
-            detsigyields=detsigyield_array)
-
-        # Create the list of log-likelihood ratio functions, one for each
-        # dataset.
-        llhratio_list = []
-        for j in range(self.n_datasets):
-            tdm = self._tdm_list[j]
-            pdfratio_list = self._pdfratio_list_list[j]
-            llhratio = MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
-                pmm=self._pmm,
-                minimizer=minimizer,
-                shg_mgr=self._shg_mgr,
-                tdm=tdm,
-                pdfratios=pdfratio_list,
-                detsigyields=detsigyield_array[:, j]
-            )
-            llhratio_list.append(llhratio)
-
-        # Create the final multi-dataset log-likelihood ratio function.
-        llhratio = MultiDatasetTCLLHRatio(
-            minimizer, dataset_signal_weights, llhratio_list)
-
-        return llhratio

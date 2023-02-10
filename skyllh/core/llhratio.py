@@ -40,7 +40,8 @@ from skyllh.core.timing import (
     TaskTimer,
 )
 from skyllh.core.weights import (
-    DatasetSignalWeightFactors,
+    DatasetSignalWeightFactorsService,
+    SrcDetSigYieldWeightsService,
 )
 
 
@@ -123,7 +124,7 @@ class LLHRatio(
     def evaluate(
             self,
             fitparam_values,
-            params_recarray=None,
+            src_params_recarray,
             tl=None):
         """This method evaluates the LLH ratio function for the given set of
         fit parameter values.
@@ -131,9 +132,9 @@ class LLHRatio(
         Parameters
         ----------
         fitparam_values : instance of numpy ndarray
-            The (N_fitparam,)-shaped 1D numpy ndarray holding the current values
-            of the global fit parameters.
-        params_recarray : instance of numpy record ndarray | None
+            The (N_fitparams,)-shaped numpy 1D ndarray holding the current
+            values of the global fit parameters.
+        src_params_recarray : instance of numpy record ndarray | None
             The numpy record ndarray of length N_sources holding the parameter
             names and values of all sources. If set to ``None`` it will be
             created automatically from the ``fitparam_values`` array.
@@ -187,11 +188,14 @@ class LLHRatio(
         self_evaluate = self.evaluate
 
         def negative_llhratio_func(fitparam_values, func_stats, tl=None):
+            src_params_recarray = self._pmm.create_src_params_recarray(
+                fitparam_values)
+
             func_stats['n_calls'] += 1
             with TaskTimer(tl, 'Evaluate llh-ratio function.'):
                 (f, grads) = self_evaluate(
                     fitparam_values=fitparam_values,
-                    params_recarray=None,
+                    src_params_recarray=src_params_recarray,
                     tl=tl)
                 if tracing:
                     logger.debug(
@@ -272,8 +276,11 @@ class TCLLHRatio(
     @abc.abstractmethod
     def calculate_ns_grad2(
             self,
-            fitparam_values,
-            ns_pidx):
+            ns,
+            ns_pidx,
+            src_params_recarray,
+            tl=None,
+            **kwargs):
         """This method is supposed to calculate the second derivative of the
         log-likelihood ratio function w.r.t. the fit parameter ns, the number
         of signal events in the data set.
@@ -285,6 +292,15 @@ class TCLLHRatio(
             values of the global fit parameters.
         ns_pidx : int
             The index of the global ns fit parameter.
+        src_params_recarray : instance of numpy record ndarray
+            The numpy record ndarray of length N_sources holding the parameter
+            names and values of all sources.
+            See the documentation of the
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            method for more information about this array.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used for timing
+            measurements.
 
         Returns
         -------
@@ -332,19 +348,24 @@ class TCLLHRatio(
         ns_pidx = self._pmm.get_gflp_idx(name='ns')
 
         def negative_llhratio_func_nr1d_ns(fitparam_values, tl):
+            ns = fitparam_values[ns_pidx]
+            src_params_recarray = self._pmm.create_src_params_recarray(
+                fitparam_values)
             with TaskTimer(
                     tl,
                     'Evaluate llh-ratio function.'):
                 (f, grads) = self__evaluate(
                     fitparam_values=fitparam_values,
-                    params_recarray=None,
+                    src_params_recarray=src_params_recarray,
                     tl=tl)
             with TaskTimer(
                     tl,
                     'Calculate 2nd derivative of llh-ratio function w.r.t. ns'):
                 grad2_ns = self__calculate_ns_grad2(
-                    fitparam_values=fitparam_values,
-                    ns_pidx=ns_pidx)
+                    ns=ns,
+                    ns_pidx=ns_pidx,
+                    src_params_recarray=src_params_recarray,
+                    tl=tl)
 
             return (-f, -grads[ns_pidx], -grad2_ns)
 
@@ -445,7 +466,8 @@ class SingleDatasetTCLLHRatio(
         self.tdm = tdm
 
         # Calculate the data fields that solely depend on source parameters.
-        self._tdm.calculate_source_data_fields(self._shg_mgr)
+        self._tdm.calculate_source_data_fields(
+            shg_mgr=self._shg_mgr)
 
     @property
     def shg_mgr(self):
@@ -545,10 +567,9 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
         self.pdfratio = pdfratio
 
-        # Define cache variables for the evaluate method to store values needed
+        # Define cache variable for the evaluate method to store values needed
         # for a possible calculation of the second derivative w.r.t. ns of the
         # log-likelihood ratio function.
-        self._cache_fitparam_values = None
         self._cache_nsgrad_i = None
 
     @SingleDatasetTCLLHRatio.mean_n_sig_0.setter
@@ -575,8 +596,8 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
     def calculate_log_lambda_and_grads(
             self,
-            fitparam_values,
             N,
+            ns,
             ns_pidx,
             p_mask,
             Xi,
@@ -595,8 +616,10 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             ratio function.
         N : int
             The total number of events.
+        ns : float
+            The value of the global fit paramater ns.
         ns_pidx : int
-            The index of the global floating parameter ns.
+            The index of the global fit parameter ns.
         p_mask : instance of numpy ndarray
             The (N_fitparam,)-shaped numpy ndarray of bool selecting all global
             fit parameters, except ns.
@@ -617,8 +640,6 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             of log_lambda for each fit parameter.
         """
         tracing = CFG['debugging']['enable_tracing']
-
-        ns = fitparam_values[ns_pidx]
 
         # Get the number of selected events.
         Nprime = len(Xi)
@@ -671,10 +692,6 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
         # Cache the nsgrad_i values for a possible later calculation of the
         # second derivative w.r.t. ns of the log-likelihood ratio function.
-        # Note: We create a copy of the fitparam_values array here to make sure
-        #       that the values don't get changed outside this method before the
-        #       calculate_ns_grad2 method is called.
-        self._cache_fitparam_values = fitparam_values.copy()
         self._cache_nsgrad_i = nsgrad_i
 
         # Calculate the first derivative w.r.t. ns.
@@ -696,9 +713,9 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
     def calculate_ns_grad2(
             self,
-            fitparam_values,
-            ns_pidx,
-            params_recarray=None,
+            ns,
+            ns_pidx=None,
+            src_params_recarray=None,
             tl=None):
         """Calculates the second derivative w.r.t. ns of the log-likelihood
         ratio function.
@@ -713,15 +730,18 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         fitparam_values : numpy (N_fitparams+1)-shaped 1D ndarray
             The ndarray holding the current values of the global fit
             parameters.
+        ns : float
+            The value of the global fit paramater ns.
         ns_pidx : int
-            The parameter index of the global floating parameter ns.
-        params_recarray : instance of numpy record ndarray | None
+            The parameter index of the global fit parameter ns.
+            For this particular class this is an ignored interface parameter.
+        src_params_recarray : instance of numpy record ndarray
             The numpy record ndarray of length N_sources holding the parameter
-            names and values of all sources. If set to ``None`` it will be
-            created automatically from the ``fitparam_values`` array.
+            names and values of all sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information about this array.
+            For this particular class this is an ignored interface parameter.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used for timing
             measurements.
@@ -732,21 +752,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             The second derivative w.r.t. ns of the log-likelihood ratio function
             for the given fit parameter values.
         """
-        # Check if the cached nsgrad_i values match the given fitparam_values.
-        if (
-                (self._cache_fitparam_values is None) or
-                (not np.all(np.isclose(
-                    self._cache_fitparam_values,
-                    fitparam_values)))
-           ):
-            # Calculate the cache values by evaluating the log-likelihood ratio
-            # function.
-            self.evaluate(
-                fitparam_values=fitparam_values,
-                params_recarray=params_recarray,
-                tl=tl)
+        if self._cache_nsgrad_i is None:
+            raise RuntimeError(
+                'The evaluate method needs to be called before the '
+                'calculate_ns_grad2 method can be called!')
 
-        ns = fitparam_values[ns_pidx]
         Nprime = self._tdm.n_selected_events
         N = Nprime + self._tdm.n_pure_bkg_events
 
@@ -757,7 +767,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
     def evaluate(
             self,
             fitparam_values,
-            params_recarray=None,
+            src_params_recarray,
             tl=None):
         """Evaluates the log-likelihood ratio function for the given set of
         data events.
@@ -767,10 +777,9 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         fitparam_values : instance of numpy ndarray
             The (N_fitparams,)-shaped 1D ndarray holding the current values of
             the global fit parameters.
-        params_recarray : instance of numpy record ndarray | None
+        src_params_recarray : instance of numpy record ndarray | None
             The numpy record ndarray of length N_sources holding the parameter
-            names and values of all sources. If set to ``None`` it will be
-            created automatically from the ``fitparam_values`` array.
+            names and values of all sources.
         tl : instance of TimeLord | None
             The optional instance of TimeLord to measure the timing of
             evaluating the LLH ratio function.
@@ -807,16 +816,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
                     pmm=self._pmm,
                     global_fitparams=global_fitparams)
 
-        # Create the source paramater record array if not already provided.
-        if params_recarray is None:
-            params_recarray = self._pmm.create_src_params_recarray(
-                fitparam_values)
-
         # Calculate the PDF ratio values for each selected event.
         with TaskTimer(tl, 'Calc pdfratio value Ri'):
             Ri = self._pdfratio.get_ratio(
                 tdm=tdm,
-                params_recarray=params_recarray,
+                params_recarray=src_params_recarray,
                 tl=tl)
 
         # Calculate Xi for each selected event.
@@ -836,12 +840,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         # Loop over the global fit parameters and calculate the derivative of
         # Xi w.r.t. each fit paramater.
         fitparam_ids = np.arange(n_fitparams)
-        for (idx, (fitparam_id, fitparam_value)) in enumerate(
-                zip(fitparam_ids[p_mask], fitparam_values[p_mask])):
+        for (idx, fitparam_id) in enumerate(fitparam_ids[p_mask]):
 
             dRi = self._pdfratio.get_gradient(
                 tdm=tdm,
-                params_recarray=params_recarray,
+                params_recarray=src_params_recarray,
                 fitparam_id=fitparam_id,
                 tl=tl)
 
@@ -856,8 +859,8 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
         with TaskTimer(tl, 'Calc logLamds and grads'):
             (log_lambda, grads) = self.calculate_log_lambda_and_grads(
-                fitparam_values=fitparam_values,
                 N=N,
+                ns=ns,
                 ns_pidx=ns_pidx,
                 p_mask=p_mask,
                 Xi=Xi,
@@ -884,7 +887,8 @@ class MultiDatasetTCLLHRatio(
             self,
             pmm,
             minimizer,
-            ds_sig_weight_factors,
+            src_detsigyield_weights_service,
+            ds_sig_weight_factors_service,
             llhratio_list,
             **kwargs):
         """Creates a new composite two-component log-likelihood ratio function.
@@ -897,9 +901,12 @@ class MultiDatasetTCLLHRatio(
         minimizer : instance of Minimizer
             The Minimizer instance that should be used to minimize the negative
             of this log-likelihood ratio function.
-        ds_sig_weight_factors : instance of DatasetSignalWeightFactors
-            An instance of DatasetSignalWeightFactors, which calculates the
-            relative dataset signal weight factors.
+        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+            An instance of SrcDetSigYieldWeightsService, which provides the
+            roduct of the source weights with the detector signal yield.
+        ds_sig_weight_factors_service : instance of DatasetSignalWeightFactorsService
+            An instance of DatasetSignalWeightFactorsService, which provides
+            the relative dataset signal weight factors.
         llhratio_list : list of instance of SingleDatasetTCLLHRatio
             The list of the two-component log-likelihood ratio functions,
             one for each dataset.
@@ -910,12 +917,16 @@ class MultiDatasetTCLLHRatio(
             mean_n_sig_0=self._llhratio_list[0].mean_n_sig_0,
             **kwargs)
 
-        self.ds_sig_weight_factors = ds_sig_weight_factors
+        self.src_detsigyield_weights_service = src_detsigyield_weights_service
+        self.ds_sig_weight_factors_service = ds_sig_weight_factors_service
         self.llhratio_list = llhratio_list
 
-        if self.ds_sig_weight_factors.n_datasets != len(self._llhratio_list):
+        if (
+            self.ds_sig_weight_factors_service.n_datasets
+            != len(self._llhratio_list)
+           ):
             raise ValueError(
-                'The number of datasets the DatasetSignalWeightFactors '
+                'The number of datasets the DatasetSignalWeightFactorsService '
                 'instance is made for must be equal to the number of '
                 'log-likelihood ratio functions!')
 
@@ -926,20 +937,36 @@ class MultiDatasetTCLLHRatio(
         self._cache_f = None
 
     @property
-    def ds_sig_weight_factors(self):
-        """The instance of DatasetSignalWeightFactors that provides the
+    def src_detsigyield_weights_service(self):
+        """The instance of SrcDetSigYieldWeightsService, which provides the
+        product of the source weights with the detector signal yield.
+        """
+        return self._src_detsigyield_weights_service
+
+    @src_detsigyield_weights_service.setter
+    def src_detsigyield_weights_service(self, service):
+        if not isinstance(service, SrcDetSigYieldWeightsService):
+            raise TypeError(
+                'The src_detsigyield_weights_service property must be an '
+                'instance of SrcDetSigYieldWeightsService! '
+                f'Its current type is {classname(service)}.')
+        self._src_detsigyield_weights_service = service
+
+    @property
+    def ds_sig_weight_factors_service(self):
+        """The instance of DatasetSignalWeightFactorsService that provides the
         relative dataset signal weight factors.
         """
-        return self._ds_sig_weight_factors
+        return self._ds_sig_weight_factors_service
 
-    @ds_sig_weight_factors.setter
-    def ds_sig_weight_factors(self, obj):
-        if not isinstance(obj, DatasetSignalWeightFactors):
+    @ds_sig_weight_factors_service.setter
+    def ds_sig_weight_factors_service(self, service):
+        if not isinstance(service, DatasetSignalWeightFactorsService):
             raise TypeError(
-                'The ds_sig_weight_factors property must be an '
-                'instance of DatasetSignalWeightFactors! '
-                f'Its current type is {classname(obj)}.')
-        self._ds_sig_weight_factors = obj
+                'The ds_sig_weight_factors_service property must be an '
+                'instance of DatasetSignalWeightFactorsService! '
+                f'Its current type is {classname(service)}.')
+        self._ds_sig_weight_factors_service = service
 
     @property
     def llhratio_list(self):
@@ -984,12 +1011,15 @@ class MultiDatasetTCLLHRatio(
             The instance of SourceHypoGroupManager that defines the groups of
             source hypotheses.
         """
-        # Change the source hypo group manager of the DatasetSignalWeights
-        # instance.
-        self._dataset_signal_weights.change_shg_mgr(shg_mgr=shg_mgr)
+        self._src_detsigyield_weights_service.change_shg_mgr(
+            shg_mgr=shg_mgr)
+
+        self._ds_sig_weight_factors_service.change_shg_mgr(
+            shg_mgr=shg_mgr)
 
         for llhratio in self._llhratio_list:
-            llhratio.change_shg_mgr(shg_mgr=shg_mgr)
+            llhratio.change_shg_mgr(
+                shg_mgr=shg_mgr)
 
     def initialize_for_new_trial(self, tl=None):
         """Initializes the log-likelihood-ratio function for a new trial.
@@ -1000,20 +1030,19 @@ class MultiDatasetTCLLHRatio(
     def evaluate(
             self,
             fitparam_values,
-            params_recarray=None,
+            src_params_recarray,
             tl=None):
         """Evaluates the composite log-likelihood-ratio function and returns its
         value and global fit parameter gradients.
 
         Parameters
         ----------
-        fitparam_values : (N_fitparams,)-shaped numpy 1D ndarray
+        fitparam_values : instance of numpy ndarray
             The (N_fitparams,)-shaped numpy 1D ndarray holding the current
             values of the global fit parameters.
-        params_recarray : instance of numpy record ndarray | None
+        src_params_recarray : instance of numpy record ndarray
             The numpy record ndarray of length N_sources holding the parameter
-            names and values of all sources. If set to ``None`` it will be
-            created automatically from the ``fitparam_values`` array.
+            names and values of all sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information about this array.
@@ -1042,21 +1071,22 @@ class MultiDatasetTCLLHRatio(
             logger.debug(
                 f'{classname(self)}.evaluate: ns={ns:.3f}')
 
+        # We need to calculate the source detsigyield weights and the dataset
+        # signal weight factors. TODO: This should move to the maximize method.
+        self._src_detsigyield_weights_service.calculate(
+            src_params_recarray=src_params_recarray)
+        self._ds_sig_weight_factors_service.calculate()
+
         # Get the dataset signal weights and their gradients.
         # f is a (N_datasets,)-shaped 1D ndarray.
         # f_grads is a dictionary holding (N_datasets,)-shaped 1D ndarrays for
         # each global fit parameter.
-        (f, f_grads_dict) = self._ds_sig_weight_factors(fitparam_values)
+        (f, f_grads_dict) = self._ds_sig_weight_factors_service.get_weights()
 
         # Convert the f_grads dictionary into a (N_datasets,N_fitparams)
         f_grads = np.zeros((len(f), n_fitparams), dtype=np.float64)
         for pidx in f_grads_dict.keys():
             f_grads[pidx] = f_grads_dict[pidx]
-
-        # Cache f for possible later calculation of the second derivative w.r.t.
-        # ns of the log-likelihood ratio function.
-        self._cache_fitparam_values = fitparam_values.copy()
-        self._cache_f = f
 
         nsf = ns * f
 
@@ -1086,7 +1116,7 @@ class MultiDatasetTCLLHRatio(
 
             (log_lambda_j, grads_j) = llhratio.evaluate(
                 fitparam_values=llhratio_fitparam_values,
-                params_recarray=params_recarray,
+                src_params_recarray=src_params_recarray,
                 tl=tl)
             log_lambda += log_lambda_j
 
@@ -1103,24 +1133,34 @@ class MultiDatasetTCLLHRatio(
 
     def calculate_ns_grad2(
             self,
-            fitparam_values,
+            ns,
             ns_pidx,
-            params_recarray=None,
+            src_params_recarray,
             tl=None):
         """Calculates the second derivative w.r.t. ns of the log-likelihood
         ratio function.
-        This method tries to use cached values for the dataset signal weight
-        factors. If cached values don't exist or do not match the given fit
-        parameter values, they will get calculated automatically by calling the
-        :meth:`skyllh.core.llhratio.MultiDatasetTCLLHRatio.evaluate` method with
-        the given fit parameter values.
+
+        Note::
+
+            This method takes the dataset signal weight factors from the dataset
+            signal weight factors service. Hence, the service needs to be
+            updated before calling this method.
 
         Parameters
         ----------
         fitparam_values : instance of numpy ndarray
             The (N_fitparams,)-shaped 1D ndarray holding the current values of
-            the fit parameters.
-
+            the global fit parameters.
+        ns : float
+            The value of the global fit paramater ns.
+        ns_pidx : int
+            The index of the global parameter ns.
+        src_params_recarray : instance of numpy record ndarray
+            The numpy record ndarray of length N_sources holding the parameter
+            names and values of all sources.
+            See the documentation of the
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            method for more information about this array.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used for timing
             measurements.
@@ -1131,45 +1171,22 @@ class MultiDatasetTCLLHRatio(
             The second derivative w.r.t. ns of the log-likelihood ratio function
             for the given fit parameter values.
         """
-        ns = fitparam_values[ns_pidx]
+        (f, f_grads_dict) = self._ds_sig_weight_factors_service.get_weights()
 
-        # Check if the cached fit parameters match the given ones. The ns value
-        # is special to the multi-dataset LLH ratio function, but all the other
-        # fit parameters are shared by all the LLH ratio functions of the
-        # different datasets. So those we just query from the first LLH ratio
-        # function.
-        if (
-            (self._cache_fitparam_values is None) or
-            (self._cache_f is None) or
-            (not np.all(np.isclose(
-                self._cache_fitparam_values[:ns_pidx],
-                fitparam_values[:ns_pidx]))) or
-            (not np.all(np.isclose(
-                self._cache_fitparam_values[ns_pidx+1:],
-                fitparam_values[ns_pidx+1:])))
-        ):
-            self._cache_fitparam_values = fitparam_values.copy()
-            (self._cache_f, f_grads_dict) = self._ds_sig_weight_factors(
-                fitparam_values=fitparam_values)
-
-        nsf = ns * self._cache_f
+        nsf = ns * f
 
         nsgrad2j = np.empty((len(self._llhratio_list),), dtype=np.float64)
 
         # Loop over the llh ratio functions and calculate their second
         # derivative.
-        llhratio_fitparam_values = fitparam_values.copy()
-
         for (j, llhratio) in enumerate(self._llhratio_list):
-            llhratio_fitparam_values[ns_pidx] = nsf[j]
-
             nsgrad2j[j] = llhratio.calculate_ns_grad2(
-                fitparam_values=llhratio_fitparam_values,
+                ns=nsf[j],
                 ns_pidx=ns_pidx,
-                params_recarray=params_recarray,
+                src_params_recarray=src_params_recarray,
                 tl=tl)
 
-        nsgrad2 = np.sum(nsgrad2j * self._cache_f**2)
+        nsgrad2 = np.sum(nsgrad2j * f**2)
 
         return nsgrad2
 
@@ -1221,7 +1238,7 @@ class NsProfileMultiDatasetTCLLHRatio(
 
         self.llhratio = llhratio
 
-        if pmm.n_global_floating_params != 1:
+        if self._pmm.n_global_floating_params != 1:
             raise ValueError(
                 'The log-likelihood-ratio function implemented by '
                 f'{classname(self)} provides functionality only for LLH '
@@ -1287,7 +1304,7 @@ class NsProfileMultiDatasetTCLLHRatio(
     def evaluate(
             self,
             fitparam_values,
-            params_recarray=None,
+            src_params_recarray=None,
             tl=None):
         """Evaluates the log-likelihood-ratio function and returns its value and
         global fit parameter gradients.
@@ -1299,10 +1316,9 @@ class NsProfileMultiDatasetTCLLHRatio(
             values of the global fit parameters.
             By definition of this LLH ratio function, it must contain the single
             fit paramater value for ns.
-        params_recarray : instance of numpy record ndarray | None
+        src_params_recarray : instance of numpy record ndarray
             The numpy record ndarray of length N_sources holding the parameter
-            names and values of all sources. If set to ``None`` it will be
-            created automatically from the ``fitparam_values`` array.
+            names and values of all sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information about this array.
@@ -1321,7 +1337,7 @@ class NsProfileMultiDatasetTCLLHRatio(
         """
         (logL, grads) = self._llhratio.evaluate(
             fitparam_values=fitparam_values,
-            params_recarray=params_recarray,
+            src_params_recarray=src_params_recarray,
             tl=tl)
 
         log_lambda = logL - self._logL_0
@@ -1330,25 +1346,23 @@ class NsProfileMultiDatasetTCLLHRatio(
 
     def calculate_ns_grad2(
             self,
-            fitparam_values,
-            ns_pidx=0,
-            params_recarray=None,
+            ns,
+            ns_pidx,
+            src_params_recarray,
             tl=None):
         """Calculates the second derivative w.r.t. ns of the log-likelihood
         ratio function.
 
         Parameters
         ----------
-        fitparam_values : numpy  ndarray
-            The (1,)-shaped 1D numpy ndarray holding the current
-            value of the global fit parameter ns.
+        ns : float
+            The value of the global fit paramater ns.
         ns_pidx : int
             The index of the global fit paramater ns. By definition this must
             be ``0``.
-        params_recarray : instance of numpy record ndarray | None
+        src_params_recarray : instance of numpy record ndarray
             The numpy record ndarray of length N_sources holding the parameter
-            names and values of all sources. If set to ``None`` it will be
-            created automatically from the ``fitparam_values`` array.
+            names and values of all sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information about this array.
@@ -1368,9 +1382,9 @@ class NsProfileMultiDatasetTCLLHRatio(
                 f'Its current value is {ns_pidx}.')
 
         nsgrad2 = self._llhratio.calculate_ns_grad2(
-            fitparam_values=fitparam_values,
+            ns=ns,
             ns_pidx=ns_pidx,
-            params_recarray=params_recarray,
+            src_params_recarray=src_params_recarray,
             tl=tl)
 
         return nsgrad2
