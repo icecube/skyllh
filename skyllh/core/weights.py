@@ -17,21 +17,23 @@ from skyllh.core.py import (
     issequenceof,
 )
 from skyllh.core.source_hypo_grouping import (
-    SourceHypoGroup,
     SourceHypoGroupManager,
 )
 
 
-class SourceDetectorWeights(object):
-    r"""This class provides the source detector weights, which are the product
-    of the source weights with the detector signal yield, denoted with
-    :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})` in the math formalism documentation.
+class SrcDetSigYieldWeightsService(object):
+    r"""This class provides a service for the source detector signal yield
+    weights, which are the product of the source weights with the detector
+    signal yield, denoted with :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})` in the
+    math formalism documentation.
 
     .. math::
 
         a_{j,k}(\vec{p}_{\mathrm{s}_k}) = W_k
             \mathcal{Y}_{\mathrm{s}_{j,k}}(\vec{p}_{\mathrm{s}_k})
 
+    The service has a method to calculate the weights and a method to retrieve
+    the weights. The weights are stored internally.
     """
 
     @staticmethod
@@ -45,7 +47,7 @@ class SourceDetectorWeights(object):
         shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager defining the source
             hypothesis groups with their sources.
-        detsigyield_arr : ndarray of instance of DetSigYield
+        detsigyield_arr : instance of ndarray of instance of DetSigYield
             The (N_datasets,N_source_hypo_groups)-shaped 1D ndarray of
             DetSigYield instances, one for each dataset and source hypothesis
             group combination.
@@ -94,33 +96,28 @@ class SourceDetectorWeights(object):
         """
         src_weight_array_list = [
             np.array([src.weight for src in shg.source_list])
-                for shg in shg_mgr.src_hypo_group_list
+            for shg in shg_mgr.src_hypo_group_list
         ]
         return src_weight_array_list
 
-    def __init__(self, shg_mgr, pmm, detsigyields):
-        """Creates a new SourceDetectorWeights instance.
+    def __init__(
+            self,
+            shg_mgr,
+            detsigyields):
+        """Creates a new SrcDetSigYieldWeightsService instance.
 
         Parameters
         ----------
         shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager defining the sources and
             their source hypothesis groups.
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the mapping of the
-            global parameters to the individual sources.
         detsigyields : sequence of sequence of instance of DetSigYield
             The (N_datasets,N_source_hypo_groups)-shaped sequence of sequence of
             DetSigYield instances, one instance for each combination of dataset
             and source hypothesis group.
         """
-        self._set_shg_mgr(shg_mgr=shg_mgr)
-
-        if not isinstance(pmm, ParameterModelMapper):
-            raise TypeError(
-                'The pmm argument must be an instance of '
-                'ParameterModelMapper!')
-        self._pmm = pmm
+        self._set_shg_mgr(
+            shg_mgr=shg_mgr)
 
         if not issequence(detsigyields):
             detsigyields = [detsigyields]
@@ -147,6 +144,9 @@ class SourceDetectorWeights(object):
         self._src_weight_array_list = type(self).create_src_weight_array_list(
             shg_mgr=self._shg_mgr)
 
+        self._a_jk = None
+        self._a_jk_grads = None
+
     @property
     def shg_mgr(self):
         """(read-only) The instance of SourceHypoGroupManager defining the
@@ -155,19 +155,18 @@ class SourceDetectorWeights(object):
         return self._shg_mgr
 
     @property
-    def pmm(self):
-        """(read-only) The instance of ParameterModelMapper mapping the global
-        set of parameters to the individual sources.
-        """
-        return self._pmm
-
-    @property
     def detsigyield_arr(self):
         """(read-only) The (N_datasets,N_source_hypo_groups)-shaped 1D numpy
         ndarray holding the DetSigYield instances for each source hypothesis
         group.
         """
         return self._detsigyield_arr
+
+    @property
+    def n_datasets(self):
+        """(read-only) The number of datasets this service is created with.
+        """
+        return self._detsigyield_arr.shape[0]
 
     @property
     def src_recarray_list_list(self):
@@ -203,44 +202,44 @@ class SourceDetectorWeights(object):
         shg_mgr : instance of SourceHypoGroupManager
             The new SourceHypoGroupManager instance.
         """
-        self._set_shg_mgr(shg_mgr=shg_mgr)
+        self._set_shg_mgr(
+            shg_mgr=shg_mgr)
         self._src_recarray_list_list = type(self).create_src_recarray_list_list(
             shg_mgr=self._shg_mgr,
             detsigyield_arr=self._detsigyield_arr)
         self._src_weight_array_list = type(self).create_src_weight_array_list(
             shg_mgr=self._shg_mgr)
 
-    # TODO: Use params_recarray with all sources as argument and mask for each
-    #       SHG the required rows. This will save expensive calls to
-    #       pmm.create_src_params_recarray.
-    def __call__(self, fitparam_values):
-        """Calculates the source detector weights for each source and their
-        derivative w.r.t. each global floating parameter.
+    def calculate(self, src_params_recarray):
+        """Calculates the source detector signal yield weights for each source
+        and their derivative w.r.t. each global floating parameter. The result
+        is stored internally as:
+
+            a_jk : instance of ndarray
+                The (N_datasets,N_sources)-shaped numpy ndarray holding the
+                source detector signal yield weight for each combination of
+                dataset and source.
+            a_jk_grads : dict
+                The dictionary holding the (N_datasets,N_sources)-shaped numpy
+                ndarray with the derivatives w.r.t. the global fit parameter
+                the SrcDetSigYieldWeightsService depend on. The dictionary's key
+                is the index of the global fit parameter.
 
         Parameters
         ----------
-        fitparam_values : instance of numpy ndarray
-            The (N_fitparams,)-shaped ndarray holding the global fit parameter
-            values.
-
-        Returns
-        -------
-        a_jk : instance of ndarray
-            The (N_datasets,N_sources)-shaped numpy ndarray holding the source
-            detector weight for each combination of dataset and source.
-        a_jk_grads : dict
-            The dictionary holding the (N_datasets,N_sources)-shaped numpy
-            ndarray with the derivatives w.r.t. the global floating parameter
-            the SourceDetectorWeights depend on. The dictionary's key is the
-            index of the global floating parameter.
+        src_params_recarray : instance of numpy record ndarray
+            The numpy record ndarray of length N_sources holding the local
+            source parameters. See the documentation of
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            for more information about this record array.
         """
-        n_datasets = self._detsigyield_arr.shape[0]
+        n_datasets = self.n_datasets
 
-        a_jk = np.empty(
+        self._a_jk = np.empty(
             (n_datasets, self.shg_mgr.n_sources,),
             dtype=np.double)
 
-        a_jk_grads = defaultdict(
+        self._a_jk_grads = defaultdict(
             lambda: np.zeros(
                 (n_datasets, self.shg_mgr.n_sources),
                 dtype=np.double))
@@ -252,101 +251,109 @@ class SourceDetectorWeights(object):
 
             shg_n_src = shg.n_sources
 
-            src_params_recarray = self._pmm.create_src_params_recarray(
-                gflp_values=fitparam_values,
-                sources=shg.source_list)
+            shg_src_slice = slice(sidx, sidx+shg_n_src)
+
+            shg_src_params_recarray = src_params_recarray[shg_src_slice]
 
             for ds_idx in range(n_datasets):
-                detsigyield = self._detsigyield_arr[ds_idx,shg_idx]
+                detsigyield = self._detsigyield_arr[ds_idx, shg_idx]
                 src_recarray = self._src_recarray_list_list[ds_idx][shg_idx]
 
                 (Yg, Yg_grads) = detsigyield(
                     src_recarray=src_recarray,
-                    src_params_recarray=src_params_recarray)
+                    src_params_recarray=shg_src_params_recarray)
 
-                shg_src_slice = slice(sidx, sidx+shg_n_src)
-
-                a_jk[ds_idx][shg_src_slice] = src_weights * Yg
+                self._a_jk[ds_idx][shg_src_slice] = src_weights * Yg
 
                 for gpidx in Yg_grads.keys():
-                    a_jk_grads[gpidx][ds_idx,shg_src_slice] =\
+                    self._a_jk_grads[gpidx][ds_idx, shg_src_slice] =\
                         src_weights * Yg_grads[gpidx]
 
             sidx += shg_n_src
 
-        return (a_jk, a_jk_grads)
+    def get_weights(self):
+        """Returns the source detector signal yield weights and their
+        derivatives w.r.t. the global fit parameters.
+
+        Returns
+        -------
+        a_jk : instance of ndarray
+            The (N_datasets,N_sources)-shaped numpy ndarray holding the
+            source detector signal yield weight for each combination of
+            dataset and source.
+        a_jk_grads : dict
+            The dictionary holding the (N_datasets,N_sources)-shaped numpy
+            ndarray with the derivatives w.r.t. the global fit parameter
+            the SrcDetSigYieldWeightsService depend on. The dictionary's key
+            is the index of the global fit parameter.
+        """
+        return (self._a_jk, self._a_jk_grads)
 
 
-class DatasetSignalWeightFactors(object):
-    r"""This class calculates the dataset signal weight factors,
-    :math:`f_j(\vec{p}_\mathrm{s})`, for each dataset. It utilizes the source
-    detector weights :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`, provided by the
-    :class:`~SourceDetectorWeights` class.
+class DatasetSignalWeightFactorsService(object):
+    r"""This class provides a service to calculates the dataset signal weight
+    factors, :math:`f_j(\vec{p}_\mathrm{s})`, for each dataset.
+    It utilizes the source detector signal yield weights
+    :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`, provided by the
+    :class:`~SrcDetSigYieldWeightsService` class.
     """
 
-    def __init__(self, src_det_weights):
+    def __init__(self, src_detsigyield_weights_service):
         r"""Creates a new DatasetSignalWeightFactors instance.
 
         Parameters
         ----------
-        src_det_weights : instance of SourceDetectorWeights
-            The instance of SourceDetectorWeights for calculating the source
-            detector weights :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`.
+        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+            The instance of SrcDetSigYieldWeightsService providing the source
+            detector signal yield weights
+            :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`.
         """
-        self.src_det_weights = src_det_weights
+        self.src_detsigyield_weights_service = src_detsigyield_weights_service
 
     @property
-    def src_det_weights(self):
-        r"""The instance of SourceDetectorWeights providing the calculation of
-        the source detector weights :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`.
+    def src_detsigyield_weights_service(self):
+        r"""The instance of SrcDetSigYieldWeightsService providing the source
+        detector signal yield weights :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})`.
         """
-        return self._src_det_weights
-    @src_det_weights.setter
-    def src_det_weights(self, w):
-        if not isinstance(w, SourceDetectorWeights):
+        return self._src_detsigyield_weights_service
+
+    @src_detsigyield_weights_service.setter
+    def src_detsigyield_weights_service(self, service):
+        if not isinstance(service, SrcDetSigYieldWeightsService):
             raise TypeError(
-                'The src_det_weights property must be an instance of '
-                'SourceDetectorWeights!')
-        self._src_det_weights = w
+                'The src_detsigyield_weights_service property must be an '
+                'instance of SrcDetSigYieldWeightsService!')
+        self._src_detsigyield_weights_service = service
 
     @property
     def n_datasets(self):
         """(read-only) The number of datasets.
         """
-        return self._src_det_weights.detsigyield_arr.shape[0]
+        return self._src_detsigyield_weights_service.n_datasets
 
-    def __call__(self, fitparam_values):
+    def calculate(self):
         r"""Calculates the dataset signal weight factors,
-        :math:`f_j(\vec{p}_\mathrm{s})`.
+        :math:`f_j(\vec{p}_\mathrm{s})`. The result is stored internally as:
 
-        Parameters
-        ----------
-        fitparam_values : instance of ndarray
-            The (N_fitparams,)-shaped 1D numpy ndarray holding the global
-            fit parameter values.
-
-        Returns
-        -------
-        f_j : instance of ndarray
-            The (N_datasets,)-shaped 1D numpy ndarray holding the dataset signal
-            weight factor for each dataset.
-        f_j_grads : dict
-            The dictionary holding the (N_datasets,)-shaped numpy
-            ndarray with the derivatives w.r.t. the global floating parameter
-            the DatasetSignalWeightFactors depend on. The dictionary's key is
-            the index of the global floating parameter.
+            f_j : instance of ndarray
+                The (N_datasets,)-shaped 1D numpy ndarray holding the dataset
+                signal weight factor for each dataset.
+            f_j_grads : dict
+                The dictionary holding the (N_datasets,)-shaped numpy
+                ndarray with the derivatives w.r.t. the global fit parameter
+                the DatasetSignalWeightFactorsService depend on.
+                The dictionary's key is the index of the global fit parameter.
         """
-        (a_jk, a_jk_grads) = self._src_det_weights(
-            fitparam_values=fitparam_values)
+        (a_jk, a_jk_grads) = self._src_detsigyield_weights_service.get_weights()
 
         a_j = np.sum(a_jk, axis=1)
         a = np.sum(a_jk)
 
-        f_j = a_j / a
+        self._f_j = a_j / a
 
         # Calculate the derivative of f_j w.r.t. all floating parameters present
         # in the a_jk_grads using the quotient rule of differentation.
-        f_j_grads = dict()
+        self._f_j_grads = dict()
         for gpidx in a_jk_grads.keys():
             # a is a scalar.
             # a_j is a (N_datasets)-shaped ndarray.
@@ -356,6 +363,20 @@ class DatasetSignalWeightFactors(object):
             # a_grads is a scalar.
             a_j_grads = np.sum(a_jk_grads[gpidx], axis=1)
             a_grads = np.sum(a_jk_grads[gpidx])
-            f_j_grads[gpidx] = (a_j_grads * a - a_j * a_grads) / a**2
+            self._f_j_grads[gpidx] = (a_j_grads * a - a_j * a_grads) / a**2
 
-        return (f_j, f_j_grads)
+    def get_weights(self):
+        """Returns the
+
+        Returns
+        -------
+        f_j : instance of ndarray
+            The (N_datasets,)-shaped 1D numpy ndarray holding the dataset
+            signal weight factor for each dataset.
+        f_j_grads : dict
+            The dictionary holding the (N_datasets,)-shaped numpy
+            ndarray with the derivatives w.r.t. the global fit parameter
+            the DatasetSignalWeightFactorsService depend on.
+            The dictionary's key is the index of the global fit parameter.
+        """
+        return (self._f_j, self._f_j_grads)

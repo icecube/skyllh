@@ -19,8 +19,8 @@ from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
 from skyllh.core.weights import (
-    DatasetSignalWeightFactors,
-    SourceDetectorWeights,
+    DatasetSignalWeightFactorsService,
+    SrcDetSigYieldWeightsService,
 )
 from skyllh.physics.flux_model import (
     SteadyPointlikeFFM,
@@ -28,6 +28,7 @@ from skyllh.physics.flux_model import (
 from skyllh.physics.source_model import (
     PointLikeSource,
 )
+
 
 # Define a DetSigYield class that is a simple function of the source declination
 # position.
@@ -76,6 +77,7 @@ class SimpleDetSigYieldWithoutGrads(DetSigYield):
         grads = dict()
 
         return (values, grads)
+
 
 class SimpleDetSigYieldWithGrads(SimpleDetSigYieldWithoutGrads):
     def __init__(self, pname, **kwargs):
@@ -149,10 +151,12 @@ class SimpleDetSigYieldWithGrads(SimpleDetSigYieldWithoutGrads):
 
         return (values, grads)
 
+
 # Define placeholder class to satisfy type checks.
 class NoDetSigYieldBuilder(DetSigYieldBuilder):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
     def construct_detsigyield(self, **kwargs):
         pass
 
@@ -203,13 +207,15 @@ class TestSourceDetectorWeights(unittest.TestCase):
             [SimpleDetSigYieldWithoutGrads()]
         ]
 
-        src_det_weights = SourceDetectorWeights(
+        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=type(self)._shg_mgr,
-            pmm=type(self)._pmm,
             detsigyields=detsigyields)
 
         gflp_values = np.array([120.0, 177.7])
-        (a_jk, a_jk_grads) = src_det_weights(gflp_values)
+        src_params_recarray = type(self)._pmm.create_src_params_recarray(
+            gflp_values)
+        src_detsigyield_weights_service.calculate(src_params_recarray)
+        (a_jk, a_jk_grads) = src_detsigyield_weights_service.get_weights()
 
         self.assertIsInstance(
             a_jk, np.ndarray,
@@ -221,10 +227,10 @@ class TestSourceDetectorWeights(unittest.TestCase):
 
         np.testing.assert_allclose(
             a_jk,
-            np.array(
-                [[1*10,2*20,3*30],
-                 [1*10,2*20,3*30]
-                ]),
+            np.array([
+                [1*10,2*20,3*30],
+                [1*10,2*20,3*30]
+            ]),
             err_msg='a_jk values')
 
         self.assertIsInstance(
@@ -245,13 +251,15 @@ class TestSourceDetectorWeights(unittest.TestCase):
             [SimpleDetSigYieldWithGrads(pname='p1')]
         ]
 
-        src_det_weights = SourceDetectorWeights(
+        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=type(self)._shg_mgr,
-            pmm=type(self)._pmm,
             detsigyields=detsigyields)
 
         gflp_values = np.array([120.0, 177.7])
-        (a_jk, a_jk_grads) = src_det_weights(gflp_values)
+        src_params_recarray = type(self)._pmm.create_src_params_recarray(
+            gflp_values)
+        src_detsigyield_weights_service.calculate(src_params_recarray)
+        (a_jk, a_jk_grads) = src_detsigyield_weights_service.get_weights()
 
         self.assertIsInstance(
             a_jk, np.ndarray,
@@ -299,13 +307,15 @@ class TestSourceDetectorWeights(unittest.TestCase):
             [SimpleDetSigYieldWithGrads(pname='p2')]
         ]
 
-        src_det_weights = SourceDetectorWeights(
+        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=type(self)._shg_mgr,
-            pmm=type(self)._pmm,
             detsigyields=detsigyields)
 
         gflp_values = np.array([120., 177.])
-        (a_jk, a_jk_grads) = src_det_weights(gflp_values)
+        src_params_recarray = type(self)._pmm.create_src_params_recarray(
+            gflp_values)
+        src_detsigyield_weights_service.calculate(src_params_recarray)
+        (a_jk, a_jk_grads) = src_detsigyield_weights_service.get_weights()
 
         self.assertIsInstance(
             a_jk, np.ndarray,
@@ -361,16 +371,19 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             [SimpleDetSigYieldWithoutGrads(scale=2)]
         ]
 
-        src_det_weights = SourceDetectorWeights(
+        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=type(self)._shg_mgr,
-            pmm=type(self)._pmm,
             detsigyields=detsigyields)
 
-        ds_sig_weigh_factors = DatasetSignalWeightFactors(
-            src_det_weights=src_det_weights)
+        ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
+            src_detsigyield_weights_service=src_detsigyield_weights_service)
 
         gflp_values = np.array([120.0, 177.7])
-        (f_j, f_j_grads) = ds_sig_weigh_factors(gflp_values)
+        src_params_recarray = type(self)._pmm.create_src_params_recarray(
+            gflp_values)
+        src_detsigyield_weights_service.calculate(src_params_recarray)
+        ds_sig_weight_factors_service.calculate()
+        (f_j, f_j_grads) = ds_sig_weight_factors_service.get_weights()
 
         self.assertIsInstance(
             f_j, np.ndarray,
@@ -403,16 +416,19 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             [SimpleDetSigYieldWithGrads(pname='p1', scale=2)]
         ]
 
-        src_det_weights = SourceDetectorWeights(
+        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=type(self)._shg_mgr,
-            pmm=type(self)._pmm,
             detsigyields=detsigyields)
 
-        ds_sig_weigh_factors = DatasetSignalWeightFactors(
-            src_det_weights=src_det_weights)
+        ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
+            src_detsigyield_weights_service=src_detsigyield_weights_service)
 
         gflp_values = np.array([120.0, 177.7])
-        (f_j, f_j_grads) = ds_sig_weigh_factors(gflp_values)
+        src_params_recarray = type(self)._pmm.create_src_params_recarray(
+            gflp_values)
+        src_detsigyield_weights_service.calculate(src_params_recarray)
+        ds_sig_weight_factors_service.calculate()
+        (f_j, f_j_grads) = ds_sig_weight_factors_service.get_weights()
 
         self.assertIsInstance(
             f_j, np.ndarray,
@@ -454,16 +470,19 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             [SimpleDetSigYieldWithGrads(pname='p2', scale=2)]
         ]
 
-        src_det_weights = SourceDetectorWeights(
+        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=type(self)._shg_mgr,
-            pmm=type(self)._pmm,
             detsigyields=detsigyields)
 
-        ds_sig_weigh_factors = DatasetSignalWeightFactors(
-            src_det_weights=src_det_weights)
+        ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
+            src_detsigyield_weights_service=src_detsigyield_weights_service)
 
         gflp_values = np.array([120.0, 177.7])
-        (f_j, f_j_grads) = ds_sig_weigh_factors(gflp_values)
+        src_params_recarray = type(self)._pmm.create_src_params_recarray(
+            gflp_values)
+        src_detsigyield_weights_service.calculate(src_params_recarray)
+        ds_sig_weight_factors_service.calculate()
+        (f_j, f_j_grads) = ds_sig_weight_factors_service.get_weights()
 
         self.assertIsInstance(
             f_j, np.ndarray,
@@ -496,5 +515,5 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
             err_msg='f_j_grads[1] values')
 
 
-if(__name__ == '__main__'):
+if __name__ == '__main__':
     unittest.main()
