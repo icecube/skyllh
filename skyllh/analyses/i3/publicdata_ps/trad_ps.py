@@ -277,7 +277,7 @@ def create_analysis(
         cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
     if spl_smooth is None:
         spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
-    if len(spl_smooth) != len(datasets) or len(cut_sindec) != len(datasets):
+    if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
         raise AssertionError("The length of the spl_smooth and of the "
             "cut_sindec must be equal to the length of datasets: "
             f"{len(datasets)}.")
