@@ -1442,8 +1442,7 @@ class LLHRatioAnalysis(
 
 
 class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
-        LLHRatioAnalysis,
-        metaclass=abc.ABCMeta):
+        LLHRatioAnalysis):
     """This is the abstract base class for all log-likelihood ratio analysis
     classes that use multiple dataset, i.e. multiple LLH-ratio functions, one
     for each dataset and multiple sources.
