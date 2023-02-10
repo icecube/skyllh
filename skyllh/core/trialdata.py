@@ -53,13 +53,13 @@ class DataField(object):
             The function that calculates the values of this data field. The call
             signature must be
 
-                __call__(tdm, shg_mgr, pmm, global_fitparams=None)
+                __call__(tdm, shg_mgr, pmm, global_fitparams_dict=None)
 
             where ``tdm`` is the instance of TrialDataManager holding the trial
             event data, ``shg_mgr`` is the instance of SourceHypoGroupManager,
             ``pmm`` is the instance of ParameterModelMapper, and
-            ``global_fitparams`` is the dictionary with the current global fit
-            parameter names and values.
+            ``global_fitparams_dict`` is the dictionary with the current global
+            fit parameter names and values.
         global_fitparam_names : str | sequence of str | None
             The sequence of str instances specifying the names of the global fit
             parameters this data field depends on. If set to None, the data
@@ -285,7 +285,7 @@ class DataField(object):
             tdm,
             shg_mgr,
             pmm,
-            global_fitparams):
+            global_fitparams_dict):
         """Calculate data field values utilizing the defined external
         function, that depend on fit parameter values. We check if the fit
         parameter values have changed.
@@ -301,7 +301,7 @@ class DataField(object):
         pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper defining the mapping of the
             global parameters to local source parameters.
-        global_fitparams : dict
+        global_fitparams_dict : dict
             The dictionary holding the current global fit parameter names and
             values.
         """
@@ -312,7 +312,7 @@ class DataField(object):
             calc_values = True
         else:
             for (idx, name) in enumerate(self._global_fitparam_name_list):
-                if global_fitparams[name] !=\
+                if global_fitparams_dict[name] !=\
                    self._global_fitparam_value_list[idx]:
                     calc_values = True
                     break
@@ -324,7 +324,7 @@ class DataField(object):
             tdm=tdm,
             shg_mgr=shg_mgr,
             pmm=pmm,
-            global_fitparams=global_fitparams)
+            global_fitparams_dict=global_fitparams_dict)
 
         if not isinstance(values, np.ndarray):
             raise TypeError(
@@ -343,7 +343,7 @@ class DataField(object):
         # were calculated. So they have to get recalculated only when the
         # global fit parameter values, the field depends on, change.
         self._global_fitparam_value_list = [
-            global_fitparams[name]
+            global_fitparams_dict[name]
             for name in self._global_fitparam_name_list
         ]
 
@@ -887,12 +887,12 @@ class TrialDataManager(object):
             The function that calculates the data field values. The call
             signature must be
 
-                __call__(tdm, shg_mgr, pmm, global_fitparams=None)
+                __call__(tdm, shg_mgr, pmm, global_fitparams_dict=None)
 
             where ``tdm`` is the TrialDataManager instance holding the trial
             event data, ``shg_mgr`` is the instance of SourceHypoGroupManager,
             ``pmm`` is the instance of ParameterModelMapper, and
-            ``global_fitparams`` is the dictionary with the current global
+            ``global_fitparams_dict`` is the dictionary with the current global
             fit parameter names and values.
         global_fitparam_names : str | sequence of str | None
             The sequence of str instances specifying the names of the global fit
@@ -1013,7 +1013,7 @@ class TrialDataManager(object):
             self,
             shg_mgr,
             pmm,
-            global_fitparams):
+            global_fitparams_dict):
         """Calculates the data values of the data fields that depend on global
         fit parameter values.
 
@@ -1025,7 +1025,7 @@ class TrialDataManager(object):
         pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper, that defines the global
             parameters and their mapping to local source parameters.
-        global_fitparams : dict
+        global_fitparams_dict : dict
             The dictionary holding the current global fit parameter names and
             values.
         """
@@ -1037,7 +1037,7 @@ class TrialDataManager(object):
                 tdm=self,
                 shg_mgr=shg_mgr,
                 pmm=pmm,
-                global_fitparams=global_fitparams)
+                global_fitparams_dict=global_fitparams_dict)
 
         self._trial_data_state_id += 1
 
