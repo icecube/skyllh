@@ -1256,7 +1256,7 @@ class LLHRatioAnalysis(
             the dataset.
         pdfratio : instance of PDFRatio
             The instance of PDFRatio for the to-be-added data set.
-        tdm : TrialDataManager instance | None
+        tdm : instance of TrialDataManager | None
             The TrialDataManager instance that manages the trial data and
             additional data fields for this data set.
         event_selection_method : instance of EventSelectionMethod | None
