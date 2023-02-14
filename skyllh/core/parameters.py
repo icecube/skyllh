@@ -1756,7 +1756,8 @@ class ParameterModelMapper(object):
         idx : int
             The index of the global floating parameter.
         """
-        return self._global_paramset.get_floating_pidx(name=name)
+        return self._global_paramset.get_floating_pidx(
+            param_name=name)
 
     def get_model_idx_by_name(self, name):
         """Determines the index within this ParameterModelMapper instance of
