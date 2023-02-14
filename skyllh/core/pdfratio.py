@@ -213,7 +213,8 @@ class PDFRatio(
         return PDFRatioProduct(self, other)
 
 
-class PDFRatioProduct(PDFRatio):
+class PDFRatioProduct(
+        PDFRatio):
     """This is the mathematical product of two PDFRatio instances, which is a
     PDFRatio instance again.
     """
@@ -533,7 +534,7 @@ class SourceWeightedPDFRatio(
 
         R_ik = self._pdfratio.get_ratio(
             tdm=tdm,
-            params_recarray=src_params_recarray,
+            src_params_recarray=src_params_recarray,
             tl=tl)
         # The R_ik ndarray is (N_values,)-shaped.
 
@@ -649,7 +650,8 @@ class SourceWeightedPDFRatio(
         return R_i_grad
 
 
-class SigOverBkgPDFRatio(PDFRatio):
+class SigOverBkgPDFRatio(
+        PDFRatio):
     """This class implements a generic signal-over-background PDF ratio for a
     signal and a background PDF instance.
     It takes a signal PDF of type *pdf_type* and a background PDF of type
@@ -694,8 +696,6 @@ class SigOverBkgPDFRatio(PDFRatio):
         self.zero_bkg_ratio_value = zero_bkg_ratio_value
 
         # Define cache member variables to calculate gradients efficiently.
-        self._cache_trial_data_state_id = None
-        self._cache_params_recarray = None
         self._cache_sig_pd = None
         self._cache_bkg_pd = None
         self._cache_sig_grads = None
@@ -743,7 +743,11 @@ class SigOverBkgPDFRatio(PDFRatio):
             'The zero_bkg_ratio_value must be castable to type float!')
         self._zero_bkg_ratio_value = v
 
-    def get_ratio(self, tdm, params_recarray=None, tl=None):
+    def get_ratio(
+            self,
+            tdm,
+            src_params_recarray,
+            tl=None):
         """Calculates the PDF ratio for the given trial events.
 
         Parameters
@@ -751,12 +755,12 @@ class SigOverBkgPDFRatio(PDFRatio):
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should be calculated.
-        params_recarray : instance of numpy record ndarray | None
-            The (N_models,)-shaped numpy record ndarray holding the parameter
-            names and values of the models.
-            See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
-            This can be ``None``, if the signal and background PDFs do not
-            depend on any parameters.
+        src_params_recarray : instance of numpy record ndarray
+            The (N_sources,)-shaped numpy record ndarray holding the local
+            parameter names and values of the sources.
+            See the
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            method for more information.
         tl : instance of TimeLord | None
             The optional TimeLord instance that should be used to measure
             timing information.
@@ -764,48 +768,48 @@ class SigOverBkgPDFRatio(PDFRatio):
         Returns
         -------
         ratios : instance of ndarray
-            The (N,)-shaped numpy ndarray holding the probability density ratio
-            for each event (and each source).
+            The (N_values,)-shaped numpy ndarray holding the probability density
+            ratio for each event and source.
         """
         with TaskTimer(tl, 'Get sig probability densities and grads.'):
-            (sig_pd, self._cache_sig_grads) = self._sig_pdf.get_pd(
+            (self._cache_sig_pd, self._cache_sig_grads) = self._sig_pdf.get_pd(
                 tdm=tdm,
-                params_recarray=params_recarray,
+                params_recarray=src_params_recarray,
                 tl=tl)
         with TaskTimer(tl, 'Get bkg probability densities and grads.'):
-            (bkg_pd, self._cache_bkg_grads) = self._bkg_pdf.get_pd(
+            (self._cache_bkg_pd, self._cache_bkg_grads) = self._bkg_pdf.get_pd(
                 tdm=tdm,
-                params_recarray=params_recarray,
+                params_recarray=None,
                 tl=tl)
 
         with TaskTimer(tl, 'Calculate PDF ratios.'):
             # Select only the events, where the background pdf is greater than
             # zero.
-            ratios = np.full_like(sig_pd, self._zero_bkg_ratio_value)
-            m = (bkg_pd > 0)
-            ratios[m] = sig_pd[m] / bkg_pd[m]
-
-        # Store the current state of parameter values and trial data, so that
-        # the get_gradient method can verify the consistency of the signal and
-        # background probabilities and gradients.
-        self._cache_trial_data_state_id = tdm.trial_data_state_id
-        self._cache_params_recarray = None
-        if params_recarray is not None:
-            self._cache_params_recarray = np.copy(params_recarray)
-        self._cache_sig_pd = sig_pd
-        self._cache_bkg_pd = bkg_pd
+            ratios = np.full_like(self._cache_sig_pd, self._zero_bkg_ratio_value)
+            m = (self._cache_bkg_pd > 0)
+            ratios[m] = self._cache_sig_pd[m] / self._cache_bkg_pd[m]
 
         return ratios
 
-    def get_gradient(self, tdm, params_recarray, fitparam_id, tl=None):
+    def get_gradient(
+            self,
+            tdm,
+            src_params_recarray,
+            fitparam_id,
+            tl=None):
         """Retrieves the gradient of the PDF ratio w.r.t. the given parameter.
-        This method must be called after the ``get_ratio`` method.
+
+        Note:
+
+            This method uses cached values from the
+            :meth:`~skyllh.core.pdfratio.SigOverBkgPDFRatio.get_ratio` method.
+            Hence, that method needs to be called prior to this method.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
             The instance of TrialDataManager holding the trial data.
-        params_recarray : instance of numpy record ndarray | None
+        src_params_recarray : instance of numpy record ndarray | None
             The (N_models,)-shaped numpy record ndarray holding the parameter
             names and values of the models.
             See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
@@ -824,12 +828,6 @@ class SigOverBkgPDFRatio(PDFRatio):
             The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
             ratio gradient value for each source and trial event.
         """
-        if (tdm.trial_data_state_id != self._cache_trial_data_state_id) or\
-           (np.all(np.isclose(params_recarray, self._cache_params_recarray))):
-            raise RuntimeError(
-                'The get_ratio method must be called prior to the get_gradient '
-                'method!')
-
         # Create the 1D return array for the gradient.
         grad = np.zeros_like(self._cache_sig_pd, dtype=np.float64)
 
@@ -871,10 +869,12 @@ class SigOverBkgPDFRatio(PDFRatio):
             -self._cache_sig_pd[m] / self._cache_bkg_pd[m]**2 *
             self._cache_bkg_grads[fitparam_id][m]
         )
+
         return grad
 
 
-class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
+class SpatialSigOverBkgPDFRatio(
+        SigOverBkgPDFRatio):
     """This class implements a signal-over-background PDF ratio for spatial
     PDFs. It takes a signal PDF of type SpatialPDF and a background PDF of type
     SpatialPDF and calculates the PDF ratio.
@@ -906,7 +906,8 @@ class SpatialSigOverBkgPDFRatio(SigOverBkgPDFRatio):
                 f'Currently it has {sig_pdf.ndim}!')
 
 
-class SigSetOverBkgPDFRatio(PDFRatio):
+class SigSetOverBkgPDFRatio(
+        PDFRatio):
     """Class for a PDF ratio class that takes a PDFSet as signal PDF and a PDF
     as background PDF.
     The signal PDF depends on signal parameters and an interpolation method
