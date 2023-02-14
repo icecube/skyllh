@@ -308,7 +308,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             the array depends on the ``src_evt_idx`` property of the
             TrialDataManager. In the worst case it is N_sources * N_events.
         """
-        if tdm.src_evt_idx is not None:
+        if tdm.src_evt_idxs is not None:
             (_src_idxs, _evt_idxs) = tdm.src_evt_idxs
 
         # Check for special case when a single set of parameters are provided.
@@ -316,7 +316,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             # We got a single parameter set. We will use it for all sources.
             spline = self._get_spline_for_param_values(gridparams_recarray[0])
 
-            if tdm.src_evt_idx is None:
+            if tdm.src_evt_idxs is None:
                 values = spline(eventdata)
                 values = np.tile(values, tdm.n_sources)
             else:
@@ -333,7 +333,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
 
             # Select the eventdata that belongs to the current source.
             src_eventdata = eventdata
-            if tdm.src_evt_idx is not None:
+            if tdm.src_evt_idxs is not None:
                 m = _src_idxs == sidx
                 src_eventdata = np.take(eventdata, _evt_idxs[m], axis=0)
 
