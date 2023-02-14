@@ -356,13 +356,13 @@ class PDFRatioProduct(
         r1_depends_on_fitparam =\
             ParameterModelMapper.is_global_fitparam_a_local_param(
                 fitparam_id=fitparam_id,
-                src_params_recarray=src_params_recarray,
+                params_recarray=src_params_recarray,
                 local_param_names=self._pdfratio1.param_names)
 
         r2_depends_on_fitparam =\
             ParameterModelMapper.is_global_fitparam_a_local_param(
                 fitparam_id=fitparam_id,
-                src_params_recarray=src_params_recarray,
+                params_recarray=src_params_recarray,
                 local_param_names=self._pdfratio2.param_names)
 
         if r1_depends_on_fitparam:
@@ -619,7 +619,8 @@ class SourceWeightedPDFRatio(
             fitparam_id=fitparam_id)
         # R_ik_grad is a (N_values,)-shaped ndarray or 0.
 
-        if a_k_grad == 0 and R_ik_grad == 0:
+        if (type(a_k_grad) == int) and (a_k_grad == 0) and\
+           (type(R_ik_grad) == int) and (R_ik_grad == 0):
             return 0
 
         R_i_grad = -self._cache_R_i * dAdp
@@ -629,19 +630,19 @@ class SourceWeightedPDFRatio(
         if tdm.src_evt_idxs is None:
             for k in range(n_sources):
                 src_slice = slice(k*n_sel_events, (k+1)*n_sel_events)
-                if a_k_grad != 0:
+                if isinstance(a_k_grad, np.ndarray):
                     src_sum_i += a_k_grad[k] * self._cache_R_ik[src_slice]
-                if R_ik_grad != 0:
+                if isinstance(R_ik_grad, np.ndarray):
                     src_sum_i += a_k[k] * R_ik_grad[src_slice]
         else:
             (src_idxs, evt_idxs) = tdm.src_evt_idxs
             for k in range(n_sources):
                 src_mask = src_idxs == k
                 src_evt_idxs = evt_idxs[src_mask]
-                if a_k_grad != 0:
+                if isinstance(a_k_grad, np.ndarray):
                     src_sum_i[src_evt_idxs] +=\
                         a_k_grad[k] * self._cache_R_ik[src_mask]
-                if R_ik_grad != 0:
+                if isinstance(R_ik_grad, np.ndarray):
                     src_sum_i[src_evt_idxs] += a_k[k] * R_ik_grad[src_mask]
 
         R_i_grad += src_sum_i
