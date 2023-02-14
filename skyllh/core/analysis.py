@@ -41,6 +41,7 @@ from skyllh.core.parameters import (
 )
 from skyllh.core.pdfratio import (
     PDFRatio,
+    SourceWeightedPDFRatio,
 )
 from skyllh.core.progressbar import (
     ProgressBar,
@@ -308,6 +309,64 @@ class Analysis(
         for data in self._data_list:
             livetime += data.livetime
         return livetime
+
+    def construct_detsigyield_arr(self, ppbar=None):
+        """Creates a (N_datasets,N_source_hypo_groups)-shaped numpy ndarray of
+        object holding the constructed DetSigYield instances of the analysis.
+
+        Parameters
+        ----------
+        ppbar : instance of ProgressBar | None
+            The instance of ProgressBar of the optional parent progress bar.
+
+        Returns
+        -------
+        detsigyield_arr : instance of numpy ndarray
+            The (N_datasets,N_source_hypo_groups)-shaped numpy ndarray of
+            object holding the constructed DetSigYield instances of the
+            analysis.
+        """
+        detsigyield_arr = np.empty(
+            (len(self._dataset_list),
+             self._shg_mgr.n_src_hypo_groups),
+            dtype=object
+        )
+
+        pbar = ProgressBar(
+            self._shg_mgr.n_src_hypo_groups * len(self._dataset_list),
+            parent=ppbar).start()
+        for (g, shg) in enumerate(self._shg_mgr.src_hypo_group_list):
+            fluxmodel = shg.fluxmodel
+            detsigyield_builder_list = shg.detsigyield_builder_list
+
+            if (len(detsigyield_builder_list) != 1) and\
+               (len(detsigyield_builder_list) != self.n_datasets):
+                raise ValueError(
+                    'The number of detector signal yield builders is not 1 and '
+                    'does not match the number of used datasets in the '
+                    'analysis!')
+
+            for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
+                                                      self.data_list)):
+                if len(detsigyield_builder_list) == 1:
+                    # Only one detsigyield builder was defined,
+                    # so we use it for all datasets.
+                    detsigyield_builder = detsigyield_builder_list[0]
+                else:
+                    detsigyield_builder = detsigyield_builder_list[j]
+
+                detsigyield = detsigyield_builder.construct_detsigyield(
+                    dataset=dataset,
+                    data=data,
+                    fluxmodel=fluxmodel,
+                    livetime=data.livetime,
+                    ppbar=pbar)
+                detsigyield_arr[j, g] = detsigyield
+
+                pbar.increment()
+        pbar.finish()
+
+        return detsigyield_arr
 
     def add_dataset(
             self,
@@ -1520,46 +1579,9 @@ class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
             The instance of MultiDatasetTCLLHRatio that implements the
             log-likelihood-ratio function of the analysis.
         """
-        # Create the detector signal yield instances for each dataset.
-        # The multi source analysis needs to also support multiple source
-        # hypothesis groups.
-        # Initialize empty (N_source_hypo_groups, N_datasets)-shaped ndarray.
-        detsigyield_arr = np.empty(
-            (len(self.dataset_list),
-             self._shg_mgr.n_src_hypo_groups),
-            dtype=object
-        )
-
-        for (g, shg) in enumerate(self._shg_mgr._src_hypo_group_list):
-            fluxmodel = shg.fluxmodel
-            detsigyield_builder_list = shg.detsigyield_builder_list
-
-            if (len(detsigyield_builder_list) != 1) and\
-               (len(detsigyield_builder_list) != self.n_datasets):
-                raise ValueError(
-                    'The number of detector signal yield builders is not 1 and '
-                    'does not match the number of used datasets in the '
-                    'analysis!')
-
-            pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
-            for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
-                                                      self.data_list)):
-                if len(detsigyield_builder_list) == 1:
-                    # Only one detsigyield builder was defined,
-                    # so we use it for all datasets.
-                    detsigyield_builder = detsigyield_builder_list[0]
-                else:
-                    detsigyield_builder = detsigyield_builder_list[j]
-
-                detsigyield = detsigyield_builder.construct_detsigyield(
-                    dataset=dataset,
-                    data=data,
-                    fluxmodel=fluxmodel,
-                    livetime=data.livetime,
-                    ppbar=pbar)
-                detsigyield_arr[j, g] = detsigyield
-                pbar.increment()
-            pbar.finish()
+        # Create the detector signal yield instances for each dataset and
+        # source hypothesis group.
+        detsigyield_arr = self.construct_detsigyield_arr(ppbar=ppbar)
 
         src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=self._shg_mgr,
@@ -1576,9 +1598,14 @@ class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
                 tdm=tdm,
-                pdfratio=pdfratio
+                pdfratio=SourceWeightedPDFRatio(
+                    dataset_idx=dataset_idx,
+                    src_detsigyield_weights_service=src_detsigyield_weights_service,
+                    pdfratio=pdfratio)
             )
-            for (tdm, pdfratio) in zip(self._tdm_list, self._pdfratio_list)
+            for (dataset_idx, (tdm, pdfratio)) in enumerate(
+                zip(self._tdm_list,
+                    self._pdfratio_list))
         ]
 
         # Create the final multi-dataset log-likelihood ratio function.
