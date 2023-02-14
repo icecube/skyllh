@@ -1,6 +1,8 @@
 """This module contains depricated classes.
 """
 
+import abc
+
 class SourceWeights(object, metaclass=abc.ABCMeta):
     """This class is DEPRECATED!
     Use :py:class:`skyllh.core.weights.SourceDetectorWeights` instead!
