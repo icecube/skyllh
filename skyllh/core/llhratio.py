@@ -1087,7 +1087,7 @@ class MultiDatasetTCLLHRatio(
         # Convert the f_grads dictionary into a (N_datasets,N_fitparams)
         f_grads = np.zeros((len(f), n_fitparams), dtype=np.float64)
         for pidx in f_grads_dict.keys():
-            f_grads[pidx] = f_grads_dict[pidx]
+            f_grads[:, pidx] = f_grads_dict[pidx]
 
         nsf = ns * f
 
