@@ -467,7 +467,8 @@ class SingleDatasetTCLLHRatio(
 
         # Calculate the data fields that solely depend on source parameters.
         self._tdm.calculate_source_data_fields(
-            shg_mgr=self._shg_mgr)
+            shg_mgr=self._shg_mgr,
+            pmm=self._pmm)
 
     @property
     def shg_mgr(self):
@@ -820,7 +821,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         with TaskTimer(tl, 'Calc pdfratio value Ri'):
             Ri = self._pdfratio.get_ratio(
                 tdm=tdm,
-                params_recarray=src_params_recarray,
+                src_params_recarray=src_params_recarray,
                 tl=tl)
 
         # Calculate Xi for each selected event.
@@ -844,7 +845,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
             dRi = self._pdfratio.get_gradient(
                 tdm=tdm,
-                params_recarray=src_params_recarray,
+                src_params_recarray=src_params_recarray,
                 fitparam_id=fitparam_id,
                 tl=tl)
 
@@ -911,6 +912,13 @@ class MultiDatasetTCLLHRatio(
             The list of the two-component log-likelihood ratio functions,
             one for each dataset.
         """
+        if not issequenceof(llhratio_list, SingleDatasetTCLLHRatio):
+            raise TypeError(
+                'The llhratio_list argument must be a sequence of '
+                'SingleDatasetTCLLHRatio instances! '
+                f'Its current type is {classname(llhratio_list)}.')
+        self._llhratio_list = list(llhratio_list)
+
         super().__init__(
             pmm=pmm,
             minimizer=minimizer,
@@ -919,7 +927,6 @@ class MultiDatasetTCLLHRatio(
 
         self.src_detsigyield_weights_service = src_detsigyield_weights_service
         self.ds_sig_weight_factors_service = ds_sig_weight_factors_service
-        self.llhratio_list = llhratio_list
 
         if (
             self.ds_sig_weight_factors_service.n_datasets
@@ -929,12 +936,6 @@ class MultiDatasetTCLLHRatio(
                 'The number of datasets the DatasetSignalWeightFactorsService '
                 'instance is made for must be equal to the number of '
                 'log-likelihood ratio functions!')
-
-        # Define cache variable for the dataset signal weight factors, which
-        # will be needed when calculating the second derivative w.r.t. ns of the
-        # log-likelihood ratio function.
-        self._cache_fitparam_values_ns = None
-        self._cache_f = None
 
     @property
     def src_detsigyield_weights_service(self):
@@ -1072,7 +1073,7 @@ class MultiDatasetTCLLHRatio(
                 f'{classname(self)}.evaluate: ns={ns:.3f}')
 
         # We need to calculate the source detsigyield weights and the dataset
-        # signal weight factors. TODO: This should move to the maximize method.
+        # signal weight factors.
         self._src_detsigyield_weights_service.calculate(
             src_params_recarray=src_params_recarray)
         self._ds_sig_weight_factors_service.calculate()
