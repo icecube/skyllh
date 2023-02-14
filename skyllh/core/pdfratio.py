@@ -124,7 +124,10 @@ class PDFRatio(
                 'instances!')
         self._bkg_param_names = names
 
-    def initialize_for_new_trial(self, tdm, tl=None):
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None):
         """Initializes the PDFRatio instance for a new trial. This method can
         be utilized to pre-calculate PDFRatio values that do not depend on any
         fit parameters.
@@ -492,7 +495,7 @@ class SourceWeightedPDFRatio(
         """Retrieves the PDF ratio value for each given trial data events (and
         sources), given the given set of parameters.
 
-        Note::
+        Note:
 
             This method uses the source detector signal yield weights service.
             Hence, the
@@ -563,7 +566,7 @@ class SourceWeightedPDFRatio(
         for each trial data event, given the given set of parameters
         ``src_params_recarray`` for each source.
 
-        Note::
+        Note:
 
             This method requires that the get_ratio method has been called prior
             to calling this method.
