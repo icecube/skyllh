@@ -702,13 +702,13 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
         # For all numerical stable events.
         grads[p_mask] = np.sum(
-            ns * one_over_one_plus_alpha_i_stablemask * dXi_dp[m_stable],
-            axis=1)
+            ns * one_over_one_plus_alpha_i_stablemask[:,np.newaxis] * dXi_dp[m_stable],
+            axis=0)
 
         # For all numerical unstable events.
         grads[p_mask] += np.sum(
-            ns * (1 - tildealpha_i) * dXi_dp[m_unstable] / one_plus_alpha,
-            axis=1)
+            ns * (1 - tildealpha_i[:,np.newaxis]) * dXi_dp[m_unstable] / one_plus_alpha,
+            axis=0)
 
         return (log_lambda, grads)
 
@@ -1107,6 +1107,9 @@ class MultiDatasetTCLLHRatio(
         # over the llh ratio functions.
         llhratio_fitparam_values = fitparam_values.copy()
 
+        pmask = np.ones((n_fitparams,), dtype=np.bool_)
+        pmask[ns_pidx] = False
+
         # Loop over the llh ratio functions.
         for (j, llhratio) in enumerate(self._llhratio_list):
             if tracing:
@@ -1126,9 +1129,8 @@ class MultiDatasetTCLLHRatio(
 
             # Gradient for each global fit parameter, if there are any.
             if len(grads) > 1:
-                ns_summand = grads_j[ns_pidx] * ns * f_grads[j]
-                grads[:ns_pidx] += ns_summand + grads_j[:ns_pidx]
-                grads[ns_pidx+1:] += ns_summand + grads_j[ns_pidx+1:]
+                ns_summand = grads_j[ns_pidx] * ns * f_grads[j][pmask]
+                grads[pmask] += ns_summand + grads_j[pmask]
 
         return (log_lambda, grads)
 
