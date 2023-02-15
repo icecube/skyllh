@@ -516,7 +516,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
 
         # Loop through the parameters of the signal PDF set and match them with
         # the global fit parameter.
-        for (pidx, pname) in enumerate(self._sig_pdf_set.param_names):
+        for (pidx, pname) in enumerate(
+                self._sig_pdf_set.param_grid_set.params_name_list):
             if pname not in src_params_recarray.dtype.fields:
                 continue
             p_gpidxs = src_params_recarray[f'{pname}:gpidx']
