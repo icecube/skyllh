@@ -702,12 +702,14 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
         # For all numerical stable events.
         grads[p_mask] = np.sum(
-            ns * one_over_one_plus_alpha_i_stablemask[:,np.newaxis] * dXi_dp[m_stable],
+            ns * one_over_one_plus_alpha_i_stablemask[:, np.newaxis] *
+            dXi_dp[m_stable],
             axis=0)
 
         # For all numerical unstable events.
         grads[p_mask] += np.sum(
-            ns * (1 - tildealpha_i[:,np.newaxis]) * dXi_dp[m_unstable] / one_plus_alpha,
+            ns * (1 - tildealpha_i[:, np.newaxis]) * dXi_dp[m_unstable] /
+            one_plus_alpha,
             axis=0)
 
         return (log_lambda, grads)
@@ -831,7 +833,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
         # Calculate the gradients of Xi for each fit parameter (without ns).
         dXi_dp = np.empty(
-            (len(Xi), n_fitparams-1),
+            (Xi.shape[0], n_fitparams-1),
             dtype=np.float64)
 
         # Create a mask that selects all fit parameters except ns.
@@ -842,7 +844,6 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         # Xi w.r.t. each fit paramater.
         fitparam_ids = np.arange(n_fitparams)
         for (idx, fitparam_id) in enumerate(fitparam_ids[p_mask]):
-
             dRi = self._pdfratio.get_gradient(
                 tdm=tdm,
                 src_params_recarray=src_params_recarray,
