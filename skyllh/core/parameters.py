@@ -1570,9 +1570,9 @@ class ParameterModelMapper(object):
             contained in the ``local_param_names`` list, ``False`` otherwise.
         """
         for pname in local_param_names:
-            if not pname in params_recarray.dtype.fields:
+            if pname not in params_recarray.dtype.fields:
                 continue
-            if np.any(params_recarray[f'{pname}:gpidx'] == fitparam_id):
+            if np.any(params_recarray[f'{pname}:gpidx'] == fitparam_id + 1):
                 return True
 
         return False
