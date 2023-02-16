@@ -7,6 +7,10 @@ import sys
 from skyllh.core.config import CFG
 
 
+# Initialize the root logger.
+logging.root.setLevel(logging.NOTSET)
+
+
 def enable_tracing():
     """Enables the tracing log debug messages of SkyLLH.
     """
