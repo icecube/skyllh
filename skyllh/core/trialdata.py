@@ -930,7 +930,10 @@ class TrialDataManager(object):
         else:
             self._global_fitparam_data_fields_dict[name] = data_field
 
-    def calculate_source_data_fields(self, shg_mgr, pmm):
+    def calculate_source_data_fields(
+            self,
+            shg_mgr,
+            pmm):
         """Calculates the data values of the data fields that solely depend on
         source parameters.
 
@@ -1054,32 +1057,25 @@ class TrialDataManager(object):
 
         Returns
         -------
-        data : numpy ndarray
-            The (N_events,)-shaped numpy ndarray holding the data of the
-            requested data field.
+        data : instance of numpy ndarray
+            The numpy ndarray holding the data of the requested data field.
+            The length of the array is either N_selected_events, or N_sources.
 
         Raises
         ------
         KeyError
             If the given data field is not defined.
         """
+        # Data fields which are static or depend on global fit parameters are
+        # stored within the _events DataFieldRecordArray. Only source related
+        # data fields are stored in the .values attribute of the DataField
+        # class instance.
         if (self._events is not None) and\
            (name in self._events.field_name_list):
             return self._events[name]
 
         if name in self._source_data_fields_dict:
-            data = self._source_data_fields_dict[name].values
-
-            # Broadcast the value of an one-element 1D ndarray to the length
-            # of the number of events. Note: Make sure that we don't broadcast
-            # recarrays.
-            if (self._events is not None) and\
-               (len(data) == 1) and\
-               (data.ndim == 1) and\
-               (data.dtype.fields is None):
-                data = np.repeat(data, len(self._events))
-
-            return data
+            return self._source_data_fields_dict[name].values
 
         raise KeyError(
             f'The data field "{name}" is not defined!')
