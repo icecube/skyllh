@@ -874,39 +874,6 @@ class SigOverBkgPDFRatio(
         return grad
 
 
-class SpatialSigOverBkgPDFRatio(
-        SigOverBkgPDFRatio):
-    """This class implements a signal-over-background PDF ratio for spatial
-    PDFs. It takes a signal PDF of type SpatialPDF and a background PDF of type
-    SpatialPDF and calculates the PDF ratio.
-    """
-    def __init__(
-            self,
-            sig_pdf,
-            bkg_pdf,
-            **kwargs):
-        """Creates a new signal-over-background PDF ratio instance for spatial
-        PDFs.
-
-        Parameters
-        ----------
-        sig_pdf : class instance derived from SpatialPDF, IsSignalPDF
-            The instance of the spatial signal PDF.
-        bkg_pdf : class instance derived from SpatialPDF, IsBackgroundPDF
-            The instance of the spatial background PDF.
-        """
-        super().__init__(
-            sig_pdf=sig_pdf,
-            bkg_pdf=bkg_pdf,
-            **kwargs)
-
-        # Make sure that the PDFs have two dimensions, i.e. RA and Dec.
-        if not sig_pdf.ndim == 2:
-            raise ValueError(
-                'The spatial signal PDF must have two dimensions! '
-                f'Currently it has {sig_pdf.ndim}!')
-
-
 class SigSetOverBkgPDFRatio(
         PDFRatio):
     """Class for a PDF ratio class that takes a PDFSet as signal PDF and a PDF
