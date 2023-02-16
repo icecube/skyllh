@@ -1500,6 +1500,196 @@ class LLHRatioAnalysis(
         return recarray
 
 
+class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
+        LLHRatioAnalysis):
+    """This is an analysis class that implements a time-integrated
+    log-likelihood ratio analysis for multiple datasets assuming a single
+    source. It is a special case of the multi-source analysis.
+
+    For more information how to construct and run the analysis see the
+    documentation of the :class:`~skyllh.core.analysis.LLHRatioAnalysis` class.
+    """
+    def __init__(
+            self,
+            shg_mgr,
+            pmm,
+            test_statistic,
+            bkg_gen_method=None,
+            bkg_generator_cls=None,
+            sig_generator_cls=None,
+            **kwargs):
+        """Creates a new time-integrated point-like source analysis assuming a
+        single source.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            efficiency implementation method.
+        pmm : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
+            The instance of BackgroundGenerationMethod that will be used to
+            generate background events for a new analysis trial. This can be set
+            to None, if no background events have to get generated.
+        bkg_generator_cls : class of BackgroundGeneratorBase | None
+            The background generator class used to create the background
+            generator instance.
+            If set to ``None``, the
+            :class:`skyllh.core.background_generator.BackgroundGenerator` class
+            is used.
+        sig_generator_cls : SignalGeneratorBase class | None
+            The signal generator class used to create the signal generator
+            instance.
+            If set to None, the `SignalGenerator` class is used.
+        """
+        super().__init__(
+            shg_mgr=shg_mgr,
+            pmm=pmm,
+            test_statistic=test_statistic,
+            bkg_gen_method=bkg_gen_method,
+            bkg_generator_cls=bkg_generator_cls,
+            sig_generator_cls=sig_generator_cls,
+            **kwargs)
+
+    def construct_llhratio(
+            self,
+            minimizer,
+            ppbar=None):
+        """Constructs the log-likelihood (LLH) ratio function of the analysis.
+        This setups all the necessary analysis objects like detector signal
+        yields and dataset signal weights, constructs the log-likelihood ratio
+        functions for each dataset and the final composite LLH ratio function.
+
+        Parameters
+        ----------
+        minimizer : instance of Minimizer
+            The instance of Minimizer that should be used to minimize the
+            negative of the log-likelihood ratio function.
+        ppbar : instance of ProgressBar | None
+            The instance of ProgressBar of the optional parent progress bar.
+
+        Returns
+        -------
+        llhratio : instance of MultiDatasetTCLLHRatio
+            The instance of MultiDatasetTCLLHRatio that implements the
+            log-likelihood-ratio function of the analysis.
+        """
+        # Create the detector signal yield instances for each dataset and
+        # source hypothesis group.
+        detsigyield_arr = self.construct_detsigyield_arr(ppbar=ppbar)
+
+        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
+            shg_mgr=self._shg_mgr,
+            detsigyields=detsigyield_arr)
+
+        ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
+            src_detsigyield_weights_service=src_detsigyield_weights_service)
+
+        # Create the list of log-likelihood ratio functions, one for each
+        # dataset.
+        llhratio_list = [
+            ZeroSigH0SingleDatasetTCLLHRatio(
+                pmm=self._pmm,
+                minimizer=minimizer,
+                shg_mgr=self._shg_mgr,
+                tdm=tdm,
+                pdfratio=pdfratio
+            )
+            for (tdm, pdfratio) in zip(self._tdm_list, self._pdfratio_list)
+        ]
+
+        # Create the final multi-dataset log-likelihood ratio function.
+        llhratio = MultiDatasetTCLLHRatio(
+            pmm=self._pmm,
+            minimizer=minimizer,
+            src_detsigyield_weights_service=src_detsigyield_weights_service,
+            ds_sig_weight_factors_service=ds_sig_weight_factors_service,
+            llhratio_list=llhratio_list)
+
+        return llhratio
+
+    def change_source(
+            self,
+            source):
+        """Changes the source of the analysis to the given source. It makes the
+        necessary changes to all the objects of the analysis.
+
+        Parameters
+        ----------
+        source : instance of SourceModel
+            The instance of SourceModel describing the new source.
+        """
+        if not isinstance(source, SourceModel):
+            raise TypeError(
+                'The source argument must be an instance of SourceModel! '
+                f'Its current type is {classname(source)}.')
+
+        # Change the source in the SourceHypoGroupManager instance.
+        # Because this is a single source analysis, there can only be one source
+        # hypothesis group defined.
+        self._shg_mgr.src_hypo_group_list[0].source_list[0] = source
+
+        self.change_shg_mgr(
+            shg_mgr=self._shg_mgr)
+
+    def calculate_fluxmodel_scaling_factor(
+            self,
+            mean_ns,
+            fitparam_values):
+        """Calculates the factor the source's fluxmodel has to be scaled
+        in order to obtain the given mean number of signal events in the
+        detector.
+
+        Parameters
+        ----------
+        mean_ns : float
+            The mean number of signal events in the detector for which the
+            scaling factor is calculated.
+        fitparam_values : instance of numpy ndarray
+            The (N_fitparam,)-shaped 1D ndarray holding the values of the global
+            fit parameters, that should be used for the flux calculation.
+            The order of the values must match the order the fit parameters were
+            defined in the parameter model mapper.
+
+        Returns
+        -------
+        factor : float
+            The factor the source's fluxmodel needs to be scaled in order to
+            obtain the given mean number of signal events in the detector.
+        """
+        src_params_recarray =\
+            self._pmm.create_src_params_recarray(
+                gflp_values=fitparam_values)
+
+        ds_sig_weight_factors_service =\
+            self._llhratio.ds_sig_weight_factors_service
+        src_detsigyield_weights_service =\
+            ds_sig_weight_factors_service.src_detsigyield_weights_service
+
+        # Calculate the detector signal yield, i.e. the mean number of signal
+        # events in the detector, for the given reference flux model.
+        mean_ns_ref = 0
+
+        detsigyields = src_detsigyield_weights_service.detsigyield_arr[:, 0]
+        for (j, detsigyield) in enumerate(detsigyields):
+            src_recarray =\
+                src_detsigyield_weights_service.src_recarray_list_list[j][0]
+            (Yj, Yj_grads) = detsigyield(
+                src_recarray=src_recarray,
+                src_params_recarray=src_params_recarray)
+            mean_ns_ref += Yj[0]
+
+        factor = mean_ns / mean_ns_ref
+
+        return factor
+
+
 class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
         LLHRatioAnalysis):
     """This is the abstract base class for all log-likelihood ratio analysis
@@ -1581,7 +1771,8 @@ class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
         """
         # Create the detector signal yield instances for each dataset and
         # source hypothesis group.
-        detsigyield_arr = self.construct_detsigyield_arr(ppbar=ppbar)
+        detsigyield_arr = self.construct_detsigyield_arr(
+            ppbar=ppbar)
 
         src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=self._shg_mgr,
@@ -1604,8 +1795,7 @@ class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
                     pdfratio=pdfratio)
             )
             for (dataset_idx, (tdm, pdfratio)) in enumerate(
-                zip(self._tdm_list,
-                    self._pdfratio_list))
+                zip(self._tdm_list, self._pdfratio_list))
         ]
 
         # Create the final multi-dataset log-likelihood ratio function.
@@ -1618,93 +1808,11 @@ class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
 
         return llhratio
 
-
-class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
-        MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis):
-    """This is an analysis class that implements a time-integrated
-    log-likelihood ratio analysis for multiple datasets assuming a single
-    source. It is a special case of the multi-source analysis.
-
-    For more information how to construct and run the analysis see the
-    documentation of the :class:`~skyllh.core.analysis.LLHRatioAnalysis` class.
-    """
-    def __init__(
-            self,
-            shg_mgr,
-            pmm,
-            test_statistic,
-            bkg_gen_method=None,
-            bkg_generator_cls=None,
-            sig_generator_cls=None,
-            **kwargs):
-        """Creates a new time-integrated point-like source analysis assuming a
-        single source.
-
-        Parameters
-        ----------
-        shg_mgr : instance of SourceHypoGroupManager
-            The instance of SourceHypoGroupManager, which defines the groups of
-            source hypotheses, their flux model, and their detector signal
-            efficiency implementation method.
-        pmm : instance of ParameterModelMapper
-            The ParameterModelMapper instance managing the global set of
-            parameters and their relation to individual models, e.g. sources.
-        test_statistic : TestStatistic instance
-            The TestStatistic instance that defines the test statistic function
-            of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial. This can be set
-            to None, if no background events have to get generated.
-        bkg_generator_cls : class of BackgroundGeneratorBase | None
-            The background generator class used to create the background
-            generator instance.
-            If set to ``None``, the
-            :class:`skyllh.core.background_generator.BackgroundGenerator` class
-            is used.
-        sig_generator_cls : SignalGeneratorBase class | None
-            The signal generator class used to create the signal generator
-            instance.
-            If set to None, the `SignalGenerator` class is used.
-        """
-        super().__init__(
-            shg_mgr=shg_mgr,
-            pmm=pmm,
-            test_statistic=test_statistic,
-            bkg_gen_method=bkg_gen_method,
-            bkg_generator_cls=bkg_generator_cls,
-            sig_generator_cls=sig_generator_cls,
-            **kwargs)
-
-    def change_source(
-            self,
-            source):
-        """Changes the source of the analysis to the given source. It makes the
-        necessary changes to all the objects of the analysis.
-
-        Parameters
-        ----------
-        source : instance of SourceModel
-            The instance of SourceModel describing the new source.
-        """
-        if not isinstance(source, SourceModel):
-            raise TypeError(
-                'The source argument must be an instance of SourceModel! '
-                f'Its current type is {classname(source)}.')
-
-        # Change the source in the SourceHypoGroupManager instance.
-        # Because this is a single source analysis, there can only be one source
-        # hypothesis group defined.
-        self._shg_mgr.src_hypo_group_list[0].source_list[0] = source
-
-        self.change_shg_mgr(
-            shg_mgr=self._shg_mgr)
-
-    def calculate_fluxmodel_scaling_factor(
+    def calculate_fluxmodel_scaling_factors(
             self,
             mean_ns,
             fitparam_values):
-        """Calculates the factor the source's fluxmodel has to be scaled
+        """Calculates the factors the source's fluxmodel has to be scaled
         in order to obtain the given mean number of signal events in the
         detector.
 
@@ -1712,17 +1820,18 @@ class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
         ----------
         mean_ns : float
             The mean number of signal events in the detector for which the
-            scaling factor is calculated.
+            scaling factors will be calculated.
         fitparam_values : instance of numpy ndarray
             The (N_fitparam,)-shaped 1D ndarray holding the values of the global
-            fit parameters, that should be used for the flux calculation.
+            fit parameters, which should be used for the flux calculation.
             The order of the values must match the order the fit parameters were
             defined in the parameter model mapper.
 
         Returns
         -------
-        factor : float
-            The factor the given fluxmodel needs to be scaled in order to obtain
+        factors : instance of numpy ndarray
+            The (N_sources,)-shaped numpy ndarray of float holding the factors
+            the fluxmodels of the sources need to be scaled in order to obtain
             the given mean number of signal events in the detector.
         """
         src_params_recarray =\
@@ -1736,17 +1845,20 @@ class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
 
         # Calculate the detector signal yield, i.e. the mean number of signal
         # events in the detector, for the given reference flux model.
-        mean_ns_ref = 0
+        mean_ns_ref = np.zeros((self._shg_mgr.n_sources,), dtype=np.float64)
 
-        detsigyields = src_detsigyield_weights_service.detsigyield_arr[:, 0]
-        for (j, detsigyield) in enumerate(detsigyields):
-            src_recarray =\
-                src_detsigyield_weights_service.src_recarray_list_list[j][0]
-            (Yj, Yj_grads) = detsigyield(
-                src_recarray=src_recarray,
-                src_params_recarray=src_params_recarray)
-            mean_ns_ref += Yj[0]
+        for (g, shg) in enumerate(self._shg_mgr.shg_list):
+            shg_src_mask = self._shg_mgr.get_src_mask_of_shg(shg_idx=g)
 
-        factor = mean_ns / mean_ns_ref
+            detsigyields = src_detsigyield_weights_service.detsigyield_arr[:, g]
+            for (j, detsigyield) in enumerate(detsigyields):
+                src_recarray =\
+                    src_detsigyield_weights_service.src_recarray_list_list[j][g]
+                (Yj, Yj_grads) = detsigyield(
+                    src_recarray=src_recarray,
+                    src_params_recarray=src_params_recarray)
+                mean_ns_ref[shg_src_mask] += Yj
 
-        return factor
+        factors = mean_ns / mean_ns_ref
+
+        return factors
