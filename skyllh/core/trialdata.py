@@ -40,6 +40,7 @@ class DataField(object):
             global_fitparam_names=None,
             dt=None,
             is_src_field=False,
+            is_srcevt_data=False,
             **kwargs):
         """Creates a new instance of DataField that might depend on fit
         parameters.
@@ -73,6 +74,11 @@ class DataField(object):
             should be stored within this DataField instance, instead of the
             events DataFieldRecordArray instance of the TrialDataManager
             (``False``).
+        is_srcevt_data : bool
+            Flag if the data field will hold source-event data, i.e. data of
+            length N_values. In that case the data cannot be stored within the
+            events attribute of the TrialDataManager, but must be stored in the
+            values attribute of this DataField instance.
         """
         super().__init__(**kwargs)
 
@@ -96,6 +102,8 @@ class DataField(object):
         # depend data field values have been calculated for.
         self._global_fitparam_value_list = [None] *\
             len(self._global_fitparam_name_list)
+
+        self._is_srcevt_data = is_srcevt_data
 
         # Define the member variable that holds the numpy ndarray with the data
         # field values.
@@ -276,9 +284,18 @@ class DataField(object):
         # Convert the data type.
         values = self._convert_to_desired_dtype(tdm, values)
 
-        # Set the data values. This will add the data field to the
-        # DataFieldRecordArray if it does not exist yet.
-        tdm.events[self._name] = values
+        if self._is_srcevt_data:
+            n_values = tdm.get_n_values()
+            if values.shape[0] != n_values:
+                raise ValueError(
+                    'The calculation function for the data field '
+                    f'"{self._name}" must return a numpy ndarray of shape '
+                    f'({n_values},), but the shape is {values.shape}!')
+            self._values = values
+        else:
+            # Set the data values. This will add the data field to the
+            # DataFieldRecordArray if it does not exist yet.
+            tdm.events[self._name] = values
 
     def _calc_global_fitparam_dependent_values(
             self,
@@ -335,9 +352,18 @@ class DataField(object):
         # Convert the data type.
         values = self._convert_to_desired_dtype(tdm, values)
 
-        # Set the data values. This will add the data field to the
-        # DataFieldRecordArray if it does not exist yet.
-        tdm.events[self._name] = values
+        if self._is_srcevt_data:
+            n_values = tdm.get_n_values()
+            if values.shape[0] != n_values:
+                raise ValueError(
+                    'The calculation function for the data field '
+                    f'"{self._name}" must return a numpy ndarray of shape '
+                    f'({n_values},), but the shape is {values.shape}!')
+            self._values = values
+        else:
+            # Set the data values. This will add the data field to the
+            # DataFieldRecordArray if it does not exist yet.
+            tdm.events[self._name] = values
 
         # We store the global fit parameter values for which the field values
         # were calculated. So they have to get recalculated only when the
@@ -679,6 +705,26 @@ class TrialDataManager(object):
 
         return out_arrays
 
+    def broadcast_selected_events_arrays_to_values_arrays(self, arrays):
+        """Broadcasts the given arrays of length N_selected_events to arrays
+        of length N_values.
+        """
+        if self._src_evt_idxs is None:
+            n_sources = self.n_sources
+            out_arrays = [
+                np.tile(arr, n_sources)
+                for arr in arrays
+            ]
+            return out_arrays
+
+        evt_idxs = self._src_evt_idxs[1]
+        out_arrays = [
+            np.take(arr, evt_idxs)
+            for arr in arrays
+        ]
+
+        return out_arrays
+
     def change_shg_mgr(self, shg_mgr, pmm):
         """This method is called when the source hypothesis group manager has
         changed. Hence, the source data fields need to get recalculated.
@@ -875,7 +921,8 @@ class TrialDataManager(object):
             func,
             global_fitparam_names=None,
             dt=None,
-            pre_evt_sel=False):
+            pre_evt_sel=False,
+            is_srcevt_data=False):
         """Adds a new data field to the manager.
 
         Parameters
@@ -894,6 +941,7 @@ class TrialDataManager(object):
             ``pmm`` is the instance of ParameterModelMapper, and
             ``global_fitparams_dict`` is the dictionary with the current global
             fit parameter names and values.
+            The shape of the returned array must be (N_selected_events,).
         global_fitparam_names : str | sequence of str | None
             The sequence of str instances specifying the names of the global fit
             parameters this data field depends on. If set to ``None``, it means
@@ -906,22 +954,34 @@ class TrialDataManager(object):
             Flag if this data field should get calculated before potential
             signal events get selected (True), or afterwards (False).
             Default is False.
+        is_srcevt_data : bool
+            Flag if this data field contains source-event data, hence the length
+            of the data array will be N_values.
+            Default is False.
         """
         if name in self:
             raise KeyError(
                 'The data field "{name}" is already defined!')
 
-        if pre_evt_sel and (global_fitparam_names is not None):
-            raise ValueError(
-                f'The pre-event-selection data field "{name}" must not depend '
-                'on fit parameters!')
+        if pre_evt_sel:
+            if global_fitparam_names is not None:
+                raise ValueError(
+                    f'The pre-event-selection data field "{name}" must not '
+                    'depend on global fit parameters!')
+
+            if is_srcevt_data:
+                raise ValueError(
+                    'By definition the pre-event-selection data field '
+                    f'"{name}" cannot hold source-event data! The '
+                    'is_srcevt_data argument must be set to False!')
 
         data_field = DataField(
             name=name,
             func=func,
             global_fitparam_names=global_fitparam_names,
             dt=dt,
-            is_src_field=False)
+            is_src_field=False,
+            is_srcevt_data=is_srcevt_data)
 
         if pre_evt_sel:
             self._pre_evt_sel_static_data_fields_dict[name] = data_field
@@ -1067,15 +1127,21 @@ class TrialDataManager(object):
             If the given data field is not defined.
         """
         # Data fields which are static or depend on global fit parameters are
-        # stored within the _events DataFieldRecordArray. Only source related
-        # data fields are stored in the .values attribute of the DataField
-        # class instance.
+        # stored within the _events DataFieldRecordArray if they do not contain
+        # source-event data. For all other cases, the data is stored in the
+        # .values attribute of the DataField class instance.
         if (self._events is not None) and\
            (name in self._events.field_name_list):
             return self._events[name]
 
         if name in self._source_data_fields_dict:
             return self._source_data_fields_dict[name].values
+
+        if name in self._static_data_fields_dict:
+            return self._static_data_fields_dict[name].values
+
+        if name in self._global_fitparam_data_fields_dict:
+            return self._global_fitparam_data_fields_dict[name].values
 
         raise KeyError(
             f'The data field "{name}" is not defined!')
