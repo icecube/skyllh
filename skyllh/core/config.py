@@ -133,6 +133,30 @@ class CFGClass(dict):
 CFG = CFGClass(_BASECONFIG)
 
 
+def set_enable_tracing(flag):
+    """Sets the global setting for tracing.
+
+    Parameters
+    ----------
+    flag : bool
+        The flag if tracing should be enabled (``True``) or disabled
+        (``False``).
+    """
+    CFG['debugging']['enable_tracing'] = flag
+
+
+def set_n_cpu(n_cpu):
+    """Sets the global setting for the number of CPUs to use, when
+    parallelization is available.
+
+    Parameters
+    ----------
+    n_cpu : int
+        The number of CPUs.
+    """
+    CFG['multiproc']['ncpu'] = n_cpu
+
+
 def set_internal_units(
         angle_unit=None, energy_unit=None, length_unit=None, time_unit=None):
     """Sets the units used internally to compute quantities. These units must
