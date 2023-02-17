@@ -42,6 +42,7 @@ def create_argparser(
 
 def add_argparser_options(
         parser,
+        config=True,
         data_basepath=True,
         debug_logfile=True,
         enable_tracing=True,
@@ -54,6 +55,12 @@ def add_argparser_options(
     ----------
     parser : instance of ArgumentParser
         The instance of ArgumentParser to which options should get added.
+    config : bool
+        If set to ``True``, the ``--config`` option of type ``str``
+        will be added.
+        It specifies the configuration file.
+        The default value is ``None``.
+        The option destination is ``config``.
     data_basepath : bool
         If set to ``True``, the ``--data-basepath`` option of type ``str``
         will be added.
@@ -87,6 +94,15 @@ def add_argparser_options(
         The default value is ``0``.
         The option destination is ``seed``.
     """
+    if config:
+        parser.add_argument(
+            '--config',
+            dest='config',
+            default=None,
+            type=str,
+            help='The configuration file. '
+                 '(default=None)')
+
     if data_basepath:
         parser.add_argument(
             '--data-basepath',
