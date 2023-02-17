@@ -788,7 +788,9 @@ class SigOverBkgPDFRatio(
             # zero.
             ratios = np.full_like(self._cache_sig_pd, self._zero_bkg_ratio_value)
             m = (self._cache_bkg_pd > 0)
-            ratios[m] = self._cache_sig_pd[m] / self._cache_bkg_pd[m]
+            (m, bkg_pd) = tdm.broadcast_selected_events_arrays_to_values_arrays(
+                (m, self._cache_bkg_pd))
+            ratios[m] = self._cache_sig_pd[m] / bkg_pd[m]
 
         return ratios
 
@@ -843,33 +845,36 @@ class SigOverBkgPDFRatio(
         sig_dep = fitparam_id in self._cache_sig_grads
         bkg_dep = fitparam_id in self._cache_bkg_grads
 
-        if sig_dep and not bkg_dep:
-            # Case 2, which should be the most common case.
-            bkg_pd = self._cache_bkg_pd
-            m = bkg_pd > 0
-            grad[m] = self._cache_sig_grads[fitparam_id][m] / bkg_pd[m]
-            return grad
         if (not sig_dep) and (not bkg_dep):
             # Case 1. Return zeros.
             return grad
 
+        m = self._cache_bkg_pd > 0
+        b = self._cache_bkg_pd
+
+        (m, b) = tdm.broadcast_selected_events_arrays_to_values_arrays(
+            (m, b))
+
+        if sig_dep and not bkg_dep:
+            # Case 2, which should be the most common case.
+            grad[m] = self._cache_sig_grads[fitparam_id][m] / b[m]
+            return grad
+
+        bgrad = self._cache_bkg_grads[fitparam_id]
+        (bgrad,) = tdm.broadcast_selected_events_arrays_to_values_arrays(
+            (bgrad,))
+
         if sig_dep and bkg_dep:
             # Case 4.
-            m = self._cache_bkg_pd > 0
-            s = self._cache_sig_pd[m]
-            b = self._cache_bkg_pd[m]
-            sgrad = self._cache_sig_grads[fitparam_id][m]
-            bgrad = self._cache_bkg_grads[fitparam_id][m]
+            s = self._cache_sig_pd
+            sgrad = self._cache_sig_grads[fitparam_id]
+
             # Make use of quotient rule of differentiation.
-            grad[m] = (sgrad * b - bgrad * s) / b**2
+            grad[m] = (sgrad[m] * b[m] - bgrad[m] * s[m]) / b[m]**2
             return grad
 
         # Case 3.
-        m = self._cache_bkg_pd > 0
-        grad[m] = (
-            -self._cache_sig_pd[m] / self._cache_bkg_pd[m]**2 *
-            self._cache_bkg_grads[fitparam_id][m]
-        )
+        grad[m] = -self._cache_sig_pd[m] / b[m]**2 * bgrad[m]
 
         return grad
 
