@@ -7,7 +7,12 @@ likelihood function.
 import numpy as np
 import scipy as scp
 
-from skyllh.core import display
+from skyllh.core.debugging import (
+    get_logger,
+)
+from skyllh.core.display import (
+    INDENTATION_WIDTH,
+)
 from skyllh.core.py import (
     classname,
     issequenceof,
@@ -221,8 +226,13 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             w.r.t. each fit parameter. By definition this PDF does not depend
             on any fit parameters and hence, this dictionary is empty.
         """
+        logger = get_logger(f'{__name__}.{classname(self)}.get_pd')
+
         # Check if the probability density was pre-calculated.
         if self._pd_event_data_field_name in tdm:
+            logger.debug(
+                'Retrieve precalculated probability density values from data '
+                f'field "{self._pd_event_data_field_name}"')
             pd = tdm[self._pd_event_data_field_name]
             return (pd, dict())
 
@@ -300,9 +310,9 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         """Pretty string representation of the signal time PDF.
         """
         s = f'{classname(self)}(\n' +\
-            ' '*display.INDENTATION_WIDTH +\
+            ' '*INDENTATION_WIDTH +\
             f'livetime = {str(self._livetime)},\n' +\
-            ' '*display.INDENTATION_WIDTH +\
+            ' '*INDENTATION_WIDTH +\
             f'time_profile = {str(self._time_profile)}\n' +\
             ')'
         return s
