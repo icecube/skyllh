@@ -9,6 +9,7 @@ import scipy as scp
 
 from skyllh.core.debugging import (
     get_logger,
+    is_tracing_enabled,
 )
 from skyllh.core.display import (
     INDENTATION_WIDTH,
@@ -226,13 +227,15 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             w.r.t. each fit parameter. By definition this PDF does not depend
             on any fit parameters and hence, this dictionary is empty.
         """
+
         logger = get_logger(f'{__name__}.{classname(self)}.get_pd')
 
         # Check if the probability density was pre-calculated.
         if self._pd_event_data_field_name in tdm:
-            logger.debug(
-                'Retrieve precalculated probability density values from data '
-                f'field "{self._pd_event_data_field_name}"')
+            if is_tracing_enabled():
+                logger.debug(
+                    'Retrieve precalculated probability density values from '
+                    f'data field "{self._pd_event_data_field_name}"')
             pd = tdm[self._pd_event_data_field_name]
             return (pd, dict())
 
