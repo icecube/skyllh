@@ -4,6 +4,7 @@
 """
 
 import abc
+from astropy import units
 import numpy as np
 
 
@@ -419,6 +420,51 @@ class Analysis(
         self._data_list.append(data)
         self._tdm_list.append(tdm)
         self._event_selection_method_list.append(event_selection_method)
+
+    def get_livetime(
+            self,
+            dataset_key=None,
+            unit=None):
+        """Retrieves the numeric livetime of the given dataset in the specified
+        unit. The dataset can be specified either through its index or its name.
+        If no dataset is specified, the total livetime, i.e. the sum of the
+        livetime of all datasets, is returned.
+
+        Parameters
+        ----------
+        dataset_key : int | str | None
+            The index or name of the dataset for which the livetime should get
+            retrieved. If set to ``None``, the total livetime of all datasets
+            will be returned.
+        unit : instance of astropy.units.Unit | None
+            The time unit in which the livetime should be returned. If set to
+            ``None``, ``astropy.units.day`` will be used.
+        """
+        if dataset_key is None:
+            livetime = np.sum([data.livetime for data in self._data_list])
+        else:
+            if isinstance(dataset_key, int):
+                dataset_idx = dataset_key
+            elif isinstance(dataset_key, str):
+                dataset_idx = None
+                for (idx, ds) in enumerate(self._dataset_list):
+                    if ds.name == dataset_key:
+                        dataset_idx = idx
+                        break
+                if dataset_idx is None:
+                    raise KeyError(
+                        f'The dataset of name "{dataset_key}" does not exist!')
+            else:
+                raise TypeError(
+                    'The dataset_key argument must be an instance of int, str, '
+                    'or None! '
+                    f'Its current type is {classname(dataset_key)}.')
+            livetime = self._data_list[dataset_idx].livetime
+
+        if isinstance(unit, units.Unit):
+            livetime *= units.day.to(unit)
+
+        return livetime
 
     def calculate_test_statistic(
             self,
