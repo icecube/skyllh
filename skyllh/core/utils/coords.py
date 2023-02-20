@@ -88,7 +88,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
 
     return (ra, dec)
 
-def angular_separation(ra1, dec1, ra2, dec2):
+def angular_separation(ra1, dec1, ra2, dec2, psi_floor=None):
     """Calculates the angular separation on the shpere between two vectors on
     the sphere.
 
@@ -104,6 +104,8 @@ def angular_separation(ra1, dec1, ra2, dec2):
         radians.
     dec2 : float | array of float
         The declination coordinate of the second vector in radians.
+    psi_floor : float | None
+        If not ``None``, specifies the floor value of psi.
 
     Returns
     -------
@@ -121,5 +123,8 @@ def angular_separation(ra1, dec1, ra2, dec2):
     x[x > 1.] = 1.
 
     psi = 2. * np.arcsin(np.sqrt(x))
+
+    if psi_floor is not None:
+        psi = np.where(psi < psi_floor, psi_floor, psi)
 
     return psi
