@@ -143,7 +143,10 @@ def create_analysis(
     keep_data_fields=None,
     optimize_delta_angle=10,
     tl=None,
-    ppbar=None
+    ppbar=None,
+    gamma_min=1,
+    gamma_max=5,
+    ns_max=1e3
 ):
     """Creates the Analysis instance for this particular analysis.
 
@@ -218,11 +221,11 @@ def create_analysis(
         Phi0=refplflux_Phi0, E0=refplflux_E0, gamma=refplflux_gamma)
 
     # Define the fit parameter ns.
-    fitparam_ns = FitParameter('ns', 0, 1e3, ns_seed)
+    fitparam_ns = FitParameter('ns', 0, ns_max, ns_seed)
 
     # Define the gamma fit parameter.
     fitparam_gamma = FitParameter(
-        'gamma', valmin=1, valmax=5, initial=gamma_seed)
+        'gamma', valmin=gamma_min, valmax=gamma_max, initial=gamma_seed)
 
     # Define the detector signal efficiency implementation method for the
     # IceCube detector and this source and flux_model.
