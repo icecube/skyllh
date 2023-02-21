@@ -1375,10 +1375,6 @@ class LLHRatioAnalysis(
         if n_events_list is None:
             n_events_list = [None] * len(events_list)
 
-        # If there is more than a single source, we need to store the source
-        # and event indices within the TrialDataManager instance.
-        store_src_evt_idxs = self.shg_mgr.n_sources > 1
-
         for (tdm, events, n_events, evt_sel_method) in zip(
                 self._tdm_list, events_list, n_events_list,
                 self._event_selection_method_list):
@@ -1390,7 +1386,6 @@ class LLHRatioAnalysis(
                 events=events,
                 n_events=n_events,
                 evt_sel_method=evt_sel_method,
-                store_src_evt_idxs=store_src_evt_idxs,
                 tl=tl)
 
         self._llhratio.initialize_for_new_trial(
