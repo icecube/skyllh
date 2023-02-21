@@ -17,7 +17,7 @@ from skyllh.core.optimize import (
     # PsiFuncEventSelectionMethod,
     RABandEventSectionMethod,
     SpatialBoxEventSelectionMethod,
-    PsiFuncAndSpatialBoxEventSelectionMethod,
+    AngErrOfPsiAndSpatialBoxEventSelectionMethod,
 )
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
@@ -646,7 +646,9 @@ class SpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
         )
 
 
-class PsiFuncAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
+class AngErrOfPsiAndSpatialBoxEventSelectionMethod_TestCase(
+        unittest.TestCase):
+
     def setUp(self):
         testdata = generate_testdata()
         self.test_events = DataFieldRecordArray(testdata.get("events"))
@@ -659,12 +661,10 @@ class PsiFuncAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
         delta_angle = np.deg2rad(15)
         shg_mgr = shgm_setup(n_sources=n_sources)
         func = get_func_psi_ang_err(ang_err=0)
-        evt_sel_method = PsiFuncAndSpatialBoxEventSelectionMethod(
+        evt_sel_method = AngErrOfPsiAndSpatialBoxEventSelectionMethod(
             shg_mgr=shg_mgr,
             delta_angle=delta_angle,
-            psi_name="psi",
             func=func,
-            axis_name_list=["psi"],
         )
 
         evt_sel_method_sb = SpatialBoxEventSelectionMethod(
@@ -673,10 +673,12 @@ class PsiFuncAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
 
         # Test with `ret_src_evt_idxs=False`.
         (events, idxs) = evt_sel_method.select_events(
-            self.test_events, ret_src_evt_idxs=False
+            events=self.test_events,
+            ret_src_evt_idxs=False
         )
         (events_sb, idxs_sb) = evt_sel_method_sb.select_events(
-            self.test_events, ret_src_evt_idxs=False
+            events=self.test_events,
+            ret_src_evt_idxs=False
         )
 
         np.testing.assert_array_equal(
@@ -688,24 +690,25 @@ class PsiFuncAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
 
         # Test with `ret_src_evt_idxs=True`.
         (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(
-            self.test_events, ret_src_evt_idxs=True
+            self.test_events,
+            ret_src_evt_idxs=True
         )
-        (
-            events_sb,
-            (src_idxs_sb, ev_idxs_sb),
-        ) = evt_sel_method_sb.select_events(
-            self.test_events, ret_src_evt_idxs=True)
+        (events_sb, (src_idxs_sb, ev_idxs_sb)) = evt_sel_method_sb.select_events(
+            self.test_events,
+            ret_src_evt_idxs=True)
 
         np.testing.assert_array_equal(
             events.as_numpy_record_array(),
             events_sb.as_numpy_record_array(),
         )
-        np.testing.assert_array_equal(src_idxs, src_idxs_sb)
-        np.testing.assert_array_equal(ev_idxs, ev_idxs_sb)
-        np.testing.assert_array_equal(np.unique(src_idxs), np.arange(n_sources))
         np.testing.assert_array_equal(
-            np.unique(ev_idxs), np.arange(len(events))
-        )
+            src_idxs, src_idxs_sb)
+        np.testing.assert_array_equal(
+            ev_idxs, ev_idxs_sb)
+        np.testing.assert_array_equal(
+            np.unique(src_idxs), np.arange(n_sources))
+        np.testing.assert_array_equal(
+            np.unique(ev_idxs), np.arange(len(events)))
 
     def test_select_events_multiple_sources(self):
         """Check if the event selection without a psi cut returns an identical
@@ -715,67 +718,11 @@ class PsiFuncAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
         delta_angle = np.deg2rad(15)
         shg_mgr = shgm_setup(n_sources=n_sources)
         func = get_func_psi_ang_err(ang_err=0)
-        evt_sel_method = PsiFuncAndSpatialBoxEventSelectionMethod(
+
+        evt_sel_method = AngErrOfPsiAndSpatialBoxEventSelectionMethod(
             shg_mgr=shg_mgr,
             delta_angle=delta_angle,
-            psi_name="psi",
             func=func,
-            axis_name_list=["psi"],
-        )
-
-        evt_sel_method_sb = SpatialBoxEventSelectionMethod(
-            shg_mgr, delta_angle
-        )
-
-        # Test with `ret_src_evt_idxs=False`.
-        (events, idxs) = evt_sel_method.select_events(
-            self.test_events, ret_src_evt_idxs=False
-        )
-        (events_sb, idxs_sb) = evt_sel_method_sb.select_events(
-            self.test_events, ret_src_evt_idxs=False
-        )
-
-        np.testing.assert_array_equal(
-            events.as_numpy_record_array(),
-            events_sb.as_numpy_record_array(),
-        )
-        self.assertIsNone(idxs)
-        self.assertIsNone(idxs_sb)
-
-        # Test with `ret_src_evt_idxs=True`.
-        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(
-            self.test_events, ret_src_evt_idxs=True
-        )
-        (
-            events_sb,
-            (src_idxs_sb, ev_idxs_sb),
-        ) = evt_sel_method_sb.select_events(
-            self.test_events, ret_src_evt_idxs=True)
-
-        np.testing.assert_array_equal(
-            events.as_numpy_record_array(),
-            events_sb.as_numpy_record_array(),
-        )
-        np.testing.assert_array_equal(src_idxs, src_idxs_sb)
-        np.testing.assert_array_equal(ev_idxs, ev_idxs_sb)
-        np.testing.assert_array_equal(np.unique(src_idxs), np.arange(n_sources))
-        np.testing.assert_array_equal(
-            np.unique(ev_idxs), np.arange(len(events))
-        )
-
-    def test_select_events_single_source_psi_func(self):
-        n_sources = 1
-        delta_angle = np.deg2rad(15)
-        shg_mgr = shgm_setup(n_sources=n_sources)
-        ang_err = 3.0
-
-        func = get_func_psi_ang_err(ang_err)
-        evt_sel_method = PsiFuncAndSpatialBoxEventSelectionMethod(
-            shg_mgr=shg_mgr,
-            delta_angle=delta_angle,
-            psi_name="psi",
-            func=func,
-            axis_name_list=["psi"],
             psi_floor=0.0,
         )
 
@@ -784,42 +731,100 @@ class PsiFuncAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
         )
 
         # Test with `ret_src_evt_idxs=False`.
-        (events, idxs) = evt_sel_method.select_events(
-            self.test_events, ret_src_evt_idxs=False
+        (evts, idxs) = evt_sel_method.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=False
         )
-        (events_sb, idxs_sb) = evt_sel_method_sb.select_events(
-            self.test_events, ret_src_evt_idxs=False
+        (evts_sb, idxs_sb) = evt_sel_method_sb.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=False
         )
-
-        mask_psi_cut = events_sb["ang_err"] > ang_err
 
         np.testing.assert_array_equal(
-            events.as_numpy_record_array(),
-            events_sb[mask_psi_cut].as_numpy_record_array(),
+            evts.as_numpy_record_array(),
+            evts_sb.as_numpy_record_array(),
         )
         self.assertIsNone(idxs)
         self.assertIsNone(idxs_sb)
 
         # Test with `ret_src_evt_idxs=True`.
-        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(
-            self.test_events, ret_src_evt_idxs=True
+        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=True
         )
-        (
-            events_sb,
-            (src_idxs_sb, ev_idxs_sb),
-        ) = evt_sel_method_sb.select_events(
-            self.test_events, ret_src_evt_idxs=True)
-
-        mask_psi_cut = events_sb["ang_err"] > ang_err
+        (evts_sb, (src_idxs_sb, evt_idxs_sb)) = evt_sel_method_sb.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=True)
 
         np.testing.assert_array_equal(
-            events.as_numpy_record_array(),
-            events_sb[mask_psi_cut].as_numpy_record_array(),
-        )
-        np.testing.assert_array_equal(np.unique(src_idxs), np.arange(n_sources))
+            evts.as_numpy_record_array(),
+            evts_sb.as_numpy_record_array())
         np.testing.assert_array_equal(
-            np.unique(ev_idxs), np.arange(len(events))
+            src_idxs, src_idxs_sb)
+        np.testing.assert_array_equal(
+            evt_idxs, evt_idxs_sb)
+        np.testing.assert_array_equal(
+            np.unique(src_idxs), np.arange(n_sources))
+        np.testing.assert_array_equal(
+            np.unique(evt_idxs), np.arange(len(evts)))
+
+    def test_select_events_single_source_psi_func(self):
+        n_sources = 1
+        delta_angle = np.deg2rad(15)
+        shg_mgr = shgm_setup(n_sources=n_sources)
+        ang_err = 3.0
+        func = get_func_psi_ang_err(ang_err)
+
+        evt_sel_method = AngErrOfPsiAndSpatialBoxEventSelectionMethod(
+            shg_mgr=shg_mgr,
+            delta_angle=delta_angle,
+            func=func,
+            psi_floor=0.0,
         )
+
+        evt_sel_method_sb = SpatialBoxEventSelectionMethod(
+            shg_mgr=shg_mgr,
+            delta_angle=delta_angle
+        )
+
+        # Test with `ret_src_evt_idxs=False`.
+        (evts, idxs) = evt_sel_method.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=False
+        )
+        (evts_sb, idxs_sb) = evt_sel_method_sb.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=False
+        )
+
+        mask_psi_cut = evts_sb["ang_err"] > ang_err
+
+        np.testing.assert_array_equal(
+            evts.as_numpy_record_array(),
+            evts_sb[mask_psi_cut].as_numpy_record_array(),
+        )
+        self.assertIsNone(idxs)
+        self.assertIsNone(idxs_sb)
+
+        # Test with `ret_src_evt_idxs=True`.
+        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=True
+        )
+        (evts_sb, (src_idxs_sb, evt_idxs_sb)) = evt_sel_method_sb.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=True)
+
+        mask_psi_cut = evts_sb["ang_err"] > ang_err
+
+        np.testing.assert_array_equal(
+            evts.as_numpy_record_array(),
+            evts_sb[mask_psi_cut].as_numpy_record_array(),
+        )
+        np.testing.assert_array_equal(
+            np.unique(src_idxs), np.arange(n_sources))
+        np.testing.assert_array_equal(
+            np.unique(evt_idxs), np.arange(len(evts)))
 
     def test_select_events_multiple_sources_psi_func(self):
         n_sources = 2
@@ -828,64 +833,64 @@ class PsiFuncAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
         ang_err = 3.0
 
         func = get_func_psi_ang_err(ang_err)
-        evt_sel_method = PsiFuncAndSpatialBoxEventSelectionMethod(
+        evt_sel_method = AngErrOfPsiAndSpatialBoxEventSelectionMethod(
             shg_mgr=shg_mgr,
             delta_angle=delta_angle,
-            psi_name="psi",
             func=func,
-            axis_name_list=["psi"],
             psi_floor=0.0,
         )
 
         evt_sel_method_sb = SpatialBoxEventSelectionMethod(
-            shg_mgr, delta_angle
+            shg_mgr=shg_mgr,
+            delta_angle=delta_angle
         )
 
         # Test with `ret_src_evt_idxs=False`.
-        (events, idxs) = evt_sel_method.select_events(
-            self.test_events, ret_src_evt_idxs=False
+        (evts, idxs) = evt_sel_method.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=False
         )
-        (events_sb, idxs_sb) = evt_sel_method_sb.select_events(
-            self.test_events, ret_src_evt_idxs=False
+        (evts_sb, idxs_sb) = evt_sel_method_sb.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=False
         )
 
-        mask_psi_cut = events_sb["ang_err"] > ang_err
+        mask_psi_cut = evts_sb["ang_err"] > ang_err
 
         np.testing.assert_array_equal(
-            events.as_numpy_record_array(),
-            events_sb[mask_psi_cut].as_numpy_record_array(),
+            evts.as_numpy_record_array(),
+            evts_sb[mask_psi_cut].as_numpy_record_array(),
         )
         self.assertIsNone(idxs)
         self.assertIsNone(idxs_sb)
 
         # Test with `ret_src_evt_idxs=True`.
-        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(
-            self.test_events, ret_src_evt_idxs=True
+        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=True
         )
-        (
-            events_sb,
-            (src_idxs_sb, ev_idxs_sb),
-        ) = evt_sel_method_sb.select_events(
-            self.test_events, ret_src_evt_idxs=True)
+        (evts_sb, (src_idxs_sb, evt_idxs_sb)) = evt_sel_method_sb.select_events(
+            events=self.test_events,
+            ret_src_evt_idxs=True)
 
         for i in range(n_sources):
-            events_mask = src_idxs == i
-            events_mask_sb = src_idxs_sb == i
+            evts_mask = src_idxs == i
+            evts_mask_sb = src_idxs_sb == i
+
             mask_psi_cut = (
-                events_sb[ev_idxs_sb[events_mask_sb]]["ang_err"] > ang_err
+                evts_sb[evt_idxs_sb[evts_mask_sb]]["ang_err"] > ang_err
             )
 
             np.testing.assert_array_equal(
-                events[ev_idxs[events_mask]].as_numpy_record_array(),
-                events_sb[ev_idxs_sb[events_mask_sb]][
-                    mask_psi_cut
-                ].as_numpy_record_array(),
+                evts[evt_idxs[evts_mask]].as_numpy_record_array(),
+                evts_sb[evt_idxs_sb[evts_mask_sb]]
+                    [mask_psi_cut].as_numpy_record_array(),
             )
 
-        np.testing.assert_array_equal(np.unique(src_idxs), np.arange(n_sources))
         np.testing.assert_array_equal(
-            np.unique(ev_idxs), np.arange(len(events))
-        )
+            np.unique(src_idxs), np.arange(n_sources))
+        np.testing.assert_array_equal(
+            np.unique(evt_idxs), np.arange(len(evts)))
 
 
 if __name__ == "__main__":

@@ -886,7 +886,7 @@ class PsiFuncEventSelectionMethod(
         return (selected_events, None)
 
 
-class PsiFuncAndSpatialBoxEventSelectionMethod(
+class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
         SpatialBoxEventSelectionMethod):
     """This event selection method selects events within a spatial box in
     right-ascention and declination around a list of point-like source
@@ -897,9 +897,7 @@ class PsiFuncAndSpatialBoxEventSelectionMethod(
             self,
             shg_mgr,
             delta_angle,
-            psi_name,
             func,
-            axis_name_list,
             psi_floor=None):
         """Creates and configures a spatial box and psi func event selection
         method object.
@@ -912,21 +910,16 @@ class PsiFuncAndSpatialBoxEventSelectionMethod(
         delta_angle : float
             The half-opening angle around the source for which events should
             get selected.
-        psi_name : str
+        psi_name : str | None
             The name of the data field that provides the psi value of the event.
+            If set to ``None``, the psi value will be calculated automatically.
         func : callable
             The function that should get evaluated for each event. The call
             signature must be
 
-                ``func(*axis_data)``,
+                ``func(psi)``,
 
-            where ``*axis_data`` is the event data of each required axis. The
-            number of axes must match the provided axis names through the
-            ``axis_name_list``.
-        axis_name_list : list of str
-            The list of data field names for each axis of the function ``func``.
-            All field names must be valid field names of the trial data's
-            DataFieldRecordArray instance.
+            where ``psi`` is the opening angle between the source and the event.
         psi_floor : float | None
             The psi func event selection is excluded for events having psi value
             below the ``psi_floor``. If None, set it to default 5 degrees.
@@ -935,33 +928,11 @@ class PsiFuncAndSpatialBoxEventSelectionMethod(
             shg_mgr=shg_mgr,
             delta_angle=delta_angle)
 
-        self.psi_name = psi_name
         self.func = func
-        self.axis_name_list = axis_name_list
 
         if psi_floor is None:
             psi_floor = np.deg2rad(5)
         self.psi_floor = psi_floor
-
-        n_func_args = len(inspect.signature(self._func).parameters)
-        if n_func_args < len(self._axis_name_list):
-            raise TypeError(
-                'The func argument must be a callable instance with at least '
-                f'{len(self._axis_name_list)} arguments! Its current number of '
-                f'arguments is {n_func_args}.')
-
-    @property
-    def psi_name(self):
-        """The name of the data field that provides the psi value of the event.
-        """
-        return self._psi_name
-
-    @psi_name.setter
-    def psi_name(self, name):
-        if not isinstance(name, str):
-            raise TypeError(
-                'The psi_name property must be an instance of type str!')
-        self._psi_name = name
 
     @property
     def func(self):
@@ -979,22 +950,6 @@ class PsiFuncAndSpatialBoxEventSelectionMethod(
                 'The func property must be a callable instance! '
                 f'Its current type is {classname(f)}.')
         self._func = f
-
-    @property
-    def axis_name_list(self):
-        """The list of data field names for each axis of the function defined
-        through the ``func`` property.
-        """
-        return self._axis_name_list
-
-    @axis_name_list.setter
-    def axis_name_list(self, names):
-        if not issequenceof(names, str):
-            raise TypeError(
-                'The axis_name_list property must be a sequence of str '
-                'instances! '
-                f'Its current type is {classname(names)}.')
-        self._axis_name_list = list(names)
 
     @property
     def psi_floor(self):
@@ -1059,7 +1014,7 @@ class PsiFuncAndSpatialBoxEventSelectionMethod(
             tl=tl)
 
         # Perform selection based on psi values.
-        with TaskTimer(tl, 'ESM: Get psi values.'):
+        with TaskTimer(tl, 'ESM: Calculate psi values.'):
             psi = angular_separation(
                 ra1=np.take(self._src_arr['ra'], src_idxs),
                 dec1=np.take(self._src_arr['dec'], src_idxs),
