@@ -35,39 +35,62 @@ class EventSelectionMethod(
 
     def __init__(
             self,
-            shg_mgr):
+            shg_mgr,
+            **kwargs):
         """Creates a new event selection method instance.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager | None
             The instance of SourceHypoGroupManager that defines the list of
             sources, i.e. the list of SourceModel instances.
+            It can be ``None`` if the event selection method does not depend on
+            the sources.
         """
-        super().__init__()
+        super().__init__(
+            **kwargs)
 
-        self.shg_mgr = shg_mgr
+        self._src_arr = None
 
-        # The _src_arr variable holds a numpy record array with the necessary
-        # source information needed for the event selection method.
-        self._src_arr = self.sources_to_array(
-            sources=self._shg_mgr.source_list)
+        self._shg_mgr = shg_mgr
+        if self._shg_mgr is not None:
+            if not isinstance(self._shg_mgr, SourceHypoGroupManager):
+                raise TypeError(
+                    'The shg_mgr argument must be None or an instance of '
+                    'SourceHypoGroupManager! '
+                    f'Its current type is {classname(self._shg_mgr)}.')
+
+            # The _src_arr variable holds a numpy record array with the
+            # necessary source information needed for the event selection
+            # method.
+            self._src_arr = self.sources_to_array(
+                sources=self._shg_mgr.source_list)
 
     @property
     def shg_mgr(self):
-        """The SourceHypoGroupManager instance, which defines the list of
-        sources.
+        """(read-only) The instance of SourceHypoGroupManager, which defines the
+        list of sources.
         """
         return self._shg_mgr
 
-    @shg_mgr.setter
-    def shg_mgr(self, manager):
-        if not isinstance(manager, SourceHypoGroupManager):
-            raise TypeError(
-                'The src_hypo_group_manager property must be an instance of '
-                'SourceHypoGroupManager! '
-                f'Its current type is {classname(manager)}.')
-        self._shg_mgr = manager
+    def __and__(self, other):
+        """Implements the AND operator (&) for creating an event selection
+        method, which is the intersection of this event selection method and
+        another one using the expression ``intersection = self & other``.
+
+        Parameters
+        ----------
+        other : instance of EventSelectionMethod
+            The instance of EventSelectionMethod that is the other event
+            selection method.
+
+        Returns
+        -------
+        intersection : instance of IntersectionEventSelectionMethod
+            The instance of IntersectionEventSelectionMethod that creates the
+            intersection of this event selection method and the other.
+        """
+        return IntersectionEventSelectionMethod(self, other)
 
     def change_shg_mgr(self, shg_mgr):
         """Changes the SourceHypoGroupManager instance of the event selection
@@ -75,15 +98,25 @@ class EventSelectionMethod(
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager | None
             The new SourceHypoGroupManager instance, that should be used for
             this event selection method.
+            It can be ``None`` if the event selection method does not depend on
+            the sources.
         """
-        self.shg_mgr = shg_mgr
-        self._src_arr = self.sources_to_array(
-            sources=self._shg_mgr.source_list)
+        self._shg_mgr = shg_mgr
+        self._src_arr = None
 
-    @abc.abstractmethod
+        if self._shg_mgr is not None:
+            if not isinstance(self._shg_mgr, SourceHypoGroupManager):
+                raise TypeError(
+                    'The shg_mgr argument must be None or an instance of '
+                    'SourceHypoGroupManager! '
+                    f'Its current type is {classname(self._shg_mgr)}.')
+
+            self._src_arr = self.sources_to_array(
+                sources=self._shg_mgr.source_list)
+
     def sources_to_array(self, sources):
         """This method is supposed to convert a sequence of SourceModel
         instances into a structured numpy ndarray with the source information
@@ -98,17 +131,18 @@ class EventSelectionMethod(
 
         Returns
         -------
-        arr : numpy record ndarray
+        arr : numpy record ndarray | None
             The generated numpy record ndarray holding the necessary information
             for each source.
+            By default ``None`` is returned.
         """
-        pass
+        return None
 
     @abc.abstractmethod
     def select_events(
             self,
             events,
-            ret_src_evt_idxs=False,
+            src_evt_idxs=None,
             tl=None):
         """This method selects the events, which will contribute to the
         log-likelihood ratio function.
@@ -116,11 +150,121 @@ class EventSelectionMethod(
         Parameters
         ----------
         events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray of length N_events, holding the
+            events.
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
+            The 2-element tuple holding the two 1d ndarrays of int of length
+            N_values, specifying to which sources the given events belong to.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
+
+        Returns
+        -------
+        selected_events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray of length N_selected_events,
+            holding the selected events, i.e. a subset of the ``events``
+            argument.
+        (src_idxs, evt_idxs) : 1d ndarrays of ints
+            The two 1d ndarrays of int of length N_values, holding the indices
+            of the sources and the selected events.
+        """
+        pass
+
+
+class IntersectionEventSelectionMethod(
+        EventSelectionMethod):
+    """This class provides an event selection method for the intersection of two
+    event selection methods. It can be created using the ``&`` operator:
+    ``evt_sel_method1 & evt_sel_method2``.
+    """
+    def __init__(
+            self,
+            evt_sel_method1,
+            evt_sel_method2,
+            **kwargs):
+        """Creates a compounded event selection method of two given event
+        selection methods.
+
+        Parameters
+        ----------
+        evt_sel_method1 : instance of EventSelectionMethod
+            The instance of EventSelectionMethod for the first event selection
+            method.
+        evt_sel_method2 : instance of EventSelectionMethod
+            The instance of EventSelectionMethod for the second event selection
+            method.
+        """
+        super().__init__(
+            shg_mgr=None,
+            **kwargs)
+
+        self.evt_sel_method1 = evt_sel_method1
+        self.evt_sel_method2 = evt_sel_method2
+
+    @property
+    def evt_sel_method1(self):
+        """The instance of EventSelectionMethod for the first event selection
+        method.
+        """
+        return self._evt_sel_method1
+
+    @evt_sel_method1.setter
+    def evt_sel_method1(self, method):
+        if not isinstance(method, EventSelectionMethod):
+            raise TypeError(
+                'The evt_sel_method1 property must be an instance of '
+                'EventSelectionMethod!'
+                f'Its current type is {classname(method)}.')
+        self._evt_sel_method1 = method
+
+    @property
+    def evt_sel_method2(self):
+        """The instance of EventSelectionMethod for the second event selection
+        method.
+        """
+        return self._evt_sel_method2
+
+    @evt_sel_method2.setter
+    def evt_sel_method2(self, method):
+        if not isinstance(method, EventSelectionMethod):
+            raise TypeError(
+                'The evt_sel_method2 property must be an instance of '
+                'EventSelectionMethod!'
+                f'Its current type is {classname(method)}.')
+        self._evt_sel_method2 = method
+
+    def change_shg_mgr(self, shg_mgr):
+        """Changes the SourceHypoGroupManager instance of the event selection
+        method. This will call the ``change_shg_mgr`` of the individual event
+        selection methods.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager | None
+            The new SourceHypoGroupManager instance, that should be used for
+            this event selection method.
+            It can be ``None`` if the event selection method does not depend on
+            the sources.
+        """
+        self._evt_sel_method1.change_shg_mgr(shg_mgr=shg_mgr)
+        self._evt_sel_method2.change_shg_mgr(shg_mgr=shg_mgr)
+
+    def select_events(
+            self,
+            events,
+            src_evt_idxs=None,
+            tl=None):
+        """Selects events by calling the ``select_events`` methods of the
+        individual event selection methods.
+
+        Parameters
+        ----------
+        events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the events.
-        ret_src_evt_idxs : bool
-            Flag if also the indices of the selected events should get
-            returned as a (src_idxs, evt_idxs) tuple of 1d ndarrays.
-            Default is False.
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
+            The 2-element tuple holding the two 1d ndarrays of int of length
+            N_values, specifying to which sources the given events belong to.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -130,12 +274,18 @@ class EventSelectionMethod(
         selected_events : DataFieldRecordArray
             The instance of DataFieldRecordArray holding the selected events,
             i.e. a subset of the `events` argument.
-        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
-            The indices of sources and selected events, in case
-            `ret_src_evt_idxs` is set to True. Returns None, in case
-            `ret_src_evt_idxs` is set to False.
+        (src_idxs, evt_idxs) : 1d ndarrays of ints
+            The indices of the sources and the selected events.
         """
-        pass
+        (events, src_evt_idxs) = self._evt_sel_method1.select_events(
+            events=events,
+            src_evt_idxs=src_evt_idxs)
+
+        (events, src_evt_idxs) = self._evt_sel_method2.select_events(
+            events=events,
+            src_evt_idxs=src_evt_idxs)
+
+        return (events, src_evt_idxs)
 
 
 class AllEventSelectionMethod(
@@ -173,7 +323,7 @@ class AllEventSelectionMethod(
     def select_events(
             self,
             events,
-            ret_src_evt_idxs=False,
+            src_evt_idxs=None,
             tl=None):
         """Selects all of the given events. Hence, the returned event array is
         the same as the given array.
@@ -183,10 +333,9 @@ class AllEventSelectionMethod(
         events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the events, for which
             the selection method should get applied.
-        ret_src_evt_idxs : bool
-            Flag if also the indices of the selected events should get
-            returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
-            Default is False.
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
+            The 2-element tuple holding the two 1d ndarrays of int of length
+            N_values, specifying to which sources the given events belong to.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -196,21 +345,18 @@ class AllEventSelectionMethod(
         selected_events : DataFieldRecordArray
             The instance of DataFieldRecordArray holding the selected events,
             i.e. a subset of the `events` argument.
-        (src_idxs, ev_idxs) : 1d ndarrays of ints | None
-            The indices of sources and selected events, in case
-            `ret_src_evt_idxs` is set to True. Returns None, in case
-            `ret_src_evt_idxs` is set to False.
+        (src_idxs, evt_idxs) : 1d ndarrays of ints
+            The indices of sources and the selected events.
         """
-        if ret_src_evt_idxs:
-            # Calculate events indices.
-            with TaskTimer(tl, 'ESM: Calculate indices of selected events.'):
+        with TaskTimer(tl, 'ESM: Calculate indices of selected events.'):
+            if src_evt_idxs is None:
                 n_sources = self.shg_mgr.n_sources
                 src_idxs = np.repeat(np.arange(n_sources), len(events))
-                ev_idxs = np.tile(events.indices, n_sources)
+                evt_idxs = np.tile(events.indices, n_sources)
+            else:
+                (src_idxs, evt_idxs) = src_evt_idxs
 
-            return (events, (src_idxs, ev_idxs))
-
-        return (events, None)
+        return (events, (src_idxs, evt_idxs))
 
 
 class SpatialEventSelectionMethod(
@@ -220,7 +366,10 @@ class SpatialEventSelectionMethod(
     selection methods.
     """
 
-    def __init__(self, shg_mgr):
+    def __init__(
+            self,
+            shg_mgr,
+            **kwargs):
         """Creates a new event selection method instance.
 
         Parameters
@@ -230,7 +379,8 @@ class SpatialEventSelectionMethod(
             sources, i.e. the list of SourceModel instances.
         """
         super().__init__(
-            shg_mgr=shg_mgr)
+            shg_mgr=shg_mgr,
+            **kwargs)
 
     def sources_to_array(self, sources):
         """Converts the given sequence of SourceModel instances into a
@@ -313,7 +463,7 @@ class DecBandEventSectionMethod(
     def select_events(
             self,
             events,
-            ret_src_evt_idxs=False,
+            src_evt_idxs=None,
             tl=None):
         """Selects the events within the declination band.
 
@@ -326,10 +476,9 @@ class DecBandEventSectionMethod(
                 dec : float
                     The declination of the event.
 
-        ret_src_evt_idxs : bool
-            Flag if also the indices of the selected events should get
-            returned as a (src_idxs, evt_idxs) tuple of 1d ndarrays.
-            Default is False.
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
+            The 2-element tuple holding the two 1d ndarrays of int of length
+            N_values, specifying to which sources the given events belong to.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -339,12 +488,8 @@ class DecBandEventSectionMethod(
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        idxs: where idxs is one of the following:
-            - (src_idxs, evt_idxs) : 1d ndarrays of ints
-                The indices of sources and selected events, in case
-                ``ret_src_evt_idxs`` is set to True.
-            - None
-                In case ``ret_src_evt_idxs`` is set to ``False``.
+        (src_idxs, evt_idxs) : 1d ndarrays of ints
+            The indices of sources and the selected events.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -376,14 +521,12 @@ class DecBandEventSectionMethod(
             mask_idxs = events.indices[mask]
             selected_events = events[mask_idxs]
 
-        if ret_src_evt_idxs:
-            # Get selected events indices.
-            idxs = np.argwhere(mask_dec[:, mask])
-            src_idxs = idxs[:, 0]
-            ev_idxs = idxs[:, 1]
-            return (selected_events, (src_idxs, ev_idxs))
+        # Get selected events indices.
+        idxs = np.argwhere(mask_dec[:, mask])
+        src_idxs = idxs[:, 0]
+        evt_idxs = idxs[:, 1]
 
-        return (selected_events, None)
+        return (selected_events, (src_idxs, evt_idxs))
 
 
 class RABandEventSectionMethod(
@@ -429,7 +572,7 @@ class RABandEventSectionMethod(
     def select_events(
             self,
             events,
-            ret_src_evt_idxs=False,
+            src_evt_idxs=None,
             tl=None):
         """Selects the events within the right-ascention band.
 
@@ -443,14 +586,14 @@ class RABandEventSectionMethod(
             The instance of DataFieldRecordArray that holds the event data.
             The following data fields must exist:
 
-            - 'ra' : float
+            ``'ra'`` : float
                 The right-ascention of the event.
-            - 'dec' : float
+            ``'dec'`` : float
                 The declination of the event.
-        ret_src_evt_idxs : bool
-            Flag if also the indices of the selected events should get
-            returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
-            Default is False.
+
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
+            The 2-element tuple holding the two 1d ndarrays of int of length
+            N_values, specifying to which sources the given events belong to.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -460,10 +603,8 @@ class RABandEventSectionMethod(
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
-            The indices of sources and selected events, in case
-            `ret_src_evt_idxs` is set to True. Returns None, in case
-            `ret_src_evt_idxs` is set to False.
+        (src_idxs, evt_idxs) : 1d ndarrays of ints
+            The indices of the sources and the selected events.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -512,15 +653,12 @@ class RABandEventSectionMethod(
             # factors faster than using a boolean array.
             selected_events = events[events.indices[mask]]
 
-        if ret_src_evt_idxs:
-            # Get selected events indices.
-            idxs = np.argwhere(mask_ra[:, mask])
-            src_idxs = idxs[:, 0]
-            ev_idxs = idxs[:, 1]
+        # Get selected events indices.
+        idxs = np.argwhere(mask_ra[:, mask])
+        src_idxs = idxs[:, 0]
+        evt_idxs = idxs[:, 1]
 
-            return (selected_events, (src_idxs, ev_idxs))
-
-        return (selected_events, None)
+        return (selected_events, (src_idxs, evt_idxs))
 
 
 class SpatialBoxEventSelectionMethod(
@@ -566,7 +704,7 @@ class SpatialBoxEventSelectionMethod(
     def select_events(
             self,
             events,
-            ret_src_evt_idxs=False,
+            src_evt_idxs=None,
             tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination.
@@ -586,10 +724,9 @@ class SpatialBoxEventSelectionMethod(
             - 'dec' : float
                 The declination of the event.
 
-        ret_src_evt_idxs : bool
-            Flag if also the indices of the selected events should get
-            returned as a (src_idxs, evt_idxs) tuple of 1d ndarrays.
-            Default is False.
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
+            The 2-element tuple holding the two 1d ndarrays of int of length
+            N_values, specifying to which sources the given events belong to.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -600,9 +737,7 @@ class SpatialBoxEventSelectionMethod(
             The instance of DataFieldRecordArray holding only the selected
             events.
         (src_idxs, evt_idxs) : 1d ndarrays of ints | None
-            The indices of sources and selected events, in case
-            ``ret_src_evt_idxs`` is set to ``True``. Returns None, in case
-            ``ret_src_evt_idxs`` is set to ``False``.
+            The indices of sources and the selected events.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -688,15 +823,12 @@ class SpatialBoxEventSelectionMethod(
             # factors faster than using a boolean array.
             selected_events = events[events.indices[mask]]
 
-        if ret_src_evt_idxs:
-            # Get selected events indices.
-            idxs = np.argwhere(mask_sky[:, mask])
-            src_idxs = idxs[:, 0]
-            ev_idxs = idxs[:, 1]
+        # Get selected events indices.
+        idxs = np.argwhere(mask_sky[:, mask])
+        src_idxs = idxs[:, 0]
+        evt_idxs = idxs[:, 1]
 
-            return (selected_events, (src_idxs, ev_idxs))
-
-        return (selected_events, None)
+        return (selected_events, (src_idxs, evt_idxs))
 
 
 class PsiFuncEventSelectionMethod(
@@ -825,7 +957,7 @@ class PsiFuncEventSelectionMethod(
     def select_events(
             self,
             events,
-            ret_src_evt_idxs=False,
+            src_evt_idxs=None,
             tl=None):
         """Selects the events whose psi value is smaller than the value of the
         predefined function.
@@ -842,10 +974,9 @@ class PsiFuncEventSelectionMethod(
                 The name of the axis required for the function ``func`` to be
                 evaluated.
 
-        ret_src_evt_idxs : bool
-            Flag if also the indices of the selected events should get
-            returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
-            Default is False.
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
+            The 2-element tuple holding the two 1d ndarrays of int of length
+            N_values, specifying to which sources the given events belong to.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -855,10 +986,8 @@ class PsiFuncEventSelectionMethod(
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
-            The indices of sources and selected events, in case
-            `ret_src_evt_idxs` is set to True. Returns None, in case
-            `ret_src_evt_idxs` is set to False.
+        (src_idxs, evt_idxs) : 1d ndarrays of ints
+            The indices of the sources and the selected events.
         """
         cls_name = classname(self)
 
@@ -876,18 +1005,16 @@ class PsiFuncEventSelectionMethod(
             # factors faster than using a boolean array.
             selected_events = events[events.indices[mask]]
 
-        if ret_src_evt_idxs:
-            # Get selected events indices.
-            idxs = np.argwhere(np.atleast_2d(mask))
-            src_idxs = idxs[:, 0]
-            evt_idxs = idxs[:, 1]
-            return (selected_events, (src_idxs, evt_idxs))
+        # Get selected events indices.
+        idxs = np.argwhere(np.atleast_2d(mask))
+        src_idxs = idxs[:, 0]
+        evt_idxs = idxs[:, 1]
 
-        return (selected_events, None)
+        return (selected_events, (src_idxs, evt_idxs))
 
 
-class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
-        SpatialBoxEventSelectionMethod):
+class AngErrOfPsiEventSelectionMethod(
+        SpatialEventSelectionMethod):
     """This event selection method selects events within a spatial box in
     right-ascention and declination around a list of point-like source
     positions and performs an additional selection of events whose ang_err value
@@ -896,9 +1023,9 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
     def __init__(
             self,
             shg_mgr,
-            delta_angle,
             func,
-            psi_floor=None):
+            psi_floor=None,
+            **kwargs):
         """Creates and configures a spatial box and psi func event selection
         method object.
 
@@ -926,7 +1053,7 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
         """
         super().__init__(
             shg_mgr=shg_mgr,
-            delta_angle=delta_angle)
+            **kwargs)
 
         self.func = func
 
@@ -968,7 +1095,7 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
     def select_events(
             self,
             events,
-            ret_src_evt_idxs=False,
+            src_evt_idxs=None,
             tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination and performs an additional selection of events whose ang_err
@@ -990,10 +1117,9 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
             - 'dec' : float
                 The declination of the event.
 
-        ret_src_evt_idxs : bool
-            Flag if also the indices of the selected events should get
-            returned as a (src_idxs, ev_idxs) tuple of 1d ndarrays.
-            Default is False.
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints
+            The 2-element tuple holding the two 1d ndarrays of int of length
+            N_values, specifying to which sources the given events belong to.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -1003,15 +1129,13 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
         selected_events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding only the selected
             events.
-        (src_idxs, evt_idxs) : 1d ndarrays of ints | None
-            The indices of sources and selected events, in case
-            `ret_src_evt_idxs` is set to True. Returns None, in case
-            `ret_src_evt_idxs` is set to False.
+        (src_idxs, evt_idxs) : 1d ndarrays of ints
+            The indices of the sources and the selected events.
         """
-        (selected_events, (src_idxs, evt_idxs)) = super().select_events(
-            events=events,
-            ret_src_evt_idxs=True,
-            tl=tl)
+        if src_evt_idxs is None:
+            raise ValueError(
+                'The src_evt_idxs argument cannot be None!')
+        (src_idxs, evt_idxs) = src_evt_idxs
 
         # Perform selection based on psi values.
         with TaskTimer(tl, 'ESM: Calculate psi values.'):
@@ -1025,7 +1149,7 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
 
         with TaskTimer(tl, 'ESM: Create mask_psi.'):
             mask_psi = (
-                (selected_events['ang_err'][evt_idxs] >= self._func(psi)) |
+                (events['ang_err'][evt_idxs] >= self._func(psi)) |
                 (psi < self.psi_floor)
             )
 
@@ -1034,20 +1158,17 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod(
             # the mask in case last events are not selected.
             mask_sky = scipy.sparse.csr_matrix(
                 (mask_psi, (src_idxs, evt_idxs)),
-                shape=(len(self._src_arr), len(selected_events))
+                shape=(len(self._src_arr), len(events))
             ).toarray()
             mask = np.any(mask_sky, axis=0)
 
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            selected_events = selected_events[selected_events.indices[mask]]
+            selected_events = events[events.indices[mask]]
 
-        if ret_src_evt_idxs:
-            # Get final selected events indices.
-            idxs = np.argwhere(mask_sky[:, mask])
-            src_idxs = idxs[:, 0]
-            evt_idxs = idxs[:, 1]
+        # Get final selected events indices.
+        idxs = np.argwhere(mask_sky[:, mask])
+        src_idxs = idxs[:, 0]
+        evt_idxs = idxs[:, 1]
 
-            return (selected_events, (src_idxs, evt_idxs))
-
-        return (selected_events, None)
+        return (selected_events, (src_idxs, evt_idxs))

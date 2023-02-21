@@ -451,7 +451,6 @@ class MCDataSamplingBkgGenMethod(
                      mc_pre_selected_src_evt_idxs) =\
                         self__pre_event_selection_method.select_events(
                             events=data_mc,
-                            ret_src_evt_idxs=True,
                             tl=tl)
                     mc_pre_selected_idxs = np.unique(
                         mc_pre_selected_src_evt_idxs[1])

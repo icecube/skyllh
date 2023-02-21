@@ -747,7 +747,7 @@ class TrialDataManager(object):
 
     def initialize_trial(
             self, shg_mgr, pmm, events, n_events=None,
-            evt_sel_method=None, store_src_evt_idxs=False, tl=None):
+            evt_sel_method=None, tl=None):
         """Initializes the trial data manager for a new trial. It sets the raw
         events, calculates pre-event-selection data fields, performs a possible
         event selection and calculates the static data fields for the left-over
@@ -771,10 +771,6 @@ class TrialDataManager(object):
         evt_sel_method : EventSelectionMethod | None
             The optional event selection method that should be used to select
             potential signal events.
-        store_src_evt_idxs : bool
-            If the evt_sel_method is not None, it determines if source and
-            event indices of the selected events should get calculated and
-            stored.
         tl : TimeLord | None
             The optional TimeLord instance that should be used for timing
             measurements.
@@ -802,9 +798,8 @@ class TrialDataManager(object):
                 f'Performing event selection method '
                 f'"{classname(evt_sel_method)}".')
             (selected_events, src_evt_idxs) = evt_sel_method.select_events(
-                self._events,
-                tl=tl,
-                ret_src_evt_idxs=store_src_evt_idxs)
+                events=self._events,
+                tl=tl)
             logger.debug(
                 f'Selected {len(selected_events)} out of {len(self._events)} '
                 'events.')
