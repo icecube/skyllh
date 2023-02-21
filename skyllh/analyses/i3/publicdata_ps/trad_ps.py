@@ -133,7 +133,11 @@ def create_analysis(
     refplflux_E0=1e3,
     refplflux_gamma=2.0,
     ns_seed=100.0,
+    ns_min=0.,
+    ns_max=1e3,
     gamma_seed=3.0,
+    gamma_min=1.,
+    gamma_max=5.,
     kde_smoothing=False,
     minimizer_impl="LBFGS",
     cut_sindec = None,
@@ -143,10 +147,7 @@ def create_analysis(
     keep_data_fields=None,
     optimize_delta_angle=10,
     tl=None,
-    ppbar=None,
-    gamma_min=1,
-    gamma_max=5,
-    ns_max=1e3
+    ppbar=None
 ):
     """Creates the Analysis instance for this particular analysis.
 
@@ -165,9 +166,17 @@ def create_analysis(
         The spectral index to use for the reference power law flux model.
     ns_seed : float
         Value to seed the minimizer with for the ns fit.
+    ns_min : float
+        Lower bound for ns fit.
+    ns_max : float
+        Upper bound for ns fit.
     gamma_seed : float | None
         Value to seed the minimizer with for the gamma fit. If set to None,
         the refplflux_gamma value will be set as gamma_seed.
+    gamma_min : float
+        Lower bound for gamma fit.
+    gamma_max : float
+        Upper bound for gamma fit.
     kde_smoothing : bool
         Apply a KDE-based smoothing to the data-driven background pdf.
         Default: False.
@@ -221,7 +230,7 @@ def create_analysis(
         Phi0=refplflux_Phi0, E0=refplflux_E0, gamma=refplflux_gamma)
 
     # Define the fit parameter ns.
-    fitparam_ns = FitParameter('ns', 0, ns_max, ns_seed)
+    fitparam_ns = FitParameter('ns', ns_min, ns_max, ns_seed)
 
     # Define the gamma fit parameter.
     fitparam_gamma = FitParameter(
