@@ -934,26 +934,6 @@ class PsiFuncEventSelectionMethod(
                 f'Its current type is {classname(names)}.')
         self._axis_name_list = list(names)
 
-    def sources_to_array(self, sources):
-        """Converts the given sequence of SourceModel instances into a
-        structured numpy ndarray holding the necessary source information needed
-        for this event selection method.
-
-        Parameters
-        ----------
-        sources : sequence of SourceModel
-            The sequence of source models containing the necessary information
-            of the source.
-
-        Returns
-        -------
-        arr : None
-            Because this event selection method does not depend directly on the
-            source (only indirectly through the psi values), no source array
-            is required.
-        """
-        return None
-
     def select_events(
             self,
             events,
