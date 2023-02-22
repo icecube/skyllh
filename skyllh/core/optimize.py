@@ -1117,9 +1117,11 @@ class AngErrOfPsiEventSelectionMethod(
             - 'dec' : float
                 The declination of the event.
 
-        src_evt_idxs : 2-tuple of 1d ndarrays of ints
+        src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
             The 2-element tuple holding the two 1d ndarrays of int of length
             N_values, specifying to which sources the given events belong to.
+            If set to ``None`` all given events will be considered to for all
+            sources.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -1133,9 +1135,12 @@ class AngErrOfPsiEventSelectionMethod(
             The indices of the sources and the selected events.
         """
         if src_evt_idxs is None:
-            raise ValueError(
-                'The src_evt_idxs argument cannot be None!')
-        (src_idxs, evt_idxs) = src_evt_idxs
+            n_sources = len(self._src_arr)
+            n_events = len(events)
+            src_idxs = np.repeat(np.arange(n_sources), n_events)
+            evt_idxs = np.tile(np.arange(n_events), n_sources)
+        else:
+            (src_idxs, evt_idxs) = src_evt_idxs
 
         # Perform selection based on psi values.
         with TaskTimer(tl, 'ESM: Calculate psi values.'):
