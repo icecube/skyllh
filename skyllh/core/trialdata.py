@@ -171,6 +171,13 @@ class DataField(object):
         self._dt = obj
 
     @property
+    def is_srcevt_data(self):
+        """(read-only) Flag if the data field contains source-event data, i.e.
+        is of length N_values.
+        """
+        return self._is_srcevt_data
+
+    @property
     def values(self):
         """(read-only) The calculated data values of the data field.
         """
@@ -650,14 +657,6 @@ class TrialDataManager(object):
                 f'The length of params_recarray array ({len(params_recarray)}) '
                 f'must be equal to the number of sources ({self.n_sources})!')
 
-        if self.src_evt_idxs is None:
-            # All trial events contibute to all sources.
-            values_params_recarray = np.repeat(
-                params_recarray, self.n_selected_events)
-
-            return values_params_recarray
-
-        # A mapping of trial events to sources is defined.
         (src_idxs, evt_idxs) = self.src_evt_idxs
         values_params_recarray = np.empty(
             (len(src_idxs),), dtype=params_recarray.dtype)
@@ -709,14 +708,6 @@ class TrialDataManager(object):
         """Broadcasts the given arrays of length N_selected_events to arrays
         of length N_values.
         """
-        if self._src_evt_idxs is None:
-            n_sources = self.n_sources
-            out_arrays = [
-                np.tile(arr, n_sources)
-                for arr in arrays
-            ]
-            return out_arrays
-
         evt_idxs = self._src_evt_idxs[1]
         out_arrays = [
             np.take(arr, evt_idxs)
@@ -746,8 +737,13 @@ class TrialDataManager(object):
             pmm=pmm)
 
     def initialize_trial(
-            self, shg_mgr, pmm, events, n_events=None,
-            evt_sel_method=None, tl=None):
+            self,
+            shg_mgr,
+            pmm,
+            events,
+            n_events=None,
+            evt_sel_method=None,
+            tl=None):
         """Initializes the trial data manager for a new trial. It sets the raw
         events, calculates pre-event-selection data fields, performs a possible
         event selection and calculates the static data fields for the left-over
@@ -768,10 +764,10 @@ class TrialDataManager(object):
             corresponds to.
             If None, the number of events is taken from the number of events
             present in the ``events`` array.
-        evt_sel_method : EventSelectionMethod | None
+        evt_sel_method : instance of EventSelectionMethod | None
             The optional event selection method that should be used to select
             potential signal events.
-        tl : TimeLord | None
+        tl : instance of TimeLord | None
             The optional TimeLord instance that should be used for timing
             measurements.
         """
@@ -817,6 +813,15 @@ class TrialDataManager(object):
                 self._src_evt_idxs[1] = np.take(
                     sorted_idxs, self._src_evt_idxs[1])
 
+        # Create the src_evt_idxs property data in case it was not provided by
+        # the event selection. In that case all events are selected for all
+        # sources. This simplifies the implementations of the PDFs.
+        if self._src_evt_idxs is None:
+            self._src_evt_idxs = (
+                np.repeat(np.arange(self.n_sources), self.n_selected_events),
+                np.tile(np.arange(self.n_selected_events), self.n_sources)
+            )
+
         # Now calculate all the static data fields. This will increment the
         # trial data state ID.
         self.calculate_static_data_fields(
@@ -833,9 +838,6 @@ class TrialDataManager(object):
         n : int
             The length of the expected values array after a PDF evaluation.
         """
-        if self._src_evt_idxs is None:
-            return self._n_sources * self.n_selected_events
-
         return len(self._src_evt_idxs[0])
 
     def get_values_mask_for_source_mask(self, src_mask):
@@ -854,10 +856,6 @@ class TrialDataManager(object):
             The (N_values,)-shaped numpy ndarray holding the boolean selection
             of the values.
         """
-        if self._src_evt_idxs is None:
-            values_mask = np.repeat(src_mask, self.n_selected_events)
-            return values_mask
-
         tdm_src_idxs = self.src_evt_idxs[0]
         src_idxs = np.arange(self.n_sources)[src_mask]
 
@@ -1114,7 +1112,8 @@ class TrialDataManager(object):
         -------
         data : instance of numpy ndarray
             The numpy ndarray holding the data of the requested data field.
-            The length of the array is either N_selected_events, or N_sources.
+            The length of the array is either N_sources, N_selected_events, or
+            N_values.
 
         Raises
         ------
@@ -1125,8 +1124,9 @@ class TrialDataManager(object):
         # stored within the _events DataFieldRecordArray if they do not contain
         # source-event data. For all other cases, the data is stored in the
         # .values attribute of the DataField class instance.
-        if (self._events is not None) and\
-           (name in self._events.field_name_list):
+        if (self._events is not None and
+            name in self._events.field_name_list
+           ):
             return self._events[name]
 
         if name in self._source_data_fields_dict:
@@ -1162,3 +1162,69 @@ class TrialDataManager(object):
         dt = self.get_data(name).dtype
 
         return dt
+
+    def is_event_data_field(self, name):
+        """Checks if the given data field is an events data field, i.e. its
+        length is N_selected_events.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the given data field contains event data, ``False``
+            otherwise.
+        """
+        if (self._events is not None and
+            name in self._events.field_name_list
+           ):
+            return True
+
+        return False
+
+    def is_source_data_field(self, name):
+        """Checks if the given data field is a source data field, i.e. its
+        length is N_sources.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the given data field contains source data, ``False``
+            otherwise.
+        """
+        if name in self._source_data_fields_dict:
+            return True
+
+        return False
+
+    def is_srcevt_data_field(self, name):
+        """Checks if the given data field is a source-event data field, i.e. its
+        length is N_values.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data field.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the given data field contains source-event data,
+            ``False`` otherwise.
+        """
+        if name in self._static_data_fields_dict:
+            return self._static_data_fields_dict[name].is_srcevt_data
+
+        if name in self._global_fitparam_data_fields_dict:
+            return self._global_fitparam_data_fields_dict[name].is_srcevt_data
+
+        return False
+
