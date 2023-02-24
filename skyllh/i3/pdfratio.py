@@ -262,8 +262,13 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         Parameters
         ----------
         interpol_param_values : instance of numpy ndarray
-            The (N_params,)-shaped numpy ndarray holding the values of the
-            interpolation parameters.
+            The (N_interpol_params,)-shaped numpy ndarray holding the values of
+            the interpolation parameters.
+
+        Returns
+        -------
+        spline : instance of scipy.interpolate.RegularGridInterpolator
+            The requested spline instance.
         """
         gridparams = dict(
             zip(self._interpol_param_names, interpol_param_values))
@@ -292,8 +297,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             The (N_events,V)-shaped numpy ndarray holding the event data, where
             N_events is the number of events, and V the dimensionality of the
             event data.
-        gridparams_recarray : instance of numpy record ndarray
-            The numpy record ndarray of length N_sources with the parameter
+        gridparams_recarray : instance of numpy structured ndarray
+            The numpy structured ndarray of length N_sources with the parameter
             names and values needed for the interpolation on the grid for all
             sources. If the length of this record array is 1, the set of
             parameters will be used for all sources.
@@ -306,22 +311,18 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             The (N_values,)-shaped numpy ndarray holding the values for each set
             of parameter values of the ``gridparams_recarray``. The length of
             the array depends on the ``src_evt_idx`` property of the
-            TrialDataManager. In the worst case it is N_sources * N_events.
+            TrialDataManager. In the worst case it is
+            ``N_sources * N_selected_events``.
         """
-        if tdm.src_evt_idxs is not None:
-            (_src_idxs, _evt_idxs) = tdm.src_evt_idxs
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
 
         # Check for special case when a single set of parameters are provided.
         if len(gridparams_recarray) == 1:
             # We got a single parameter set. We will use it for all sources.
             spline = self._get_spline_for_param_values(gridparams_recarray[0])
 
-            if tdm.src_evt_idxs is None:
-                values = spline(eventdata)
-                values = np.tile(values, tdm.n_sources)
-            else:
-                eventdata = np.take(eventdata, _evt_idxs, axis=0)
-                values = spline(eventdata)
+            eventdata = np.take(eventdata, evt_idxs, axis=0)
+            values = spline(eventdata)
 
             return values
 
@@ -332,10 +333,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             spline = self._get_spline_for_param_values(param_values)
 
             # Select the eventdata that belongs to the current source.
-            src_eventdata = eventdata
-            if tdm.src_evt_idxs is not None:
-                m = _src_idxs == sidx
-                src_eventdata = np.take(eventdata, _evt_idxs[m], axis=0)
+            m = src_idxs == sidx
+            src_eventdata = np.take(eventdata, evt_idxs[m], axis=0)
 
             n = src_eventdata.shape[0]
             sl = slice(v_start, v_start+n)
