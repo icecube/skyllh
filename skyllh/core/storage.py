@@ -502,7 +502,7 @@ class TextFileLoader(FileLoader):
                 raise ValueError('The data text file "{}" does not contain a '
                     'readable table header as first line!'.format(pathfilename))
             usecols = None
-            dtype = [(n,np.float) for n in column_names]
+            dtype = [(n,np.float64) for n in column_names]
             if(keep_fields is not None):
                 # Select only the given columns.
                 usecols = []
@@ -510,7 +510,7 @@ class TextFileLoader(FileLoader):
                 for (idx,name) in enumerate(column_names):
                     if(name in keep_fields):
                         usecols.append(idx)
-                        dtype.append((name,np.float))
+                        dtype.append((name,np.float64))
                 usecols = tuple(usecols)
             if(len(dtype) == 0):
                 raise ValueError('No data columns were selected to be loaded!')

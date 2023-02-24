@@ -106,7 +106,7 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
                 logE_binning.binedges, sinDec_binning.binedges],
             range=[
                 logE_binning.range, sinDec_binning.range],
-            normed=False)
+            density=False)
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered = h > 0
 
@@ -123,7 +123,7 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
                 logE_binning.binedges, sinDec_binning.binedges],
             range=[
                 logE_binning.range, sinDec_binning.range],
-            normed=False)
+            density=False)
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered_zero_physics = h > 0
 
@@ -138,7 +138,7 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
             weights=data_weights,
             range=[
                 logE_binning.range, sinDec_binning.range],
-            normed=False)
+            density=False)
 
         # If a bandwidth is passed, apply a KDE-based smoothing with the given
         # bw parameter as bandwidth for the fit.

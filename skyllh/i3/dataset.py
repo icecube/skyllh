@@ -347,7 +347,7 @@ class I3Dataset(Dataset):
                     'detector\'s on-time information in the GRL for dataset '\
                     '"%s".'%(self.name)
                 with TaskTimer(tl, task):
-                    mask = np.zeros((len(data.exp),), dtype=np.bool)
+                    mask = np.zeros((len(data.exp),), dtype=np.bool_)
                     for (start, stop) in zip(data.grl['start'],
                                              data.grl['stop']):
                         mask |= (

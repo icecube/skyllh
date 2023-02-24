@@ -1034,7 +1034,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         result_dtype = result_list[0].dtype
         result = np.empty(n, dtype=result_dtype)
-        result[:] = result_list[:]
+        result[:] = result_list[:][0]
         return result
 
 

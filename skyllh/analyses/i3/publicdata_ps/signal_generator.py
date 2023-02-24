@@ -85,6 +85,8 @@ class PDDatasetSignalGenerator(object):
         prob_per_bin /= np.sum(prob_per_bin)
 
         # Compute the cumulative distribution CDF.
+    #    print(prob_per_bin)
+    #    print(type(prob_per_bin), type(prob_per_bin[0]))
         cum_per_bin = np.cumsum(prob_per_bin)
         cum_per_bin = np.concatenate(([0], cum_per_bin))
         if np.any(np.diff(cum_per_bin) == 0):
