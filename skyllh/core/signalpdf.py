@@ -143,7 +143,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         Returns
         -------
         pd : instance of numpy ndarray
-            The (N,)-shaped numpy ndarray holding the probability density
+            The (N_values,)-shaped numpy ndarray holding the probability density
             for each event. The length of this 1D array depends on the number
             of sources and the events belonging to those sources. In the worst
             case the length is N_sources * N_trial_events.
@@ -155,22 +155,13 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         dec = get_data('dec')
         sigma = get_data('ang_err')
 
-        src_evt_idxs = tdm.src_evt_idxs
-        if src_evt_idxs is None:
-            # Make the source position angles two-dimensional so the PDF value
-            # can be calculated via numpy broadcasting automatically for several
-            # sources.
-            src_ra = src_array['ra'][:, np.newaxis]
-            src_dec = src_array['dec'][:, np.newaxis]
-        else:
-            # Pick the event values based on the event selection.
-            (src_idxs, evt_idxs) = src_evt_idxs
-            src_ra = np.take(src_array['ra'], src_idxs)
-            src_dec = np.take(src_array['dec'], src_idxs)
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+        src_ra = np.take(src_array['ra'], src_idxs)
+        src_dec = np.take(src_array['dec'], src_idxs)
 
-            dec = np.take(dec, evt_idxs)
-            ra = np.take(ra, evt_idxs)
-            sigma = np.take(sigma, evt_idxs)
+        dec = np.take(dec, evt_idxs)
+        ra = np.take(ra, evt_idxs)
+        sigma = np.take(sigma, evt_idxs)
 
         psi = angular_separation(src_ra, src_dec, ra, dec)
 
@@ -398,17 +389,10 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
             The dictionary holding the gradients of the probability density
             w.r.t. each fit parameter.
         """
-        n_sources = len(params_recarray)
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+        n_values = len(evt_idxs)
 
-        if tdm.src_evt_idxs is None:
-            src_idxs = np.repeat(np.arange(n_sources), tdm.n_selected_events)
-            evt_idxs = np.tile(np.arange(tdm.n_selected_events), n_sources)
-            n_vals = tdm.n_selected_events * n_sources
-        else:
-            (src_idxs, evt_idxs) = tdm.src_evt_idxs
-            n_vals = len(evt_idxs)
-
-        pd = np.zeros((n_vals,), dtype=np.float64)
+        pd = np.zeros((n_values,), dtype=np.float64)
 
         events_time = tdm.get_data('time')
         for (src_idx, params_row) in enumerate(params_recarray):
