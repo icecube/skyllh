@@ -540,16 +540,10 @@ class SourceWeightedPDFRatio(
 
         R_i = np.zeros((n_sel_events,), dtype=np.double)
 
-        if tdm.src_evt_idxs is None:
-            # All selected events contribute to all sources, hence R_ik is of
-            # length n_sources*n_sel_events.
-            for k in range(n_sources):
-                R_i += R_ik[k*n_sel_events:(k+1)*n_sel_events] * a_k[k]
-        else:
-            (src_idxs, evt_idxs) = tdm.src_evt_idxs
-            for k in range(n_sources):
-                src_mask = src_idxs == k
-                R_i[evt_idxs[src_mask]] += R_ik[src_mask] * a_k[k]
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+        for k in range(n_sources):
+            src_mask = src_idxs == k
+            R_i[evt_idxs[src_mask]] += R_ik[src_mask] * a_k[k]
         R_i /= A
 
         self._cache_R_ik = R_ik
@@ -627,23 +621,16 @@ class SourceWeightedPDFRatio(
 
         src_sum_i = np.zeros((n_sel_events,), dtype=np.double)
 
-        if tdm.src_evt_idxs is None:
-            for k in range(n_sources):
-                src_slice = slice(k*n_sel_events, (k+1)*n_sel_events)
-                if isinstance(a_k_grad, np.ndarray):
-                    src_sum_i += a_k_grad[k] * self._cache_R_ik[src_slice]
-                if isinstance(R_ik_grad, np.ndarray):
-                    src_sum_i += a_k[k] * R_ik_grad[src_slice]
-        else:
-            (src_idxs, evt_idxs) = tdm.src_evt_idxs
-            for k in range(n_sources):
-                src_mask = src_idxs == k
-                src_evt_idxs = evt_idxs[src_mask]
-                if isinstance(a_k_grad, np.ndarray):
-                    src_sum_i[src_evt_idxs] +=\
-                        a_k_grad[k] * self._cache_R_ik[src_mask]
-                if isinstance(R_ik_grad, np.ndarray):
-                    src_sum_i[src_evt_idxs] += a_k[k] * R_ik_grad[src_mask]
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+        for k in range(n_sources):
+            src_mask = src_idxs == k
+            src_evt_idxs = evt_idxs[src_mask]
+            if isinstance(a_k_grad, np.ndarray):
+                src_sum_i[src_evt_idxs] +=\
+                    a_k_grad[k] * self._cache_R_ik[src_mask]
+            if isinstance(R_ik_grad, np.ndarray):
+                src_sum_i[src_evt_idxs] +=\
+                    a_k[k] * R_ik_grad[src_mask]
 
         R_i_grad += src_sum_i
         R_i_grad /= A
