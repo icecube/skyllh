@@ -756,7 +756,7 @@ class MultiDimGridPDF(
             path_to_pdf_splinetable=None,
             pdf_grid_data=None,
             norm_factor_func=None,
-            cache_pd_values=True,
+            cache_pd_values=False,
             **kwargs):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid or as PDF values stored in a photospline table.
