@@ -5,7 +5,6 @@ likelihood function.
 """
 
 import numpy as np
-import scipy as scp
 
 from skyllh.core.debugging import (
     get_logger,
@@ -14,39 +13,42 @@ from skyllh.core.debugging import (
 from skyllh.core.display import (
     INDENTATION_WIDTH,
 )
+from skyllh.core.interpolate import (
+    GridManifoldInterpolationMethod,
+    Linear1DGridManifoldInterpolationMethod,
+)
 from skyllh.core.py import (
     classname,
-    issequenceof,
     str_cast,
 )
 from skyllh.core.livetime import (
     Livetime,
 )
 from skyllh.core.pdf import (
+    PDF,
     PDFAxis,
+    PDFSet,
     IsSignalPDF,
     MultiDimGridPDF,
-    MultiDimGridPDFSet,
     MappedMultiDimGridPDFSet,
     NDPhotosplinePDF,
     SpatialPDF,
     TimePDF,
 )
-from skyllh.core.source_hypo_grouping import (
-    SourceHypoGroupManager,
+from skyllh.core.timing import (
+    TaskTimer,
 )
 from skyllh.core.utils.coords import (
     angular_separation,
-)
-from skyllh.physics.source_model import (
-    PointLikeSource,
 )
 from skyllh.physics.flux_model import (
     TimeFluxProfile,
 )
 
 
-class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
+class GaussianPSFPointLikeSourceSignalSpatialPDF(
+        SpatialPDF,
+        IsSignalPDF):
     r"""This spatial signal PDF model describes the spatial PDF for a point
     source smeared with a 2D gaussian point-spread-function (PSF).
     Mathematically, it's the convolution of a point in the sky, i.e. the source
@@ -280,7 +282,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
     @livetime.setter
     def livetime(self, lt):
-        if(not isinstance(lt, Livetime)):
+        if not isinstance(lt, Livetime):
             raise TypeError(
                 'The livetime property must be an instance of Livetime!')
         self._livetime = lt
@@ -317,7 +319,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
         Returns
         -------
-        I : float
+        total_integral : float
             The total integral of the source time-profile.
         S : float
             The sum of the source time-profile integrals during the detector
@@ -325,10 +327,10 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         """
         ontime_intervals = self._livetime.get_ontime_intervals_between(
             self._time_profile.t_start, self._time_profile.t_end)
-        I = self._time_profile.get_total_integral()
+        total_integral = self._time_profile.get_total_integral()
         S = np.sum(self._time_profile.get_integral(
             ontime_intervals[:, 0], ontime_intervals[:, 1]))
-        return (I, S)
+        return (total_integral, S)
 
     def assert_is_valid_for_trial_data(self, tdm):
         """Checks if the time PDF is valid for all the given trial data.
@@ -416,121 +418,330 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
 
             # The sum of the on-time integrals of the time profile, A, will be
             # zero if the time profile is entirly during detector off-time.
-            if(self._S > 0):
+            if self._S > 0:
                 pd[src_m] = self._time_profile(times[on]) / (self._I * self._S)
 
         return (pd, dict())
 
 
-class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
+class SignalMultiDimGridPDF(
+        MultiDimGridPDF,
+        IsSignalPDF):
     """This class provides a multi-dimensional signal PDF. The PDF is created
     from pre-calculated PDF data on a grid. The grid data is interpolated using
     a :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
 
-    def __init__(self, axis_binnings, path_to_pdf_splinetable=None,
-                 pdf_grid_data=None, norm_factor_func=None):
-        """Creates a new signal PDF instance for a multi-dimensional PDF given
-        as PDF values on a grid. The grid data is interpolated with a
-        :class:`scipy.interpolate.RegularGridInterpolator` instance. As grid
-        points the bin edges of the axis binning definitions are used.
+    def __init__(
+            self,
+            *args,
+            **kwargs):
+        """Creates a new PDF instance for a multi-dimensional PDF given
+        as PDF values on a grid or as PDF values stored in a photospline table.
 
-        Parameters
-        ----------
-        axis_binnings : sequence of BinningDefinition
-            The sequence of BinningDefinition instances defining the binning of
-            the PDF axes. The name of each BinningDefinition instance defines
-            the event field name that should be used for querying the PDF.
-        path_to_pdf_splinetable : str
-            The path to the file containing the spline table.
-            The spline table contains a  pre-computed fit to pdf_grid_data.
-        pdf_grid_data : n-dimensional numpy ndarray
-            The n-dimensional numpy ndarray holding the PDF values at given grid
-            points. The grid points must match the bin edges of the given
-            BinningDefinition instances of the `axis_binnings` argument.
-        norm_factor_func : callable | None
-            The function that calculates a possible required normalization
-            factor for the PDF value based on the event properties.
-            The call signature of this function
-            must be `__call__(pdf, events, fitparams)`, where `pdf` is this PDF
-            instance, `events` is a numpy record ndarray holding the events for
-            which to calculate the PDF values, and `fitparams` is a dictionary
-            with the current fit parameter names and values.
+        See the documentation of the
+        :meth:`skyllh.core.pdf.MultiDimGridPDF.__init__` method for the
+        documentation of possible arguments.
         """
-        super(SignalMultiDimGridPDF, self).__init__(
-            axis_binnings=axis_binnings,
-            path_to_pdf_splinetable=path_to_pdf_splinetable,
-            pdf_grid_data=pdf_grid_data,
-            norm_factor_func=norm_factor_func)
+        super().__init__(
+            *args,
+            **kwargs)
 
 
-class SignalMultiDimGridPDFSet(MultiDimGridPDFSet, IsSignalPDF):
-    """This class extends the MultiDimGridPDFSet PDF class to be a signal PDF.
-    See the documentation of the :class:`skyllh.core.pdf.MultiDimGridPDFSet`
-    class for what this PDF provides.
+class SignalMultiDimGridPDFSet(
+        PDF,
+        PDFSet,
+        IsSignalPDF):
+    """This class provides a set of MultiDimGridPDF instances that implements
+    also the PDF interface.
     """
 
-    def __init__(self, param_set, param_grid_set, gridparams_pdfs,
-                 interpolmethod=None, **kwargs):
-        """Creates a new SignalMultiDimGridPDFSet instance, which holds a set of
+    def __init__(
+            self,
+            pmm,
+            param_set,
+            param_grid_set,
+            gridparams_pdfs,
+            interpol_method_cls=None,
+            **kwargs):
+        """Creates a new MultiDimGridPDFSet instance, which holds a set of
         MultiDimGridPDF instances, one for each point of a parameter grid set.
 
         Parameters
         ----------
-        param_set : Parameter instance | sequence of Parameter instances |
-                    ParameterSet instance
-            The set of parameters defining the model parameters of this PDF.
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper that defines the mapping of
+            the global parameters to local model parameters.
+        param_set : instance of Parameter | sequence of instance of Parameter | instance of ParameterSet
+            The set of parameters defining the parameters of this PDF.
         param_grid_set : ParameterGrid instance | ParameterGridSet instance
             The set of ParameterGrid instances, which define the grid values of
             the model parameters, the given MultiDimGridPDF instances belong to.
         gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
             The sequence of 2-element tuples which define the mapping of grid
             values to PDF instances.
-        interpolmethod : subclass of GridManifoldInterpolationMethod
+        interpol_method_cls : subclass of GridManifoldInterpolationMethod
             The class specifying the interpolation method. This must be a
             subclass of ``GridManifoldInterpolationMethod``.
             If set to None, the default grid manifold interpolation method
             ``Linear1DGridManifoldInterpolationMethod`` will be used.
         """
-        super(SignalMultiDimGridPDFSet, self).__init__(
+        super().__init__(
+            pmm=pmm,
             param_set=param_set,
             param_grid_set=param_grid_set,
-            gridparams_pdfs=gridparams_pdfs,
-            interpolmethod=interpolmethod,
-            pdf_type=SignalMultiDimGridPDF,
             **kwargs)
 
+        if interpol_method_cls is None:
+            interpol_method_cls = Linear1DGridManifoldInterpolationMethod
+        self.interpol_method_cls = interpol_method_cls
 
-class SignalMappedMultiDimGridPDFSet(MappedMultiDimGridPDFSet, IsSignalPDF):
+        # Add the given MultiDimGridPDF instances to the PDF set.
+        for (gridparams, pdf) in gridparams_pdfs:
+            self.add_pdf(pdf, gridparams)
+
+        # Create the interpolation method instance.
+        self._interpol_method = self._interpol_method_cls(
+            func=self._evaluate_pdfs,
+            param_grid_set=self.param_grid_set)
+
+        # Save the parameter names needed for the interpolation for later usage.
+        self._interpol_param_names =\
+            self.param_grid_set.params_name_list
+
+    @property
+    def interpol_method_cls(self):
+        """The class derived from GridManifoldInterpolationMethod
+        implementing the interpolation of the PDF grid manifold.
+        """
+        return self._interpol_method_cls
+
+    @interpol_method_cls.setter
+    def interpol_method_cls(self, cls):
+        if not issubclass(cls, GridManifoldInterpolationMethod):
+            raise TypeError(
+                'The interpol_method_cls property must be a sub-class of '
+                'GridManifoldInterpolationMethod!')
+        self._interpol_method_cls = cls
+
+    def _get_pdf_for_interpol_param_values(
+            self,
+            interpol_param_values):
+        """Retrieves the PDF for the given set of interpolation parameter
+        values.
+
+        Parameters
+        ----------
+        interpol_param_values : instance of numpy ndarray
+            The (N_interpol_params,)-shaped numpy ndarray holding the values of
+            the interpolation parameters.
+
+        Returns
+        -------
+        pdf : instance of MultiDimGridPDF
+            The requested PDF instance.
+        """
+        gridparams = dict(
+            zip(self._interpol_param_names, interpol_param_values))
+
+        pdf = self.get_pdf(gridparams)
+
+        return pdf
+
+    def _evaluate_pdfs(
+            self,
+            tdm,
+            eventdata,
+            gridparams_recarray,
+            n_values):
+        """Evaluates the PDFs for the given event data. The particular PDF is
+        selected based on the grid parameter values for each model.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data.
+        eventdata : instance of numpy ndarray
+            The (N_values,V)-shaped numpy ndarray holding the event data for
+            the PDF evaluation.
+        gridparams_recarray : instance of numpy structured ndarray
+            The numpy structured ndarray of length N_sources with the
+            parameter names and values needed for the interpolation on the grid
+            for all sources. If the length of this structured array is
+            1, the set of parameters will be used for all sources.
+        n_values : int
+            The size of the output array.
+
+        Returns
+        -------
+        pd : instance of ndarray
+            The (N_values,)-shaped numpy ndarray holding the probability density
+            values for each event.
+        """
+        # Check for special case when a single set of parameters are provided.
+        if len(gridparams_recarray) == 1:
+            pdf = self._get_pdf_for_interpol_param_values(
+                interpol_param_values=gridparams_recarray[0])
+
+            pd = pdf.get_pd_with_eventdata(
+                tdm=tdm,
+                params_recarray=None,
+                eventdata=eventdata)
+
+            return pd
+
+        pd = np.empty(n_values, dtype=np.float64)
+
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+
+        v_start = 0
+        for (sidx, interpol_param_values) in enumerate(gridparams_recarray):
+            pdf = self._get_pdf_for_interpol_param_values(
+                interpol_param_values=interpol_param_values)
+
+            # Select the eventdata that belongs to the current source.
+            evt_mask = src_idxs == sidx
+            src_eventdata = eventdata[evt_mask]
+
+            n = src_eventdata.shape[0]
+            sl = slice(v_start, v_start+n)
+            pd[sl] = pdf.get_pd_with_eventdata(
+                tdm=tdm,
+                params_recarray=None,
+                eventdata=src_eventdata,
+                evt_mask=evt_mask)
+
+            v_start += n
+
+        return pd
+
+    def assert_is_valid_for_trial_data(self, tdm):
+        """Checks if this PDF set is valid for all the given trial data. Since
+        the PDFs have the same axes, we just need to check the first PDF.
+        """
+        # Get one of the PDFs.
+        pdf = next(iter(self.items()))[1]
+        pdf.assert_is_valid_for_trial_data(tdm=tdm)
+
+    def get_pd(
+            self,
+            tdm,
+            params_recarray,
+            tl=None):
+        """Calculates the probability density for each event, given the given
+        parameter values.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that will be used to get the data
+            from the trial events.
+        params_recarray : instance of structured ndarray | None
+            The numpy record ndarray holding the parameter name and values for
+            each source model.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
+            information.
+
+        Returns
+        -------
+        pd : instance of numpy ndarray
+            The (N_values,)-shaped numpy ndarray holding the probability density
+            value for each source and event.
+        grads : (N_fitparams,N_events)-shaped 2D ndarray
+            The PDF gradients w.r.t. the PDF fit parameters for each event.
+        """
+        # Create the ndarray for the event data that is needed for the
+        # ``MultiDimGridPDF.get_pd_with_eventdata`` method.
+        # All PDFs of this PDFSet should have the same axes, so use the axes
+        # from any of the PDFs in this PDF set.
+        with TaskTimer(tl, 'Create PDF eventdata.'):
+            pdf = next(iter(self.items()))[1]
+
+            eventdata = MultiDimGridPDF.create_eventdata_for_sigpdf(
+                tdm=tdm,
+                axes=pdf.axes)
+
+        # Get the interpolated PDF values for the arbitrary parameter values.
+        # The (D,N_events)-shaped grads_ ndarray contains the gradient of the
+        # probability density w.r.t. each of the D parameters, which are defined
+        # by the param_grid_set. The order of the D gradients is the same as
+        # the parameter grids.
+        with TaskTimer(tl, 'Get probability densities for all events.'):
+            (pd, grads_arr) = self._interpol_method(
+                tdm=tdm,
+                eventdata=eventdata,
+                params_recarray=params_recarray)
+
+        # Construct the gradients dictionary with all the fit parameters, that
+        # contribute to the local interpolation parameters.
+        grads = dict()
+
+        tdm_n_sources = tdm.n_sources
+        for fitparam_id in range(self.pmm.n_global_floating_params):
+            grad = np.zeros((tdm.get_n_values(),), dtype=np.float64)
+
+            # Loop through the local interpolation parameters and match them
+            # with the global fit parameter fitparam_id.
+            fitparam_id_contributes = False
+            for (pidx, pname) in enumerate(self._interpol_param_names):
+                if pname not in params_recarray.dtype.fields:
+                    continue
+                p_gpidxs = params_recarray[f'{pname}:gpidx']
+                src_mask = p_gpidxs == (fitparam_id + 1)
+                n_sources = np.count_nonzero(src_mask)
+                if n_sources == 0:
+                    continue
+
+                fitparam_id_contributes = True
+
+                if n_sources == tdm_n_sources:
+                    # This parameter applies to all sources, hence to all
+                    # values, and hence it's the only local parameter
+                    # contributing to the global parameter fitparam_id.
+                    grad = grads_arr[pidx]
+                    break
+
+                # The current parameter does not apply to all sources.
+                # Create a values mask that matches a given source mask.
+                values_mask = tdm.get_values_mask_for_source_mask(src_mask)
+                grad[values_mask] = grads_arr[pidx][values_mask]
+
+            if fitparam_id_contributes:
+                grads[fitparam_id] = grad
+
+        return (pd, grads)
+
+
+class SignalMappedMultiDimGridPDFSet(
+        MappedMultiDimGridPDFSet,
+        IsSignalPDF):
     """This class extends the MappedMultiDimGridPDFSet PDF class to be a signal
     PDF. See the documentation of the
     :class:`skyllh.core.pdf.MappedMultiDimGridPDFSet` class for what this PDF
     provides.
     """
 
-    def __init__(self, param_grid_set, gridparams_pdfs,
-                 interpolmethod=None, **kwargs):
+    def __init__(
+            self,
+            *args,
+            **kwargs):
         """Creates a new SignalMappedMultiDimGridPDFSet instance, which holds a
         set of MultiDimGridPDF instances, one for each point of a parameter grid
         set.
 
-        Parameters
-        ----------
-        param_grid_set : ParameterGrid instance | ParameterGridSet instance
-            The set of ParameterGrid instances, which define the grid values of
-            the model parameters, the given MultiDimGridPDF instances belong to.
-        gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
-            The sequence of 2-element tuples which define the mapping of grid
-            values to PDF instances.
+        See the documentation of the
+        :meth:`skyllh.core.pdf.MappedMultiDimGridPDFSet.__init__` method for
+        the documentation of arguments.
         """
-        super(SignalMappedMultiDimGridPDFSet, self).__init__(
-            param_grid_set=param_grid_set,
-            gridparams_pdfs=gridparams_pdfs,
-            pdf_type=SignalMultiDimGridPDF,
+        super().__init__(
+            *args,
             **kwargs)
 
 
-class SignalNDPhotosplinePDF(NDPhotosplinePDF, IsSignalPDF):
+class SignalNDPhotosplinePDF(
+        NDPhotosplinePDF,
+        IsSignalPDF):
     """This class provides a multi-dimensional signal PDF created from a
     n-dimensional photospline fit. The photospline package is used to evaluate
     the PDF fit.
@@ -538,37 +749,15 @@ class SignalNDPhotosplinePDF(NDPhotosplinePDF, IsSignalPDF):
 
     def __init__(
             self,
-            axis_binnings,
-            param_set,
-            path_to_pdf_splinefit,
-            norm_factor_func=None):
+            *args,
+            **kwargs):
         """Creates a new signal PDF instance for a n-dimensional photospline PDF
         fit.
 
-        Parameters
-        ----------
-        axis_binnings : BinningDefinition | sequence of BinningDefinition
-            The sequence of BinningDefinition instances defining the binning of
-            the PDF axes. The name of each BinningDefinition instance defines
-            the event field name that should be used for querying the PDF.
-        param_set : Parameter | ParameterSet
-            The Parameter instance or ParameterSet instance defining the
-            parameters of this PDF. The ParameterSet holds the information
-            which parameters are fixed and which are floating (i.e. fitted).
-        path_to_pdf_splinefit : str
-            The path to the file containing the photospline fit.
-        norm_factor_func : callable | None
-            The function that calculates a possible required normalization
-            factor for the PDF value based on the event properties.
-            The call signature of this function must be
-            `__call__(pdf, tdm, params)`, where `pdf` is this PDF
-            instance, `tdm` is an instance of TrialDataManager holding the
-            event data for which to calculate the PDF values, and `params` is a
-            dictionary with the current parameter names and values.
+        See the documentation of the
+        :meth:`skyllh.core.pdf.NDPhotosplinePDF.__init__` method for
+        the documentation of arguments.
         """
-        super(SignalNDPhotosplinePDF, self).__init__(
-            axis_binnings=axis_binnings,
-            param_set=param_set,
-            path_to_pdf_splinefit=path_to_pdf_splinefit,
-            norm_factor_func=norm_factor_func
-        )
+        super().__init__(
+            *args,
+            **kwargs)
