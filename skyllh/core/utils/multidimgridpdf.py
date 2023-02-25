@@ -12,11 +12,8 @@ from skyllh.core.binning import (
 from skyllh.core.pdf import (
     MultiDimGridPDF,
 )
-from skyllh.core.signalpdf import (
-    SignalMultiDimGridPDF,
-)
-from skyllh.core.backgroundpdf import (
-    BackgroundMultiDimGridPDF,
+from skyllh.core.py import (
+    classname,
 )
 
 
@@ -69,6 +66,7 @@ def get_kde_pdf_bkg_norm_factor_func():
 
 
 def create_MultiDimGridPDF_from_photosplinetable(
+        multidimgridpdf_cls,
         pmm,
         ds,
         data,
@@ -86,6 +84,8 @@ def create_MultiDimGridPDF_from_photosplinetable(
 
     Parameters
     ----------
+    multidimgridpdf_cls : subclass of MultiDimGridPDF
+        The MultiDimGridPDF class, which should be used.
     pmm : instance of ParameterModelMapper
         The instance of ParameterModelMapper, which defines the mapping of
         global parameters to local model parameters.
@@ -109,10 +109,6 @@ def create_MultiDimGridPDF_from_photosplinetable(
     cache_pd_values : bool
         Flag if the probability density values should get cached by the
         MultiDimGridPDF class.
-    kind : str | None
-        The kind of PDF to create. This is either ``'sig'`` for a
-        SignalMultiDimGridPDF or ``'bkg'`` for a BackgroundMultiDimGridPDF
-        instance. If set to None, a MultiDimGridPDF instance is created.
     tl : instance of TimeLord | None
         The optional instance of TimeLord to use for measuring timing
         information.
@@ -124,17 +120,11 @@ def create_MultiDimGridPDF_from_photosplinetable(
         a ``SignalMultiDimGridPDF``, a ``BackgroundMultiDimGridPDF``, or a
         ``MultiDimGridPDF`` instance.
     """
-
-    if kind is None:
-        pdf_cls = MultiDimGridPDF
-    elif kind == 'sig':
-        pdf_cls = SignalMultiDimGridPDF
-    elif kind == 'bkg':
-        pdf_cls = BackgroundMultiDimGridPDF
-    else:
-        raise ValueError(
-            'The kind argument must be None, "sig", or "bkg"! '
-            f'Currently it is {str(kind)}!')
+    if not issubclass(multidimgridpdf_cls, MultiDimGridPDF):
+        raise TypeError(
+            'The multidimgridpdf_cls argument must be a subclass of '
+            'MultiDimGridPDF! '
+            f'Its current type is {classname(multidimgridpdf_cls)}.')
 
     # Load the PDF data from the auxilary files.
     num_dict = ds.load_aux_data(info_key, tl=tl)
@@ -165,7 +155,7 @@ def create_MultiDimGridPDF_from_photosplinetable(
     splinetable_file = ds.get_abs_pathfilename_list(
         ds.get_aux_data_definition(splinetable_key))[0]
 
-    pdf = pdf_cls(
+    pdf = multidimgridpdf_cls(
         pmm=pmm,
         axis_binnings=axis_binnings,
         path_to_pdf_splinetable=splinetable_file,
@@ -176,6 +166,7 @@ def create_MultiDimGridPDF_from_photosplinetable(
 
 
 def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
+        multidimgridpdf_cls,
         pmm,
         ds,
         data,
@@ -191,6 +182,8 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
 
     Parameters
     ----------
+    multidimgridpdf_cls : subclass of MultiDimGridPDF
+        The MultiDimGridPDF class, which should be used.
     pmm : instance of ParameterModelMapper
         The instance of ParameterModelMapper, which defines the mapping of
         global parameters to local model parameters.
@@ -229,16 +222,11 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
         a ``SignalMultiDimGridPDF``, a ``BackgroundMultiDimGridPDF``, or a
         ``MultiDimGridPDF`` instance.
     """
-    if kind is None:
-        pdf_cls = MultiDimGridPDF
-    elif kind == 'sig':
-        pdf_cls = SignalMultiDimGridPDF
-    elif kind == 'bkg':
-        pdf_cls = BackgroundMultiDimGridPDF
-    else:
-        raise ValueError(
-            'The kind argument must be None, "sig", or "bkg"! '
-            f'Currently it is {str(kind)}!')
+    if not issubclass(multidimgridpdf_cls, MultiDimGridPDF):
+        raise TypeError(
+            'The multidimgridpdf_cls argument must be a subclass of '
+            'MultiDimGridPDF! '
+            f'Its current type is {classname(multidimgridpdf_cls)}.')
 
     # Load the PDF data from the auxilary files.
     num_dict = ds.load_aux_data(numerator_key, tl=tl)
@@ -297,7 +285,7 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
     # Set NaN values to 0.
     vals[np.isnan(vals)] = 0
 
-    pdf = pdf_cls(
+    pdf = multidimgridpdf_cls(
         pmm=pmm,
         axis_binnings=axis_binnings,
         pdf_grid_data=vals,
