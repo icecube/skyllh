@@ -1162,7 +1162,7 @@ class Analysis(
 
         recarray_dtype = result_list[0].dtype
         recarray = np.empty(n, dtype=recarray_dtype)
-        recarray[:] = result_list[:]
+        recarray[:] = np.array(result_list)[:, 0]
 
         return recarray
 
