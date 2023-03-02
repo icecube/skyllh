@@ -166,7 +166,8 @@ class SourceHypoGroup(
         return np.array(weights)
 
 
-class SourceHypoGroupManager(object):
+class SourceHypoGroupManager(
+        object):
     """The source hypothesis group manager provides the functionality to group
     sources of the same source hypothesis, i.e. spatial model and flux model,
     with an assigned detector signal yield implementation method.
@@ -174,7 +175,10 @@ class SourceHypoGroupManager(object):
     This helps to evaluate the log-likelihood ratio function in an efficient
     way.
     """
-    def __init__(self, src_hypo_groups=None, **kwargs):
+    def __init__(
+            self,
+            src_hypo_groups=None,
+            **kwargs):
         """Creates a new source hypothesis group manager instance.
 
         Parameters
@@ -185,7 +189,7 @@ class SourceHypoGroupManager(object):
         """
         super().__init__(**kwargs)
 
-        self._src_hypo_group_list = list()
+        self._shg_list = list()
         # Define a 2D numpy array of shape (N_sources,2) that maps the source
         # index (0 to N_sources-1) to the index of the group and the source
         # index within the group for fast access.
@@ -201,7 +205,7 @@ class SourceHypoGroupManager(object):
                     'SourceHypoGroup, or a sequence of SourceHypoGroup '
                     'instances!')
             for shg in src_hypo_groups:
-                self._src_hypo_group_list.append(shg)
+                self._shg_list.append(shg)
                 self._extend_sidx_to_gidx_gsidx_map_arr(shg)
 
     @property
@@ -209,7 +213,7 @@ class SourceHypoGroupManager(object):
         """The list of defined SourceModel instances.
         """
         source_list = []
-        for shg in self._src_hypo_group_list:
+        for shg in self._shg_list:
             source_list += shg.source_list
         return source_list
 
@@ -223,14 +227,14 @@ class SourceHypoGroupManager(object):
     def n_src_hypo_groups(self):
         """The number of defined source hypothesis groups.
         """
-        return len(self._src_hypo_group_list)
+        return len(self._shg_list)
 
     @property
     def shg_list(self):
         """(read-only) The list of source hypothesis groups, i.e.
         SourceHypoGroup instances.
         """
-        return self._src_hypo_group_list
+        return self._shg_list
 
     @property
     def src_hypo_group_list(self):
@@ -294,7 +298,7 @@ class SourceHypoGroupManager(object):
             sig_gen_method=sig_gen_method)
 
         # Add the group.
-        self._src_hypo_group_list.append(group)
+        self._shg_list.append(group)
 
         # Extend the source index to (group index, group source index) map
         # array.
@@ -316,7 +320,7 @@ class SourceHypoGroupManager(object):
             The FluxModel instance that applies to the specified source.
         """
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx, 0]
-        return self._src_hypo_group_list[gidx]._fluxmodel
+        return self._shg_list[gidx]._fluxmodel
 
     def get_detsigyield_builder_list_by_src_idx(self, src_idx):
         """Retrieves the list of DetSigYieldBuilder instances for the source
@@ -335,31 +339,7 @@ class SourceHypoGroupManager(object):
             specified source.
         """
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx, 0]
-        return self._src_hypo_group_list[gidx]._detsigyield_builder_list
-
-    def get_fluxmodel_to_source_mapping(self):
-        """Returns the list of tuples mapping fluxmodel to the source indices.
-
-        Returns
-        -------
-        fluxmodel_to_source_mapping : list of (hash, src_index_array) tuples
-            The list that maps hash of the source hypothesis fluxmodel to
-            the corresponding source indices array in the source hypothesis
-            group.
-        """
-        fluxmodel_to_source_mapping = []
-        n_sources_offset = 0
-        for shg in self._src_hypo_group_list:
-            # Mapping tuple.
-            fluxmodel_to_source_mapping.append(
-                (
-                    make_dict_hash({'fluxmodel': shg.fluxmodel}),
-                    n_sources_offset + np.arange(shg.n_sources)
-                )
-            )
-            n_sources_offset += shg.n_sources
-
-        return fluxmodel_to_source_mapping
+        return self._shg_list[gidx]._detsigyield_builder_list
 
     def get_src_mask_of_shg(self, shg_idx):
         """Creates a source mask for the sources of the ``shg_idx``th source
