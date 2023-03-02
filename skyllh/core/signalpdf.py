@@ -171,10 +171,6 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
 
         pd = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
 
-        # In case the src_evt_idxs was None, pd is a (N_sources,N_events) array,
-        # which needs to be flatten.
-        pd = pd.flatten()
-
         return pd
 
     def get_pd(self, tdm, params_recarray=None, tl=None):
