@@ -795,14 +795,17 @@ class MultiDimGridPDF(
             factor for the PDF value based on the event properties.
             The call signature of this function must be
 
-                ``__call__(pdf, tdm, params_recarray, eventdata)``,
+                ``__call__(pdf, tdm, params_recarray, eventdata, evt_mask=None)``,
 
             where ``pdf`` is this PDF instance, ``tdm`` is an instance of
             TrialDataManager holding the event data for which to calculate the
             PDF values, ``params_recarray`` is a numpy structured ndarray
-            holding the local parameter names and values, and ``eventdata`` is
+            holding the local parameter names and values, ``eventdata`` is
             is a (N_values,V)-shaped numpy ndarray holding the event data
-            necessary for this PDF.
+            necessary for this PDF, and ``evt_mask`` is an optional
+            (N_values,)-shaped numpy ndarray holding the mask for the events,
+            i.e. rows in ``eventdata``, which should be considered. If ``None``,
+            all events should be considered.
         cache_pd_values : bool
             Flag if the probability density values should be cached.
             The evaluation of the photospline fit might be slow and caching the
@@ -904,14 +907,16 @@ class MultiDimGridPDF(
         """The function that calculates the possible required normalization
         factor. The call signature of this function must be
 
-            ``__call__(pdf, tdm, params_recarray, eventdata)``,
+            ``__call__(pdf, tdm, params_recarray, eventdata, evt_mask=None)``,
 
         where ``pdf`` is this PDF instance, ``tdm`` is an instance of
         TrialDataManager holding the events for which to calculate the PDF
         values, ``params_recarray`` is a numpy structured ndarray holding the
-        local parameter names and values, and ``eventdata`` is a
-        (N_values,V)-shaped numpy ndarray holding the event data necessary for
-        this PDF.
+        local parameter names and values, ``eventdata`` is a (N_values,V)-shaped
+        numpy ndarray holding the event data necessary for this PDF, and
+        ``evt_mask`` is an optional (N_values,)-shaped numpy ndarray holding the
+        mask for the events, i.e. rows in ``eventdata``, which should be
+        considered. If ``None``, all events should be considered..
         This property can be set to ``None``. In that case a unity returning
         function is used.
         """
@@ -922,8 +927,11 @@ class MultiDimGridPDF(
         if func is None:
             # Define a normalization function that just returns 1 for each
             # event.
-            def func(pdf, tdm, params_recarray, eventdata):
-                n_values = eventdata.shape[0]
+            def func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
+                if evt_mask is None:
+                    n_values = eventdata.shape[0]
+                else:
+                    n_values = np.count_nonzero(evt_mask)
                 return np.ones((n_values,), dtype=np.float64)
 
         if not callable(func):
@@ -1096,8 +1104,9 @@ class MultiDimGridPDF(
         pd : (N,)-shaped numpy ndarray
             The (N,)-shaped numpy ndarray holding the probability density
             value for each model and event. The length of this array depends on
-            the ``evt_mask`` argument. If set to ``Ǹone``, the length is
-            N_values.
+            the ``evt_mask`` argument. Only values are returned where
+            ``evt_mask`` evaluates to ``True``.
+            If ``evt_mask`` is set to ``Ǹone``, the length is N_values.
         """
         if self._cache_pd_values:
             pd = self._get_cached_pd_values(
@@ -1110,19 +1119,27 @@ class MultiDimGridPDF(
 
         if isinstance(self._pdf, RegularGridInterpolator):
             with TaskTimer(tl, 'Get pd from RegularGridInterpolator.'):
-                pd = self._pdf(eventdata)
+                if evt_mask is None:
+                    pd = self._pdf(eventdata)
+                else:
+                    pd = self._pdf(eventdata[evt_mask])
         else:
             with TaskTimer(tl, 'Get pd from photospline fit.'):
                 V = eventdata.shape[1]
-                pd = self._pdf.evaluate_simple(
-                    [eventdata[:, i] for i in range(0, V)])
+                if evt_mask is None:
+                    pd = self._pdf.evaluate_simple(
+                        [eventdata[:, i] for i in range(0, V)])
+                else:
+                    pd = self._pdf.evaluate_simple(
+                        [eventdata[:, i][evt_mask] for i in range(0, V)])
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(
                 pdf=self,
                 tdm=tdm,
                 params_recarray=params_recarray,
-                eventdata=eventdata)
+                eventdata=eventdata,
+                evt_mask=evt_mask)
 
             pd *= norm
 
@@ -1601,6 +1618,27 @@ class PDFSet(
         key = next(iter(self._gridparams_hash_pdf_dict.keys()))
         return self._gridparams_hash_pdf_dict[key].axes
 
+    def __contains__(self, key):
+        """Checks if the given key exists in this PDFSet instance.
+
+        Parameters
+        ----------
+        key : dict | int
+            If a dictionary is provided, it must be the gridparams dictionary
+            containing the grid parameter names and vales.
+            If an integer is provided, it must be the hash of the gridparams
+            dictionary.
+        """
+        if isinstance(key, dict):
+            key = make_dict_hash(key)
+
+        if not isinstance(key, int):
+            raise TypeError(
+                'The key argument must be of type dict or int! '
+                f'currently its type is {classname(key)}.')
+
+        return key in self._gridparams_hash_pdf_dict
+
     def __getitem__(self, key):
         """Implements the access operator ``self[gridparams_hash]``.
         """
@@ -1621,6 +1659,21 @@ class PDFSet(
         """Returns an iterator over the PDF instances of the PDFSet instance.
         """
         return self._gridparams_hash_pdf_dict.values()
+
+    def make_key(self, gridparams):
+        """Creates the key for the given grid parameter dictionary.
+
+        Parameters
+        ----------
+        gridparams : dict
+            The dictionary holding the grid parameter names and values.
+
+        Returns
+        -------
+        key : int
+            The key for the given grid parameter dictionary.
+        """
+        return make_dict_hash(gridparams)
 
     def add_pdf(self, pdf, gridparams):
         """Adds the given PDF object for the given parameters to the internal
@@ -1766,163 +1819,3 @@ class PDFSet(
             tdm=tdm,
             params_recarray=params_recarray,
             tl=tl)
-
-
-class MappedMultiDimGridPDFSet(PDF, PDFSet):
-    def __init__(
-            self, param_grid_set, gridparams_pdfs, src_hypo_group_manager,
-            pdf_type=MultiDimGridPDF, **kwargs):
-        """Creates a new MappedMultiDimGridPDFSet instance, which holds a set of
-        MultiDimGridPDF instances, one for each point of a parameter grid set.
-
-        Parameters
-        ----------
-        param_grid_set : ParameterGrid instance | ParameterGridSet instance
-            The set of ParameterGrid instances, which define the grid values of
-            the model parameters, the given MultiDimGridPDF instances belong to.
-        gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
-            The sequence of 2-element tuples which define the mapping of grid
-            values to PDF instances.
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The instance of SourceHypoGroupManager that defines the list of
-            sources, i.e. the list of SourceModel instances and flux models.
-        pdf_type : type
-            The PDF class that can be added to the set.
-        """
-        super(MappedMultiDimGridPDFSet, self).__init__(
-            param_set=None,
-            pdf_type=pdf_type,
-            fitparams_grid_set=param_grid_set,
-            **kwargs)
-
-        self.fluxmodel_to_source_mapping = src_hypo_group_manager.get_fluxmodel_to_source_mapping()
-
-        # Add the given MultiDimGridPDF instances to the PDF set.
-        for (gridparams, pdf) in gridparams_pdfs:
-            self.add_pdf(pdf, gridparams)
-
-    @property
-    def fluxmodel_to_source_mapping(self):
-        """The fluxmodel to source indices mapping list used for
-        MappedMultiDimGridPDFSet evaluation to get the corresponding KDE PDF.
-        """
-        return self._fluxmodel_to_source_mapping
-
-    @fluxmodel_to_source_mapping.setter
-    def fluxmodel_to_source_mapping(self, mapping_list):
-        if not issequenceof(mapping_list, tuple):
-            raise TypeError(
-                'The `fluxmodel_to_source_mapping` property must be a sequence '
-                'of tuples.')
-        self._fluxmodel_to_source_mapping = mapping_list
-
-    def assert_is_valid_for_trial_data(self, tdm):
-        """Checks if this PDF set is valid for all the given trial data. Since
-        the PDFs have the same axes, we just need to check the first PDFs.
-        """
-        # Get one of the PDFs.
-        pdf = next(iter(self.items()))[1]
-        pdf.assert_is_valid_for_trial_data(tdm)
-
-    # FIXME
-    def get_prob(self, tdm, params, tl=None):
-        """Calculates the probability density for each event, given the given
-        parameter values.
-
-        Parameters
-        ----------
-        tdm : TrialDataManager instance
-            The TrialDataManager instance that will be used to get the data
-            from the trial events.
-        params : dict
-            The dictionary holding the parameter names and values for which the
-            probability should get calculated. Because this PDF is a PDFSet,
-            there should be at least one parameter.
-        tl : TimeLord instance | None
-            The optional TimeLord instance to use for measuring timing
-            information.
-
-        Returns
-        -------
-        prob : (N_events,)-shaped 1D ndarray
-            The probability values for each event.
-        grads : (N_fitparams,N_events)-shaped 2D ndarray
-            The PDF gradients w.r.t. the PDF fit parameters for each event.
-        """
-        # Create the ndarray for the event data that is needed for the
-        # ``MultiDimGridPDF.get_prob_with_eventdata`` method.
-        # All PDFs of this PDFSet should have the same axes, so use the axes
-        # from any of the PDFs in this PDF set.
-        if isinstance(self, IsSignalPDF):
-            # Evaluate the relevant quantities for
-            # all events and sources (relevant for stacking analyses).
-            if tdm.src_evt_idxs is not None:
-                (src_idxs, ev_idxs) = tdm.src_evt_idxs
-                eventdata = np.array(
-                    [
-                        # Check `psi` axis name.
-                        tdm.get_data(axis.name)
-                        if ('psi' in axis.name)
-
-                        # Check `src` axis name.
-                        else tdm.get_data(axis.name)[src_idxs]
-                        if ('src' in axis.name)
-
-                        # Default case.
-                        else tdm.get_data(axis.name)[ev_idxs]
-                        for axis in self.pdf_axes
-                    ]
-                ).T
-            else:
-                n_src = len(tdm.get_data('src_array')['ra'])
-                l_ev = len(tdm.get_data('ra'))
-                eventdata = np.array(
-                    [
-                        # Check `psi` axis name.
-                        tdm.get_data(axis.name)
-                        if ('psi' in axis.name)
-
-                        # Check `src` axis name.
-                        else tdm.get_data(axis.name)
-                        if (('src' in axis.name) and (n_src == 1))
-                        else np.repeat(tdm.get_data(axis.name), l_ev)
-                        if (('src' in axis.name) and (n_src != 1))
-
-                        # Default case.
-                        else np.tile(tdm.get_data(axis.name), n_src)
-                        for axis in self.pdf_axes
-                    ]
-                ).T
-
-                # Construct `src_idxs` for masking with `fluxmodel_mask`.
-                src_idxs = np.repeat(np.arange(n_src), l_ev)
-
-        elif isinstance(self, IsBackgroundPDF):
-            eventdata = np.array([tdm.get_data(axis.name)
-                                  for axis in self.pdf_axes]).T
-        else:
-            TypeError(
-                f'The PDF {classname(self)} is neither a signal nor a '
-                'background PDF!')
-        # Get the interpolated PDF values for the arbitrary parameter values.
-        # The (D,N_events)-shaped grads ndarray contains the gradient of the
-        # probability density w.r.t. each of the D parameters, which are defined
-        # by the param_grid_set. The order of the D gradients is the same as
-        # the parameter grids.
-
-        # Iterate over fluxmodels in `fluxmodel_to_source_mapping` list.
-        prob = np.zeros(eventdata.shape[0])
-        grads = np.zeros(eventdata.shape[0])
-        for (fluxmodel_hash, src_list) in self.fluxmodel_to_source_mapping:
-            # Mask for selecting events corresponding to specific flux.
-            fluxmodel_mask = np.isin(src_idxs, src_list)
-
-            # Pass params in case normalization function depends on it.
-            # KDE normalization function does not depend on params.
-            with TaskTimer(tl, 'Get signal PDFs for specific flux events.'):
-                prob_i = self.get_pdf(fluxmodel_hash).get_prob_with_eventdata(
-                    tdm, params, eventdata[fluxmodel_mask])
-
-            prob[fluxmodel_mask] = prob_i
-
-        return (prob, grads)

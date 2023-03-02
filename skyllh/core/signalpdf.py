@@ -30,10 +30,12 @@ from skyllh.core.pdf import (
     PDFSet,
     IsSignalPDF,
     MultiDimGridPDF,
-    MappedMultiDimGridPDFSet,
     NDPhotosplinePDF,
     SpatialPDF,
     TimePDF,
+)
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
 )
 from skyllh.core.timing import (
     TaskTimer,
@@ -599,29 +601,20 @@ class SignalMultiDimGridPDFSet(
             pdf = self._get_pdf_for_interpol_param_values(
                 interpol_param_values=interpol_param_values)
 
-            # Select the eventdata that belongs to the current source.
+            # Determine the events that belong to the current source.
             evt_mask = src_idxs == sidx
-            src_eventdata = eventdata[evt_mask]
 
-            n = src_eventdata.shape[0]
+            n = np.count_nonzero(evt_mask)
             sl = slice(v_start, v_start+n)
             pd[sl] = pdf.get_pd_with_eventdata(
                 tdm=tdm,
                 params_recarray=None,
-                eventdata=src_eventdata,
+                eventdata=eventdata,
                 evt_mask=evt_mask)
 
             v_start += n
 
         return pd
-
-    def assert_is_valid_for_trial_data(self, tdm):
-        """Checks if this PDF set is valid for all the given trial data. Since
-        the PDFs have the same axes, we just need to check the first PDF.
-        """
-        # Get one of the PDFs.
-        pdf = next(iter(self.items()))[1]
-        pdf.assert_is_valid_for_trial_data(tdm=tdm)
 
     def get_pd(
             self,
@@ -648,13 +641,17 @@ class SignalMultiDimGridPDFSet(
         pd : instance of numpy ndarray
             The (N_values,)-shaped numpy ndarray holding the probability density
             value for each source and event.
-        grads : (N_fitparams,N_events)-shaped 2D ndarray
-            The PDF gradients w.r.t. the PDF fit parameters for each event.
+        grads : dict
+            The dictionary holding the PDF gradient value for each event w.r.t.
+            each global fit parameter.
+            The key of the dictionary is the ID of the global fit parameter.
+            The value is the (N_values,)-shaped numpy ndarray holding the
+            gradient value for each event.
         """
         # Create the ndarray for the event data that is needed for the
         # ``MultiDimGridPDF.get_pd_with_eventdata`` method.
-        # All PDFs of this PDFSet should have the same axes, so use the axes
-        # from any of the PDFs in this PDF set.
+        # All PDFs of this PDFSet should have the same axes, so we use the axes
+        # from the first PDF in this PDF set.
         with TaskTimer(tl, 'Create PDF eventdata.'):
             pdf = next(iter(self.items()))[1]
 
@@ -713,30 +710,129 @@ class SignalMultiDimGridPDFSet(
         return (pd, grads)
 
 
-class SignalMappedMultiDimGridPDFSet(
-        MappedMultiDimGridPDFSet,
+class SignalSHGMappedMultiDimGridPDFSet(
+        PDF,
+        PDFSet,
         IsSignalPDF):
-    """This class extends the MappedMultiDimGridPDFSet PDF class to be a signal
-    PDF. See the documentation of the
-    :class:`skyllh.core.pdf.MappedMultiDimGridPDFSet` class for what this PDF
-    provides.
+    """This class provides a set of MultiDimGridPDF instances, one for each
+    source hypothesis group.
     """
 
     def __init__(
             self,
-            *args,
+            shg_mgr,
+            pmm,
+            shgidxs_pdfs,
             **kwargs):
-        """Creates a new SignalMappedMultiDimGridPDFSet instance, which holds a
-        set of MultiDimGridPDF instances, one for each point of a parameter grid
-        set.
+        """Creates a new SignalSHGMappedMultiDimGridPDFSet instance, which holds
+        a set of MultiDimGridPDF instances, one for each point of a parameter grid set.
 
-        See the documentation of the
-        :meth:`skyllh.core.pdf.MappedMultiDimGridPDFSet.__init__` method for
-        the documentation of arguments.
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager that defines the source
+            hypothesis groups and their sources.
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper which defines the mapping of
+            global parameters to local source parameters.
+        shgidxs_pdfs : sequence of (shg_idx, MultiDimGridPDF) tuples
+            The sequence of 2-element tuples which define the mapping of a
+            source hypothesis group to a PDF instance.
         """
         super().__init__(
-            *args,
+            pmm=pmm,
+            param_set=None,
+            param_grid_set=None,
             **kwargs)
+
+        if not isinstance(shg_mgr, SourceHypoGroupManager):
+            raise TypeError(
+                'The shg_mgr argument must be an instance of '
+                'SourceHypoGroupManager! '
+                f'Its current type is {classname(shg_mgr)}.')
+        self._shg_mgr = shg_mgr
+
+        for (shg_idx, pdf) in shgidxs_pdfs:
+            self.add_pdf(
+                pdf=pdf,
+                gridparams={'shg_idx': shg_idx})
+
+    @property
+    def shg_mgr(self):
+        """(read-only) The instance of SourceHypoGroupManager that defines the
+        source hypothesis groups and their sources.
+        """
+        return self._shg_mgr
+
+    def get_pd(
+            self,
+            tdm,
+            params_recarray,
+            tl=None):
+        """Calculates the probability density for each event, given the given
+        parameter values.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that will be used to get the data
+            from the trial events.
+        params_recarray : instance of structured ndarray | None
+            The numpy record ndarray holding the parameter name and values for
+            each source model.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
+            information.
+
+        Returns
+        -------
+        pd : instance of numpy ndarray
+            The (N_values,)-shaped numpy ndarray holding the probability density
+            value for each event.
+        grads : dict
+            The dictionary holding the PDF gradient value for each event w.r.t.
+            each global fit parameter.
+            The key of the dictionary is the ID of the global fit parameter.
+            The value is the (N_values,)-shaped numpy ndarray holding the
+            gradient value for each event.
+            By definition this PDF set does not depend on any fit parameters,
+            hence, this dictionary is empty.
+        """
+        # Create the ndarray for the event data that is needed for the
+        # ``MultiDimGridPDF.get_pd_with_eventdata`` method.
+        # All PDFs of this PDFSet should have the same axes, so we use the axes
+        # from the first PDF in this PDF set.
+        with TaskTimer(tl, 'Create PDF eventdata.'):
+            pdf = next(iter(self.items()))[1]
+
+            eventdata = MultiDimGridPDF.create_eventdata_for_sigpdf(
+                tdm=tdm,
+                axes=pdf.axes)
+
+        pd = np.zeros((tdm.get_n_values(),), dtype=np.float64)
+
+        src_idxs = tdm.src_evt_idxs[0]
+        src_idxs_arr = np.arange(self._shg_mgr.n_sources)
+        for (shg_idx, shg) in enumerate(self._shg_mgr.shg_list):
+            # Check if a PDF is defined for this SHG.
+            pdf_key = self.make_key({'shg_idx': shg_idx})
+            if pdf_key not in self:
+                continue
+
+            shg_src_idxs = src_idxs_arr[
+                self._shg_mgr.get_src_mask_of_shg(shg_idx)]
+            values_mask = np.isin(src_idxs, shg_src_idxs)
+
+            with TaskTimer(tl, f'Get PD values for PDF of SHG {shg_idx}.'):
+                pd_shg = self.get_pdf(pdf_key).get_pd_with_eventdata(
+                    tdm=tdm,
+                    params_recarray=params_recarray,
+                    eventdata=eventdata,
+                    evt_mask=values_mask)
+
+            pd[values_mask] = pd_shg
+
+        return (pd, dict())
 
 
 class SignalNDPhotosplinePDF(
