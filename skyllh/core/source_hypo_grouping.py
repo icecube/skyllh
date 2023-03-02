@@ -377,3 +377,22 @@ class SourceHypoGroupManager(object):
             selecting the sources of the given source hypothesis group.
         """
         return (self._sidx_to_gidx_gsidx_map_arr[:, 0] == shg_idx)
+
+    def get_src_idxs_of_shg(self, shg_idx):
+        """Creates an array of indices of sources that belong to the given
+        source hypothesis group.
+
+        Parameters
+        ----------
+        shg_idx : int
+            The index of the source hypothesis group.
+
+        Returns
+        -------
+        src_idxs : instance of numpy ndarray
+            The numpy ndarray of int holding the indices of the sources that
+            belong to the given source hypothesis group.
+        """
+        src_idxs = np.arange(self.n_sources)[self.get_src_mask_of_shg(shg_idx)]
+
+        return src_idxs
