@@ -549,6 +549,21 @@ class ParameterModelMapperTestCase(unittest.TestCase):
         # Ensure that __str__ does not raise an exception.
         str(self.pmm)
 
+    def test_unique_model_param_names(self):
+        self.pmm.def_param(
+            param=self.fixed_param0,
+            models=(self.model0,),
+            model_param_names='p')
+        self.pmm.def_param(
+            param=self.floating_param0,
+            models=(self.model1,),
+            model_param_names='p')
+        self.pmm.def_param(
+            param=self.floating_param1)
+        names = self.pmm.unique_model_param_names
+        self.assertEqual(len(names), 2)
+        np.testing.assert_equal(names, ['p', 'p2'])
+
     def test_def_param(self):
         self.pmm.def_param(
             param=self.fixed_param0,
