@@ -5,8 +5,6 @@
 """
 
 from skyllh.core.model import (
-    ModelCollection,
-    SourceModel,
     SourceModelCollection,
 )
 from skyllh.core.py import (
@@ -14,11 +12,17 @@ from skyllh.core.py import (
 )
 
 
-class SourceCatalog(SourceModelCollection):
+class SourceCatalog(
+        SourceModelCollection):
     """This class describes a catalog of sources. It is derived from
     SourceModelCollection. A catalog has a name.
     """
-    def __init__(self, name, sources=None, source_type=None, **kwargs):
+    def __init__(
+            self,
+            name,
+            sources=None,
+            source_type=None,
+            **kwargs):
         """Creates a new source catalog.
 
         Parameters
@@ -43,6 +47,7 @@ class SourceCatalog(SourceModelCollection):
         """The name of the catalog.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         name = str_cast(
@@ -60,8 +65,8 @@ class SourceCatalog(SourceModelCollection):
 
         Returns
         -------
-        source_model_collection : SourceModelCollection instance
-            The created SourceModelCollection instance.
+        source_model_collection : instance of SourceModelCollection
+            The created instance of SourceModelCollection.
         """
         return SourceModelCollection(
             sources=self.sources,
