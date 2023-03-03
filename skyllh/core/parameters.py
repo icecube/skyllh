@@ -82,8 +82,8 @@ class Parameter(object):
             were specified. Otherwise, the parameter is fixed.
             The default is None.
         """
-        if(isfixed is None):
-            if((valmin is not None) and (valmax is not None)):
+        if isfixed is None:
+            if (valmin is not None) and (valmax is not None):
                 isfixed = False
             else:
                 isfixed = True
@@ -100,10 +100,13 @@ class Parameter(object):
         """The name of the parameter.
         """
         return self._name
+
     @name.setter
     def name(self, name):
-        if(not isinstance(name, str)):
-            raise TypeError('The name property must be of type str!')
+        if not isinstance(name, str):
+            raise TypeError(
+                'The "name" property must be of type str! '
+                f'Its current type is {classname(name)}.')
         self._name = name
 
     @property
@@ -111,10 +114,12 @@ class Parameter(object):
         """The initial value of the parameter.
         """
         return self._initial
+
     @initial.setter
     def initial(self, v):
-        v = float_cast(v, 'The initial property must be castable to type '
-            'float!')
+        v = float_cast(
+            v,
+            'The "initial" property must be castable to type float!')
         self._initial = v
 
     @property
@@ -122,9 +127,12 @@ class Parameter(object):
         """The flag if the parameter is mutable (False) or not (True).
         """
         return self._isfixed
+
     @isfixed.setter
     def isfixed(self, b):
-        b = bool_cast(b, 'The isfixed property must be castable to type bool!')
+        b = bool_cast(
+            b,
+            'The "isfixed" property must be castable to type bool!')
         self._isfixed = b
 
     @property
@@ -132,9 +140,12 @@ class Parameter(object):
         """The minimum bound value of the parameter.
         """
         return self._valmin
+
     @valmin.setter
     def valmin(self, v):
-        v = float_cast(v, 'The valmin property must be castable to type float!',
+        v = float_cast(
+            v,
+            'The "valmin" property must be castable to type float!',
             allow_None=True)
         self._valmin = v
 
@@ -143,9 +154,12 @@ class Parameter(object):
         """The maximum bound value of the parameter.
         """
         return self._valmax
+
     @valmax.setter
     def valmax(self, v):
-        v = float_cast(v, 'The valmax property must be castable to type float!',
+        v = float_cast(
+            v,
+            'The "valmax" property must be castable to type float!',
             allow_None=True)
         self._valmax = v
 
@@ -154,19 +168,23 @@ class Parameter(object):
         """The current value of the parameter.
         """
         return self._value
+
     @value.setter
     def value(self, v):
-        v = float_cast(v, 'The value property must be castable to type float!')
-        if(self._isfixed):
-            if(v != self._initial):
-                raise ValueError('The value (%f) of the fixed parameter "%s" '
-                    'must to equal to the parameter\'s initial value (%f)!'%(
-                    v, self.name, self._initial))
+        v = float_cast(
+            v,
+            'The "value" property must be castable to type float!')
+        if self._isfixed:
+            if v != self._initial:
+                raise ValueError(
+                    f'The value ({v}) of the fixed parameter "{self._name}" '
+                    'must be equal to the parameter\'s initial value '
+                    f'({self._initial})!')
         else:
-            if((v < self._valmin) or (v > self._valmax)):
-                raise ValueError('The value (%f) of parameter "%s" must be '
-                    'within the range (%f, %f)!'%(
-                    v, self._name, self._valmin, self._valmax))
+            if (v < self._valmin) or (v > self._valmax):
+                raise ValueError(
+                    f'The value ({v}) of parameter "{self._name}" must be '
+                    f'within the range [{self._valmin:g}, {self._valmax:g}]!')
         self._value = v
 
     def __eq__(self, other):
@@ -186,17 +204,17 @@ class Parameter(object):
             True, if this Parameter instance and the other Parameter instance
             have the same property values.
         """
-        if((self.name != other.name) or
-           (self.value != other.value) or
-           (self.isfixed != other.isfixed)):
+        if (self.name != other.name) or\
+           (self.value != other.value) or\
+           (self.isfixed != other.isfixed):
             return False
 
         # If both parameters are floating parameters, also their initial, min,
         # and max values must match.
-        if(not self.isfixed):
-            if((self.initial != other.initial) or
-               (self.valmin != other.valmin) or
-               (self.valmax != other.valmax)):
+        if not self.isfixed:
+            if (self.initial != other.initial) or\
+               (self.valmin != other.valmin) or\
+               (self.valmax != other.valmax):
                 return False
 
         return True
@@ -207,14 +225,14 @@ class Parameter(object):
         """
         indstr = ' ' * display.INDENTATION_WIDTH
 
-        s = 'Parameter: %s = %.3f '%(self._name, self._value)
+        s = f'Parameter: {self._name} = {self._value:g} '
 
-        if(self.isfixed):
+        if self.isfixed:
             s += '[fixed]'
         else:
             s += '[floating] {\n'
-            s += indstr + 'initial: %.3f\n'%(self._initial)
-            s += indstr + 'range: (%.3f, %.3f)\n'%(self._valmin, self._valmax)
+            s += indstr + f'initial: {self._initial:g}\n'
+            s += indstr + f'range: ({self._valmin:g}, {self._valmax:g})\n'
             s += '}'
 
         return s
@@ -239,14 +257,21 @@ class Parameter(object):
         ValueError
             If this Parameter instance represents a fixed parameter.
         """
-        if(self.isfixed):
-            raise ValueError('Cannot create a linear grid from the fixed '
-                'parameter "%s". The parameter must be floating!'%(self.name))
+        if self.isfixed:
+            raise ValueError(
+                'Cannot create a linear grid from the fixed '
+                f'parameter "{self._name}". The parameter must be floating!')
 
-        delta = float_cast(delta, 'The delta argument must be castable to type '
-            'float!')
+        delta = float_cast(
+            delta,
+            'The delta argument must be castable to type float!')
+
         grid = make_linear_parameter_grid_1d(
-            self._name, self._valmin, self._valmax, delta)
+            name=self._name,
+            low=self._valmin,
+            high=self._valmax,
+            delta=delta)
+
         return grid
 
     def change_fixed_value(self, value):
@@ -267,9 +292,9 @@ class Parameter(object):
         ValueError
             If this parameter is not a fixed parameter.
         """
-        if(not self._isfixed):
-            raise ValueError('The parameter "%s" is not a fixed parameter!'%(
-                self.name))
+        if not self._isfixed:
+            raise ValueError(
+                f'The parameter "{self._name}" is not a fixed parameter!')
 
         self.initial = value
         self.value = value
@@ -291,7 +316,7 @@ class Parameter(object):
         self._isfixed = True
 
         # If no new initial value is given, use the current value.
-        if(initial is None):
+        if initial is None:
             self._initial = self._value
             return self._value
 
@@ -300,8 +325,8 @@ class Parameter(object):
 
         # Undefine the valmin and valmax values if the parameter's new value is
         # outside the valmin and valmax range.
-        if((self._valmin is not None) and (self._valmax is not None) and
-           ((self._value < self._valmin) or (self._value > self._valmax))):
+        if (self._valmin is not None) and (self._valmax is not None) and\
+           ((self._value < self._valmin) or (self._value > self._valmax)):
             self._valmin = None
             self._valmax = None
 
@@ -336,19 +361,21 @@ class Parameter(object):
             If valmin is set to None and this parameter has no valmin defined.
             If valmax is set to None and this parameter has no valmax defined.
         """
-        if(initial is None):
+        if initial is None:
             initial = self._value
-        if(valmin is None):
-            if(self._valmin is None):
-                raise ValueError('The current minimal value of parameter "%s" '
+        if valmin is None:
+            if self._valmin is None:
+                raise ValueError(
+                    f'The current minimal value of parameter "{self._name}" '
                     'is not set. So it must be defined through the valmin '
-                    'argument!'%(self._name))
+                    'argument!')
             valmin = self._valmin
-        if(valmax is None):
-            if(self._valmax is None):
-                raise ValueError('The current maximal value of parameter "%s" '
+        if valmax is None:
+            if self._valmax is None:
+                raise ValueError(
+                    f'The current maximal value of parameter "{self._name}" '
                     'is not set. So it must be defined through the valmax '
-                    'argument!'%(self._name))
+                    'argument!')
             valmax = self._valmax
 
         self._isfixed = False
@@ -380,17 +407,19 @@ class ParameterSet(
             The newly created ParameterSet instance that holds the union of the
             parameters provided by all the ParameterSet instances.
         """
-        if(not issequenceof(paramsets, ParameterSet)):
-            raise TypeError('The arguments of the union static function must '
-                'be instances of ParameterSet!')
-        if(not len(paramsets) >= 1):
-            raise ValueError('At least 1 ParameterSet instance must be '
-                'provided to the union static function!')
+        if not issequenceof(paramsets, ParameterSet):
+            raise TypeError(
+                'The arguments of the union static function must be instances '
+                'of ParameterSet!')
+        if len(paramsets) == 0:
+            raise ValueError(
+                'At least 1 ParameterSet instance must be provided to the '
+                'union static function!')
 
         paramset = ParameterSet(params=paramsets[0])
         for paramset_i in paramsets[1:]:
             for param in paramset_i._params:
-                if(not paramset.has_param(param)):
+                if not paramset.has_param(param):
                     paramset.add_param(param)
 
         return paramset
@@ -427,12 +456,13 @@ class ParameterSet(
         self._fixed_param_values = np.empty((0,), dtype=np.float64)
 
         # Add the initial Parameter instances.
-        if(params is not None):
-            if(isinstance(params, Parameter)):
+        if params is not None:
+            if isinstance(params, Parameter):
                 params = [params]
-            if(not issequenceof(params, Parameter)):
-                raise TypeError('The params argument must be None, an instance '
-                    'of Parameter, or a sequence of Parameter instances!')
+            if not issequenceof(params, Parameter):
+                raise TypeError(
+                    'The params argument must be None, an instance of '
+                    'Parameter, or a sequence of Parameter instances!')
             for param in params:
                 self.add_param(param)
 
@@ -535,11 +565,15 @@ class ParameterSet(
         initial values of all the global floating parameters.
         """
         floating_params = self.floating_params
-        if(len(floating_params) == 0):
+
+        if len(floating_params) == 0:
             return np.empty((0,), dtype=np.float64)
-        return np.array(
-            [ param.initial
-             for param in floating_params ], dtype=np.float64)
+
+        initials = np.array(
+            [param.initial for param in floating_params],
+            dtype=np.float64)
+
+        return initials
 
     @property
     def floating_param_bounds(self):
@@ -547,11 +581,15 @@ class ParameterSet(
         boundaries for all the floating parameters.
         """
         floating_params = self.floating_params
-        if(len(floating_params) == 0):
-            return np.empty((0,2), dtype=np.float64)
-        return np.array(
-            [ (param.valmin, param.valmax)
-             for param in floating_params ], dtype=np.float64)
+
+        if len(floating_params) == 0:
+            return np.empty((0, 2), dtype=np.float64)
+
+        bounds = np.array(
+            [(param.valmin, param.valmax) for param in floating_params],
+            dtype=np.float64)
+
+        return bounds
 
     def __contains__(self, param_name):
         """Implements the ``param_name in self`` expression. It calls the
@@ -585,9 +623,9 @@ class ParameterSet(
         """Creates and returns a pretty string representation of this
         ParameterSet instance.
         """
-        s = '%s: %d parameters (%d floating, %d fixed) {'%(
-            classname(self), self.n_params, self.n_floating_params,
-            self.n_fixed_params)
+        s = (f'{classname(self)}: {self.n_params} parameters '
+             f'({self.n_floating_params} floating, '
+             f'{self.n_fixed_params} fixed) ''{')
         for param in self._params:
             s += '\n'
             s += display.add_leading_text_line_padding(
@@ -656,8 +694,10 @@ class ParameterSet(
             The numpy 1D ndarray holding the generated random initial values.
         """
         vb = self.floating_param_bounds
+
         # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound).
-        ri = vb[:,0] + rss.random.uniform(size=vb.shape[0])*(vb[:,1] - vb[:,0])
+        ri = (vb[:, 0] +
+              rss.random.uniform(size=vb.shape[0])*(vb[:, 1] - vb[:, 0]))
 
         return ri
 
@@ -717,28 +757,29 @@ class ParameterSet(
         self._fixed_param_values = np.empty((0,), dtype=np.float64)
         for (pidx, param) in enumerate(self._params):
             pname = param.name
-            if(pname in fix_params_keys):
+            if pname in fix_params_keys:
                 # The parameter of name `pname` should get fixed.
-                if(param.isfixed is True):
-                    raise ValueError('The parameter "%s" is already a fixed '
-                        'parameter!'%(pname))
+                if param.isfixed is True:
+                    raise ValueError(
+                        f'The parameter "{pname}" is already a fixed '
+                        'parameter!')
                 initial = fix_params[pname]
                 param.make_fixed(initial)
                 self._params_fixed_mask[pidx] = True
-                self._fixed_param_name_list += [ pname ]
+                self._fixed_param_name_list += [pname]
                 self._fixed_param_values = np.concatenate(
                     (self._fixed_param_values, [param.value]))
                 self._fixed_param_name_to_idx[pname] = len(
                     self._fixed_param_name_list) - 1
             else:
-                if(param.isfixed):
-                    self._fixed_param_name_list += [ pname ]
+                if param.isfixed:
+                    self._fixed_param_name_list += [pname]
                     self._fixed_param_values = np.concatenate(
                         (self._fixed_param_values, [param.value]))
                     self._fixed_param_name_to_idx[pname] = len(
                         self._fixed_param_name_list) - 1
                 else:
-                    self._floating_param_name_list += [ pname ]
+                    self._floating_param_name_list += [pname]
                     self._floating_param_name_to_idx[pname] = len(
                         self._floating_param_name_list) - 1
 
@@ -753,14 +794,14 @@ class ParameterSet(
             floating. The format of a dictionary's entry can be one of the
             following formats:
 
-                - None
+                ``None``
                     The parameter's initial, minimal and maximal value should be
                     taken from the parameter's current settings.
-                - initial : float
+                initial : float
                     The parameter's initial value should be set to the given
                     value. The minimal and maximal values of the parameter will
                     be taken from the parameter's current settings.
-                - (initial, valmin, valmax)
+                (initial, valmin, valmax)
                     The parameter's initial value, minimal and maximal value
                     should be set to the given values. If `initial` is set to
                     `None`, the parameter's current value will be used as
@@ -775,9 +816,9 @@ class ParameterSet(
             """Parses the given float_param dictionary entry into initial,
             valmin, and valmax values.
             """
-            if(e is None):
+            if e is None:
                 return (None, None, None)
-            if(issequence(e)):
+            if issequence(e):
                 return (e[0], e[1], e[2])
             return (e, None, None)
 
@@ -789,27 +830,28 @@ class ParameterSet(
         self._fixed_param_values = np.empty((0,), dtype=np.float64)
         for (pidx, param) in enumerate(self._params):
             pname = param.name
-            if(pname in float_params_keys):
+            if pname in float_params_keys:
                 # The parameter of name `pname` should get set floating.
-                if(param.isfixed is False):
-                    raise ValueError('The parameter "%s" is already a floating '
-                        'parameter!'%(pname))
+                if param.isfixed is False:
+                    raise ValueError(
+                        f'The parameter "{pname}" is already a floating '
+                        'parameter!')
                 (initial, valmin, valmax) = _parse_float_param_dict_entry(
                     float_params[pname])
                 param.make_floating(initial, valmin, valmax)
                 self._params_fixed_mask[pidx] = False
-                self._floating_param_name_list += [ pname ]
+                self._floating_param_name_list += [pname]
                 self._floating_param_name_to_idx[pname] = len(
                     self._floating_param_name_list) - 1
             else:
-                if(param.isfixed):
-                    self._fixed_param_name_list += [ pname ]
+                if param.isfixed:
+                    self._fixed_param_name_list += [pname]
                     self._fixed_param_values = np.concatenate(
                         (self._fixed_param_values, [param.value]))
                     self._fixed_param_name_to_idx[pname] = len(
                         self._fixed_param_name_list) - 1
                 else:
-                    self._floating_param_name_list += [ pname ]
+                    self._floating_param_name_list += [pname]
                     self._floating_param_name_to_idx[pname] = len(
                         self._floating_param_name_list) - 1
 
@@ -857,37 +899,41 @@ class ParameterSet(
             If given parameter is already present in the set. The check is
             performed based on the parameter name.
         """
-        if(not isinstance(param, Parameter)):
-            raise TypeError('The param argument must be an instance of '
-                'Parameter!')
+        if not isinstance(param, Parameter):
+            raise TypeError(
+                'The param argument must be an instance of Parameter! '
+                f'Its current type is {classname(param)}.')
 
-        if(self.has_param(param)):
-            raise KeyError('The parameter named "%s" was already added to the '
-                'parameter set!'%(param.name))
+        if self.has_param(param):
+            raise KeyError(
+                f'The parameter named "{param.name}" was already added to the '
+                'parameter set!')
 
         param_fixed_mask = True if param.isfixed else False
 
-        if(atfront):
+        if atfront:
             # Add parameter at front of parameter list.
             self._params = np.concatenate(
                 ([param], self._params))
             self._params_fixed_mask = np.concatenate(
                 ([param_fixed_mask], self._params_fixed_mask))
-            if(param.isfixed):
+            if param.isfixed:
                 self._fixed_param_name_list = (
                     [param.name] + self._fixed_param_name_list)
                 self._fixed_param_values = np.concatenate(
                     ([param.value], self._fixed_param_values))
                 # Shift the index of all fixed parameters.
-                self._fixed_param_name_to_idx = dict([ (k,v+1)
-                    for (k,v) in self._fixed_param_name_to_idx.items() ])
+                self._fixed_param_name_to_idx = dict(
+                    [(k, v+1)
+                     for (k, v) in self._fixed_param_name_to_idx.items()])
                 self._fixed_param_name_to_idx[param.name] = 0
             else:
                 self._floating_param_name_list = (
                     [param.name] + self._floating_param_name_list)
                 # Shift the index of all floating parameters.
-                self._floating_param_name_to_idx = dict([ (k,v+1)
-                    for (k,v) in self._floating_param_name_to_idx.items() ])
+                self._floating_param_name_to_idx = dict(
+                    [(k, v+1)
+                     for (k, v) in self._floating_param_name_to_idx.items()])
                 self._floating_param_name_to_idx[param.name] = 0
         else:
             # Add parameter at back of parameter list.
@@ -895,7 +941,7 @@ class ParameterSet(
                 (self._params, [param]))
             self._params_fixed_mask = np.concatenate(
                 (self._params_fixed_mask, [param_fixed_mask]))
-            if(param.isfixed):
+            if param.isfixed:
                 self._fixed_param_name_list = (
                     self._fixed_param_name_list + [param.name])
                 self._fixed_param_values = np.concatenate(
@@ -925,8 +971,8 @@ class ParameterSet(
             ``True`` if the given parameter is present in this parameter set,
             ``False`` otherwise.
         """
-        if((param.name in self._floating_param_name_list) or
-           (param.name in self._fixed_param_name_list)):
+        if (param.name in self._floating_param_name_list) or\
+           (param.name in self._fixed_param_name_list):
             return True
 
         return False
@@ -1084,26 +1130,28 @@ class ParameterGrid(object):
             number of decimals of the first grid value and the number of
             decimals of the delta value.
         """
-        if(delta is None):
+        if delta is None:
             # We need to take the mean of all the "equal" differences in order
             # to smooth out unlucky rounding issues of a particular difference.
             delta = np.mean(np.diff(grid))
 
-        delta = float_cast(delta, 'The delta argument must be castable to '
-            'type float!')
+        delta = float_cast(
+            delta,
+            'The delta argument must be castable to type float!')
         self._delta = np.float64(delta)
 
         # Determine the number of decimals of delta.
-        if(decimals is None):
+        if decimals is None:
             decimals_value = get_number_of_float_decimals(grid[0])
             decimals_delta = get_number_of_float_decimals(delta)
             decimals = int(np.max((decimals_value, decimals_delta)))
-        if(not isinstance(decimals, int)):
-            raise TypeError('The decimals argument must be an instance of '
-                'type int!')
-        if(decimals > 16):
-            raise ValueError('The maximal number of decimals is 16! Maybe you '
-                'should consider log-space!?')
+        if not isinstance(decimals, int):
+            raise TypeError(
+                'The decimals argument must be an instance of type int!')
+        if decimals > 16:
+            raise ValueError(
+                'The maximal number of decimals is 16! Maybe you should '
+                'consider log-space!?')
 
         self.name = name
         self._decimals = decimals
@@ -1126,10 +1174,12 @@ class ParameterGrid(object):
         """The name of the parameter.
         """
         return self._name
+
     @name.setter
     def name(self, name):
-        if(not isinstance(name, str)):
-            raise TypeError('The name property must be of type str!')
+        if not isinstance(name, str):
+            raise TypeError(
+                'The name property must be of type str!')
         self._name = name
 
     @property
@@ -1143,14 +1193,17 @@ class ParameterGrid(object):
         """The numpy.ndarray with the grid values of the parameter.
         """
         return self._grid
+
     @grid.setter
     def grid(self, arr):
-        if(not issequence(arr)):
-            raise TypeError('The grid property must be a sequence!')
-        if(not isinstance(arr, np.ndarray)):
+        if not issequence(arr):
+            raise TypeError(
+                'The grid property must be a sequence!')
+        if not isinstance(arr, np.ndarray):
             arr = np.array(arr, dtype=np.float64)
-        if(arr.ndim != 1):
-            raise ValueError('The grid property must be a 1D numpy.ndarray!')
+        if arr.ndim != 1:
+            raise ValueError(
+                'The grid property must be a 1D numpy.ndarray!')
         self._grid = self.round_to_nearest_grid_point(arr)
 
     @property
@@ -1164,10 +1217,12 @@ class ParameterGrid(object):
         """The lower bound of the parameter grid.
         """
         return self._lower_bound
+
     @lower_bound.setter
     def lower_bound(self, v):
-        v = float_cast(v, 'The lower_bound property must be castable to type '
-            'float!')
+        v = float_cast(
+            v,
+            'The lower_bound property must be castable to type float!')
         self._lower_bound = np.around(np.float64(v), self._decimals)
 
     @property
@@ -1227,8 +1282,9 @@ class ParameterGrid(object):
         gp = self._lower_bound + (np.around(floatD % 1, 0) + intD)*self._delta
         gp = np.around(gp, self._decimals)
 
-        if(scalar_input):
+        if scalar_input:
             return gp.item()
+
         return gp
 
     def round_to_lower_grid_point(self, value):
@@ -1254,8 +1310,9 @@ class ParameterGrid(object):
         gp = self._lower_bound + intD*self._delta
         gp = np.around(gp, self._decimals)
 
-        if(scalar_input):
+        if scalar_input:
             return gp.item()
+
         return gp
 
     def round_to_upper_grid_point(self, value):
@@ -1281,8 +1338,9 @@ class ParameterGrid(object):
         gp = self._lower_bound + (intD + 1)*self._delta
         gp = np.around(gp, self._decimals)
 
-        if(scalar_input):
+        if scalar_input:
             return gp.item()
+
         return gp
 
 
@@ -1298,8 +1356,8 @@ class ParameterGridSet(
 
         Parameters
         ----------
-        param_grids : sequence of ParameterGrid instances | ParameterGrid instance | None
-            The ParameterGrid instances this ParameterGridSet instance should
+        param_grids : sequence of instance of ParameterGrid | instance of ParameterGrid | None
+            The ParameterGrid instances this instance of ParameterGridSet should
             get initialized with.
         """
         super().__init__(
@@ -1325,13 +1383,13 @@ class ParameterGridSet(
         """(read-only) The list of parameter dictionaries constructed from all
         permutations of all the parameter values.
         """
-        param_grids = [ paramgrid.grid for paramgrid in self.objects ]
+        param_grids = [paramgrid.grid for paramgrid in self.objects]
 
         dict_list = [
-            dict(
-                [ (p_i, t_i)
-                  for (p_i, t_i) in zip(self.name_list, tup)
-                ])
+            dict([
+                (p_i, t_i)
+                for (p_i, t_i) in zip(self.name_list, tup)
+            ])
             for tup in itertools.product(*param_grids)
         ]
 
@@ -1399,7 +1457,7 @@ class ParameterModelMapper(
 
         Parameters
         ----------
-        models : sequence of Model instances.
+        models : sequence of instance of Model.
             The sequence of Model instances the parameter mapper can map global
             parameters to.
         """
@@ -1416,10 +1474,9 @@ class ParameterModelMapper(
 
         # Define the attribute holding the boolean mask of the models that are
         # source models.
-        self._source_model_mask = np.array([
-            isinstance(model, SourceModel)
-                for model in self._models
-            ], dtype=bool)
+        self._source_model_mask = np.array(
+            [isinstance(model, SourceModel) for model in self._models],
+            dtype=bool)
 
         # Define a (n_models, n_global_params)-shaped numpy ndarray of str
         # objects that will hold the local model parameter names of the global
@@ -1479,15 +1536,15 @@ class ParameterModelMapper(
     def unique_model_param_names(self):
         """(read-only) The unique parameters names of all the models.
         """
-        m = self._model_param_names != None
+        m = self._model_param_names != np.array(None)
         return np.unique(self._model_param_names[m])
 
     @property
     def unique_source_param_names(self):
         """(read-only) The unique parameter names of the sources.
         """
-        src_param_names = self._model_param_names[self._source_model_mask,...]
-        m = src_param_names != None
+        src_param_names = self._model_param_names[self._source_model_mask, ...]
+        m = src_param_names != np.array(None)
         return np.unique(src_param_names[m])
 
     def __str__(self):
@@ -1512,23 +1569,25 @@ class ParameterModelMapper(
         s += '' if n_sources == 1 else 's'
         s += ')'
 
-        if(n_global_params == 0):
+        if n_global_params == 0:
             return s
 
         s1 = 'Parameters:'
         s += '\n' + display.add_leading_text_line_padding(
             display.INDENTATION_WIDTH, s1)
-        for (pidx,param) in enumerate(self._global_paramset.params):
-            if(param.isfixed):
-                pstate = 'fixed (%.3f)'%(
-                    param.initial)
+        for (pidx, p) in enumerate(self._global_paramset.params):
+            if p.isfixed:
+                pstate = (
+                    f'fixed ({p.initial:g})'
+                )
             else:
-                pstate = 'floating (%.3f <= %.3f <= %.3f)'%(
-                    param.valmin, param.initial, param.valmax)
-            ps = '\n%s [%s]\n'%(param.name, pstate)
+                pstate = (
+                    f'floating ({p.valmin:g} <= {p.initial:g} <= {p.valmax:g})'
+                )
+            ps = f'\n{p.name} [{pstate}]\n'
 
             ps1 = 'in models:\n'
-            for (midx, mpname) in enumerate(self._model_param_names[:,pidx]):
+            for (midx, mpname) in enumerate(self._model_param_names[:, pidx]):
                 if mpname is not None:
                     ps1 += '- ' + self._models[midx].name + ': ' + mpname + "\n"
 
@@ -1556,7 +1615,7 @@ class ParameterModelMapper(
             The name of the local model parameter. It is ``None``, if the given
             global parameter is not mapped to the given model.
         """
-        param_name = self._model_param_names[model_idx,gp_idx]
+        param_name = self._model_param_names[model_idx, gp_idx]
 
         return param_name
 
@@ -1681,41 +1740,44 @@ class ParameterModelMapper(
         if isinstance(model_param_names, str):
             model_param_names = np.array([model_param_names]*len(self._models))
         if not issequenceof(model_param_names, str):
-            raise TypeError('The model_param_names argument must be None, an '
-                'instance of str, or a sequence of instances of str!')
+            raise TypeError(
+                'The model_param_names argument must be None, an instance of '
+                'str, or a sequence of instances of str!')
 
         if models is None:
             models = self._models
-        models = ModelCollection.cast(models,
+        models = ModelCollection.cast(
+            models,
             'The models argument must be castable to an instance of '
             'ModelCollection!')
         # Make sure that the user did not provide an empty sequence.
         if len(models) == 0:
-            raise ValueError('The sequence of models, to which the parameter '
-                'maps, cannot be empty!')
+            raise ValueError(
+                'The sequence of models, to which the parameter maps, cannot '
+                'be empty!')
 
         # Get the list of model indices to which the parameter maps.
         mask = np.zeros((self.n_models,), dtype=np.bool_)
-        for ((midx,model), applied_model) in itertools.product(
+        for ((midx, model), applied_model) in itertools.product(
                 enumerate(self._models), models):
-            if(applied_model.id == model.id):
+            if applied_model.id == model.id:
                 mask[midx] = True
 
         # Check that the model parameter name is not already defined for any of
         # the given to-be-mapped models.
         for midx in np.arange(self.n_models)[mask]:
             mpnames = self._model_param_names[midx][
-                self._model_param_names[midx] != None]
-            if(model_param_names[midx] in mpnames):
-                raise KeyError('The model parameter "%s" is already defined '
-                    'for model "%s"!'%(model_param_names[midx],
-                    self._models[midx].name))
+                self._model_param_names[midx] != np.array(None)]
+            if model_param_names[midx] in mpnames:
+                raise KeyError(
+                    f'The model parameter "{model_param_names[midx]}" is '
+                    f'already defined for model "{self._models[midx].name}"!')
 
         self._global_paramset.add_param(param)
 
         entry = np.where(mask, model_param_names, None)
         self._model_param_names = np.hstack(
-            (self._model_param_names, entry[np.newaxis,:].T))
+            (self._model_param_names, entry[np.newaxis, :].T))
 
         return self
 
@@ -1756,7 +1818,7 @@ class ParameterModelMapper(
 
         # Get the model parameter mask that masks the global parameters for
         # the requested model.
-        m_gp_mask = self._model_param_names[midx] != None
+        m_gp_mask = self._model_param_names[midx] != np.array(None)
 
         _model_param_names = self._model_param_names
         _global_paramset = self._global_paramset
@@ -1766,26 +1828,31 @@ class ParameterModelMapper(
         # Create the array of local parameter names that belong to the
         # requested model, where the floating parameters are before the fixed
         # parameters.
-        model_param_names = np.concatenate(
-            (_model_param_names[midx,
+        model_param_names = np.concatenate((
+            _model_param_names[
+                midx,
                 gflp_mask & m_gp_mask],
-             _model_param_names[midx,
+            _model_param_names[
+                midx,
                 gfxp_mask & m_gp_mask]
-            ))
+        ))
 
         # Create the array of parameter values that belong to the requested
         # model, where floating parameters are before the fixed parameters.
         model_param_values = np.concatenate((
             gflp_values[m_gp_mask[gflp_mask]],
             _global_paramset.fixed_param_values[m_gp_mask[gfxp_mask]]
-            ))
+        ))
 
         model_param_dict = dict(
             zip(model_param_names, model_param_values))
 
         return model_param_dict
 
-    def create_src_params_recarray(self, gflp_values, sources=None):
+    def create_src_params_recarray(
+            self,
+            gflp_values,
+            sources=None):
         """Creates a numpy record ndarray with a field for each local source
         parameter name and parameter's value. In addition each parameter field
         ``<name>`` has a field named ``<<name>:gpidx>`` which holds the index
@@ -1865,15 +1932,15 @@ class ParameterModelMapper(
         for (i, smidx) in enumerate(smidxs):
             # Get the mask that selects the global parameters for the requested
             # source.
-            src_gp_mask = _model_param_names[smidx] != None
+            src_gp_mask = _model_param_names[smidx] != np.array(None)
 
             # Create the array of local parameter names that belong to the
             # requested model, where the floating parameters are before the
             # fixed parameters.
-            model_param_names = np.concatenate(
-                (_model_param_names[smidx, gflp_mask & src_gp_mask],
-                 _model_param_names[smidx, gfxp_mask & src_gp_mask]
-                ))
+            model_param_names = np.concatenate((
+                _model_param_names[smidx, gflp_mask & src_gp_mask],
+                _model_param_names[smidx, gfxp_mask & src_gp_mask]
+            ))
 
             # Create the array of local parameter values that belong to the
             # requested model, where the floating parameters are before the
@@ -1883,15 +1950,14 @@ class ParameterModelMapper(
                     src_gp_mask[gflp_mask]],
                 _global_paramset.fixed_param_values[
                     src_gp_mask[gfxp_mask]]
-                ))
+            ))
 
             # Create the array of the global parameter indices.
             gpidxs = np.arange(len(_global_paramset))
-            model_gp_idxs = np.concatenate(
-                (gpidxs[gflp_mask & src_gp_mask] + 1,
-                 -gpidxs[gfxp_mask & src_gp_mask] - 1,
-                )
-            )
+            model_gp_idxs = np.concatenate((
+                gpidxs[gflp_mask & src_gp_mask] + 1,
+                -gpidxs[gfxp_mask & src_gp_mask] - 1,
+            ))
 
             # Loop over the local parameters of the source and fill the
             # params record array.
@@ -1945,13 +2011,13 @@ class ParameterModelMapper(
             np.nan,
             dtype=[
                 (name, np.float)
-                    for name in self.unique_source_param_names
+                for name in self.unique_source_param_names
             ])
 
         for (i, smidx) in enumerate(smidxs):
             # Get the model parameter mask that selects the global parameters
             # for the requested model.
-            mask = self._model_param_names[smidx] != None
+            mask = self._model_param_names[smidx] != np.array(None)
 
             # Create the array of parameter names that belong to the requested
             # model, where floating parameters are before the fixed parameters.
