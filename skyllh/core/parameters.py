@@ -1,36 +1,34 @@
 # -*- coding: utf-8 -*-
 
-import abc
 import itertools
 import numpy as np
 from copy import deepcopy
 
-from skyllh.core import display
+from skyllh.core import (
+    display,
+)
 from skyllh.core.model import (
     Model,
     ModelCollection,
     SourceModel,
-    SourceModelCollection,
 )
 from skyllh.core.py import (
     NamedObjectCollection,
     bool_cast,
     classname,
-    const,
     float_cast,
     get_number_of_float_decimals,
     int_cast,
     issequence,
     issequenceof,
-    make_dict_hash,
-    str_cast,
-)
-from skyllh.core.random import (
-    RandomStateService,
 )
 
 
-def make_linear_parameter_grid_1d(name, low, high, delta):
+def make_linear_parameter_grid_1d(
+        name,
+        low,
+        high,
+        delta):
     """Utility function to create a ParameterGrid object for a 1-dimensional
     linear parameter grid.
 
@@ -362,7 +360,8 @@ class Parameter(object):
         return self._value
 
 
-class ParameterSet(object):
+class ParameterSet(
+        object):
     """This class holds a set of Parameter instances.
     """
     @staticmethod
@@ -473,7 +472,7 @@ class ParameterSet(object):
     def fixed_params_idxs(self):
         """The numpy ndarray holding the indices of the fixed parameters.
         """
-        idxs = np.argwhere(self._params_fixed_mask == True).flatten()
+        idxs = np.argwhere(self._params_fixed_mask).flatten()
         return idxs
 
     @property
@@ -500,7 +499,7 @@ class ParameterSet(object):
     def floating_params_idxs(self):
         """The numpy ndarray holding the indices of the floating parameters.
         """
-        idxs = np.argwhere(self.floating_params_mask == True).flatten()
+        idxs = np.argwhere(self.floating_params_mask).flatten()
         return idxs
 
     @property
@@ -979,195 +978,6 @@ class ParameterSet(object):
         return params_dict
 
 
-class ParameterSetArray(object):
-    """This class is DEPRECATED!
-    This class provides a data holder for an array of ParameterSet instances.
-    Given an array of global floating parameter values, it can split that array
-    into floating parameter value sub arrays, one for each ParameterSet instance
-    of this ParameterSetArray instance. This functionality is required in
-    order to be able to map the global floating parameter values from the
-    minimizer to their parameter names.
-    """
-    def __init__(self, paramsets):
-        """Creates a new ParameterSetArray instance, which will hold a list of
-        constant ParameterSet instances.
-
-        Parameters
-        ----------
-        paramsets : const instance of ParameterSet | sequence of const instances
-                of ParameterSet
-            The sequence of constant ParameterSet instances holding the global
-            parameters.
-
-        Raises
-        ------
-        TypeError
-            If the given paramsets argument ist not a sequence of constant
-            instances of ParameterSet.
-        """
-        super(ParameterSetArray, self).__init__()
-
-        if(isinstance(paramsets, ParameterSet)):
-            paramsets = [paramsets]
-        if(not issequenceof(paramsets, ParameterSet, const)):
-            raise TypeError('The paramsets argument must be a constant '
-                'instance of ParameterSet or a sequence of constant '
-                'ParameterSet instances!')
-        self._paramset_list = list(paramsets)
-
-        # Calculate the total number of parameters hold by this
-        # ParameterSetArray instance.
-        self._n_params = np.sum([paramset.n_params
-            for paramset in self._paramset_list])
-
-        # Calculate the total number of fixed parameters hold by this
-        # ParameterSetArray instance.
-        self._n_fixed_params = np.sum([paramset.n_fixed_params
-            for paramset in self._paramset_list])
-
-        # Calculate the total number of floating parameters hold by this
-        # ParameterSetArray instance.
-        self._n_floating_params = np.sum([paramset.n_floating_params
-            for paramset in self._paramset_list])
-
-        # Determine the array of initial values of all floating parameters.
-        self._floating_param_initials = np.concatenate([
-            paramset.floating_param_initials
-            for paramset in self._paramset_list])
-
-        # Determine the array of bounds of all floating parameters.
-        self._floating_param_bounds = np.concatenate([
-            paramset.floating_param_bounds
-            for paramset in self._paramset_list])
-
-    @property
-    def paramset_list(self):
-        """(read-only) The list of ParameterSet instances holding the global
-        parameters.
-        """
-        return self._paramset_list
-
-    @property
-    def n_params(self):
-        """(read-only) The total number of parameters hold by this
-        ParameterSetArray instance.
-        """
-        return self._n_params
-
-    @property
-    def n_fixed_params(self):
-        """(read-only) The total number of fixed parameters hold by this
-        ParameterSetArray instance.
-        """
-        return self._n_fixed_params
-
-    @property
-    def n_floating_params(self):
-        """(read-only) The total number of floating parameters hold by this
-        ParameterSetArray instance.
-        """
-        return self._n_floating_params
-
-    @property
-    def floating_param_initials(self):
-        """(read-only) The 1D (n_floating_params,)-shaped ndarray holding the
-        initial values of all the floating parameters.
-        """
-        return self._floating_param_initials
-
-    @property
-    def floating_param_bounds(self):
-        """(read-only) The 2D (n_floating_params,2)-shaped ndarray holding the
-        boundaries for all the floating parameters.
-        """
-        return self._floating_param_bounds
-
-    def __str__(self):
-        """Creates and returns a pretty string representation of this
-        ParameterSetArray instance.
-        """
-        s = '%s: %d parameters (%d floating, %d fixed) {\n'%(
-            classname(self), self.n_params, self.n_floating_params,
-            self.n_fixed_params)
-
-        for (idx,paramset) in enumerate(self._paramset_list):
-            if(idx > 0):
-                s += '\n'
-            s += display.add_leading_text_line_padding(
-                display.INDENTATION_WIDTH,
-                str(paramset))
-
-        s += '\n}'
-
-        return s
-
-    def generate_random_floating_param_initials(self, rss):
-        """Generates a set of random initials for all global floating
-        parameters.
-        A new random initial is defined as
-
-            lower_bound + RAND * (upper_bound - lower_bound),
-
-        where RAND is a uniform random variable between 0 and 1.
-
-        Parameters
-        ----------
-        rss : RandomStateService instance
-            The RandomStateService instance that should be used for drawing
-            random numbers from.
-        """
-        vb = self.floating_param_bounds
-        # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound)
-        ri = vb[:,0] + rss.random.uniform(size=vb.shape[0])*(vb[:,1] - vb[:,0])
-
-        return ri
-
-    def split_floating_param_values(self, floating_param_values):
-        """Splits the given floating parameter values into their specific
-        ParameterSet part.
-
-        Parameters
-        ----------
-        floating_param_values : (n_floating_params,)-shaped 1D ndarray
-            The ndarray holding the values of all the floating parameters for
-            all ParameterSet instances. The order must match the order of
-            ParameterSet instances and their order of floating parameters.
-
-        Returns
-        -------
-        floating_param_values_list : list of (n_floating_params,)-shaped 1D
-                ndarray
-            The list of ndarray objects, where each ndarray holds only the
-            floating values of the particular ParameterSet instance. The order
-            matches the order of ParameterSet instances defined for this
-            ParameterSetArray.
-        """
-        if(len(floating_param_values) != self.n_floating_params):
-            raise ValueError('The number of given floating parameter values '
-                '(%d) does not match the total number of defined floating '
-                'parameters (%d)!'%(len(floating_param_values),
-                self.n_floating_params))
-
-        floating_param_values_list = []
-
-        offset = 0
-        for paramset in self._paramset_list:
-            n_floating_params = paramset.n_floating_params
-            floating_param_values_list.append(floating_param_values[
-                offset:offset+n_floating_params])
-            offset += n_floating_params
-
-        return floating_param_values_list
-
-    def update_fixed_param_value_cache(self):
-        """Updates the internal cache of the fixed parameter values. This method
-        has to be called whenever the values of the fixed Parameter instances
-        change.
-        """
-        for paramset in self._paramset_list:
-            paramset.update_fixed_param_value_cache()
-
-
 class ParameterGrid(object):
     """This class provides a data holder for a parameter that has a set of
     discrete values on a grid. Thus, the parameter has a value grid.
@@ -1252,7 +1062,6 @@ class ParameterGrid(object):
             grid=grid,
             delta=delta,
             decimals=decimals)
-
 
     def __init__(self, name, grid, delta=None, decimals=None):
         """Creates a new parameter grid.
@@ -1477,10 +1286,14 @@ class ParameterGrid(object):
         return gp
 
 
-class ParameterGridSet(NamedObjectCollection):
+class ParameterGridSet(
+        NamedObjectCollection):
     """Describes a set of parameter grids.
     """
-    def __init__(self, param_grids=None):
+    def __init__(
+            self,
+            param_grids=None,
+            **kwargs):
         """Constructs a new ParameterGridSet object.
 
         Parameters
@@ -1489,8 +1302,10 @@ class ParameterGridSet(NamedObjectCollection):
             The ParameterGrid instances this ParameterGridSet instance should
             get initialized with.
         """
-        super(ParameterGridSet, self).__init__(
-            objs=param_grids, obj_type=ParameterGrid)
+        super().__init__(
+            objs=param_grids,
+            obj_type=ParameterGrid,
+            **kwargs)
 
     @property
     def ndim(self):
@@ -1503,22 +1318,23 @@ class ParameterGridSet(NamedObjectCollection):
     def params_name_list(self):
         """(read-only) The list of the parameter names.
         """
-        return [ paramgrid.name for paramgrid in self.objects ]
+        return self.name_list
 
     @property
     def parameter_permutation_dict_list(self):
         """(read-only) The list of parameter dictionaries constructed from all
         permutations of all the parameter values.
         """
-        # Get the list of parameter names.
-        param_names = [ paramgrid.name for paramgrid in self.objects ]
-        # Get the list of parameter grids, in same order than the parameter
-        # names.
         param_grids = [ paramgrid.grid for paramgrid in self.objects ]
 
-        dict_list = [ dict([ (p_i, t_i)
-                            for (p_i, t_i) in zip(param_names, tup) ])
-                     for tup in itertools.product(*param_grids) ]
+        dict_list = [
+            dict(
+                [ (p_i, t_i)
+                  for (p_i, t_i) in zip(self.name_list, tup)
+                ])
+            for tup in itertools.product(*param_grids)
+        ]
+
         return dict_list
 
     def add_extra_lower_and_upper_bin(self):
@@ -1536,7 +1352,8 @@ class ParameterGridSet(NamedObjectCollection):
         return copy
 
 
-class ParameterModelMapper(object):
+class ParameterModelMapper(
+        object):
     """This class provides the parameter to model mapper.
     The parameter to model mapper provides the functionality to map a global
     parameter, usually a fit parameter, to a local parameter of a model, e.g.
@@ -2192,597 +2009,3 @@ class ParameterModelMapper(object):
             floating_param_values=gflp_values)
 
         return params_dict
-
-
-class FitParameter(object):
-    """This class is DEPRECATED! Use class Parameter instead!
-
-    This class describes a single fit parameter. A fit parameter has a name,
-    a value range, an initial value, and a current value. The current value will
-    be updated in the fitting process.
-    """
-    def __init__(self, name, valmin, valmax, initial):
-        """Creates a new fit parameter object.
-
-        Parameters
-        ----------
-        name : str
-            The name of the fit parameter.
-        valmin : float
-            The minimal bound value of the fit parameter.
-        valmax : float
-            The maximal bound value of the fit parameter.
-        initial : float
-            The (initial) value (guess) of the parameter, which will be used as
-            start point for the fitting procedure.
-        """
-        self.name = name
-        self.valmin = valmin
-        self.valmax = valmax
-        self.initial = initial
-
-        self.value = self.initial
-
-    @property
-    def name(self):
-        """The name of the fit parameter.
-        """
-        return self._name
-    @name.setter
-    def name(self, name):
-        if(not isinstance(name, str)):
-            raise TypeError('The name property must be of type str!')
-        self._name = name
-
-    @property
-    def valmin(self):
-        """The minimal bound value of the fit parameter.
-        """
-        return self._valmin
-    @valmin.setter
-    def valmin(self, v):
-        v = float_cast(v, 'The valmin property must castable to type float!')
-        self._valmin = v
-
-    @property
-    def valmax(self):
-        """The maximal bound value of the fit parameter.
-        """
-        return self._valmax
-    @valmax.setter
-    def valmax(self, v):
-        v = float_cast(v, 'The valmax property must be castable to type float!')
-        self._valmax = v
-
-    @property
-    def initial(self):
-        """The initial value of the fit parameter.
-        """
-        return self._initial
-    @initial.setter
-    def initial(self, v):
-        v = float_cast(v, 'The initial property must be castable to type float!')
-        self._initial = v
-
-    def as_linear_grid(self, delta):
-        """Creates a ParameterGrid instance with a linear grid with constant
-        grid value distances delta.
-
-        Parameters
-        ----------
-        delta : float
-            The constant distance between the grid values. By definition this
-            defines also the precision of the parameter values.
-
-        Returns
-        -------
-        grid : ParameterGrid instance
-            The ParameterGrid instance holding the grid values.
-        """
-        delta = float_cast(
-            delta, 'The delta argument must be castable to type float!')
-        grid = make_linear_parameter_grid_1d(
-            self._name, self._valmin, self._valmax, delta)
-        return grid
-
-
-class FitParameterSet(object):
-    """This class is DEPRECATED, use ParameterSet instead!
-
-    This class describes a set of FitParameter instances.
-    """
-    def __init__(self):
-        """Constructs a fit parameter set instance.
-        """
-        # Define the list of fit parameters.
-        # Define the (N_fitparams,)-shaped numpy array of FitParameter objects.
-        self._fitparams = np.empty((0,), dtype=np.object_)
-        # Define a list for the fit parameter names. This is for optimization
-        # purpose only.
-        self._fitparam_name_list = []
-
-    @property
-    def fitparams(self):
-        """The 1D ndarray holding the FitParameter instances.
-        """
-        return self._fitparams
-
-    @property
-    def fitparam_list(self):
-        """(read-only) The list of the global FitParameter instances.
-        """
-        return list(self._fitparams)
-
-    @property
-    def fitparam_name_list(self):
-        """(read-only) The list of the fit parameter names.
-        """
-        return self._fitparam_name_list
-
-    @property
-    def initials(self):
-        """(read-only) The 1D ndarray holding the initial values of all the
-        global fit parameters.
-        """
-        return np.array([ fitparam.initial
-                         for fitparam in self._fitparams ], dtype=np.float64)
-
-    @property
-    def bounds(self):
-        """(read-only) The 2D (N_fitparams,2)-shaped ndarray holding the
-        boundaries for all the global fit parameters.
-        """
-        return np.array([ (fitparam.valmin, fitparam.valmax)
-                         for fitparam in self._fitparams ], dtype=np.float64)
-
-    def copy(self):
-        """Creates a deep copy of this FitParameterSet instance.
-
-        Returns
-        -------
-        copy : FitParameterSet instance
-            The copied instance of this FitParameterSet instance.
-        """
-        copy = deepcopy(self)
-        return copy
-
-    def add_fitparam(self, fitparam, atfront=False):
-        """Adds the given FitParameter instance to the list of fit parameters.
-
-        Parameters
-        ----------
-        fitparam : instance of FitParameter
-            The fit parameter, which should get added.
-        atfront : bool
-            Flag if the fit parameter should be added at the front of the
-            parameter list. If set to False (default), it will be added at the
-            back.
-        """
-        if(not isinstance(fitparam, FitParameter)):
-            raise TypeError('The fitparam argument must be an instance of FitParameter!')
-
-        if(atfront):
-            # Add fit parameter at front of list.
-            self._fitparams = np.concatenate(([fitparam], self._fitparams))
-            self._fitparam_name_list = [fitparam.name] + self._fitparam_name_list
-        else:
-            # Add fit parameter at back of list.
-            self._fitparams = np.concatenate((self._fitparams, [fitparam]))
-            self._fitparam_name_list = self._fitparam_name_list + [fitparam.name]
-
-    def fitparam_values_to_dict(self, fitparam_values):
-        """Converts the given fit parameter values into a dictionary with the
-        fit parameter names and values.
-
-        Parameters
-        ----------
-        fitparam_values : 1D ndarray
-            The ndarray holding the fit parameter values in the order that the
-            fit parameters are defined.
-
-        Returns
-        -------
-        fitparam_dict : dict
-            The dictionary with the fit parameter names and values.
-        """
-        fitparam_dict = dict(zip(self._fitparam_name_list, fitparam_values))
-        return fitparam_dict
-
-    def fitparam_dict_to_values(self, fitparam_dict):
-        """Converts the given fit parameter dictionary into a 1D ndarray holding
-        the fit parameter values in the order the fit parameters are defined.
-
-        Parameters
-        ----------
-        fitparam_dict : dict
-            The dictionary with the fit parameter names and values.
-
-        Returns
-        -------
-        fitparam_values : 1D ndarray
-            The ndarray holding the fit parameter values in the order that the
-            fit parameters are defined.
-        """
-        fitparam_values = np.empty_like(self._fitparams, dtype=np.float64)
-        for (i, fitparam) in enumerate(self._fitparams):
-            fitparam_values[i] = fitparam_dict[fitparam.name]
-        return fitparam_values
-
-    def generate_random_initials(self, rss):
-        """Generates a set of random initials for all global fit parameters.
-        A new random initial is defined as
-
-            lower_bound + RAND * (upper_bound - lower_bound),
-
-        where RAND is a uniform random variable between 0 and 1.
-
-        Parameters
-        ----------
-        rss : RandomStateService instance
-            The RandomStateService instance that should be used for drawing
-            random numbers from.
-        """
-        vb = self.bounds
-        # Do random_initial = lower_bound + RAND * (upper_bound - lower_bound)
-        ri = vb[:,0] + rss.random.uniform(size=vb.shape[0])*(vb[:,1] - vb[:,0])
-
-        return ri
-
-
-class SourceFitParameterMapper(object, metaclass=abc.ABCMeta):
-    """This class is DEPRECATED! Use ParameterModelMapper instead!
-    This abstract base class defines the interface of the source fit
-    parameter mapper. This mapper provides the functionality to map a global fit
-    parameter to a source fit parameter.
-    """
-
-    def __init__(self):
-        """Constructor of the source fit parameter mapper.
-        """
-        self._fitparamset = FitParameterSet()
-
-        # Define the list of source parameter names, which map to the fit
-        # parameters.
-        # Define the (N_fitparams,)-shaped numpy array of str objects.
-        self._src_param_names = np.empty((0,), dtype=np.object_)
-
-    @property
-    def fitparamset(self):
-        """(read-only) The FitParameterSet instance holding the list of global
-        fit parameters.
-        """
-        return self._fitparamset
-
-    @property
-    def n_global_fitparams(self):
-        """(read-only) The number of defined global fit parameters.
-        """
-        return len(self._fitparamset.fitparams)
-
-    def get_src_fitparam_name(self, fitparam_idx):
-        """Returns the name of the source fit parameter for the given global fit
-        parameter index.
-
-        Parameters
-        ----------
-        fitparam_idx : int
-            The index of the global fit parameter.
-
-        Returns
-        -------
-        src_fitparam_name : str
-            The name of the source fit parameter.
-        """
-        return self._src_param_names[fitparam_idx]
-
-    @abc.abstractmethod
-    def def_fit_parameter(self, fit_param, src_param_name=None, sources=None):
-        """This method is supposed to define a new fit parameter that maps to a
-        given source fit parameter for a list of sources. If no list of sources
-        is given, it maps to all sources.
-
-        Parameters
-        ----------
-        fit_param : FitParameter
-            The FitParameter instance defining the fit parameter.
-        src_param_name : str | None
-            The name of the source parameter. It must match the name of a source
-            model property. If set to None (default) the name of the fit
-            parameter will be used.
-        sources : sequence of SourceModel | None
-            The sequence of SourceModel instances for which the fit parameter
-            applies. If None (the default) is specified, the fit parameter will
-            apply to all sources.
-        """
-        pass
-
-    @abc.abstractmethod
-    def get_src_fitparams(self, fitparam_values, src_idx=0):
-        """This method is supposed to create a dictionary of source fit
-        parameter names and values for the requested source based on the given
-        fit parameter values.
-
-        Parameters
-        ----------
-        fitparam_values : 1D ndarray
-            The array holding the current global fit parameter values.
-        src_idx : int
-            The index of the source for which the parameters should get
-            retrieved.
-
-        Returns
-        -------
-        src_fitparams : dict
-            The dictionary holding the translated source parameters that are
-            beeing fitted.
-        """
-        pass
-
-    @abc.abstractmethod
-    def get_fitparams_array(self, fitparam_values):
-        """This method is supposed to create a numpy record ndarray holding the
-        unique source fit parameter names as key and their value for each
-        source. The returned array must be (N_sources,)-shaped.
-
-        Parameters
-        ----------
-        fitparam_values : 1D ndarray
-            The array holding the current global fit parameter values.
-
-        Returns
-        -------
-        fitparams_arr : (N_sources,)-shaped numpy record ndarray | None
-            The numpy record ndarray holding the fit parameter names as keys
-            and their value for each source in each row.
-            None must be returned if no global fit parameters were defined.
-        """
-        pass
-
-
-class SingleSourceFitParameterMapper(SourceFitParameterMapper):
-    """This class is DEPRECATED! Use ParameterModelMapper instead!
-    This class provides the functionality to map the global fit parameters to
-    the source fit parameters of the single source. This class assumes a single
-    source, hence the mapping can be performed faster than in the multi-source
-    case.
-    """
-    def __init__(self):
-        """Constructs a new source fit parameter mapper for a single source.
-        """
-        super(SingleSourceFitParameterMapper, self).__init__()
-
-    def def_fit_parameter(self, fitparam, src_param_name=None):
-        """Define a new fit parameter that maps to a given source fit parameter.
-
-        Parameters
-        ----------
-        fitparam : FitParameter
-            The FitParameter instance defining the fit parameter.
-        src_param_name : str | None
-            The name of the source parameter. It must match the name of a source
-            model property. If set to None (default) the name of the fit
-            parameter will be used.
-        """
-        self._fitparamset.add_fitparam(fitparam)
-
-        if(src_param_name is None):
-            src_param_name = fitparam.name
-        if(not isinstance(src_param_name, str)):
-            raise TypeError('The src_param_name argument must be of type str!')
-
-        # Append the source parameter name to the internal array.
-        self._src_param_names = np.concatenate((self._src_param_names, [src_param_name]))
-
-    def get_src_fitparams(self, fitparam_values):
-        """Create a dictionary of source fit parameter names and values based on
-        the given fit parameter values.
-
-        Parameters
-        ----------
-        fitparam_values : 1D ndarray
-            The array holding the current global fit parameter values.
-
-        Returns
-        -------
-        src_fitparams : dict
-            The dictionary holding the translated source parameters that are
-            beeing fitted.
-            An empty dictionary is returned if no fit parameters were defined.
-        """
-        src_fitparams = dict(zip(self._src_param_names, fitparam_values))
-
-        return src_fitparams
-
-    def get_fitparams_array(self, fitparam_values):
-        """Creates a numpy record ndarray holding the fit parameters names as
-        key and their value for each source. The returned array is (1,)-shaped
-        since there is only one source defined for this mapper class.
-
-        Parameters
-        ----------
-        fitparam_values : 1D ndarray
-            The array holding the current global fit parameter values.
-
-        Returns
-        -------
-        fitparams_arr : (1,)-shaped numpy record ndarray | None
-            The numpy record ndarray holding the fit parameter names as keys
-            and their value for the one single source.
-            None is returned if no fit parameters were defined.
-        """
-        if(self.n_global_fitparams == 0):
-            return None
-
-        fitparams_arr = np.array([tuple(fitparam_values)],
-                                 dtype=[ (name, np.float64)
-                                        for name in self._src_param_names ])
-        return fitparams_arr
-
-
-class MultiSourceFitParameterMapper(SourceFitParameterMapper):
-    """This class is DEPRECATED! Use ParameterModelMapper instead!
-    This class provides the functionality to map the global fit parameters to
-    the source fit parameters of the sources.
-    Sometimes it's necessary to define a global fit parameter, which relates to
-    a source model fit parameter for a set of sources, while another global fit
-    parameter relates to the same source model fit parameter, but for another
-    set of sources.
-
-    At construction time this manager takes the collection of sources. Each
-    source gets an index, which is defined as the position of the source within
-    the collection.
-    """
-    def __init__(self, sources):
-        """Constructs a new source fit parameter mapper for multiple sources.
-
-        Parameters
-        ----------
-        sources : sequence of SourceModel
-            The sequence of SourceModel instances defining the list of sources.
-        """
-        super(MultiSourceFitParameterMapper, self).__init__()
-
-        self.sources = sources
-
-        # (N_fitparams, N_sources) shaped boolean ndarray defining what fit
-        # parameter applies to which source.
-        self._fit_param_2_src_mask = np.zeros(
-            (0, len(self.sources)), dtype=np.bool_)
-
-        # Define an array, which will hold the unique source parameter names.
-        self._unique_src_param_names = np.empty((0,), dtype=np.object_)
-
-    @property
-    def sources(self):
-        """The SourceModelCollection defining the sources.
-        """
-        return self._sources
-    @sources.setter
-    def sources(self, obj):
-        obj = SourceModelCollection.cast(
-            obj,
-            'The sources property must be castable to an instance of '
-            'SourceModelCollection!')
-        self._sources = obj
-
-    @property
-    def N_sources(self):
-        """(read-only) The number of sources.
-        """
-        return len(self._sources)
-
-    def def_fit_parameter(self, fitparam, src_param_name=None, sources=None):
-        """Defines a new fit parameter that maps to a given source parameter
-        for a list of sources. If no list of sources is given, it maps to all
-        sources.
-
-        Parameters
-        ----------
-        fitparam : FitParameter
-            The FitParameter instance defining the fit parameter.
-        src_param_name : str | None
-            The name of the source parameter. It must match the name of a source
-            model property. If set to None (default) the name of the fit
-            parameter will be used.
-        sources : SourceModelCollection | None
-            The instance of SourceModelCollection with the sources for which the
-            fit parameter applies. If None (the default) is specified, the fit
-            parameter will apply to all sources.
-        """
-        self._fitparamset.add_fitparam(fitparam)
-
-        if(src_param_name is None):
-            src_param_name = fitparam.name
-        if(not isinstance(src_param_name, str)):
-            raise TypeError('The src_param_name argument must be of type str!')
-
-        if(sources is None):
-            sources = self.sources
-        sources = SourceModelCollection.cast(
-            sources,
-            'The sources argument must be castable to an instance of '
-            'SourceModelCollection!')
-
-        # Append the source parameter name to the internal array and keep track
-        # of the unique names.
-        self._src_param_names = np.concatenate((self._src_param_names, [src_param_name]))
-        self._unique_src_param_names = np.unique(self._src_param_names)
-
-        # Get the list of source indices for which the fit parameter applies.
-        mask = np.zeros((len(self.sources),), dtype=np.bool_)
-        for ((idx,src), applied_src) in itertools.product(enumerate(self.sources), sources):
-            if(applied_src.id == src.id):
-                mask[idx] = True
-        self._fit_param_2_src_mask = np.vstack((self._fit_param_2_src_mask, mask))
-
-    def get_src_fitparams(self, fitparam_values, src_idx):
-        """Constructs a dictionary with the source parameters that are beeing
-        fitted. As values the given global fit parameter values will be used.
-        Hence, this method translates the global fit parameter values into the
-        source parameters.
-
-        Parameters
-        ----------
-        fitparam_values : 1D ndarray
-            The array holding the current global fit parameter values.
-        src_idx : int
-            The index of the source for which the parameters should get
-            retieved.
-
-        Returns
-        -------
-        src_fitparams : dict
-            The dictionary holding the translated source parameters that are
-            beeing fitted.
-        """
-        # Get the mask of global fit parameters that apply to the requested
-        # source.
-        fp_mask = self._fit_param_2_src_mask[:,src_idx]
-
-        # Get the source parameter names and values.
-        src_param_names = self._src_param_names[fp_mask]
-        src_param_values = fitparam_values[fp_mask]
-
-        src_fitparams = dict(zip(src_param_names, src_param_values))
-
-        return src_fitparams
-
-    def get_fitparams_array(self, fitparam_values):
-        """Creates a numpy record ndarray holding the fit parameters names as
-        key and their value for each source. The returned array is
-        (N_sources,)-shaped.
-
-        Parameters
-        ----------
-        fitparam_values : 1D ndarray
-            The array holding the current global fit parameter values.
-
-        Returns
-        -------
-        fitparams_arr : (N_sources,)-shaped numpy record ndarray | None
-            The numpy record ndarray holding the unique source fit parameter
-            names as keys and their value for each source per row.
-            None is returned if no fit parameters were defined.
-        """
-        if(self.n_global_fitparams == 0):
-            return None
-
-        fitparams_arr = np.empty((self.N_sources,),
-                                 dtype=[ (name, np.float64)
-                                         for name in self._unique_src_param_names ])
-
-        for src_idx in range(self.N_sources):
-            # Get the mask of global fit parameters that apply to the requested
-            # source.
-            fp_mask = self._fit_param_2_src_mask[:,src_idx]
-
-            # Get the source parameter names and values.
-            src_param_names = self._src_param_names[fp_mask]
-            src_param_values = fitparam_values[fp_mask]
-
-            # Fill the fit params array.
-            for (name, value) in zip(src_param_names, src_param_values):
-                fitparams_arr[name][src_idx] = value
-
-        return fitparams_arr
-
