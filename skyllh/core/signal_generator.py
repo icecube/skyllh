@@ -169,7 +169,7 @@ class SignalGenerator(SignalGeneratorBase):
         """
         n_datasets = len(self._dataset_list)
         n_sources = self._shg_mgr.n_sources
-        shg_list = self._shg_mgr.src_hypo_group_list
+        shg_list = self._shg_mgr.shg_list
         sig_candidates_dtype = [
             ('ds_idx', get_smallest_numpy_int_type((0, n_datasets))),
             ('ev_idx', get_smallest_numpy_int_type(
@@ -268,7 +268,7 @@ class SignalGenerator(SignalGeneratorBase):
         n_sources = self._shg_mgr.n_sources
         mu_fluxes = np.empty((n_sources,), dtype=np.float64)
 
-        shg_list = self._shg_mgr.src_hypo_group_list
+        shg_list = self._shg_mgr.shg_list
         mu_fluxes_idx_offset = 0
         for (shg_idx,shg) in enumerate(shg_list):
             fluxmodel = shg.fluxmodel
@@ -362,7 +362,7 @@ class SignalGenerator(SignalGeneratorBase):
             # current dataset.
             shg_idxs = np.unique(sig_events_meta[ds_mask]['shg_idx'])
             for shg_idx in shg_idxs:
-                shg = self._shg_mgr.src_hypo_group_list[shg_idx]
+                shg = self._shg_mgr.shg_list[shg_idx]
                 shg_mask = sig_events_meta['shg_idx'] == shg_idx
                 # Get the MC events for the drawn signal events.
                 ds_shg_mask = ds_mask & shg_mask

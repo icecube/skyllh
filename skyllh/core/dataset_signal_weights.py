@@ -96,7 +96,7 @@ class DatasetSignalWeights(object, metaclass=abc.ABCMeta):
             instance.
         """
         src_arr_list = []
-        for (gidx, shg) in enumerate(shg_mgr.src_hypo_group_list):
+        for (gidx, shg) in enumerate(shg_mgr.shg_list):
             src_arr_list.append(
                 detsigyield_arr[gidx, 0].sources_to_recarray(shg.source_list)
             )

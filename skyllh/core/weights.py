@@ -62,7 +62,7 @@ class SrcDetSigYieldWeightsService(object):
         """
         n_datasets = detsigyield_arr.shape[0]
         n_shgs = detsigyield_arr.shape[1]
-        shg_list = shg_mgr.src_hypo_group_list
+        shg_list = shg_mgr.shg_list
 
         src_recarray_list_list = []
         for ds_idx in range(n_datasets):
@@ -96,7 +96,7 @@ class SrcDetSigYieldWeightsService(object):
         """
         src_weight_array_list = [
             np.array([src.weight for src in shg.source_list])
-            for shg in shg_mgr.src_hypo_group_list
+            for shg in shg_mgr.shg_list
         ]
         return src_weight_array_list
 
@@ -246,8 +246,7 @@ class SrcDetSigYieldWeightsService(object):
 
         sidx = 0
         for (shg_idx, (shg, src_weights)) in enumerate(zip(
-                self.shg_mgr.src_hypo_group_list,
-                self._src_weight_array_list)):
+                self.shg_mgr.shg_list, self._src_weight_array_list)):
 
             shg_n_src = shg.n_sources
 

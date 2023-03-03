@@ -336,7 +336,7 @@ class Analysis(
         pbar = ProgressBar(
             self._shg_mgr.n_src_hypo_groups * len(self._dataset_list),
             parent=ppbar).start()
-        for (g, shg) in enumerate(self._shg_mgr.src_hypo_group_list):
+        for (g, shg) in enumerate(self._shg_mgr.shg_list):
             fluxmodel = shg.fluxmodel
             detsigyield_builder_list = shg.detsigyield_builder_list
 
@@ -1674,7 +1674,7 @@ class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
         # Change the source in the SourceHypoGroupManager instance.
         # Because this is a single source analysis, there can only be one source
         # hypothesis group defined.
-        self._shg_mgr.src_hypo_group_list[0].source_list[0] = source
+        self._shg_mgr.shg_list[0].source_list[0] = source
 
         self.change_shg_mgr(
             shg_mgr=self._shg_mgr)

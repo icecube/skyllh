@@ -236,14 +236,6 @@ class SourceHypoGroupManager(
         """
         return self._shg_list
 
-    @property
-    def src_hypo_group_list(self):
-        """DEPRECATED Use shg_list instead!
-        (read-only) The list of source hypothesis groups, i.e.
-        SourceHypoGroup instances.
-        """
-        return self.shg_list
-
     def _extend_sidx_to_gidx_gsidx_map_arr(self, shg):
         """Extends the source index to (group index, group source index) map
         array by one source hypo group.
