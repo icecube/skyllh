@@ -9,14 +9,16 @@ import os.path
 import sys
 from typing import Any, Dict
 
+from skyllh.core.py import (
+    issequenceof,
+)
+
 # Try to load the yaml package.
 YAML_LOADED = True
 try:
     import yaml
 except ImportError:
     YAML_LOADED = False
-
-from skyllh.core.py import issequenceof
 
 
 _BASECONFIG = {
@@ -110,7 +112,7 @@ class CFGClass(dict):
         yaml_file: str
             Path to yaml file containg the to-be-updated configuration items.
         """
-        if(YAML_LOADED):
+        if YAML_LOADED:
             yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
             self.update(yaml_config)
         else:
@@ -177,29 +179,29 @@ def set_internal_units(
         The internal unit that should be used for time.
         If set to ``None``, the unit is not changed.
     """
-    if(angle_unit is not None):
-        if(not isinstance(angle_unit, units.UnitBase)):
+    if angle_unit is not None:
+        if not isinstance(angle_unit, units.UnitBase):
             raise TypeError(
                 'The angle_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['angle'] = angle_unit
 
-    if(energy_unit is not None):
-        if(not isinstance(energy_unit, units.UnitBase)):
+    if energy_unit is not None:
+        if not isinstance(energy_unit, units.UnitBase):
             raise TypeError(
                 'The energy_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['energy'] = energy_unit
 
-    if(length_unit is not None):
-        if(not isinstance(length_unit, units.UnitBase)):
+    if length_unit is not None:
+        if not isinstance(length_unit, units.UnitBase):
             raise TypeError(
                 'The length_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['length'] = length_unit
 
-    if(time_unit is not None):
-        if(not isinstance(time_unit, units.UnitBase)):
+    if time_unit is not None:
+        if not isinstance(time_unit, units.UnitBase):
             raise TypeError(
                 'The time_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
@@ -222,7 +224,7 @@ def set_wd(path):
     wd : str
         The project's working directory.
     """
-    if(CFG['project']['working_directory'] in sys.path):
+    if CFG['project']['working_directory'] in sys.path:
         sys.path.remove(CFG['project']['working_directory'])
 
     wd = os.path.abspath(path)
@@ -242,9 +244,9 @@ def add_analysis_required_exp_data_field_names(fieldnames):
         The field name or sequence of field names that should get added for the
         experimental data.
     """
-    if(isinstance(fieldnames, str)):
+    if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
-    elif(not issequenceof(fieldnames, str)):
+    elif not issequenceof(fieldnames, str):
         raise TypeError(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
@@ -262,9 +264,9 @@ def set_analysis_required_exp_data_field_names(fieldnames):
     fieldnames : str | sequence of str
         The field name or sequence of field names for the experimental data.
     """
-    if(isinstance(fieldnames, str)):
+    if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
-    elif(not issequenceof(fieldnames, str)):
+    elif not issequenceof(fieldnames, str):
         raise TypeError(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
@@ -281,9 +283,9 @@ def set_analysis_required_mc_data_field_names(fieldnames):
     fieldnames : str | sequence of str
         The field name or sequence of field names for the monte-carlo data.
     """
-    if(isinstance(fieldnames, str)):
+    if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
-    elif(not issequenceof(fieldnames, str)):
+    elif not issequenceof(fieldnames, str):
         raise TypeError(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
