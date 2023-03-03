@@ -248,15 +248,25 @@ class ParameterSet_TestCase(unittest.TestCase):
     def test_n_floating_params(self):
         self.assertEqual(self.paramset.n_floating_params, 1)
 
-    def test_fixed_param_name_list(self):
-        names = self.paramset.fixed_param_name_list
+    def test_fixed_params_idxs(self):
+        idxs = self.paramset.fixed_params_idxs
+        self.assertEqual(len(idxs), 1)
+        np.testing.assert_equal(idxs, [0])
+
+    def test_fixed_params_name_list(self):
+        names = self.paramset.fixed_params_name_list
         self.assertEqual(len(names), 1)
         self.assertEqual(names, ['p0'])
 
-    def test_floating_param_name_list(self):
-        names = self.paramset.floating_param_name_list
+    def test_floating_params_name_list(self):
+        names = self.paramset.floating_params_name_list
         self.assertEqual(len(names), 1)
         self.assertEqual(names, ['p1'])
+
+    def test_floating_params_idxs(self):
+        idxs = self.paramset.floating_params_idxs
+        self.assertEqual(len(idxs), 1)
+        np.testing.assert_equal(idxs, [1])
 
     def test_fixed_param_values(self):
         values = self.paramset.fixed_param_values
@@ -499,7 +509,7 @@ class ParameterGridSet_TestCase(unittest.TestCase):
 
     def test_param_names(self):
         self.assertEqual(
-            self.paramgridset.param_names, ['gamma', 'Ecut'])
+            self.paramgridset.params_name_list, ['gamma', 'Ecut'])
 
     def test_parameter_permutation_dict_list(self):
         perm_dict_list = self.paramgridset.parameter_permutation_dict_list
