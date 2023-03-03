@@ -2,20 +2,27 @@
 
 import numpy as np
 
-from skyllh.core.py import classname
+from skyllh.core.py import (
+    classname,
+)
 
-class BinningDefinition(object):
+
+class BinningDefinition(
+        object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
     """
-    def __init__(self, name, binedges):
+    def __init__(
+            self,
+            name,
+            binedges):
         """Creates a new binning definition object.
 
         Parameters
         ----------
         name : str
             The name of the binning definition.
-        binedges : sequence
+        binedges : sequence of float
             The sequence of the bin edges, which should be used for the binning.
         """
         self.name = name
@@ -24,20 +31,23 @@ class BinningDefinition(object):
     def __str__(self):
         """Pretty string representation.
         """
-        s = '%s: %s\n'%(classname(self), self._name)
+        s = f'{classname(self)}: {self._name}\n'
         s += str(self._binedges)
         return s
 
     def __eq__(self, other):
         """Checks if object ``other`` is equal to this BinningDefinition object.
         """
-        if(not isinstance(other, BinningDefinition)):
-            raise TypeError('The other object in the equal comparison must be '
-                'an instance of BinningDefinition!')
-        if(self.name != other.name):
+        if not isinstance(other, BinningDefinition):
+            raise TypeError(
+                'The other object in the equal comparison must be an instance '
+                'of BinningDefinition! '
+                f'Its current type is {classname(other)}.')
+        if self.name != other.name:
             return False
-        if(np.any(self.binedges != other.binedges)):
+        if np.any(self.binedges != other.binedges):
             return False
+
         return True
 
     @property
@@ -46,10 +56,13 @@ class BinningDefinition(object):
         for all the different binning settings used within a season.
         """
         return self._name
+
     @name.setter
     def name(self, name):
-        if(not isinstance(name, str)):
-            raise TypeError("The name must be of type 'str'!")
+        if not isinstance(name, str):
+            raise TypeError(
+                'The name must be of type str! '
+                f'Its current type is {classname(name)}.')
         self._name = name
 
     @property
@@ -57,6 +70,7 @@ class BinningDefinition(object):
         """The numpy.ndarray holding the bin edges.
         """
         return self._binedges
+
     @binedges.setter
     def binedges(self, arr):
         arr = np.atleast_1d(arr)
@@ -148,8 +162,8 @@ class BinningDefinition(object):
 
         Returns
         -------
-        new_binning : BinningDefinition instance
-            The new BinningDefinition instance holding the binning subset.
+        binning : instance of BinningDefinition
+            The new instance of BinningDefinition holding the binning subset.
         """
 
         idxs = np.indices((len(self._binedges),))[0]
@@ -157,12 +171,12 @@ class BinningDefinition(object):
 
         idx_lower = np.min(idxs[m])
         # Include the lower edge of the bin the lower_edge value falls into.
-        if(self._binedges[idx_lower] > lower_edge):
+        if self._binedges[idx_lower] > lower_edge:
             idx_lower -= 1
 
         idx_upper = np.max(idxs[m])
         # Include the upper edge of the bin the upper_edge value falls into.
-        if(self._binedges[idx_upper] < upper_edge):
+        if self._binedges[idx_upper] < upper_edge:
             idx_upper += 1
 
         new_binedges = self._binedges[idx_lower:idx_upper+1]
@@ -181,8 +195,7 @@ class UsesBinning(object):
     a given object (that also uses binning) has the same binning.
     """
     def __init__(self, *args, **kwargs):
-        # Make sure that multiple inheritance can be used.
-        super(UsesBinning, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Define the list of binning definition objects and a name->list_index
         # mapping for faster access.
@@ -207,7 +220,7 @@ class UsesBinning(object):
 
         Parameters
         ----------
-        obj : class instance derived from UsesBinning
+        obj : instance of UsesBinning
             The object that should be checked for same binning.
 
         Returns
@@ -215,13 +228,15 @@ class UsesBinning(object):
         check : bool
             True if ``obj`` uses the same binning, False otherwise.
         """
-        if(not isinstance(obj, UsesBinning)):
-            raise TypeError('The obj argument must be an instance of '
-                'UsesBinning!')
+        if not isinstance(obj, UsesBinning):
+            raise TypeError(
+                'The obj argument must be an instance of UsesBinning! '
+                f'Its current type is {classname(obj)}.')
 
         for (self_binning, obj_binning) in zip(self.binnings, obj.binnings):
-            if(not (self_binning == obj_binning)):
+            if self_binning != obj_binning:
                 return False
+
         return True
 
     def add_binning(self, binning, name=None):
@@ -229,22 +244,26 @@ class UsesBinning(object):
 
         Parameters
         ----------
-        binning : BinningDefinition
+        binning : instance of BinningDefinition
             The binning definition to add.
         name : str | (default) None
             The name of the binning. If not None and it's different to the
             name of the given binning definition, a copy of the
             BinningDefinition object is made and the new name is set.
         """
-        if(not isinstance(binning, BinningDefinition)):
-            raise TypeError('The binning argument must be an instance of '
-                'BinningDefinition!')
+        if not isinstance(binning, BinningDefinition):
+            raise TypeError(
+                'The binning argument must be an instance of '
+                'BinningDefinition! '
+                f'Its current type is {classname(binning)}.')
 
         # Create a copy of the BinningDefinition object if the name differs.
-        if(name is not None):
-            if(not isinstance(name, str)):
-                raise TypeError('The name argument must be of type str!')
-            if(name != binning.name):
+        if name is not None:
+            if not isinstance(name, str):
+                raise TypeError(
+                    'The name argument must be of type str! '
+                    f'Its current type is {classname(name)}.')
+            if name != binning.name:
                 binning = BinningDefinition(name, binning.binedges)
 
         self._binnings.append(binning)
@@ -261,17 +280,19 @@ class UsesBinning(object):
 
         Returns
         -------
-        binning : BinningDefinition
+        binning : instance of BinningDefinition
             The binning definition of the given name.
         """
-        if(isinstance(name, str)):
-            if(name not in self._binning_name2idx):
-                raise KeyError('The binning definition "%s" is not defined!'%(
-                    name))
+        if isinstance(name, str):
+            if name not in self._binning_name2idx:
+                raise KeyError(
+                    f'The binning definition "{name}" is not defined!')
             binning = self._binnings[self._binning_name2idx[name]]
-        elif(isinstance(name, int)):
+        elif isinstance(name, int):
             binning = self._binnings[name]
         else:
-            raise TypeError('The name argument must be of type str or int!')
+            raise TypeError(
+                'The name argument must be of type str or int! '
+                f'Its current type is {classname(name)}.')
 
         return binning
