@@ -7,8 +7,11 @@ likelihood function.
 from skyllh.core.pdf import (
     IsBackgroundPDF,
     MultiDimGridPDF,
-    NDPhotosplinePDF
+    NDPhotosplinePDF,
+    TimePDF
 )
+
+import numpy as np
 
 
 class BackgroundMultiDimGridPDF(MultiDimGridPDF, IsBackgroundPDF):
@@ -97,3 +100,95 @@ class BackgroundNDPhotosplinePDF(NDPhotosplinePDF, IsBackgroundPDF):
             path_to_pdf_splinefit=path_to_pdf_splinefit,
             norm_factor_func=norm_factor_func
         )
+
+
+class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
+
+    def __init__(self, grl):
+        """Creates a new background time PDF instance as uniform background
+
+        Parameters
+        ----------
+        grl : ndarray
+            Array of the detector good run list
+
+        """
+        super(BackgroundUniformTimePDF, self).__init__()
+        self.start = grl["start"][0]
+        self.end = grl["stop"][-1]
+        self.grl = grl
+
+
+    def cdf(self, t):
+        """ Compute the cumulative density function for the box pdf. This is needed for normalization.
+        
+        Parameters
+        ----------
+        t : float, ndarray
+            MJD times
+
+        Returns
+        -------
+        cdf : float, ndarray
+            Values of cumulative density function evaluated at t
+        """
+        t_start, t_end = self.grl["start"][0], self.grl["stop"][-1]
+        t_arr = np.atleast_1d(t)
+
+        cdf = np.zeros(t_arr.size, float)
+
+
+        # values between start and stop times
+        mask = (t_start <= t_arr) & (t_arr <= t_end)
+        cdf[mask] = (t_arr[mask] - t_start) / [t_end - t_start]
+
+        # take care of values beyond stop time in sample
+
+        return cdf
+    
+
+    def norm_uptime(self):
+        """compute the normalization with the dataset uptime. Distributions like 
+        scipy.stats.norm are normalized (-inf, inf).
+        These must be re-normalized such that the function sums to 1 over the
+        finite good run list domain.
+
+
+        Returns
+        -------
+        norm : float
+            Normalization such that cdf sums to 1 over good run list domain
+        """
+
+        integral = (self.cdf(self.grl["stop"]) - self.cdf(self.grl["start"])).sum()
+
+        if integral < 1.e-50:
+            return 0
+
+        return 1. / integral
+
+    
+    def get_prob(self, tdm, fitparams=None, tl=None):
+        """Calculates the background time probability of each event 
+
+        tdm : TrialDataManager
+            Unused interface argument
+
+        fitparams : None
+            Unused interface argument.
+
+        tl : TimeLord instance for timing
+
+        Returns
+        -------
+        prob : array of float
+            The (N,)-shaped ndarray holding the probability for each event.
+        grads : empty array of float
+            Does not depend on fit parameter, so no gradient
+        """
+
+        grads = np.array([], dtype=np.double)
+
+        livetime = self.grl["stop"][-1] - self.grl["start"][0]
+
+        return 1./livetime, grads
