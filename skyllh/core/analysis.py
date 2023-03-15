@@ -1593,23 +1593,42 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
         self._llhratio.initialize_for_new_trial(tl=tl)
 
 
-# class TimeDependentMultiDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetSingleSourceAnalysis):
 
-#     def change_time_pdf(gauss=None, box=None):
-#         """ changes the time pdf
-#         Parameters
-#         ----------
-#         gauss : None or dictionary with {"mu": float, "sigma": float}
-#         box : None or dictionary with {"start": float, "end": float}
+class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetSingleSourceAnalysis):
 
-#         """
-#         if gauss is None and box is None:
-#             raise TypeError("Either gauss or box have to be specified as time pdf.")
+    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns, test_statistic, 
+                 bkg_gen_method=None, sig_generator_cls=None):
         
-#         # credo this in case the background pdf was not calculated before
-#         time_bkgpdf = BackgroundUniformTimePDF(self._data_list[0].grl)
-#         if gauss is not None:
-#             time_sigpdf = SignalGaussTimePDF(self._data_list[0].grl, gauss['mu'], gauss['sigma'])
-#         elif box is not None:
-#             time_sigpdf = SignalBoxTimePDF(self._data_list[0].grl, box["start"], box["end"])
-#         time_pdfratio = TimeSigOverBkgPDFRatio(time_sigpdf, time_bkgpdf)
+        super().__init__(src_hypo_group_manager, src_fitparam_mapper, fitparam_ns, 
+                         test_statistic, bkg_gen_method, sig_generator_cls)
+        
+        
+    def change_time_pdf(self, gauss=None, box=None):
+        """ changes the time pdf
+        Parameters
+        ----------
+        gauss : None or dictionary with {"mu": float, "sigma": float}
+        box : None or dictionary with {"start": float, "end": float}
+
+        """
+        if gauss is None and box is None:
+            raise TypeError("Either gauss or box have to be specified as time pdf.")
+        
+        grl = self._data_list[0].grl
+        # redo this in case the background pdf was not calculated before
+        time_bkgpdf = BackgroundUniformTimePDF(grl)
+        if gauss is not None:
+            time_sigpdf = SignalGaussTimePDF(grl, gauss['mu'], gauss['sigma'])
+        elif box is not None:
+            time_sigpdf = SignalBoxTimePDF(grl, box["start"], box["end"])
+
+        time_pdfratio = TimeSigOverBkgPDFRatio(time_sigpdf, time_bkgpdf)
+
+        # the next line seems to make no difference in the llh evaluation. We keep it for consistency
+        self._llhratio.llhratio_list[0].pdfratio_list[2] = time_pdfratio 
+        # this line here is relevant for the llh evaluation
+        self._llhratio.llhratio_list[0]._pdfratioarray._pdfratio_list[2] = time_pdfratio
+
+        #  change detector signal yield with flare livetime in sample (1 / grl_norm in pdf), 
+        # rebuild the histograms if it is changed...
+        #  signal injection? 
