@@ -476,6 +476,7 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         tot_n_events = 0
         signal_events_dict = {}
 
+
         for shg in shg_list:
             # This only works with power-laws for now.
             # Each source hypo group can have a different power-law
@@ -526,8 +527,15 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
                     for event_index in events_.indices:
                             while events_._data_fields["time"][event_index] == 1:
                                 if self.gauss is not None:
-                                    time = norm(self.mu, self.sigma).rvs()
+                                    # make sure flare is in dataset
+                                    if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
+                                        self.gauss["mu"] + 4 * self.gauss["sigma"] < tmp_grl["start"][0]):
+                                        break # this should never happen
+                                    time = norm(self.gauss["mu"], self.gauss["sigma"]).rvs()
                                 if self.box is not None:
+                                    # make sure flare is in dataset
+                                    if (self.box["start"] > tmp_grl["stop"][-1]) or (self.box["end"] < tmp_grl["start"][0]):
+                                        break # this should never be the case, since there should no events be generated
                                     livetime = self.box["end"] - self.box["start"]
                                     time = rss.random.random() * livetime 
                                     time += self.box["start"]
