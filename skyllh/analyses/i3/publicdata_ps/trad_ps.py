@@ -39,7 +39,8 @@ from skyllh.core.trialdata import TrialDataManager
 # Classes for defining the analysis.
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
-    TimeIntegratedMultiDatasetSingleSourceAnalysis as Analysis
+    TimeIntegratedMultiDatasetSingleSourceAnalysis as Analysis,
+    TimeDependentSingleDatasetSingleSourceAnalysis as TimedepSingleDatasetAnalysis
 )
 
 # Classes to define the background generation.
@@ -80,7 +81,8 @@ from skyllh.datasets.i3 import data_samples
 
 # Analysis specific classes for working with the public data.
 from skyllh.analyses.i3.publicdata_ps.signal_generator import (
-    PDSignalGenerator
+    PDSignalGenerator,
+    PDTimeDependentSignalGenerator
 )
 from skyllh.analyses.i3.publicdata_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
@@ -491,7 +493,7 @@ def create_timedep_analysis(
     """
 
     if gauss is None and box is None:
-        print("No time pdf specified, will create time integrated analysis")
+        raise ValueError("No time pdf specified (box or gauss)")
     if gauss is not None and box is not None:
         raise ValueError("Time PDF cannot be both Gaussian and box shaped. Please specify only one shape.")
 
@@ -548,13 +550,13 @@ def create_timedep_analysis(
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
 
     # Create the Analysis instance.
-    analysis = Analysis(
+    analysis = TimedepSingleDatasetAnalysis(
         src_hypo_group_manager,
         src_fitparam_mapper,
         fitparam_ns,
         test_statistic,
         bkg_gen_method,
-        sig_generator_cls=PDSignalGenerator
+        sig_generator_cls=PDTimeDependentSignalGenerator
     )
 
     # Define the event selection method for pure optimization purposes.
@@ -672,7 +674,7 @@ def create_timedep_analysis(
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
     analysis.construct_signal_generator(
         llhratio=analysis.llhratio, energy_cut_splines=energy_cut_splines,
-        cut_sindec=cut_sindec)
+        cut_sindec=cut_sindec, box=box, gauss=gauss)
 
     return analysis
 
