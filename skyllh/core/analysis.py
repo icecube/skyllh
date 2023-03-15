@@ -1591,3 +1591,25 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
                 store_src_ev_idxs=True, tl=tl)
 
         self._llhratio.initialize_for_new_trial(tl=tl)
+
+
+# class TimeDependentMultiDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetSingleSourceAnalysis):
+
+#     def change_time_pdf(gauss=None, box=None):
+#         """ changes the time pdf
+#         Parameters
+#         ----------
+#         gauss : None or dictionary with {"mu": float, "sigma": float}
+#         box : None or dictionary with {"start": float, "end": float}
+
+#         """
+#         if gauss is None and box is None:
+#             raise TypeError("Either gauss or box have to be specified as time pdf.")
+        
+#         # credo this in case the background pdf was not calculated before
+#         time_bkgpdf = BackgroundUniformTimePDF(self._data_list[0].grl)
+#         if gauss is not None:
+#             time_sigpdf = SignalGaussTimePDF(self._data_list[0].grl, gauss['mu'], gauss['sigma'])
+#         elif box is not None:
+#             time_sigpdf = SignalBoxTimePDF(self._data_list[0].grl, box["start"], box["end"])
+#         time_pdfratio = TimeSigOverBkgPDFRatio(time_sigpdf, time_bkgpdf)

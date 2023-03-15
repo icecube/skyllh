@@ -655,7 +655,7 @@ class SignalBoxTimePDF(TimePDF, IsSignalPDF):
 
         grads = np.array([], dtype=np.double)
 
-        return (1. - inverse_box) / (t_start - t_end) * self.norm_uptime(time), grads
+        return (1. - inverse_box) / (t_end - t_start) * self.norm_uptime(time), grads
 
 
 
