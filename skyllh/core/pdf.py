@@ -937,9 +937,9 @@ class MultiDimGridPDF(
         if not callable(func):
             raise TypeError(
                 'The norm_factor_func property must be a callable object!')
-        if not func_has_n_args(func, 4):
+        if not func_has_n_args(func, 5):
             raise TypeError(
-                'The norm_factor_func property must be a function with 4 '
+                'The norm_factor_func property must be a function with 5 '
                 'arguments!')
         self._norm_factor_func = func
 
@@ -1723,6 +1723,8 @@ class PDFSet(
                     'already added PDFs!\n'
                     f'New axes:\n{str(pdf.axes)}\n'
                     f'Old axes:\n{str(some_pdf.axes)}')
+
+        logger.debug(f'Adding PDF for gridparams {gridparams}')
 
         self._gridparams_hash_pdf_dict[gridparams_hash] = pdf
 
