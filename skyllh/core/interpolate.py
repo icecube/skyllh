@@ -15,7 +15,9 @@ from skyllh.core.py import (
 )
 
 
-class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
+class GridManifoldInterpolationMethod(
+        object,
+        metaclass=abc.ABCMeta):
     """This is an abstract base class for implementing a method to interpolate
     a manifold that is defined on a grid of parameter values. In general the
     number of parameters can be arbitrary and hence the manifold's
@@ -139,7 +141,8 @@ class GridManifoldInterpolationMethod(object, metaclass=abc.ABCMeta):
         pass
 
 
-class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
+class NullGridManifoldInterpolationMethod(
+        GridManifoldInterpolationMethod):
     """This grid manifold interpolation method performes no interpolation. When
     the
     :meth:`~skyllh.core.interpolate.NullGridManifoldInterpolationMethod.__call__`
@@ -214,7 +217,7 @@ class NullGridManifoldInterpolationMethod(GridManifoldInterpolationMethod):
             n_values=tdm.get_n_values())
 
         grads = np.zeros(
-            (len(params_recarray.dtype.fields), len(values)),
+            (len(self.param_grid_set), len(values)),
             dtype=np.float64)
 
         return (values, grads)
@@ -254,7 +257,7 @@ class Linear1DGridManifoldInterpolationMethod(
                 f'The {classname(self)} class supports only 1D grid manifolds. '
                 'The param_grid_set argument must contain 1 ParameterGrid '
                 f'instance! Currently it has {len(self._param_grid_set)}!')
-        self.p_grid = self._param_grid_set[0]
+        self._p_grid = self._param_grid_set[0]
 
         # Create a cache for the line parameterization for the last
         # manifold grid point for the different events.
@@ -326,7 +329,6 @@ class Linear1DGridManifoldInterpolationMethod(
             The numpy record ndarray of length N_sources holding the parameter
             names and values for each source, defining the point on the manifold
             for which the value should get calculated.
-            It must contain only the parameters necessary for the interpolation.
             This record ndarray can be of length 1. In that case the single set
             of parameters is used for all sources.
 
@@ -340,12 +342,13 @@ class Linear1DGridManifoldInterpolationMethod(
             manifold gradients for the N_values values for all sources and trial
             events, where D is the number of interpolation parameters.
         """
-        xname = next(iter(params_recarray.dtype.fields.keys()))
+        xname = self._p_grid.name
+
         x = params_recarray[xname]
 
         # Determine the nearest grid point that is lower than x and use that as
         # x0.
-        x0 = self.p_grid.round_to_lower_grid_point(x)
+        x0 = self._p_grid.round_to_lower_grid_point(x)
 
         # Check if the line parametrization for x0 is already cached.
         if self._is_cached(tdm.trial_data_state_id, x0):
@@ -362,7 +365,7 @@ class Linear1DGridManifoldInterpolationMethod(
         # Calculate the line parametrization for all the given events.
         self__func = self._func
 
-        x1 = self.p_grid.round_to_upper_grid_point(x)
+        x1 = self._p_grid.round_to_upper_grid_point(x)
 
         n_values = tdm.get_n_values()
 
@@ -523,7 +526,6 @@ class Parabola1DGridManifoldInterpolationMethod(
             The numpy record ndarray of length N_sources holding the parameter
             names and values for each source, defining the point on the manifold
             for which the value should get calculated.
-            It must contain only the parameters necessary for the interpolation.
             This record ndarray can be of length 1. In that case the single set
             of parameters is used for all sources.
 
@@ -535,7 +537,8 @@ class Parabola1DGridManifoldInterpolationMethod(
             The D manifold gradients for the N given events, where D is the
             number of parameters.
         """
-        xname = next(iter(params_recarray.dtype.fields.keys()))
+        xname = self._p_grid.name
+
         x = params_recarray[xname]
 
         # Determine the nearest grid point x1.
