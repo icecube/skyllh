@@ -18,6 +18,7 @@ from skyllh.core.py import (
 )
 from skyllh.core.debugging import (
     get_logger,
+    is_tracing_enabled,
 )
 from skyllh.core.parameters import (
     ParameterGrid,
@@ -1698,6 +1699,8 @@ class PDFSet(
             If the axes of the given PDFs are not the same as the axes of the
             already added PDFs.
         """
+        logger = get_logger(f'{__name__}.{classname(self)}.add_pdf')
+
         if not isinstance(pdf, PDF):
             raise TypeError(
                 'The pdf argument must be an instance of PDF!'
@@ -1724,7 +1727,8 @@ class PDFSet(
                     f'New axes:\n{str(pdf.axes)}\n'
                     f'Old axes:\n{str(some_pdf.axes)}')
 
-        logger.debug(f'Adding PDF for gridparams {gridparams}')
+        if is_tracing_enabled():
+            logger.debug(f'Adding PDF for gridparams {gridparams}.')
 
         self._gridparams_hash_pdf_dict[gridparams_hash] = pdf
 

@@ -576,8 +576,14 @@ class SignalMultiDimGridPDFSet(
             The (N_values,)-shaped numpy ndarray holding the probability density
             values for each event.
         """
+        logger = get_logger(f'{__name__}.{classname(self)}._evaluate_pdfs')
+
         # Check for special case when a single set of parameters are provided.
         if len(gridparams_recarray) == 1:
+            if is_tracing_enabled():
+                logger.debug(
+                    'Get PDF for '
+                    f'interpol_param_values={gridparams_recarray[0]}.')
             pdf = self._get_pdf_for_interpol_param_values(
                 interpol_param_values=gridparams_recarray[0])
 
@@ -666,6 +672,8 @@ class SignalMultiDimGridPDFSet(
             The value is the (N_values,)-shaped numpy ndarray holding the
             gradient value for each event.
         """
+        logger = get_logger(f'{__name__}.{classname(self)}.get_pd')
+
         # Create the ndarray for the event data that is needed for the
         # ``MultiDimGridPDF.get_pd_with_eventdata`` method.
         # All PDFs of this PDFSet should have the same axes, so we use the axes
@@ -678,11 +686,19 @@ class SignalMultiDimGridPDFSet(
                 axes=pdf.axes)
 
         # Get the interpolated PDF values for the arbitrary parameter values.
-        # The (D,N_events)-shaped grads_ ndarray contains the gradient of the
+        # The (D,N_events)-shaped grads_arr ndarray contains the gradient of the
         # probability density w.r.t. each of the D parameters, which are defined
         # by the param_grid_set. The order of the D gradients is the same as
         # the parameter grids.
-        with TaskTimer(tl, 'Get probability densities for all events.'):
+        with TaskTimer(
+                tl,
+                'Call interpolate method to get probability densities for all '
+                'events.'):
+            if is_tracing_enabled():
+                logger.debug(
+                    'Call interpol_method with '
+                    f'params_recarray={params_recarray} of fields '
+                    f'{list(params_recarray.dtype.fields.keys())}.')
             (pd, grads_arr) = self._interpol_method(
                 tdm=tdm,
                 eventdata=eventdata,
