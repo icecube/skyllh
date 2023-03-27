@@ -681,8 +681,12 @@ class NamedObjectCollection(ObjectCollection):
         obj_name_to_idx : dict
             The dictionary {obj.name: index}.
         """
+        if start is None:
+            start = 0
+
         return OrderedDict([
-            (o.name, idx) for (idx, o) in enumerate(self._objects[start:end])])
+            (o.name, start+idx)
+            for (idx, o) in enumerate(self._objects[start:end])])
 
     def __contains__(self, name):
         """Retruns ``True`` if an object of the given name exists in this
