@@ -702,8 +702,8 @@ class NamedObjectCollection(ObjectCollection):
 
         if not hasattr(self.obj_type, 'name'):
             raise TypeError(
-                f'The object type {classname(self.obj_type)} has no attribute '
-                'named "name"!')
+                f'The object type "{typename(self.obj_type)}" has no '
+                'attribute named "name"!')
 
     @property
     def name_list(self):
@@ -735,7 +735,8 @@ class NamedObjectCollection(ObjectCollection):
 
         return OrderedDict([
             (o.name, start+idx)
-            for (idx, o) in enumerate(self._objects[start:end])])
+            for (idx, o) in enumerate(self._objects[start:end])
+        ])
 
     def __contains__(self, name):
         """Retruns ``True`` if an object of the given name exists in this
