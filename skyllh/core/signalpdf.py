@@ -612,6 +612,28 @@ class SignalMultiDimGridPDFSet(
 
         return pd
 
+    def assert_is_valid_for_trial_data(self, tdm):
+        """Checks if the PDFs of this PDFSet instance are valid for all the
+        given trial data events.
+        Since all PDFs should have the same axes, only the first PDF will be
+        checked.
+
+        This method calls the
+        :meth:`~skyllh.core.pdf.PDFSet.assert_is_valid_for_trial_data` method of
+        the :class:`~skyllh.core.pdf.PDFSet` class.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data events.
+
+        Raises
+        ------
+        ValueError
+            If some of the data is outside the axes range of the PDF.
+        """
+        super().assert_is_valid_for_trial_data(tdm=tdm)
+
     def get_pd(
             self,
             tdm,
