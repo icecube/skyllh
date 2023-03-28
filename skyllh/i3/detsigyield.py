@@ -737,7 +737,12 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         self._spline_order_param = order
 
     def construct_detsigyield(
-            self, dataset, data, fluxmodel, livetime, ppbar=None):
+            self,
+            dataset,
+            data,
+            fluxmodel,
+            livetime,
+            ppbar=None):
         """Constructs a detector signal yield 2-dimensional log spline
         function for the given flux model with varying floating parameter
         values.
@@ -751,12 +756,12 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             The numpy record array for the monte-carlo data of the dataset must
             contain the following data fields:
 
-            - 'true_dec' : float
+            ``'true_dec'`` : float
                 The true declination of the data event.
-            - 'mcweight' : float
+            ``'mcweight'`` : float
                 The monte-carlo weight of the data event in the unit
                 GeV cm^2 sr.
-            - 'true_energy' : float
+            ``'true_energy'`` : float
                 The true energy value of the data event.
 
         fluxmodel : FluxModel
@@ -832,8 +837,21 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 density=False)
             return h
 
-        data_sin_true_dec = np.sin(data.mc["true_dec"])
-        weights = data.mc["mcweight"] * toGeVcm2s * livetime_days * 86400.
+        data_sin_true_dec = np.sin(data.mc['true_dec'])
+
+        # Generate a list of indices that would sort the data according to the
+        # sin(true_dec) values. We will sort the MC data according to it,
+        # because the histogram creation is much faster (2x) when the
+        # to-be-histogrammed values are already sorted.
+        sorted_idxs = np.argsort(data_sin_true_dec)
+
+        data_sin_true_dec = np.take(data_sin_true_dec, sorted_idxs)
+        data_true_energy = np.take(data.mc['true_energy'], sorted_idxs)
+
+        weights = (
+            np.take(data.mc['mcweight'], sorted_idxs) *
+            toGeVcm2s * livetime_days * 86400.
+        )
 
         # Make a copy of the parameter grid and extend the grid by one bin on
         # each side.
@@ -846,7 +864,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             (
                 (
                     data_sin_true_dec,
-                    data.mc['true_energy'],
+                    data_true_energy,
                     sin_dec_binning,
                     weights,
                     fluxmodel.copy({param_grid.name: param_val})
