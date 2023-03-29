@@ -22,6 +22,9 @@ from skyllh.core.dataset import (
 from skyllh.core.debugging import (
     get_logger,
 )
+from skyllh.core.event_selection import (
+    EventSelectionMethod,
+)
 from skyllh.core.llhratio import (
     LLHRatio,
     MultiDatasetTCLLHRatio,
@@ -33,9 +36,6 @@ from skyllh.core.model import (
 from skyllh.core.multiproc import (
     get_ncpu,
     parallelize,
-)
-from skyllh.core.optimize import (
-    EventSelectionMethod,
 )
 from skyllh.core.parameters import (
     ParameterModelMapper,

@@ -10,7 +10,7 @@ from skyllh.core.config import (
 from skyllh.core.debugging import (
     get_logger,
 )
-from skyllh.core.optimize import (
+from skyllh.core.event_selection import (
     AllEventSelectionMethod,
     EventSelectionMethod,
 )
