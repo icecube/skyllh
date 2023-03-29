@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """This test module tests classes, methods and functions of the
-``core.optimize`` module.
+``core.event_selection`` module.
 
 Note: The `PsiFuncEventSelectionMethod` is not currently used/tested.
 """
@@ -11,10 +11,9 @@ from unittest.mock import Mock
 
 import numpy as np
 
-from skyllh.core.optimize import (
+from skyllh.core.event_selection import (
     AllEventSelectionMethod,
     DecBandEventSectionMethod,
-    # PsiFuncEventSelectionMethod,
     RABandEventSectionMethod,
     SpatialBoxEventSelectionMethod,
     AngErrOfPsiEventSelectionMethod,
