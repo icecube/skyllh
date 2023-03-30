@@ -880,7 +880,7 @@ def estimate_sensitivity(
 
 
 def estimate_discovery_potential(
-        ana, rss, h0_trials=None, h0_ts_quantile=5.733e-7, p=0.5, eps_p=0.005,
+        ana, rss, h0_trials=None, h0_ts_quantile=2.8665e-7, p=0.5, eps_p=0.005,
         mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
         ppbar=None, tl=None, pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
@@ -890,7 +890,7 @@ def estimate_discovery_potential(
     null hypothesis test-statistic values are larger than c.
 
     For the 5 sigma discovery potential `h0_ts_quantile`, and `p` are usually
-    set to 5.733e-7, and 0.5, respectively.
+    set to 2.8665e-7, and 0.5, respectively.
 
     Parameters
     ----------
