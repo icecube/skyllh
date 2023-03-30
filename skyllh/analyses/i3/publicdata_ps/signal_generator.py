@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy import interpolate
+from scipy.stats import norm
 
 from skyllh.core.py import (
     issequenceof,
@@ -421,6 +422,127 @@ class PDSignalGenerator(SignalGeneratorBase):
                     )
                     if events_ is None:
                         continue
+
+                    if shg_src_idx == 0:
+                        signal_events_dict[ds_idx] = events_
+                    else:
+                        signal_events_dict[ds_idx].append(events_)
+
+        return tot_n_events, signal_events_dict
+
+
+class PDTimeDependentSignalGenerator(PDSignalGenerator):
+    """ The time dependent signal generator works so far only for one single dataset. For multi datasets one 
+    needs to adjust the dataset weights accordingly (scaling of the effective area with livetime of the flare
+    in the dataset)
+    """
+
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list=None, llhratio=None, 
+                 energy_cut_splines=None, cut_sindec=None, gauss=None, box=None):
+        
+        if gauss is None and box is None:
+            raise ValueError("Either box or gauss keywords must define the neutrino flare")
+        if gauss is not None and box is not None:
+            raise ValueError("Either box or gauss keywords must define the neutrino flare, cannot use both.")
+        
+        super().__init__(src_hypo_group_manager, dataset_list, data_list, llhratio, 
+                         energy_cut_splines, cut_sindec)
+        self.box = box
+        self.gauss = gauss
+
+
+    def set_flare(self, gauss=None, box=None):
+        """ change the flare to something new
+
+        Parameters
+        ----------
+        gauss : None or dictionary with {"mu": float, "sigma": float}
+        box : None or dictionary with {"start": float, "end": float}
+        """
+        if gauss is None and box is None:
+            raise ValueError("Either box or gauss keywords must define the neutrino flare")
+        if gauss is not None and box is not None:
+            raise ValueError("Either box or gauss keywords must define the neutrino flare, cannot use both.")
+        
+        self.box = box
+        self.gauss = gauss
+
+
+    def generate_signal_events(self, rss, mean, poisson=True):
+        """ same as in PDSignalGenerator, but we assign times here. 
+        """
+        shg_list = self._src_hypo_group_manager.src_hypo_group_list
+
+        tot_n_events = 0
+        signal_events_dict = {}
+
+
+        for shg in shg_list:
+            # This only works with power-laws for now.
+            # Each source hypo group can have a different power-law
+            gamma = shg.fluxmodel.gamma
+            weights, _ = self.llhratio.dataset_signal_weights([mean, gamma])
+            for (ds_idx, w) in enumerate(weights):
+                w_mean = mean * w
+                if(poisson):
+                    n_events = rss.random.poisson(
+                        float_cast(
+                            w_mean,
+                            '`mean` must be castable to type of float!'
+                        )
+                    )
+                else:
+                    n_events = int_cast(
+                        w_mean,
+                        '`mean` must be castable to type of int!'
+                    )
+                tot_n_events += n_events
+
+                events_ = None
+                for (shg_src_idx, src) in enumerate(shg.source_list):
+                    ds = self._dataset_list[ds_idx]
+                    sig_gen = PDDatasetSignalGenerator(
+                        ds, src.dec, self.effA[ds_idx], self.sm[ds_idx])
+                    if self.effA[ds_idx] is None:
+                        self.effA[ds_idx] = sig_gen.effA
+                    if self.sm[ds_idx] is None:
+                        self.sm[ds_idx] = sig_gen.smearing_matrix
+                    # ToDo: here n_events should be split according to some
+                    # source weight
+                    events_ = sig_gen.generate_signal_events(
+                        rss,
+                        src.dec,
+                        src.ra,
+                        shg.fluxmodel,
+                        n_events,
+                        energy_cut_spline=self.splines[ds_idx],
+                        cut_sindec=self.cut_sindec[ds_idx]
+                    )
+                    if events_ is None:
+                        continue
+
+                    # Assign times for flare. We can also use inverse transform sampling instead of the 
+                    # lazy version implemented here
+                    tmp_grl = self.data_list[ds_idx].grl
+                    for event_index in events_.indices:
+                            while events_._data_fields["time"][event_index] == 1:
+                                if self.gauss is not None:
+                                    # make sure flare is in dataset
+                                    if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
+                                        self.gauss["mu"] + 4 * self.gauss["sigma"] < tmp_grl["start"][0]):
+                                        break # this should never happen
+                                    time = norm(self.gauss["mu"], self.gauss["sigma"]).rvs()
+                                if self.box is not None:
+                                    # make sure flare is in dataset
+                                    if (self.box["start"] > tmp_grl["stop"][-1]) or (self.box["end"] < tmp_grl["start"][0]):
+                                        break # this should never be the case, since there should no events be generated
+                                    livetime = self.box["end"] - self.box["start"]
+                                    time = rss.random.random() * livetime 
+                                    time += self.box["start"]
+                                # check if time is in grl
+                                is_in_grl = (tmp_grl["start"] <= time) & (tmp_grl["stop"] >= time)
+                                if np.any(is_in_grl):
+                                    events_._data_fields["time"][event_index] = time
 
                     if shg_src_idx == 0:
                         signal_events_dict[ds_idx] = events_

@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""The trad_ps analysis is a multi-dataset time-integrated single source
-analysis with a two-component likelihood function using a spacial and an energy
-event PDF.
+"""Setup the time-dependent analysis. For now this works on a single dataset.
 """
 
 import argparse
@@ -39,7 +37,8 @@ from skyllh.core.trialdata import TrialDataManager
 # Classes for defining the analysis.
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
-    TimeIntegratedMultiDatasetSingleSourceAnalysis as Analysis
+    TimeIntegratedMultiDatasetSingleSourceAnalysis as Analysis,
+    TimeDependentSingleDatasetSingleSourceAnalysis as TimedepSingleDatasetAnalysis
 )
 
 # Classes to define the background generation.
@@ -47,7 +46,12 @@ from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the signal and background PDFs.
-from skyllh.core.signalpdf import RayleighPSFPointSourceSignalSpatialPDF
+from skyllh.core.signalpdf import (
+    RayleighPSFPointSourceSignalSpatialPDF,
+    SignalBoxTimePDF, 
+    SignalGaussTimePDF
+)
+from skyllh.core.backgroundpdf import BackgroundUniformTimePDF
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF
 )
@@ -55,6 +59,7 @@ from skyllh.i3.backgroundpdf import (
 # Classes to define the spatial and energy PDF ratios.
 from skyllh.core.pdfratio import (
     SpatialSigOverBkgPDFRatio,
+    TimeSigOverBkgPDFRatio
 )
 
 # Analysis utilities.
@@ -74,7 +79,8 @@ from skyllh.datasets.i3 import data_samples
 
 # Analysis specific classes for working with the public data.
 from skyllh.analyses.i3.publicdata_ps.signal_generator import (
-    PDSignalGenerator
+    PDSignalGenerator,
+    PDTimeDependentSignalGenerator
 )
 from skyllh.analyses.i3.publicdata_ps.detsigyield import (
     PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
@@ -88,47 +94,17 @@ from skyllh.analyses.i3.publicdata_ps.pdfratio import (
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF
 )
+from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import (
+    psi_func, 
+    TXS_location
+)
 
 
-def psi_func(tdm, src_hypo_group_manager, fitparams):
-    """Function to calculate the opening angle between the source position
-    and the event's reconstructed position.
-    """
-    ra = tdm.get_data('ra')
-    dec = tdm.get_data('dec')
-
-    # Make the source position angles two-dimensional so the PDF value
-    # can be calculated via numpy broadcasting automatically for several
-    # sources. This is useful for stacking analyses.
-    src_ra = tdm.get_data('src_array')['ra'][:, np.newaxis]
-    src_dec = tdm.get_data('src_array')['dec'][:, np.newaxis]
-
-    delta_dec = np.abs(dec - src_dec)
-    delta_ra = np.abs(ra - src_ra)
-    x = (
-        (np.sin(delta_dec / 2.))**2. + np.cos(dec) *
-        np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
-    )
-
-    # Handle possible floating precision errors.
-    x[x < 0.] = 0.
-    x[x > 1.] = 1.
-
-    psi = (2.0*np.arcsin(np.sqrt(x)))
-
-    # For now we support only a single source, hence return psi[0].
-    return psi[0, :]
-
-
-def TXS_location():
-    src_ra = np.radians(77.358)
-    src_dec = np.radians(5.693)
-    return (src_ra, src_dec)
-
-
-def create_analysis(
+def create_timedep_analysis(
     datasets,
     source,
+    gauss=None,
+    box=None,
     refplflux_Phi0=1,
     refplflux_E0=1e3,
     refplflux_gamma=2.0,
@@ -158,6 +134,10 @@ def create_analysis(
         analysis.
     source : PointLikeSource instance
         The PointLikeSource instance defining the point source position.
+    gauss : None or dictionary with mu, sigma
+        None if no Gaussian time pdf. Else dictionary with {"mu": float, "sigma": float} of Gauss
+    box : None or dictionary with start, end
+        None if no Box shaped time pdf. Else dictionary with {"start": float, "end": float} of box. 
     refplflux_Phi0 : float
         The flux normalization to use for the reference power law flux model.
     refplflux_E0 : float
@@ -216,6 +196,11 @@ def create_analysis(
         The Analysis instance for this analysis.
     """
 
+    if gauss is None and box is None:
+        raise ValueError("No time pdf specified (box or gauss)")
+    if gauss is not None and box is not None:
+        raise ValueError("Time PDF cannot be both Gaussian and box shaped. Please specify only one shape.")
+
     # Create the minimizer instance.
     if minimizer_impl == "LBFGS":
         minimizer = Minimizer(LBFGSMinimizerImpl())
@@ -269,13 +254,13 @@ def create_analysis(
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
 
     # Create the Analysis instance.
-    analysis = Analysis(
+    analysis = TimedepSingleDatasetAnalysis(
         src_hypo_group_manager,
         src_fitparam_mapper,
         fitparam_ns,
         test_statistic,
         bkg_gen_method,
-        sig_generator_cls=PDSignalGenerator
+        sig_generator_cls=PDTimeDependentSignalGenerator
     )
 
     # Define the event selection method for pure optimization purposes.
@@ -342,6 +327,16 @@ def create_analysis(
 
         pdfratios = [spatial_pdfratio, energy_pdfratio]
 
+        # Create the time PDF ratio instance for this dataset.
+        if gauss is not None or box is not None:
+            time_bkgpdf = BackgroundUniformTimePDF(data.grl)
+            if gauss is not None:
+                time_sigpdf = SignalGaussTimePDF(data.grl, gauss['mu'], gauss['sigma'])
+            elif box is not None:
+                time_sigpdf = SignalBoxTimePDF(data.grl, box["start"], box["end"])
+            time_pdfratio = TimeSigOverBkgPDFRatio(time_sigpdf, time_bkgpdf)
+            pdfratios.append(time_pdfratio)
+        
         analysis.add_dataset(
             ds, data, pdfratios, tdm, event_selection_method)
         
@@ -383,120 +378,7 @@ def create_analysis(
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
     analysis.construct_signal_generator(
         llhratio=analysis.llhratio, energy_cut_splines=energy_cut_splines,
-        cut_sindec=cut_sindec)
+        cut_sindec=cut_sindec, box=box, gauss=gauss)
 
     return analysis
 
-
-if(__name__ == '__main__'):
-    p = argparse.ArgumentParser(
-        description='Calculates TS for a given source location using the '
-        '10-year public point source sample.',
-        formatter_class=argparse.RawTextHelpFormatter
-    )
-    p.add_argument(
-        '--dec',
-        default=23.8,
-        type=float,
-        help='The source declination in degrees.'
-    )
-    p.add_argument(
-        '--ra',
-        default=216.76,
-        type=float,
-        help='The source right-ascention in degrees.'
-    )
-    p.add_argument(
-        '--gamma-seed',
-        default=3,
-        type=float,
-        help='The seed value of the gamma fit parameter.'
-    )
-    p.add_argument(
-        '--data_base_path',
-        default=None,
-        type=str,
-        help='The base path to the data samples (default=None)'
-    )
-    p.add_argument(
-        '--seed',
-        default=1,
-        type=int,
-        help='The random number generator seed for the likelihood '
-             'minimization.'
-    )
-    p.add_argument(
-        '--ncpu',
-        default=1,
-        type=int,
-        help='The number of CPUs to utilize where parallelization is possible.'
-    )
-    p.add_argument(
-        '--cap-ratio',
-        action='store_true',
-        help='Switch to cap the energy PDF ratio.')
-    p.set_defaults(cap_ratio=False)
-    args = p.parse_args()
-
-    # Setup `skyllh` package logging.
-    # To optimize logging set the logging level to the lowest handling level.
-    setup_logger('skyllh', logging.DEBUG)
-    log_format = '%(asctime)s %(processName)s %(name)s %(levelname)s: '\
-                 '%(message)s'
-    setup_console_handler('skyllh', logging.INFO, log_format)
-    setup_file_handler('skyllh', 'debug.log',
-                       log_level=logging.DEBUG,
-                       log_format=log_format)
-
-    CFG['multiproc']['ncpu'] = args.ncpu
-
-    sample_seasons = [
-        ('PublicData_10y_ps', 'IC40'),
-        ('PublicData_10y_ps', 'IC59'),
-        ('PublicData_10y_ps', 'IC79'),
-        ('PublicData_10y_ps', 'IC86_I'),
-        ('PublicData_10y_ps', 'IC86_II-VII'),
-    ]
-
-    datasets = []
-    for (sample, season) in sample_seasons:
-        # Get the dataset from the correct dataset collection.
-        dsc = data_samples[sample].create_dataset_collection(
-            args.data_base_path)
-        datasets.append(dsc.get_dataset(season))
-
-    # Define a random state service.
-    rss = RandomStateService(args.seed)
-
-    # Define the point source.
-    source = PointLikeSource(np.deg2rad(args.ra), np.deg2rad(args.dec))
-    print('source: ', str(source))
-
-    tl = TimeLord()
-
-    with tl.task_timer('Creating analysis.'):
-        ana = create_analysis(
-            datasets,
-            source,
-            cap_ratio=args.cap_ratio,
-            gamma_seed=args.gamma_seed,
-            tl=tl)
-
-    with tl.task_timer('Unblinding data.'):
-        (TS, fitparam_dict, status) = ana.unblind(rss)
-
-    print('TS = %g' % (TS))
-    print('ns_fit = %g' % (fitparam_dict['ns']))
-    print('gamma_fit = %g' % (fitparam_dict['gamma']))
-
-    """
-    # Generate some signal events.
-    with tl.task_timer('Generating signal events.'):
-        (n_sig, signal_events_dict) =\
-            ana.sig_generator.generate_signal_events(rss, 100)
-
-    print('n_sig: %d', n_sig)
-    print('signal datasets: '+str(signal_events_dict.keys()))
-    """
-
-    print(tl)

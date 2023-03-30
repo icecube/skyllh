@@ -55,6 +55,23 @@ from skyllh.core.signal_generator import (
 )
 from skyllh.physics.source import SourceModel
 
+from skyllh.analyses.i3.publicdata_ps.expectation_maximization import (
+    expectation_em, 
+    maximization_em
+)
+
+from skyllh.core.signalpdf import (
+    SignalBoxTimePDF, 
+    SignalGaussTimePDF
+)
+
+from skyllh.core.backgroundpdf import BackgroundUniformTimePDF
+
+from skyllh.core.pdfratio import (
+    TimeSigOverBkgPDFRatio
+)
+
+
 
 logger = get_logger(__name__)
 
@@ -1591,3 +1608,231 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
                 store_src_ev_idxs=True, tl=tl)
 
         self._llhratio.initialize_for_new_trial(tl=tl)
+
+
+
+class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetSingleSourceAnalysis):
+
+    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns, test_statistic, 
+                 bkg_gen_method=None, sig_generator_cls=None):
+        
+        super().__init__(src_hypo_group_manager, src_fitparam_mapper, fitparam_ns, 
+                         test_statistic, bkg_gen_method, sig_generator_cls)
+        
+        
+    def change_time_pdf(self, gauss=None, box=None):
+        """ changes the time pdf
+        Parameters
+        ----------
+        gauss : None or dictionary with {"mu": float, "sigma": float}
+        box : None or dictionary with {"start": float, "end": float}
+
+        """
+        if gauss is None and box is None:
+            raise TypeError("Either gauss or box have to be specified as time pdf.")
+        
+        grl = self._data_list[0].grl
+        # redo this in case the background pdf was not calculated before
+        time_bkgpdf = BackgroundUniformTimePDF(grl)
+        if gauss is not None:
+            time_sigpdf = SignalGaussTimePDF(grl, gauss['mu'], gauss['sigma'])
+        elif box is not None:
+            time_sigpdf = SignalBoxTimePDF(grl, box["start"], box["end"])
+
+        time_pdfratio = TimeSigOverBkgPDFRatio(time_sigpdf, time_bkgpdf)
+
+        # the next line seems to make no difference in the llh evaluation. We keep it for consistency
+        self._llhratio.llhratio_list[0].pdfratio_list[2] = time_pdfratio 
+        # this line here is relevant for the llh evaluation
+        self._llhratio.llhratio_list[0]._pdfratioarray._pdfratio_list[2] = time_pdfratio
+
+        #  change detector signal yield with flare livetime in sample (1 / grl_norm in pdf), 
+        #  rebuild the histograms if it is changed...
+        #  signal injection? 
+
+
+    def get_energy_spatial_signal_over_backround(self, fitparams):
+        """ returns the signal over background ratio for 
+        (spatial_signal * energy_signal) / (spatial_background * energy_background)
+        
+        Parameter
+        ---------
+        analysis : analysis instance
+        fitparams : dictionary with {"gamma": float} for energy pdf
+        
+        Returns
+        -------
+        product of spatial and energy signal over background pdfs
+        """
+        ratio = self._llhratio.llhratio_list[0].pdfratio_list[0].get_ratio(self._tdm_list[0], fitparams)
+        ratio *= self._llhratio.llhratio_list[0].pdfratio_list[1].get_ratio(self._tdm_list[0], fitparams)
+        
+        return ratio
+    
+    
+    def change_fluxmodel_gamma(self, gamma):
+        """ set new gamma for the flux model
+        Parameter
+        ---------
+        analysis : analysis instance
+        gamma : spectral index for flux model
+        """
+        
+        self.src_hypo_group_manager.src_hypo_group_list[0].fluxmodel.gamma = gamma
+    
+    
+    def change_signal_time(self, gauss=None, box=None):
+        """ change the signal injection to gauss or box
+        
+        Parameters
+        ----------
+        analysis : analysis instance
+        gauss : None or dictionary {"mu": float, "sigma": float}
+        box : None or dictionary {"start" : float, "end" : float}
+        """
+        self.sig_generator.set_flare(box=box, gauss=gauss)
+
+
+    def em_fit(self, fitparams, n=1, tol=1.e-200, iter_max=500, sob_thresh=0, initial_width=5000, 
+            remove_time=None):
+        """
+        run expectation maximization
+        
+        Parameters
+        ----------
+
+        fitparams : dictionary with value for gamma, e.g. {'gamma': 2}
+        n : how many gaussians flares we are looking for
+        tol : the stopping criteria for expectation maximization. This is the difference in the normalized likelihood over the
+            last 20 iterations
+        iter_max : the maximum number of iterations, even if stopping criteria tolerance (tol) is not yet reached
+        sob_thres : set a minimum threshold for signal over background ratios. ratios below this threshold will be removed
+        initial_width : starting width for the gaussian flare in days
+        
+        Returns
+        -------
+        mean flare time, flare width, normalization factor for time pdf
+        
+        """
+        
+        ratio = self.get_energy_spatial_signal_over_backround(fitparams)
+        time = self._tdm_list[0].get_data("time")
+        
+        if sob_thresh > 0: # remove events below threshold
+            for i in range(len(ratio)):
+                mask = ratio > sob_thresh
+                ratio[i] = ratio[i][mask]
+                time[i] = time[i][mask]
+                
+        # in case, remove event
+        if remove_time is not None:
+            mask = time == remove_time
+            ratio = ratio[~mask]
+            time = time[~mask]
+
+        # expectation maximization
+        mu = np.linspace(self._data_list[0].grl["start"][0], self._data_list[-1].grl["stop"][-1], n+2)[1:-1]
+        sigma = np.ones(n) * initial_width
+        ns = np.ones(n) * 10
+        llh_diff = 100
+        llh_old = 0
+        llh_diff_list = [100] * 20
+
+        iteration = 0
+
+        while iteration < iter_max and llh_diff > tol: # run until convergence or maximum number of iterations
+            iteration += 1
+
+            e, logllh = expectation_em(ns, mu, sigma, time, ratio)
+
+            llh_new = np.sum(logllh)
+            tmp_diff = np.abs(llh_old - llh_new) / llh_new
+            llh_diff_list = llh_diff_list[:-1]
+            llh_diff_list.insert(0, tmp_diff)
+            llh_diff = np.max(llh_diff_list)
+            llh_old = llh_new
+            mu, sigma, ns = maximization_em(e, time)
+
+        return mu, sigma, ns
+
+
+    def run_gamma_scan_single_flare(self, remove_time=None, gamma_min=1, gamma_max=5, n_gamma=51):
+        """ run em for different gammas in the signal energy pdf
+        
+        Parameters
+        ----------
+        
+        remove_time : time information of event that should be removed 
+        gamma_min : lower bound for gamma scan
+        gamma_max : upper bound for gamma scan
+        n_gamma : number of steps for gamma scan
+        
+        Returns 
+        -------
+        array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
+        """
+        
+        dtype = [("gamma", "f8"), ("mu", "f8"), ("sigma", "f8"), ("ns_em", "f8")]
+        results = np.empty(51, dtype=dtype)
+        
+        for index, g in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
+            mu, sigma, ns = self.em_fit({"gamma": g}, n=1, tol=1.e-200, iter_max=500, sob_thresh=0, 
+                                initial_width=5000, remove_time=remove_time)
+            results[index] = (g, mu[0], sigma[0], ns[0])
+
+        return results
+    
+
+    def calculate_TS(self, em_results, rss):
+        """ calculate the best TS value for the expectation maximization gamma scan
+        
+        Parameters
+        ----------
+        
+        em_results : 
+        rss : random state service for optimization
+
+        Returns  
+        -------
+        float maximized TS value
+        tuple(gamma from em scan [float], best fit mean time [float], best fit width [float])
+        (float ns, float gamma) fitparams from TS optimization
+
+
+        """
+        max_TS = 0
+        best_time = None
+        best_flux = None
+        for index, result in enumerate(em_results):
+            self.change_signal_time(gauss={"mu": em_results["mu"], "sigma": em_results["sigma"]})
+            (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
+            TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
+            if TS > max_TS:
+                max_TS = TS
+                best_time = result
+                best_flux = fitparam_values
+
+        return max_TS, best_time, fitparam_values
+        
+
+    def unblind_flare(self, remove_time=None):
+        """ rum EM on unscrambeled data. Similar to the original analysis, remove the alert event. \
+        Parameters
+        ----------
+
+        remove_time : time of event that should be removed from dataset prior to analysis. In the case of the TXS analysis: remove_time=58018.8711856
+
+        Returns 
+        -------
+        array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
+        """
+        
+        # get the original unblinded data
+        rss = RandomStateService(seed=1)
+
+        self.unblind(rss)
+
+        time_results = self.run_gamma_scan_single_flare(remove_time=remove_time)
+        
+        return time_results
+
