@@ -41,6 +41,22 @@ sys.path.insert(0, '/path/to/skyllh')
 sys.path.insert(0, '/path/to/i3skyllh')  # optional
 ```
 
+# Development
+
+We are using [`black`](https://black.readthedocs.io/en/stable/) for code linting and have configured pre-commit hooks.
+
+To pass automatic tests on GitHub we recommend to install `pre-commit` package:
+```bash
+pip install pre-commit
+```
+and run:
+```bash
+pre-commit install
+```
+inside the cloned repository once. The pre-commit hook will then automatically run before any commit and will show `Passed`/`Failed` tests. In case of `Failed` test you can review automatic changes using `git diff`, add updated files using `git add -u`, and commit again.
+
+It will also show existing `flake8` errors, but treat them as warnings. Feel free to fix them!
+
 # i3skyllh
 
 The [`i3skyllh`](https://github.com/icecube/i3skyllh) package provides complementary pre-defined common analyses and datasets for the [IceCube Neutrino Observatory](https://icecube.wisc.edu) detector in a private [repository](https://github.com/icecube/i3skyllh).
