@@ -15,9 +15,9 @@ from skyllh.core.dataset import Dataset
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
 
-from skyllh.analyses.i3.publicdata_ps.utils import (
-    psi_to_dec_and_ra,
-    PublicDataSmearingMatrix,
+from skyllh.analyses.i3.publicdata_ps.utils import psi_to_dec_and_ra
+from skyllh.analyses.i3.publicdata_ps.pd_smearing_matrix import (
+    PublicDataSmearingMatrix
 )
 from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 

@@ -240,7 +240,8 @@ class PDAeff(object):
         return self._aeff_decnu_log10enu
 
     def create_sin_decnu_log10_enu_spline(self):
-        """Creates a FctSpline2D object representing a 2D spline of the
+        """DEPRECATED!
+        Creates a FctSpline2D object representing a 2D spline of the
         effective area in sin(dec_nu)-log10(E_nu/GeV)-space.
 
         Returns

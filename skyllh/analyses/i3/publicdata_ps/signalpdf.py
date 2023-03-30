@@ -27,7 +27,9 @@ from skyllh.physics.flux import FluxModel
 from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 from skyllh.analyses.i3.publicdata_ps.utils import (
     FctSpline1D,
-    PublicDataSmearingMatrix,
+)
+from skyllh.analyses.i3.publicdata_ps.pd_smearing_matrix import (
+    PublicDataSmearingMatrix
 )
 
 
