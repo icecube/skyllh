@@ -1541,11 +1541,11 @@ class LLHRatioAnalysis(
         return recarray
 
 
-class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
+class SingleSourceMultiDatasetLLHRatioAnalysis(
         LLHRatioAnalysis):
-    """This is an analysis class that implements a time-integrated
-    log-likelihood ratio analysis for multiple datasets assuming a single
-    source. It is a special case of the multi-source analysis.
+    """This is an analysis class that implements a log-likelihood ratio analysis
+    for multiple datasets assuming a single source.
+    It is a special case of the multi-source analysis.
 
     For more information how to construct and run the analysis see the
     documentation of the :class:`~skyllh.core.analysis.LLHRatioAnalysis` class.
@@ -1731,11 +1731,10 @@ class SingleSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
         return factor
 
 
-class MultiSourceTimeIntegratedMultiDatasetLLHRatioAnalysis(
+class MultiSourceMultiDatasetLLHRatioAnalysis(
         LLHRatioAnalysis):
-    """This is the abstract base class for all log-likelihood ratio analysis
-    classes that use multiple dataset, i.e. multiple LLH-ratio functions, one
-    for each dataset and multiple sources.
+    """This is an analysis class that implements a log-likelihood ratio analysis
+    for multiple datasets assuming a multiple sources.
 
     For more information how to construct and run the analysis see the
     documentation of the :class:`~skyllh.core.analysis.LLHRatioAnalysis` class.
