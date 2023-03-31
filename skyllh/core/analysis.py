@@ -499,7 +499,7 @@ class Analysis(
             fitparam_values=fitparam_values,
             **kwargs)
 
-    def construct_background_generator(self):
+    def construct_background_generator(self, **kwargs):
         """Constructs the background generator for all added datasets.
         This method must be called after all the datasets were added via the
         add_dataset method. It sets the `bkg_generator` property of this
@@ -513,9 +513,10 @@ class Analysis(
         self._bkg_generator = self.bkg_generator_cls(
             bkg_gen_method=self._bkg_gen_method,
             dataset_list=self._dataset_list,
-            data_list=self._data_list)
+            data_list=self._data_list,
+            **kwargs)
 
-    def construct_signal_generator(self):
+    def construct_signal_generator(self, **kwargs):
         """Constructs the signal generator for all added datasets.
         This method must be called after all the datasets were added via the
         add_dataset method. It sets the `sig_generator` property of this
@@ -525,7 +526,8 @@ class Analysis(
         self._sig_generator = self.sig_generator_cls(
             shg_mgr=self._shg_mgr,
             dataset_list=self._dataset_list,
-            data_list=self._data_list)
+            data_list=self._data_list,
+            **kwargs)
 
     @abc.abstractmethod
     def initialize_trial(

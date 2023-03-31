@@ -1481,9 +1481,18 @@ class DatasetCollection(object):
 
         Parameters
         ----------
-        index : int, optional
-            Index of which data preparation function to remove. Default value
-            is the last added function.
+        key : str, int, optional
+            The name or the index of the data preparation function that should
+            be removed. Default value is ``-1``, i.e. the last added function.
+
+        Raises
+        ------
+        TypeError
+            If the type of the key argument is invalid.
+        IndexError
+            If the given key is out of range.
+        KeyError
+            If the data preparation function cannot be found.
         """
         for (dsname, dataset) in self._datasets.items():
             dataset.remove_data_preparation(key=key)
