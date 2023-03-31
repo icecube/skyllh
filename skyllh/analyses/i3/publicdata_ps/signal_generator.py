@@ -83,17 +83,20 @@ class PDDatasetSignalGenerator(object):
         # 1000 times smaller than the smallest non-zero bin.
         m = prob_per_bin == 0
         prob_per_bin[m] = np.min(prob_per_bin[np.invert(m)]) / 1000
+        to_keep = np.where(prob_per_bin > 1e-15)[0]  # For numerical stability
+        prob_per_bin = prob_per_bin[to_keep]
         prob_per_bin /= np.sum(prob_per_bin)
 
         # Compute the cumulative distribution CDF.
-        cum_per_bin = np.cumsum(prob_per_bin)
-        cum_per_bin = np.concatenate(([0], cum_per_bin))
+        cum_per_bin = [np.sum(prob_per_bin[:i])
+                       for i in range(prob_per_bin.size+1)]
         if np.any(np.diff(cum_per_bin) == 0):
             raise ValueError(
                 'The cumulative sum of the true energy probability is not '
                 'monotonically increasing! Values of the cumsum are '
                 f'{cum_per_bin}.')
 
+        bin_centers = bin_centers[to_keep]
         bin_centers = np.concatenate(([low_bin_edges[0]], bin_centers))
 
         # Build a spline for the inverse CDF.
@@ -210,7 +213,7 @@ class PDDatasetSignalGenerator(object):
         events['run'] = -1 * np.ones(n_events)
 
         return events
-    
+
     @staticmethod
     @np.vectorize
     def energy_filter(events, spline, cut_sindec):
@@ -220,9 +223,9 @@ class PDDatasetSignalGenerator(object):
         if cut_sindec is None:
             cut_sindec = 0
         energy_filter = np.logical_and(
-            events['sin_dec']<cut_sindec,
-            events['log_energy']<spline(events['sin_dec']))
-        
+            events['sin_dec'] < cut_sindec,
+            events['log_energy'] < spline(events['sin_dec']))
+
         return energy_filter
 
     def generate_signal_events(
@@ -290,7 +293,7 @@ class PDSignalGenerator(SignalGeneratorBase):
     def __init__(self, src_hypo_group_manager, dataset_list, data_list=None,
                  llhratio=None, energy_cut_splines=None, cut_sindec=None):
         """Constructs a new signal generator instance.
-        
+
         Parameters
         ----------
         src_hypo_group_manager : SourceHypoGroupManager instance
@@ -308,7 +311,6 @@ class PDSignalGenerator(SignalGeneratorBase):
             datsets.
         energy_cut_splines : dict
         cut_energy_min : dict
-        
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self.dataset_list = dataset_list
@@ -437,19 +439,22 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
     in the dataset)
     """
 
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list=None, llhratio=None, 
-                 energy_cut_splines=None, cut_sindec=None, gauss=None, box=None):
-        
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list=None,
+                 llhratio=None, energy_cut_splines=None, cut_sindec=None,
+                 gauss=None, box=None):
+
         if gauss is None and box is None:
-            raise ValueError("Either box or gauss keywords must define the neutrino flare")
+            raise ValueError(
+                "Either box or gauss keywords must define the neutrino flare.")
         if gauss is not None and box is not None:
-            raise ValueError("Either box or gauss keywords must define the neutrino flare, cannot use both.")
-        
-        super().__init__(src_hypo_group_manager, dataset_list, data_list, llhratio, 
-                         energy_cut_splines, cut_sindec)
+            raise ValueError(
+                "Either box or gauss keywords must define the neutrino flare, "
+                "cannot use both.")
+
+        super().__init__(src_hypo_group_manager, dataset_list, data_list,
+                         llhratio, energy_cut_splines, cut_sindec)
         self.box = box
         self.gauss = gauss
-
 
     def set_flare(self, gauss=None, box=None):
         """ change the flare to something new
@@ -460,13 +465,15 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         box : None or dictionary with {"start": float, "end": float}
         """
         if gauss is None and box is None:
-            raise ValueError("Either box or gauss keywords must define the neutrino flare")
+            raise ValueError(
+                "Either box or gauss keywords must define the neutrino flare.")
         if gauss is not None and box is not None:
-            raise ValueError("Either box or gauss keywords must define the neutrino flare, cannot use both.")
-        
+            raise ValueError(
+                "Either box or gauss keywords must define the neutrino flare, "
+                "cannot use both.")
+
         self.box = box
         self.gauss = gauss
-
 
     def generate_signal_events(self, rss, mean, poisson=True):
         """ same as in PDSignalGenerator, but we assign times here. 
@@ -475,7 +482,6 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
 
         tot_n_events = 0
         signal_events_dict = {}
-
 
         for shg in shg_list:
             # This only works with power-laws for now.
@@ -521,28 +527,33 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
                     if events_ is None:
                         continue
 
-                    # Assign times for flare. We can also use inverse transform sampling instead of the 
-                    # lazy version implemented here
+                    # Assign times for flare. We can also use inverse transform
+                    # sampling instead of the lazy version implemented here
                     tmp_grl = self.data_list[ds_idx].grl
                     for event_index in events_.indices:
-                            while events_._data_fields["time"][event_index] == 1:
-                                if self.gauss is not None:
-                                    # make sure flare is in dataset
-                                    if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
+                        while events_._data_fields["time"][event_index] == 1:
+                            if self.gauss is not None:
+                                # make sure flare is in dataset
+                                if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
                                         self.gauss["mu"] + 4 * self.gauss["sigma"] < tmp_grl["start"][0]):
-                                        break # this should never happen
-                                    time = norm(self.gauss["mu"], self.gauss["sigma"]).rvs()
-                                if self.box is not None:
-                                    # make sure flare is in dataset
-                                    if (self.box["start"] > tmp_grl["stop"][-1]) or (self.box["end"] < tmp_grl["start"][0]):
-                                        break # this should never be the case, since there should no events be generated
-                                    livetime = self.box["end"] - self.box["start"]
-                                    time = rss.random.random() * livetime 
-                                    time += self.box["start"]
-                                # check if time is in grl
-                                is_in_grl = (tmp_grl["start"] <= time) & (tmp_grl["stop"] >= time)
-                                if np.any(is_in_grl):
-                                    events_._data_fields["time"][event_index] = time
+                                    break  # this should never happen
+                                time = norm(
+                                    self.gauss["mu"], self.gauss["sigma"]).rvs()
+                            if self.box is not None:
+                                # make sure flare is in dataset
+                                if (self.box["start"] > tmp_grl["stop"][-1]) or (
+                                        self.box["end"] < tmp_grl["start"][0]):
+                                    # this should never be the case, since
+                                    # there should be no events generated
+                                    break
+                                livetime = self.box["end"] - self.box["start"]
+                                time = rss.random.random() * livetime
+                                time += self.box["start"]
+                            # check if time is in grl
+                            is_in_grl = (tmp_grl["start"] <= time) & (
+                                tmp_grl["stop"] >= time)
+                            if np.any(is_in_grl):
+                                events_._data_fields["time"][event_index] = time
 
                     if shg_src_idx == 0:
                         signal_events_dict[ds_idx] = events_
