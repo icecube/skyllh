@@ -14,6 +14,7 @@ class FctSpline1D(object):
 
     The evaluate the spline, use the ``__call__`` method.
     """
+
     def __init__(self, f, x_binedges, norm=False, **kwargs):
         """Creates a new 1D function spline using the PchipInterpolator
         class from scipy.
@@ -85,6 +86,7 @@ class FctSpline2D(object):
 
     The evaluate the spline, use the ``__call__`` method.
     """
+
     def __init__(self, f, x_binedges, y_binedges, **kwargs):
         """Creates a new 2D function spline using the RectBivariateSpline
         class from scipy.
@@ -184,33 +186,68 @@ def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
     a = psi
     b = np.pi/2 - src_dec
     c = src_ra
-
     # Random rotation angle for the 2D circle
     t = rss.random.uniform(0, 2*np.pi, size=len(psi))
 
     # Parametrize the circle
     x = (
-        (np.sin(a)*np.cos(b)*np.cos(c)) * np.cos(t) + \
-        (np.sin(a)*np.sin(c)) * np.sin(t) - \
+        (np.sin(a)*np.cos(b)*np.cos(c)) * np.cos(t) +
+        (np.sin(a)*np.sin(c)) * np.sin(t) -
         (np.cos(a)*np.sin(b)*np.cos(c))
     )
     y = (
-        -(np.sin(a)*np.cos(b)*np.sin(c)) * np.cos(t) + \
-        (np.sin(a)*np.cos(c)) * np.sin(t) + \
+        -(np.sin(a)*np.cos(b)*np.sin(c)) * np.cos(t) +
+        (np.sin(a)*np.cos(c)) * np.sin(t) +
         (np.cos(a)*np.sin(b)*np.sin(c))
     )
     z = (
-        (np.sin(a)*np.sin(b)) * np.cos(t) + \
+        (np.sin(a)*np.sin(b)) * np.cos(t) +
         (np.cos(a)*np.cos(b))
     )
 
     # Convert back to right-ascension and declination.
     # This is to distinguish between diametrically opposite directions.
     zen = np.arccos(z)
-    azi = np.arctan2(y,x)
+    azi = np.arctan2(y, x)
 
     dec = np.pi/2 - zen
     ra = np.pi - azi
 
     return (dec, ra)
 
+
+def create_energy_cut_spline(ds, exp_data, spl_smooth):
+
+    # Create the spline for the declination-dependent energy cut
+    # that the signal generator needs for injection in the southern sky
+
+    # Some special conditions are needed for IC79 and IC86_I, because
+    # their experimental dataset shows events that should probably have
+    # been cut by the IceCube selection.
+    data_exp = exp_data.copy(keep_fields=['sin_dec', 'log_energy'])
+    if ds.name == 'IC79':
+        m = np.invert(np.logical_and(
+            data_exp['sin_dec'] < -0.75,
+            data_exp['log_energy'] < 4.2))
+        data_exp = data_exp[m]
+    if ds.name == 'IC86_I':
+        m = np.invert(np.logical_and(
+            data_exp['sin_dec'] < -0.2,
+            data_exp['log_energy'] < 2.5))
+        data_exp = data_exp[m]
+
+    sin_dec_binning = ds.get_binning_definition('sin_dec')
+    sindec_edges = sin_dec_binning.binedges
+    min_log_e = np.zeros(len(sindec_edges)-1, dtype=float)
+    for i in range(len(sindec_edges)-1):
+        mask = np.logical_and(
+            data_exp['sin_dec'] >= sindec_edges[i],
+            data_exp['sin_dec'] < sindec_edges[i+1])
+        min_log_e[i] = np.min(data_exp['log_energy'][mask])
+    del data_exp
+    sindec_centers = 0.5 * (sindec_edges[1:]+sindec_edges[:-1])
+
+    spline = interpolate.UnivariateSpline(
+        sindec_centers, min_log_e, k=2, s=spl_smooth)
+
+    return spline

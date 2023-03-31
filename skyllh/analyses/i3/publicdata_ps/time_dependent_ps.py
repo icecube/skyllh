@@ -37,7 +37,6 @@ from skyllh.core.trialdata import TrialDataManager
 # Classes for defining the analysis.
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
-    TimeIntegratedMultiDatasetSingleSourceAnalysis as Analysis,
     TimeDependentSingleDatasetSingleSourceAnalysis as TimedepSingleDatasetAnalysis
 )
 
@@ -48,7 +47,7 @@ from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 # Classes to define the signal and background PDFs.
 from skyllh.core.signalpdf import (
     RayleighPSFPointSourceSignalSpatialPDF,
-    SignalBoxTimePDF, 
+    SignalBoxTimePDF,
     SignalGaussTimePDF
 )
 from skyllh.core.backgroundpdf import BackgroundUniformTimePDF
@@ -79,7 +78,6 @@ from skyllh.datasets.i3 import data_samples
 
 # Analysis specific classes for working with the public data.
 from skyllh.analyses.i3.publicdata_ps.signal_generator import (
-    PDSignalGenerator,
     PDTimeDependentSignalGenerator
 )
 from skyllh.analyses.i3.publicdata_ps.detsigyield import (
@@ -94,13 +92,14 @@ from skyllh.analyses.i3.publicdata_ps.pdfratio import (
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF
 )
+from skyllh.analyses.i3.publicdata_ps.utils import create_energy_cut_spline
 from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import (
-    psi_func, 
+    psi_func,
     TXS_location
 )
 
 
-def create_timedep_analysis(
+def create_analysis(
     datasets,
     source,
     gauss=None,
@@ -116,8 +115,8 @@ def create_timedep_analysis(
     gamma_max=5.,
     kde_smoothing=False,
     minimizer_impl="LBFGS",
-    cut_sindec = None,
-    spl_smooth = None,
+    cut_sindec=None,
+    spl_smooth=None,
     cap_ratio=False,
     compress_data=False,
     keep_data_fields=None,
@@ -199,7 +198,9 @@ def create_timedep_analysis(
     if gauss is None and box is None:
         raise ValueError("No time pdf specified (box or gauss)")
     if gauss is not None and box is not None:
-        raise ValueError("Time PDF cannot be both Gaussian and box shaped. Please specify only one shape.")
+        raise ValueError(
+            "Time PDF cannot be both Gaussian and box shaped. "
+            "Please specify only one shape.")
 
     # Create the minimizer instance.
     if minimizer_impl == "LBFGS":
@@ -207,8 +208,9 @@ def create_timedep_analysis(
     elif minimizer_impl == "minuit":
         minimizer = Minimizer(IMinuitMinimizerImpl(ftol=1e-8))
     else:
-        raise NameError(f"Minimizer implementation `{minimizer_impl}` is not "
-            "supported. Please use `LBFGS` or `minuit`.")
+        raise NameError(
+            f"Minimizer implementation `{minimizer_impl}` is not supported "
+            "Please use `LBFGS` or `minuit`.")
 
     # Define the flux model.
     flux_model = PowerLawFlux(
@@ -267,22 +269,21 @@ def create_timedep_analysis(
     # We will use the same method for all datasets.
     event_selection_method = SpatialBoxEventSelectionMethod(
         src_hypo_group_manager, delta_angle=np.deg2rad(optimize_delta_angle))
-    #event_selection_method = None
-    
+
     # Prepare the spline parameters.
     if cut_sindec is None:
         cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
     if spl_smooth is None:
         spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
     if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
-        raise AssertionError("The length of the spl_smooth and of the "
-            "cut_sindec must be equal to the length of datasets: "
-            f"{len(datasets)}.")
-        
+        raise AssertionError(
+            "The length of the spl_smooth and of the cut_sindec must be equal "
+            f"to the length of datasets: {len(datasets)}.")
+
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     energy_cut_splines = []
-    for idx,ds in enumerate(datasets):
+    for idx, ds in enumerate(datasets):
         # Load the data of the data set.
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
@@ -331,46 +332,20 @@ def create_timedep_analysis(
         if gauss is not None or box is not None:
             time_bkgpdf = BackgroundUniformTimePDF(data.grl)
             if gauss is not None:
-                time_sigpdf = SignalGaussTimePDF(data.grl, gauss['mu'], gauss['sigma'])
+                time_sigpdf = SignalGaussTimePDF(
+                    data.grl, gauss['mu'], gauss['sigma'])
             elif box is not None:
-                time_sigpdf = SignalBoxTimePDF(data.grl, box["start"], box["end"])
+                time_sigpdf = SignalBoxTimePDF(
+                    data.grl, box["start"], box["end"])
             time_pdfratio = TimeSigOverBkgPDFRatio(time_sigpdf, time_bkgpdf)
             pdfratios.append(time_pdfratio)
-        
+
         analysis.add_dataset(
             ds, data, pdfratios, tdm, event_selection_method)
-        
-        # Create the spline for the declination-dependent energy cut
-        # that the signal generator needs for injection in the southern sky
-        
-        # Some special conditions are needed for IC79 and IC86_I, because
-        # their experimental dataset shows events that should probably have
-        # been cut by the IceCube selection.
-        data_exp = data.exp.copy(keep_fields=['sin_dec', 'log_energy'])
-        if ds.name == 'IC79':
-            m = np.invert(np.logical_and(
-                data_exp['sin_dec']<-0.75,
-                data_exp['log_energy'] < 4.2))
-            data_exp = data_exp[m]
-        if ds.name == 'IC86_I':
-            m = np.invert(np.logical_and(
-                data_exp['sin_dec']<-0.2,
-                data_exp['log_energy'] < 2.5))
-            data_exp = data_exp[m]
-            
-        sin_dec_binning = ds.get_binning_definition('sin_dec')
-        sindec_edges = sin_dec_binning.binedges
-        min_log_e = np.zeros(len(sindec_edges)-1, dtype=float)
-        for i in range(len(sindec_edges)-1):
-            mask = np.logical_and(
-                data_exp['sin_dec']>=sindec_edges[i],
-                data_exp['sin_dec']<sindec_edges[i+1])
-            min_log_e[i] = np.min(data_exp['log_energy'][mask])
-        del data_exp
-        sindec_centers = 0.5 * (sindec_edges[1:]+sindec_edges[:-1])
 
-        energy_cut_splines.append(UnivariateSpline(
-            sindec_centers, min_log_e, k=2, s=spl_smooth[idx]))
+        energy_cut_spline = create_energy_cut_spline(
+            ds, data.exp, spl_smooth[idx])
+        energy_cut_splines.append(energy_cut_spline)
 
         pbar.increment()
     pbar.finish()
@@ -381,4 +356,3 @@ def create_timedep_analysis(
         cut_sindec=cut_sindec, box=box, gauss=gauss)
 
     return analysis
-
