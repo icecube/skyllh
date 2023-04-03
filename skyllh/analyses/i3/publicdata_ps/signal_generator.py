@@ -27,6 +27,18 @@ class PDDatasetSignalGenerator(object):
     def __init__(self, ds, src_dec, effA=None, sm=None, **kwargs):
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
+        
+        Parameters:
+        -----------
+        ds : Dataset instance
+            Dataset instance for which signal events should get
+            generated for.
+        src_dec : float
+            The declination of the source in radians.
+        effA : PDAeff | None
+            Representation of the effective area provided by the public data.
+        sm : PublicDataSmearingMatrix | None
+            Representation of the smearing matrix provided by the public data.
         """
         super().__init__(**kwargs)
 
@@ -217,9 +229,10 @@ class PDDatasetSignalGenerator(object):
     @staticmethod
     @np.vectorize
     def energy_filter(events, spline, cut_sindec):
-        # The energy filter will cut all events below cut_sindec
-        # that have an energy smaller than the energy spline at
-        # their declination.
+        """The energy filter will cut all events below `cut_sindec`
+        that have an energy smaller than the energy spline at
+        their declination.
+        """
         if cut_sindec is None:
             cut_sindec = 0
         energy_filter = np.logical_and(
@@ -308,9 +321,9 @@ class PDSignalGenerator(SignalGeneratorBase):
         llhratio : LLHRatio
             The likelihood ratio object contains the datasets signal weights
             needed for distributing the event generation among the different
-            datsets.
-        energy_cut_splines : dict
-        cut_energy_min : dict
+            datasets.
+        energy_cut_splines : list of UnivariateSpline
+        cut_sindec : float
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self.dataset_list = dataset_list
