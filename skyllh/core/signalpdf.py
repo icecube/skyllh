@@ -535,7 +535,10 @@ class SignalBoxTimePDF(TimePDF, IsSignalPDF):
         ----------
         grl : ndarray
             Array of the detector good run list
-
+        start : float
+            Start time of box profile.
+        end : float
+            End time of box profile.
         """
         super(SignalBoxTimePDF, self).__init__(**kwargs)
         self.start = start
