@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""The trad_ps analysis is a multi-dataset time-integrated single source
+"""The time_integrated_ps analysis is a multi-dataset time-integrated single source
 analysis with a two-component likelihood function using a spacial and an energy
 event PDF.
 """
@@ -457,15 +457,5 @@ if(__name__ == '__main__'):
     print('TS = %g' % (TS))
     print('ns_fit = %g' % (fitparam_dict['ns']))
     print('gamma_fit = %g' % (fitparam_dict['gamma']))
-
-    """
-    # Generate some signal events.
-    with tl.task_timer('Generating signal events.'):
-        (n_sig, signal_events_dict) =\
-            ana.sig_generator.generate_signal_events(rss, 100)
-
-    print('n_sig: %d', n_sig)
-    print('signal datasets: '+str(signal_events_dict.keys()))
-    """
 
     print(tl)
