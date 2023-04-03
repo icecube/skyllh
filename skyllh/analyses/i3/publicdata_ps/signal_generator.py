@@ -479,12 +479,14 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         self.gauss = gauss
 
     def set_flare(self, gauss=None, box=None):
-        """ change the flare to something new
+        """Set the neutrino flare given parameters.
 
         Parameters
         ----------
-        gauss : None or dictionary with {"mu": float, "sigma": float}
-        box : None or dictionary with {"start": float, "end": float}
+        gauss : dict | None
+            None or dictionary with {"mu": float, "sigma": float}.
+        box : dict | None
+             None or dictionary with {"start": float, "end": float}.
         """
         if gauss is None and box is None:
             raise ValueError(
