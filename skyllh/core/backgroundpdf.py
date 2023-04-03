@@ -173,11 +173,11 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
 
         tdm : TrialDataManager
             Unused interface argument
-
         fitparams : None
             Unused interface argument.
-
-        tl : TimeLord instance for timing
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
 
         Returns
         -------
