@@ -6,7 +6,6 @@
 import argparse
 import logging
 import numpy as np
-from scipy.interpolate import UnivariateSpline
 
 from skyllh.core.progressbar import ProgressBar
 
