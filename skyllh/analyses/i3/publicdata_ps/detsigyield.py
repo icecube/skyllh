@@ -31,9 +31,9 @@ from skyllh.analyses.i3.publicdata_ps.pd_aeff import (
 class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod,
         multiproc.IsParallelizable):
-    """Thus detector signal yield constructor class constructs a
-    detector signal yield instance for a varibale power law flux model, which
-    has the spectral index gama as fit parameter, assuming a point-like source.
+    """This detector signal yield constructor class constructs a
+    detector signal yield instance for a variable power law flux model, which
+    has the spectral index gamma as fit parameter, assuming a point-like source.
     It constructs a two-dimensional spline function in sin(dec) and gamma, using
     a :class:`scipy.interpolate.RectBivariateSpline`. Hence, the detector signal
     yield can vary with the declination and the spectral index, gamma, of the
@@ -43,12 +43,13 @@ class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
     PowerLawFlux flux model.
 
     It is tailored to the IceCube detector at the South Pole, where the
-    effective area depends soley on the zenith angle, and hence on the
+    effective area depends solely on the zenith angle, and hence on the
     declination, of the source.
 
     It takes the effective area for the detector signal yield from the auxilary
     detector effective area data file given by the public data.
     """
+
     def __init__(
             self, gamma_grid, spline_order_sinDec=2, spline_order_gamma=2,
             ncpu=None):
@@ -110,19 +111,19 @@ class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         # Check for the correct data types of the input arguments.
         if(not isinstance(dataset, Dataset)):
             raise TypeError('The dataset argument must be an instance of '
-                'Dataset!')
+                            'Dataset!')
         if(not isinstance(data, DatasetData)):
             raise TypeError('The data argument must be an instance of '
-                'DatasetData!')
+                            'DatasetData!')
         if(not self.supports_fluxmodel(fluxmodel)):
             raise TypeError('The DetSigYieldImplMethod "%s" does not support '
-                'the flux model "%s"!'%(
-                    self.__class__.__name__,
-                    fluxmodel.__class__.__name__))
+                            'the flux model "%s"!' % (
+                                self.__class__.__name__,
+                                fluxmodel.__class__.__name__))
         if((not isinstance(livetime, float)) and
            (not isinstance(livetime, Livetime))):
             raise TypeError('The livetime argument must be an instance of '
-                'float or Livetime!')
+                            'float or Livetime!')
 
         # Get integrated live-time in days.
         livetime_days = get_integrated_livetime_in_days(livetime)
@@ -188,7 +189,7 @@ class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
             ((energy_bin_edges_lower,
               energy_bin_edges_upper,
               aeff_arr,
-              fluxmodel.copy({'gamma':gamma})), {})
+              fluxmodel.copy({'gamma': gamma})), {})
             for gamma in gamma_grid.grid
         ]
         h = np.vstack(
@@ -201,7 +202,7 @@ class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
             sin_true_dec_binedges_lower + sin_true_dec_binedges_upper)
         log_spl_sinDec_gamma = scipy.interpolate.RectBivariateSpline(
             sin_dec_bincenters, gamma_grid.grid, np.log(h),
-            kx = self.spline_order_sinDec, ky = self.spline_order_gamma, s = 0)
+            kx=self.spline_order_sinDec, ky=self.spline_order_gamma, s=0)
 
         # Construct the detector signal yield instance with the created spline.
         sin_dec_binedges = np.concatenate(
