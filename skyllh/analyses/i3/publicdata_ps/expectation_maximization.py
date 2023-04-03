@@ -30,20 +30,23 @@ def expectation_em(ns, mu, sigma, t, sob):
 
 def maximization_em(e_sig, t):
     """
-    maximization step of expectation maximization
+    Maximization step of expectation maximization.
 
     Parameters
     ----------
-
-    e_sig: [array] the weights for each event form the expectation step
-    t: [array] the times of each event
+    e_sig : list of 1d ndarray of float
+        The weights for each event from the expectation step.
+    t : 1d ndarray of float
+        The times of each event.
 
     Returns
     -------
-    mu (float) : best fit mean 
-    sigma (float) : best fit width
-    ns (float) : scaling of gaussian 
-
+    mu : list of float
+        Best fit mean time of the gaussian flare.
+    sigma : list of float
+        Best fit sigma of the gaussian flare.
+    ns : list of float
+        Best fit number of signal neutrinos, as weight for the gaussian flare.
     """
     mu = []
     sigma = []
