@@ -460,7 +460,7 @@ class SignalGaussTimePDF(TimePDF, IsSignalPDF):
 
 
     def norm_uptime(self, t):
-        """compute the normalization with the dataset uptime. Distributions like 
+        """Compute the normalization with the dataset uptime. Distributions like 
         scipy.stats.norm are normalized (-inf, inf).
         These must be re-normalized such that the function sums to 1 over the
         finite good run list domain.
