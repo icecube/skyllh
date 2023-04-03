@@ -34,7 +34,7 @@ def expectation_em(ns, mu, sigma, t, sob):
     e_sig = []
     for i in range(len(ns)):
         e_sig.append(norm(loc=mu[i], scale=sigma[i]).pdf(t) * sob * ns[i])
-    e_bg = (N - np.sum(ns)) / (np.max(t) - np.min(t)) / b_term  # 2198.918456004788
+    e_bg = (N - np.sum(ns)) / (np.max(t) - np.min(t)) / b_term
     denom = sum(e_sig) + e_bg
 
     return [e / denom for e in e_sig], np.sum(np.log(denom))
