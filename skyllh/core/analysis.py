@@ -1615,18 +1615,45 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
 
     def __init__(self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns, test_statistic, 
                  bkg_gen_method=None, sig_generator_cls=None):
-        
+        """Creates a new time-dependent single dataset point-like source analysis
+        assuming a single source.
+
+        Parameters
+        ----------
+        src_hypo_group_manager : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            efficiency implementation method.
+        src_fitparam_mapper : instance of SourceFitParameterMapper
+            The SourceFitParameterMapper instance managing the global fit
+            parameters and their relation to the individual sources.
+        fitparam_ns : FitParameter instance
+            The FitParameter instance defining the fit parameter ns.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
+            The instance of BackgroundGenerationMethod that should be used to
+            generate background events for pseudo data. This can be set to None,
+            if there is no need to generate background events.
+        sig_generator_cls : SignalGeneratorBase class | None
+            The signal generator class used to create the signal generator
+            instance.
+            If set to None, the `SignalGenerator` class is used.
+        """
         super().__init__(src_hypo_group_manager, src_fitparam_mapper, fitparam_ns, 
                          test_statistic, bkg_gen_method, sig_generator_cls)
         
         
     def change_time_pdf(self, gauss=None, box=None):
-        """ changes the time pdf
+        """Changes the time pdf.
+
         Parameters
         ----------
-        gauss : None or dictionary with {"mu": float, "sigma": float}
-        box : None or dictionary with {"start": float, "end": float}
-
+        gauss : dict | None
+            None or dictionary with {"mu": float, "sigma": float}.
+        box : dict | None
+            None or dictionary with {"start": float, "end": float}.
         """
         if gauss is None and box is None:
             raise TypeError("Either gauss or box have to be specified as time pdf.")
@@ -1652,17 +1679,18 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
 
 
     def get_energy_spatial_signal_over_backround(self, fitparams):
-        """ returns the signal over background ratio for 
-        (spatial_signal * energy_signal) / (spatial_background * energy_background)
+        """Returns the signal over background ratio for 
+        (spatial_signal * energy_signal) / (spatial_background * energy_background).
         
         Parameter
         ---------
-        analysis : analysis instance
-        fitparams : dictionary with {"gamma": float} for energy pdf
+        fitparams : dict
+            Dictionary with {"gamma": float} for energy pdf.
         
         Returns
         -------
-        product of spatial and energy signal over background pdfs
+        ratio : 1d ndarray
+            Product of spatial and energy signal over background pdfs.
         """
         ratio = self._llhratio.llhratio_list[0].pdfratio_list[0].get_ratio(self._tdm_list[0], fitparams)
         ratio *= self._llhratio.llhratio_list[0].pdfratio_list[1].get_ratio(self._tdm_list[0], fitparams)
@@ -1671,11 +1699,12 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
     
     
     def change_fluxmodel_gamma(self, gamma):
-        """ set new gamma for the flux model
+        """Set new gamma for the flux model.
+
         Parameter
         ---------
-        analysis : analysis instance
-        gamma : spectral index for flux model
+        gamma : float
+            Spectral index for flux model.
         """
         
         self.src_hypo_group_manager.src_hypo_group_list[0].fluxmodel.gamma = gamma
@@ -1696,24 +1725,29 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
 
     def em_fit(self, fitparams, n=1, tol=1.e-200, iter_max=500, sob_thresh=0, initial_width=5000, 
             remove_time=None):
-        """
-        run expectation maximization
+        """Run expectation maximization.
         
         Parameters
         ----------
-
-        fitparams : dictionary with value for gamma, e.g. {'gamma': 2}
-        n : how many gaussians flares we are looking for
-        tol : the stopping criteria for expectation maximization. This is the difference in the normalized likelihood over the
-            last 20 iterations
-        iter_max : the maximum number of iterations, even if stopping criteria tolerance (tol) is not yet reached
-        sob_thres : set a minimum threshold for signal over background ratios. ratios below this threshold will be removed
-        initial_width : starting width for the gaussian flare in days
+        fitparams : dict
+            Dictionary with value for gamma, e.g. {'gamma': 2}.
+        n : int
+            How many gaussians flares we are looking for.
+        tol : float
+            the stopping criteria for expectation maximization. This is the difference in the normalized likelihood over the
+            last 20 iterations.
+        iter_max : int
+            The maximum number of iterations, even if stopping criteria tolerance (`tol`) is not yet reached.
+        sob_thres : float
+            Set a minimum threshold for signal over background ratios. Ratios below this threshold will be removed.
+        initial_width : float
+            Starting width for the gaussian flare in days.
+        remove_time : float | None
+            Time information of event that should be removed.
         
         Returns
         -------
         mean flare time, flare width, normalization factor for time pdf
-        
         """
         
         ratio = self.get_energy_spatial_signal_over_backround(fitparams)
@@ -1758,15 +1792,18 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
 
 
     def run_gamma_scan_single_flare(self, remove_time=None, gamma_min=1, gamma_max=5, n_gamma=51):
-        """ run em for different gammas in the signal energy pdf
+        """Run em for different gammas in the signal energy pdf
         
         Parameters
         ----------
-        
-        remove_time : time information of event that should be removed 
-        gamma_min : lower bound for gamma scan
-        gamma_max : upper bound for gamma scan
-        n_gamma : number of steps for gamma scan
+        remove_time : float
+            Time information of event that should be removed.
+        gamma_min : float
+            Lower bound for gamma scan.
+        gamma_max : float
+            Upper bound for gamma scan.
+        n_gamma : int
+            Number of steps for gamma scan.
         
         Returns 
         -------
@@ -1774,7 +1811,7 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
         """
         
         dtype = [("gamma", "f8"), ("mu", "f8"), ("sigma", "f8"), ("ns_em", "f8")]
-        results = np.empty(51, dtype=dtype)
+        results = np.empty(n_gamma, dtype=dtype)
         
         for index, g in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
             mu, sigma, ns = self.em_fit({"gamma": g}, n=1, tol=1.e-200, iter_max=500, sob_thresh=0, 
@@ -1785,21 +1822,21 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
     
 
     def calculate_TS(self, em_results, rss):
-        """ calculate the best TS value for the expectation maximization gamma scan
+        """Calculate the best TS value for the expectation maximization gamma scan.
         
         Parameters
         ----------
-        
-        em_results : 
-        rss : random state service for optimization
+        em_results : 1d ndarray of tuples
+            Gamma scan result.
+        rss : instance of RandomStateService
+            The instance of RandomStateService that should be used to generate
+            random numbers from.
 
         Returns  
         -------
         float maximized TS value
         tuple(gamma from em scan [float], best fit mean time [float], best fit width [float])
         (float ns, float gamma) fitparams from TS optimization
-
-
         """
         max_TS = 0
         best_time = None
@@ -1817,11 +1854,13 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
         
 
     def unblind_flare(self, remove_time=None):
-        """ rum EM on unscrambeled data. Similar to the original analysis, remove the alert event. \
+        """Run EM on unscrambled data. Similar to the original analysis, remove the alert event.
+
         Parameters
         ----------
-
-        remove_time : time of event that should be removed from dataset prior to analysis. In the case of the TXS analysis: remove_time=58018.8711856
+        remove_time : float
+            Time information of event that should be removed.
+            In the case of the TXS analysis: remove_time=58018.8711856
 
         Returns 
         -------

@@ -451,7 +451,10 @@ class SignalGaussTimePDF(TimePDF, IsSignalPDF):
         ----------
         grl : ndarray
             Array of the detector good run list
-
+        mu : float
+            Mean of the gaussian flare.
+        sigma : float
+            Sigma of the gaussian flare.
         """
         super(SignalGaussTimePDF, self).__init__(**kwargs)
         self.mu = mu
