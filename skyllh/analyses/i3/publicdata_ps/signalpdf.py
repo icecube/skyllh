@@ -131,7 +131,7 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
 
         Returns
         -------
-        prob : (N_events,)-shaped numpy ndarray
+        pd : (N_events,)-shaped numpy ndarray
             The 1D numpy ndarray with the probability density for each event.
         grads : (N_fitparams,N_events)-shaped ndarray | None
             The 2D numpy ndarray holding the gradients of the PDF w.r.t.
