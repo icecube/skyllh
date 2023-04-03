@@ -3,19 +3,27 @@ from scipy.stats import norm
 
 def expectation_em(ns, mu, sigma, t, sob):
     """
-    Expectation step of expectation maximization
+    Expectation step of expectation maximization.
 
     Parameters
     ----------
-    ns: the number of signal neutrinos, as weight for the gaussian flare
-    mu: the mean of the gaussian flare
-    sigma: sigma of gaussian flare
-    t: [array] times of the events
-    sob: [array] the signal over background values of events
+    ns : float | 1d ndarray of float
+        The number of signal neutrinos, as weight for the gaussian flare.
+    mu : float | 1d ndarray of float
+        The mean time of the gaussian flare.
+    sigma: float | 1d ndarray of float
+        Sigma of the gaussian flare.
+    t : 1d ndarray of float
+        Times of the events.
+    sob : 1d ndarray of float
+        The signal over background values of events.
 
     Returns
     -------
-    array, weighted "responsibility" function of each event to belong to the flare
+    expectation : list of 1d ndarray of float
+        Weighted "responsibility" function of each event to belong to the flare.
+    sum_log_denom : float
+        Sum of log of denominators.
     """
     b_term = (1 - np.cos(10 / 180 * np.pi)) / 2
     N = len(t)
