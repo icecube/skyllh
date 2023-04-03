@@ -220,12 +220,12 @@ def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
 
 def create_energy_cut_spline(ds, exp_data, spl_smooth):
 
-    '''Create the spline for the declination-dependent energy cut
+    """Create the spline for the declination-dependent energy cut
     that the signal generator needs for injection in the southern sky
     Some special conditions are needed for IC79 and IC86_I, because
     their experimental dataset shows events that should probably have
     been cut by the IceCube selection.
-    '''
+    """
     data_exp = exp_data.copy(keep_fields=['sin_dec', 'log_energy'])
     if ds.name == 'IC79':
         m = np.invert(np.logical_and(
