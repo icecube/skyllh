@@ -387,6 +387,12 @@ def get_pd_bkg_E_nu_sin_dec_nu(pd_atmo, pd_astro, log10_e_grid_edges):
     log10_e_grid_edges : (n_e_grid+1,)-shaped numpy ndarray
         The numpy ndarray holding the log10 values of the energy grid bin edges
         in GeV.
+
+    Returns
+    -------
+    pd_bkg : (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray
+        The numpy ndarray holding total background probability density values
+        p_bkg(E_nu|sin(dec_nu)) in unit 1/GeV.
     """
     pd_bkg = pd_atmo + pd_astro
 
