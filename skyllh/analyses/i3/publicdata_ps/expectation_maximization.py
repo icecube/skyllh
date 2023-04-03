@@ -25,6 +25,10 @@ def expectation_em(ns, mu, sigma, t, sob):
     sum_log_denom : float
         Sum of log of denominators.
     """
+    ns = np.atleast_1d(ns)
+    mu = np.atleast_1d(mu)
+    sigma = np.atleast_1d(sigma)
+    
     b_term = (1 - np.cos(10 / 180 * np.pi)) / 2
     N = len(t)
     e_sig = []
