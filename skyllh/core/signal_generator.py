@@ -397,7 +397,7 @@ class MultiSourceSignalGenerator(SignalGenerator):
             A typical keyword argument is the instance of MultiDatasetTCLLHRatio.
         """
         super(MultiSourceSignalGenerator, self).__init__(
-            src_hypo_group_manager, dataset_list, data_list)
+            src_hypo_group_manager, dataset_list, data_list, **kwargs)
 
     def _construct_signal_candidates(self):
         """Constructs an array holding pointer information of signal candidate
