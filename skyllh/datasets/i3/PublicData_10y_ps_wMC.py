@@ -563,17 +563,6 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'Zenith[deg]':  'zen'
     })
 
-#    dsc.set_mc_field_name_renaming_dict({
-#        'true_dec':     'true_dec',
-#        'true_ra':      'true_ra',
-#        'true_energy':  'true_energy',
-#        'log_energy':   'log_energy',
-#        'ra':           'ra',
-#        'dec':          'dec',
-#        'ang_err':      'ang_err',
-#        'mcweight':     'mcweight'
-#    })
-
     def add_run_number(data):
         exp = data.exp
         mc = data.mc
