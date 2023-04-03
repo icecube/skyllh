@@ -9,6 +9,8 @@ from skyllh.core.py import (
     float_cast,
     int_cast
 )
+from skyllh.core.py import module_classname
+from skyllh.core.debugging import get_logger
 from skyllh.core.signal_generator import SignalGeneratorBase
 from skyllh.core.llhratio import LLHRatio
 from skyllh.core.dataset import Dataset
@@ -23,11 +25,16 @@ from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 
 
 class PDDatasetSignalGenerator(object):
+    """This class provides a signal generation method for a point-like source
+    seen in the IceCube detector using one dataset of the 10 years public data
+    release. It is used by the PDSignalGenerato class in a loop over all the
+    datasets that have been added to the analysis.
+    """
 
     def __init__(self, ds, src_dec, effA=None, sm=None, **kwargs):
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
-        
+
         Parameters:
         -----------
         ds : Dataset instance
@@ -41,6 +48,8 @@ class PDDatasetSignalGenerator(object):
             Representation of the smearing matrix provided by the public data.
         """
         super().__init__(**kwargs)
+
+        self._logger = get_logger(module_classname(self))
 
         if sm is None:
             self.smearing_matrix = PublicDataSmearingMatrix(
@@ -228,13 +237,33 @@ class PDDatasetSignalGenerator(object):
 
     @staticmethod
     @np.vectorize
-    def energy_filter(events, spline, cut_sindec):
-        """The energy filter will cut all events below `cut_sindec`
-        that have an energy smaller than the energy spline at
-        their declination.
+    def energy_filter(events, spline, cut_sindec, logger):
+        """The energy filter will select all events below `cut_sindec`
+        that have an energy smaller than the energy spline at their
+        declination.
+
+        Paramters
+        ---------
+        events : numpy record array
+            Numpy record array with the generated signal events.
+        energy_cut_splines : scipy.interpolate.UnivariateSpline
+            A spline of E(sin_dec) that defines the declination
+            dependent energy cut in the IceCube southern sky.
+        cut_sindec : float
+            The sine of the declination to start applying the energy cut. 
+            The cut will be applied from this declination down.
+        logger : logging.Logger
+            The Logger instance.
+
+        Returns
+        energy_filter : (len(events),)-shaped numpy ndarray
+            A mask of shape `len(events)` of the events to be cut.
         """
         if cut_sindec is None:
-            cut_sindec = 0
+            logger.warn(
+                'No `cut_sindec` has been specified. The energy cut will be '
+                'applied in [-90, 0] deg.')
+            cut_sindec = 0.
         energy_filter = np.logical_and(
             events['sin_dec'] < cut_sindec,
             events['log_energy'] < spline(events['sin_dec']))
@@ -246,6 +275,24 @@ class PDDatasetSignalGenerator(object):
             energy_cut_spline=None, cut_sindec=None):
         """Generates ``n_events`` signal events for the given source location
         and flux model.
+
+        Paramters
+        ---------
+        rss : RandomStateService
+        src_dec : float
+            Declination coordinate of the injection point.
+        src_ra : float
+            Right ascension coordinate of the injection point.
+        flux_model : FluxModel
+            Instance of the `FluxModel` class.
+        n_events : int
+            Number of signal events to be generated.
+        energy_cut_splines : scipy.interpolate.UnivariateSpline
+            A spline of E(sin_dec) that defines the declination
+            dependent energy cut in the IceCube southern sky.
+        cut_sindec : float
+            The sine of the declination to start applying the energy cut. 
+            The cut will be applied from this declination down.
 
         Returns
         -------
@@ -286,7 +333,7 @@ class PDDatasetSignalGenerator(object):
             events_ = events_[events_['isvalid']]
             if energy_cut_spline is not None:
                 to_cut = self.energy_filter(
-                    events_, energy_cut_spline, cut_sindec)
+                    events_, energy_cut_spline, cut_sindec, self._logger)
                 events_ = events_[~to_cut]
             if not len(events_) == 0:
                 n_evt_generated += len(events_)
@@ -323,7 +370,11 @@ class PDSignalGenerator(SignalGeneratorBase):
             needed for distributing the event generation among the different
             datasets.
         energy_cut_splines : list of UnivariateSpline
-        cut_sindec : float
+            A list of splines of E(sin_dec) used to define the declination
+            dependent energy cut in the IceCube southern sky.
+        cut_sindec : list of float
+            The sine of the declination to start applying the energy cut. 
+            The cut will be applied from this declination down.
         """
         self.src_hypo_group_manager = src_hypo_group_manager
         self.dataset_list = dataset_list
