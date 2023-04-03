@@ -14,7 +14,7 @@ def rebin(
         negatives=False):
     """Rebins the binned counts to the new desired grid. This function
     uses a method of moments approach. Currently it uses a three moments
-    appraoch. At the edges of the array it uses a two moments approach.
+    approach. At the edges of the array it uses a two moments approach.
 
     Parameters
     ----------
