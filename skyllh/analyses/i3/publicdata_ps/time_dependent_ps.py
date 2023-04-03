@@ -191,7 +191,7 @@ def create_analysis(
 
     Returns
     -------
-    analysis : TimeIntegratedMultiDatasetSingleSourceAnalysis
+    analysis : TimeDependentSingleDatasetSingleSourceAnalysis
         The Analysis instance for this analysis.
     """
 
