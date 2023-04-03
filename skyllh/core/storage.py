@@ -488,6 +488,22 @@ class TextFileLoader(FileLoader):
             dtype_convertion_except_fields):
         """Loads the given file.
 
+        Parameters
+        ----------
+        pathfilename : str
+            The fully qualified file name of the data file that
+            need to be loaded.
+        keep_fields : str | sequence of str | None
+            Load the data into memory only for these data fields. If set to
+            ``None``, all in-file-present data fields are loaded into memory.
+        dtype_convertions : dict | None
+            If not None, this dictionary defines how data fields of specific
+            data types get converted into the specified data types.
+            This can be used to use less memory.
+        dtype_convertion_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
+
         Returns
         -------
         data : DataFieldRecordArray instance
