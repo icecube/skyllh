@@ -503,7 +503,6 @@ class SignalGaussTimePDF(TimePDF, IsSignalPDF):
 
         fitparams : None
             Unused interface argument.
-
         tl : TimeLord instance | None
             The optional TimeLord instance to use for measuring timing
             information.
