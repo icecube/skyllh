@@ -419,6 +419,17 @@ class TextFileLoader(FileLoader):
     def __init__(self, pathfilenames, header_comment='#', header_separator=None,
             **kwargs):
         """Creates a new file loader instance for a text data file.
+
+        Parameters
+        ----------
+        pathfilenames : str | sequence of str
+            The sequence of fully qualified file names of the data files that
+            need to be loaded.
+        header_comment : str
+            The character that defines a comment line in the text file.
+        header_separator : str | None
+            The separator of the header field names. If None, it assumes
+            whitespaces.
         """
         super().__init__(pathfilenames, **kwargs)
 
