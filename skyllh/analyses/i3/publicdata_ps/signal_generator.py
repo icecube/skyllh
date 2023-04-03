@@ -442,7 +442,29 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
     def __init__(self, src_hypo_group_manager, dataset_list, data_list=None,
                  llhratio=None, energy_cut_splines=None, cut_sindec=None,
                  gauss=None, box=None):
-
+        """
+        Parameters
+        ----------
+        src_hypo_group_manager : SourceHypoGroupManager instance
+            The instance of SourceHypoGroupManager that defines the list of
+            sources, i.e. the list of SourceModel instances.
+        dataset_list : list of Dataset instances
+            The list of Dataset instances for which signal events should get
+            generated for.
+        data_list : list of DatasetData instances
+            The list of DatasetData instances holding the actual data of each
+            dataset. The order must match the order of ``dataset_list``.
+        llhratio : LLHRatio
+            The likelihood ratio object contains the datasets signal weights
+            needed for distributing the event generation among the different
+            datsets.
+        energy_cut_splines : list of UnivariateSpline
+        cut_sindec : float
+        gauss : dict | None
+            None or dictionary with {"mu": float, "sigma": float}.
+        box : dict | None
+            None or dictionary with {"start": float, "end": float}.
+        """
         if gauss is None and box is None:
             raise ValueError(
                 "Either box or gauss keywords must define the neutrino flare.")
