@@ -95,6 +95,11 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
         tl : TimeLord instance | None
             The optional TimeLord instance that should be used to measure
             timing information.
+
+        Returns
+        -------
+        pd : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
         """
         # Select events that actually have a signal energy PDF.
         # All other events will get zero signal probability density.
@@ -173,6 +178,11 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             The FluxModel instance that defines the source's flux model.
         fitparam_grid_set : ParameterGrid | ParameterGridSet instance
             The parameter grid set defining the grids of the fit parameters.
+        ncpu : int | None
+            The number of CPUs to utilize. Global setting will take place if
+            not specified, i.e. set to None.
+        ppbar : ProgressBar instance | None
+            The instance of ProgressBar for the optional parent progress bar.
         """
         self._logger = get_logger(module_classname(self))
 
@@ -312,7 +322,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 """This functions creates a spline for the reco energy
                 distribution given a true neutrino engery.
                 """
-                # Create the enegry PDF f_e = P(log10_E_reco|dec) =
+                # Create the energy PDF f_e = P(log10_E_reco|dec) =
                 # \int dPsi dang_err P(E_reco,Psi,ang_err).
                 f_e = np.sum(
                     sm_pdf[true_e_idx] *
