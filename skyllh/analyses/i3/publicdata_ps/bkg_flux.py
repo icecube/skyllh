@@ -27,33 +27,6 @@ def get_dOmega(dec_min, dec_max):
     return 2*np.pi*(np.sin(dec_max) - np.sin(dec_min))
 
 
-def eval_spline(x, spl):
-    values = spl(x)
-    values = np.nan_to_num(values, nan=0)
-    return values
-
-
-def create_spline(x, y, norm=False):
-    """Creates the spline representation of the x and y values.
-    """
-
-    spline = interpolate.PchipInterpolator(
-        x, y, extrapolate=False
-    )
-
-    if norm:
-        spl_norm = integrate.quad(
-            eval_spline,
-            x[0], x[-1],
-            args=(spline,),
-            limit=200, full_output=1)[0]
-
-        return spline, spl_norm
-
-    else:
-        return spline
-
-
 def southpole_zen2dec(zen):
     """Converts zenith angles at the South Pole to declination angles.
 
