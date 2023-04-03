@@ -547,7 +547,7 @@ class SignalBoxTimePDF(TimePDF, IsSignalPDF):
 
 
     def cdf(self, t):
-        """ Compute the cumulative density function for the box pdf. This is needed for normalization.
+        """Compute the cumulative density function for the box pdf. This is needed for normalization.
         
         Parameters
         ----------
