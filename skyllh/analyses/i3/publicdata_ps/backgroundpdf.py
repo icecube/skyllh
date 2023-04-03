@@ -27,7 +27,7 @@ from scipy.stats import gaussian_kde
 
 class PDEnergyPDF(EnergyPDF, UsesBinning):
     """This is the base class for IceCube specific energy PDF models.
-    IceCube energy PDFs depend soley on the energy and the
+    IceCube energy PDFs depend solely on the energy and the
     zenith angle, and hence, on the declination of the event.
 
     The IceCube energy PDF is modeled as a 1d histogram in energy,
@@ -63,13 +63,12 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         kde_smoothing : bool
-            Apply a kde smoothing to the energy pdf for each sine of the
-            muon declination.
+            Apply a kde smoothing to the energy pdf for each bin in sin(dec).
+            This is useful for signal injections, because it ensures that the
+            background is not zero when injecting high energy events.
             Default: False.
         """
         super(PDEnergyPDF, self).__init__()
-
-        # self.logger = logging.getLogger(__name__)
 
         # Define the PDF axes.
         self.add_axis(PDFAxis(name='log_energy',
@@ -127,22 +126,9 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered_zero_physics = h > 0
 
-        # Create a 2D histogram with only the data which has physics
-        # contribution. We will do the normalization along the logE
-        # axis manually.
-        data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
-        (h, bins_logE, bins_sinDec) = np.histogram2d(
-            data_logE[~mask], data_sinDec[~mask],
-            bins=[
-                logE_binning.binedges, sinDec_binning.binedges],
-            weights=data_weights,
-            range=[
-                logE_binning.range, sinDec_binning.range],
-            density=False)
-
-        # If a bandwidth is passed, apply a KDE-based smoothing with the given
-        # bw parameter as bandwidth for the fit.
         if kde_smoothing:
+            # If a bandwidth is passed, apply a KDE-based smoothing with the given
+            # bw parameter as bandwidth for the fit.
             if not isinstance(kde_smoothing, bool):
                 raise ValueError(
                     "The bandwidth parameter must be True or False!")
@@ -165,6 +151,20 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
             h = np.vstack(
                 [kde_pdf[i].evaluate(logE_binning.bincenters)
                  for i in range(len(sinDec_binning.bincenters))]).T
+
+        else:
+            # Create a 2D histogram with only the data which has physics
+            # contribution. We will do the normalization along the logE
+            # axis manually.
+            data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
+            (h, bins_logE, bins_sinDec) = np.histogram2d(
+                data_logE[~mask], data_sinDec[~mask],
+                bins=[
+                    logE_binning.binedges, sinDec_binning.binedges],
+                weights=data_weights,
+                range=[
+                    logE_binning.range, sinDec_binning.range],
+                density=False)
 
         # Calculate the normalization for each logE bin. Hence we need to sum
         # over the logE bins (axis 0) for each sin(dec) bin and need to divide
@@ -313,6 +313,7 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
     """This class provides a background energy PDF constructed from the public
     data and a monte-carlo background flux model.
     """
+
     def __init__(
             self, pdf_log10emu_sindecmu, log10emu_binning, sindecmu_binning,
             **kwargs):
@@ -444,6 +445,6 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             sindecmu, self.get_binning('sin_dec').binedges) - 1
 
         with TaskTimer(tl, 'Evaluating sindecmu-log10emu PDF.'):
-            pd = self._hist_logE_sinDec[(log10emu_idxs,sindecmu_idxs)]
+            pd = self._hist_logE_sinDec[(log10emu_idxs, sindecmu_idxs)]
 
         return pd
