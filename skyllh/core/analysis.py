@@ -1682,13 +1682,14 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
     
     
     def change_signal_time(self, gauss=None, box=None):
-        """ change the signal injection to gauss or box
+        """Change the signal injection to gauss or box.
         
         Parameters
         ----------
-        analysis : analysis instance
-        gauss : None or dictionary {"mu": float, "sigma": float}
-        box : None or dictionary {"start" : float, "end" : float}
+        gauss : dict | None
+            None or dictionary {"mu": float, "sigma": float}.
+        box : dict | None
+            None or dictionary {"start" : float, "end" : float}.
         """
         self.sig_generator.set_flare(box=box, gauss=gauss)
 
