@@ -253,8 +253,9 @@ class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
         Returns
         -------
-        pd : (n_events,)-shaped 1D numpy ndarray
-            The probability density value for each event in unit 1/rad.
+        pd : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event in
+            unit 1/rad.
         grads : (0,)-shaped 1D numpy ndarray
             Since this PDF does not depend on fit parameters, an empty array
             is returned.
@@ -398,8 +399,8 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
                 time_axis.vmin, time_axis.vmax))
 
     def get_prob(self, tdm, fitparams):
-        """Calculates the signal time probability of each event for the given
-        set of signal time fit parameter values.
+        """Calculates the signal time probability density of each event for the
+        given set of signal time fit parameter values.
 
         Parameters
         ----------
@@ -412,12 +413,12 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
                 The MJD time of the event.
         fitparams : dict
             The dictionary holding the signal time parameter values for which
-            the signal time probability should be calculated.
+            the signal time probability density should be calculated.
 
         Returns
         -------
-        prob : array of float
-            The (N,)-shaped ndarray holding the probability for each event.
+        pd : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
         """
         # Update the time-profile if its fit-parameter values have changed and
         # recalculate self._I and self._S if an updated was actually performed.
@@ -425,20 +426,20 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         if(updated):
             (self._I, self._S) = self._calculate_time_profile_I_and_S()
 
-        events_time = tdm.get_data('time')
+        time = tdm.get_data('time')
 
         # Get a mask of the event times which fall inside a detector on-time
         # interval.
-        on = self._livetime.is_on(events_time)
+        on = self._livetime.is_on(time)
 
         # The sum of the on-time integrals of the time profile, A, will be zero
         # if the time profile is entirly during detector off-time.
-        prob = np.zeros((tdm.n_selected_events,), dtype=np.float64)
+        pd = np.zeros((tdm.n_selected_events,), dtype=np.float64)
         if(self._S > 0):
-            prob[on] = self._time_profile.get_value(
-                events_time[on]) / (self._I * self._S)
+            pd[on] = self._time_profile.get_value(
+                time[on]) / (self._I * self._S)
 
-        return prob
+        return pd
     
 
 class SignalGaussTimePDF(TimePDF, IsSignalPDF):
@@ -462,37 +463,30 @@ class SignalGaussTimePDF(TimePDF, IsSignalPDF):
         self.grl = grl
 
 
-    def norm_uptime(self, t):
+    def norm_uptime(self):
         """Compute the normalization with the dataset uptime. Distributions like 
         scipy.stats.norm are normalized (-inf, inf).
         These must be re-normalized such that the function sums to 1 over the
         finite good run list domain.
-
-        Parameters
-        ----------
-        t : float, ndarray
-            MJD times
 
         Returns
         -------
         norm : float
             Normalization such that cdf sums to 1 over good run list domain
         """
-        t = np.atleast_1d(t)
-
         cdf = scp.stats.norm(self.mu, self.sigma).cdf
 
         integral = (cdf(self.grl["stop"]) - cdf(self.grl["start"])).sum()
 
-        if integral < 1.e-50:
+        if np.isclose(integral, 0):
             return 0
 
         return 1. / integral
 
 
     def get_prob(self, tdm, fitparams=None, tl=None):
-        """Calculates the signal time probability of each event for the given
-        set of signal time fit parameter values.
+        """Calculates the signal time probability density of each event for the
+        given set of signal time fit parameter values.
 
         Parameters
         ----------
@@ -512,21 +506,18 @@ class SignalGaussTimePDF(TimePDF, IsSignalPDF):
 
         Returns
         -------
-        prob : array of float
-            The (N,)-shaped ndarray holding the probability for each event.
+        pd : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
         grads : empty array of float
             Empty, since it does not depend on any fit parameter
         """
+        time = tdm.get_data('time')
 
-        events_time = tdm.get_data('time')
-
-        t = events_time
-
+        pd = scp.stats.norm.pdf(time, self.mu, self.sigma) * self.norm_uptime()
         grads = np.array([], dtype=np.double)
 
-        return scp.stats.norm.pdf(t, self.mu, self.sigma) * self.norm_uptime(t), grads
-    
-        
+        return (pd, grads)
+
 
 class SignalBoxTimePDF(TimePDF, IsSignalPDF):
 
@@ -562,11 +553,13 @@ class SignalBoxTimePDF(TimePDF, IsSignalPDF):
         cdf : float, ndarray
             Values of cumulative density function evaluated at t
         """
-        t_start, t_end = self.start, self.end
-        t_arr = np.atleast_1d(t)
+        t_start = self.start
+        t_end = self.end
+        t = np.atleast_1d(t)
 
-        cdf = np.zeros(t_arr.size, float)
-        sample_start, sample_end = self.grl["start"][0], self.grl["stop"][-1]
+        cdf = np.zeros(t.size, float)
+        sample_start = self.grl["start"][0]
+        sample_end = self.grl["stop"][-1]
 
         if t_start < sample_start and t_end > sample_start:
             t_start = sample_start
@@ -574,37 +567,31 @@ class SignalBoxTimePDF(TimePDF, IsSignalPDF):
             t_end = sample_end
 
         # values between start and stop times
-        mask = (t_start <= t_arr) & (t_arr <= t_end)
-        cdf[mask] = (t_arr[mask] - t_start) / [t_end - t_start]
+        mask = (t_start <= t) & (t <= t_end)
+        cdf[mask] = (t[mask] - t_start) / [t_end - t_start]
 
         # take care of values beyond stop time in sample
         if t_end > sample_start:
-            mask = (t_end < t_arr)
+            mask = (t_end < t)
             cdf[mask] = 1.
 
         return cdf
     
 
-    def norm_uptime(self, t):
+    def norm_uptime(self):
         """Compute the normalization with the dataset uptime. Distributions like 
         scipy.stats.norm are normalized (-inf, inf).
         These must be re-normalized such that the function sums to 1 over the
         finite good run list domain.
-
-        Parameters
-        ----------
-        t : float, ndarray
-            MJD times
 
         Returns
         -------
         norm : float
             Normalization such that cdf sums to 1 over good run list domain
         """
-
         integral = (self.cdf(self.grl["stop"]) - self.cdf(self.grl["start"])).sum()
 
-        if integral < 1.e-50:
+        if np.isclose(integral, 0):
             return 0
 
         return 1. / integral
@@ -632,23 +619,23 @@ class SignalBoxTimePDF(TimePDF, IsSignalPDF):
 
         Returns
         -------
-        prob : array of float
-            The (N,)-shaped ndarray holding the probability for each event.
+        pd : (N_events,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
         grads : empty array of float
             Does not depend on fit parameter, so no gradient
         """
-
-        events_time = tdm.get_data('time')
+        time = tdm.get_data('time')
 
         # Get a mask of the event times which fall inside a detector on-time
         # interval.
-        time = events_time
+        # Gives 0 for outside the flare and 1 for inside the flare.
+        box_mask = np.piecewise(time, [self.start <= time, time <= self.end], [1., 1.])
 
-        # gives 1 for outside the flare and 0 for inside the flare.
-        inverse_box = np.piecewise(time, [time < self.start, time > self.end], [1., 1.])
+        sample_start = self.grl["start"][0]
+        sample_end = self.grl["stop"][-1]
 
-        sample_start, sample_end = min(self.grl["start"]), max(self.grl["stop"])
-        t_start, t_end = self.start, self.end
+        t_start = self.start
+        t_end = self.end
         # check if the whole flare lies in this dataset for normalization. 
         # If one part lies outside, adjust to datasample start or end time. 
         # For the case where everything lies outside, the pdf will be 0 by definition. 
@@ -657,9 +644,10 @@ class SignalBoxTimePDF(TimePDF, IsSignalPDF):
         if t_end > sample_end and t_start < sample_end:
             t_end = sample_end
 
+        pd = box_mask / (t_end - t_start) * self.norm_uptime()
         grads = np.array([], dtype=np.double)
 
-        return (1. - inverse_box) / (t_end - t_start) * self.norm_uptime(time), grads
+        return (pd, grads)
 
 
 
