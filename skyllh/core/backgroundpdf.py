@@ -8,7 +8,7 @@ from skyllh.core.pdf import (
     IsBackgroundPDF,
     MultiDimGridPDF,
     NDPhotosplinePDF,
-    TimePDF
+    TimePDF,
 )
 
 import numpy as np
