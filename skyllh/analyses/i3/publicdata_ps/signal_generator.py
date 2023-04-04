@@ -19,7 +19,7 @@ from skyllh.core.storage import DataFieldRecordArray
 
 from skyllh.analyses.i3.publicdata_ps.utils import psi_to_dec_and_ra
 from skyllh.analyses.i3.publicdata_ps.pd_smearing_matrix import (
-    PublicDataSmearingMatrix
+    PDSmearingMatrix
 )
 from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 
@@ -44,7 +44,7 @@ class PDDatasetSignalGenerator(object):
             The declination of the source in radians.
         effA : PDAeff | None
             Representation of the effective area provided by the public data.
-        sm : PublicDataSmearingMatrix | None
+        sm : PDSmearingMatrix | None
             Representation of the smearing matrix provided by the public data.
         """
         super().__init__(**kwargs)
@@ -52,7 +52,7 @@ class PDDatasetSignalGenerator(object):
         self._logger = get_logger(module_classname(self))
 
         if sm is None:
-            self.smearing_matrix = PublicDataSmearingMatrix(
+            self.smearing_matrix = PDSmearingMatrix(
                 pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
         else:
