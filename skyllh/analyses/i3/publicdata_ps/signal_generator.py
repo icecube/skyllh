@@ -619,7 +619,7 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
                     # sampling instead of the lazy version implemented here
                     tmp_grl = self.data_list[ds_idx].grl
                     for event_index in events_.indices:
-                        while events_._data_fields["time"][event_index] == 1:
+                        while events_["time"][event_index] == 1:
                             if self.gauss is not None:
                                 # make sure flare is in dataset
                                 if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
