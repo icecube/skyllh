@@ -143,6 +143,7 @@ class EventSelectionMethod(
             self,
             events,
             src_evt_idxs=None,
+            ret_original_evt_idxs=False,
             tl=None):
         """This method selects the events, which will contribute to the
         log-likelihood ratio function.
@@ -155,6 +156,9 @@ class EventSelectionMethod(
         src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
             The 2-element tuple holding the two 1d ndarrays of int of length
             N_values, specifying to which sources the given events belong to.
+        ret_original_evt_idxs : bool
+            Flag if the original indices of the selected events should get
+            returned as well.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -168,6 +172,10 @@ class EventSelectionMethod(
         (src_idxs, evt_idxs) : 1d ndarrays of ints
             The two 1d ndarrays of int of length N_values, holding the indices
             of the sources and the selected events.
+        original_evt_idxs : 1d ndarray of ints
+            The (N_selected_events,)-shaped numpy ndarray holding the original
+            indices of the selected events, if ``ret_original_evt_idxs`` is set
+            to ``True``.
         """
         pass
 
@@ -254,6 +262,7 @@ class IntersectionEventSelectionMethod(
             self,
             events,
             src_evt_idxs=None,
+            ret_original_evt_idxs=False,
             tl=None):
         """Selects events by calling the ``select_events`` methods of the
         individual event selection methods.
@@ -265,6 +274,9 @@ class IntersectionEventSelectionMethod(
         src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
             The 2-element tuple holding the two 1d ndarrays of int of length
             N_values, specifying to which sources the given events belong to.
+        ret_original_evt_idxs : bool
+            Flag if the original indices of the selected events should get
+            returned as well.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -276,7 +288,28 @@ class IntersectionEventSelectionMethod(
             i.e. a subset of the `events` argument.
         (src_idxs, evt_idxs) : 1d ndarrays of ints
             The indices of the sources and the selected events.
+        original_evt_idxs : 1d ndarray of ints
+            The (N_selected_events,)-shaped numpy ndarray holding the original
+            indices of the selected events, if ``ret_original_evt_idxs`` is set
+            to ``True``.
         """
+        if ret_original_evt_idxs:
+            (events, src_evt_idxs, org_evt_idxs1) =\
+                self._evt_sel_method1.select_events(
+                    events=events,
+                    src_evt_idxs=src_evt_idxs,
+                    ret_original_evt_idxs=True)
+
+            (events, src_evt_idxs, org_evt_idxs2) =\
+                self._evt_sel_method2.select_events(
+                    events=events,
+                    src_evt_idxs=src_evt_idxs,
+                    ret_original_evt_idxs=True)
+
+            org_evt_idxs = np.take(org_evt_idxs1, org_evt_idxs2)
+
+            return (events, src_evt_idxs, org_evt_idxs)
+
         (events, src_evt_idxs) = self._evt_sel_method1.select_events(
             events=events,
             src_evt_idxs=src_evt_idxs)
@@ -324,6 +357,7 @@ class AllEventSelectionMethod(
             self,
             events,
             src_evt_idxs=None,
+            ret_original_evt_idxs=False,
             tl=None):
         """Selects all of the given events. Hence, the returned event array is
         the same as the given array.
@@ -336,6 +370,9 @@ class AllEventSelectionMethod(
         src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
             The 2-element tuple holding the two 1d ndarrays of int of length
             N_values, specifying to which sources the given events belong to.
+        ret_original_evt_idxs : bool
+            Flag if the original indices of the selected events should get
+            returned as well.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -347,6 +384,10 @@ class AllEventSelectionMethod(
             i.e. a subset of the `events` argument.
         (src_idxs, evt_idxs) : 1d ndarrays of ints
             The indices of sources and the selected events.
+        original_evt_idxs : 1d ndarray of ints
+            The (N_selected_events,)-shaped numpy ndarray holding the original
+            indices of the selected events, if ``ret_original_evt_idxs`` is set
+            to ``True``.
         """
         with TaskTimer(tl, 'ESM: Calculate indices of selected events.'):
             if src_evt_idxs is None:
@@ -355,6 +396,9 @@ class AllEventSelectionMethod(
                 evt_idxs = np.tile(events.indices, n_sources)
             else:
                 (src_idxs, evt_idxs) = src_evt_idxs
+
+        if ret_original_evt_idxs:
+            return (events, (src_idxs, evt_idxs), events.indices)
 
         return (events, (src_idxs, evt_idxs))
 
@@ -464,6 +508,7 @@ class DecBandEventSectionMethod(
             self,
             events,
             src_evt_idxs=None,
+            ret_original_evt_idxs=False,
             tl=None):
         """Selects the events within the declination band.
 
@@ -473,12 +518,15 @@ class DecBandEventSectionMethod(
             The instance of DataFieldRecordArray that holds the event data.
             The following data fields must exist:
 
-                dec : float
+                ``'dec'`` : float
                     The declination of the event.
 
         src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
             The 2-element tuple holding the two 1d ndarrays of int of length
             N_values, specifying to which sources the given events belong to.
+        ret_original_evt_idxs : bool
+            Flag if the original indices of the selected events should get
+            returned as well.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -490,6 +538,10 @@ class DecBandEventSectionMethod(
             events.
         (src_idxs, evt_idxs) : 1d ndarrays of ints
             The indices of sources and the selected events.
+        original_evt_idxs : 1d ndarray of ints
+            The (N_selected_events,)-shaped numpy ndarray holding the original
+            indices of the selected events, if ``ret_original_evt_idxs`` is set
+            to ``True``.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -518,13 +570,16 @@ class DecBandEventSectionMethod(
         with TaskTimer(tl, 'ESM-DecBand: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            mask_idxs = events.indices[mask]
-            selected_events = events[mask_idxs]
+            selected_events_idxs = events.indices[mask]
+            selected_events = events[selected_events_idxs]
 
         # Get selected events indices.
         idxs = np.argwhere(mask_dec[:, mask])
         src_idxs = idxs[:, 0]
         evt_idxs = idxs[:, 1]
+
+        if ret_original_evt_idxs:
+            return (selected_events, (src_idxs, evt_idxs), selected_events_idxs)
 
         return (selected_events, (src_idxs, evt_idxs))
 
@@ -573,6 +628,7 @@ class RABandEventSectionMethod(
             self,
             events,
             src_evt_idxs=None,
+            ret_original_evt_idxs=False,
             tl=None):
         """Selects the events within the right-ascention band.
 
@@ -594,6 +650,9 @@ class RABandEventSectionMethod(
         src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
             The 2-element tuple holding the two 1d ndarrays of int of length
             N_values, specifying to which sources the given events belong to.
+        ret_original_evt_idxs : bool
+            Flag if the original indices of the selected events should get
+            returned as well.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -605,6 +664,10 @@ class RABandEventSectionMethod(
             events.
         (src_idxs, evt_idxs) : 1d ndarrays of ints
             The indices of the sources and the selected events.
+        original_evt_idxs : 1d ndarray of ints
+            The (N_selected_events,)-shaped numpy ndarray holding the original
+            indices of the selected events, if ``ret_original_evt_idxs`` is set
+            to ``True``.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -651,12 +714,16 @@ class RABandEventSectionMethod(
         with TaskTimer(tl, 'ESM-RaBand: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            selected_events = events[events.indices[mask]]
+            selected_events_idxs = events.indices[mask]
+            selected_events = events[selected_events_idxs]
 
         # Get selected events indices.
         idxs = np.argwhere(mask_ra[:, mask])
         src_idxs = idxs[:, 0]
         evt_idxs = idxs[:, 1]
+
+        if ret_original_evt_idxs:
+            return (selected_events, (src_idxs, evt_idxs), selected_events_idxs)
 
         return (selected_events, (src_idxs, evt_idxs))
 
@@ -705,6 +772,7 @@ class SpatialBoxEventSelectionMethod(
             self,
             events,
             src_evt_idxs=None,
+            ret_original_evt_idxs=False,
             tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination.
@@ -719,14 +787,17 @@ class SpatialBoxEventSelectionMethod(
             The instance of DataFieldRecordArray that holds the event data.
             The following data fields must exist:
 
-            - 'ra' : float
+            ``'ra'`` : float
                 The right-ascention of the event.
-            - 'dec' : float
+            ``'dec'`` : float
                 The declination of the event.
 
         src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
             The 2-element tuple holding the two 1d ndarrays of int of length
             N_values, specifying to which sources the given events belong to.
+        ret_original_evt_idxs : bool
+            Flag if the original indices of the selected events should get
+            returned as well.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -738,6 +809,10 @@ class SpatialBoxEventSelectionMethod(
             events.
         (src_idxs, evt_idxs) : 1d ndarrays of ints | None
             The indices of sources and the selected events.
+        original_evt_idxs : 1d ndarray of ints
+            The (N_selected_events,)-shaped numpy ndarray holding the original
+            indices of the selected events, if ``ret_original_evt_idxs`` is set
+            to ``True``.
         """
         delta_angle = self._delta_angle
         src_arr = self._src_arr
@@ -821,12 +896,16 @@ class SpatialBoxEventSelectionMethod(
         with TaskTimer(tl, 'ESM: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            selected_events = events[events.indices[mask]]
+            selected_events_idxs = events.indices[mask]
+            selected_events = events[selected_events_idxs]
 
         # Get selected events indices.
         idxs = np.argwhere(mask_sky[:, mask])
         src_idxs = idxs[:, 0]
         evt_idxs = idxs[:, 1]
+
+        if ret_original_evt_idxs:
+            return (selected_events, (src_idxs, evt_idxs), selected_events_idxs)
 
         return (selected_events, (src_idxs, evt_idxs))
 
@@ -880,7 +959,7 @@ class PsiFuncEventSelectionMethod(
                 f'{len(self._axis_name_list)} arguments! Its current number '
                 f'of arguments is {n_func_args}.')
 
-        n_sources = self.src_hypo_group_manager.n_sources
+        n_sources = self.shg_mgr.n_sources
         if n_sources != 1:
             raise ValueError(
                 'The `PsiFuncEventSelectionMethod.select_events` currently '
@@ -938,6 +1017,7 @@ class PsiFuncEventSelectionMethod(
             self,
             events,
             src_evt_idxs=None,
+            ret_original_evt_idxs=False,
             tl=None):
         """Selects the events whose psi value is smaller than the value of the
         predefined function.
@@ -948,15 +1028,18 @@ class PsiFuncEventSelectionMethod(
             The instance of DataFieldRecordArray that holds the event data.
             The following data fields must exist:
 
-            - <psi_name> : float
+            <psi_name> : float
                 The great circle distance of the event with the source.
-            - <axis_name(s)> : float
+            <axis_name(s)> : float
                 The name of the axis required for the function ``func`` to be
                 evaluated.
 
         src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
             The 2-element tuple holding the two 1d ndarrays of int of length
             N_values, specifying to which sources the given events belong to.
+        ret_original_evt_idxs : bool
+            Flag if the original indices of the selected events should get
+            returned as well.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -968,6 +1051,10 @@ class PsiFuncEventSelectionMethod(
             events.
         (src_idxs, evt_idxs) : 1d ndarrays of ints
             The indices of the sources and the selected events.
+        original_evt_idxs : 1d ndarray of ints
+            The (N_selected_events,)-shaped numpy ndarray holding the original
+            indices of the selected events, if ``ret_original_evt_idxs`` is set
+            to ``True``.
         """
         cls_name = classname(self)
 
@@ -983,12 +1070,16 @@ class PsiFuncEventSelectionMethod(
         with TaskTimer(tl, f'{cls_name}: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            selected_events = events[events.indices[mask]]
+            selected_events_idxs = events.indices[mask]
+            selected_events = events[selected_events_idxs]
 
         # Get selected events indices.
         idxs = np.argwhere(np.atleast_2d(mask))
         src_idxs = idxs[:, 0]
         evt_idxs = idxs[:, 1]
+
+        if ret_original_evt_idxs:
+            return (selected_events, (src_idxs, evt_idxs), selected_events_idxs)
 
         return (selected_events, (src_idxs, evt_idxs))
 
@@ -1076,6 +1167,7 @@ class AngErrOfPsiEventSelectionMethod(
             self,
             events,
             src_evt_idxs=None,
+            ret_original_evt_idxs=False,
             tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination and performs an additional selection of events whose ang_err
@@ -1092,9 +1184,9 @@ class AngErrOfPsiEventSelectionMethod(
             The instance of DataFieldRecordArray that holds the event data.
             The following data fields must exist:
 
-            - 'ra' : float
+            ``'ra'`` : float
                 The right-ascention of the event.
-            - 'dec' : float
+            ``'dec'`` : float
                 The declination of the event.
 
         src_evt_idxs : 2-tuple of 1d ndarrays of ints | None
@@ -1102,6 +1194,9 @@ class AngErrOfPsiEventSelectionMethod(
             N_values, specifying to which sources the given events belong to.
             If set to ``None`` all given events will be considered to for all
             sources.
+        ret_original_evt_idxs : bool
+            Flag if the original indices of the selected events should get
+            returned as well.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
@@ -1113,6 +1208,10 @@ class AngErrOfPsiEventSelectionMethod(
             events.
         (src_idxs, evt_idxs) : 1d ndarrays of ints
             The indices of the sources and the selected events.
+        original_evt_idxs : 1d ndarray of ints
+            The (N_selected_events,)-shaped numpy ndarray holding the original
+            indices of the selected events, if ``ret_original_evt_idxs`` is set
+            to ``True``.
         """
         if src_evt_idxs is None:
             n_sources = len(self._src_arr)
@@ -1149,11 +1248,15 @@ class AngErrOfPsiEventSelectionMethod(
 
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
-            selected_events = events[events.indices[mask]]
+            selected_events_idxs = events.indices[mask]
+            selected_events = events[selected_events_idxs]
 
         # Get final selected events indices.
         idxs = np.argwhere(mask_sky[:, mask])
         src_idxs = idxs[:, 0]
         evt_idxs = idxs[:, 1]
+
+        if ret_original_evt_idxs:
+            return (selected_events, (src_idxs, evt_idxs), selected_events_idxs)
 
         return (selected_events, (src_idxs, evt_idxs))

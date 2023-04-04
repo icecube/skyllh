@@ -448,14 +448,14 @@ class MCDataSamplingBkgGenMethod(
                         tl,
                         'Pre-select MC events.'):
                     (self._cache_mc_pre_selected,
-                     mc_pre_selected_src_evt_idxs) =\
+                     mc_pre_selected_src_evt_idxs,
+                     mc_pre_selected_idxs) =\
                         self__pre_event_selection_method.select_events(
                             events=data_mc,
+                            ret_original_evt_idxs=True,
                             tl=tl)
-                    mc_pre_selected_idxs = np.unique(
-                        mc_pre_selected_src_evt_idxs[1])
-                self._cache_mc_event_bkg_prob_pre_selected =\
-                    self._cache_mc_event_bkg_prob[mc_pre_selected_idxs]
+                self._cache_mc_event_bkg_prob_pre_selected = np.take(
+                    self._cache_mc_event_bkg_prob, mc_pre_selected_idxs)
             else:
                 self._cache_mc_pre_selected = data_mc
 
