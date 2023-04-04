@@ -641,7 +641,7 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
                             is_in_grl = (tmp_grl["start"] <= time) & (
                                 tmp_grl["stop"] >= time)
                             if np.any(is_in_grl):
-                                events_._data_fields["time"][event_index] = time
+                                events_["time"][event_index] = time
 
                     if shg_src_idx == 0:
                         signal_events_dict[ds_idx] = events_
