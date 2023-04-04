@@ -27,7 +27,7 @@ from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 class PDDatasetSignalGenerator(object):
     """This class provides a signal generation method for a point-like source
     seen in the IceCube detector using one dataset of the 10 years public data
-    release. It is used by the PDSignalGenerato class in a loop over all the
+    release. It is used by the PDSignalGenerator class in a loop over all the
     datasets that have been added to the analysis.
     """
 
