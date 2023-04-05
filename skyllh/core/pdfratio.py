@@ -895,24 +895,3 @@ class SigSetOverBkgPDFRatio(PDFRatio):
         # At this point there is no parameter defined.
         raise KeyError('The PDF ratio "%s" has no signal fit parameter named '
             '"%s"!'%(classname(self), signal_fitparam_name))
-
-
-class TimeSigOverBkgPDFRatio(SigOverBkgPDFRatio):
-    """This class implements a signal-over-background PDF ratio for time
-    PDFs. It takes a signal PDF of type TimePDF and a background PDF of type
-    TimePDF and calculates the PDF ratio.
-    """
-    def __init__(self, sig_pdf, bkg_pdf, *args, **kwargs):
-        """Creates a new signal-over-background PDF ratio instance for time
-        PDFs.
-
-        Parameters
-        ----------
-        sig_pdf : class instance derived from TimePDF, IsSignalPDF
-            The instance of the time signal PDF.
-        bkg_pdf : class instance derived from TimePDF, IsBackgroundPDF
-            The instance of the time background PDF.
-        """
-        super(TimeSigOverBkgPDFRatio, self).__init__(pdf_type=TimePDF,
-            sig_pdf=sig_pdf, bkg_pdf=bkg_pdf, *args, **kwargs)
-

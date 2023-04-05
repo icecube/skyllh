@@ -24,9 +24,13 @@ from skyllh.core.parameters import (
 )
 from skyllh.core.pdf import (
     EnergyPDF,
-    SpatialPDF
+    SpatialPDF,
+    TimePDF
 )
-from skyllh.core.pdfratio import PDFRatio
+from skyllh.core.pdfratio import (
+    PDFRatio,
+    SigOverBkgPDFRatio
+)
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.random import RandomStateService
 from skyllh.core.llhratio import (
@@ -66,11 +70,6 @@ from skyllh.core.signalpdf import (
 )
 
 from skyllh.core.backgroundpdf import BackgroundUniformTimePDF
-
-from skyllh.core.pdfratio import (
-    TimeSigOverBkgPDFRatio
-)
-
 
 
 logger = get_logger(__name__)
@@ -1666,7 +1665,11 @@ class TimeDependentSingleDatasetSingleSourceAnalysis(TimeIntegratedMultiDatasetS
         elif box is not None:
             time_sigpdf = SignalBoxTimePDF(grl, box["start"], box["end"])
 
-        time_pdfratio = TimeSigOverBkgPDFRatio(time_sigpdf, time_bkgpdf)
+        time_pdfratio = SigOverBkgPDFRatio(
+            sig_pdf=time_sigpdf,
+            bkg_pdf=time_bkgpdf,
+            pdf_type=TimePDF
+        )
 
         # the next line seems to make no difference in the llh evaluation. We keep it for consistency
         self._llhratio.llhratio_list[0].pdfratio_list[2] = time_pdfratio 
