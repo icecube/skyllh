@@ -235,35 +235,48 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
         return (pd, dict())
 
 
-class SignalTimePDF(TimePDF, IsSignalPDF):
-    """This class provides a time PDF class for a signal source. It consists of
-    a Livetime instance and a TimeProfileModel instance. Together they construct
-    the actual signal time PDF, which has detector down-time taking into
-    account.
+class SignalTimePDF(
+        TimePDF,
+        IsSignalPDF):
+    """This class provides a signal time PDF class. It consists of
+    a :class:`~skyllh.core.livetime.Livetime` instance and a
+    :class:`~skyllh.physics.flux_model.TimeFluxProfile` instance. Together they
+    construct the actual signal time PDF, which has detector down-time taking
+    into account.
     """
 
-    def __init__(self, livetime, time_profile, **kwargs):
-        """Creates a new signal time PDF instance for a given time profile of
-        the source.
+    def __init__(
+            self,
+            pmm,
+            livetime,
+            time_profile,
+            **kwargs):
+        """Creates a new signal time PDF instance for a given time profile.
 
         Parameters
         ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the mapping of the
+            global parameters to the local source parameters.
         livetime : instance of Livetime
             An instance of Livetime, which provides the detector live-time
             information.
         time_profile : instance of TimeFluxProfile
-            The time flux profile of the source.
+            The signal's time flux profile.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            pmm=pmm,
+            **kwargs)
 
         self.livetime = livetime
         self.time_profile = time_profile
 
         # Define the time axis with the time boundaries of the live-time.
-        self.add_axis(PDFAxis(
-            name='time',
-            vmin=self._livetime.time_window[0],
-            vmax=self._livetime.time_window[1]))
+        self.add_axis(
+            PDFAxis(
+                name='time',
+                vmin=self._livetime.time_window[0],
+                vmax=self._livetime.time_window[1]))
 
         # Get the total integral, I, of the time profile and the sum, S, of the
         # integrals for each detector on-time interval during the time profile,
@@ -320,14 +333,20 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
         total_integral : float
             The total integral of the source time-profile.
         S : float
-            The sum of the source time-profile integrals during the detector
+            The sum of the time-profile integrals during the detector
             on-time intervals.
         """
         ontime_intervals = self._livetime.get_ontime_intervals_between(
-            self._time_profile.t_start, self._time_profile.t_end)
+            self._time_profile.t_start,
+            self._time_profile.t_end)
+
         total_integral = self._time_profile.get_total_integral()
-        S = np.sum(self._time_profile.get_integral(
-            ontime_intervals[:, 0], ontime_intervals[:, 1]))
+
+        S = np.sum(
+            self._time_profile.get_integral(
+                ontime_intervals[:, 0],
+                ontime_intervals[:, 1]))
+
         return (total_integral, S)
 
     def assert_is_valid_for_trial_data(self, tdm):
@@ -341,7 +360,7 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
             The instance of TrialDataManager that holds the trial data.
             The following data fields must exist:
 
-            'time' : float
+            ``'time'`` : float
                 The MJD time of the data event.
 
         Raises
@@ -371,12 +390,13 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
             which to calculate the PDF value. The following data fields must
             exist:
 
-            - 'time' : float
+            ``'time'`` : float
                 The MJD time of the event.
+
         params_recarray : instance of numpy record ndarray
             The numpy record ndarray holding the local parameter values for each
             source.
-        tl : TimeLord instance | None
+        tl : instance of TimeLord | None
             The optional TimeLord instance that should be used to measure
             timing information.
 
@@ -417,7 +437,9 @@ class SignalTimePDF(TimePDF, IsSignalPDF):
             # The sum of the on-time integrals of the time profile, A, will be
             # zero if the time profile is entirly during detector off-time.
             if self._S > 0:
-                pd[src_m] = self._time_profile(times[on]) / (self._I * self._S)
+                pd_src = pd[src_m]
+                pd_src[on] = self._time_profile(t=times[on]) / (self._I * self._S)
+                pd[src_m] = pd_src
 
         return (pd, dict())
 
