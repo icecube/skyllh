@@ -36,7 +36,7 @@ from skyllh.core.trialdata import TrialDataManager
 # Classes for defining the analysis.
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
-    TimeDependentSingleDatasetSingleSourceAnalysis as TimedepSingleDatasetAnalysis
+    TimeIntegratedMultiDatasetSingleSourceAnalysis
 )
 
 # Classes to define the background generation.
@@ -256,7 +256,7 @@ def create_analysis(
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
 
     # Create the Analysis instance.
-    analysis = TimedepSingleDatasetAnalysis(
+    analysis = TimeIntegratedMultiDatasetSingleSourceAnalysis(
         src_hypo_group_manager,
         src_fitparam_mapper,
         fitparam_ns,
