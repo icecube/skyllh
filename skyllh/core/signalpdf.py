@@ -507,6 +507,9 @@ class SignalMultiDimGridPDFSet(
         self._interpol_param_names =\
             self.param_grid_set.params_name_list
 
+        self._cache_tdm_trial_data_state_id = None
+        self._cache_eventdata = None
+
     @property
     def interpol_method_cls(self):
         """The class derived from GridManifoldInterpolationMethod
@@ -521,6 +524,39 @@ class SignalMultiDimGridPDFSet(
                 'The interpol_method_cls property must be a sub-class of '
                 'GridManifoldInterpolationMethod!')
         self._interpol_method_cls = cls
+
+    def _get_eventdata(self, tdm, tl=None):
+        """Creates and caches the event data for this PDFSet. If the
+        TrialDataManager's trail data state id changed, the eventdata will be
+        recreated.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to measure task timing.
+
+        Returns
+        -------
+        eventdata : instance of numpy ndarray
+            The (N_values,V)-shaped eventdata ndarray.
+        """
+        if (self._cache_tdm_trial_data_state_id is None) or\
+           (self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id):
+
+            with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
+                # All PDFs of this PDFSet should have the same axes, so we use
+                # the axes from the first PDF in this PDF set.
+                pdf = next(iter(self.items()))[1]
+
+                self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
+                self._cache_eventdata =\
+                    MultiDimGridPDF.create_eventdata_for_sigpdf(
+                        tdm=tdm,
+                        axes=pdf.axes)
+
+        return self._cache_eventdata
 
     def _get_pdf_for_interpol_param_values(
             self,
@@ -676,14 +712,9 @@ class SignalMultiDimGridPDFSet(
 
         # Create the ndarray for the event data that is needed for the
         # ``MultiDimGridPDF.get_pd_with_eventdata`` method.
-        # All PDFs of this PDFSet should have the same axes, so we use the axes
-        # from the first PDF in this PDF set.
-        with TaskTimer(tl, 'Create PDF eventdata.'):
-            pdf = next(iter(self.items()))[1]
-
-            eventdata = MultiDimGridPDF.create_eventdata_for_sigpdf(
-                tdm=tdm,
-                axes=pdf.axes)
+        eventdata = self._get_eventdata(
+            tdm=tdm,
+            tl=tl)
 
         # Get the interpolated PDF values for the arbitrary parameter values.
         # The (D,N_events)-shaped grads_arr ndarray contains the gradient of the
@@ -791,12 +822,48 @@ class SignalSHGMappedMultiDimGridPDFSet(
                 pdf=pdf,
                 gridparams={'shg_idx': shg_idx})
 
+        self._cache_tdm_trial_data_state_id = None
+        self._cache_eventdata = None
+
     @property
     def shg_mgr(self):
         """(read-only) The instance of SourceHypoGroupManager that defines the
         source hypothesis groups and their sources.
         """
         return self._shg_mgr
+
+    def _get_eventdata(self, tdm, tl=None):
+        """Creates and caches the event data for this PDFSet. If the
+        TrialDataManager's trail data state id changed, the eventdata will be
+        recreated.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to measure task timing.
+
+        Returns
+        -------
+        eventdata : instance of numpy ndarray
+            The (N_values,V)-shaped eventdata ndarray.
+        """
+        if (self._cache_tdm_trial_data_state_id is None) or\
+           (self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id):
+
+            with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
+                # All PDFs of this PDFSet should have the same axes, so we use
+                # the axes from the first PDF in this PDF set.
+                pdf = next(iter(self.items()))[1]
+
+                self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
+                self._cache_eventdata =\
+                    MultiDimGridPDF.create_eventdata_for_sigpdf(
+                        tdm=tdm,
+                        axes=pdf.axes)
+
+        return self._cache_eventdata
 
     def get_pd(
             self,
@@ -834,14 +901,9 @@ class SignalSHGMappedMultiDimGridPDFSet(
         """
         # Create the ndarray for the event data that is needed for the
         # ``MultiDimGridPDF.get_pd_with_eventdata`` method.
-        # All PDFs of this PDFSet should have the same axes, so we use the axes
-        # from the first PDF in this PDF set.
-        with TaskTimer(tl, 'Create PDF eventdata.'):
-            pdf = next(iter(self.items()))[1]
-
-            eventdata = MultiDimGridPDF.create_eventdata_for_sigpdf(
-                tdm=tdm,
-                axes=pdf.axes)
+        eventdata = self._get_eventdata(
+            tdm=tdm,
+            tl=tl)
 
         pd = np.zeros((tdm.get_n_values(),), dtype=np.float64)
 
