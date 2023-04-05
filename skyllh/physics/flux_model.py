@@ -453,10 +453,17 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
         return value
 
 
-class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
+class TimeFluxProfile(
+        FluxProfile,
+        metaclass=abc.ABCMeta):
     """The abstract base class for a time flux profile function.
     """
-    def __init__(self, t_start=-np.inf, t_end=np.inf, time_unit=None, **kwargs):
+    def __init__(
+            self,
+            t_start=-np.inf,
+            t_end=np.inf,
+            time_unit=None,
+            **kwargs):
         """Creates a new time flux profile instance.
 
         Parameters
@@ -474,7 +481,8 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
             If set to ``None``, the configured default time unit for fluxes is
             used.
         """
-        super(TimeFluxProfile, self).__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         self.time_unit = time_unit
 
@@ -491,10 +499,13 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         the profile starts at the beginning of the entire dataset.
         """
         return self._t_start
+
     @t_start.setter
     def t_start(self, t):
-        t = float_cast(t,
-            'The t_start property must be castable to type float!')
+        t = float_cast(
+            t,
+            'The t_start property must be castable to type float! '
+            f'Its current type is {classname(t)}!')
         self._t_start = t
 
     @property
@@ -503,10 +514,13 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         the profile ends at the end of the entire dataset.
         """
         return self._t_end
+
     @t_end.setter
     def t_end(self, t):
-        t = float_cast(t,
-            'The t_end property must be castable to type float!')
+        t = float_cast(
+            t,
+            'The t_end property must be castable to type float! '
+            f'Its current type is {classname(t)}!')
         self._t_end = t
 
     @property
@@ -520,13 +534,16 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         """The unit of time used for the flux profile calculation.
         """
         return self._time_unit
+
     @time_unit.setter
     def time_unit(self, unit):
-        if(unit is None):
+        if unit is None:
             unit = CFG['units']['defaults']['fluxes']['time']
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property time_unit must be of type '
-                'astropy.units.UnitBase!')
+        if not isinstance(unit, units.UnitBase):
+            raise TypeError(
+                'The property time_unit must be of type '
+                'astropy.units.UnitBase! '
+                f'Its current type is {classname(unit)}!')
         self._time_unit = unit
 
     def get_total_integral(self):
@@ -539,12 +556,15 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
             The integral value of the entire time profile.
             The value is in the set time unit of this TimeFluxProfile instance.
         """
-        integral = self.get_integral(self._t_start, self._t_end)
+        integral = self.get_integral(self._t_start, self._t_end).squeeze()
 
         return integral
 
     @abc.abstractmethod
-    def __call__(self, t, unit=None):
+    def __call__(
+            self,
+            t,
+            unit=None):
         """This method is supposed to return the time profile value for the
         given times.
 
@@ -565,7 +585,10 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def move(self, dt, unit=None):
+    def move(
+            self,
+            dt,
+            unit=None):
         """Abstract method to move the time profile by the given amount of time.
 
         Parameters
@@ -581,7 +604,11 @@ class TimeFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_integral(self, t1, t2, unit=None):
+    def get_integral(
+            self,
+            t1,
+            t2,
+            unit=None):
         """This method is supposed to calculate the integral of the time profile
         from time ``t1`` to time ``t2``.
 
@@ -676,7 +703,7 @@ class UnityTimeFluxProfile(TimeFluxProfile):
             The integral value(s) of the time profile. The values are in the
             set time unit of this TimeFluxProfile instance.
         """
-        if((unit is not None) and (unit != self._time_unit)):
+        if (unit is not None) and (unit != self._time_unit):
             time_unit_conv_factor = unit.to(self._time_unit)
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
@@ -697,7 +724,12 @@ class BoxTimeFluxProfile(TimeFluxProfile):
 
     The box is centered at ``t0`` and extends to +/-``tw``/2 around ``t0``.
     """
-    def __init__(self, t0, tw, time_unit=None, **kwargs):
+    def __init__(
+            self,
+            t0,
+            tw,
+            time_unit=None,
+            **kwargs):
         """Creates a new box-shaped time profile instance.
 
         Parameters
@@ -730,6 +762,7 @@ class BoxTimeFluxProfile(TimeFluxProfile):
         The value is in the set time unit of this TimeFluxProfile instance.
         """
         return 0.5*(self._t_start + self._t_end)
+
     @t0.setter
     def t0(self, t):
         old_t0 = self.t0
@@ -742,6 +775,7 @@ class BoxTimeFluxProfile(TimeFluxProfile):
         The value is in the set time unit of this TimeFluxProfile instance.
         """
         return self._t_end - self._t_start
+
     @tw.setter
     def tw(self, w):
         t0 = self.t0
@@ -755,7 +789,10 @@ class BoxTimeFluxProfile(TimeFluxProfile):
         return '1 for t in [%g-%g/2; %g+%g/2], 0 otherwise'%(
             t0, tw, t0, tw)
 
-    def __call__(self, t, unit=None):
+    def __call__(
+            self,
+            t,
+            unit=None):
         """Returns 1 for all t within the interval [t0-tw/2; t0+tw/2], and 0
         otherwise.
 
@@ -775,9 +812,8 @@ class BoxTimeFluxProfile(TimeFluxProfile):
         """
         t = np.atleast_1d(t)
 
-        if((unit is not None) and (unit != self._time_unit)):
-            time_unit_conv_factor = unit.to(self._time_unit)
-            t = t * time_unit_conv_factor
+        if (unit is not None) and (unit != self._time_unit):
+            t = t * unit.to(self._time_unit)
 
         values = np.zeros((t.shape[0],), dtype=np.int8)
         m = (t >= self._t_start) & (t <= self._t_end)
@@ -785,7 +821,10 @@ class BoxTimeFluxProfile(TimeFluxProfile):
 
         return values
 
-    def move(self, dt, unit=None):
+    def move(
+            self,
+            dt,
+            unit=None):
         """Moves the box-shaped time profile by the time difference dt.
 
         Parameters
@@ -798,13 +837,17 @@ class BoxTimeFluxProfile(TimeFluxProfile):
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
         """
-        if((unit is not None) and (unit != self._time_unit)):
+        if (unit is not None) and (unit != self._time_unit):
             dt = dt * unit.to(self._time_unit)
 
         self._t_start += dt
         self._t_end += dt
 
-    def get_integral(self, t1, t2, unit=None):
+    def get_integral(
+            self,
+            t1,
+            t2,
+            unit=None):
         """Calculates the integral of the box-shaped time flux profile from
         time t1 to time t2.
 
@@ -828,7 +871,7 @@ class BoxTimeFluxProfile(TimeFluxProfile):
         t1 = np.atleast_1d(t1)
         t2 = np.atleast_1d(t2)
 
-        if((unit is not None) and (unit != self._time_unit)):
+        if (unit is not None) and (unit != self._time_unit):
             time_unit_conv_factor = unit.to(self._time_unit)
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
