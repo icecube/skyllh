@@ -427,18 +427,6 @@ class PDSignalGenerator(SignalGeneratorBase):
                                 'LLHRatio!')
         self._llhratio = llhratio
 
-    @property
-    def sig_gen_list(self):
-        """The list of PublicDataDatasetSignalGenerator instances for each dataset
-        """
-        return self._sig_gen_list
-
-    @sig_gen_list.setter
-    def sig_gen_list(self, sig_gen_list):
-        if(not issequenceof(sig_gen_list, PDDatasetSignalGenerator)):
-            raise TypeError('The sig_gen_list property must be a sequence of '
-                            'PublicDataDatasetSignalGenerator instances!')
-
     def generate_signal_events(self, rss, mean, poisson=True):
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
 
