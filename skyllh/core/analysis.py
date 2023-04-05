@@ -59,7 +59,7 @@ from skyllh.core.signal_generator import (
 )
 from skyllh.physics.source import SourceModel
 
-from skyllh.analyses.i3.publicdata_ps.expectation_maximization import (
+from skyllh.core.expectation_maximization import (
     expectation_em, 
     maximization_em
 )
