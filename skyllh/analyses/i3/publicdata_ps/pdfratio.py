@@ -196,8 +196,8 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         fitparams_hash = make_params_hash(fitparams)
 
         # Check if the ratio value is already cached.
-        #if(self._is_cached(tdm, fitparams_hash)):
-        #    return self._cache_ratio
+        if self._is_cached(tdm, fitparams_hash):
+            return self._cache_ratio
 
         self._calculate_ratio_and_gradients(tdm, fitparams, fitparams_hash)
 
@@ -223,8 +223,8 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         pidx = self.convert_signal_fitparam_name_into_index(fitparam_name)
 
         # Check if the gradients have been calculated already.
-        #if(self._is_cached(tdm, fitparams_hash)):
-        #    return self._cache_gradients[pidx]
+        if self._is_cached(tdm, fitparams_hash):
+            return self._cache_gradients[pidx]
 
         # The gradients have not been calculated yet.
         self._calculate_ratio_and_gradients(tdm, fitparams, fitparams_hash)
