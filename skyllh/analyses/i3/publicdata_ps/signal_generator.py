@@ -19,7 +19,7 @@ from skyllh.core.storage import DataFieldRecordArray
 
 from skyllh.analyses.i3.publicdata_ps.utils import psi_to_dec_and_ra
 from skyllh.analyses.i3.publicdata_ps.pd_smearing_matrix import (
-    PublicDataSmearingMatrix
+    PDSmearingMatrix
 )
 from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 
@@ -27,7 +27,7 @@ from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
 class PDDatasetSignalGenerator(object):
     """This class provides a signal generation method for a point-like source
     seen in the IceCube detector using one dataset of the 10 years public data
-    release. It is used by the PDSignalGenerato class in a loop over all the
+    release. It is used by the PDSignalGenerator class in a loop over all the
     datasets that have been added to the analysis.
     """
 
@@ -44,7 +44,7 @@ class PDDatasetSignalGenerator(object):
             The declination of the source in radians.
         effA : PDAeff | None
             Representation of the effective area provided by the public data.
-        sm : PublicDataSmearingMatrix | None
+        sm : PDSmearingMatrix | None
             Representation of the smearing matrix provided by the public data.
         """
         super().__init__(**kwargs)
@@ -52,7 +52,7 @@ class PDDatasetSignalGenerator(object):
         self._logger = get_logger(module_classname(self))
 
         if sm is None:
-            self.smearing_matrix = PublicDataSmearingMatrix(
+            self.smearing_matrix = PDSmearingMatrix(
                 pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
         else:
@@ -427,18 +427,6 @@ class PDSignalGenerator(SignalGeneratorBase):
                                 'LLHRatio!')
         self._llhratio = llhratio
 
-    @property
-    def sig_gen_list(self):
-        """The list of PublicDataDatasetSignalGenerator instances for each dataset
-        """
-        return self._sig_gen_list
-
-    @sig_gen_list.setter
-    def sig_gen_list(self, sig_gen_list):
-        if(not issequenceof(sig_gen_list, PDDatasetSignalGenerator)):
-            raise TypeError('The sig_gen_list property must be a sequence of '
-                            'PublicDataDatasetSignalGenerator instances!')
-
     def generate_signal_events(self, rss, mean, poisson=True):
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
 
@@ -566,86 +554,36 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
     def generate_signal_events(self, rss, mean, poisson=True):
         """ same as in PDSignalGenerator, but we assign times here. 
         """
-        shg_list = self._src_hypo_group_manager.src_hypo_group_list
+        # Call method from the parent class.
+        tot_n_events, signal_events_dict = super().generate_signal_events(rss, mean, poisson=poisson)
 
-        tot_n_events = 0
-        signal_events_dict = {}
-
-        for shg in shg_list:
-            # This only works with power-laws for now.
-            # Each source hypo group can have a different power-law
-            gamma = shg.fluxmodel.gamma
-            weights, _ = self.llhratio.dataset_signal_weights([mean, gamma])
-            for (ds_idx, w) in enumerate(weights):
-                w_mean = mean * w
-                if(poisson):
-                    n_events = rss.random.poisson(
-                        float_cast(
-                            w_mean,
-                            '`mean` must be castable to type of float!'
-                        )
-                    )
-                else:
-                    n_events = int_cast(
-                        w_mean,
-                        '`mean` must be castable to type of int!'
-                    )
-                tot_n_events += n_events
-
-                events_ = None
-                for (shg_src_idx, src) in enumerate(shg.source_list):
-                    ds = self._dataset_list[ds_idx]
-                    sig_gen = PDDatasetSignalGenerator(
-                        ds, src.dec, self.effA[ds_idx], self.sm[ds_idx])
-                    if self.effA[ds_idx] is None:
-                        self.effA[ds_idx] = sig_gen.effA
-                    if self.sm[ds_idx] is None:
-                        self.sm[ds_idx] = sig_gen.smearing_matrix
-                    # ToDo: here n_events should be split according to some
-                    # source weight
-                    events_ = sig_gen.generate_signal_events(
-                        rss,
-                        src.dec,
-                        src.ra,
-                        shg.fluxmodel,
-                        n_events,
-                        energy_cut_spline=self.splines[ds_idx],
-                        cut_sindec=self.cut_sindec[ds_idx]
-                    )
-                    if events_ is None:
-                        continue
-
-                    # Assign times for flare. We can also use inverse transform
-                    # sampling instead of the lazy version implemented here
-                    tmp_grl = self.data_list[ds_idx].grl
-                    for event_index in events_.indices:
-                        while events_._data_fields["time"][event_index] == 1:
-                            if self.gauss is not None:
-                                # make sure flare is in dataset
-                                if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
-                                        self.gauss["mu"] + 4 * self.gauss["sigma"] < tmp_grl["start"][0]):
-                                    break  # this should never happen
-                                time = norm(
-                                    self.gauss["mu"], self.gauss["sigma"]).rvs()
-                            if self.box is not None:
-                                # make sure flare is in dataset
-                                if (self.box["start"] > tmp_grl["stop"][-1]) or (
-                                        self.box["end"] < tmp_grl["start"][0]):
-                                    # this should never be the case, since
-                                    # there should be no events generated
-                                    break
-                                livetime = self.box["end"] - self.box["start"]
-                                time = rss.random.random() * livetime
-                                time += self.box["start"]
-                            # check if time is in grl
-                            is_in_grl = (tmp_grl["start"] <= time) & (
-                                tmp_grl["stop"] >= time)
-                            if np.any(is_in_grl):
-                                events_._data_fields["time"][event_index] = time
-
-                    if shg_src_idx == 0:
-                        signal_events_dict[ds_idx] = events_
-                    else:
-                        signal_events_dict[ds_idx].append(events_)
+        # Assign times for flare. We can also use inverse transform
+        # sampling instead of the lazy version implemented here.
+        for (ds_idx, events_) in signal_events_dict.items():
+            tmp_grl = self.data_list[ds_idx].grl
+            for event_index in events_.indices:
+                while events_["time"][event_index] == 1:
+                    if self.gauss is not None:
+                        # make sure flare is in dataset
+                        if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
+                                self.gauss["mu"] + 4 * self.gauss["sigma"] < tmp_grl["start"][0]):
+                            break  # this should never happen
+                        time = norm(
+                            self.gauss["mu"], self.gauss["sigma"]).rvs()
+                    if self.box is not None:
+                        # make sure flare is in dataset
+                        if (self.box["start"] > tmp_grl["stop"][-1]) or (
+                                self.box["end"] < tmp_grl["start"][0]):
+                            # this should never be the case, since
+                            # there should be no events generated
+                            break
+                        livetime = self.box["end"] - self.box["start"]
+                        time = rss.random.random() * livetime
+                        time += self.box["start"]
+                    # check if time is in grl
+                    is_in_grl = (tmp_grl["start"] <= time) & (
+                        tmp_grl["stop"] >= time)
+                    if np.any(is_in_grl):
+                        events_["time"][event_index] = time
 
         return tot_n_events, signal_events_dict

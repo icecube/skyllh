@@ -134,14 +134,14 @@ class PDEnergyPDF(EnergyPDF, UsesBinning):
                     "The bandwidth parameter must be True or False!")
             kde_pdf = np.empty(
                 (len(sinDec_binning.bincenters),), dtype=object)
-            data_logE_mask = data_logE[~mask]
-            data_sinDec_mask = data_sinDec[~mask]
+            data_logE_masked = data_logE[~mask]
+            data_sinDec_masked = data_sinDec[~mask]
             for i in range(len(sinDec_binning.bincenters)):
                 sindec_mask = np.logical_and(
-                    data_sinDec_mask >= sinDec_binning.binedges[i],
-                    data_sinDec_mask < sinDec_binning.binedges[i+1]
+                    data_sinDec_masked >= sinDec_binning.binedges[i],
+                    data_sinDec_masked < sinDec_binning.binedges[i+1]
                 )
-                this_energy = data_logE_mask[sindec_mask]
+                this_energy = data_logE_masked[sindec_mask]
                 if sinDec_binning.binedges[i] >= 0:
                     kde_pdf[i] = gaussian_kde(
                         this_energy, bw_method=self._KDE_BW_NORTH)

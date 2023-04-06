@@ -36,7 +36,7 @@ from skyllh.core.trialdata import TrialDataManager
 # Classes for defining the analysis.
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
-    TimeDependentSingleDatasetSingleSourceAnalysis as TimedepSingleDatasetAnalysis
+    TimeIntegratedMultiDatasetSingleSourceAnalysis
 )
 
 # Classes to define the background generation.
@@ -53,11 +53,12 @@ from skyllh.core.backgroundpdf import BackgroundUniformTimePDF
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF
 )
+from skyllh.core.pdf import TimePDF
 
 # Classes to define the spatial and energy PDF ratios.
 from skyllh.core.pdfratio import (
     SpatialSigOverBkgPDFRatio,
-    TimeSigOverBkgPDFRatio
+    SigOverBkgPDFRatio
 )
 
 # Analysis utilities.
@@ -255,7 +256,7 @@ def create_analysis(
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
 
     # Create the Analysis instance.
-    analysis = TimedepSingleDatasetAnalysis(
+    analysis = TimeIntegratedMultiDatasetSingleSourceAnalysis(
         src_hypo_group_manager,
         src_fitparam_mapper,
         fitparam_ns,
@@ -336,7 +337,11 @@ def create_analysis(
             elif box is not None:
                 time_sigpdf = SignalBoxTimePDF(
                     data.grl, box["start"], box["end"])
-            time_pdfratio = TimeSigOverBkgPDFRatio(time_sigpdf, time_bkgpdf)
+            time_pdfratio = SigOverBkgPDFRatio(
+                sig_pdf=time_sigpdf,
+                bkg_pdf=time_bkgpdf,
+                pdf_type=TimePDF
+            )
             pdfratios.append(time_pdfratio)
 
         analysis.add_dataset(

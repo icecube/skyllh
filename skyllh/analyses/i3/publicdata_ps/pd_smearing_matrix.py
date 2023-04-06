@@ -172,7 +172,7 @@ def load_smearing_histogram(pathfilenames):
     )
 
 
-class PublicDataSmearingMatrix(object):
+class PDSmearingMatrix(object):
     """This class is a helper class for dealing with the smearing matrix
     provided by the public data.
     """

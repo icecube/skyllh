@@ -29,7 +29,7 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
     FctSpline1D,
 )
 from skyllh.analyses.i3.publicdata_ps.pd_smearing_matrix import (
-    PublicDataSmearingMatrix
+    PDSmearingMatrix
 )
 
 
@@ -213,7 +213,7 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         )
 
         # Load the smearing matrix.
-        sm = PublicDataSmearingMatrix(
+        sm = PDSmearingMatrix(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
 

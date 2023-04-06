@@ -8,7 +8,7 @@ from skyllh.core.pdf import (
     IsBackgroundPDF,
     MultiDimGridPDF,
     NDPhotosplinePDF,
-    TimePDF
+    TimePDF,
 )
 
 import numpy as np
@@ -132,15 +132,15 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
         cdf : float, ndarray
             Values of cumulative density function evaluated at t
         """
-        t_start, t_end = self.grl["start"][0], self.grl["stop"][-1]
-        t_arr = np.atleast_1d(t)
+        t_start = self.grl["start"][0]
+        t_end = self.grl["stop"][-1]
+        t = np.atleast_1d(t)
 
-        cdf = np.zeros(t_arr.size, float)
-
+        cdf = np.zeros(t.size, float)
 
         # values between start and stop times
-        mask = (t_start <= t_arr) & (t_arr <= t_end)
-        cdf[mask] = (t_arr[mask] - t_start) / [t_end - t_start]
+        mask = (t_start <= t) & (t <= t_end)
+        cdf[mask] = (t[mask] - t_start) / [t_end - t_start]
 
         # take care of values beyond stop time in sample
 
@@ -153,7 +153,6 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
         These must be re-normalized such that the function sums to 1 over the
         finite good run list domain.
 
-
         Returns
         -------
         norm : float
@@ -162,14 +161,14 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
 
         integral = (self.cdf(self.grl["stop"]) - self.cdf(self.grl["start"])).sum()
 
-        if integral < 1.e-50:
+        if np.isclose(integral, 0):
             return 0
 
         return 1. / integral
 
     
     def get_prob(self, tdm, fitparams=None, tl=None):
-        """Calculates the background time probability of each event 
+        """Calculates the background time probability density of each event 
 
         tdm : TrialDataManager
             Unused interface argument
@@ -181,14 +180,13 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
 
         Returns
         -------
-        prob : array of float
-            The (N,)-shaped ndarray holding the probability for each event.
+        pd : array of float
+            The (N,)-shaped ndarray holding the probability density for each event.
         grads : empty array of float
             Does not depend on fit parameter, so no gradient
         """
-
+        livetime = self.grl["stop"][-1] - self.grl["start"][0]
+        pd = 1./livetime
         grads = np.array([], dtype=np.double)
 
-        livetime = self.grl["stop"][-1] - self.grl["start"][0]
-
-        return 1./livetime, grads
+        return (pd, grads)
