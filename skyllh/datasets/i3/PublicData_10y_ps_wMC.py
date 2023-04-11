@@ -226,7 +226,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     # References
     -----------------------------------------
     [1] IceCube Data for Neutrino Point-Source Searches: Years 2008-2018,
-        [[ArXiv link]]
+        [ArXiv link](https://arxiv.org/abs/2101.09836)
     [2] Time-integrated Neutrino Source Searches with 10 years of IceCube Data,
         Phys. Rev. Lett. 124, 051103 (2020)
     [3] All-sky search for time-integrated neutrino emission from astrophysical
