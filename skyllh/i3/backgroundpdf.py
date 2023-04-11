@@ -178,8 +178,9 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             probability density value for each event.
         grads : dict
             The dictionary holding the gradients of the probability density
-            w.r.t. each fit parameter. The background PDF does not depend on
-            any fit parameter, hence, this is an empty dictionary.
+            w.r.t. each global fit parameter.
+            The background PDF does not depend on any global fit parameter,
+            hence, this is an empty dictionary.
         """
         with TaskTimer(tl, 'Evaluating bkg log-spline.'):
             log_spline_val = self._log_spline(tdm.get_data('sin_dec'))

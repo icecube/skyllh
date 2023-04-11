@@ -7,6 +7,12 @@ from scipy.interpolate import RegularGridInterpolator
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.display import (
+    INDENTATION_WIDTH,
+)
+from skyllh.core.livetime import (
+    Livetime,
+)
 from skyllh.core.py import (
     NamedObjectCollection,
     bool_cast,
@@ -28,6 +34,9 @@ from skyllh.core.parameters import (
 )
 from skyllh.core.timing import (
     TaskTimer,
+)
+from skyllh.physics.flux_model import (
+    TimeFluxProfile,
 )
 
 
@@ -726,7 +735,9 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
                 f'({dec_axis.vmin:.3f}, {dec_axis.vmax:.3f})!')
 
 
-class EnergyPDF(PDF, metaclass=abc.ABCMeta):
+class EnergyPDF(
+        PDF,
+        metaclass=abc.ABCMeta):
     """This is the abstract base class for an energy PDF.
     """
 
@@ -734,12 +745,154 @@ class EnergyPDF(PDF, metaclass=abc.ABCMeta):
         super().__init__(*args, **kwargs)
 
 
-class TimePDF(PDF, metaclass=abc.ABCMeta):
-    """This is the abstract base class for a time PDF.
+class TimePDF(
+        PDF,
+        metaclass=abc.ABCMeta):
+    """This is the abstract base class for a time PDF. It consists of
+    a :class:`~skyllh.core.livetime.Livetime` instance and a
+    :class:`~skyllh.physics.flux_model.TimeFluxProfile` instance. Together they
+    construct the actual time PDF, which has detector down-time taking
+    into account.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+            self,
+            pmm,
+            livetime,
+            time_flux_profile,
+            **kwargs):
+        """Creates a new time PDF instance for a given time flux profile and
+        detector live time.
+
+        Parameters
+        ----------
+        pmm : instance of ParameterModelMapper
+            The instance of ParameterModelMapper defining the mapping of the
+            global parameters to local model parameters.
+        livetime : instance of Livetime
+            An instance of Livetime, which provides the detector live-time
+            information.
+        time_profile : instance of TimeFluxProfile
+            The signal's time flux profile.
+        """
+        super().__init__(
+            pmm=pmm,
+            **kwargs)
+
+        self.livetime = livetime
+        self.time_flux_profile = time_flux_profile
+
+        # Define the time axis with the time boundaries of the live-time.
+        self.add_axis(
+            PDFAxis(
+                name='time',
+                vmin=self._livetime.time_window[0],
+                vmax=self._livetime.time_window[1]))
+
+        # Get the total integral, I, of the time flux profile and the sum, S, of
+        # the integrals for each detector on-time interval during the time flux
+        # profile, in order to be able to rescale the time flux profile to unity
+        # with overlapping detector off-times removed.
+        (self._I, self._S) = self._calculate_time_flux_profile_integrals()
+
+    @property
+    def livetime(self):
+        """The instance of Livetime, which provides the detector live-time
+        information.
+        """
+        return self._livetime
+
+    @livetime.setter
+    def livetime(self, lt):
+        if not isinstance(lt, Livetime):
+            raise TypeError(
+                'The livetime property must be an instance of Livetime!')
+        self._livetime = lt
+
+    @property
+    def time_flux_profile(self):
+        """The instance of TimeFluxProfile providing the physical time flux
+        profile.
+        """
+        return self._time_flux_profile
+
+    @time_flux_profile.setter
+    def time_flux_profile(self, profile):
+        if not isinstance(profile, TimeFluxProfile):
+            raise TypeError(
+                'The time_flux_profile property must be an instance of '
+                'TimeFluxProfile! '
+                f'Its current type is {classname(profile)}!')
+        self._time_flux_profile = profile
+
+    def __str__(self):
+        """Pretty string representation of the time PDF.
+        """
+        s = (
+            f'{classname(self)}(\n'
+            ' '*INDENTATION_WIDTH +
+            f'livetime = {str(self._livetime)},\n'
+            ' '*INDENTATION_WIDTH +
+            f'time_flux_profile = {str(self._time_flux_profile)}\n'
+            ')'
+        )
+
+        return s
+
+    def _calculate_time_flux_profile_integrals(self):
+        """Calculates the total integral of the time flux profile and the
+        sum, S, of the time flux profile integrals during the detector on-time
+        intervals.
+
+        Returns
+        -------
+        total_integral : float
+            The total integral of the time flux profile.
+        S : float
+            The sum of the time flux profile integrals during the detector
+            on-time intervals.
+        """
+        ontime_intervals = self._livetime.get_ontime_intervals_between(
+            self._time_flux_profile.t_start,
+            self._time_flux_profile.t_end)
+
+        total_integral = self._time_flux_profile.get_total_integral()
+
+        S = np.sum(
+            self._time_flux_profile.get_integral(
+                ontime_intervals[:, 0],
+                ontime_intervals[:, 1]))
+
+        return (total_integral, S)
+
+    def assert_is_valid_for_trial_data(self, tdm):
+        """Checks if the time PDF is valid for all the given trial data.
+        It checks if the time of all events is within the defined time axis of
+        the PDF.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial data.
+            The following data fields must exist:
+
+            ``'time'`` : float
+                The time of the data event.
+
+        Raises
+        ------
+        ValueError
+            If some of the data is outside the time range of the PDF.
+        """
+        time_axis = self.axes['time']
+
+        time = tdm.get_data('time')
+
+        if np.any((time < time_axis.vmin) |
+                  (time > time_axis.vmax)):
+            raise ValueError(
+                'Some trial data is outside the time range '
+                f'[{time_axis.vmin:.3f}, {time_axis.vmax:.3f}]!')
 
 
 class MultiDimGridPDF(

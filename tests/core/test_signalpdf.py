@@ -78,30 +78,30 @@ class TestSignalTimePDF(unittest.TestCase):
         self.integral = 10
         self.S = (1-0) + (4.6-1.3) + (10-7.7)
 
-        self.time_profile = BoxTimeFluxProfile(
+        self.time_flux_profile = BoxTimeFluxProfile(
             t0=5,
             tw=10)
 
         self.sig_time_pdf = SignalTimePDF(
             pmm=self.pmm,
             livetime=self.livetime,
-            time_profile=self.time_profile)
+            time_flux_profile=self.time_flux_profile)
 
     def test__str__(self):
         str(self.sig_time_pdf)
 
-    def test_calculate_time_profile_I_and_S(self):
-        (integral, S) = self.sig_time_pdf._calculate_time_profile_I_and_S()
+    def test_calculate_time_flux_profile_integrals(self):
+        (integral, S) = self.sig_time_pdf._calculate_time_flux_profile_integrals()
         self.assertEqual(integral, 10)
         self.assertEqual(S, self.S)
 
     def test_get_pd(self):
         tdm = create_tdm(n_sources=self.pmm.n_sources, n_selected_events=3)
-        params_recarray = self.pmm.create_src_params_recarray(gflp_values=[])
+        src_params_recarray = self.pmm.create_src_params_recarray(gflp_values=[])
 
         (pd, grads) = self.sig_time_pdf.get_pd(
             tdm=tdm,
-            params_recarray=params_recarray)
+            src_params_recarray=src_params_recarray)
 
         np.testing.assert_almost_equal(
             pd,

@@ -10,9 +10,6 @@ from skyllh.core.debugging import (
     get_logger,
     is_tracing_enabled,
 )
-from skyllh.core.display import (
-    INDENTATION_WIDTH,
-)
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
     Linear1DGridManifoldInterpolationMethod,
@@ -21,12 +18,8 @@ from skyllh.core.py import (
     classname,
     str_cast,
 )
-from skyllh.core.livetime import (
-    Livetime,
-)
 from skyllh.core.pdf import (
     PDF,
-    PDFAxis,
     PDFSet,
     IsSignalPDF,
     MultiDimGridPDF,
@@ -42,9 +35,6 @@ from skyllh.core.timing import (
 )
 from skyllh.core.utils.coords import (
     angular_separation,
-)
-from skyllh.physics.flux_model import (
-    TimeFluxProfile,
 )
 
 
@@ -249,9 +239,10 @@ class SignalTimePDF(
             self,
             pmm,
             livetime,
-            time_profile,
+            time_flux_profile,
             **kwargs):
-        """Creates a new signal time PDF instance for a given time profile.
+        """Creates a new signal time PDF instance for a given time flux profile
+        and detector live time.
 
         Parameters
         ----------
@@ -261,127 +252,22 @@ class SignalTimePDF(
         livetime : instance of Livetime
             An instance of Livetime, which provides the detector live-time
             information.
-        time_profile : instance of TimeFluxProfile
+        time_flux_profile : instance of TimeFluxProfile
             The signal's time flux profile.
         """
         super().__init__(
             pmm=pmm,
+            livetime=livetime,
+            time_flux_profile=time_flux_profile,
             **kwargs)
 
-        self.livetime = livetime
-        self.time_profile = time_profile
-
-        # Define the time axis with the time boundaries of the live-time.
-        self.add_axis(
-            PDFAxis(
-                name='time',
-                vmin=self._livetime.time_window[0],
-                vmax=self._livetime.time_window[1]))
-
-        # Get the total integral, I, of the time profile and the sum, S, of the
-        # integrals for each detector on-time interval during the time profile,
-        # in order to be able to rescale the time profile to unity with
-        # overlapping detector off-times removed.
-        (self._I, self._S) = self._calculate_time_profile_I_and_S()
-
-    @property
-    def livetime(self):
-        """The instance of Livetime, which provides the detector live-time
-        information.
-        """
-        return self._livetime
-
-    @livetime.setter
-    def livetime(self, lt):
-        if not isinstance(lt, Livetime):
-            raise TypeError(
-                'The livetime property must be an instance of Livetime!')
-        self._livetime = lt
-
-    @property
-    def time_profile(self):
-        """The instance of TimeProfileModel providing the (assumed) physical
-        time profile of the source.
-        """
-        return self._time_profile
-
-    @time_profile.setter
-    def time_profile(self, tp):
-        if not isinstance(tp, TimeFluxProfile):
-            raise TypeError(
-                'The time_profile property must be an instance of '
-                'TimeFluxProfile!')
-        self._time_profile = tp
-
-    def __str__(self):
-        """Pretty string representation of the signal time PDF.
-        """
-        s = f'{classname(self)}(\n' +\
-            ' '*INDENTATION_WIDTH +\
-            f'livetime = {str(self._livetime)},\n' +\
-            ' '*INDENTATION_WIDTH +\
-            f'time_profile = {str(self._time_profile)}\n' +\
-            ')'
-        return s
-
-    def _calculate_time_profile_I_and_S(self):
-        """Calculates the total integral, I, of the time profile and the sum, A,
-        of the time-profile integrals during the detector on-time intervals.
-
-        Returns
-        -------
-        total_integral : float
-            The total integral of the source time-profile.
-        S : float
-            The sum of the time-profile integrals during the detector
-            on-time intervals.
-        """
-        ontime_intervals = self._livetime.get_ontime_intervals_between(
-            self._time_profile.t_start,
-            self._time_profile.t_end)
-
-        total_integral = self._time_profile.get_total_integral()
-
-        S = np.sum(
-            self._time_profile.get_integral(
-                ontime_intervals[:, 0],
-                ontime_intervals[:, 1]))
-
-        return (total_integral, S)
-
-    def assert_is_valid_for_trial_data(self, tdm):
-        """Checks if the time PDF is valid for all the given trial data.
-        It checks if the time of all events is within the defined time axis of
-        the PDF.
-
-        Parameters
-        ----------
-        tdm : instance of TrialDataManager
-            The instance of TrialDataManager that holds the trial data.
-            The following data fields must exist:
-
-            ``'time'`` : float
-                The MJD time of the data event.
-
-        Raises
-        ------
-        ValueError
-            If some of the data is outside the time range of the PDF.
-        """
-        time_axis = self.axes['time']
-
-        time = tdm.get_data('time')
-
-        if np.any((time < time_axis.vmin) |
-                  (time > time_axis.vmax)):
-            raise ValueError(
-                'Some data is outside the time range '
-                f'({time_axis.vmin:.3f}, {time_axis.vmax:.3f})!')
-
-    def get_pd(self, tdm, params_recarray, tl=None):
+    def get_pd(
+            self,
+            tdm,
+            src_params_recarray,
+            tl=None):
         """Calculates the signal time probability density of each event for the
-        given
-        set of signal time parameter values.
+        given set of time parameter values for each source.
 
         Parameters
         ----------
@@ -393,9 +279,9 @@ class SignalTimePDF(
             ``'time'`` : float
                 The MJD time of the event.
 
-        params_recarray : instance of numpy record ndarray
-            The numpy record ndarray holding the local parameter values for each
-            source.
+        src_params_recarray : instance of numpy structured ndarray
+            The numpy structured ndarray holding the local parameter values for
+            each source.
         tl : instance of TimeLord | None
             The optional TimeLord instance that should be used to measure
             timing information.
@@ -407,7 +293,7 @@ class SignalTimePDF(
             density value for each trial event and source.
         grads : dict
             The dictionary holding the gradients of the probability density
-            w.r.t. each fit parameter.
+            w.r.t. each global fit parameter.
         """
         (src_idxs, evt_idxs) = tdm.src_evt_idxs
         n_values = len(evt_idxs)
@@ -415,15 +301,17 @@ class SignalTimePDF(
         pd = np.zeros((n_values,), dtype=np.float64)
 
         events_time = tdm.get_data('time')
-        for (src_idx, params_row) in enumerate(params_recarray):
-            params = dict(zip(params_recarray.dtype.fields.keys(), params_row))
+        for (src_idx, src_params_row) in enumerate(src_params_recarray):
+            params = dict(zip(
+                src_params_recarray.dtype.fields.keys(),
+                src_params_row))
 
-            # Update the time-profile if its parameter values have changed and
-            # recalculate self._I and self._S if an update was actually
+            # Update the time flux profile if its parameter values have changed
+            # and recalculate self._I and self._S if an update was actually
             # performed.
-            updated = self._time_profile.set_params(params)
+            updated = self._time_flux_profile.set_params(params)
             if updated:
-                (self._I, self._S) = self._calculate_time_profile_I_and_S()
+                (self._I, self._S) = self._calculate_time_flux_profile_integrals()
 
             src_m = src_idxs == src_idx
             idxs = evt_idxs[src_m]
@@ -434,11 +322,13 @@ class SignalTimePDF(
             # interval.
             on = self._livetime.is_on(times)
 
-            # The sum of the on-time integrals of the time profile, A, will be
-            # zero if the time profile is entirly during detector off-time.
+            # The sum of the on-time integrals of the time flux profile, S, will
+            # be zero if the time flux profile is entirly during detector
+            # off-time.
             if self._S > 0:
                 pd_src = pd[src_m]
-                pd_src[on] = self._time_profile(t=times[on]) / (self._I * self._S)
+                pd_src[on] = self._time_flux_profile(t=times[on]) / (
+                    self._I * self._S)
                 pd[src_m] = pd_src
 
         return (pd, dict())
