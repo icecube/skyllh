@@ -2,7 +2,7 @@
 
 import numpy as np
 from scipy import interpolate
-from scipy.stats import norm
+import scipy.stats
 
 from skyllh.core.py import (
     issequenceof,
@@ -530,6 +530,41 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         self.box = box
         self.gauss = gauss
 
+        self.time_pdf = self._get_time_pdf()
+
+    def _get_time_pdf(self):
+        """Get the neutrino flare time pdf given parameters.
+        Will be used to generate random numbers by calling `rvs()` method.
+
+        Returns
+        -------
+        time_pdf : instance of scipy.stats.rv_continuous base class
+            Has to base scipy.stats.rv_continuous.
+        """
+        # Make sure flare is in dataset.
+        for data_list in self.data_list:
+            tmp_grl = data_list.grl
+
+            if self.gauss is not None:
+                if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
+                        self.gauss["mu"] + 4 * self.gauss["sigma"] < tmp_grl["start"][0]):
+                    raise ValueError(
+                        f"Gaussian {str(self.gauss)} flare is not in dataset.")
+
+            if self.box is not None:
+                if (self.box["start"] > tmp_grl["stop"][-1]) or (
+                        self.box["end"] < tmp_grl["start"][0]):
+                    raise ValueError(
+                        f"Box {str(self.box)} flare is not in dataset.")
+
+        # Create `time_pdf`.
+        if self.gauss is not None:
+            time_pdf = scipy.stats.norm(self.gauss["mu"], self.gauss["sigma"])
+        if self.box is not None:
+            time_pdf = scipy.stats.uniform(self.box["start"], self.box["end"] - self.box["start"])
+
+        return time_pdf
+
     def set_flare(self, gauss=None, box=None):
         """Set the neutrino flare given parameters.
 
@@ -551,39 +586,54 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         self.box = box
         self.gauss = gauss
 
+        self.time_pdf = self._get_time_pdf()
+
+    def is_in_grl(self, time, grl):
+        """Helper function to check if given times are in the grl ontime.
+
+        Parameters
+        ----------
+        time : 1d ndarray
+            Time values.
+        grl : ndarray
+            Array of the detector good run list.
+
+        Returns
+        -------
+        is_in_grl : 1d ndarray
+            Boolean mask of `time` in grl ontime.
+        """
+        def f(time, grl):
+            return np.any((grl["start"] <= time) & (time <= grl["stop"]))
+
+        # Vectorize `f`, but exclude `grl` argument from vectorization.
+        # This is needed to support `time` as an array argument.
+        f_v = np.vectorize(f, excluded=[1])
+        is_in_grl = f_v(time, grl)
+
+        return is_in_grl
+
     def generate_signal_events(self, rss, mean, poisson=True):
         """Same as in PDSignalGenerator, but we assign times here. 
         """
-        # Call method from the parent class.
-        tot_n_events, signal_events_dict = super().generate_signal_events(rss, mean, poisson=poisson)
+        # Call method from the parent class to generate signal events.
+        tot_n_events, signal_events_dict = super().generate_signal_events(
+            rss, mean, poisson=poisson)
 
         # Assign times for flare. We can also use inverse transform
         # sampling instead of the lazy version implemented here.
         for (ds_idx, events_) in signal_events_dict.items():
             tmp_grl = self.data_list[ds_idx].grl
-            for event_index in events_.indices:
-                while events_["time"][event_index] == 1:
-                    if self.gauss is not None:
-                        # make sure flare is in dataset
-                        if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
-                                self.gauss["mu"] + 4 * self.gauss["sigma"] < tmp_grl["start"][0]):
-                            break  # this should never happen
-                        time = norm(
-                            self.gauss["mu"], self.gauss["sigma"]).rvs()
-                    if self.box is not None:
-                        # make sure flare is in dataset
-                        if (self.box["start"] > tmp_grl["stop"][-1]) or (
-                                self.box["end"] < tmp_grl["start"][0]):
-                            # this should never be the case, since
-                            # there should be no events generated
-                            break
-                        livetime = self.box["end"] - self.box["start"]
-                        time = rss.random.random() * livetime
-                        time += self.box["start"]
-                    # check if time is in grl
-                    is_in_grl = (tmp_grl["start"] <= time) & (
-                        tmp_grl["stop"] >= time)
-                    if np.any(is_in_grl):
-                        events_["time"][event_index] = time
 
+            # Optimized time injection version, based on csky implementation.
+            # https://github.com/icecube/csky/blob/7e969639c5ef6dbb42872dac9b761e1e8b0ccbe2/csky/inj.py#L1122
+            time = []
+            n_events = len(events_)
+            while len(time) < n_events:
+                time = np.r_[time, self.time_pdf.rvs(n_events - len(time), random_state=rss.random)]
+                # Check if time is in grl.
+                is_in_grl_mask = self.is_in_grl(time, tmp_grl)
+                time = time[is_in_grl_mask]
+
+            events_["time"] = time
         return tot_n_events, signal_events_dict
