@@ -193,7 +193,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
 
             # Skip the rest, if we are not in an interactive session, hence
             # there is not progress bar.
-            if(not pbar.gets_shown):
+            if not pbar.is_shown:
                 continue
 
             sarr[0]['n_finished_tasks'] = master_task_idx + 1
@@ -227,7 +227,7 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
     # We will use our own process (pid = 0) as a worker too.
     rqueue = mp.Queue()
     squeue = None
-    if(pbar.gets_shown):
+    if pbar.is_shown:
         squeue = mp.Queue()
     sub_args_list_list = np.array_split(args_list, ncpu)
 
