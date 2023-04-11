@@ -120,8 +120,9 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
 
 
     def cdf(self, t):
-        """ Compute the cumulative density function for the box pdf. This is needed for normalization.
-        
+        """Compute the cumulative density function for the box pdf. This is
+        needed for normalization.
+
         Parameters
         ----------
         t : float, ndarray
@@ -145,10 +146,9 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
         # take care of values beyond stop time in sample
 
         return cdf
-    
 
     def norm_uptime(self):
-        """compute the normalization with the dataset uptime. Distributions like 
+        """Compute the normalization with the dataset uptime. Distributions like 
         scipy.stats.norm are normalized (-inf, inf).
         These must be re-normalized such that the function sums to 1 over the
         finite good run list domain.
@@ -166,12 +166,11 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
 
         return 1. / integral
 
-    
     def get_prob(self, tdm, fitparams=None, tl=None):
-        """Calculates the background time probability density of each event 
+        """Calculates the background time probability density of each event.
 
         tdm : TrialDataManager
-            Unused interface argument
+            Unused interface argument.
         fitparams : None
             Unused interface argument.
         tl : instance of TimeLord | None
@@ -183,7 +182,7 @@ class BackgroundUniformTimePDF(TimePDF, IsBackgroundPDF):
         pd : array of float
             The (N,)-shaped ndarray holding the probability density for each event.
         grads : empty array of float
-            Does not depend on fit parameter, so no gradient
+            Does not depend on fit parameter, so no gradient.
         """
         livetime = self.grl["stop"][-1] - self.grl["start"][0]
         pd = 1./livetime

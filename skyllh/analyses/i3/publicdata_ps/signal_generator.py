@@ -552,7 +552,7 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         self.gauss = gauss
 
     def generate_signal_events(self, rss, mean, poisson=True):
-        """ same as in PDSignalGenerator, but we assign times here. 
+        """Same as in PDSignalGenerator, but we assign times here. 
         """
         # Call method from the parent class.
         tot_n_events, signal_events_dict = super().generate_signal_events(rss, mean, poisson=poisson)
