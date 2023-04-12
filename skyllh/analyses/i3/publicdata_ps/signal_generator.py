@@ -486,9 +486,10 @@ class PDSignalGenerator(SignalGeneratorBase):
 
 
 class PDTimeDependentSignalGenerator(PDSignalGenerator):
-    """ The time dependent signal generator works so far only for one single dataset. For multi datasets one 
-    needs to adjust the dataset weights accordingly (scaling of the effective area with livetime of the flare
-    in the dataset)
+    """ The time dependent signal generator works so far only for one single
+    dataset. For multi datasets one needs to adjust the dataset weights
+    accordingly (scaling of the effective area with livetime of the flare in
+    the dataset).
     """
 
     def __init__(self, src_hypo_group_manager, dataset_list, data_list=None,
@@ -561,7 +562,10 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         if self.gauss is not None:
             time_pdf = scipy.stats.norm(self.gauss["mu"], self.gauss["sigma"])
         if self.box is not None:
-            time_pdf = scipy.stats.uniform(self.box["start"], self.box["end"] - self.box["start"])
+            time_pdf = scipy.stats.uniform(
+                self.box["start"],
+                self.box["end"] - self.box["start"]
+            )
 
         return time_pdf
 
@@ -631,7 +635,8 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
             n_events = len(events_)
             while len(times) < n_events:
                 times = np.concatenate(
-                    (times, self.time_pdf.rvs(n_events - len(times), random_state=rss.random))
+                    (times, self.time_pdf.rvs(n_events - len(times),
+                                              random_state=rss.random))
                 )
                 # Check if times is in grl.
                 is_in_grl_mask = self.is_in_grl(times, grl)
