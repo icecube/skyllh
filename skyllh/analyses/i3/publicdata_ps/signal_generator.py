@@ -543,17 +543,17 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         """
         # Make sure flare is in dataset.
         for data_list in self.data_list:
-            tmp_grl = data_list.grl
+            grl = data_list.grl
 
             if self.gauss is not None:
-                if (self.gauss["mu"] - 4 * self.gauss["sigma"] > tmp_grl["stop"][-1]) or (
-                        self.gauss["mu"] + 4 * self.gauss["sigma"] < tmp_grl["start"][0]):
+                if (self.gauss["mu"] - 4 * self.gauss["sigma"] > grl["stop"][-1]) or (
+                        self.gauss["mu"] + 4 * self.gauss["sigma"] < grl["start"][0]):
                     raise ValueError(
                         f"Gaussian {str(self.gauss)} flare is not in dataset.")
 
             if self.box is not None:
-                if (self.box["start"] > tmp_grl["stop"][-1]) or (
-                        self.box["end"] < tmp_grl["start"][0]):
+                if (self.box["start"] > grl["stop"][-1]) or (
+                        self.box["end"] < grl["start"][0]):
                     raise ValueError(
                         f"Box {str(self.box)} flare is not in dataset.")
 
@@ -617,23 +617,25 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         """Same as in PDSignalGenerator, but we assign times here. 
         """
         # Call method from the parent class to generate signal events.
-        tot_n_events, signal_events_dict = super().generate_signal_events(
+        (tot_n_events, signal_events_dict) = super().generate_signal_events(
             rss, mean, poisson=poisson)
 
         # Assign times for flare. We can also use inverse transform
         # sampling instead of the lazy version implemented here.
         for (ds_idx, events_) in signal_events_dict.items():
-            tmp_grl = self.data_list[ds_idx].grl
+            grl = self.data_list[ds_idx].grl
 
             # Optimized time injection version, based on csky implementation.
             # https://github.com/icecube/csky/blob/7e969639c5ef6dbb42872dac9b761e1e8b0ccbe2/csky/inj.py#L1122
-            time = []
+            times = np.array([])
             n_events = len(events_)
-            while len(time) < n_events:
-                time = np.r_[time, self.time_pdf.rvs(n_events - len(time), random_state=rss.random)]
-                # Check if time is in grl.
-                is_in_grl_mask = self.is_in_grl(time, tmp_grl)
-                time = time[is_in_grl_mask]
+            while len(times) < n_events:
+                times = np.concatenate(
+                    (times, self.time_pdf.rvs(n_events - len(times), random_state=rss.random))
+                )
+                # Check if times is in grl.
+                is_in_grl_mask = self.is_in_grl(times, grl)
+                times = times[is_in_grl_mask]
 
-            events_["time"] = time
+            events_["time"] = times
         return tot_n_events, signal_events_dict
