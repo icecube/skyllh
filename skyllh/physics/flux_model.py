@@ -12,6 +12,7 @@ class. It describes a mathematical function for the differential flux:
 
 import abc
 import numpy as np
+import scipy.special
 import scipy.stats
 
 from astropy import units
@@ -889,7 +890,8 @@ class BoxTimeFluxProfile(TimeFluxProfile):
         return integral
 
 
-class GaussianTimeFluxProfile(TimeFluxProfile):
+class GaussianTimeFluxProfile(
+        TimeFluxProfile):
     """This class describes a gaussian-shaped time flux profile.
     It has the following parameters:
 
@@ -898,8 +900,15 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         sigma_t : float
             The one-sigma width of the gaussian profile.
     """
-    def __init__(self, t0, sigma_t, tol=1e-12, time_unit=None, **kwargs):
-        """Creates a new gaussian-shaped time profile instance.
+
+    def __init__(
+            self,
+            t0,
+            sigma_t,
+            tol=1e-12,
+            time_unit=None,
+            **kwargs):
+        """Creates a new gaussian-shaped time flux profile instance.
 
         Parameters
         ----------
@@ -917,11 +926,10 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         """
         # Calculate the start and end time of the gaussian profile, such that
         # at those times the gaussian values obey the given tolerance.
-        dt = np.sqrt(-2*sigma_t*sigma_t*np.log(np.sqrt(2*np.pi)*sigma_t*tol))
+        dt = np.sqrt(-2 * sigma_t**2 * np.log(tol))
         t_start = t0 - dt
         t_end = t0 + dt
 
-        # A Gaussian profile extends to +/- infinity by definition.
         super().__init__(
             t_start=t_start,
             t_end=t_end,
@@ -936,15 +944,21 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         self.param_names = ('t0', 'sigma_t')
 
     @property
+    def math_function_str(self):
+        return 'exp(-(t-t0)^2/(2 sigma_t^2))'
+
+    @property
     def t0(self):
         """The time of the mid point of the gaussian profile.
         The unit of the value is the set time unit of this TimeFluxProfile
         instance.
         """
         return 0.5*(self._t_start + self._t_end)
+
     @t0.setter
     def t0(self, t):
-        t = float_cast(t,
+        t = float_cast(
+            t,
             'The t0 property must be castable to type float!')
         old_t0 = self.t0
         dt = t - old_t0
@@ -957,13 +971,18 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         instance.
         """
         return self._sigma_t
+
     @sigma_t.setter
     def sigma_t(self, sigma):
-        sigma = float_cast(sigma,
-            'The sigma property must be castable to type float!')
+        sigma = float_cast(
+            sigma,
+            'The sigma_t property must be castable to type float!')
         self._sigma_t = sigma
 
-    def __call__(self, t, unit=None):
+    def __call__(
+            self,
+            t,
+            unit=None):
         """Returns the gaussian profile value for the given time ``t``.
 
         Parameters
@@ -991,11 +1010,14 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         t0 = 0.5*(self._t_end + self._t_start)
         dt = t - t0
 
-        values = 1/(np.sqrt(np.pi*twossq)) * np.exp(-dt*dt/twossq)
+        values = np.exp(-dt*dt/twossq)
 
         return values
 
-    def move(self, dt, unit=None):
+    def move(
+            self,
+            dt,
+            unit=None):
         """Moves the gaussian time profile by the given amount of time.
 
         Parameters
@@ -1008,13 +1030,17 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
             If set to ``None``, the set time unit of this TimeFluxProfile is
             assumed.
         """
-        if((unit is not None) and (unit != self._time_unit)):
+        if (unit is not None) and (unit != self._time_unit):
             dt = dt * unit.to(self._time_unit)
 
         self._t_start += dt
         self._t_end += dt
 
-    def get_integral(self, t1, t2, unit=None):
+    def get_integral(
+            self,
+            t1,
+            t2,
+            unit=None):
         """Calculates the integral of the gaussian time profile from time ``t1``
         to time ``t2``.
 
@@ -1035,7 +1061,7 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
             The integral value(s). The values are in the set time unit of
             this TimeFluxProfile instance.
         """
-        if((unit is not None) and (unit != self._time_unit)):
+        if (unit is not None) and (unit != self._time_unit):
             time_unit_conv_factor = unit.to(self._time_unit)
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
@@ -1043,10 +1069,12 @@ class GaussianTimeFluxProfile(TimeFluxProfile):
         t0 = 0.5*(self._t_end + self._t_start)
         sigma_t = self._sigma_t
 
-        c1 = scipy.stats.norm.cdf(t1, loc=t0, scale=sigma_t)
-        c2 = scipy.stats.norm.cdf(t2, loc=t0, scale=sigma_t)
+        c1 = np.sqrt(np.pi/2) * sigma_t
+        c2 = np.sqrt(2) * sigma_t
+        i1 = c1 * scipy.special.erf((t1 - t0)/c2)
+        i2 = c1 * scipy.special.erf((t2 - t0)/c2)
 
-        integral = c2 - c1
+        integral = i2 - i1
 
         return integral
 

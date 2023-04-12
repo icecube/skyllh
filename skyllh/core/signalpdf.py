@@ -322,14 +322,10 @@ class SignalTimePDF(
             # interval.
             on = self._livetime.is_on(times)
 
-            # The sum of the on-time integrals of the time flux profile, S, will
-            # be zero if the time flux profile is entirly during detector
-            # off-time.
-            if self._S > 0:
-                pd_src = pd[src_m]
-                pd_src[on] = self._time_flux_profile(t=times[on]) / (
-                    self._I * self._S)
-                pd[src_m] = pd_src
+            pd_src = pd[src_m]
+            pd_src[on] = (self._time_flux_profile(t=times[on]) * self._S /
+                self._I**2)
+            pd[src_m] = pd_src
 
         return (pd, dict())
 
