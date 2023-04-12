@@ -278,6 +278,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC40_effectiveArea.csv')
     IC40.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC40_smearing.csv')
+    IC40.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC40.pkl')
+    IC40.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC40.pkl')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.25, 10 + 1),
@@ -302,6 +306,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC59_effectiveArea.csv')
     IC59.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC59_smearing.csv')
+    IC59.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC59.pkl')
+    IC59.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC59.pkl')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.95, 2 + 1),
@@ -327,6 +335,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC79_effectiveArea.csv')
     IC79.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC79_smearing.csv')
+    IC79.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC79.pkl')
+    IC79.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC79.pkl')
 
     sin_dec_bins = np.unique(np.concatenate([
                         np.linspace(-1., -0.75, 10 + 1),
@@ -351,6 +363,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC86_I_effectiveArea.csv')
     IC86_I.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC86_I_smearing.csv')
+    IC86_I.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC86_I.pkl')
+    IC86_I.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC86_I.pkl')
 
     b = np.sin(np.radians(-5.)) # North/South transition boundary.
     sin_dec_bins = np.unique(np.concatenate([
@@ -377,6 +393,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
     IC86_II.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_II.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC86_II.pkl')
+    IC86_II.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC86_II.pkl')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.93, 4 + 1),
@@ -402,6 +422,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
     IC86_III.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_III.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC86_II.pkl')
+    IC86_III.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC86_III.pkl')
 
     IC86_III.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
@@ -421,6 +445,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
     IC86_IV.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_IV.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC86_II.pkl')
+    IC86_IV.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC86_IV.pkl')
 
     IC86_IV.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
@@ -440,6 +468,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
     IC86_V.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_V.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC86_II.pkl')
+    IC86_V.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC86_V.pkl')
 
     IC86_V.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
@@ -459,6 +491,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
     IC86_VI.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_VI.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC86_II.pkl')
+    IC86_VI.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC86_VI.pkl')
 
     IC86_VI.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
@@ -478,6 +514,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
     IC86_VII.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_VII.add_aux_data_definition(
+        'mceq_flux_datafile', 'fluxes/mceq_IC86_II.pkl')
+    IC86_VII.add_aux_data_definition(
+        'pdf_bkg_datafile', 'pdfs/pdf_bkg_log10emu_sindecmu_IC86_VII.pkl')
 
     IC86_VII.add_binning_definition(
         IC86_II.get_binning_definition('sin_dec'))
