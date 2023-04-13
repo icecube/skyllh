@@ -217,17 +217,6 @@ class Livetime(
 
         return idxs
 
-    def load_from_ontime_mjd_intervals(self, intervals):
-        """Loads the internal MJD uptime intervals from the given interval
-        array.
-
-        Parameters
-        ----------
-        intervals : Nx2 ndarray holding the MJD edges of the on-time intervals.
-
-        """
-        self._uptime_mjd_intervals = intervals
-
     def get_uptime_intervals_between(
             self,
             t_start,
