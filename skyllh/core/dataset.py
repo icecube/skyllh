@@ -1775,7 +1775,8 @@ def get_data_subset(data, livetime, t_start, t_end):
     data_exp = data.exp[exp_slice]
     data_mc = data.mc[mc_slice]
 
-    uptime_mjd_intervals_arr = livetime.get_ontime_intervals_between(t_start, t_end)
+    uptime_mjd_intervals_arr = livetime.get_uptime_intervals_between(
+        t_start, t_end)
     livetime_subset = Livetime(uptime_mjd_intervals_arr)
 
     dataset_data_subset = DatasetData(data_exp, data_mc, livetime_subset.livetime)

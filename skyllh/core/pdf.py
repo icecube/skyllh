@@ -852,7 +852,7 @@ class TimePDF(
             The sum of the time flux profile integrals during the detector
             on-time intervals.
         """
-        ontime_intervals = self._livetime.get_ontime_intervals_between(
+        uptime_intervals = self._livetime.get_uptime_intervals_between(
             self._time_flux_profile.t_start,
             self._time_flux_profile.t_end)
 
@@ -860,8 +860,8 @@ class TimePDF(
 
         S = np.sum(
             self._time_flux_profile.get_integral(
-                ontime_intervals[:, 0],
-                ontime_intervals[:, 1]))
+                uptime_intervals[:, 0],
+                uptime_intervals[:, 1]))
 
         return (total_integral, S)
 
