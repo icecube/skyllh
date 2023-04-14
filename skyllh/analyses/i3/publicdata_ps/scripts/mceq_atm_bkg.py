@@ -7,7 +7,7 @@ import crflux.models as pm
 import mceq_config as config
 from MCEq.core import MCEqRun
 
-from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
+from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
 from skyllh.datasets.i3 import PublicData_10y_ps
 
 def create_flux_file(save_path, ds):
