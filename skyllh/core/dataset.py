@@ -10,17 +10,18 @@ from skyllh.core.config import CFG
 from skyllh.core.livetime import Livetime
 from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
+    classname,
     float_cast,
     issequence,
     issequenceof,
     list_of_cast,
-    str_cast
+    str_cast,
 )
 from skyllh.core import display
 from skyllh.core.display import ANSIColors
 from skyllh.core.storage import (
     DataFieldRecordArray,
-    create_FileLoader
+    create_FileLoader,
 )
 from skyllh.core.timing import TaskTimer
 
@@ -1077,20 +1078,26 @@ class Dataset(object):
         Parameters
         ----------
         name : str
-            The name of the auxiliary data. The name is used as identifier for
-            the data within SkyLLH.
+            The name of the auxiliary data definition. The name is used as
+            identifier for the data within SkyLLH.
         pathfilenames : str | sequence of str
             The file name(s) (including paths) of the data file(s).
         """
-        name = str_cast(name,
-            'The name argument must be castable to type str!')
-        pathfilenames = list_of_cast(str, pathfilenames,
-            'The pathfilenames argument must be of type str or a sequence '
-            'of str!')
+        name = str_cast(
+            name,
+            'The name argument must be castable to type str! '
+            f'Its current type is {classname(name)}.')
 
-        if(name in self._aux_data_definitions):
-            raise KeyError('The auxiliary data definition "%s" is already '
-                'defined for dataset "%s"!'%(name, self.name))
+        pathfilenames = list_of_cast(
+            str,
+            pathfilenames,
+            'The pathfilenames argument must be of type str or a sequence '
+            f'of str! Its current type is {classname(pathfilenames)}.')
+
+        if name in self._aux_data_definitions:
+            raise KeyError(
+                f'The auxiliary data definition "{name}" is already defined '
+                f'for dataset "{self.name}"!')
 
         self._aux_data_definitions[name] = pathfilenames
 
@@ -1100,7 +1107,7 @@ class Dataset(object):
         Parameters
         ----------
         name : str
-            The name of the auxiliary data.
+            The name of the auxiliary data definition.
 
         Raises
         ------
@@ -1110,8 +1117,8 @@ class Dataset(object):
         Returns
         -------
         aux_data_definition : list of str
-            The locations (pathfilenames) of the files defined in the auxiliary data
-                    as auxiliary data definition.
+            The locations (pathfilenames) of the files defined in the auxiliary
+            data as auxiliary data definition.
         """
 
         if(not name in self._aux_data_definitions):
@@ -1119,6 +1126,36 @@ class Dataset(object):
                 'exist in dataset "{}"!'.format(name, self.name))
 
         return self._aux_data_definitions[name]
+
+    def set_aux_data_definition(self, name, pathfilenames):
+        """Sets the files of the auxiliary data definition, which has the given
+        name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the auxiliary data definition.
+        pathfilenames : str | sequence of str
+            The file name(s) (including paths) of the data file(s).
+        """
+        name = str_cast(
+            name,
+            'The name argument must be castable to type str! '
+            f'Its current type is {classname(name)}.')
+
+        pathfilenames = list_of_cast(
+            str,
+            pathfilenames,
+            'The pathfilenames argument must be of type str or a sequence '
+            f'of str! Its current type is {classname(pathfilenames)}.')
+
+        if name not in self._aux_data_definitions:
+            raise KeyError(
+                f'The auxiliary data definition "{name}" is not defined '
+                f'for dataset "{self.name}"! Use add_aux_data_definition '
+                'instead!')
+
+        self._aux_data_definitions[name] = pathfilenames
 
     def remove_aux_data_definition(self, name):
         """Removes the auxiliary data definition from the dataset.
@@ -1128,11 +1165,10 @@ class Dataset(object):
         name : str
             The name of the dataset that should get removed.
         """
-        if(name not in self._aux_data_definitions):
+        if name not in self._aux_data_definitions:
             raise KeyError(
                 f'The auxiliary data definition "{name}" does not exist in '
-                f'dataset "{self.name}", nothing to remove!'
-            )
+                f'dataset "{self.name}", nothing to remove!')
 
         self._aux_data_definitions.pop(name)
 
