@@ -18,10 +18,10 @@ from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
 
 from skyllh.analyses.i3.publicdata_ps.utils import psi_to_dec_and_ra
-from skyllh.analyses.i3.publicdata_ps.pd_smearing_matrix import (
+from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
     PDSmearingMatrix
 )
-from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
+from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
 
 
 class PDDatasetSignalGenerator(object):
@@ -429,11 +429,23 @@ class PDSignalGenerator(SignalGeneratorBase):
 
     def generate_signal_events(self, rss, mean, poisson=True):
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
+        # Only supports a single source hypothesis group. Raise an error
+        # if more than one shg is in the source hypo group manager.
+        if len(shg_list) > 1:
+            raise RuntimeError(
+                'Signal injection for multiple source hypothesis groups is '
+                'not supported yet.')
 
         tot_n_events = 0
         signal_events_dict = {}
 
         for shg in shg_list:
+            # Only supports single point source signal injection. Raise
+            # an error if more than one source is in the source hypo group.
+            if len(shg.source_list) > 1:
+                raise RuntimeError(
+                    'Signal injection for multiple sources within a source '
+                    'hypothesis group is not supported yet.')
             # This only works with power-laws for now.
             # Each source hypo group can have a different power-law
             gamma = shg.fluxmodel.gamma

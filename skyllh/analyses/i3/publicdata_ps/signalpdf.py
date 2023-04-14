@@ -24,11 +24,11 @@ from skyllh.core.parameters import (
 from skyllh.i3.dataset import I3Dataset
 from skyllh.physics.flux import FluxModel
 
-from skyllh.analyses.i3.publicdata_ps.pd_aeff import PDAeff
+from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
 from skyllh.analyses.i3.publicdata_ps.utils import (
     FctSpline1D,
 )
-from skyllh.analyses.i3.publicdata_ps.pd_smearing_matrix import (
+from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
     PDSmearingMatrix
 )
 

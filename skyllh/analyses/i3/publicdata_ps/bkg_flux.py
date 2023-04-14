@@ -2,8 +2,6 @@
 
 import numpy as np
 import pickle
-from scipy import interpolate
-from scipy import integrate
 
 from skyllh.physics.flux import PowerLawFlux
 from skyllh.core.binning import get_bincenters_from_binedges
