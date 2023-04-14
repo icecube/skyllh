@@ -21,10 +21,11 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     ra3 = np.atleast_1d(ra3)
     dec3 = np.atleast_1d(dec3)
 
-    assert (len(ra1) == len(dec1) ==
-            len(ra2) == len(dec2) ==
-            len(ra3) == len(dec3)
-           ), 'All input argument arrays must be of the same length!'
+    assert (
+        len(ra1) == len(dec1) ==
+        len(ra2) == len(dec2) ==
+        len(ra3) == len(dec3)
+    ), 'All input argument arrays must be of the same length!'
 
     N_event = len(ra1)
 
@@ -32,7 +33,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     # correct for possible rounding erros.
     cos_alpha = (np.cos(ra2 - ra1) * np.cos(dec1) * np.cos(dec2)
                  + np.sin(dec1) * np.sin(dec2))
-    cos_alpha[cos_alpha >  1] =  1
+    cos_alpha[cos_alpha > 1] = 1
     cos_alpha[cos_alpha < -1] = -1
     alpha = np.arccos(cos_alpha)
 
@@ -59,7 +60,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
 
     # Calculate the rotation matrix R_i for each event i and perform the
     # rotation on vector 3 for each event.
-    vec = np.empty((N_event,3), dtype=np.float64)
+    vec = np.empty((N_event, 3), dtype=np.float64)
 
     sin_alpha = np.sin(alpha)
     twopi = 2*np.pi
@@ -87,6 +88,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     dec = np.arcsin(vec[:, 2])
 
     return (ra, dec)
+
 
 def angular_separation(ra1, dec1, ra2, dec2, psi_floor=None):
     """Calculates the angular separation on the shpere between two vectors on
