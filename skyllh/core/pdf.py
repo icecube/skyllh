@@ -395,7 +395,9 @@ class PDF(
     @abc.abstractmethod
     def assert_is_valid_for_trial_data(
             self,
-            tdm):
+            tdm,
+            tl=None,
+            **kwargs):
         """This method is supposed to check if this PDF is valid for
         all the given trial data. This means, it needs to check if there
         is a PDF value for each trial data event that will be used in the
@@ -407,6 +409,8 @@ class PDF(
         ----------
         tdm : instance of TrialDataManager
             The instance of TrialDataManager holding the trial data events.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------
@@ -467,7 +471,8 @@ class PDF(
         pass
 
 
-class PDFProduct(PDF):
+class PDFProduct(
+        PDF):
     """The PDFProduct class represents the product of two PDF instances, i.e.
     ``pdf1 * pdf2``. It is derived from the PDF class and hence is a PDF itself.
     """
@@ -534,7 +539,11 @@ class PDFProduct(PDF):
                 'The pdf2 property must be an instance of PDF!')
         self._pdf2 = pdf
 
-    def assert_is_valid_for_trial_data(self, tdm):
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
         """Calls the :meth:`assert_is_valid_for_trial_data` method of ``pdf1``
         and ``pdf2``.
 
@@ -543,16 +552,29 @@ class PDFProduct(PDF):
         tdm : instance of TrialDataManager
             The instance of TrialDataManager that should be used to get the
             trial data from.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------
         ValueError
             If this PDF does not cover the trial data.
         """
-        self._pdf1.assert_is_valid_for_trial_data(tdm)
-        self._pdf2.assert_is_valid_for_trial_data(tdm)
+        self._pdf1.assert_is_valid_for_trial_data(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+        self._pdf2.assert_is_valid_for_trial_data(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
+
+    def get_pd(
+            self,
+            tdm,
+            params_recarray=None,
+            tl=None):
         """Calculates the probability density for the trial events given the
         specified parameters by calling the `get_pd` method of `pdf1`
         and `pdf2` and combining the two property densities by multiplication.
@@ -636,7 +658,9 @@ class PDFProduct(PDF):
         return (pd, grads)
 
 
-class SignalPDFProduct(PDFProduct, IsSignalPDF):
+class SignalPDFProduct(
+        PDFProduct,
+        IsSignalPDF):
     """This class provides a signal PDF that is the product of two signal PDF
     instances.
     """
@@ -650,7 +674,9 @@ class SignalPDFProduct(PDFProduct, IsSignalPDF):
             **kwargs)
 
 
-class BackgroundPDFProduct(PDFProduct, IsBackgroundPDF):
+class BackgroundPDFProduct(
+        PDFProduct,
+        IsBackgroundPDF):
     """This class provides a background PDF that is the product of two
     background PDF instances.
     """
@@ -664,7 +690,9 @@ class BackgroundPDFProduct(PDFProduct, IsBackgroundPDF):
             **kwargs)
 
 
-class SpatialPDF(PDF, metaclass=abc.ABCMeta):
+class SpatialPDF(
+        PDF,
+        metaclass=abc.ABCMeta):
     """This is the abstract base class for a spatial PDF model. A spatial PDF
     has two axes, right-ascention (ra) and declination (dec).
     """
@@ -693,7 +721,11 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
                 vmin=dec_range[0],
                 vmax=dec_range[1]))
 
-    def assert_is_valid_for_trial_data(self, tdm):
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
         """Checks if this spatial PDF is valid for all the given experimental
         data.
         It checks if all the data is within the right-ascention and declination
@@ -709,6 +741,8 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
                 The right-ascention of the data event.
             - 'dec' : float
                 The declination of the data event.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------
@@ -865,7 +899,11 @@ class TimePDF(
 
         return (total_integral, S)
 
-    def assert_is_valid_for_trial_data(self, tdm):
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
         """Checks if the time PDF is valid for all the given trial data.
         It checks if the time of all events is within the defined time axis of
         the PDF.
@@ -878,6 +916,9 @@ class TimePDF(
 
             ``'time'`` : float
                 The time of the data event.
+
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------
@@ -1111,7 +1152,9 @@ class MultiDimGridPDF(
 
     def assert_is_valid_for_trial_data(
             self,
-            tdm):
+            tdm,
+            tl=None,
+            **kwargs):
         """Checks if the PDF is valid for all values of the given evaluation
         data. The evaluation data values must be within the ranges of the PDF
         axes.
@@ -1121,6 +1164,8 @@ class MultiDimGridPDF(
         tdm : instance of TrialDataManager
             The instance of TrialDataManager that holds the trial data for which
             the PDF should be valid.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------
@@ -1424,8 +1469,9 @@ class MultiDimGridPDF(
 
 
 class NDPhotosplinePDF(PDF):
-    """This class provides a multi-dimensional PDF created from a n-dimensional
-    photospline fit. The photospline package is used to evaluate the PDF fit.
+    """DEPRECATED This class provides a multi-dimensional PDF created from a
+    n-dimensional photospline fit. The photospline package is used to evaluate
+    the PDF fit.
     """
 
     def __init__(
@@ -1922,16 +1968,24 @@ class PDFSet(
 
         return pdf
 
-    def assert_is_valid_for_trial_data(self, tdm):
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
         """Checks if the PDFs of this PDFSet instance are valid for all the
         given trial data events.
         Since all PDFs should have the same axes, only the first PDF will be
-        checked.
+        checked. It calls the
+        :meth:`~skyllh.core.pdf.PDF.assert_is_valid_for_trial_data` method of
+        the first :class:`~skyllh.core.pdf.PDF` instance.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
             The instance of TrialDataManager holding the trial data events.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------
@@ -1940,9 +1994,17 @@ class PDFSet(
         """
         key = next(iter(self._gridparams_hash_pdf_dict.keys()))
         pdf = self._gridparams_hash_pdf_dict[key]
-        pdf.assert_is_valid_for_trial_data(tdm=tdm)
+        pdf.assert_is_valid_for_trial_data(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
 
-    def get_pd(self, gridparams, tdm, params_recarray=None, tl=None):
+    def get_pd(
+            self,
+            gridparams,
+            tdm,
+            params_recarray=None,
+            tl=None):
         """Calls the ``get_pd`` method of the PDF instance that belongs to the
         given grid parameter values ``gridparams``.
 

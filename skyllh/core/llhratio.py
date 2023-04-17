@@ -106,9 +106,11 @@ class LLHRatio(
                 f'Its current type is {classname(minimizer)}.')
         self._minimizer = minimizer
 
+    @abc.abstractmethod
     def initialize_for_new_trial(
             self,
-            tl=None):
+            tl=None,
+            **kwargs):
         """This method will be called by the Analysis class after new trial data
         has been initialized to the trial data manager. Derived classes can make
         use of this call hook to perform LLHRatio specific trial initialization.
@@ -595,6 +597,25 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
                 f'Its current type is {classname(r)}.')
         self._pdfratio = r
 
+    def initialize_for_new_trial(
+            self,
+            tl=None,
+            **kwargs):
+        """Initializes the log-likelihood ratio function for a new trial.
+        It calls the
+        :meth:`~skyllh.core.pdfratio.PDFRatio.initialize_for_new_trial` method
+        of the :class:`~skyllh.core.pdfratio.PDFRatio` class.
+
+        Parameters
+        ----------
+        tl : instance of TimeLord
+            The optional instance of TimeLord to measure timing information.
+        """
+        self._pdfratio.initialize_for_new_trial(
+            tdm=self._tdm,
+            tl=tl,
+            **kwargs)
+
     def calculate_log_lambda_and_grads(
             self,
             N,
@@ -1023,11 +1044,25 @@ class MultiDatasetTCLLHRatio(
             llhratio.change_shg_mgr(
                 shg_mgr=shg_mgr)
 
-    def initialize_for_new_trial(self, tl=None):
+    def initialize_for_new_trial(
+            self,
+            tl=None,
+            **kwargs):
         """Initializes the log-likelihood-ratio function for a new trial.
+        It calls the
+        :meth:`~skyllh.core.llhratio.LLHRatio.initialize_for_new_trial` method
+        of the :class:`~skyllh.core.llhratio.LLHRatio` class of each individual
+        log-likelihood ratio function.
+
+        Parameters
+        ----------
+        tl : instance of TimeLord
+            The optional instance of TimeLord to measure timing information.
         """
         for llhratio in self._llhratio_list:
-            llhratio.initialize_for_new_trial(tl=tl)
+            llhratio.initialize_for_new_trial(
+                tl=tl,
+                **kwargs)
 
     def evaluate(
             self,
@@ -1287,7 +1322,8 @@ class NsProfileMultiDatasetTCLLHRatio(
 
     def initialize_for_new_trial(
             self,
-            tl=None):
+            tl=None,
+            **kwargs):
         """Initializes the log-likelihood-ratio function for a new trial.
 
         Parameters
@@ -1296,7 +1332,9 @@ class NsProfileMultiDatasetTCLLHRatio(
             The optional instance of TimeLord that should be used for timing
             measurements.
         """
-        self._llhratio.initialize_for_new_trial(tl=tl)
+        self._llhratio.initialize_for_new_trial(
+            tl=tl,
+            **kwargs)
 
         # Compute the constant log-likelihood function value for the
         # null-hypothesis.

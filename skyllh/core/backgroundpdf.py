@@ -117,9 +117,9 @@ class BackgroundTimePDF(
 class BackgroundNDPhotosplinePDF(
         NDPhotosplinePDF,
         IsBackgroundPDF):
-    """This class provides a multi-dimensional background PDF created from a
-    n-dimensional photospline fit. The photospline package is used to evaluate
-    the PDF fit.
+    """DEPRECATED This class provides a multi-dimensional background PDF created
+    from a n-dimensional photospline fit. The photospline package is used to
+    evaluate the PDF fit.
     """
 
     def __init__(

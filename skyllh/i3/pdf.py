@@ -207,7 +207,11 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         )
         return mask
 
-    def assert_is_valid_for_trial_data(self, tdm):
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
         """Checks if this energy PDF is valid for all the given trial events.
         It checks if all the data is within the log10(E) and sin(dec) binning
         range.
@@ -222,6 +226,9 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
                 The base-10 logarithm of the energy value of the data event.
             dec : float
                 The declination of the data event.
+
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------

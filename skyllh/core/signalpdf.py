@@ -562,7 +562,11 @@ class SignalMultiDimGridPDFSet(
 
         return pd
 
-    def assert_is_valid_for_trial_data(self, tdm):
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
         """Checks if the PDFs of this PDFSet instance are valid for all the
         given trial data events.
         Since all PDFs should have the same axes, only the first PDF will be
@@ -576,13 +580,18 @@ class SignalMultiDimGridPDFSet(
         ----------
         tdm : instance of TrialDataManager
             The instance of TrialDataManager holding the trial data events.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------
         ValueError
             If some of the data is outside the axes range of the PDF.
         """
-        super().assert_is_valid_for_trial_data(tdm=tdm)
+        super().assert_is_valid_for_trial_data(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
 
     def get_pd(
             self,

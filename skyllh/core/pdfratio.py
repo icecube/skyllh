@@ -124,13 +124,22 @@ class PDFRatio(
                 'instances!')
         self._bkg_param_names = names
 
+    @abc.abstractmethod
     def initialize_for_new_trial(
             self,
             tdm,
-            tl=None):
+            tl=None,
+            **kwargs):
         """Initializes the PDFRatio instance for a new trial. This method can
         be utilized to pre-calculate PDFRatio values that do not depend on any
         fit parameters.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial data.
+        tl : instance of TimeLord
+            The optional instance of TimeLord to measure timing information.
         """
         pass
 
@@ -267,10 +276,13 @@ class PDFRatioProduct(
                 'The pdfratio2 property must be an instance of PDFRatio!')
         self._pdfratio2 = pdfratio
 
-    def initialize_for_new_trial(self, **kwargs):
+    def initialize_for_new_trial(
+            self,
+            **kwargs):
         """Initializes the PDFRatioProduct instance for a new trial.
-        It calls the ``initialize_for_new_trial`` method of each of the two
-        PDFRatio instances.
+        It calls the
+        :meth:`~skyllh.core.pdfratio.PDFRatio.initialize_for_new_trial` method
+        of each of the two :class:`~skyllh.core.pdfratio.PDFRatio` instances.
         """
         self._pdfratio1.initialize_for_new_trial(**kwargs)
         self._pdfratio2.initialize_for_new_trial(**kwargs)
@@ -487,6 +499,27 @@ class SourceWeightedPDFRatio(
         source weighted PDF ratio.
         """
         return self._pdfratio
+
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Initializes the PDFRatio instance for a new trial. It calls the
+        :meth:`~skyllh.core.pdfratio.PDFRatio.initialize_for_new_trial` method
+        of the :class:`~skyllh.core.pdfratio.PDFRatio` instance.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that holds the trial data.
+        tl : instance of TimeLord
+            The optional instance of TimeLord to measure timing information.
+        """
+        self._pdfratio.initialize_for_new_trial(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
 
     def get_ratio(
             self,
@@ -731,6 +764,25 @@ class SigOverBkgPDFRatio(
             'The zero_bkg_ratio_value must be castable to type float!')
         self._zero_bkg_ratio_value = v
 
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Initializes the PDFRatio instance for a new trial. It calls the
+        :meth:`~skyllh.core.pdf.PDF.assert_is_valid_for_trial_data` of the
+        signal and background :class:`~skyllh.core.pdf.PDF` instances.
+        """
+        self._sig_pdf.assert_is_valid_for_trial_data(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
+
+        self._bkg_pdf.assert_is_valid_for_trial_data(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
+
     def get_ratio(
             self,
             tdm,
@@ -963,3 +1015,30 @@ class SigSetOverBkgPDFRatio(
                 'of GridManifoldInterpolationMethod! '
                 f'Its current type is {classname(cls)}.')
         self._interpolmethod_cls = cls
+
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Initializes the PDFRatio instance for a new trial. It calls the
+        :meth:`~skyllh.core.pdf.PDF.assert_is_valid_for_trial_data` of the
+        signal :class:`~skyllh.core.pdf.PDFSet` instance and the background
+        :class:`~skyllh.core.pdf.PDF` instance.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
+        """
+        self._sig_pdf_set.assert_is_valid_for_trial_data(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
+
+        self._bkg_pdf.assert_is_valid_for_trial_data(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
