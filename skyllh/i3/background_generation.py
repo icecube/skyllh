@@ -65,3 +65,28 @@ class FixedScrambledExpDataI3BkgGenMethod(BackgroundGenerationMethod):
         bkg_events = self._data_scrambler.scramble_data(rss, data.exp.copy())
 
         return (len(bkg_events), bkg_events)
+
+
+class TimeDepFixedScrambledExpDataI3BkgGenMethod(BackgroundGenerationMethod):
+    """This class implements the background event generation method for the
+    IceCube detector using scrambled experimental data as background hypothesis
+    with a fixed number of background events equal to the number of events in
+    the dataset and run. This background generation method is the one used in SkyLab 
+    for time-dependent scrambling.
+    """
+    def __init__(self, data_scrambler):
+        """Creates a new background generation method instance to generate
+        background events from scrambled experimental data with a fixed number
+        of events equal to the number of events in the dataset.
+
+        Parameters
+        ----------
+        data_scrambler : instance of DataScrambler
+            The DataScrambler instance to use to generate scrambled experimental
+            data.
+        """
+        super(TimeDepFixedScrambledExpDataI3BkgGenMethod, self).__init__()
+
+        self.data_scrambler = data_scrambler
+
+        

@@ -46,7 +46,7 @@ class Livetime(object):
         if(not isinstance(self._uptime_mjd_intervals_arr, np.ndarray)):
             raise TypeError('The internal MJD interval array must be of type ndarray!')
 
-        if(self._uptime_mjd_intervals_arr.dtype != np.float64):
+        if(self._uptime_mjd_intervals_arr.dtype != np.float64):            
             raise TypeError('The type of the internal MJD interval array is not float64!')
 
         # Check the shape of the array.

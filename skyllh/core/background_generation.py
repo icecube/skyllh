@@ -12,6 +12,7 @@ from skyllh.core.py import (
     func_has_n_args,
     issequenceof
 )
+
 from skyllh.core.debugging import get_logger
 from skyllh.core.scrambling import DataScrambler
 from skyllh.core.timing import TaskTimer

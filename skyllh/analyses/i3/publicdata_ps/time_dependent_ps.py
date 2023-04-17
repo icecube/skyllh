@@ -40,7 +40,9 @@ from skyllh.core.analysis import (
 )
 
 # Classes to define the background generation.
-from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod
+from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod, TimeScramblingMethod, TimeDepScrambling
+from skyllh.core.times import LivetimeTimeGenerationMethod, TimeGenerator
+from skyllh.core.livetime import Livetime
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the signal and background PDFs.
@@ -97,6 +99,36 @@ from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import (
     psi_func,
     TXS_location
 )
+
+
+def azimuth_ra_converter(angles_in, zen, mjd):
+    """Rotate angles_in (right ascension / azimuth) according to the time mjd.
+    The result is (azimuth / right ascension) since the formula is symmetric.
+    This assumes the rotation can be approximated so that the axis is at Pole,
+    which neglects the exact position of IceCube and all astronomical effects.
+    The interface requires a zenith -> declination transformation, 
+    which is actually not needed for scrambling. 
+    Parameters
+    ----------
+    angles_in : angle (in rad), azimuth or zenith
+    zen : zenith in rad
+    mjd : time in MJD
+
+    Returns
+    -------
+    angle : (in rad), zenith or azimuth
+    dec : the declination from the zenith. this is not needed for the scrambling but required 
+    
+    """
+
+    # constants
+    _sidereal_length = 0.997269566  # sidereal day = length * solar day
+    _sidereal_offset = 2.54199002505
+    sidereal_day_residuals = ((mjd / _sidereal_length) % 1)
+    angles_out = _sidereal_offset + 2 * np.pi * sidereal_day_residuals - angles_in
+    angles_out = np.mod(angles_out, 2 * np.pi)
+    dec = np.pi / 2 - zen
+    return angles_out, dec
 
 
 def create_analysis(
@@ -248,20 +280,13 @@ def create_analysis(
     # Define the test statistic.
     test_statistic = TestStatisticWilks()
 
-    # Define the data scrambler with its data scrambling method, which is used
-    # for background generation.
-    data_scrambler = DataScrambler(UniformRAScramblingMethod())
-
-    # Create background generation method.
-    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
-
     # Create the Analysis instance.
     analysis = TimeIntegratedMultiDatasetSingleSourceAnalysis(
         src_hypo_group_manager,
         src_fitparam_mapper,
         fitparam_ns,
         test_statistic,
-        bkg_gen_method,
+ #       bkg_gen_method,
         sig_generator_cls=PDTimeDependentSignalGenerator
     )
 
@@ -355,6 +380,17 @@ def create_analysis(
     pbar.finish()
 
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
+
+    # Define the data scrambler with its data scrambling method, which is used
+    # for background generation.
+
+    data_scrambler = DataScrambler(TimeDepScrambling(data))
+    # Create background generation method.
+    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
+
+    analysis._bkg_gen_method = bkg_gen_method
+    analysis.construct_background_generator()
+
     analysis.construct_signal_generator(
         llhratio=analysis.llhratio, energy_cut_splines=energy_cut_splines,
         cut_sindec=cut_sindec, box=box, gauss=gauss)
