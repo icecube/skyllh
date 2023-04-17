@@ -50,7 +50,8 @@ extensions = [
     'sphinx.ext.intersphinx',
     'nbsphinx',
     'sphinxcontrib.apidoc',
-    'sphinx_multiversion'
+    'sphinx_multiversion',
+    'sphinx_rtd_theme'
 ]
 
 # Extensions configuration.
