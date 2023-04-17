@@ -12,6 +12,7 @@ from skyllh.core.signalpdf import (
 )
 
 
+
 def expectation_em(ns, mu, sigma, t, sob):
     """
     Expectation step of expectation maximization.
@@ -81,73 +82,23 @@ def maximization_em(e_sig, t):
     sigma = [max(1, s) for s in sigma]
 
     return mu, sigma, ns
+   
 
+class ExpectationMaximizationTimefit():
+    """ Helper class for using expectation maximization for fitting the flare time
+    """
 
-class ExpectationMaximizationUtils(object):
     def __init__(self, ana):
-        """Creates a expectation maximization utility class for time-dependent
-        single dataset point-like source analysis assuming a single source.
-
+        """
         Parameters
         ----------
-        ana : instance of TimeIntegratedMultiDatasetSingleSourceAnalysis
-            Analysis instance which will be stored in this class.
+        ana : analysis instance
+
         """
         self.ana = ana
 
-    @property
-    def ana(self):
-        """The TimeIntegratedMultiDatasetSingleSourceAnalysis instance.
-        """
-        return self._ana
 
-    @ana.setter
-    def ana(self, analysis):
-        if not isinstance(analysis, TimeIntegratedMultiDatasetSingleSourceAnalysis):
-            raise TypeError("The ana argument must be an instance of "
-                            "'TimeIntegratedMultiDatasetSingleSourceAnalysis'.")
-        self._ana = analysis
-
-
-    def change_time_pdf(self, gauss=None, box=None):
-        """Changes the time pdf.
-
-        Parameters
-        ----------
-        gauss : dict | None
-            None or dictionary with {"mu": float, "sigma": float}.
-        box : dict | None
-            None or dictionary with {"start": float, "end": float}.
-        """
-        ana = self.ana
-
-        if gauss is None and box is None:
-            raise TypeError("Either gauss or box have to be specified as time pdf.")
-
-        grl = ana._data_list[0].grl
-        # redo this in case the background pdf was not calculated before
-        time_bkgpdf = BackgroundUniformTimePDF(grl)
-        if gauss is not None:
-            time_sigpdf = SignalGaussTimePDF(grl, gauss['mu'], gauss['sigma'])
-        elif box is not None:
-            time_sigpdf = SignalBoxTimePDF(grl, box["start"], box["end"])
-
-        time_pdfratio = SigOverBkgPDFRatio(
-            sig_pdf=time_sigpdf,
-            bkg_pdf=time_bkgpdf,
-            pdf_type=TimePDF
-        )
-
-        # the next line seems to make no difference in the llh evaluation. We keep it for consistency
-        ana._llhratio.llhratio_list[0].pdfratio_list[2] = time_pdfratio
-        # this line here is relevant for the llh evaluation
-        ana._llhratio.llhratio_list[0]._pdfratioarray._pdfratio_list[2] = time_pdfratio
-
-        #  change detector signal yield with flare livetime in sample (1 / grl_norm in pdf),
-        #  rebuild the histograms if it is changed...
-        #  signal injection?
-
-    def get_energy_spatial_signal_over_backround(self, fitparams):
+    def get_energy_spatial_signal_over_background(self, fitparams):
         """Returns the signal over background ratio for 
         (spatial_signal * energy_signal) / (spatial_background * energy_background).
         
@@ -161,38 +112,12 @@ class ExpectationMaximizationUtils(object):
         ratio : 1d ndarray
             Product of spatial and energy signal over background pdfs.
         """
-        ana = self.ana
 
-        ratio = ana._llhratio.llhratio_list[0].pdfratio_list[0].get_ratio(ana._tdm_list[0], fitparams)
-        ratio *= ana._llhratio.llhratio_list[0].pdfratio_list[1].get_ratio(ana._tdm_list[0], fitparams)
+        ratio = self.ana._llhratio.llhratio_list[0].pdfratio_list[0].get_ratio(self.ana._tdm_list[0], fitparams)
+        ratio *= self.ana._llhratio.llhratio_list[0].pdfratio_list[1].get_ratio(self.ana._tdm_list[0], fitparams)
 
         return ratio
 
-    def change_fluxmodel_gamma(self, gamma):
-        """Set new gamma for the flux model.
-
-        Parameter
-        ---------
-        gamma : float
-            Spectral index for flux model.
-        """
-        ana = self.ana
-
-        ana.src_hypo_group_manager.src_hypo_group_list[0].fluxmodel.gamma = gamma
-
-    def change_signal_time(self, gauss=None, box=None):
-        """Change the signal injection to gauss or box.
-        
-        Parameters
-        ----------
-        gauss : dict | None
-            None or dictionary {"mu": float, "sigma": float}.
-        box : dict | None
-            None or dictionary {"start" : float, "end" : float}.
-        """
-        ana = self.ana
-
-        ana.sig_generator.set_flare(box=box, gauss=gauss)
 
     def em_fit(self, fitparams, n=1, tol=1.e-200, iter_max=500, sob_thresh=0, initial_width=5000,
             remove_time=None):
@@ -203,13 +128,13 @@ class ExpectationMaximizationUtils(object):
         fitparams : dict
             Dictionary with value for gamma, e.g. {'gamma': 2}.
         n : int
-            How many gaussians flares we are looking for.
+            How many Gaussians flares we are looking for.
         tol : float
             the stopping criteria for expectation maximization. This is the difference in the normalized likelihood over the
             last 20 iterations.
         iter_max : int
             The maximum number of iterations, even if stopping criteria tolerance (`tol`) is not yet reached.
-        sob_thres : float
+        sob_thresh : float
             Set a minimum threshold for signal over background ratios. Ratios below this threshold will be removed.
         initial_width : float
             Starting width for the gaussian flare in days.
@@ -222,7 +147,7 @@ class ExpectationMaximizationUtils(object):
         """
         ana = self.ana
 
-        ratio = self.get_energy_spatial_signal_over_backround(fitparams)
+        ratio = self.get_energy_spatial_signal_over_background(fitparams)
         time = ana._tdm_list[0].get_data("time")
 
         if sob_thresh > 0: # remove events below threshold
@@ -262,6 +187,7 @@ class ExpectationMaximizationUtils(object):
 
         return mu, sigma, ns
 
+
     def run_gamma_scan_single_flare(self, remove_time=None, gamma_min=1, gamma_max=5, n_gamma=51):
         """Run em for different gammas in the signal energy pdf
 
@@ -290,38 +216,6 @@ class ExpectationMaximizationUtils(object):
 
         return results
 
-    def calculate_TS(self, em_results, rss):
-        """Calculate the best TS value for the expectation maximization gamma scan.
-        
-        Parameters
-        ----------
-        em_results : 1d ndarray of tuples
-            Gamma scan result.
-        rss : instance of RandomStateService
-            The instance of RandomStateService that should be used to generate
-            random numbers from.
-
-        Returns  
-        -------
-        float maximized TS value
-        tuple(gamma from em scan [float], best fit mean time [float], best fit width [float])
-        (float ns, float gamma) fitparams from TS optimization
-        """
-        ana = self.ana
-
-        max_TS = 0
-        best_time = None
-        best_flux = None
-        for index, result in enumerate(em_results):
-            self.change_signal_time(gauss={"mu": em_results["mu"], "sigma": em_results["sigma"]})
-            (fitparamset, log_lambda_max, fitparam_values, status) = ana.maximize_llhratio(rss)
-            TS = ana.calculate_test_statistic(log_lambda_max, fitparam_values)
-            if TS > max_TS:
-                max_TS = TS
-                best_time = result
-                best_flux = fitparam_values
-
-        return max_TS, best_time, fitparam_values
 
     def unblind_flare(self, remove_time=None):
         """Run EM on unscrambled data. Similar to the original analysis, remove the alert event.
@@ -346,3 +240,4 @@ class ExpectationMaximizationUtils(object):
         time_results = self.run_gamma_scan_single_flare(remove_time=remove_time)
 
         return time_results
+    

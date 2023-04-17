@@ -36,13 +36,12 @@ from skyllh.core.trialdata import TrialDataManager
 # Classes for defining the analysis.
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
-    TimeIntegratedMultiDatasetSingleSourceAnalysis
+    TimeIntegratedMultiDatasetSingleSourceAnalysis,
+    
 )
 
 # Classes to define the background generation.
-from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod, TimeScramblingMethod, TimeDepScrambling
-from skyllh.core.times import LivetimeTimeGenerationMethod, TimeGenerator
-from skyllh.core.livetime import Livetime
+from skyllh.core.scrambling import DataScrambler, TimeDepScrambling
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the signal and background PDFs.
@@ -75,6 +74,8 @@ from skyllh.core.debugging import (
     setup_file_handler
 )
 
+from skyllh.core.expectation_maximization import ExpectationMaximizationTimefit
+
 # Pre-defined public IceCube data samples.
 from skyllh.datasets.i3 import data_samples
 
@@ -101,34 +102,121 @@ from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import (
 )
 
 
-def azimuth_ra_converter(angles_in, zen, mjd):
-    """Rotate angles_in (right ascension / azimuth) according to the time mjd.
-    The result is (azimuth / right ascension) since the formula is symmetric.
-    This assumes the rotation can be approximated so that the axis is at Pole,
-    which neglects the exact position of IceCube and all astronomical effects.
-    The interface requires a zenith -> declination transformation, 
-    which is actually not needed for scrambling. 
+def change_time_pdf(analysis, gauss=None, box=None):
+    """Changes the time pdf.
+
     Parameters
     ----------
-    angles_in : angle (in rad), azimuth or zenith
-    zen : zenith in rad
-    mjd : time in MJD
-
-    Returns
-    -------
-    angle : (in rad), zenith or azimuth
-    dec : the declination from the zenith. this is not needed for the scrambling but required 
-    
+    gauss : dict | None
+        None or dictionary with {"mu": float, "sigma": float}.
+    box : dict | None
+        None or dictionary with {"start": float, "end": float}.
     """
 
-    # constants
-    _sidereal_length = 0.997269566  # sidereal day = length * solar day
-    _sidereal_offset = 2.54199002505
-    sidereal_day_residuals = ((mjd / _sidereal_length) % 1)
-    angles_out = _sidereal_offset + 2 * np.pi * sidereal_day_residuals - angles_in
-    angles_out = np.mod(angles_out, 2 * np.pi)
-    dec = np.pi / 2 - zen
-    return angles_out, dec
+    if gauss is None and box is None:
+        raise TypeError("Either gauss or box have to be specified as time pdf.")
+
+    grl = analysis._data_list[0].grl
+    # redo this in case the background pdf was not calculated before
+    time_bkgpdf = BackgroundUniformTimePDF(grl)
+    if gauss is not None:
+        time_sigpdf = SignalGaussTimePDF(grl, gauss['mu'], gauss['sigma'])
+    elif box is not None:
+        time_sigpdf = SignalBoxTimePDF(grl, box["start"], box["end"])
+
+    time_pdfratio = SigOverBkgPDFRatio(
+        sig_pdf=time_sigpdf,
+        bkg_pdf=time_bkgpdf,
+        pdf_type=TimePDF
+    )
+
+    # the next line seems to make no difference in the llh evaluation. We keep it for consistency
+    analysis._llhratio.llhratio_list[0].pdfratio_list[2] = time_pdfratio
+    # this line here is relevant for the llh evaluation
+    analysis._llhratio.llhratio_list[0]._pdfratioarray._pdfratio_list[2] = time_pdfratio
+
+    #  change detector signal yield with flare livetime in sample (1 / grl_norm in pdf),
+    #  rebuild the histograms if it is changed...
+
+
+def get_energy_spatial_signal_over_background(analysis, fitparams):
+    """Returns the signal over background ratio for 
+    (spatial_signal * energy_signal) / (spatial_background * energy_background).
+    
+    Parameter
+    ---------
+    fitparams : dict
+        Dictionary with {"gamma": float} for energy pdf.
+    
+    Returns
+    -------
+    ratio : 1d ndarray
+        Product of spatial and energy signal over background pdfs.
+    """
+
+    ratio = analysis._llhratio.llhratio_list[0].pdfratio_list[0].get_ratio(analysis._tdm_list[0], fitparams)
+    ratio *= analysis._llhratio.llhratio_list[0].pdfratio_list[1].get_ratio(analysis._tdm_list[0], fitparams)
+
+    return ratio
+
+
+def change_fluxmodel_gamma(analysis, gamma):
+    """Set new gamma for the flux model.
+
+    Parameter
+    ---------
+    gamma : float
+        Spectral index for flux model.
+    """
+
+    analysis.src_hypo_group_manager.src_hypo_group_list[0].fluxmodel.gamma = gamma
+
+
+def change_signal_time(analysis, gauss=None, box=None):
+    """Change the signal injection to gauss or box.
+    
+    Parameters
+    ----------
+    gauss : dict | None
+        None or dictionary {"mu": float, "sigma": float}.
+    box : dict | None
+        None or dictionary {"start" : float, "end" : float}.
+    """
+
+    analysis.sig_generator.set_flare(box=box, gauss=gauss)
+
+
+def calculate_TS(analysis, em_results, rss):
+    """Calculate the best TS value for the expectation maximization gamma scan.
+    
+    Parameters
+    ----------
+    em_results : 1d ndarray of tuples
+        Gamma scan result.
+    rss : instance of RandomStateService
+        The instance of RandomStateService that should be used to generate
+        random numbers from.
+
+    Returns  
+    -------
+    float maximized TS value
+    tuple(gamma from em scan [float], best fit mean time [float], best fit width [float])
+    (float ns, float gamma) fitparams from TS optimization
+    """
+
+    max_TS = 0
+    best_time = None
+    best_flux = None
+    for index, result in enumerate(em_results):
+        change_time_pdf(analysis,  gauss={"mu": result["mu"], "sigma": result["sigma"]})
+        (fitparamset, log_lambda_max, fitparam_values, status) = analysis.maximize_llhratio(rss)
+        TS = analysis.calculate_test_statistic(log_lambda_max, fitparam_values)
+        if TS > max_TS:
+            max_TS = TS
+            best_time = result
+            best_flux = fitparam_values
+
+    return max_TS, best_time, fitparam_values
 
 
 def create_analysis(
@@ -154,7 +242,8 @@ def create_analysis(
     keep_data_fields=None,
     optimize_delta_angle=10,
     tl=None,
-    ppbar=None
+    ppbar=None,
+    timefit="em"
 ):
     """Creates the Analysis instance for this particular analysis.
 
@@ -220,6 +309,7 @@ def create_analysis(
         The TimeLord instance to use to time the creation of the analysis.
     ppbar : ProgressBar instance | None
         The instance of ProgressBar for the optional parent progress bar.
+    timefit : how to fit the time. Default is expectation maximization "em"
 
     Returns
     -------
@@ -279,6 +369,7 @@ def create_analysis(
 
     # Define the test statistic.
     test_statistic = TestStatisticWilks()
+
 
     # Create the Analysis instance.
     analysis = TimeIntegratedMultiDatasetSingleSourceAnalysis(
@@ -394,5 +485,9 @@ def create_analysis(
     analysis.construct_signal_generator(
         llhratio=analysis.llhratio, energy_cut_splines=energy_cut_splines,
         cut_sindec=cut_sindec, box=box, gauss=gauss)
+    
+    # em for time fit 
+    if timefit == "em":
+        analysis.timefit = ExpectationMaximizationTimefit(analysis)
 
     return analysis

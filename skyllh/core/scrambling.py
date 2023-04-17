@@ -270,9 +270,15 @@ class TimeDepScrambling(DataScramblingMethod):
                 # how many events in each run (relative to all events)
                 self.weights.append(len(events.exp[mask_grl]) / len(events.exp['time']))
             
+            # renormalize
+            weight_sum = sum(self.weights)
+            self.weights = [x / weight_sum for x in self.weights]
+            
+            self.grl = events.grl
+            
 
-    # this function could also be in utils 
-    def azimuth_ra_converter(angles_in, mjd):
+    # this function could also be in utils, but I'm not sure in which utils.
+    def azimuth_ra_converter(self, angles_in, mjd):
         """Rotate angles_in (right ascension / azimuth) according to the time mjd.
         The result is (azimuth / right ascension) since the formula is symmetric.
         This assumes the rotation can be approximated so that the axis is at Pole,
@@ -321,12 +327,12 @@ class TimeDepScrambling(DataScramblingMethod):
         """
 
         # from which runs to draw the events, weighted with number of events in each run
-        random_runs = rss.random.choice(data.grl['start'].size, size=len(data), p=self.weights)
+        random_runs = rss.random.choice(self.grl['start'].size, size=len(data["time"]), p=self.weights)
 
-        # draw the random tmes
+        # draw the random times
         times = rss.random.uniform(
-            data.grl['start'][random_runs],
-            data.grl['stop'][random_runs])
+            self.grl['start'][random_runs],
+            self.grl['stop'][random_runs])
 
         # get the correct right ascension 
         data['time'] = times
