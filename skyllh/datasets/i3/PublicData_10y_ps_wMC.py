@@ -361,7 +361,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     ]))
     IC86_I.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(1., 9.5 + 0.01, 0.125)
+    energy_bins = np.arange(1., 10.5 + 0.01, 0.125)
     IC86_I.define_binning('log_energy', energy_bins)
 
     # ---------- IC86-II -------------------------------------------------------
@@ -386,7 +386,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     ]))
     IC86_II.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(1., 9.5 + 0.01, 0.125)
+    energy_bins = np.arange(0.5, 9.5 + 0.01, 0.125)
     IC86_II.define_binning('log_energy', energy_bins)
 
     # ---------- IC86-III ------------------------------------------------------
