@@ -56,10 +56,10 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
         return data
 
 
-class I3SeasonalTimeScramblingMethod(DataScramblingMethod):
-    """The SeasonalTimeScramblingMethod class provides a data scrambling method
-    to perform data coordinate scrambling based on a generated time, which
-    follows seasonal variations within the experimental data.
+class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
+    """The I3SeasonalVariationTimeScramblingMethod class provides a data
+    scrambling method to perform data coordinate scrambling based on a generated
+    time, which follows seasonal variations within the experimental data.
     """
     def __init__(self, data, **kwargs):
         """Initializes a new seasonal time scrambling instance.

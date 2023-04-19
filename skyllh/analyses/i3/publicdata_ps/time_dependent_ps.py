@@ -41,7 +41,7 @@ from skyllh.core.analysis import (
 
 # Classes to define the background generation.
 from skyllh.core.scrambling import DataScrambler
-from skyllh.i3.scrambling import I3SeasonalTimeScramblingMethod
+from skyllh.i3.scrambling import I3SeasonalVariationTimeScramblingMethod
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the signal and background PDFs.
@@ -67,17 +67,7 @@ from skyllh.core.analysis_utils import (
     pointlikesource_to_data_field_array
 )
 
-# Logging setup utilities.
-from skyllh.core.debugging import (
-    setup_logger,
-    setup_console_handler,
-    setup_file_handler
-)
-
 from skyllh.core.expectation_maximization import em_fit
-
-# Pre-defined public IceCube data samples.
-from skyllh.datasets.i3 import data_samples
 
 # Analysis specific classes for working with the public data.
 from skyllh.analyses.i3.publicdata_ps.signal_generator import (
@@ -95,10 +85,11 @@ from skyllh.analyses.i3.publicdata_ps.pdfratio import (
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF
 )
-from skyllh.analyses.i3.publicdata_ps.utils import create_energy_cut_spline
+from skyllh.analyses.i3.publicdata_ps.utils import (
+    create_energy_cut_spline,
+)
 from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import (
     psi_func,
-    TXS_location
 )
 
 
@@ -368,6 +359,11 @@ def create_analysis(
         The Analysis instance for this analysis.
     """
 
+    if len(datasets) != 1:
+        raise RuntimeError(
+            'This analysis supports only analyses with only single datasets '
+            'at the moment!')
+
     if gauss is None and box is None:
         raise ValueError("No time pdf specified (box or gauss)")
     if gauss is not None and box is not None:
@@ -421,7 +417,6 @@ def create_analysis(
     # Define the test statistic.
     test_statistic = TestStatisticWilks()
 
-
     # Create the Analysis instance.
     analysis = TimeIntegratedMultiDatasetSingleSourceAnalysis(
         src_hypo_group_manager,
@@ -448,6 +443,7 @@ def create_analysis(
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
+    data_list = []
     energy_cut_splines = []
     for idx, ds in enumerate(datasets):
         # Load the data of the data set.
@@ -455,6 +451,7 @@ def create_analysis(
             keep_fields=keep_data_fields,
             compress=compress_data,
             tl=tl)
+        data_list.append(data)
 
         # Create a trial data manager and add the required data fields.
         tdm = TrialDataManager()
@@ -525,7 +522,8 @@ def create_analysis(
     # Define the data scrambler with its data scrambling method, which is used
     # for background generation.
 
-    data_scrambler = DataScrambler(I3SeasonalTimeScramblingMethod(data))
+    # FIXME: Support multiple datasets for the DataScrambler.
+    data_scrambler = DataScrambler(I3SeasonalVariationTimeScramblingMethod(data_list[0]))
     # Create background generation method.
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
 
