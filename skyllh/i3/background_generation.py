@@ -65,4 +65,3 @@ class FixedScrambledExpDataI3BkgGenMethod(BackgroundGenerationMethod):
         bkg_events = self._data_scrambler.scramble_data(rss, data.exp.copy())
 
         return (len(bkg_events), bkg_events)
-        
