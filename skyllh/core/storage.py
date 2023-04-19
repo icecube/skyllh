@@ -81,7 +81,8 @@ def create_FileLoader(pathfilenames, **kwargs):
             cls = _FILE_LOADER_REG[fmt]
             return cls(pathfilenames, **kwargs)
 
-    raise RuntimeError('No FileLoader class is suitable to load the data file "%s"!'%(pathfilenames[0]))
+    raise RuntimeError('No FileLoader class is suitable to load the data file '
+        '"%s"!'%(pathfilenames[0]))
 
 def assert_file_exists(pathfilename):
     """Checks if the given file exists and raises a RuntimeError if it does
@@ -92,7 +93,8 @@ def assert_file_exists(pathfilename):
 
 
 class FileLoader(object, metaclass=abc.ABCMeta):
-
+    """Abstract base class for a FileLoader class.
+    """
     def __init__(self, pathfilenames, **kwargs):
         """Initializes a new FileLoader instance.
 
@@ -404,6 +406,224 @@ class PKLFileLoader(FileLoader):
 
         if(len(data) == 1):
             data = data[0]
+
+        return data
+
+
+class TextFileLoader(FileLoader):
+    """The TextFileLoader class provides the data loading functionality for
+    data text files where values are stored in a comma, or whitespace, separated
+    format. It uses the numpy.loadtxt function to load the data. It reads the
+    first line of the text file for a table header.
+    """
+    def __init__(self, pathfilenames, header_comment='#', header_separator=None,
+            **kwargs):
+        """Creates a new file loader instance for a text data file.
+
+        Parameters
+        ----------
+        pathfilenames : str | sequence of str
+            The sequence of fully qualified file names of the data files that
+            need to be loaded.
+        header_comment : str
+            The character that defines a comment line in the text file.
+        header_separator : str | None
+            The separator of the header field names. If None, it assumes
+            whitespaces.
+        """
+        super().__init__(pathfilenames, **kwargs)
+
+        self.header_comment = header_comment
+        self.header_separator = header_separator
+
+    @property
+    def header_comment(self):
+        """The character that defines a comment line in the text file.
+        """
+        return self._header_comment
+    @header_comment.setter
+    def header_comment(self, s):
+        if(not isinstance(s, str)):
+            raise TypeError('The header_comment property must be of type str!')
+        self._header_comment = s
+
+    @property
+    def header_separator(self):
+        """The separator of the header field names. If None, it assumes
+        whitespaces.
+        """
+        return self._header_separator
+    @header_separator.setter
+    def header_separator(self, s):
+        if(s is not None):
+            if(not isinstance(s, str)):
+                raise TypeError('The header_separator property must be None or '
+                    'of type str!')
+        self._header_separator = s
+
+    def _extract_column_names(self, line):
+        """Tries to extract the column names of the data table based on the
+        given line.
+
+        Parameters
+        ----------
+        line : str
+            The text line containing the column names.
+
+        Returns
+        -------
+        names : list of str | None
+            The column names.
+            It returns None, if the column names cannot be extracted.
+        """
+        # Remove possible new-line character and leading white-spaces.
+        line = line.strip()
+        # Check if the line is a comment line.
+        if(line[0:len(self._header_comment)] != self._header_comment):
+            return None
+        # Remove the leading comment character(s).
+        line = line.strip(self._header_comment)
+        # Remove possible leading whitespace characters.
+        line = line.strip()
+        # Split the line into the column names.
+        names = line.split(self._header_separator)
+        # Remove possible whitespaces of column names.
+        names = [ n.strip() for n in names ]
+
+        if(len(names) == 0):
+            return None
+
+        return names
+
+    def _load_file(self, pathfilename, keep_fields, dtype_convertions,
+            dtype_convertion_except_fields):
+        """Loads the given file.
+
+        Parameters
+        ----------
+        pathfilename : str
+            The fully qualified file name of the data file that
+            need to be loaded.
+        keep_fields : str | sequence of str | None
+            Load the data into memory only for these data fields. If set to
+            ``None``, all in-file-present data fields are loaded into memory.
+        dtype_convertions : dict | None
+            If not None, this dictionary defines how data fields of specific
+            data types get converted into the specified data types.
+            This can be used to use less memory.
+        dtype_convertion_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
+
+        Returns
+        -------
+        data : DataFieldRecordArray instance
+            The DataFieldRecordArray instance holding the loaded data.
+        """
+        assert_file_exists(pathfilename)
+
+        with open(pathfilename, 'r') as ifile:
+            line = ifile.readline()
+            column_names = self._extract_column_names(line)
+            if(column_names is None):
+                raise ValueError('The data text file "{}" does not contain a '
+                    'readable table header as first line!'.format(pathfilename))
+            usecols = None
+            dtype = [(n,np.float64) for n in column_names]
+            if(keep_fields is not None):
+                # Select only the given columns.
+                usecols = []
+                dtype = []
+                for (idx,name) in enumerate(column_names):
+                    if(name in keep_fields):
+                        usecols.append(idx)
+                        dtype.append((name,np.float64))
+                usecols = tuple(usecols)
+            if(len(dtype) == 0):
+                raise ValueError('No data columns were selected to be loaded!')
+
+            data_ndarray = np.loadtxt(ifile,
+                dtype=dtype,
+                comments=self._header_comment,
+                usecols=usecols)
+
+        data = DataFieldRecordArray(
+            data_ndarray,
+            keep_fields=keep_fields,
+            dtype_convertions=dtype_convertions,
+            dtype_convertion_except_fields=dtype_convertion_except_fields,
+            copy=False)
+
+        return data
+
+    def load_data(self, keep_fields=None, dtype_convertions=None,
+            dtype_convertion_except_fields=None, **kwargs):
+        """Loads the data from the data files specified through their fully
+        qualified file names.
+
+        Parameters
+        ----------
+        keep_fields : str | sequence of str | None
+            Load the data into memory only for these data fields. If set to
+            ``None``, all in-file-present data fields are loaded into memory.
+        dtype_convertions : dict | None
+            If not None, this dictionary defines how data fields of specific
+            data types get converted into the specified data types.
+            This can be used to use less memory.
+        dtype_convertion_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
+
+        Returns
+        -------
+        data : DataFieldRecordArray
+            The DataFieldRecordArray holding the loaded data.
+
+        Raises
+        ------
+        RuntimeError
+            If a file does not exist.
+        ValueError
+            If the table header cannot be read.
+        """
+        if(keep_fields is not None):
+            if(isinstance(keep_fields, str)):
+                keep_fields = [ keep_fields ]
+            elif(not issequenceof(keep_fields, str)):
+                raise TypeError('The keep_fields argument must be None, an '
+                    'instance of type str, or a sequence of instances of '
+                    'type str!')
+
+        if(dtype_convertions is None):
+            dtype_convertions = dict()
+        elif(not isinstance(dtype_convertions, dict)):
+            raise TypeError('The dtype_convertions argument must be None, '
+                'or an instance of dict!')
+
+        if(dtype_convertion_except_fields is None):
+            dtype_convertion_except_fields = []
+        elif(isinstance(dtype_convertion_except_fields, str)):
+            dtype_convertion_except_fields = [ dtype_convertion_except_fields ]
+        elif(not issequenceof(dtype_convertion_except_fields, str)):
+            raise TypeError('The dtype_convertion_except_fields argument '
+                'must be a sequence of str instances.')
+
+        # Load the first data file.
+        data = self._load_file(
+            self._pathfilename_list[0],
+            keep_fields=keep_fields,
+            dtype_convertions=dtype_convertions,
+            dtype_convertion_except_fields=dtype_convertion_except_fields
+        )
+
+        # Load possible subsequent data files by appending to the first data.
+        for i in range(1, len(self._pathfilename_list)):
+            data.append(self._load_file(
+                self._pathfilename_list[i],
+                keep_fields=keep_fields,
+                dtype_convertions=dtype_convertions,
+                dtype_convertion_except_fields=dtype_convertion_except_fields
+            ))
 
         return data
 
@@ -977,3 +1197,4 @@ class DataFieldRecordArray(object):
 
 register_FileLoader(['.npy'], NPYFileLoader)
 register_FileLoader(['.pkl'], PKLFileLoader)
+register_FileLoader(['.csv'], TextFileLoader)

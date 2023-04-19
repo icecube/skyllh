@@ -880,6 +880,84 @@ This section describes the implemented log-likelihood models. \cite{TimeDepPSSea
 %
 % The model utilizes a two-component likelihood function with signal and background events.
 
+
+\appendix
+
+\section{Inverse CDF sampling of a bounded power-law}
+When working with the 10 years public release of IceCube's data, the generation
+of signal events requires as first step the generation of the true neutrino
+energy. In order to sample energies from a power-law, we use the technique of
+the inverse CDF sampling. When we are dealing with this specific release of
+IceCube's data, we need to sample the events from a 5 dimensional histogram
+which is giving us the probability of a certain reconstruction given a true
+neutrino energy $E_{\nu}$ and a true neutrino declination $\delta_{\nu}$.
+
+The true neutrino energies stored in the 5-dimensional histogram are binned
+starting from $\log(E_{\nu}^{min}/\textrm{GeV})=2$ up to $\log(E_{\nu}^{max}/\textrm{GeV})=9$,
+which means that we can only generate energies in that energy range. In practice,
+we have to deal with a bounded power-law.
+
+\begin{equation}
+  \Phi(E_{\nu} | \phi_0, E_0, \gamma) = \phi_0 \left(\frac{E_{\nu}}{E_0}\right)^{-\gamma},\ \ \ \ E_{\nu} \in [E_{\nu}^{min}, E_{\nu}^{max}]
+\end{equation}
+
+where $\phi_0$ and $E_0$ are normalization factors, and $\gamma$ is the spectral
+index of the power-law.
+
+We need to consider two separate cases now:
+\begin{enumerate}
+  \item $\gamma = 1$:\\
+  In this case the power-law reads:
+  \begin{equation}
+    \Phi(E_{\nu} | \phi_0, E_0, \gamma=1) = \phi_0 \left(\frac{E_0}{E_{\nu}}\right).
+  \end{equation}
+  The correct normalization for the bounded power-law in this case is:
+  \begin{equation}
+    N = \phi_0 \int_{E_{\nu}^{min}}^{E_{\nu}^{max}} \left(\frac{E_0}{E_{\nu}}\right) dE_{\nu} = \phi_0 E_0 \log \left(\frac{E_{\nu}^{max}}{E_{\nu}^{min}}\right)
+  \end{equation}
+  and the cumulative distribution function (CDF) is given by:
+  \begin{equation}
+    x = \phi_0 \int_{E_{\nu}^{min}}^{E_{\nu}} \left(\frac{E_0}{E_{\nu}^{'}}\right) dE_{\nu}^{'} = \phi_0 E_0 \log \left(\frac{E_{\nu}}{E_{\nu}^{min}}\right)
+  \end{equation}
+  Therefore, the correctly normalized CDF is given by:
+  \begin{equation}\label{normed_cdf_gamma1}
+    x^{'} = \frac{x}{N} = \frac{\log \left(E_{\nu}/E_{\nu}^{min}\right)}{\log \left(E_{\nu}^{max}/E_{\nu}^{min}\right)},
+  \end{equation}
+  where the constant factor $\phi_0 E_0$ cancels out, and $x^{'} \in [0,1]$.\\
+  The inverse of Eq. \ref{normed_cdf_gamma1} gives the energy as function of the CDF:
+  \begin{equation}
+    E_{\nu} = e^{x\log(E_{\nu}^{max}/E_{\nu}^{min})} E_{\nu}^{max}
+  \end{equation}
+
+  \item $\gamma \neq 1$:\\
+  In this case the power-law reads:
+  \begin{equation}
+    \Phi(E_{\nu} | \phi_0, E_0, \gamma \neq 1) = \phi_0 \left(\frac{E_{\nu}}{E_0}\right)^{-\gamma}.
+  \end{equation}
+  The correct normalization for the bounded power-law in this case is:
+  \begin{equation}
+    N = \phi_0 \int_{E_{\nu}^{min}}^{E_{\nu}^{max}} \left(\frac{E_{\nu}}{E_0}\right)^{-\gamma} dE_{\nu} =
+    \phi_0 \frac{E_0^{\gamma}}{1-\gamma} \left[(E_{\nu}^{max})^{1-\gamma}-(E_{\nu}^{min})^{1-\gamma}\right]
+  \end{equation}
+  and the cumulative distribution function (CDF) is given by:
+  \begin{equation}
+    x = \phi_0 \int_{E_{\nu}^{min}}^{E_{\nu}} \left(\frac{E_{\nu}}{E_0}\right)^{-\gamma} dE_{\nu} =
+    \phi_0 \frac{E_0^{\gamma}}{1-\gamma} \left[(E_{\nu})^{1-\gamma}-(E_{\nu}^{min})^{1-\gamma}\right]
+  \end{equation}
+  Therefore, the correctly normalized CDF is given by:
+  \begin{equation}\label{normed_cdf_gammanot1}
+    x^{'} = \frac{x}{N} = \frac{\left[(E_{\nu})^{1-\gamma}-(E_{\nu}^{min})^{1-\gamma}\right]}{\left[(E_{\nu}^{max})^{1-\gamma}-(E_{\nu}^{min})^{1-\gamma}\right]}
+  \end{equation}
+  where the constant factor $\phi_0 E_0^{\gamma}/(1-\gamma)$ cancels out, and $x^{'} \in [0,1]$.\\
+  The inverse of Eq. \ref{normed_cdf_gammanot1} gives the energy as function of the CDF:
+  \begin{equation}
+    E_{\nu} = \big\{ x\left[(E_{\nu}^{max})^{1-\gamma}-(E_{\nu}^{min})^{1-\gamma}\right] + (E_{\nu}^{min})^{1-\gamma} \big\}^{\frac{1}{1-\gamma}}
+  \end{equation}
+\end{enumerate}
+
+Hence, one can randomly draw energies according to the power-law distribution by generating uniformly distributed numbers between
+0 and 1 and passing them to the inverse CDF formula, being careful of applying the correct normalization.
+
 \bibliographystyle{unsrt}
 \bibliography{biblio}
 

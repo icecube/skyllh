@@ -151,6 +151,8 @@ class SignalGenerator(SignalGeneratorBase):
         data_list : list of DatasetData instances
             The list of DatasetData instances holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
+        kwargs
+            A typical keyword argument is the instance of MultiDatasetTCLLHRatio.
         """
         super().__init__(
             *args,
@@ -376,7 +378,8 @@ class SignalGenerator(SignalGeneratorBase):
 class MultiSourceSignalGenerator(SignalGenerator):
     """More optimal signal generator for multiple sources.
     """
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list):
+    def __init__(self, src_hypo_group_manager, dataset_list, data_list,
+                **kwargs):
         """Constructs a new signal generator instance.
 
         Parameters
@@ -390,9 +393,11 @@ class MultiSourceSignalGenerator(SignalGenerator):
         data_list : list of DatasetData instances
             The list of DatasetData instances holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
+        kwargs
+            A typical keyword argument is the instance of MultiDatasetTCLLHRatio.
         """
         super(MultiSourceSignalGenerator, self).__init__(
-            src_hypo_group_manager, dataset_list, data_list)
+            src_hypo_group_manager, dataset_list, data_list, **kwargs)
 
     def _construct_signal_candidates(self):
         """Constructs an array holding pointer information of signal candidate

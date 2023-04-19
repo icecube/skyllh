@@ -8,5 +8,6 @@ Tutorials
     :maxdepth: 3
 
     getting_started
+    publicdata_ps
     kdepdf_mcbg_ps
     trad_ps_expbg

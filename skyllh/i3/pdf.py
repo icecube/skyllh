@@ -229,9 +229,12 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
         logE_binning = self.get_binning('log_energy')
         sinDec_binning = self.get_binning('sin_dec')
 
-        logE_idx = np.digitize(get_data('log_energy'), logE_binning.binedges) - 1
-        sinDec_idx = np.digitize(get_data('sin_dec'), sinDec_binning.binedges) - 1
+        logE_idx = np.digitize(
+            get_data('log_energy'), logE_binning.binedges) - 1
+        sinDec_idx = np.digitize(
+            get_data('sin_dec'), sinDec_binning.binedges) - 1
 
         with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
             prob = self._hist_logE_sinDec[(logE_idx,sinDec_idx)]
+
         return prob

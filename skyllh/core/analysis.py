@@ -5,7 +5,6 @@
 
 import abc
 import numpy as np
-import pickle
 
 from skyllh.core.py import (
     classname,
@@ -15,16 +14,12 @@ from skyllh.core.debugging import get_logger
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.dataset import (
     Dataset,
-    DatasetData
+    DatasetData,
 )
 from skyllh.core.parameters import (
     FitParameter,
     SourceFitParameterMapper,
-    SingleSourceFitParameterMapper
-)
-from skyllh.core.pdf import (
-    EnergyPDF,
-    SpatialPDF
+    SingleSourceFitParameterMapper,
 )
 from skyllh.core.pdfratio import PDFRatio
 from skyllh.core.progressbar import ProgressBar
@@ -35,15 +30,11 @@ from skyllh.core.llhratio import (
     SingleSourceDatasetSignalWeights,
     SingleSourceZeroSigH0SingleDatasetTCLLHRatio,
     MultiSourceZeroSigH0SingleDatasetTCLLHRatio,
-    MultiSourceDatasetSignalWeights
+    MultiSourceDatasetSignalWeights,
 )
-from skyllh.core.scrambling import DataScramblingMethod
 from skyllh.core.timing import TaskTimer
 from skyllh.core.trialdata import TrialDataManager
-from skyllh.core.optimize import (
-    EventSelectionMethod,
-    AllEventSelectionMethod
-)
+from skyllh.core.optimize import EventSelectionMethod
 from skyllh.core.source_hypothesis import SourceHypoGroupManager
 from skyllh.core.test_statistic import TestStatistic
 from skyllh.core.multiproc import get_ncpu, parallelize
@@ -51,7 +42,7 @@ from skyllh.core.background_generation import BackgroundGenerationMethod
 from skyllh.core.background_generator import BackgroundGenerator
 from skyllh.core.signal_generator import (
     SignalGeneratorBase,
-    SignalGenerator
+    SignalGenerator,
 )
 from skyllh.physics.source import SourceModel
 
@@ -1034,7 +1025,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         result_dtype = result_list[0].dtype
         result = np.empty(n, dtype=result_dtype)
-        result[:] = result_list[:]
+        result[:] = np.array(result_list)[:,0]
         return result
 
 
