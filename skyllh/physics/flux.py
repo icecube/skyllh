@@ -523,6 +523,69 @@ class PowerLawFlux(NormedFluxModel):
         flux = self.Phi0 * np.power(E / self.E0, -self.gamma)
         return flux
 
+    def get_integral(self, E_min, E_max):
+        """Returns the integral value of the flux between the given energy
+        range.
+
+        Parameters
+        ----------
+        E_min : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E_max : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+
+        Returns
+        -------
+        integral : float | 1d ndarray of float
+            The integral value(s) of the given integral range(s).
+        """
+        gamma = self.gamma
+
+        # Handle special case for gamma = 1.
+        if(gamma == 1):
+            integral = self.Phi0 * self.E0 * (
+                np.log(np.abs(E_max)) - np.log(np.abs(E_min)))
+            return integral
+
+        integral = (self.Phi0 / ((1.-gamma)*np.power(self.E0, -gamma)) *
+            (np.power(E_max, 1.-gamma) - np.power(E_min, 1.-gamma)))
+
+        return integral
+
+    def get_inv_normed_cdf(self, x, E_min, E_max):
+        """Calculates the inverse cumulative distribution function value for
+        each given value of x, which is a number between 0 and 1.
+
+        Parameters
+        ----------
+        x : float | 1d numpy ndarray of float
+            The argument value(s) of the inverse cumulative distribution
+            function. Must be between 0 and 1.
+        E_min : float
+            The lower energy edge of the flux to be considered.
+        E_max : float
+            The upper energy edge of the flux to be considered.
+
+        Returns
+        -------
+        inv_normed_cdf : float | 1d numpy ndarray
+            The energy value(s) from the inverse normed cumulative distribution
+            function.
+        """
+        gamma = self.gamma
+
+        if(gamma == 1):
+            N_0 = np.log(E_max / E_min)
+            inv_normed_cdf = E_min * np.exp(x * N_0)
+            return inv_normed_cdf
+
+        N_0 = E_max ** (1. - gamma) - E_min ** (1. - gamma)
+        inv_normed_cdf = np.power(
+            x * N_0 + E_min**(1. - gamma),
+            (1. / (1. - gamma)))
+
+        return inv_normed_cdf
+
 
 class CutoffPowerLawFlux(PowerLawFlux):
     """Cut-off power law flux of the form

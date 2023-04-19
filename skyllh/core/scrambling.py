@@ -37,13 +37,13 @@ class DataScramblingMethod(object, metaclass=abc.ABCMeta):
 
 
 class UniformRAScramblingMethod(DataScramblingMethod):
-    """The UniformRAScramblingMethod method performs right-ascention scrambling
+    r"""The UniformRAScramblingMethod method performs right-ascention scrambling
     uniformly within a given RA range. By default it's (0, 2\pi).
 
     Note: This alters only the ``ra`` values of the data!
     """
     def __init__(self, ra_range=None):
-        """Initializes a new RAScramblingMethod instance.
+        r"""Initializes a new RAScramblingMethod instance.
 
         Parameters
         ----------

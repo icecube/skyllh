@@ -4,11 +4,15 @@ import numpy as np
 import os.path
 
 from skyllh.core import display
-from skyllh.core.py import issequenceof
+from skyllh.core.py import (
+    issequenceof,
+    module_classname
+)
 from skyllh.core.dataset import (
     Dataset,
     DatasetData
 )
+from skyllh.core.debugging import get_logger
 from skyllh.core.storage import (
     DataFieldRecordArray,
     create_FileLoader
@@ -18,6 +22,7 @@ from skyllh.core.timing import TaskTimer
 # Load the IceCube specific config defaults.
 # This will change the skyllh.core.config.CFG dictionary.
 from skyllh.i3 import config
+
 
 class I3Dataset(Dataset):
     """The I3Dataset class is an IceCube specific Dataset class that adds
@@ -61,6 +66,8 @@ class I3Dataset(Dataset):
 
         """
         super(I3Dataset, self).__init__(*args, **kwargs)
+
+        self._logger = get_logger(module_classname(self))
 
         self.grl_pathfilename_list = grl_pathfilenames
 
@@ -146,8 +153,8 @@ class I3Dataset(Dataset):
         return s
 
     def load_grl(self, efficiency_mode=None, tl=None):
-        """Loads the good-run-list and returns a structured numpy ndarray with
-        the following data fields:
+        """Loads the good-run-list and returns a DataFieldRecordArray instance
+        which should contain the following data fields:
 
             run : int
                 The run number.
@@ -248,40 +255,21 @@ class I3Dataset(Dataset):
         # Load the good-run-list (GRL) data if it is provided for this dataset,
         # and calculate the livetime based on the GRL.
         data_grl = None
-        lt = self.livetime
         if(len(self._grl_pathfilename_list) > 0):
             data_grl = self.load_grl(
                 efficiency_mode=efficiency_mode,
                 tl=tl)
-            if('livetime' not in data_grl.field_name_list):
-                raise KeyError('The GRL file(s) "%s" has no data field named '
-                    '"livetime"!'%(','.join(self._grl_pathfilename_list)))
-            lt = np.sum(data_grl['livetime'])
-
-        # Override the livetime if there is a user defined livetime.
-        if(livetime is not None):
-            lt = livetime
 
         # Load all the defined data.
         data = I3DatasetData(
             super(I3Dataset, self).load_data(
                 keep_fields=keep_fields,
-                livetime=lt,
+                livetime=livetime,
                 dtc_dict=dtc_dict,
                 dtc_except_fields=dtc_except_fields,
                 efficiency_mode=efficiency_mode,
                 tl=tl),
             data_grl)
-
-        # Select only the experimental data which fits the good-run-list for
-        # this dataset.
-        if(data_grl is not None):
-            task = 'Selected only the experimental data that matches the GRL '\
-                'for dataset "%s".'%(self.name)
-            with TaskTimer(tl, task):
-                runs = np.unique(data_grl['run'])
-                mask = np.isin(data.exp['run'], runs)
-                data.exp = data.exp[mask]
 
         return data
 
@@ -309,15 +297,71 @@ class I3Dataset(Dataset):
         super(I3Dataset, self).prepare_data(data, tl=tl)
 
         if(data.exp is not None):
+            # Append sin(dec) data field to the experimental data.
             task = 'Appending IceCube-specific data fields to exp data.'
             with TaskTimer(tl, task):
-                data.exp.append_field('sin_dec', np.sin(data.exp['dec']))
+                if 'sin_dec' not in data.exp.field_name_list:
+                    data.exp.append_field(
+                        'sin_dec', np.sin(data.exp['dec']))
 
-        # Append sin(dec) and sin(true_dec) to the MC data.
-        task = 'Appending IceCube-specific data fields to MC data.'
-        with TaskTimer(tl, task):
-            data.mc.append_field('sin_dec', np.sin(data.mc['dec']))
-            data.mc.append_field('sin_true_dec', np.sin(data.mc['true_dec']))
+        if(data.mc is not None):
+            # Append sin(dec) and sin(true_dec) to the MC data.
+            task = 'Appending IceCube-specific data fields to MC data.'
+            with TaskTimer(tl, task):
+                if 'sin_dec' not in data.mc.field_name_list:
+                    data.mc.append_field(
+                        'sin_dec', np.sin(data.mc['dec']))
+                if 'sin_true_dec' not in data.mc.field_name_list:
+                    data.mc.append_field(
+                        'sin_true_dec', np.sin(data.mc['true_dec']))
+
+        # Set the livetime of the dataset from the GRL data when no livetime
+        # was specified previously.
+        if(data.livetime is None and data.grl is not None):
+            if('start' not in data.grl):
+                raise KeyError('The GRL data for dataset "{}" has no data '
+                    'field named "start"!'.format(self.name))
+            if('stop' not in data.grl):
+                raise KeyError('The GRL data for dataset "{}" has no data '
+                    'field named "stop"!'.format(self.name))
+            data.livetime = np.sum(data.grl['stop'] - data.grl['start'])
+
+        # Select only the experimental data which fits the good-run-list for
+        # this dataset.
+        if data.grl is not None:
+            # Select based on run information.
+            if (('run' in data.grl) and
+                ('run' in data.exp)):
+                task = 'Selected only the experimental data that matches the '\
+                    'run information in the GRL for dataset "%s".'%(self.name)
+                with TaskTimer(tl, task):
+                    runs = np.unique(data.grl['run'])
+                    mask = np.isin(data.exp['run'], runs)
+                    data.exp = data.exp[mask]
+
+            # Select based on detector on-time information.
+            if (('start' in data.grl) and
+                ('stop' in data.grl) and
+                ('time' in data.exp)):
+                task = 'Selected only the experimental data that matches the '\
+                    'detector\'s on-time information in the GRL for dataset '\
+                    '"%s".'%(self.name)
+                with TaskTimer(tl, task):
+                    mask = np.zeros((len(data.exp),), dtype=np.bool_)
+                    for (start, stop) in zip(data.grl['start'],
+                                             data.grl['stop']):
+                        mask |= (
+                            (data.exp['time'] >= start) &
+                            (data.exp['time'] < stop)
+                        )
+
+                    if np.any(~mask):
+                        n_cut_evts = np.count_nonzero(~mask)
+                        self._logger.info(
+                            f'Cutting {n_cut_evts} events from dataset '
+                            f'{self.name} due to GRL on-time window '
+                            'information.')
+                        data.exp = data.exp[mask]
 
 
 class I3DatasetData(DatasetData):
@@ -326,6 +370,17 @@ class I3DatasetData(DatasetData):
     holds the good-run-list (GRL) data.
     """
     def __init__(self, data, data_grl):
+        """Constructs a new I3DatasetData instance.
+
+        Parameters
+        ----------
+        data : DatasetData instance
+            The DatasetData instance holding the experimental and monte-carlo
+            data.
+        data_grl : DataFieldRecordArray instance | None
+            The DataFieldRecordArray instance holding the good-run-list data
+            of the dataset. This can be None, if no GRL data is available.
+        """
         super(I3DatasetData, self).__init__(
             data._exp, data._mc, data._livetime)
 

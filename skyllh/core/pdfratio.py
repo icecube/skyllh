@@ -23,7 +23,8 @@ from skyllh.core.pdf import (
     PDFSet,
     IsBackgroundPDF,
     IsSignalPDF,
-    SpatialPDF
+    SpatialPDF,
+    TimePDF
 )
 from skyllh.core.timing import TaskTimer
 

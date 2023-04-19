@@ -432,7 +432,12 @@ class PowerLawFluxPointLikeSourceI3DetSigYield(I3DetSigYield):
             parameter, i.e. gamma, the array is (N_sources,1)-shaped.
         """
         src_dec = np.atleast_1d(src['dec'])
-        src_gamma = src_flux_params['gamma']
+        if src_flux_params is None:
+            # Gamma is not a fit parameter. So we take it from the
+            # initial flux model.
+            src_gamma = np.array([self.fluxmodel.gamma], dtype=np.double)
+        else:
+            src_gamma = src_flux_params['gamma']
 
         # Create results array.
         values = np.zeros_like(src_dec, dtype=np.float64)
