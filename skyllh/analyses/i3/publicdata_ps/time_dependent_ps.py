@@ -37,7 +37,6 @@ from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
     TimeIntegratedMultiDatasetSingleSourceAnalysis,
-    
 )
 
 # Classes to define the background generation.
