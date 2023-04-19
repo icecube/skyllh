@@ -40,7 +40,8 @@ from skyllh.core.analysis import (
 )
 
 # Classes to define the background generation.
-from skyllh.core.scrambling import DataScrambler, TimeDepScrambling
+from skyllh.core.scrambling import DataScrambler
+from skyllh.i3.scrambling import I3SeasonalTimeScramblingMethod
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the signal and background PDFs.
@@ -139,14 +140,14 @@ def change_time_pdf(analysis, gauss=None, box=None):
 
 
 def get_energy_spatial_signal_over_background(analysis, fitparams):
-    """Returns the signal over background ratio for 
+    """Returns the signal over background ratio for
     (spatial_signal * energy_signal) / (spatial_background * energy_background).
-    
+
     Parameter
     ---------
     fitparams : dict
         Dictionary with {"gamma": float} for energy pdf.
-    
+
     Returns
     -------
     ratio : 1d ndarray
@@ -173,7 +174,7 @@ def change_fluxmodel_gamma(analysis, gamma):
 
 def change_signal_time(analysis, gauss=None, box=None):
     """Change the signal injection to gauss or box.
-    
+
     Parameters
     ----------
     gauss : dict | None
@@ -187,7 +188,7 @@ def change_signal_time(analysis, gauss=None, box=None):
 
 def calculate_TS(analysis, em_results, rss):
     """Calculate the best TS value for the expectation maximization gamma scan.
-    
+
     Parameters
     ----------
     em_results : 1d ndarray of tuples
@@ -196,7 +197,7 @@ def calculate_TS(analysis, em_results, rss):
         The instance of RandomStateService that should be used to generate
         random numbers from.
 
-    Returns  
+    Returns
     -------
     float maximized TS value
     tuple(gamma from em scan [float], best fit mean time [float], best fit width [float])
@@ -231,8 +232,8 @@ def run_gamma_scan_single_flare(analysis, remove_time=None, gamma_min=1, gamma_m
         Upper bound for gamma scan.
     n_gamma : int
         Number of steps for gamma scan.
-    
-    Returns 
+
+    Returns
     -------
     array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
     """
@@ -259,7 +260,7 @@ def unblind_flare(analysis, remove_time=None):
         Time information of event that should be removed.
         In the case of the TXS analysis: remove_time=58018.8711856
 
-    Returns 
+    Returns
     -------
     array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
     """
@@ -308,7 +309,7 @@ def create_analysis(
     gauss : None or dictionary with mu, sigma
         None if no Gaussian time pdf. Else dictionary with {"mu": float, "sigma": float} of Gauss
     box : None or dictionary with start, end
-        None if no Box shaped time pdf. Else dictionary with {"start": float, "end": float} of box. 
+        None if no Box shaped time pdf. Else dictionary with {"start": float, "end": float} of box.
     refplflux_Phi0 : float
         The flux normalization to use for the reference power law flux model.
     refplflux_E0 : float
@@ -427,7 +428,6 @@ def create_analysis(
         src_fitparam_mapper,
         fitparam_ns,
         test_statistic,
- #       bkg_gen_method,
         sig_generator_cls=PDTimeDependentSignalGenerator
     )
 
@@ -525,11 +525,11 @@ def create_analysis(
     # Define the data scrambler with its data scrambling method, which is used
     # for background generation.
 
-    data_scrambler = DataScrambler(TimeDepScrambling(data))
+    data_scrambler = DataScrambler(I3SeasonalTimeScramblingMethod(data))
     # Create background generation method.
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
 
-    analysis._bkg_gen_method = bkg_gen_method
+    analysis.bkg_gen_method = bkg_gen_method
     analysis.construct_background_generator()
 
     analysis.construct_signal_generator(
