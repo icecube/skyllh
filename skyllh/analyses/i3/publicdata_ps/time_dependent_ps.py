@@ -37,7 +37,6 @@ from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
     TimeIntegratedMultiDatasetSingleSourceAnalysis,
-    
 )
 
 # Classes to define the background generation.
@@ -74,7 +73,7 @@ from skyllh.core.debugging import (
     setup_file_handler
 )
 
-from skyllh.core.expectation_maximization import ExpectationMaximizationTimefit
+from skyllh.core.expectation_maximization import em_fit
 
 # Pre-defined public IceCube data samples.
 from skyllh.datasets.i3 import data_samples
@@ -206,7 +205,7 @@ def calculate_TS(analysis, em_results, rss):
 
     max_TS = 0
     best_time = None
-    best_flux = None
+    best_fitparams = None
     for index, result in enumerate(em_results):
         change_time_pdf(analysis,  gauss={"mu": result["mu"], "sigma": result["sigma"]})
         (fitparamset, log_lambda_max, fitparam_values, status) = analysis.maximize_llhratio(rss)
@@ -214,9 +213,62 @@ def calculate_TS(analysis, em_results, rss):
         if TS > max_TS:
             max_TS = TS
             best_time = result
-            best_flux = fitparam_values
+            best_fitparams = fitparam_values
 
-    return max_TS, best_time, fitparam_values
+    return max_TS, best_time, best_fitparams
+
+
+def run_gamma_scan_single_flare(analysis, remove_time=None, gamma_min=1, gamma_max=5, n_gamma=51):
+    """Run em for different gammas in the signal energy pdf
+
+    Parameters
+    ----------
+    remove_time : float
+        Time information of event that should be removed.
+    gamma_min : float
+        Lower bound for gamma scan.
+    gamma_max : float
+        Upper bound for gamma scan.
+    n_gamma : int
+        Number of steps for gamma scan.
+    
+    Returns 
+    -------
+    array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
+    """
+    dtype = [("gamma", "f8"), ("mu", "f8"), ("sigma", "f8"), ("ns_em", "f8")]
+    results = np.empty(n_gamma, dtype=dtype)
+
+    time = analysis._tdm_list[0].get_data("time")
+
+    for index, g in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
+        ratio = get_energy_spatial_signal_over_background(analysis, {"gamma": g})
+        mu, sigma, ns = em_fit(time, ratio, n=1, tol=1.e-200, iter_max=500, weight_thresh=0,
+                            initial_width=5000, remove_x=remove_time)
+        results[index] = (g, mu[0], sigma[0], ns[0])
+
+    return results
+
+
+def unblind_flare(analysis, remove_time=None):
+    """Run EM on unscrambled data. Similar to the original analysis, remove the alert event.
+
+    Parameters
+    ----------
+    remove_time : float
+        Time information of event that should be removed.
+        In the case of the TXS analysis: remove_time=58018.8711856
+
+    Returns 
+    -------
+    array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
+    """
+
+    # get the original unblinded data
+    rss = RandomStateService(seed=1)
+    analysis.unblind(rss)
+    time_results = run_gamma_scan_single_flare(analysis, remove_time=remove_time)
+    return time_results
 
 
 def create_analysis(
@@ -242,8 +294,7 @@ def create_analysis(
     keep_data_fields=None,
     optimize_delta_angle=10,
     tl=None,
-    ppbar=None,
-    timefit="em"
+    ppbar=None
 ):
     """Creates the Analysis instance for this particular analysis.
 
@@ -309,11 +360,10 @@ def create_analysis(
         The TimeLord instance to use to time the creation of the analysis.
     ppbar : ProgressBar instance | None
         The instance of ProgressBar for the optional parent progress bar.
-    timefit : how to fit the time. Default is expectation maximization "em"
 
     Returns
     -------
-    analysis : TimeDependentSingleDatasetSingleSourceAnalysis
+    analysis : TimeIntegratedMultiDatasetSingleSourceAnalysis
         The Analysis instance for this analysis.
     """
 
@@ -485,9 +535,5 @@ def create_analysis(
     analysis.construct_signal_generator(
         llhratio=analysis.llhratio, energy_cut_splines=energy_cut_splines,
         cut_sindec=cut_sindec, box=box, gauss=gauss)
-    
-    # em for time fit 
-    if timefit == "em":
-        analysis.timefit = ExpectationMaximizationTimefit(analysis)
 
     return analysis

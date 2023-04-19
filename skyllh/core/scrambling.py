@@ -5,6 +5,8 @@ import abc
 import numpy as np
 
 from skyllh.core.times import TimeGenerator
+from skyllh.i3.coords import azi_to_ra_transform
+
 
 
 class DataScramblingMethod(object, metaclass=abc.ABCMeta):

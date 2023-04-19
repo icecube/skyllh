@@ -1582,5 +1582,3 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
                 store_src_ev_idxs=True, tl=tl)
 
         self._llhratio.initialize_for_new_trial(tl=tl)
-
-
