@@ -5,6 +5,8 @@ import abc
 import numpy as np
 
 from skyllh.core.times import TimeGenerator
+from skyllh.i3.coords import azi_to_ra_transform
+
 
 
 class DataScramblingMethod(object, metaclass=abc.ABCMeta):
@@ -244,66 +246,28 @@ class TimeDepScrambling(DataScramblingMethod):
         function.
         """
     def __init__(self, events):
-            """Initializes a new time scrambling instance.
+        """Initializes a new time scrambling instance.
 
-            Parameters
-            ----------
-            timegen : TimeGenerator
-                The time generator that should be used to generate random MJD times.
-            hor_to_equ_transform : callable
-                The transformation function to transform coordinates from the
-                horizontal system into the equatorial system.
-
-                The call signature must be:
-
-                    __call__(azi, zen, mjd)
-
-                The return signature must be: (ra, dec)
-
-            """
-            super(TimeDepScrambling, self).__init__()
-
-            # get the times and the events for this for correct weighting
-            self.weights = []
-            for start, stop in zip(events.grl['start'], events.grl['stop']):
-                mask_grl = (events.exp["time"] > start) & (events.exp['time'] < stop)
-                # how many events in each run (relative to all events)
-                self.weights.append(len(events.exp[mask_grl]) / len(events.exp['time']))
-            
-            # renormalize
-            weight_sum = sum(self.weights)
-            self.weights = [x / weight_sum for x in self.weights]
-            
-            self.grl = events.grl
-            
-
-    # this function could also be in utils, but I'm not sure in which utils.
-    def azimuth_ra_converter(self, angles_in, mjd):
-        """Rotate angles_in (right ascension / azimuth) according to the time mjd.
-        The result is (azimuth / right ascension) since the formula is symmetric.
-        This assumes the rotation can be approximated so that the axis is at Pole,
-        which neglects the exact position of IceCube and all astronomical effects.
-        
         Parameters
         ----------
-        angles_in : angle (in rad), azimuth or zenith
-        mjd : time in MJD
+        events : the unscrambled events as dataset instance
 
-        Returns
-        -------
-        angle : (in rad), zenith or azimuth
-        
         """
+        super(TimeDepScrambling, self).__init__()
 
-        # constants
-        sidereal_length = 0.997269566  # sidereal day = length * solar day
-        sidereal_offset = 2.54199002505
-        sidereal_day_residuals = ((mjd / sidereal_length) % 1)
-        angles_out = sidereal_offset + 2 * np.pi * sidereal_day_residuals - angles_in
-        angles_out = np.mod(angles_out, 2 * np.pi)
-
-        return angles_out
-    
+        # get the times and the events for this for correct weighting
+        self.weights = []
+        for start, stop in zip(events.grl['start'], events.grl['stop']):
+            mask_grl = (events.exp["time"] >= start) & (events.exp['time'] <= stop)
+            # how many events in each run (relative to all events)
+            self.weights.append(len(events.exp[mask_grl]) / len(events.exp['time']))
+        
+        # renormalize
+        weight_sum = sum(self.weights)
+        self.weights = [x / weight_sum for x in self.weights]
+        
+        self.grl = events.grl
+              
 
     def scramble(self, rss, data):
         """Scrambles the given data based on random MJD times, which are
@@ -336,6 +300,6 @@ class TimeDepScrambling(DataScramblingMethod):
 
         # get the correct right ascension 
         data['time'] = times
-        data['ra'] = self.azimuth_ra_converter(data['azi'], times)
+        data['ra'] = azi_to_ra_transform(data['azi'], times)
 
         return data
