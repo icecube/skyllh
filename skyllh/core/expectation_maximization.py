@@ -27,7 +27,7 @@ def expectation_em(ns, mu, sigma, t, sob):
     t : 1d ndarray of float
         Times of the events.
     sob : 1d ndarray of float
-        The signal over background values of events.
+        The signal over background values of events, or weights of events
 
     Returns
     -------
@@ -83,266 +83,70 @@ def maximization_em(e_sig, t):
     return mu, sigma, ns
 
 
-class ExpectationMaximizationUtils(object):
-    def __init__(self, ana):
-        """Creates a expectation maximization utility class for time-dependent
-        single dataset point-like source analysis assuming a single source.
+def em_fit(x, weights, n=1, tol=1.e-200, iter_max=500, weight_thresh=0, initial_width=5000,
+            remove_x=None):
+    """Run expectation maximization.
+    
+    Parameters
+    ----------
+    x : array[float]
+        Quantity to run EM on (e.g. the time if EM should find time flares)
+    weights :
+        weights for each event (e.g. the signal over background ratio)
+    fitparams : dict
+        Dictionary with value for gamma, e.g. {'gamma': 2}.
+    n : int
+        How many Gaussians flares we are looking for.
+    tol : float
+        the stopping criteria for expectation maximization. This is the difference in the normalized likelihood over the
+        last 20 iterations.
+    iter_max : int
+        The maximum number of iterations, even if stopping criteria tolerance (`tol`) is not yet reached.
+    weight_thresh : float
+        Set a minimum threshold for event weights. Events with smaller weights will be removed.
+    initial_width : float
+        Starting width for the gaussian flare in days.
+    remove_x : float | None
+        Specific x of event that should be removed.
+    
+    Returns
+    -------
+    Mean, width, normalization factor
+    """
 
-        Parameters
-        ----------
-        ana : instance of TimeIntegratedMultiDatasetSingleSourceAnalysis
-            Analysis instance which will be stored in this class.
-        """
-        self.ana = ana
+    if weight_thresh > 0: # remove events below threshold
+        for i in range(len(weights)):
+            mask = weights > weight_thresh
+            weights[i] = weights[i][mask]
+            x[i] = x[i][mask]
 
-    @property
-    def ana(self):
-        """The TimeIntegratedMultiDatasetSingleSourceAnalysis instance.
-        """
-        return self._ana
+    # in case, remove event
+    if remove_x is not None:
+        mask = x == remove_x
+        weights = weights[~mask]
+        x = x[~mask]
 
-    @ana.setter
-    def ana(self, analysis):
-        if not isinstance(analysis, TimeIntegratedMultiDatasetSingleSourceAnalysis):
-            raise TypeError("The ana argument must be an instance of "
-                            "'TimeIntegratedMultiDatasetSingleSourceAnalysis'.")
-        self._ana = analysis
+    # expectation maximization
+    mu = np.linspace(x[0], x[-1], n+2)[1:-1]
+    sigma = np.ones(n) * initial_width
+    ns = np.ones(n) * 10
+    llh_diff = 100
+    llh_old = 0
+    llh_diff_list = [100] * 20
 
+    iteration = 0
 
-    def change_time_pdf(self, gauss=None, box=None):
-        """Changes the time pdf.
+    while iteration < iter_max and llh_diff > tol: # run until convergence or maximum number of iterations
+        iteration += 1
 
-        Parameters
-        ----------
-        gauss : dict | None
-            None or dictionary with {"mu": float, "sigma": float}.
-        box : dict | None
-            None or dictionary with {"start": float, "end": float}.
-        """
-        ana = self.ana
+        e, logllh = expectation_em(ns, mu, sigma, x, weights)
 
-        if gauss is None and box is None:
-            raise TypeError("Either gauss or box have to be specified as time pdf.")
+        llh_new = np.sum(logllh)
+        tmp_diff = np.abs(llh_old - llh_new) / llh_new
+        llh_diff_list = llh_diff_list[:-1]
+        llh_diff_list.insert(0, tmp_diff)
+        llh_diff = np.max(llh_diff_list)
+        llh_old = llh_new
+        mu, sigma, ns = maximization_em(e, x)
 
-        grl = ana._data_list[0].grl
-        # redo this in case the background pdf was not calculated before
-        time_bkgpdf = BackgroundUniformTimePDF(grl)
-        if gauss is not None:
-            time_sigpdf = SignalGaussTimePDF(grl, gauss['mu'], gauss['sigma'])
-        elif box is not None:
-            time_sigpdf = SignalBoxTimePDF(grl, box["start"], box["end"])
-
-        time_pdfratio = SigOverBkgPDFRatio(
-            sig_pdf=time_sigpdf,
-            bkg_pdf=time_bkgpdf,
-            pdf_type=TimePDF
-        )
-
-        # the next line seems to make no difference in the llh evaluation. We keep it for consistency
-        ana._llhratio.llhratio_list[0].pdfratio_list[2] = time_pdfratio
-        # this line here is relevant for the llh evaluation
-        ana._llhratio.llhratio_list[0]._pdfratioarray._pdfratio_list[2] = time_pdfratio
-
-        #  change detector signal yield with flare livetime in sample (1 / grl_norm in pdf),
-        #  rebuild the histograms if it is changed...
-        #  signal injection?
-
-    def get_energy_spatial_signal_over_backround(self, fitparams):
-        """Returns the signal over background ratio for 
-        (spatial_signal * energy_signal) / (spatial_background * energy_background).
-        
-        Parameter
-        ---------
-        fitparams : dict
-            Dictionary with {"gamma": float} for energy pdf.
-        
-        Returns
-        -------
-        ratio : 1d ndarray
-            Product of spatial and energy signal over background pdfs.
-        """
-        ana = self.ana
-
-        ratio = ana._llhratio.llhratio_list[0].pdfratio_list[0].get_ratio(ana._tdm_list[0], fitparams)
-        ratio *= ana._llhratio.llhratio_list[0].pdfratio_list[1].get_ratio(ana._tdm_list[0], fitparams)
-
-        return ratio
-
-    def change_fluxmodel_gamma(self, gamma):
-        """Set new gamma for the flux model.
-
-        Parameter
-        ---------
-        gamma : float
-            Spectral index for flux model.
-        """
-        ana = self.ana
-
-        ana.src_hypo_group_manager.src_hypo_group_list[0].fluxmodel.gamma = gamma
-
-    def change_signal_time(self, gauss=None, box=None):
-        """Change the signal injection to gauss or box.
-        
-        Parameters
-        ----------
-        gauss : dict | None
-            None or dictionary {"mu": float, "sigma": float}.
-        box : dict | None
-            None or dictionary {"start" : float, "end" : float}.
-        """
-        ana = self.ana
-
-        ana.sig_generator.set_flare(box=box, gauss=gauss)
-
-    def em_fit(self, fitparams, n=1, tol=1.e-200, iter_max=500, sob_thresh=0, initial_width=5000,
-            remove_time=None):
-        """Run expectation maximization.
-        
-        Parameters
-        ----------
-        fitparams : dict
-            Dictionary with value for gamma, e.g. {'gamma': 2}.
-        n : int
-            How many gaussians flares we are looking for.
-        tol : float
-            the stopping criteria for expectation maximization. This is the difference in the normalized likelihood over the
-            last 20 iterations.
-        iter_max : int
-            The maximum number of iterations, even if stopping criteria tolerance (`tol`) is not yet reached.
-        sob_thres : float
-            Set a minimum threshold for signal over background ratios. Ratios below this threshold will be removed.
-        initial_width : float
-            Starting width for the gaussian flare in days.
-        remove_time : float | None
-            Time information of event that should be removed.
-        
-        Returns
-        -------
-        mean flare time, flare width, normalization factor for time pdf
-        """
-        ana = self.ana
-
-        ratio = self.get_energy_spatial_signal_over_backround(fitparams)
-        time = ana._tdm_list[0].get_data("time")
-
-        if sob_thresh > 0: # remove events below threshold
-            for i in range(len(ratio)):
-                mask = ratio > sob_thresh
-                ratio[i] = ratio[i][mask]
-                time[i] = time[i][mask]
-
-        # in case, remove event
-        if remove_time is not None:
-            mask = time == remove_time
-            ratio = ratio[~mask]
-            time = time[~mask]
-
-        # expectation maximization
-        mu = np.linspace(ana._data_list[0].grl["start"][0], ana._data_list[-1].grl["stop"][-1], n+2)[1:-1]
-        sigma = np.ones(n) * initial_width
-        ns = np.ones(n) * 10
-        llh_diff = 100
-        llh_old = 0
-        llh_diff_list = [100] * 20
-
-        iteration = 0
-
-        while iteration < iter_max and llh_diff > tol: # run until convergence or maximum number of iterations
-            iteration += 1
-
-            e, logllh = expectation_em(ns, mu, sigma, time, ratio)
-
-            llh_new = np.sum(logllh)
-            tmp_diff = np.abs(llh_old - llh_new) / llh_new
-            llh_diff_list = llh_diff_list[:-1]
-            llh_diff_list.insert(0, tmp_diff)
-            llh_diff = np.max(llh_diff_list)
-            llh_old = llh_new
-            mu, sigma, ns = maximization_em(e, time)
-
-        return mu, sigma, ns
-
-    def run_gamma_scan_single_flare(self, remove_time=None, gamma_min=1, gamma_max=5, n_gamma=51):
-        """Run em for different gammas in the signal energy pdf
-
-        Parameters
-        ----------
-        remove_time : float
-            Time information of event that should be removed.
-        gamma_min : float
-            Lower bound for gamma scan.
-        gamma_max : float
-            Upper bound for gamma scan.
-        n_gamma : int
-            Number of steps for gamma scan.
-        
-        Returns 
-        -------
-        array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
-        """
-        dtype = [("gamma", "f8"), ("mu", "f8"), ("sigma", "f8"), ("ns_em", "f8")]
-        results = np.empty(n_gamma, dtype=dtype)
-
-        for index, g in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
-            mu, sigma, ns = self.em_fit({"gamma": g}, n=1, tol=1.e-200, iter_max=500, sob_thresh=0,
-                                initial_width=5000, remove_time=remove_time)
-            results[index] = (g, mu[0], sigma[0], ns[0])
-
-        return results
-
-    def calculate_TS(self, em_results, rss):
-        """Calculate the best TS value for the expectation maximization gamma scan.
-        
-        Parameters
-        ----------
-        em_results : 1d ndarray of tuples
-            Gamma scan result.
-        rss : instance of RandomStateService
-            The instance of RandomStateService that should be used to generate
-            random numbers from.
-
-        Returns  
-        -------
-        float maximized TS value
-        tuple(gamma from em scan [float], best fit mean time [float], best fit width [float])
-        (float ns, float gamma) fitparams from TS optimization
-        """
-        ana = self.ana
-
-        max_TS = 0
-        best_time = None
-        best_flux = None
-        for index, result in enumerate(em_results):
-            self.change_signal_time(gauss={"mu": em_results["mu"], "sigma": em_results["sigma"]})
-            (fitparamset, log_lambda_max, fitparam_values, status) = ana.maximize_llhratio(rss)
-            TS = ana.calculate_test_statistic(log_lambda_max, fitparam_values)
-            if TS > max_TS:
-                max_TS = TS
-                best_time = result
-                best_flux = fitparam_values
-
-        return max_TS, best_time, fitparam_values
-
-    def unblind_flare(self, remove_time=None):
-        """Run EM on unscrambled data. Similar to the original analysis, remove the alert event.
-
-        Parameters
-        ----------
-        remove_time : float
-            Time information of event that should be removed.
-            In the case of the TXS analysis: remove_time=58018.8711856
-
-        Returns 
-        -------
-        array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
-        """
-        ana = self.ana
-
-        # get the original unblinded data
-        rss = RandomStateService(seed=1)
-
-        ana.unblind(rss)
-
-        time_results = self.run_gamma_scan_single_flare(remove_time=remove_time)
-
-        return time_results
+    return mu, sigma, ns

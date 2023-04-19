@@ -36,11 +36,12 @@ from skyllh.core.trialdata import TrialDataManager
 # Classes for defining the analysis.
 from skyllh.core.test_statistic import TestStatisticWilks
 from skyllh.core.analysis import (
-    TimeIntegratedMultiDatasetSingleSourceAnalysis
+    TimeIntegratedMultiDatasetSingleSourceAnalysis,
 )
 
 # Classes to define the background generation.
-from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod
+from skyllh.core.scrambling import DataScrambler
+from skyllh.i3.scrambling import I3SeasonalVariationTimeScramblingMethod
 from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
 
 # Classes to define the signal and background PDFs.
@@ -66,15 +67,7 @@ from skyllh.core.analysis_utils import (
     pointlikesource_to_data_field_array
 )
 
-# Logging setup utilities.
-from skyllh.core.debugging import (
-    setup_logger,
-    setup_console_handler,
-    setup_file_handler
-)
-
-# Pre-defined public IceCube data samples.
-from skyllh.datasets.i3 import data_samples
+from skyllh.core.expectation_maximization import em_fit
 
 # Analysis specific classes for working with the public data.
 from skyllh.analyses.i3.publicdata_ps.signal_generator import (
@@ -92,11 +85,182 @@ from skyllh.analyses.i3.publicdata_ps.pdfratio import (
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF
 )
-from skyllh.analyses.i3.publicdata_ps.utils import create_energy_cut_spline
+from skyllh.analyses.i3.publicdata_ps.utils import (
+    create_energy_cut_spline,
+)
 from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import (
     psi_func,
-    TXS_location
 )
+
+
+def change_time_pdf(analysis, gauss=None, box=None):
+    """Changes the time pdf.
+
+    Parameters
+    ----------
+    gauss : dict | None
+        None or dictionary with {"mu": float, "sigma": float}.
+    box : dict | None
+        None or dictionary with {"start": float, "end": float}.
+    """
+
+    if gauss is None and box is None:
+        raise TypeError("Either gauss or box have to be specified as time pdf.")
+
+    grl = analysis._data_list[0].grl
+    # redo this in case the background pdf was not calculated before
+    time_bkgpdf = BackgroundUniformTimePDF(grl)
+    if gauss is not None:
+        time_sigpdf = SignalGaussTimePDF(grl, gauss['mu'], gauss['sigma'])
+    elif box is not None:
+        time_sigpdf = SignalBoxTimePDF(grl, box["start"], box["end"])
+
+    time_pdfratio = SigOverBkgPDFRatio(
+        sig_pdf=time_sigpdf,
+        bkg_pdf=time_bkgpdf,
+        pdf_type=TimePDF
+    )
+
+    # the next line seems to make no difference in the llh evaluation. We keep it for consistency
+    analysis._llhratio.llhratio_list[0].pdfratio_list[2] = time_pdfratio
+    # this line here is relevant for the llh evaluation
+    analysis._llhratio.llhratio_list[0]._pdfratioarray._pdfratio_list[2] = time_pdfratio
+
+    #  change detector signal yield with flare livetime in sample (1 / grl_norm in pdf),
+    #  rebuild the histograms if it is changed...
+
+
+def get_energy_spatial_signal_over_background(analysis, fitparams):
+    """Returns the signal over background ratio for
+    (spatial_signal * energy_signal) / (spatial_background * energy_background).
+
+    Parameter
+    ---------
+    fitparams : dict
+        Dictionary with {"gamma": float} for energy pdf.
+
+    Returns
+    -------
+    ratio : 1d ndarray
+        Product of spatial and energy signal over background pdfs.
+    """
+
+    ratio = analysis._llhratio.llhratio_list[0].pdfratio_list[0].get_ratio(analysis._tdm_list[0], fitparams)
+    ratio *= analysis._llhratio.llhratio_list[0].pdfratio_list[1].get_ratio(analysis._tdm_list[0], fitparams)
+
+    return ratio
+
+
+def change_fluxmodel_gamma(analysis, gamma):
+    """Set new gamma for the flux model.
+
+    Parameter
+    ---------
+    gamma : float
+        Spectral index for flux model.
+    """
+
+    analysis.src_hypo_group_manager.src_hypo_group_list[0].fluxmodel.gamma = gamma
+
+
+def change_signal_time(analysis, gauss=None, box=None):
+    """Change the signal injection to gauss or box.
+
+    Parameters
+    ----------
+    gauss : dict | None
+        None or dictionary {"mu": float, "sigma": float}.
+    box : dict | None
+        None or dictionary {"start" : float, "end" : float}.
+    """
+
+    analysis.sig_generator.set_flare(box=box, gauss=gauss)
+
+
+def calculate_TS(analysis, em_results, rss):
+    """Calculate the best TS value for the expectation maximization gamma scan.
+
+    Parameters
+    ----------
+    em_results : 1d ndarray of tuples
+        Gamma scan result.
+    rss : instance of RandomStateService
+        The instance of RandomStateService that should be used to generate
+        random numbers from.
+
+    Returns
+    -------
+    float maximized TS value
+    tuple(gamma from em scan [float], best fit mean time [float], best fit width [float])
+    (float ns, float gamma) fitparams from TS optimization
+    """
+
+    max_TS = 0
+    best_time = None
+    best_fitparams = None
+    for index, result in enumerate(em_results):
+        change_time_pdf(analysis,  gauss={"mu": result["mu"], "sigma": result["sigma"]})
+        (fitparamset, log_lambda_max, fitparam_values, status) = analysis.maximize_llhratio(rss)
+        TS = analysis.calculate_test_statistic(log_lambda_max, fitparam_values)
+        if TS > max_TS:
+            max_TS = TS
+            best_time = result
+            best_fitparams = fitparam_values
+
+    return max_TS, best_time, best_fitparams
+
+
+def run_gamma_scan_single_flare(analysis, remove_time=None, gamma_min=1, gamma_max=5, n_gamma=51):
+    """Run em for different gammas in the signal energy pdf
+
+    Parameters
+    ----------
+    remove_time : float
+        Time information of event that should be removed.
+    gamma_min : float
+        Lower bound for gamma scan.
+    gamma_max : float
+        Upper bound for gamma scan.
+    n_gamma : int
+        Number of steps for gamma scan.
+
+    Returns
+    -------
+    array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
+    """
+    dtype = [("gamma", "f8"), ("mu", "f8"), ("sigma", "f8"), ("ns_em", "f8")]
+    results = np.empty(n_gamma, dtype=dtype)
+
+    time = analysis._tdm_list[0].get_data("time")
+
+    for index, g in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
+        ratio = get_energy_spatial_signal_over_background(analysis, {"gamma": g})
+        mu, sigma, ns = em_fit(time, ratio, n=1, tol=1.e-200, iter_max=500, weight_thresh=0,
+                            initial_width=5000, remove_x=remove_time)
+        results[index] = (g, mu[0], sigma[0], ns[0])
+
+    return results
+
+
+def unblind_flare(analysis, remove_time=None):
+    """Run EM on unscrambled data. Similar to the original analysis, remove the alert event.
+
+    Parameters
+    ----------
+    remove_time : float
+        Time information of event that should be removed.
+        In the case of the TXS analysis: remove_time=58018.8711856
+
+    Returns
+    -------
+    array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
+    """
+
+    # get the original unblinded data
+    rss = RandomStateService(seed=1)
+    analysis.unblind(rss)
+    time_results = run_gamma_scan_single_flare(analysis, remove_time=remove_time)
+    return time_results
 
 
 def create_analysis(
@@ -136,7 +300,7 @@ def create_analysis(
     gauss : None or dictionary with mu, sigma
         None if no Gaussian time pdf. Else dictionary with {"mu": float, "sigma": float} of Gauss
     box : None or dictionary with start, end
-        None if no Box shaped time pdf. Else dictionary with {"start": float, "end": float} of box. 
+        None if no Box shaped time pdf. Else dictionary with {"start": float, "end": float} of box.
     refplflux_Phi0 : float
         The flux normalization to use for the reference power law flux model.
     refplflux_E0 : float
@@ -191,9 +355,14 @@ def create_analysis(
 
     Returns
     -------
-    analysis : TimeDependentSingleDatasetSingleSourceAnalysis
+    analysis : TimeIntegratedMultiDatasetSingleSourceAnalysis
         The Analysis instance for this analysis.
     """
+
+    if len(datasets) != 1:
+        raise RuntimeError(
+            'This analysis supports only analyses with only single datasets '
+            'at the moment!')
 
     if gauss is None and box is None:
         raise ValueError("No time pdf specified (box or gauss)")
@@ -248,20 +417,12 @@ def create_analysis(
     # Define the test statistic.
     test_statistic = TestStatisticWilks()
 
-    # Define the data scrambler with its data scrambling method, which is used
-    # for background generation.
-    data_scrambler = DataScrambler(UniformRAScramblingMethod())
-
-    # Create background generation method.
-    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
-
     # Create the Analysis instance.
     analysis = TimeIntegratedMultiDatasetSingleSourceAnalysis(
         src_hypo_group_manager,
         src_fitparam_mapper,
         fitparam_ns,
         test_statistic,
-        bkg_gen_method,
         sig_generator_cls=PDTimeDependentSignalGenerator
     )
 
@@ -282,6 +443,7 @@ def create_analysis(
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
+    data_list = []
     energy_cut_splines = []
     for idx, ds in enumerate(datasets):
         # Load the data of the data set.
@@ -289,6 +451,7 @@ def create_analysis(
             keep_fields=keep_data_fields,
             compress=compress_data,
             tl=tl)
+        data_list.append(data)
 
         # Create a trial data manager and add the required data fields.
         tdm = TrialDataManager()
@@ -355,6 +518,18 @@ def create_analysis(
     pbar.finish()
 
     analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
+
+    # Define the data scrambler with its data scrambling method, which is used
+    # for background generation.
+
+    # FIXME: Support multiple datasets for the DataScrambler.
+    data_scrambler = DataScrambler(I3SeasonalVariationTimeScramblingMethod(data_list[0]))
+    # Create background generation method.
+    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
+
+    analysis.bkg_gen_method = bkg_gen_method
+    analysis.construct_background_generator()
+
     analysis.construct_signal_generator(
         llhratio=analysis.llhratio, energy_cut_splines=energy_cut_splines,
         cut_sindec=cut_sindec, box=box, gauss=gauss)
