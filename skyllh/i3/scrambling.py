@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from skyllh.core.scrambling import TimeScramblingMethod
+import numpy as np
+
+from skyllh.core.scrambling import (
+    DataScramblingMethod,
+    TimeScramblingMethod,
+)
 from skyllh.i3.coords import (
     azi_to_ra_transform,
     hor_to_equ_transform,
