@@ -4,14 +4,14 @@
 likelihood function.
 """
 
+import numpy as np
+
 from skyllh.core.pdf import (
     IsBackgroundPDF,
     MultiDimGridPDF,
     NDPhotosplinePDF,
     TimePDF,
 )
-
-import numpy as np
 
 
 class BackgroundMultiDimGridPDF(
