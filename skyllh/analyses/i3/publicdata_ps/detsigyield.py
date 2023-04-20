@@ -11,13 +11,8 @@ from skyllh.core.dataset import (
     DatasetData
 )
 from skyllh.core.livetime import Livetime
-from skyllh.core.parameters import ParameterGrid
 from skyllh.core.detsigyield import (
     get_integrated_livetime_in_days
-)
-from skyllh.physics.flux import (
-    PowerLawFlux,
-    get_conversion_factor_to_internal_flux_unit
 )
 from skyllh.i3.detsigyield import (
     PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod,
@@ -28,7 +23,7 @@ from skyllh.analyses.i3.publicdata_ps.aeff import (
 )
 
 
-class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
+class PDPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
         PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod,
         multiproc.IsParallelizable):
     """This detector signal yield constructor class constructs a
@@ -109,28 +104,30 @@ class PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
             flux with variable gamma parameter.
         """
         # Check for the correct data types of the input arguments.
-        if(not isinstance(dataset, Dataset)):
-            raise TypeError('The dataset argument must be an instance of '
-                            'Dataset!')
-        if(not isinstance(data, DatasetData)):
-            raise TypeError('The data argument must be an instance of '
-                            'DatasetData!')
-        if(not self.supports_fluxmodel(fluxmodel)):
-            raise TypeError('The DetSigYieldImplMethod "%s" does not support '
-                            'the flux model "%s"!' % (
-                                self.__class__.__name__,
-                                fluxmodel.__class__.__name__))
-        if((not isinstance(livetime, float)) and
-           (not isinstance(livetime, Livetime))):
-            raise TypeError('The livetime argument must be an instance of '
-                            'float or Livetime!')
+        if not isinstance(dataset, Dataset):
+            raise TypeError(
+                'The dataset argument must be an instance of Dataset!')
+        if not isinstance(data, DatasetData):
+            raise TypeError(
+                'The data argument must be an instance of DatasetData!')
+        if not self.supports_fluxmodel(fluxmodel):
+            raise TypeError(
+                'The DetSigYieldImplMethod "%s" does not support '
+                'the flux model "%s"!' % (
+                    self.__class__.__name__,
+                    fluxmodel.__class__.__name__))
+        if (not isinstance(livetime, float)) and\
+           (not isinstance(livetime, Livetime)):
+            raise TypeError(
+                'The livetime argument must be an instance of float or '
+                'Livetime!')
 
         # Get integrated live-time in days.
         livetime_days = get_integrated_livetime_in_days(livetime)
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = get_conversion_factor_to_internal_flux_unit(fluxmodel)
+        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Load the effective area data from the public dataset.
         aeff_fnames = dataset.get_abs_pathfilename_list(
