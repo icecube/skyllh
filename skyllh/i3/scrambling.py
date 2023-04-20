@@ -6,7 +6,7 @@ from skyllh.core.scrambling import (
     DataScramblingMethod,
     TimeScramblingMethod,
 )
-from skyllh.i3.coords import (
+from skyllh.i3.utils.coords import (
     azi_to_ra_transform,
     hor_to_equ_transform,
 )
