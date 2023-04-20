@@ -9,118 +9,134 @@ import argparse
 import logging
 import numpy as np
 
-from skyllh.core.progressbar import ProgressBar
-
-# Classes to define the source hypothesis.
-from skyllh.physics.source import PointLikeSource
-from skyllh.physics.flux import PowerLawFlux
-from skyllh.core.source_hypo_group import SourceHypoGroup
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
-
-# Classes to define the fit parameters.
-from skyllh.core.parameters import (
-    SingleSourceFitParameterMapper,
-    FitParameter
+from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
+    PDDataBackgroundI3EnergyPDF,
 )
-
-# Classes for the minimizer.
-from skyllh.core.minimizer import Minimizer, LBFGSMinimizerImpl
-from skyllh.core.minimizers.iminuit import IMinuitMinimizerImpl
-
-# Classes for utility functionality.
-from skyllh.core.config import CFG
-from skyllh.core.random import RandomStateService
-from skyllh.core.optimize import SpatialBoxEventSelectionMethod
-from skyllh.core.smoothing import BlockSmoothingFilter
-from skyllh.core.timing import TimeLord
-from skyllh.core.trialdata import TrialDataManager
-
-# Classes for defining the analysis.
-from skyllh.core.test_statistic import TestStatisticWilks
-from skyllh.core.analysis import (
-    TimeIntegratedMultiDatasetSingleSourceAnalysis as Analysis
-)
-
-# Classes to define the background generation.
-from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod
-from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
-
-# Classes to define the signal and background PDFs.
-from skyllh.core.signalpdf import RayleighPSFPointSourceSignalSpatialPDF
-from skyllh.i3.backgroundpdf import (
-    DataBackgroundI3SpatialPDF
-)
-
-# Classes to define the spatial and energy PDF ratios.
-from skyllh.core.pdfratio import SpatialSigOverBkgPDFRatio
-
-# Analysis utilities.
-from skyllh.core.analysis_utils import (
-    pointlikesource_to_data_field_array
-)
-
-# Logging setup utilities.
-from skyllh.core.debugging import (
-    setup_logger,
-    setup_console_handler,
-    setup_file_handler
-)
-
-# Pre-defined public IceCube data samples.
-from skyllh.datasets.i3 import data_samples
-
-# Analysis specific classes for working with the public data.
-from skyllh.analyses.i3.publicdata_ps.signal_generator import PDSignalGenerator
-
 from skyllh.analyses.i3.publicdata_ps.detsigyield import (
-    PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod
-)
-from skyllh.analyses.i3.publicdata_ps.signalpdf import (
-    PDSignalEnergyPDFSet
+    PDPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod,
 )
 from skyllh.analyses.i3.publicdata_ps.pdfratio import (
-    PDPDFRatio
+    PDPDFRatio,
 )
-from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
-    PDDataBackgroundI3EnergyPDF
+from skyllh.analyses.i3.publicdata_ps.signal_generator import (
+    PDSignalGenerator,
 )
-from skyllh.analyses.i3.publicdata_ps.utils import create_energy_cut_spline
+from skyllh.analyses.i3.publicdata_ps.signalpdf import (
+    PDSignalEnergyPDFSet,
+)
+from skyllh.analyses.i3.publicdata_ps.utils import (
+    create_energy_cut_spline,
+)
+
+from skyllh.core.analysis import (
+    SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
+)
+from skyllh.core.config import (
+    CFG,
+)
+from skyllh.core.debugging import (
+    get_logger,
+    setup_logger,
+    setup_console_handler,
+    setup_file_handler,
+)
+from skyllh.core.event_selection import (
+    SpatialBoxEventSelectionMethod,
+)
+from skyllh.core.minimizer import (
+    Minimizer,
+    LBFGSMinimizerImpl,
+)
+from skyllh.core.minimizers.iminuit import (
+    IMinuitMinimizerImpl,
+)
+from skyllh.core.model import (
+    DetectorModel,
+)
+from skyllh.core.parameters import (
+    Parameter,
+    ParameterModelMapper,
+)
+from skyllh.core.pdfratio import (
+    SigOverBkgPDFRatio,
+)
+from skyllh.core.progressbar import (
+    ProgressBar,
+)
+from skyllh.core.random import (
+    RandomStateService,
+)
+from skyllh.core.scrambling import (
+    DataScrambler,
+    UniformRAScramblingMethod,
+)
+from skyllh.core.signalpdf import (
+    RayleighPSFPointSourceSignalSpatialPDF,
+)
+from skyllh.core.smoothing import (
+    BlockSmoothingFilter,
+)
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroup,
+    SourceHypoGroupManager,
+)
+from skyllh.core.test_statistic import (
+    WilksTestStatistic,
+)
+from skyllh.core.timing import (
+    TimeLord,
+)
+from skyllh.core.trialdata import (
+    TrialDataManager,
+)
+from skyllh.core.utils.analysis import (
+    pointlikesource_to_data_field_array,
+)
+from skyllh.core.utils.coords import (
+    angular_separation,
+)
+
+from skyllh.datasets.i3 import (
+    data_samples,
+)
+
+from skyllh.i3.background_generation import (
+    FixedScrambledExpDataI3BkgGenMethod,
+)
+from skyllh.i3.backgroundpdf import (
+    DataBackgroundI3SpatialPDF,
+)
+
+from skyllh.physics.flux_model import (
+    PowerLawEnergyFluxProfile,
+    SteadyPointlikeFFM,
+)
+from skyllh.physics.source_model import (
+    PointLikeSource,
+)
 
 
-def psi_func(tdm, src_hypo_group_manager, fitparams):
-    """Function to calculate the opening angle between the source position
-    and the event's reconstructed position.
+def tdm_field_func_psi(tdm, shg_mgr, pmm):
+    """TDM data field function to calculate the opening angle between the source
+    position and the event's reconstructed position.
+
+    Note::
+
+        Only single sources are supported at the moment.
+
     """
-    ra = tdm.get_data('ra')
-    dec = tdm.get_data('dec')
-
     # Make the source position angles two-dimensional so the PDF value
     # can be calculated via numpy broadcasting automatically for several
     # sources. This is useful for stacking analyses.
-    src_ra = tdm.get_data('src_array')['ra'][:, np.newaxis]
-    src_dec = tdm.get_data('src_array')['dec'][:, np.newaxis]
-
-    delta_dec = np.abs(dec - src_dec)
-    delta_ra = np.abs(ra - src_ra)
-    x = (
-        (np.sin(delta_dec / 2.))**2. + np.cos(dec) *
-        np.cos(src_dec) * (np.sin(delta_ra / 2.))**2.
-    )
-
-    # Handle possible floating precision errors.
-    x[x < 0.] = 0.
-    x[x > 1.] = 1.
-
-    psi = (2.0*np.arcsin(np.sqrt(x)))
+    psi = angular_separation(
+        ra1=tdm.get_data('ra'),
+        dec1=tdm.get_data('dec'),
+        ra2=tdm.get_data('src_array')['ra'][:, np.newaxis],
+        dec2=tdm.get_data('src_array')['dec'][:, np.newaxis],
+        psi_floor=10**-5.95442953)
 
     # For now we support only a single source, hence return psi[0].
-    return psi[0, :]
-
-
-def TXS_location():
-    src_ra = np.radians(77.358)
-    src_dec = np.radians(5.693)
-    return (src_ra, src_dec)
+    return psi[0]
 
 
 def create_analysis(
@@ -142,9 +158,10 @@ def create_analysis(
     cap_ratio=False,
     compress_data=False,
     keep_data_fields=None,
-    optimize_delta_angle=10,
+    evt_sel_delta_angle_deg=10,
     tl=None,
-    ppbar=None
+    ppbar=None,
+    logger_name=None,
 ):
     """Creates the Analysis instance for this particular analysis.
 
@@ -200,18 +217,24 @@ def create_analysis(
     keep_data_fields : list of str | None
         List of additional data field names that should get kept when loading
         the data.
-    optimize_delta_angle : float
+    evt_sel_delta_angle_deg : float
         The delta angle in degrees for the event selection optimization methods.
     tl : TimeLord instance | None
         The TimeLord instance to use to time the creation of the analysis.
     ppbar : ProgressBar instance | None
         The instance of ProgressBar for the optional parent progress bar.
+    logger_name : str | None
+        The name of the logger to be used. If set to ``None``, ``__name__`` will
+        be used.
 
     Returns
     -------
-    analysis : TimeIntegratedMultiDatasetSingleSourceAnalysis
+    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The Analysis instance for this analysis.
     """
+    if logger_name is None:
+        logger_name = __name__
+    logger = get_logger(logger_name)
 
     # Create the minimizer instance.
     if minimizer_impl == "LBFGS":
@@ -224,40 +247,62 @@ def create_analysis(
             "Please use `LBFGS` or `minuit`.")
 
     # Define the flux model.
-    flux_model = PowerLawFlux(
-        Phi0=refplflux_Phi0, E0=refplflux_E0, gamma=refplflux_gamma)
+    fluxmodel = SteadyPointlikeFFM(
+        Phi0=refplflux_Phi0,
+        energy_profile=PowerLawEnergyFluxProfile(
+            E0=refplflux_E0,
+            gamma=refplflux_gamma))
 
     # Define the fit parameter ns.
-    fitparam_ns = FitParameter('ns', ns_min, ns_max, ns_seed)
+    param_ns = Parameter(
+        name='ns',
+        initial=ns_seed,
+        valmin=ns_min,
+        valmax=ns_max)
 
-    # Define the gamma fit parameter.
-    fitparam_gamma = FitParameter(
-        'gamma', valmin=gamma_min, valmax=gamma_max, initial=gamma_seed)
+    # Define the fit parameter gamma.
+    param_gamma = Parameter(
+        name='gamma',
+        initial=gamma_seed,
+        valmin=gamma_min,
+        valmax=gamma_max)
 
-    # Define the detector signal efficiency implementation method for the
-    # IceCube detector and this source and flux_model.
-    # The sin(dec) binning will be taken by the implementation method
-    # automatically from the Dataset instance.
-    gamma_grid = fitparam_gamma.as_linear_grid(delta=0.1)
-    detsigyield_implmethod = \
-        PublicDataPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
-            gamma_grid)
+    # Define the detector signal yield builder for the IceCube detector and this
+    # source and flux model.
+    # The sin(dec) binning will be taken by the builder automatically from the
+    # Dataset instance.
+    gamma_grid = param_gamma.as_linear_grid(delta=0.1)
+    detsigyield_builder = \
+        PDPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
+            gamma_grid=gamma_grid)
 
     # Define the signal generation method.
-    #sig_gen_method = PointLikeSourceI3SignalGenerationMethod()
     sig_gen_method = None
 
-    # Create a source hypothesis group manager.
-    src_hypo_group_manager = SourceHypoGroupManager(
-        SourceHypoGroup(
-            source, flux_model, detsigyield_implmethod, sig_gen_method))
+    # Create a source hypothesis group manager with a single source hypothesis
+    # group for the single source.
 
-    # Create a source fit parameter mapper and define the fit parameters.
-    src_fitparam_mapper = SingleSourceFitParameterMapper()
-    src_fitparam_mapper.def_fit_parameter(fitparam_gamma)
+    shg_mgr = SourceHypoGroupManager(
+        SourceHypoGroup(
+            sources=source,
+            fluxmodel=fluxmodel,
+            detsigyield_builders=detsigyield_builder,
+            sig_gen_method=sig_gen_method))
+
+    # Define a detector model for the ns fit parameter.
+    detector_model = DetectorModel('IceCube')
+
+    # Define the parameter model mapper for the analysis, which will map global
+    # parameters to local source parameters.
+    pmm = ParameterModelMapper(
+        models=[detector_model, source])
+    pmm.def_param(param_ns, models=detector_model)
+    pmm.def_param(param_gamma, models=source)
+
+    logger.info(str(pmm))
 
     # Define the test statistic.
-    test_statistic = TestStatisticWilks()
+    test_statistic = WilksTestStatistic()
 
     # Define the data scrambler with its data scrambling method, which is used
     # for background generation.
@@ -267,19 +312,19 @@ def create_analysis(
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
 
     # Create the Analysis instance.
-    analysis = Analysis(
-        src_hypo_group_manager,
-        src_fitparam_mapper,
-        fitparam_ns,
-        test_statistic,
-        bkg_gen_method,
-        sig_generator_cls=PDSignalGenerator
+    ana = Analysis(
+        shg_mgr=shg_mgr,
+        pmm=pmm,
+        test_statistic=test_statistic,
+        bkg_gen_method=bkg_gen_method,
+        sig_generator_cls=PDSignalGenerator,
     )
 
     # Define the event selection method for pure optimization purposes.
     # We will use the same method for all datasets.
     event_selection_method = SpatialBoxEventSelectionMethod(
-        src_hypo_group_manager, delta_angle=np.deg2rad(optimize_delta_angle))
+        shg_mgr=shg_mgr,
+        delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
 
     # Prepare the spline parameters.
     if cut_sindec is None:
@@ -288,24 +333,18 @@ def create_analysis(
         spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
     if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
         raise AssertionError(
-            "The length of the spl_smooth and of the cut_sindec must be equal "
-            f"to the length of datasets: {len(datasets)}.")
+            'The length of the spl_smooth and of the cut_sindec must be equal '
+            f'to the length of datasets: {len(datasets)}.')
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     energy_cut_splines = []
-    for idx, ds in enumerate(datasets):
+    for (dataset_idx, ds) in enumerate(datasets):
         # Load the data of the data set.
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
             compress=compress_data,
             tl=tl)
-
-        # Create a trial data manager and add the required data fields.
-        tdm = TrialDataManager()
-        tdm.add_source_data_field('src_array',
-                                  pointlikesource_to_data_field_array)
-        tdm.add_data_field('psi', psi_func)
 
         sin_dec_binning = ds.get_binning_definition('sin_dec')
         log_energy_binning = ds.get_binning_definition('log_energy')
@@ -314,50 +353,72 @@ def create_analysis(
         spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
             dec_range=np.arcsin(sin_dec_binning.range))
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(
-            data.exp, sin_dec_binning)
-        spatial_pdfratio = SpatialSigOverBkgPDFRatio(
-            spatial_sigpdf, spatial_bkgpdf)
+            data_exp=data.exp,
+            sin_dec_binning=sin_dec_binning)
+        spatial_pdfratio = SigOverBkgPDFRatio(
+            sig_pdf=spatial_sigpdf,
+            bkg_pdf=spatial_bkgpdf)
 
         # Create the energy PDF ratio instance for this dataset.
         energy_sigpdfset = PDSignalEnergyPDFSet(
             ds=ds,
             src_dec=source.dec,
-            flux_model=flux_model,
+            flux_model=fluxmodel,
             fitparam_grid_set=gamma_grid,
             ppbar=ppbar
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
         energy_bkgpdf = PDDataBackgroundI3EnergyPDF(
-            data.exp, log_energy_binning, sin_dec_binning,
-            smoothing_filter, kde_smoothing)
+            data_exp=data.exp,
+            logE_binning=log_energy_binning,
+            sinDec_binning=sin_dec_binning,
+            smoothing_filter=smoothing_filter,
+            kde_smoothing=kde_smoothing)
 
         energy_pdfratio = PDPDFRatio(
             sig_pdf_set=energy_sigpdfset,
             bkg_pdf=energy_bkgpdf,
-            cap_ratio=cap_ratio
-        )
+            cap_ratio=cap_ratio)
 
-        pdfratios = [spatial_pdfratio, energy_pdfratio]
+        pdfratio = spatial_pdfratio * energy_pdfratio
 
-        analysis.add_dataset(
-            ds, data, pdfratios, tdm, event_selection_method)
+        # Create a trial data manager and add the required data fields.
+        tdm = TrialDataManager()
+        tdm.add_source_data_field(
+            name='src_array',
+            func=pointlikesource_to_data_field_array)
+        tdm.add_data_field(
+            name='psi',
+            func=tdm_field_func_psi,
+            dt='dec',
+            pre_evt_sel=True)
+
+        ana.add_dataset(
+            dataset=ds,
+            data=data,
+            pdfratio=pdfratio,
+            tdm=tdm,
+            event_selection_method=event_selection_method)
 
         energy_cut_spline = create_energy_cut_spline(
-            ds, data.exp, spl_smooth[idx])
+            ds,
+            data.exp,
+            spl_smooth[dataset_idx])
         energy_cut_splines.append(energy_cut_spline)
 
         pbar.increment()
     pbar.finish()
 
-    analysis.llhratio = analysis.construct_llhratio(minimizer, ppbar=ppbar)
-    analysis.construct_signal_generator(
-        llhratio=analysis.llhratio, energy_cut_splines=energy_cut_splines,
+    ana.llhratio = ana.construct_llhratio(minimizer, ppbar=ppbar)
+    ana.construct_signal_generator(
+        llhratio=ana.llhratio,
+        energy_cut_splines=energy_cut_splines,
         cut_sindec=cut_sindec)
 
-    return analysis
+    return ana
 
 
-if(__name__ == '__main__'):
+if __name__ == '__main__':
     p = argparse.ArgumentParser(
         description='Calculates TS for a given source location using the '
         '10-year public point source sample.',
@@ -412,10 +473,15 @@ if(__name__ == '__main__'):
     setup_logger('skyllh', logging.DEBUG)
     log_format = '%(asctime)s %(processName)s %(name)s %(levelname)s: '\
                  '%(message)s'
-    setup_console_handler('skyllh', logging.INFO, log_format)
-    setup_file_handler('skyllh', 'debug.log',
-                       log_level=logging.DEBUG,
-                       log_format=log_format)
+    setup_console_handler(
+        'skyllh',
+        logging.INFO,
+        log_format)
+    setup_file_handler(
+        'skyllh',
+        'debug.log',
+        log_level=logging.DEBUG,
+        log_format=log_format)
 
     CFG['multiproc']['ncpu'] = args.ncpu
 
