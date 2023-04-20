@@ -154,6 +154,8 @@ class SignalGenerator(SignalGeneratorBase):
         data_list : list of DatasetData instances
             The list of DatasetData instances holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
+        kwargs
+            A typical keyword argument is the instance of MultiDatasetTCLLHRatio.
         """
         super().__init__(
             shg_mgr=shg_mgr,

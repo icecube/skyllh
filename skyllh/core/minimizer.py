@@ -931,8 +931,9 @@ class Minimizer(object):
             (fmin, grads) = func(xmin, *args)
 
         logger.debug(
-            '%s (%s): Minimized function: %d iterations, %d repetitions' % (
+            '%s (%s): Minimized function: %d iterations, %d repetitions, '
+            'xmin=%s' % (
                 classname(self), classname(self._minimizer_impl),
-                self._minimizer_impl.get_niter(status), reps))
+                self._minimizer_impl.get_niter(status), reps, str(xmin)))
 
         return (xmin, fmin, status)

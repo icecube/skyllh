@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
+
 from skyllh.core.scrambling import (
+    DataScramblingMethod,
     TimeScramblingMethod,
 )
-from skyllh.i3.utils.coords import (
-    hor_to_equ_transform,
+from skyllh.i3.coords import (
     azi_to_ra_transform,
+    hor_to_equ_transform,
 )
 
 
@@ -49,5 +52,72 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
 
         data['time'] = mjds
         data['ra'] = azi_to_ra_transform(data['azi'], mjds)
+
+        return data
+
+
+class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
+    """The I3SeasonalVariationTimeScramblingMethod class provides a data
+    scrambling method to perform data coordinate scrambling based on a generated
+    time, which follows seasonal variations within the experimental data.
+    """
+    def __init__(self, data, **kwargs):
+        """Initializes a new seasonal time scrambling instance.
+
+        Parameters
+        ----------
+        data : instance of I3DatasetData
+            The instance of I3DatasetData holding the experimental data and
+            good-run-list information.
+        """
+        super().__init__(**kwargs)
+
+        # The run weights are the number of events in each run relative to all
+        # the events to account for possible seasonal variations.
+        self.run_weights = np.zeros((len(data.grl),), dtype=np.float64)
+        n_events = len(data.exp['time'])
+        for (i, (start, stop)) in enumerate(
+                zip(data.grl['start'], data.grl['stop'])):
+            mask = (data.exp['time'] >= start) & (data.exp['time'] < stop)
+            self.run_weights[i] = len(data.exp[mask]) / n_events
+        self.run_weights /= np.sum(self.run_weights)
+
+        self.grl = data.grl
+
+    def scramble(self, rss, data):
+        """Scrambles the given data based on random MJD times, which are
+        generated uniformely within the data runs, where the data runs are
+        weighted based on their amount of events compared to the total events.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The random state service providing the random number
+            generator (RNG).
+        data : instance of DataFieldRecordArray
+            The DataFieldRecordArray instance containing the to be scrambled
+            data.
+
+        Returns
+        -------
+        data : instance of DataFieldRecordArray
+            The given DataFieldRecordArray holding the scrambled data.
+        """
+        # Get run indices based on their seasonal weights.
+        run_idxs = rss.random.choice(
+            self.grl['start'].size,
+            size=len(data['time']),
+            p=self.weights)
+
+        # Draw random times uniformely within the runs.
+        times = rss.random.uniform(
+            self.grl['start'][run_idxs],
+            self.grl['stop'][run_idxs])
+
+        # Get the correct right ascension.
+        data['time'] = times
+        data['ra'] = azi_to_ra_transform(
+            azi=data['azi'],
+            mjd=times)
 
         return data

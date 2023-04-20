@@ -7,8 +7,96 @@ from skyllh.core.py import (
 )
 
 
-class BinningDefinition(
-        object):
+def get_bincenters_from_binedges(edges):
+    """Calculates the bin center values from the given bin edge values.
+
+    Parameters
+    ----------
+    edges : 1D numpy ndarray
+        The (n+1,)-shaped 1D ndarray holding the bin edge values.
+
+    Returns
+    -------
+    bincenters : 1D numpy ndarray
+        The (n,)-shaped 1D ndarray holding the bin center values.
+    """
+    return 0.5*(edges[:-1] + edges[1:])
+
+
+def get_binedges_from_bincenters(centers):
+    """Calculates the bin edges from the given bin center values. The bin center
+    values must be evenly spaced.
+
+    Parameters
+    ----------
+    centers : 1D numpy ndarray
+        The (n,)-shaped 1D ndarray holding the bin center values.
+
+    Returns
+    -------
+    edges : 1D numpy ndarray
+        The (n+1,)-shaped 1D ndarray holding the bin edge values.
+    """
+    d = np.diff(centers)
+    if not np.all(np.isclose(np.diff(d), 0)):
+        raise ValueError('The bin center values are not evenly spaced!')
+    d = d[0]
+
+    edges = np.zeros((len(centers)+1,), dtype=np.double)
+    edges[:-1] = centers - d/2
+    edges[-1] = centers[-1] + d/2
+
+    return edges
+
+
+def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
+    """Returns the bin indices for the given values which must fall into bins
+    defined by the given lower and upper bin edges.
+
+    Note: The upper edge is not included in the bin.
+
+    Parameters
+    ----------
+    le : (m,)-shaped 1D numpy ndarray
+        The lower bin edges.
+    ue : (m,)-shaped 1D numpy ndarray
+        The upper bin edges.
+    values : (n,)-shaped 1D numpy ndarray
+        The values for which to get the bin indices.
+
+    Returns
+    -------
+    idxs : (n,)-shaped 1D numpy ndarray
+        The bin indices of the given values.
+    """
+    if len(le) != len(ue):
+        raise ValueError(
+            'The lower {} and upper {} edge arrays must be of the same '
+            'size!'.format(
+                len(le), len(ue)))
+
+    if np.any(values < le[0]):
+        invalid_values = values[values < le[0]]
+        raise ValueError(
+            '{} values ({}) are smaller than the lowest bin edge ({})!'.format(
+                len(invalid_values), str(invalid_values), le[0]))
+    if np.any(values >= ue[-1]):
+        invalid_values = values[values >= ue[-1]]
+        raise ValueError(
+            '{} values ({}) are larger or equal than the largest bin edge '
+            '({})!'.format(
+                len(invalid_values), str(invalid_values), ue[-1]))
+
+    m = (
+        (values[:, np.newaxis] >= le[np.newaxis, :]) &
+        (values[:, np.newaxis] < ue[np.newaxis, :])
+    )
+    idxs = np.nonzero(m)[1]
+
+    return idxs
+
+
+class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
     """
@@ -89,6 +177,12 @@ class BinningDefinition(
         return 0.5*(self._binedges[:-1] + self._binedges[1:])
 
     @property
+    def binwidths(self):
+        """(read-only) The widths of the bins.
+        """
+        return np.diff(self._binedges)
+
+    @property
     def lower_edge(self):
         """The lowest bin edge of the binning.
         """
@@ -125,28 +219,14 @@ class BinningDefinition(
                             (data > self.upper_edge))
         return outofrange
 
-    def get_out_of_range_data(self, data):
-        """Returns the data values which are outside the range of this binning
-        definition.
-
-        Parameters
-        ----------
-        data : instance of ndarray
-            The 1D ndarray with the data values to check.
-
-        Returns
-        -------
-        oor_data : instance of ndarray
-            The 1D ndarray with data outside the range of this binning
-            definition.
+    def get_binwidth_from_value(self, value):
+        """Returns the width of the bin the given value falls into.
         """
-        oor_mask = (
-            (data < self.lower_edge) |
-            (data > self.upper_edge)
-        )
-        oor_data = data[oor_mask]
+        idx = np.digitize(value, self._binedges) - 1
 
-        return oor_data
+        bin_width = self.binwidths[idx]
+
+        return bin_width
 
     def get_subset(self, lower_edge, upper_edge):
         """Creates a new BinningDefinition instance which contains only a subset

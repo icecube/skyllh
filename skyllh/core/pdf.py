@@ -1812,6 +1812,14 @@ class PDFSet(
 
     @property
     def pdf_axes(self):
+        """DEPRECATED (read-only) The PDFAxes object of one of the PDFs of this
+        PDF set.
+        All PDFs of this set are supposed to have the same axes.
+        """
+        return self.axes
+
+    @property
+    def axes(self):
         """(read-only) The PDFAxes object of one of the PDFs of this PDF set.
         All PDFs of this set are supposed to have the same axes.
         """
