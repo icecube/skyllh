@@ -6,6 +6,8 @@ likelihood function.
 
 import numpy as np
 
+import scipy.stats
+
 from skyllh.core.debugging import (
     get_logger,
     is_tracing_enabled,
@@ -13,10 +15,6 @@ from skyllh.core.debugging import (
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
     Linear1DGridManifoldInterpolationMethod,
-)
-from skyllh.core.py import (
-    classname,
-    str_cast,
 )
 from skyllh.core.pdf import (
     PDF,
@@ -26,6 +24,10 @@ from skyllh.core.pdf import (
     NDPhotosplinePDF,
     SpatialPDF,
     TimePDF,
+)
+from skyllh.core.py import (
+    classname,
+    str_cast,
 )
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
@@ -155,15 +157,19 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
 
         dec = np.take(dec, evt_idxs)
         ra = np.take(ra, evt_idxs)
-        sigma = np.take(sigma, evt_idxs)
+        sigma_sq = np.take(sigma**2, evt_idxs)
 
         psi = angular_separation(src_ra, src_dec, ra, dec)
 
-        pd = 0.5/(np.pi*sigma**2)*np.exp(-0.5*(psi/sigma)**2)
+        pd = 0.5/(np.pi*sigma_sq) * np.exp(-0.5*(psi**2/sigma_sq))
 
         return pd
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+            self,
+            tdm,
+            params_recarray=None,
+            tl=None):
         """Calculates the spatial signal probability density of each event for
         all sources.
 
@@ -199,7 +205,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
         Returns
         -------
         pd : instance of numpy ndarray
-            The (N,)-shaped numpy ndarray holding the probability density
+            The (N_values,)-shaped numpy ndarray holding the probability density
             for each event. The length of this 1D array depends on the number
             of sources and the events belonging to those sources. In the worst
             case the length is N_sources * N_trial_events.
@@ -225,25 +231,34 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
         return (pd, dict())
 
 
-class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
-    """This spatial signal PDF model describes the spatial PDF for a point-like
+class RayleighPSFPointSourceSignalSpatialPDF(
+        SpatialPDF,
+        IsSignalPDF):
+    r"""This spatial signal PDF model describes the spatial PDF for a point-like
     source following a Rayleigh distribution in the opening angle between the
     source and reconstructed muon direction.
     Mathematically, it's the convolution of a point in the sky, i.e. the source
     location, with the PSF. The result of this convolution has the following
-    form:
+    form
 
-        1/(2*\pi \sin \Psi) * \Psi/\sigma^2 \exp(-\Psi^2/(2*\sigma^2)),
+    .. math::
 
-    where \sigma is the spatial uncertainty of the event and \Psi the distance
-    on the sphere between the source and the data event.
+        1/(2\pi \sin\Psi) * \Psi/\sigma^2 \exp(-\Psi^2/(2\sigma^2)),
 
-    This PDF requires the `src_array` data field, that is numpy record ndarray
-    with the data fields `ra` and `dec` holding the right-ascention and
-    declination of the point-like sources, respectively.
+    where :math:`\sigma` is the spatial uncertainty of the event and
+    :math:`\Psi` the distance on the sphere between the source and the data
+    event.
+
+    This PDF requires the ``src_array`` source data field, that is numpy
+    structured ndarray with the data fields ``ra`` and ``dec`` holding the
+    right-ascention and declination of the point-like sources, respectively.
     """
-    def __init__(self, ra_range=None, dec_range=None, **kwargs):
-        """Creates a new spatial signal PDF for point-like sources with a
+    def __init__(
+            self,
+            ra_range=None,
+            dec_range=None,
+            **kwargs):
+        r"""Creates a new spatial signal PDF for point-like sources with a
         Rayleigh point-spread-function (PSF).
 
         Parameters
@@ -255,61 +270,71 @@ class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
             The range in declination this spatial PDF is valid for.
             If set to None, the range (-pi/2, +pi/2) is used.
         """
-        if(ra_range is None):
+        if ra_range is None:
             ra_range = (0, 2*np.pi)
-        if(dec_range is None):
+        if dec_range is None:
             dec_range = (-np.pi/2, np.pi/2)
 
         super().__init__(
+            pmm=None,
             ra_range=ra_range,
             dec_range=dec_range,
             **kwargs
         )
 
-    def get_prob(self, tdm, fitparams=None, tl=None):
+    def get_pd(
+            self,
+            tdm,
+            params_recarray=None,
+            tl=None):
         """Calculates the spatial signal probability density of each event for
-        the defined source.
+        all sources.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
-            The TrialDataManager instance holding the trial event data for which
-            to calculate the PDF values. The following data fields need to be
-            present:
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF values. The following data fields need to
+            be present:
 
-            'psi' : float
+            psi : float
                 The opening angle in radian between the source direction and the
                 reconstructed muon direction.
-            'ang_err': float
+            ang_err: float
                 The reconstruction uncertainty in radian of the data event.
 
-        fitparams : None
+        params_recarray : None
             Unused interface argument.
-        tl : TimeLord instance | None
-            The optional TimeLord instance to use for measuring timing
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
             information.
 
         Returns
         -------
-        pd : (N_events,)-shaped numpy ndarray
-            The 1D numpy ndarray with the probability density for each event in
-            unit 1/rad.
-        grads : (0,)-shaped 1D numpy ndarray
-            Since this PDF does not depend on fit parameters, an empty array
-            is returned.
+        pd : (N_values,)-shaped numpy ndarray
+            The (N_values,)-shaped 1D numpy ndarray holding the probability
+            density value for each event and source in unit 1/rad.
+        grads : dict
+            The dictionary holding the gradients of the probability density
+            w.r.t. each global fit parameter. By definition this PDF does not
+            depend on any global fit parameters and hence, this dictionary is
+            empty.
         """
         get_data = tdm.get_data
 
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+
         psi = get_data('psi')
         sigma = get_data('ang_err')
+        sigma_sq = np.take(sigma**2, evt_idxs)
 
         pd = (
             0.5/(np.pi*np.sin(psi)) *
-            (psi / sigma**2) *
-            np.exp(-0.5*(psi/sigma)**2)
+            (psi / sigma_sq) *
+            np.exp(-0.5*(psi**2/sigma_sq))
         )
 
-        grads = np.array([], dtype=np.double)
+        grads = dict()
 
         return (pd, grads)
 
@@ -412,58 +437,85 @@ class SignalTimePDF(
             on = self._livetime.is_on(times)
 
             pd_src = pd[src_m]
-            pd_src[on] = (self._time_flux_profile(t=times[on]) * self._S /
-                self._I**2)
+            pd_src[on] = (
+                self._time_flux_profile(t=times[on]) * self._S / self._I**2
+            )
             pd[src_m] = pd_src
 
         return (pd, dict())
 
 
-class SignalGaussTimePDF(TimePDF, IsSignalPDF):
+class FixedGaussianSignalTimePDF(
+        PDF,
+        IsSignalPDF):
+    """This class provides a gaussian time PDF, which is fixed to a given
+    position in time and has a fixed width. It does not depend on any fit
+    parameters.
+    """
 
-    def __init__(self, grl, mu, sigma, **kwargs):
+    def __init__(
+            self,
+            grl,
+            mu,
+            sigma,
+            **kwargs):
         """Creates a new signal time PDF instance for a given time profile of
         the source.
 
         Parameters
         ----------
-        grl : ndarray
-            Array of the detector good run list
+        grl : instance of structured ndarray
+            The structured numpy ndarray of length N_runs, holding the detector
+            good run list information. The following data fields need to be
+            present:
+
+            start : float
+                The start time of the run.
+            stop : float
+                The stop time of the run.
+
         mu : float
-            Mean of the gaussian flare.
+            The mean of the gaussian flare.
         sigma : float
-            Sigma of the gaussian flare.
+            The sigma of the gaussian flare.
         """
-        super(SignalGaussTimePDF, self).__init__(**kwargs)
+        super().__init__(
+            pmm=None,
+            **kwargs)
+
         self.mu = mu
         self.sigma = sigma
         self.grl = grl
 
-
-    def norm_uptime(self):
-        """Compute the normalization with the dataset uptime. Distributions like
-        scipy.stats.norm are normalized (-inf, inf).
+    def calc_uptime_norm(self):
+        """Calculates the normalization by taking the dataset uptime into
+        account. Distributions like scipy.stats.norm are normalized (-inf, inf).
         These must be re-normalized such that the function sums to 1 over the
         finite good run list domain.
 
         Returns
         -------
         norm : float
-            Normalization such that cdf sums to 1 over good run list domain
+            Normalization such that cdf sums to 1 over the good run list domain.
         """
-        cdf = scp.stats.norm(self.mu, self.sigma).cdf
+        cdf = scipy.stats.norm(self.mu, self.sigma).cdf
 
-        integral = (cdf(self.grl["stop"]) - cdf(self.grl["start"])).sum()
+        integral = np.sum(cdf(self.grl['stop']) - cdf(self.grl['start']))
 
         if np.isclose(integral, 0):
             return 0
 
-        return 1. / integral
+        norm = 1 / integral
 
+        return norm
 
-    def get_prob(self, tdm, fitparams=None, tl=None):
-        """Calculates the signal time probability density of each event for the
-        given set of signal time fit parameter values.
+    def get_pd(
+            self,
+            tdm,
+            params_recarray=None,
+            tl=None):
+        """Calculates the signal time probability density of each event and
+        source.
 
         Parameters
         ----------
@@ -472,28 +524,34 @@ class SignalGaussTimePDF(TimePDF, IsSignalPDF):
             which to calculate the PDF value. The following data fields must
             exist:
 
-            - 'time' : float
+            time : float
                 The MJD time of the event.
 
-        fitparams : None
+        params_recarray : None
             Unused interface argument.
-        tl : TimeLord instance | None
-            The optional TimeLord instance to use for measuring timing
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
             information.
 
         Returns
         -------
-        pd : (N_events,)-shaped numpy ndarray
+        pd : (N_values,)-shaped numpy ndarray
             The 1D numpy ndarray with the probability density for each event.
         grads : empty array of float
             Empty, since it does not depend on any fit parameter
         """
-        time = tdm.get_data('time')
+        evt_idxs = tdm.src_evt_idxs[1]
 
-        pd = scp.stats.norm.pdf(time, self.mu, self.sigma) * self.norm_uptime()
-        grads = np.array([], dtype=np.double)
+        time = np.take(tdm.get_data('time'), evt_idxs)
+
+        uptime_norm = self.calc_uptime_norm()
+
+        pd = scipy.stats.norm.pdf(time, self.mu, self.sigma) * uptime_norm
+
+        grads = dict()
 
         return (pd, grads)
+
 
 class SignalMultiDimGridPDF(
         MultiDimGridPDF,
