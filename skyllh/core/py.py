@@ -92,10 +92,12 @@ def classname(obj):
     """
     return typename(type(obj))
 
+
 def module_classname(obj):
     """Returns the module and class name of the class instance ``obj``.
     """
     return '{}.{}'.format(obj.__module__, classname(obj))
+
 
 def get_byte_size_prefix(size):
     """Determines the biggest size prefix for the given size in bytes such that
