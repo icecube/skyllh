@@ -13,7 +13,7 @@ from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF,
 )
 from skyllh.analyses.i3.publicdata_ps.detsigyield import (
-    PDPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod,
+    PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
 )
 from skyllh.analyses.i3.publicdata_ps.pdfratio import (
     PDPDFRatio,
@@ -273,15 +273,14 @@ def create_analysis(
     # Dataset instance.
     gamma_grid = param_gamma.as_linear_grid(delta=0.1)
     detsigyield_builder = \
-        PDPowerLawFluxPointLikeSourceI3DetSigYieldImplMethod(
-            gamma_grid=gamma_grid)
+        PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
+            param_grid=gamma_grid)
 
     # Define the signal generation method.
     sig_gen_method = None
 
     # Create a source hypothesis group manager with a single source hypothesis
     # group for the single source.
-
     shg_mgr = SourceHypoGroupManager(
         SourceHypoGroup(
             sources=source,
@@ -340,7 +339,6 @@ def create_analysis(
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     energy_cut_splines = []
     for (dataset_idx, ds) in enumerate(datasets):
-        # Load the data of the data set.
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
             compress=compress_data,
