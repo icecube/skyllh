@@ -1452,6 +1452,32 @@ class ParameterModelMapper(
 
         return False
 
+    @staticmethod
+    def is_local_param_a_fitparam(
+            local_param_name,
+            params_recarray):
+        """Checks if the given local parameter is a (partly) a fit parameter.
+
+        Parameters
+        ----------
+        local_param_name : str
+            The name of the local parameter.
+        params_recarray : instance of numpy record ndarray
+            The (N_models,)-shaped numpy record ndarray holding the local
+            parameter names and values of the models. See the
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            method for the format of this record array.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the given local parameter is (partly) a fit parameter.
+        """
+        if np.any(params_recarray[f'{local_param_name}:gpidx'] > 0):
+            return True
+
+        return False
+
     def __init__(self, models, **kwargs):
         """Constructor of the parameter mapper.
 
