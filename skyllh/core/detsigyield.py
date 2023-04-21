@@ -192,7 +192,9 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         pass
 
 
-class DetSigYieldBuilder(object, metaclass=abc.ABCMeta):
+class DetSigYieldBuilder(
+        object,
+        metaclass=abc.ABCMeta):
     """Abstract base class for a builder of a detector signal yield. Via the
     ``construct_detsigyield`` method it creates a DetSigYield instance holding
     the internal objects to calculate the detector signal yield.
@@ -203,31 +205,15 @@ class DetSigYieldBuilder(object, metaclass=abc.ABCMeta):
         """
         super().__init__(**kwargs)
 
-    @abc.abstractmethod
-    def construct_detsigyield(
-            self, dataset, data, fluxmodel, livetime, ppbar=None):
-        """Abstract method to construct the DetSigYield instance.
-        This method must be called by the derived class method implementation
-        to ensure the compatibility check of the given flux model with the
-        supported flux models.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            The Dataset instance holding possible dataset specific settings.
-        data : DatasetData
-            The DatasetData instance holding the monte-carlo event data.
-        fluxmodel : FluxModel
-            The flux model instance. Must be an instance of FluxModel.
-        livetime : float | Livetime
-            The live-time in days to use for the detector signal yield.
-        ppbar : ProgressBar instance | None
-            The instance of ProgressBar of the optional parent progress bar.
-
-        Returns
-        -------
-        detsigyield : DetSigYield instance
-            An instance derived from DetSigYield.
+    def assert_types_of_construct_detsigyield_arguments(
+            self,
+            dataset,
+            data,
+            fluxmodel,
+            livetime,
+            ppbar):
+        """Checks the types of the arguments for the ``construct_detsigyield``
+        method. It raises errors if the arguments have the wrong type.
         """
         if not isinstance(dataset, Dataset):
             raise TypeError(
@@ -256,3 +242,36 @@ class DetSigYieldBuilder(object, metaclass=abc.ABCMeta):
                 raise TypeError(
                     'The ppbar argument must be an instance of ProgressBar! '
                     f'Its current type is {classname(ppbar)}.')
+
+    @abc.abstractmethod
+    def construct_detsigyield(
+            self,
+            dataset,
+            data,
+            fluxmodel,
+            livetime,
+            ppbar=None):
+        """Abstract method to construct the DetSigYield instance.
+        This method must be called by the derived class method implementation
+        to ensure the compatibility check of the given flux model with the
+        supported flux models.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The Dataset instance holding possible dataset specific settings.
+        data : DatasetData
+            The DatasetData instance holding the monte-carlo event data.
+        fluxmodel : FluxModel
+            The flux model instance. Must be an instance of FluxModel.
+        livetime : float | Livetime
+            The live-time in days to use for the detector signal yield.
+        ppbar : ProgressBar instance | None
+            The instance of ProgressBar of the optional parent progress bar.
+
+        Returns
+        -------
+        detsigyield : DetSigYield instance
+            An instance derived from DetSigYield.
+        """
+        pass

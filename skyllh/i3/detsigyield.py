@@ -432,8 +432,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         detsigyield : FixedFluxPointLikeSourceI3DetSigYield instance
             The DetSigYield instance for point-like source with a fixed flux.
         """
-        # Check data types of the input arguments.
-        super().construct_detsigyield(
+        self.assert_types_of_construct_detsigyield_arguments(
             dataset=dataset,
             data=data,
             fluxmodel=fluxmodel,
@@ -636,10 +635,10 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
     """This detector signal yield builder constructs a
     detector signal yield for a variable flux model with a single parameter,
     assuming a point-like source.
-    It constructs a two-dimensional spline function in sin(dec) and the fit
+    It constructs a two-dimensional spline function in sin(dec) and the
     parameter, using a :class:`scipy.interpolate.RectBivariateSpline`.
-    Hence, the detector signal yield can vary with the declination and the fit
-    parameter of the source.
+    Hence, the detector signal yield can vary with the declination and the
+    parameter of the flux model.
 
     It is tailored to the IceCube detector at the South Pole, where the
     effective area depends soley on the zenith angle, and hence on the
@@ -657,17 +656,17 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         flux model with a single parameter.
         It requires a sinDec binning definition to compute the sin(dec)
         dependency of the detector effective area, and a parameter grid to
-        compute the floating parameter dependency of the detector signal yield.
+        compute the parameter dependency of the detector signal yield.
 
         Parameters
         ----------
-        param_grid : ParameterGrid instance
-            The ParameterGrid instance which defines the grid of floating
+        param_grid : instance of ParameterGrid
+            The instance of ParameterGrid which defines the grid of the
             parameter values. The name of the parameter is defined via the name
             property of the ParameterGrid instance.
-        sin_dec_binning : BinningDefinition | None
-            The BinningDefinition instance which defines the sin(dec) binning.
-            If set to None, the sin(dec) binning will be taken from the
+        sin_dec_binning : instance of BinningDefinition | None
+            The instance of BinningDefinition which defines the sin(dec)
+            binning. If set to None, the sin(dec) binning will be taken from the
             dataset's binning definitions.
         spline_order_sinDec : int
             The order of the spline function for the logarithmic values of the
@@ -678,8 +677,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             detector signal yield along the gamma axis.
             The default is 2.
         ncpu : int | None
-            The number of CPUs to utilize. Global setting will take place if
-            not specified, i.e. set to None.
+            The number of CPUs to utilize. If set to ``None``, global setting
+            will take place.
         """
         super().__init__(
             sin_dec_binning,
@@ -744,15 +743,14 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             livetime,
             ppbar=None):
         """Constructs a detector signal yield 2-dimensional log spline
-        function for the given flux model with varying floating parameter
-        values.
+        function for the given flux model with varying parameter values.
 
         Parameters
         ----------
-        dataset : Dataset instance
-            The Dataset instance holding the sin(dec) binning definition.
-        data : DatasetData instance
-            The DatasetData instance holding the monte-carlo event data.
+        dataset : instance of Dataset
+            The instance of Dataset holding the sin(dec) binning definition.
+        data : instance of DatasetData
+            The instance of DatasetData holding the monte-carlo event data.
             The numpy record array for the monte-carlo data of the dataset must
             contain the following data fields:
 
@@ -764,22 +762,21 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             ``'true_energy'`` : float
                 The true energy value of the data event.
 
-        fluxmodel : FluxModel
+        fluxmodel : instance of FluxModel
             The flux model instance. Must be an instance of FluxModel.
-        livetime : float | Livetime instance
+        livetime : float | instance of Livetime
             The live-time in days or an instance of Livetime to use for the
             detector signal yield.
-        ppbar : ProgressBar instance | None
+        ppbar : instance of ProgressBar | None
             The instance of ProgressBar of the optional parent progress bar.
 
         Returns
         -------
-        detsigyield : SingleParamFluxPointLikeSourceI3DetSigYield instance
+        detsigyield : instance of SingleParamFluxPointLikeSourceI3DetSigYield
             The I3DetSigYield instance for a point-like source with a flux model
             of a single parameter.
         """
-        # Check for the correct data types of the input arguments.
-        super().construct_detsigyield(
+        self.assert_types_of_construct_detsigyield_arguments(
             dataset=dataset,
             data=data,
             fluxmodel=fluxmodel,
