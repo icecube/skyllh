@@ -94,9 +94,22 @@ def classname(obj):
 
 
 def module_classname(obj):
-    """Returns the module and class name of the class instance ``obj``.
+    """Returns the module and class name of the given instance ``obj``.
     """
-    return '{}.{}'.format(obj.__module__, classname(obj))
+    return f'{obj.__module__}.{classname(obj)}'
+
+
+def module_class_method_name(obj, meth_name):
+    """Returns the module, class, and method name of the given instance ``obj``.
+
+    Parameters
+    ----------
+    obj : instance of object
+        The object instance.
+    meth_name : str
+        The name of the method.
+    """
+    return f'{module_classname(obj)}.{meth_name}'
 
 
 def get_byte_size_prefix(size):
