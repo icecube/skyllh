@@ -109,7 +109,7 @@ class BackgroundTimePDF(
         # interval.
         on = self._livetime.is_on(times)
 
-        norm = 1 / (self._I * self._S)
+        norm = self._S / self._I**2
 
         pd[on] = self._time_flux_profile(t=times[on]) * norm
 
