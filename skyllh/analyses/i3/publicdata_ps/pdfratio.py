@@ -4,15 +4,28 @@
 
 import numpy as np
 
-from skyllh.core.py import module_classname
-from skyllh.core.debugging import get_logger
-from skyllh.core.parameters import make_params_hash
-from skyllh.core.pdf import PDF
-from skyllh.core.pdfratio import SigSetOverBkgPDFRatio
+from skyllh.core.debugging import (
+    get_logger,
+)
+from skyllh.core.parameters import (
+    ParameterModelMapper,
+)
+from skyllh.core.pdfratio import (
+    SigSetOverBkgPDFRatio,
+)
+from skyllh.core.py import (
+    module_class_method_name,
+)
 
 
-class PDPDFRatio(SigSetOverBkgPDFRatio):
-    def __init__(self, sig_pdf_set, bkg_pdf, cap_ratio=False, **kwargs):
+class PDSigSetOverBkgPDFRatio(
+        SigSetOverBkgPDFRatio):
+    def __init__(
+            self,
+            sig_pdf_set,
+            bkg_pdf,
+            cap_ratio=False,
+            **kwargs):
         """Creates a PDFRatio instance for the public data.
         It takes a signal PDF set for different discrete gamma values.
 
@@ -28,17 +41,17 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
             Switch whether the S/B PDF ratio should get capped where no
             background is available. Default is False.
         """
-        self._logger = get_logger(module_classname(self))
+        self._logger = get_logger(module_class_method_name(self, '__init__'))
 
         super().__init__(
-            pdf_type=PDF,
-            signalpdfset=sig_pdf_set,
-            backgroundpdf=bkg_pdf,
+            sig_pdf_set=sig_pdf_set,
+            bkg_pdf=bkg_pdf,
             **kwargs)
 
         # Construct the instance for the fit parameter interpolation method.
-        self._interpolmethod_instance = self.interpolmethod(
-            self._get_ratio_values, sig_pdf_set.fitparams_grid_set)
+        self._interpolmethod = self.interpolmethod_cls(
+            func=self._get_ratio_values,
+            param_grid_set=sig_pdf_set.param_grid_set)
 
         self.cap_ratio = cap_ratio
         if self.cap_ratio:
@@ -73,9 +86,10 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         # order to avoid the recalculation of the ratio value when the
         # ``get_gradient`` method is called (usually after the ``get_ratio``
         # method was called).
+        self._cache_tdm_trial_data_state_id = None
         self._cache_fitparams_hash = None
         self._cache_ratio = None
-        self._cache_gradients = None
+        self._cache_grads = None
 
     @property
     def cap_ratio(self):
@@ -84,56 +98,120 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
         point number greater than zero as background pdf value (False).
         """
         return self._cap_ratio
+
     @cap_ratio.setter
     def cap_ratio(self, b):
         self._cap_ratio = b
 
-    def _get_signal_fitparam_names(self):
-        """This method must be re-implemented by the derived class and needs to
-        return the list of signal fit parameter names, this PDF ratio is a
-        function of. If it returns an empty list, the PDF ratio is independent
-        of any signal fit parameters.
+    def _is_cached(
+            self,
+            tdm,
+            fitparams_hash):
+        """Checks if the ratio and gradients for the given hash of local fit
+        parameters are already cached.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data events.
+        fitparams_hach : int
+            The hash value of the local fit parameter values.
 
         Returns
         -------
-        list of str
-            The list of the signal fit parameter names, this PDF ratio is a
-            function of. By default this method returns an empty list indicating
-            that the PDF ratio depends on no signal parameter.
+        check : bool
+            ``True`` if the ratio and gradient values are already cached,
+            ``False`` otherwise.
         """
-        fitparam_names = self.signalpdfset.fitparams_grid_set.parameter_names
-        return fitparam_names
-
-    def _is_cached(self, tdm, fitparams_hash):
-        """Checks if the ratio and gradients for the given set of fit parameters
-        are already cached.
-        """
-        if((self._cache_fitparams_hash == fitparams_hash) and
-           (len(self._cache_ratio) == tdm.n_selected_events)
-          ):
+        if (self._cache_tdm_trial_data_state_id == tdm.trial_data_state_id) and\
+           (self._cache_fitparams_hash == fitparams_hash) and\
+           (self._cache_ratio is not None) and\
+           (self._cache_grads is not None):
             return True
+
         return False
 
-    def _get_ratio_values(self, tdm, gridfitparams, eventdata):
-        """Select the signal PDF for the given fit parameter grid point and
-        evaluates the S/B ratio for all the given events.
+    def _get_hash_of_local_sig_fit_param_values(
+            self,
+            src_params_recarray):
+        """Gets the hash of the values of the local signal fit parameters from
+        the given ``src_params_recarray``.
+
+        Parameters
+        ----------
+        src_params_recarray : instance of ndarray
+            The (N_sources,)-shaped structured numpy ndarray holding the local
+            parameter names and values of the sources.
+
+        Returns
+        -------
+        hash : int
+            The hash of the (N_fitparams, N_sources)-shaped tuple of tuples
+            holding the values of the local signal fit parameters.
         """
-        sig_pdf_key = self.signalpdfset.make_pdf_key(gridfitparams)
+        values = []
+        for param_name in self.sig_param_names:
+            if ParameterModelMapper.is_local_param_a_fitparam(
+                    param_name, src_params_recarray):
+                values.append(tuple(src_params_recarray[param_name]))
 
-        sig_prob = self.signalpdfset.get_pdf(sig_pdf_key).get_prob(tdm)
-        if isinstance(sig_prob, tuple):
-            (sig_prob, _) = sig_prob
+        values = tuple(values)
 
-        bkg_prob = self.backgroundpdf.get_prob(tdm)
-        if isinstance(bkg_prob, tuple):
-            (bkg_prob, _) = bkg_prob
+        return hash(values)
 
-        if len(sig_prob) != len(bkg_prob):
-            raise ValueError(
-                f'The number of signal ({len(sig_prob)}) and background '
-                f'({len(bkg_prob)}) probability values is not equal!')
+    def _get_ratio_values(
+            self,
+            tdm,
+            eventdata,
+            gridparams_recarray,
+            n_values):
+        """Select the signal PDF for the given fit parameter grid point and
+        evaluates the S/B ratio for all the trial data events and sources.
+        """
+        n_sources = len(gridparams_recarray)
 
-        m_nonzero_bkg = bkg_prob > 0
+        ratio = np.empty((n_values,), dtype=np.double)
+
+        same_pdf_for_all_sources = True
+        for pname in gridparams_recarray.dtype.fields.keys():
+            if not np.all(np.isclose(np.diff(gridparams_recarray[pname]), 0)):
+                same_pdf_for_all_sources = False
+                break
+        if same_pdf_for_all_sources:
+            # Special case where the grid parameter values are the same for all
+            # sources for all grid parameters
+            gridparams = dict(
+                zip(gridparams_recarray.dtype.fields.keys(),
+                    gridparams_recarray[0])
+            )
+            sig_pdf_key = self.sig_pdf_set.make_key(gridparams)
+            ratio = self.sig_pdf_set.get_pdf(sig_pdf_key).get_pd(
+                tdm=tdm,
+                params_recarray=None)
+        else:
+            # General case, we need to loop over the sources.
+            for (sidx, interpol_param_values) in enumerate(gridparams_recarray):
+                m_src = np.zeros((n_sources), dtype=np.bool_)
+                m_src[sidx] = True
+                m_values = tdm.get_values_mask_for_source_mask(m_src)
+
+                gridparams = dict(
+                    zip(gridparams_recarray.dtype.fields.keys(),
+                        interpol_param_values)
+                )
+                sig_pdf_key = self.sig_pdf_set.make_key(gridparams)
+
+                sig_pd = self.sig_pdf_set.get_pdf(sig_pdf_key).get_pd(
+                    tdm=tdm,
+                    params_recarray=None)
+
+                ratio[m_values] = sig_pd[m_values]
+
+        bkg_pd = self.bkg_pdf.get_pd(tdm=tdm)
+        (bkg_pd,) = tdm.broadcast_selected_events_arrays_to_values_arrays(
+            (bkg_pd,))
+
+        m_nonzero_bkg = bkg_pd > 0
         m_zero_bkg = np.invert(m_nonzero_bkg)
         if np.any(m_zero_bkg):
             ev_idxs = np.where(m_zero_bkg)[0]
@@ -141,14 +219,12 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
                 f'For {len(ev_idxs)} events the background probability is '
                 f'zero. The event indices of these events are: {ev_idxs}')
 
-        ratio = np.empty((len(sig_prob),), dtype=np.double)
-        ratio[m_nonzero_bkg] = sig_prob[m_nonzero_bkg] / bkg_prob[m_nonzero_bkg]
+        ratio[m_nonzero_bkg] /= bkg_pd[m_nonzero_bkg]
 
         if self._cap_ratio:
             ratio[m_zero_bkg] = self.ratio_fill_value_dict[sig_pdf_key]
         else:
-            ratio[m_zero_bkg] = (sig_prob[m_zero_bkg] /
-                                 np.finfo(np.double).resolution)
+            ratio[m_zero_bkg] /= np.finfo(np.double).resolution
 
         # Check for positive inf values in the ratio and set the ratio to a
         # finite number. Here we choose the maximum value of float32 to keep
@@ -158,75 +234,141 @@ class PDPDFRatio(SigSetOverBkgPDFRatio):
 
         return ratio
 
-    def _calculate_ratio_and_gradients(self, tdm, fitparams, fitparams_hash):
-        """Calculates the ratio values and ratio gradients for all the events
-        given the fit parameters using the interpolation method for the fit
-        parameter. It caches the results.
+    def _calculate_ratio_and_grads(
+            self,
+            tdm,
+            src_params_recarray,
+            fitparams_hash):
+        """Calculates the ratio and ratio gradient values for all the trial data
+        events and sources given the fit parameters using the interpolation
+        method for the fit parameter. It caches the results.
         """
-        (ratio, gradients) =\
-            self._interpolmethod_instance.get_value_and_gradients(
-                tdm, eventdata=None, params=fitparams)
+        (ratio, grads) = self._interpolmethod(
+            tdm=tdm,
+            eventdata=None,
+            params_recarray=src_params_recarray)
 
-        # Cache the value and the gradients.
+        # Cache the ratio and gradient values.
         self._cache_fitparams_hash = fitparams_hash
         self._cache_ratio = ratio
-        self._cache_gradients = gradients
+        self._cache_grads = grads
 
-    def get_ratio(self, tdm, fitparams=None, tl=None):
-        """Calculates the PDF ratio values for all the events.
+    def get_ratio(
+            self,
+            tdm,
+            src_params_recarray,
+            tl=None):
+        """Calculates the PDF ratio values for all events and sources.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
-            The TrialDataManager instance holding the trial data events for
+            The instance of TrialDataManager holding the trial data events for
             which the PDF ratio values should get calculated.
-        fitparams : dict | None
-            The dictionary with the parameter name-value pairs.
-            It can be ``None``, if the PDF ratio does not depend on any
-            parameters.
-        tl : TimeLord instance | None
+        src_params_recarray : instance of numpy structured ndarray | None
+            The (N_sources,)-shaped numpy structured ndarray holding the
+            parameter names and values of the sources.
+            See the documentation of the
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            method for more information.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        ratios : instance of ndarray
+            The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
+            ratio value for each trial event and source.
+        """
+        fitparams_hash = self._get_hash_of_local_sig_fit_param_values(
+            src_params_recarray)
+
+        # Check if the ratio value is already cached.
+        if self._is_cached(
+                tdm=tdm,
+                fitparams_hash=fitparams_hash):
+            return self._cache_ratio
+
+        self._calculate_ratio_and_grads(
+            tdm=tdm,
+            src_params_recarray=src_params_recarray,
+            fitparams_hash=fitparams_hash)
+
+        return self._cache_ratio
+
+    def get_gradient(
+            self,
+            tdm,
+            src_params_recarray,
+            fitparam_id,
+            tl=None):
+        """Retrieves the PDF ratio gradient for the global fit parameter
+        ``fitparam_id`` for each trial data event and source, given the given
+        set of parameters ``src_params_recarray`` for each source.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data events for
+            which the PDF ratio gradient values should get calculated.
+        src_params_recarray : instance of numpy structured ndarray | None
+            The (N_sources,)-shaped numpy structured ndarray holding the
+            parameter names and values of the sources.
+            See the documentation of the
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            method for more information.
+        fitparam_id : int
+            The name of the fit parameter for which the gradient should get
+            calculated.
+        tl : instance of TimeLord | None
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratios : (N_events,)-shaped 1d numpy ndarray of float
-            The PDF ratio value for each trial event.
+        grad : instance of ndarray
+            The (N_values,)-shaped numpy ndarray holding the gradient values
+            for all sources and trial events w.r.t. the given global fit
+            parameter.
         """
-        fitparams_hash = make_params_hash(fitparams)
+        fitparams_hash = self._get_hash_of_local_sig_fit_param_values(
+            src_params_recarray)
 
-        # Check if the ratio value is already cached.
-        if self._is_cached(tdm, fitparams_hash):
-            return self._cache_ratio
+        # Calculate the gradients if they are not calculated yet.
+        if not self._is_cached(
+            tdm=tdm,
+            fitparams_hash=fitparams_hash
+        ):
+            self._calculate_ratio_and_grads(
+                tdm=tdm,
+                src_params_recarray=src_params_recarray,
+                fitparams_hash=fitparams_hash)
 
-        self._calculate_ratio_and_gradients(tdm, fitparams, fitparams_hash)
+        tdm_n_sources = tdm.n_sources
 
-        return self._cache_ratio
+        grad = np.zeros((tdm.get_n_values(),), dtype=np.float64)
 
-    def get_gradient(self, tdm, fitparams, fitparam_name):
-        """Retrieves the PDF ratio gradient for the pidx'th fit parameter.
+        # Loop through the parameters of the signal PDF set and match them with
+        # the global fit parameter.
+        for (pidx, pname) in enumerate(
+                self._sig_pdf_set.param_grid_set.params_name_list):
+            if pname not in src_params_recarray.dtype.fields:
+                continue
+            p_gpidxs = src_params_recarray[f'{pname}:gpidx']
+            src_mask = p_gpidxs == (fitparam_id + 1)
+            n_sources = np.count_nonzero(src_mask)
+            if n_sources == 0:
+                continue
+            if n_sources == tdm_n_sources:
+                # This parameter applies to all sources, hence to all values,
+                # and hence it's the only local parameter contributing to the
+                # global parameter fitparam_id.
+                return self._cache_grads[pidx]
 
-        Parameters
-        ----------
-        tdm : instance of TrialDataManager
-            The TrialDataManager instance holding the trial event data for which
-            the PDF ratio gradient values should get calculated.
-        fitparams : dict
-            The dictionary with the fit parameter values.
-        fitparam_name : str
-            The name of the fit parameter for which the gradient should get
-            calculated.
-        """
-        fitparams_hash = make_params_hash(fitparams)
+            # The current parameter does not apply to all sources.
+            # Create a values mask that matches a given source mask.
+            m_values = tdm.get_values_mask_for_source_mask(src_mask)
+            grad[m_values] = self._cache_grads[pidx][m_values]
 
-        # Convert the fit parameter name into the local fit parameter index.
-        pidx = self.convert_signal_fitparam_name_into_index(fitparam_name)
-
-        # Check if the gradients have been calculated already.
-        if self._is_cached(tdm, fitparams_hash):
-            return self._cache_gradients[pidx]
-
-        # The gradients have not been calculated yet.
-        self._calculate_ratio_and_gradients(tdm, fitparams, fitparams_hash)
-
-        return self._cache_gradients[pidx]
+        return grad
