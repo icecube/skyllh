@@ -182,18 +182,18 @@ class PDFRatio(
             src_params_recarray,
             fitparam_id,
             tl=None):
-        """Retrieves the PDF ratio gradient for the parameter ``fitparam_id``
-        for each trial data event and source, given the given set of parameters
-        ``src_params_recarray`` for each source.
+        """Retrieves the PDF ratio gradient for the global fit parameter
+        ``fitparam_id`` for each trial data event and source, given the given
+        set of parameters ``src_params_recarray`` for each source.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio gradient values should get calculated.
-        src_params_recarray : instance of numpy record ndarray
-            The (N_sources,)-shaped numpy record ndarray holding the parameter
-            names and values of the sources.
+        src_params_recarray : instance of numpy structured ndarray
+            The (N_sources,)-shaped numpy structured ndarray holding the
+            parameter names and values of the sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
