@@ -361,8 +361,8 @@ def create_analysis(
         energy_sigpdfset = PDSignalEnergyPDFSet(
             ds=ds,
             src_dec=source.dec,
-            flux_model=fluxmodel,
-            fitparam_grid_set=gamma_grid,
+            fluxmodel=fluxmodel,
+            param_grid_set=gamma_grid,
             ppbar=ppbar
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
