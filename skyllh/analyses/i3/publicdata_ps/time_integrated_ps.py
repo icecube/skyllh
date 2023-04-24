@@ -16,7 +16,7 @@ from skyllh.analyses.i3.publicdata_ps.detsigyield import (
     PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
 )
 from skyllh.analyses.i3.publicdata_ps.pdfratio import (
-    PDPDFRatio,
+    PDSigSetOverBkgPDFRatio,
 )
 from skyllh.analyses.i3.publicdata_ps.signal_generator import (
     PDSignalGenerator,
@@ -373,7 +373,7 @@ def create_analysis(
             smoothing_filter=smoothing_filter,
             kde_smoothing=kde_smoothing)
 
-        energy_pdfratio = PDPDFRatio(
+        energy_pdfratio = PDSigSetOverBkgPDFRatio(
             sig_pdf_set=energy_sigpdfset,
             bkg_pdf=energy_bkgpdf,
             cap_ratio=cap_ratio)
