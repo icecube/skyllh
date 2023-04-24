@@ -1124,9 +1124,8 @@ class TrialDataManager(object):
         # stored within the _events DataFieldRecordArray if they do not contain
         # source-event data. For all other cases, the data is stored in the
         # .values attribute of the DataField class instance.
-        if (self._events is not None and
-            name in self._events.field_name_list
-           ):
+        if self._events is not None and\
+           name in self._events.field_name_list:
             return self._events[name]
 
         if name in self._source_data_fields_dict:
@@ -1178,9 +1177,8 @@ class TrialDataManager(object):
             ``True`` if the given data field contains event data, ``False``
             otherwise.
         """
-        if (self._events is not None and
-            name in self._events.field_name_list
-           ):
+        if self._events is not None and\
+           name in self._events.field_name_list:
             return True
 
         return False
@@ -1227,4 +1225,3 @@ class TrialDataManager(object):
             return self._global_fitparam_data_fields_dict[name].is_srcevt_data
 
         return False
-
