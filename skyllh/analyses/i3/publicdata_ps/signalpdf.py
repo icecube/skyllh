@@ -324,7 +324,7 @@ class PDSignalEnergyPDFSet(
             """
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
-            my_fluxmodel = fluxmodel.copy(newprop=gridfitparams)
+            my_fluxmodel = fluxmodel.copy(newparams=gridfitparams)
 
             self._logger.debug(
                 'Generate signal energy PDF for parameters {} in {} E_nu '
