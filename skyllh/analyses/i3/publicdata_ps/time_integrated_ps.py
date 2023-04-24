@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-"""The time_integrated_ps analysis is a multi-dataset time-integrated single source
-analysis with a two-component likelihood function using a spacial and an energy
-event PDF.
+"""The time_integrated_ps analysis is a multi-dataset time-integrated single
+source analysis with a two-component likelihood function using a spacial and an
+energy event PDF.
 """
 
 import argparse
