@@ -1,27 +1,45 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from scipy import interpolate
+from scipy import (
+    interpolate,
+)
 import scipy.stats
 
-from skyllh.core.py import (
-    issequenceof,
-    float_cast,
-    int_cast
+from skyllh.analyses.i3.publicdata_ps.aeff import (
+    PDAeff,
 )
-from skyllh.core.py import module_classname
-from skyllh.core.debugging import get_logger
-from skyllh.core.signal_generator import SignalGeneratorBase
-from skyllh.core.llhratio import LLHRatio
-from skyllh.core.dataset import Dataset
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
-from skyllh.core.storage import DataFieldRecordArray
-
-from skyllh.analyses.i3.publicdata_ps.utils import psi_to_dec_and_ra
 from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
-    PDSmearingMatrix
+    PDSmearingMatrix,
 )
-from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
+from skyllh.analyses.i3.publicdata_ps.utils import (
+    psi_to_dec_and_ra,
+)
+
+from skyllh.core.dataset import (
+    Dataset,
+)
+from skyllh.core.debugging import (
+    get_logger,
+)
+from skyllh.core.llhratio import (
+    LLHRatio,
+)
+from skyllh.core.py import (
+    float_cast,
+    issequenceof,
+    int_cast,
+    module_classname,
+)
+from skyllh.core.signal_generator import (
+    SignalGeneratorBase,
+)
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
+from skyllh.core.storage import (
+    DataFieldRecordArray,
+)
 
 
 class PDDatasetSignalGenerator(object):
@@ -250,7 +268,7 @@ class PDDatasetSignalGenerator(object):
             A spline of E(sin_dec) that defines the declination
             dependent energy cut in the IceCube southern sky.
         cut_sindec : float
-            The sine of the declination to start applying the energy cut. 
+            The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
         logger : logging.Logger
             The Logger instance.
@@ -291,7 +309,7 @@ class PDDatasetSignalGenerator(object):
             A spline of E(sin_dec) that defines the declination
             dependent energy cut in the IceCube southern sky.
         cut_sindec : float
-            The sine of the declination to start applying the energy cut. 
+            The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
 
         Returns
@@ -373,7 +391,7 @@ class PDSignalGenerator(SignalGeneratorBase):
             A list of splines of E(sin_dec) used to define the declination
             dependent energy cut in the IceCube southern sky.
         cut_sindec : list of float
-            The sine of the declination to start applying the energy cut. 
+            The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
         """
         self.src_hypo_group_manager = src_hypo_group_manager
@@ -394,7 +412,7 @@ class PDSignalGenerator(SignalGeneratorBase):
 
     @src_hypo_group_manager.setter
     def src_hypo_group_manager(self, manager):
-        if(not isinstance(manager, SourceHypoGroupManager)):
+        if not isinstance(manager, SourceHypoGroupManager):
             raise TypeError('The src_hypo_group_manager property must be an '
                             'instance of SourceHypoGroupManager!')
         self._src_hypo_group_manager = manager
@@ -408,7 +426,7 @@ class PDSignalGenerator(SignalGeneratorBase):
 
     @dataset_list.setter
     def dataset_list(self, datasets):
-        if(not issequenceof(datasets, Dataset)):
+        if not issequenceof(datasets, Dataset):
             raise TypeError('The dataset_list property must be a sequence of '
                             'Dataset instances!')
         self._dataset_list = list(datasets)
@@ -422,7 +440,7 @@ class PDSignalGenerator(SignalGeneratorBase):
     @llhratio.setter
     def llhratio(self, llhratio):
         if llhratio is not None:
-            if(not isinstance(llhratio, LLHRatio)):
+            if not isinstance(llhratio, LLHRatio):
                 raise TypeError('The llratio property must be an instance of '
                                 'LLHRatio!')
         self._llhratio = llhratio
@@ -449,10 +467,10 @@ class PDSignalGenerator(SignalGeneratorBase):
             # This only works with power-laws for now.
             # Each source hypo group can have a different power-law
             gamma = shg.fluxmodel.gamma
-            weights, _ = self.llhratio.dataset_signal_weights([mean, gamma])
+            (weights, _) = self.llhratio.dataset_signal_weights([mean, gamma])
             for (ds_idx, w) in enumerate(weights):
                 w_mean = mean * w
-                if(poisson):
+                if poisson:
                     n_events = rss.random.poisson(
                         float_cast(
                             w_mean,
@@ -630,7 +648,7 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
         return is_in_grl
 
     def generate_signal_events(self, rss, mean, poisson=True):
-        """Same as in PDSignalGenerator, but we assign times here. 
+        """Same as in PDSignalGenerator, but we assign times here.
         """
         # Call method from the parent class to generate signal events.
         (tot_n_events, signal_events_dict) = super().generate_signal_events(
