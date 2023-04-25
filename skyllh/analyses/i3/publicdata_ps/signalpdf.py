@@ -319,17 +319,17 @@ class PDSignalEnergyPDFSet(
         ang_err_bw = sm.ang_err_upper_edges - sm.ang_err_lower_edges
 
         # Create the energy pdf for different gamma values.
-        def create_energy_pdf(sm_pdf, fluxmodel, gridfitparams):
+        def create_energy_pdf(sm_pdf, fluxmodel, gridparams):
             """Creates an energy pdf for a specific gamma value.
             """
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
-            my_fluxmodel = fluxmodel.copy(newparams=gridfitparams)
+            my_fluxmodel = fluxmodel.copy(newparams=gridparams)
 
             self._logger.debug(
                 'Generate signal energy PDF for parameters {} in {} E_nu '
                 'bins.'.format(
-                    gridfitparams, len(valid_true_e_idxs))
+                    gridparams, len(valid_true_e_idxs))
             )
 
             # Calculate the flux probability p(E_nu|gamma).
