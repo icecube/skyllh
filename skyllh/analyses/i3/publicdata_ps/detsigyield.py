@@ -4,6 +4,9 @@ import numpy as np
 
 import scipy.interpolate
 
+from skyllh.analyses.i3.publicdata_ps.aeff import (
+    load_effective_area_array,
+)
 from skyllh.core import (
     multiproc,
 )
@@ -13,12 +16,15 @@ from skyllh.core.binning import (
 from skyllh.core.livetime import (
     Livetime,
 )
+from skyllh.core.py import (
+    classname,
+)
 from skyllh.i3.detsigyield import (
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
     SingleParamFluxPointLikeSourceI3DetSigYield,
 )
-from skyllh.analyses.i3.publicdata_ps.aeff import (
-    load_effective_area_array,
+from skyllh.physics.flux_model import (
+    FactorizedFluxModel,
 )
 
 
@@ -76,6 +82,23 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             spline_order_param=spline_order_param,
             ncpu=ncpu,
             **kwargs)
+
+    def assert_types_of_construct_detsigyield_arguments(
+            self,
+            fluxmodel,
+            **kwargs):
+        """Checks the correct types of the arguments for the
+        ``construct_detsigyield`` method.
+        """
+        super().assert_types_of_construct_detsigyield_arguments(
+            fluxmodel=fluxmodel,
+            **kwargs)
+
+        if not isinstance(fluxmodel, FactorizedFluxModel):
+            raise TypeError(
+                'The fluxmodel argument must be an instance of '
+                'FactorizedFluxModel! '
+                f'Its current type is {classname(fluxmodel)}!')
 
     def construct_detsigyield(
             self,
@@ -160,8 +183,9 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 detector signal yield values for the different sin_dec bins and
                 the given flux model.
             """
-            h_phi = fluxmodel.get_integral(
-                energy_bin_edges_lower, energy_bin_edges_upper)
+            h_phi = fluxmodel.energy_profile.get_integral(
+                E1=energy_bin_edges_lower,
+                E2=energy_bin_edges_upper)
 
             # Sum over the enegry bins for each sin_dec row.
             h = np.sum(aeff*h_phi, axis=1)
