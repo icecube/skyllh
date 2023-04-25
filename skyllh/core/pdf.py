@@ -304,8 +304,7 @@ class PDF(
             The instance of ParameterModelMapper defining the global parameters
             and their mapping to local model/source parameters.
             It can be ``None``, if the PDF does not depend on any parameters.
-        param_set : Parameter instance | sequence of Parameter instances |
-                    ParameterSet instance | None
+        param_set : instance of Parameter | sequence of instance of Parameter | instance of ParameterSet | None
             If this PDF depends on parameters, this set of parameters
             defines them. If a single parameter instance is given a ParameterSet
             instance will be created holding this single parameter.
