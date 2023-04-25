@@ -105,7 +105,8 @@ class PDSignalEnergyPDF(
 
     def assert_is_valid_for_trial_data(
             self,
-            tdm):
+            tdm,
+            tl=None):
         pass
 
     def get_pd_by_log10_reco_e(

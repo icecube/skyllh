@@ -278,7 +278,8 @@ class PDBackgroundI3EnergyPDF(
 
     def assert_is_valid_for_trial_data(
             self,
-            tdm):
+            tdm,
+            tl=None):
         """Checks if this energy PDF covers the entire value range of the trail
         data events.
 
@@ -292,6 +293,8 @@ class PDBackgroundI3EnergyPDF(
                     The base-10 logarithm of the reconstructed energy value.
                 sin_dec : float
                     The sine of the declination value of the event.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to measure timing information.
 
         Raises
         ------
@@ -503,7 +506,8 @@ class PDMCBackgroundI3EnergyPDF(
 
     def assert_is_valid_for_trial_data(
             self,
-            tdm):
+            tdm,
+            tl=None):
         """Checks if this energy PDF covers the entire value range of the trail
         data events.
 
@@ -517,6 +521,8 @@ class PDMCBackgroundI3EnergyPDF(
                     The base-10 logarithm of the reconstructed energy value.
                 sin_dec : float
                     The sine of the declination value of the event.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to measure timing information.
 
         Raises
         ------
