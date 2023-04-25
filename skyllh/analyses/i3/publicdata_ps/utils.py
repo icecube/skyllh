@@ -69,7 +69,7 @@ class FctSpline1D(object):
             The numpy ndarray holding the evaluated values of the spline.
         """
         f = self.spl_f(x)
-        f = np.nan_to_num(f, nan=oor_value)
+        f = np.where(np.isnan(f), oor_value, f)
 
         return f
 
