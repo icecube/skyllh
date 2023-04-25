@@ -732,7 +732,7 @@ class DataFieldRecordArray(object):
                 # Create a ndarray with the final data type and then assign the
                 # values from the data, which technically is a copy.
                 field_arr = np.empty((length,), dtype=dt)
-                field_arr[:] = data[fname]
+                np.copyto(field_arr, data[fname])
             else:
                 field_arr = data[fname]
             if(self._len is None):
