@@ -90,6 +90,7 @@ from skyllh.core.trialdata import (
     TrialDataManager,
 )
 from skyllh.core.utils.analysis import (
+    create_trial_data_file,
     pointlikesource_to_data_field_array,
 )
 from skyllh.core.utils.coords import (
@@ -523,4 +524,16 @@ if __name__ == '__main__':
     print(f'gamma_fit = {param_dict["gamma"]:g}')
     print(f'minimizer status = {status}')
 
+    print(tl)
+
+    tl = TimeLord()
+    rss = RandomStateService(seed=1)
+    (_, _, _, trials) = create_trial_data_file(
+        ana=ana,
+        rss=rss,
+        n_trials=1e3,
+        mean_n_sig=0,
+        pathfilename=None,
+        ncpu=1,
+        tl=tl)
     print(tl)
