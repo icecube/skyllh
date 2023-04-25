@@ -829,7 +829,11 @@ class SigOverBkgPDFRatio(
             m = (self._cache_bkg_pd > 0)
             (m, bkg_pd) = tdm.broadcast_selected_events_arrays_to_values_arrays(
                 (m, self._cache_bkg_pd))
-            ratios[m] = self._cache_sig_pd[m] / bkg_pd[m]
+            np.divide(
+                self._cache_sig_pd,
+                bkg_pd,
+                where=m,
+                out=ratios)
 
         return ratios
 
