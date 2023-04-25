@@ -366,6 +366,33 @@ class EnergyFluxProfile(
         """
         pass
 
+    @abc.abstractclassmethod
+    def get_integral(
+            self,
+            E1,
+            E2,
+            unit=None):
+        """This method is supposed to compute the integral of the energy flux
+        profile in the range [``E1``, ``E2``].
+
+        Parameters
+        ----------
+        E1 : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E2 : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral : 1d ndarray of float
+            The integral values of the given integral ranges.
+        """
+        pass
+
 
 class UnityEnergyFluxProfile(
         EnergyFluxProfile):
@@ -419,6 +446,40 @@ class UnityEnergyFluxProfile(
         values = np.ones_like(E, dtype=np.int8)
 
         return values
+
+    def get_integral(
+            self,
+            E1,
+            E2,
+            unit=None):
+        """Computes the integral of this energy flux profile in the range
+        [``E1``, ``E2``], which by definition is ``E2 - E1``.
+
+        Parameters
+        ----------
+        E1 : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E2 : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral : 1d ndarray of float
+            The integral values of the given integral ranges.
+        """
+        E1 = np.atleast_1d(E1)
+        E2 = np.atleast_1d(E2)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            time_unit_conv_factor = unit.to(self._energy_unit)
+            E1 = E1 * time_unit_conv_factor
+            E2 = E2 * time_unit_conv_factor
+
+        return E2 - E1
 
 
 class PowerLawEnergyFluxProfile(
@@ -522,12 +583,57 @@ class PowerLawEnergyFluxProfile(
         E = np.atleast_1d(E)
 
         if (unit is not None) and (unit != self._energy_unit):
-            energy_unit_conv_factor = unit.to(self._energy_unit)
-            E = E * energy_unit_conv_factor
+            E = E * unit.to(self._energy_unit)
 
         value = np.power(E / self._E0, -self._gamma)
 
         return value
+
+    def get_integral(
+            self,
+            E1,
+            E2,
+            unit=None):
+        """Computes the integral value of this power-law energy flux profile in
+        the range ``[E1, E2]``.
+
+        Parameters
+        ----------
+        E1 : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E2 : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral : 1d ndarray of float
+            The integral values of the given integral ranges.
+        """
+        E1 = np.atleast_1d(E1)
+        E2 = np.atleast_1d(E2)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            time_unit_conv_factor = unit.to(self._energy_unit)
+            E1 = E1 * time_unit_conv_factor
+            E2 = E2 * time_unit_conv_factor
+
+        gamma = self._gamma
+
+        # Handle special case for gamma = 1.
+        if gamma == 1:
+            integral = self._E0 * np.log(E2/E1)
+            return integral
+
+        integral = (
+            np.power(self._E0, gamma) / (1-gamma) *
+            (np.power(E2, 1-gamma) - np.power(E1, 1-gamma))
+        )
+
+        return integral
 
 
 class TimeFluxProfile(
