@@ -791,7 +791,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
     def evaluate(
             self,
             fitparam_values,
-            src_params_recarray,
+            src_params_recarray=None,
             tl=None):
         """Evaluates the log-likelihood ratio function for the given set of
         data events.
@@ -801,9 +801,12 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         fitparam_values : instance of numpy ndarray
             The (N_fitparams,)-shaped 1D ndarray holding the current values of
             the global fit parameters.
-        src_params_recarray : instance of numpy record ndarray | None
-            The numpy record ndarray of length N_sources holding the parameter
-            names and values of all sources.
+        src_params_recarray : instance of numpy structured ndarray | None
+            The numpy record ndarray of length N_sources holding the local
+            parameter names and values of all sources.
+            If it is ``None``, it will be generated automatically from the
+            ``fitparam_values`` argument using the
+            :class:`~skyllh.core.parameters.ParameterModelMapper` instance.
         tl : instance of TimeLord | None
             The optional instance of TimeLord to measure the timing of
             evaluating the LLH ratio function.
@@ -817,6 +820,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             value for each global fit parameter.
         """
         tracing = CFG['debugging']['enable_tracing']
+
+        if src_params_recarray is None:
+            src_params_recarray = self._pmm.create_src_params_recarray(
+                gflp_values=fitparam_values
+            )
 
         tdm = self._tdm
 
@@ -1067,7 +1075,7 @@ class MultiDatasetTCLLHRatio(
     def evaluate(
             self,
             fitparam_values,
-            src_params_recarray,
+            src_params_recarray=None,
             tl=None):
         """Evaluates the composite log-likelihood-ratio function and returns its
         value and global fit parameter gradients.
@@ -1077,12 +1085,15 @@ class MultiDatasetTCLLHRatio(
         fitparam_values : instance of numpy ndarray
             The (N_fitparams,)-shaped numpy 1D ndarray holding the current
             values of the global fit parameters.
-        src_params_recarray : instance of numpy record ndarray
+        src_params_recarray : instance of numpy record ndarray | None
             The numpy record ndarray of length N_sources holding the parameter
             names and values of all sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information about this array.
+            It case it is ``None``, it will be created automatically from the
+            ``fitparam_values`` argument using the
+            :class:`~skyllh.core.parameters.ParameterModelMapper` instance.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used for timing
             measurements.
@@ -1098,6 +1109,11 @@ class MultiDatasetTCLLHRatio(
             parameter.
         """
         tracing = CFG['debugging']['enable_tracing']
+
+        if src_params_recarray is None:
+            src_params_recarray = self._pmm.create_src_params_recarray(
+                gflp_values=fitparam_values
+            )
 
         n_fitparams = len(fitparam_values)
 
