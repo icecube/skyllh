@@ -518,8 +518,8 @@ if __name__ == '__main__':
     with tl.task_timer('Unblinding data.'):
         (TS, fitparam_dict, status) = ana.unblind(rss)
 
-    print('TS = %g' % (TS))
-    print('ns_fit = %g' % (fitparam_dict['ns']))
-    print('gamma_fit = %g' % (fitparam_dict['gamma']))
+    print(f'TS = {TS:g}')
+    print(f'ns_fit = {fitparam_dict["ns"]:g}')
+    print(f'gamma_fit = {fitparam_dict["gamma"]:g}')
 
     print(tl)
