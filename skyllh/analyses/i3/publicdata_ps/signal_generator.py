@@ -15,10 +15,6 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     psi_to_dec_and_ra,
 )
-
-from skyllh.core.dataset import (
-    Dataset,
-)
 from skyllh.core.debugging import (
     get_logger,
 )
@@ -27,45 +23,49 @@ from skyllh.core.llhratio import (
 )
 from skyllh.core.py import (
     float_cast,
-    issequenceof,
     int_cast,
     module_classname,
 )
 from skyllh.core.signal_generator import (
     SignalGeneratorBase,
 )
-from skyllh.core.source_hypo_grouping import (
-    SourceHypoGroupManager,
-)
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
 
 
-class PDDatasetSignalGenerator(object):
+class PDDatasetSignalGenerator(
+        object):
     """This class provides a signal generation method for a point-like source
     seen in the IceCube detector using one dataset of the 10 years public data
     release. It is used by the PDSignalGenerator class in a loop over all the
     datasets that have been added to the analysis.
     """
 
-    def __init__(self, ds, src_dec, effA=None, sm=None, **kwargs):
+    def __init__(
+            self,
+            ds,
+            src_dec,
+            effA=None,
+            sm=None,
+            **kwargs):
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
 
         Parameters:
         -----------
-        ds : Dataset instance
-            Dataset instance for which signal events should get
+        ds : instance of Dataset
+            The instance of Dataset for which signal events should get
             generated for.
         src_dec : float
             The declination of the source in radians.
-        effA : PDAeff | None
+        effA : instance of PDAeff | None
             Representation of the effective area provided by the public data.
-        sm : PDSmearingMatrix | None
+        sm : instance of PDSmearingMatrix | None
             Representation of the smearing matrix provided by the public data.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         self._logger = get_logger(module_classname(self))
 
@@ -95,8 +95,11 @@ class PDDatasetSignalGenerator(object):
         else:
             self.effA = effA
 
-    def _generate_inv_cdf_spline(self, flux_model, log_e_min,
-                                 log_e_max):
+    def _generate_inv_cdf_spline(
+            self,
+            fluxmodel,
+            log_e_min,
+            log_e_max):
         """Sample the true neutrino energy from the power-law
         re-weighted with the detection probability.
         """
@@ -107,10 +110,12 @@ class PDDatasetSignalGenerator(object):
         high_bin_edges = self.effA._log10_enu_binedges_upper[m]
 
         # Flux probability P(E_nu | gamma) per bin.
-        flux_prob = flux_model.get_integral(
-            10**low_bin_edges, 10**high_bin_edges
-        ) / flux_model.get_integral(
-            10**low_bin_edges[0], 10**high_bin_edges[-1]
+        flux_prob = fluxmodel.energy_profile.get_integral(
+            E1=10**low_bin_edges,
+            E2=10**high_bin_edges
+        ) / fluxmodel.energy_profile.get_integral(
+            E1=10**low_bin_edges[0],
+            E2=10**high_bin_edges[-1]
         )
 
         # Do the product and normalize again to a probability per bin.
@@ -127,8 +132,10 @@ class PDDatasetSignalGenerator(object):
         prob_per_bin /= np.sum(prob_per_bin)
 
         # Compute the cumulative distribution CDF.
-        cum_per_bin = [np.sum(prob_per_bin[:i])
-                       for i in range(prob_per_bin.size+1)]
+        cum_per_bin = [
+            np.sum(prob_per_bin[:i])
+            for i in range(prob_per_bin.size+1)
+        ]
         if np.any(np.diff(cum_per_bin) == 0):
             raise ValueError(
                 'The cumulative sum of the true energy probability is not '
@@ -363,73 +370,56 @@ class PDDatasetSignalGenerator(object):
         return events
 
 
-class PDSignalGenerator(SignalGeneratorBase):
+class PDSignalGenerator(
+        SignalGeneratorBase):
     """This class provides a signal generation method for a point-like source
     seen in the IceCube detector using the 10 years public data release.
     """
 
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list=None,
-                 llhratio=None, energy_cut_splines=None, cut_sindec=None):
+    def __init__(
+            self,
+            shg_mgr,
+            dataset_list,
+            data_list=None,
+            llhratio=None,
+            energy_cut_splines=None,
+            cut_sindec=None,
+            **kwargs):
         """Constructs a new signal generator instance.
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The SourceHypoGroupManager instance defining the source hypothesis
-            groups.
-        dataset_list : list of Dataset instances
-            The list of Dataset instances for which signal events should get
-            generated for.
-        data_list : list of DatasetData instances
-            The list of DatasetData instances holding the actual data of each
+        shg_mgr : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager defining the source
+            hypothesis groups.
+        dataset_list : list of instance of Dataset
+            The list of instance of Dataset for which signal events should get
+            generated.
+        data_list : list of instance of DatasetData
+            The list of instance of DatasetData holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
-        llhratio : LLHRatio
-            The likelihood ratio object contains the datasets signal weights
-            needed for distributing the event generation among the different
-            datasets.
-        energy_cut_splines : list of UnivariateSpline
+        llhratio : instance of LLHRatio
+            The log-likelihood ratio function object containing the datasets
+            signal weights needed for distributing the generated events among
+            the different datasets.
+        energy_cut_splines : list of instance of UnivariateSpline
             A list of splines of E(sin_dec) used to define the declination
             dependent energy cut in the IceCube southern sky.
         cut_sindec : list of float
             The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
         """
-        self.src_hypo_group_manager = src_hypo_group_manager
-        self.dataset_list = dataset_list
-        self.data_list = data_list
+        super().__init__(
+            shg_mgr=shg_mgr,
+            dataset_list=data_list,
+            data_list=data_list,
+            **kwargs)
+
         self.llhratio = llhratio
         self.effA = [None] * len(self._dataset_list)
         self.sm = [None] * len(self._dataset_list)
         self.splines = energy_cut_splines
         self.cut_sindec = cut_sindec
-
-    @property
-    def src_hypo_group_manager(self):
-        """The SourceHypoGroupManager instance defining the source groups with
-        their spectra.
-        """
-        return self._src_hypo_group_manager
-
-    @src_hypo_group_manager.setter
-    def src_hypo_group_manager(self, manager):
-        if not isinstance(manager, SourceHypoGroupManager):
-            raise TypeError('The src_hypo_group_manager property must be an '
-                            'instance of SourceHypoGroupManager!')
-        self._src_hypo_group_manager = manager
-
-    @property
-    def dataset_list(self):
-        """The list of Dataset instances for which signal events should get
-        generated for.
-        """
-        return self._dataset_list
-
-    @dataset_list.setter
-    def dataset_list(self, datasets):
-        if not issequenceof(datasets, Dataset):
-            raise TypeError('The dataset_list property must be a sequence of '
-                            'Dataset instances!')
-        self._dataset_list = list(datasets)
 
     @property
     def llhratio(self):
@@ -515,34 +505,47 @@ class PDSignalGenerator(SignalGeneratorBase):
         return tot_n_events, signal_events_dict
 
 
-class PDTimeDependentSignalGenerator(PDSignalGenerator):
+class PDTimeDependentSignalGenerator(
+        PDSignalGenerator):
     """ The time dependent signal generator works so far only for one single
     dataset. For multi datasets one needs to adjust the dataset weights
     accordingly (scaling of the effective area with livetime of the flare in
     the dataset).
     """
 
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list=None,
-                 llhratio=None, energy_cut_splines=None, cut_sindec=None,
-                 gauss=None, box=None):
+    def __init__(
+            self,
+            shg_mgr,
+            dataset_list,
+            data_list=None,
+            llhratio=None,
+            energy_cut_splines=None,
+            cut_sindec=None,
+            gauss=None,
+            box=None,
+            **kwargs):
         """
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager that defines the list of
-            sources, i.e. the list of SourceModel instances.
-        dataset_list : list of Dataset instances
-            The list of Dataset instances for which signal events should get
-            generated for.
-        data_list : list of DatasetData instances
-            The list of DatasetData instances holding the actual data of each
+            source hypothesis groups, i.e. the list of sources.
+        dataset_list : list of instance of Dataset
+            The list of instance of Dataset for which signal events should get
+            generated.
+        data_list : list of instance of DatasetData
+            The list of instance of DatasetData holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
-        llhratio : LLHRatio
-            The likelihood ratio object contains the datasets signal weights
-            needed for distributing the event generation among the different
-            datsets.
-        energy_cut_splines : list of UnivariateSpline
+        llhratio : instance of LLHRatio
+            The log-likelihood ratio function instance containing the datasets
+            signal weights needed for distributing the generated events among
+            the different datsets.
+        energy_cut_splines : list of instance of UnivariateSpline
+            A list of splines of E(sin_dec) used to define the declination
+            dependent energy cut in the IceCube southern sky.
         cut_sindec : float
+            The sine of the declination to start applying the energy cut.
+            The cut will be applied from this declination down.
         gauss : dict | None
             None or dictionary with {"mu": float, "sigma": float}.
         box : dict | None
@@ -556,8 +559,14 @@ class PDTimeDependentSignalGenerator(PDSignalGenerator):
                 "Either box or gauss keywords must define the neutrino flare, "
                 "cannot use both.")
 
-        super().__init__(src_hypo_group_manager, dataset_list, data_list,
-                         llhratio, energy_cut_splines, cut_sindec)
+        super().__init__(
+            shg_mgr=shg_mgr,
+            dataset_list=dataset_list,
+            data_list=data_list,
+            llhratio=llhratio,
+            energy_cut_splines=energy_cut_splines,
+            cut_sindec=cut_sindec)
+
         self.box = box
         self.gauss = gauss
 
