@@ -509,17 +509,18 @@ if __name__ == '__main__':
 
     with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
-            datasets,
-            source,
-            cap_ratio=args.cap_ratio,
+            datasets=datasets,
+            source=source,
             gamma_seed=args.gamma_seed,
+            cap_ratio=args.cap_ratio,
             tl=tl)
 
     with tl.task_timer('Unblinding data.'):
-        (TS, fitparam_dict, status) = ana.unblind(rss)
+        (TS, param_dict, status) = ana.unblind(rss)
 
     print(f'TS = {TS:g}')
-    print(f'ns_fit = {fitparam_dict["ns"]:g}')
-    print(f'gamma_fit = {fitparam_dict["gamma"]:g}')
+    print(f'ns_fit = {param_dict["ns"]:g}')
+    print(f'gamma_fit = {param_dict["gamma"]:g}')
+    print(f'minimizer status = {status}')
 
     print(tl)
