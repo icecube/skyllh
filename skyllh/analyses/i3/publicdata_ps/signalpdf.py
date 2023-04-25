@@ -44,7 +44,7 @@ from skyllh.i3.dataset import (
     I3Dataset,
 )
 from skyllh.physics.flux_model import (
-    FluxModel,
+    FactorizedFluxModel,
 )
 
 
@@ -67,6 +67,7 @@ class PDSignalEnergyPDF(
             PDF.
         """
         super().__init__(
+            pmm=None,
             **kwargs)
 
         if not isinstance(f_e_spl, FctSpline1D):
@@ -215,8 +216,9 @@ class PDSignalEnergyPDFSet(
             The instance of Dataset that defines the dataset of the public data.
         src_dec : float
             The declination of the source in radians.
-        flux_model : instance of FluxModel
-            The FluxModel instance that defines the source's flux model.
+        fluxmodel : instance of FactorizedFluxModel
+            The instance of FactorizedFluxModel that defines the source's flux
+            model.
         param_grid_set : instance of ParameterGrid | instance of ParameterGridSet
             The parameter grid set defining the grids of the parameters this
             energy PDF set depends on.
@@ -233,9 +235,11 @@ class PDSignalEnergyPDFSet(
             raise TypeError(
                 'The ds argument must be an instance of I3Dataset!')
 
-        if not isinstance(fluxmodel, FluxModel):
+        if not isinstance(fluxmodel, FactorizedFluxModel):
             raise TypeError(
-                'The flux_model argument must be an instance of FluxModel!')
+                'The fluxmodel argument must be an instance of '
+                'FactorizedFluxModel! '
+                f'Its current type is {classname(fluxmodel)}')
 
         if (not isinstance(param_grid_set, ParameterGrid)) and\
            (not isinstance(param_grid_set, ParameterGridSet)):
@@ -327,18 +331,16 @@ class PDSignalEnergyPDFSet(
             my_fluxmodel = fluxmodel.copy(newparams=gridparams)
 
             self._logger.debug(
-                'Generate signal energy PDF for parameters {} in {} E_nu '
-                'bins.'.format(
-                    gridparams, len(valid_true_e_idxs))
-            )
+                f'Generate signal energy PDF for parameters {gridparams} in '
+                f'{len(valid_true_e_idxs)} E_nu bins.')
 
             # Calculate the flux probability p(E_nu|gamma).
             flux_prob = (
-                my_fluxmodel.get_integral(
+                my_fluxmodel.energy_profile.get_integral(
                     true_enu_binedges_lower,
                     true_enu_binedges_upper
                 ) /
-                my_fluxmodel.get_integral(
+                my_fluxmodel.energy_profile.get_integral(
                     true_enu_binedges[0],
                     true_enu_binedges[-1]
                 )

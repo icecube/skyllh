@@ -59,7 +59,8 @@ class PDBackgroundI3EnergyPDF(
             logE_binning,
             sinDec_binning,
             smoothing_filter,
-            kde_smoothing=False):
+            kde_smoothing=False,
+            **kwargs):
         """Creates a new IceCube energy PDF object for the public data.
 
         Parameters
@@ -89,7 +90,9 @@ class PDBackgroundI3EnergyPDF(
             background is not zero when injecting high energy events.
             Default: False.
         """
-        super().__init__()
+        super().__init__(
+            pmm=None,
+            **kwargs)
 
         # Define the PDF axes.
         self.add_axis(
@@ -386,7 +389,8 @@ class PDDataBackgroundI3EnergyPDF(
             logE_binning,
             sinDec_binning,
             smoothing_filter=None,
-            kde_smoothing=False):
+            kde_smoothing=False,
+            **kwargs):
         """Constructs a new IceCube energy background PDF from experimental
         data.
 
@@ -431,7 +435,8 @@ class PDDataBackgroundI3EnergyPDF(
             logE_binning=logE_binning,
             sinDec_binning=sinDec_binning,
             smoothing_filter=smoothing_filter,
-            kde_smoothing=kde_smoothing)
+            kde_smoothing=kde_smoothing,
+            **kwargs)
 
 
 class PDMCBackgroundI3EnergyPDF(
@@ -476,7 +481,9 @@ class PDMCBackgroundI3EnergyPDF(
                 'The log10emu_binning argument must be an instance of '
                 'BinningDefinition!')
 
-        super().__init__(**kwargs)
+        super().__init__(
+            pmm=None,
+            **kwargs)
 
         self.add_axis(PDFAxis(
             log10emu_binning.name,
