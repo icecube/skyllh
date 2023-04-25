@@ -185,7 +185,8 @@ class PDSigSetOverBkgPDFRatio(
                     gridparams_recarray[0])
             )
             sig_pdf_key = self.sig_pdf_set.make_key(gridparams)
-            ratio = self.sig_pdf_set.get_pdf(sig_pdf_key).get_pd(
+            sig_pdf = self.sig_pdf_set.get_pdf(sig_pdf_key)
+            (ratio, sig_grads) = sig_pdf.get_pd(
                 tdm=tdm,
                 params_recarray=None)
         else:
@@ -200,14 +201,14 @@ class PDSigSetOverBkgPDFRatio(
                         interpol_param_values)
                 )
                 sig_pdf_key = self.sig_pdf_set.make_key(gridparams)
-
-                sig_pd = self.sig_pdf_set.get_pdf(sig_pdf_key).get_pd(
+                sig_pdf = self.sig_pdf_set.get_pdf(sig_pdf_key)
+                (sig_pd, sig_grads) = sig_pdf.get_pd(
                     tdm=tdm,
                     params_recarray=None)
 
                 ratio[m_values] = sig_pd[m_values]
 
-        bkg_pd = self.bkg_pdf.get_pd(tdm=tdm)
+        (bkg_pd, bkg_grads) = self.bkg_pdf.get_pd(tdm=tdm)
         (bkg_pd,) = tdm.broadcast_selected_events_arrays_to_values_arrays(
             (bkg_pd,))
 
