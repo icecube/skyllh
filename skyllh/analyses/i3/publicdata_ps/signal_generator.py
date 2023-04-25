@@ -445,7 +445,7 @@ class PDSignalGenerator(SignalGeneratorBase):
                                 'LLHRatio!')
         self._llhratio = llhratio
 
-    def generate_signal_events(self, rss, mean, poisson=True):
+    def generate_signal_events(self, rss, mean, poisson=True):  # noqa: C901
         shg_list = self._src_hypo_group_manager.src_hypo_group_list
         # Only supports a single source hypothesis group. Raise an error
         # if more than one shg is in the source hypo group manager.
