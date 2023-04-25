@@ -8,15 +8,16 @@ class. It describes a mathematical function for the differential flux:
 
     \frac{d^4\Phi(\alpha,\delta,E,t | \vec{p}_{\mathrm{s}})}{\mathrm{d}A
     \mathrm{d}\Omega \mathrm{d}E \mathrm{d}t}
+
 """
 
 import abc
+from astropy import (
+    units,
+)
 import numpy as np
 import scipy.special
 import scipy.stats
-
-from astropy import units
-from copy import deepcopy
 
 from skyllh.core.config import (
     CFG,
@@ -29,27 +30,31 @@ from skyllh.core.model import (
 )
 from skyllh.core.py import (
     classname,
-    isproperty,
-    issequence,
-    issequenceof,
-    float_cast
+    float_cast,
 )
 from skyllh.physics.source_model import (
     IsPointlike,
 )
 
 
-class FluxProfile(MathFunction, metaclass=abc.ABCMeta):
+class FluxProfile(
+        MathFunction,
+        metaclass=abc.ABCMeta):
     """The abstract base class for a flux profile math function.
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
-class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
+class SpatialFluxProfile(
+        FluxProfile,
+        metaclass=abc.ABCMeta):
     """The abstract base class for a spatial flux profile function.
     """
-    def __init__(self, angle_unit=None, **kwargs):
+    def __init__(
+            self,
+            angle_unit=None,
+            **kwargs):
         """Creates a new SpatialFluxProfile instance.
 
         Parameters
@@ -59,7 +64,8 @@ class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
             If set to ``Ǹone``, the configured default angle unit for fluxes is
             used.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         self.angle_unit = angle_unit
 
@@ -69,17 +75,23 @@ class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         If set to ``Ǹone`` the configured default angle unit for fluxes is used.
         """
         return self._angle_unit
+
     @angle_unit.setter
     def angle_unit(self, unit):
-        if(unit is None):
+        if unit is None:
             unit = CFG['units']['defaults']['fluxes']['angle']
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property angle_unit must be of type '
+        if not isinstance(unit, units.UnitBase):
+            raise TypeError(
+                'The property angle_unit must be of type '
                 'astropy.units.UnitBase!')
         self._angle_unit = unit
 
     @abc.abstractmethod
-    def __call__(self, ra, dec, unit=None):
+    def __call__(
+            self,
+            ra,
+            dec,
+            unit=None):
         """This method is supposed to return the spatial profile value for the
         given celestrial coordinates.
 
@@ -102,11 +114,15 @@ class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         pass
 
 
-class UnitySpatialFluxProfile(SpatialFluxProfile):
+class UnitySpatialFluxProfile(
+        SpatialFluxProfile):
     """Spatial flux profile for the constant profile function 1 for any spatial
     coordinates.
     """
-    def __init__(self, angle_unit=None, **kwargs):
+    def __init__(
+            self,
+            angle_unit=None,
+            **kwargs):
         """Creates a new UnitySpatialFluxProfile instance.
 
         Parameters
@@ -122,9 +138,16 @@ class UnitySpatialFluxProfile(SpatialFluxProfile):
 
     @property
     def math_function_str(self):
+        """(read-only) The string representation of the mathematical function of
+        this spatial flux profile instance.
+        """
         return '1'
 
-    def __call__(self, ra, dec, unit=None):
+    def __call__(
+            self,
+            ra,
+            dec,
+            unit=None):
         """Returns 1 as numpy ndarray in same shape as ra and dec.
 
         Parameters
@@ -143,18 +166,24 @@ class UnitySpatialFluxProfile(SpatialFluxProfile):
             1 in same shape as ra and dec.
         """
         (ra, dec) = np.atleast_1d(ra, dec)
-        if(ra.shape != dec.shape):
+        if ra.shape != dec.shape:
             raise ValueError(
                 'The ra and dec arguments must be of the same shape!')
 
         return np.ones_like(ra)
 
 
-class PointSpatialFluxProfile(SpatialFluxProfile):
+class PointSpatialFluxProfile(
+        SpatialFluxProfile):
     """Spatial flux profile for a delta function at the celestrical coordinate
     (ra, dec).
     """
-    def __init__(self, ra, dec, angle_unit=None, **kwargs):
+    def __init__(
+            self,
+            ra,
+            dec,
+            angle_unit=None,
+            **kwargs):
         """Creates a new spatial flux profile for a point at equatorial
         coordinate (ra, dec).
 
@@ -189,9 +218,11 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
         The unit is the set angle unit of this SpatialFluxProfile instance.
         """
         return self._ra
+
     @ra.setter
     def ra(self, v):
-        v = float_cast(v,
+        v = float_cast(
+            v,
             'The ra property must be castable to type float!',
             allow_None=True)
         self._ra = v
@@ -202,9 +233,11 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
         The unit is the set angle unit of this SpatialFluxProfile instance.
         """
         return self._dec
+
     @dec.setter
     def dec(self, v):
-        v = float_cast(v,
+        v = float_cast(
+            v,
             'The dec property must be castable to type float!',
             allow_None=True)
         self._dec = v
@@ -215,14 +248,19 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
         this spatial flux profile instance. It is None, if the right-ascention
         or declination property is set to None.
         """
-        if self._ra is None or self._dec is None:
+        if (self._ra is None) or (self._dec is None):
             return None
 
-        return 'delta(alpha-%g%s)*delta(delta-%g%s)'%(
-            self._ra, self._angle_unit.to_string(),
-            self._dec, self._angle_unit.to_string())
+        s = (f'delta(alpha-{self._ra:g}{self._angle_unit.to_string()})*'
+             f'delta(delta-{self._dec:g}{self._angle_unit.to_string()})')
 
-    def __call__(self, ra, dec, unit=None):
+        return s
+
+    def __call__(
+            self,
+            ra,
+            dec,
+            unit=None):
         """Returns a numpy ndarray in same shape as ra and dec with 1 if
         `ra` equals `self.ra` and `dec` equals `self.dec`, and 0 otherwise.
 
@@ -246,25 +284,32 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
             equals `self.ra` and `dec` equals `self.dec`, and 0 otherwise.
         """
         (ra, dec) = np.atleast_1d(ra, dec)
-        if(ra.shape != dec.shape):
+        if ra.shape != dec.shape:
             raise ValueError(
                 'The ra and dec arguments must be of the same shape!')
 
-        if((unit is not None) and (unit != self._angle_unit)):
+        if (unit is not None) and (unit != self._angle_unit):
             angle_unit_conv_factor = unit.to(self._angle_unit)
             ra = ra * angle_unit_conv_factor
             dec = dec * angle_unit_conv_factor
 
-        value = ((ra == self._ra) &
-                 (dec == self._dec)).astype(np.int8, copy=False)
+        value = (
+            (ra == self._ra) &
+            (dec == self._dec)
+        ).astype(np.int8, copy=False)
 
         return value
 
 
-class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
+class EnergyFluxProfile(
+        FluxProfile,
+        metaclass=abc.ABCMeta):
     """The abstract base class for an energy flux profile function.
     """
-    def __init__(self, energy_unit=None, **kwargs):
+    def __init__(
+            self,
+            energy_unit=None,
+            **kwargs):
         """Creates a new energy flux profile with a given energy unit to be used
         for flux calculation.
 
@@ -275,7 +320,8 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
             If set to ``None``, the configured default energy unit for fluxes is
             used.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         # Set the energy unit.
         self.energy_unit = energy_unit
@@ -285,17 +331,22 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         """The unit of energy used for the flux profile calculation.
         """
         return self._energy_unit
+
     @energy_unit.setter
     def energy_unit(self, unit):
-        if(unit is None):
+        if unit is None:
             unit = CFG['units']['defaults']['fluxes']['energy']
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property energy_unit must be of type '
+        if not isinstance(unit, units.UnitBase):
+            raise TypeError(
+                'The property energy_unit must be of type '
                 'astropy.units.UnitBase!')
         self._energy_unit = unit
 
     @abc.abstractmethod
-    def __call__(self, E, unit=None):
+    def __call__(
+            self,
+            E,
+            unit=None):
         """This method is supposed to return the energy profile value for the
         given energy value.
 
@@ -316,10 +367,14 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         pass
 
 
-class UnityEnergyFluxProfile(EnergyFluxProfile):
+class UnityEnergyFluxProfile(
+        EnergyFluxProfile):
     """Energy flux profile for the constant function 1.
     """
-    def __init__(self, energy_unit=None, **kwargs):
+    def __init__(
+            self,
+            energy_unit=None,
+            **kwargs):
         """Creates a new UnityEnergyFluxProfile instance.
 
         Parameters
@@ -335,12 +390,15 @@ class UnityEnergyFluxProfile(EnergyFluxProfile):
 
     @property
     def math_function_str(self):
-        """The string representation of the mathematical function of this energy
-        flux profile.
+        """(read-only) The string representation of the mathematical function of
+        this energy flux profile.
         """
         return '1'
 
-    def __call__(self, E, unit=None):
+    def __call__(
+            self,
+            E,
+            unit=None):
         """Returns 1 as numpy ndarray in some shape as E.
 
         Parameters
@@ -363,14 +421,22 @@ class UnityEnergyFluxProfile(EnergyFluxProfile):
         return values
 
 
-class PowerLawEnergyFluxProfile(EnergyFluxProfile):
-    """Energy flux profile for a power law profile with a reference energy
+class PowerLawEnergyFluxProfile(
+        EnergyFluxProfile):
+    r"""Energy flux profile for a power law profile with a reference energy
     ``E0`` and a spectral index ``gamma``.
 
     .. math::
+
         (E / E_0)^{-\gamma}
+
     """
-    def __init__(self, E0, gamma, energy_unit=None, **kwargs):
+    def __init__(
+            self,
+            E0,
+            gamma,
+            energy_unit=None,
+            **kwargs):
         """Creates a new power law flux profile with the reference energy ``E0``
         and spectral index ``gamma``.
 
@@ -402,9 +468,11 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
         instance.
         """
         return self._E0
+
     @E0.setter
     def E0(self, v):
-        v = float_cast(v,
+        v = float_cast(
+            v,
             'Property E0 must be castable to type float!')
         self._E0 = v
 
@@ -413,19 +481,27 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
         """The spectral index.
         """
         return self._gamma
+
     @gamma.setter
     def gamma(self, v):
-        v = float_cast(v,
+        v = float_cast(
+            v,
             'Property gamma must be castable to type float!')
         self._gamma = v
 
     @property
     def math_function_str(self):
-        """The string representation of this EnergyFluxProfile instance.
+        """(read-only) The string representation of this energy flux profile
+        instance.
         """
-        return '(E / (%g %s))^-%g'%(self._E0, self._energy_unit, self._gamma)
+        s = f'(E / ({self._E0:g} {self._energy_unit}))^-{self._gamma:g}'
 
-    def __call__(self, E, unit=None):
+        return s
+
+    def __call__(
+            self,
+            E,
+            unit=None):
         """Returns the power law values for the given energies as numpy ndarray
         in same shape as E.
 
@@ -445,7 +521,7 @@ class PowerLawEnergyFluxProfile(EnergyFluxProfile):
         """
         E = np.atleast_1d(E)
 
-        if((unit is not None) and (unit != self._energy_unit)):
+        if (unit is not None) and (unit != self._energy_unit):
             energy_unit_conv_factor = unit.to(self._energy_unit)
             E = E * energy_unit_conv_factor
 
@@ -633,7 +709,8 @@ class TimeFluxProfile(
         pass
 
 
-class UnityTimeFluxProfile(TimeFluxProfile):
+class UnityTimeFluxProfile(
+        TimeFluxProfile):
     """Time flux profile for the constant profile function ``1``.
     """
     def __init__(self, time_unit=None, **kwargs):
@@ -714,7 +791,8 @@ class UnityTimeFluxProfile(TimeFluxProfile):
         return integral
 
 
-class BoxTimeFluxProfile(TimeFluxProfile):
+class BoxTimeFluxProfile(
+        TimeFluxProfile):
     """This class describes a box-shaped time flux profile.
     It has the following parameters:
 
@@ -785,10 +863,15 @@ class BoxTimeFluxProfile(TimeFluxProfile):
 
     @property
     def math_function_str(self):
+        """The string representation of the mathematical function of this
+        TimeFluxProfile instance.
+        """
         t0 = self.t0
         tw = self.tw
-        return '1 for t in [%g-%g/2; %g+%g/2], 0 otherwise'%(
-            t0, tw, t0, tw)
+
+        s = f'1 for t in [{t0:g}-{tw:g}/2; {t0:g}+{tw:g}/2], 0 otherwise'
+
+        return s
 
     def __call__(
             self,
@@ -1001,7 +1084,7 @@ class GaussianTimeFluxProfile(
         """
         t = np.atleast_1d(t)
 
-        if((unit is not None) and (unit != self._time_unit)):
+        if (unit is not None) and (unit != self._time_unit):
             time_unit_conv_factor = unit.to(self._time_unit)
             t = t * time_unit_conv_factor
 
@@ -1079,9 +1162,15 @@ class GaussianTimeFluxProfile(
         return integral
 
 
-class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
-    r"""Abstract base class for all flux models
-    :math:`\Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s)`.
+class FluxModel(
+        MathFunction,
+        Model,
+        metaclass=abc.ABCMeta):
+    r"""Abstract base class for all flux models of the form
+
+    .. math::
+
+        \Phi_S(\alpha,\delta,E,t | \vec{x}_s,\vec{p}_s).
 
     This base class defines the units used for the flux calculation. The unit
     of the flux is ([angle]^{-2} [energy]^{-1} [length]^{-2} [time]^{-1}).
@@ -1101,8 +1190,12 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         return CFG['units']['defaults']['fluxes']
 
     def __init__(
-            self, angle_unit=None, energy_unit=None, length_unit=None,
-            time_unit=None, **kwargs):
+            self,
+            angle_unit=None,
+            energy_unit=None,
+            length_unit=None,
+            time_unit=None,
+            **kwargs):
         """Creates a new FluxModel instance and defines the user-defined units.
 
         Parameters
@@ -1124,7 +1217,8 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
             If set to ``None``, the configured default time unit for fluxes is
             used.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         # Define the units.
         self.angle_unit = angle_unit
@@ -1137,12 +1231,14 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         """The unit of angle used for the flux calculation.
         """
         return self._angle_unit
+
     @angle_unit.setter
     def angle_unit(self, unit):
-        if(unit is None):
+        if unit is None:
             unit = CFG['units']['defaults']['fluxes']['angle']
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property angle_unit must be of type '
+        if not isinstance(unit, units.UnitBase):
+            raise TypeError(
+                'The property angle_unit must be of type '
                 'astropy.units.UnitBase!')
         self._angle_unit = unit
 
@@ -1151,12 +1247,14 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         """The unit of energy used for the flux calculation.
         """
         return self._energy_unit
+
     @energy_unit.setter
     def energy_unit(self, unit):
-        if(unit is None):
+        if unit is None:
             unit = CFG['units']['defaults']['fluxes']['energy']
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property energy_unit must be of type '
+        if not isinstance(unit, units.UnitBase):
+            raise TypeError(
+                'The property energy_unit must be of type '
                 'astropy.units.UnitBase!')
         self._energy_unit = unit
 
@@ -1165,12 +1263,14 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         """The unit of length used for the flux calculation.
         """
         return self._length_unit
+
     @length_unit.setter
     def length_unit(self, unit):
-        if(unit is None):
+        if unit is None:
             unit = CFG['units']['defaults']['fluxes']['length']
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property length_unit must be of type '
+        if not isinstance(unit, units.UnitBase):
+            raise TypeError(
+                'The property length_unit must be of type '
                 'astropy.units.UnitBase!')
         self._length_unit = unit
 
@@ -1179,12 +1279,14 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         """The unit of time used for the flux calculation.
         """
         return self._time_unit
+
     @time_unit.setter
     def time_unit(self, unit):
-        if(unit is None):
+        if unit is None:
             unit = CFG['units']['defaults']['fluxes']['time']
-        if(not isinstance(unit, units.UnitBase)):
-            raise TypeError('The property time_unit must be of type '
+        if not isinstance(unit, units.UnitBase):
+            raise TypeError(
+                'The property time_unit must be of type '
                 'astropy.units.UnitBase!')
         self._time_unit = unit
 
@@ -1197,9 +1299,12 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         else:
             angle_unit_sq = self.angle_unit**2
 
-        return '(%s %s %s^2 %s)^-1'%(
-            self.energy_unit.to_string(), angle_unit_sq.to_string(),
-            self.length_unit.to_string(), self.time_unit.to_string())
+        s = (f'({self.energy_unit.to_string()}'
+             f' {angle_unit_sq.to_string()}'
+             f' {self.length_unit.to_string()}^2'
+             f' {self.time_unit.to_string()})^-1')
+
+        return s
 
     @property
     def unit_latex_str(self):
@@ -1210,19 +1315,28 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         else:
             angle_unit_sq = self.angle_unit**2
 
-        return r'%s$^{-1}$ %s$^{-1}$ %s$^{-2}$ %s$^{-1}$'%(
-            self.energy_unit.to_string(), angle_unit_sq.to_string(),
-            self.length_unit.to_string(), self.time_unit.to_string())
+        s = (f'{self.energy_unit.to_string()}''$^{-1}$ '
+             f'{angle_unit_sq.to_string()}''$^{-1}$ '
+             f'{self.length_unit.to_string()}''$^{-2}$ '
+             f'{self.time_unit.to_string()}''$^{-1}$')
+
+        return s
 
     def __str__(self):
         """Pretty string representation of this class.
         """
-        return self.math_function_str + ' ' + self.unit_str
+        return f'{self.math_function_str} {self.unit_str}'
 
     @abc.abstractmethod
     def __call__(
-            self, ra=None, dec=None, E=None, t=None,
-            angle_unit=None, energy_unit=None, time_unit=None):
+            self,
+            ra=None,
+            dec=None,
+            E=None,
+            t=None,
+            angle_unit=None,
+            energy_unit=None,
+            time_unit=None):
         """The call operator to retrieve a flux value for a given celestrial
         position, energy, and observation time.
 
@@ -1281,7 +1395,8 @@ class FluxModel(MathFunction, Model, metaclass=abc.ABCMeta):
         return factor
 
 
-class FactorizedFluxModel(FluxModel):
+class FactorizedFluxModel(
+        FluxModel):
     r"""This class describes a flux model where the spatial, energy, and time
     profiles of the source factorize. That means the flux can be written as:
 
@@ -1299,25 +1414,30 @@ class FactorizedFluxModel(FluxModel):
     :math:`\vec{p}_\mathrm{s}`, respectively.
     """
     def __init__(
-            self, Phi0, spatial_profile, energy_profile, time_profile,
-            length_unit=None, **kwargs):
+            self,
+            Phi0,
+            spatial_profile,
+            energy_profile,
+            time_profile,
+            length_unit=None,
+            **kwargs):
         """Creates a new factorized flux model.
 
         Parameters
         ----------
         Phi0 : float
             The flux normalization constant.
-        spatial_profile : SpatialFluxProfile instance | None
+        spatial_profile : instance of SpatialFluxProfile | None
             The SpatialFluxProfile instance providing the spatial profile
             function of the flux.
             If set to None, an instance of UnitySpatialFluxProfile will be used,
             which represents the constant function 1.
-        energy_profile : EnergyFluxProfile instance | None
+        energy_profile : instance of EnergyFluxProfile | None
             The EnergyFluxProfile instance providing the energy profile
             function of the flux.
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
-        time_profile : TimeFluxProfile instance | None
+        time_profile : instance of TimeFluxProfile | None
             The TimeFluxProfile instance providing the time profile function
             of the flux.
             If set to None, an instance of UnityTimeFluxProfile will be used,
@@ -1353,9 +1473,11 @@ class FactorizedFluxModel(FluxModel):
         ([angle]^{-2} [energy]^{-1} [length]^{-2} [time]^{-1}).
         """
         return self._Phi0
+
     @Phi0.setter
     def Phi0(self, v):
-        v = float_cast(v,
+        v = float_cast(
+            v,
             'The Phi0 property must be castable to type float!')
         self._Phi0 = v
 
@@ -1365,12 +1487,14 @@ class FactorizedFluxModel(FluxModel):
         flux.
         """
         return self._spatial_profile
+
     @spatial_profile.setter
     def spatial_profile(self, profile):
-        if(profile is None):
+        if profile is None:
             profile = UnitySpatialFluxProfile()
-        if(not isinstance(profile, SpatialFluxProfile)):
-            raise TypeError('The spatial_profile property must be None, or an '
+        if not isinstance(profile, SpatialFluxProfile):
+            raise TypeError(
+                'The spatial_profile property must be None, or an '
                 'instance of SpatialFluxProfile!')
         self._spatial_profile = profile
 
@@ -1380,12 +1504,14 @@ class FactorizedFluxModel(FluxModel):
         flux.
         """
         return self._energy_profile
+
     @energy_profile.setter
     def energy_profile(self, profile):
-        if(profile is None):
+        if profile is None:
             profile = UnityEnergyFluxProfile()
-        if(not isinstance(profile, EnergyFluxProfile)):
-            raise TypeError('The energy_profile property must be None, or an '
+        if not isinstance(profile, EnergyFluxProfile):
+            raise TypeError(
+                'The energy_profile property must be None, or an '
                 'instance of EnergyFluxProfile!')
         self._energy_profile = profile
 
@@ -1394,12 +1520,14 @@ class FactorizedFluxModel(FluxModel):
         """Instance of TimeFluxProfile describing the time profile of the flux.
         """
         return self._time_profile
+
     @time_profile.setter
     def time_profile(self, profile):
-        if(profile is None):
+        if profile is None:
             profile = UnityTimeFluxProfile()
-        if(not isinstance(profile, TimeFluxProfile)):
-            raise TypeError('The time_profile property must be None, or an '
+        if not isinstance(profile, TimeFluxProfile):
+            raise TypeError(
+                'The time_profile property must be None, or an '
                 'instance of TimeFluxProfile!')
         self._time_profile = profile
 
@@ -1428,6 +1556,7 @@ class FactorizedFluxModel(FluxModel):
         taken and set from and to the set spatial flux profile, respectively.
         """
         return self._spatial_profile.angle_unit
+
     @angle_unit.setter
     def angle_unit(self, unit):
         self._spatial_profile.angle_unit = unit
@@ -1438,6 +1567,7 @@ class FactorizedFluxModel(FluxModel):
         taken and set from and to the set energy flux profile, respectively.
         """
         return self._energy_profile.energy_unit
+
     @energy_unit.setter
     def energy_unit(self, unit):
         self._energy_profile.energy_unit = unit
@@ -1448,6 +1578,7 @@ class FactorizedFluxModel(FluxModel):
         taken and set from and to the set time flux profile, respectively.
         """
         return self._time_profile.time_unit
+
     @time_unit.setter
     def time_unit(self, unit):
         self._time_profile.time_unit = unit
@@ -1464,13 +1595,20 @@ class FactorizedFluxModel(FluxModel):
         pnames += self._time_profile.param_names
 
         return tuple(pnames)
+
     @param_names.setter
     def param_names(self, names):
         super(FactorizedFluxModel, type(self)).param_names.fset(self, names)
 
     def __call__(
-            self, ra=None, dec=None, E=None, t=None,
-            angle_unit=None, energy_unit=None, time_unit=None):
+            self,
+            ra=None,
+            dec=None,
+            E=None,
+            t=None,
+            angle_unit=None,
+            energy_unit=None,
+            time_unit=None):
         """Calculates the flux values for the given celestrial positions,
         energies, and observation times.
 
@@ -1503,7 +1641,7 @@ class FactorizedFluxModel(FluxModel):
             The flux values are in unit
             [energy]^{-1} [angle]^{-2} [length]^{-2} [time]^{-1}.
         """
-        if ra is not None and dec is not None:
+        if (ra is not None) and (dec is not None):
             spatial_profile_values = self._spatial_profile(
                 ra, dec, unit=angle_unit)
         else:
@@ -1523,9 +1661,9 @@ class FactorizedFluxModel(FluxModel):
 
         flux = (
             self._Phi0 *
-            spatial_profile_values[:,np.newaxis,np.newaxis] *
-            energy_profile_values[np.newaxis,:,np.newaxis] *
-            time_profile_values[np.newaxis,np.newaxis,:]
+            spatial_profile_values[:, np.newaxis, np.newaxis] *
+            energy_profile_values[np.newaxis, :, np.newaxis] *
+            time_profile_values[np.newaxis, np.newaxis, :]
         )
 
         return flux
@@ -1556,7 +1694,9 @@ class FactorizedFluxModel(FluxModel):
         return updated
 
 
-class PointlikeFFM(FactorizedFluxModel, IsPointlike):
+class PointlikeFFM(
+        FactorizedFluxModel,
+        IsPointlike):
     """This class describes a factorized flux model (FFM), where the spatial
     profile is modeled as a point. This class provides the base class for a flux
     model of a point-like source.
@@ -1577,12 +1717,12 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
         ----------
         Phi0 : float
             The flux normalization constant in unit of flux.
-        energy_profile : EnergyFluxProfile instance | None
+        energy_profile : instance of EnergyFluxProfile | None
             The EnergyFluxProfile instance providing the energy profile
             function of the flux.
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
-        time_profile : TimeFluxProfile instance | None
+        time_profile : instance of TimeFluxProfile | None
             The TimeFluxProfile instance providing the time profile function
             of the flux.
             If set to None, an instance of UnityTimeFluxProfile will be used,
@@ -1598,7 +1738,7 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
             The unit for length used for the flux unit.
             If set to ``None``, the configured internal length unit is used.
         """
-        spatial_profile=PointSpatialFluxProfile(
+        spatial_profile = PointSpatialFluxProfile(
             ra=ra,
             dec=dec,
             angle_unit=angle_unit)
@@ -1625,10 +1765,11 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
         # Note:
         #    For a point-like differential flux, there is no solid-angle
         #    element.
-        return '(%s %s^2 %s)^-1'%(
-            self.energy_unit.to_string(),
-            self.length_unit.to_string(),
-            self.time_unit.to_string())
+        s = (f'({self.energy_unit.to_string()}'
+             f' {self.length_unit.to_string()}^2'
+             f' {self.time_unit.to_string()})^-1')
+
+        return s
 
     @property
     def unit_latex_str(self):
@@ -1637,13 +1778,15 @@ class PointlikeFFM(FactorizedFluxModel, IsPointlike):
         # Note:
         #    For a point-like differential flux, there is no solid-angle
         #    element.
-        return r'%s$^{-1}$ %s$^{-2}$ %s$^{-1}$'%(
-            self.energy_unit.to_string(),
-            self.length_unit.to_string(),
-            self.time_unit.to_string())
+        s = (f'{self.energy_unit.to_string()}''$^{-1}$ '
+             f'{self.length_unit.to_string()}''$^{-2}$ '
+             f'{self.time_unit.to_string()}''$^{-1}$')
+
+        return s
 
 
-class SteadyPointlikeFFM(PointlikeFFM):
+class SteadyPointlikeFFM(
+        PointlikeFFM):
     """This class describes a factorized flux model (FFM), where the spatial
     profile is modeled as a point and the time profile as constant 1. It is
     derived from the ``PointlikeFFM`` class.
@@ -1665,7 +1808,7 @@ class SteadyPointlikeFFM(PointlikeFFM):
         ----------
         Phi0 : float
             The flux normalization constant.
-        energy_profile : EnergyFluxProfile instance | None
+        energy_profile : instance of EnergyFluxProfile | None
             The EnergyFluxProfile instance providing the energy profile
             function of the flux.
             If set to None, an instance of UnityEnergyFluxProfile will be used,
@@ -1687,7 +1830,8 @@ class SteadyPointlikeFFM(PointlikeFFM):
             If set to ``None``, the configured default time unit for fluxes
             is used.
         """
-        time_profile = UnityTimeFluxProfile(time_unit=time_unit)
+        time_profile = UnityTimeFluxProfile(
+            time_unit=time_unit)
 
         super().__init__(
             Phi0=Phi0,
