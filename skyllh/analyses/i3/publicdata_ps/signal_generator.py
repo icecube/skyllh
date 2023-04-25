@@ -411,7 +411,7 @@ class PDSignalGenerator(
         """
         super().__init__(
             shg_mgr=shg_mgr,
-            dataset_list=data_list,
+            dataset_list=dataset_list,
             data_list=data_list,
             **kwargs)
 
