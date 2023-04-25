@@ -128,4 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# VisualCode IDE
 .vscode
+
+# Scalene profiling files
+profile.json
+profile.html
