@@ -303,7 +303,7 @@ class PDBackgroundI3EnergyPDF(
             PDF.
         """
         log10emu = tdm['log_energy']
-        log10emu_axis = self.get_axis(0)
+        log10emu_axis = self.axes['log_energy']
         if np.min(log10emu) < log10emu_axis.vmin:
             raise ValueError(
                 f'The minimum log10emu value {np.min(log10emu):g} of the trial '
@@ -316,7 +316,7 @@ class PDBackgroundI3EnergyPDF(
                 f'{log10emu_axis.vmax}:g!')
 
         sindecmu = tdm['sin_dec']
-        sindecmu_axis = self.get_axis(1)
+        sindecmu_axis = self.axes['sin_dec']
         if np.min(sindecmu) < sindecmu_axis.vmin:
             raise ValueError(
                 f'The minimum sindecmu value {np.min(sindecmu):g} of the trial '
