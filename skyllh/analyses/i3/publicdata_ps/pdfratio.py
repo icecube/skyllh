@@ -173,10 +173,11 @@ class PDSigSetOverBkgPDFRatio(
         ratio = np.empty((n_values,), dtype=np.double)
 
         same_pdf_for_all_sources = True
-        for pname in gridparams_recarray.dtype.fields.keys():
-            if not np.all(np.isclose(np.diff(gridparams_recarray[pname]), 0)):
-                same_pdf_for_all_sources = False
-                break
+        if len(gridparams_recarray) > 1:
+            for pname in gridparams_recarray.dtype.fields.keys():
+                if not np.all(np.isclose(np.diff(gridparams_recarray[pname]), 0)):
+                    same_pdf_for_all_sources = False
+                    break
         if same_pdf_for_all_sources:
             # Special case where the grid parameter values are the same for all
             # sources for all grid parameters
@@ -220,12 +221,20 @@ class PDSigSetOverBkgPDFRatio(
                 f'For {len(ev_idxs)} events the background probability is '
                 f'zero. The event indices of these events are: {ev_idxs}')
 
-        ratio[m_nonzero_bkg] /= bkg_pd[m_nonzero_bkg]
+        np.divide(
+            ratio,
+            bkg_pd,
+            where=m_nonzero_bkg,
+            out=ratio)
 
         if self._cap_ratio:
             ratio[m_zero_bkg] = self.ratio_fill_value_dict[sig_pdf_key]
         else:
-            ratio[m_zero_bkg] /= np.finfo(np.double).resolution
+            np.divide(
+                ratio,
+                np.finfo(np.double).resolution,
+                where=m_zero_bkg,
+                out=ratio)
 
         # Check for positive inf values in the ratio and set the ratio to a
         # finite number. Here we choose the maximum value of float32 to keep
