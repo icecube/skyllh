@@ -117,26 +117,26 @@ from skyllh.physics.source_model import (
 
 
 def tdm_field_func_psi(tdm, shg_mgr, pmm):
-    """TDM data field function to calculate the opening angle between the source
-    position and the event's reconstructed position.
-
-    Note::
-
-        Only single sources are supported at the moment.
-
+    """TDM data field function to calculate the opening angle between the
+    source positions and the event's reconstructed position.
     """
-    # Make the source position angles two-dimensional so the PDF value
-    # can be calculated via numpy broadcasting automatically for several
-    # sources. This is useful for stacking analyses.
+    (src_idxs, evt_idxs) = tdm.src_evt_idxs
+
+    ra = np.take(tdm.get_data('ra'), evt_idxs)
+    dec = np.take(tdm.get_data('dec'), evt_idxs)
+
+    src_array = tdm.get_data('src_array')
+    src_ra = np.take(src_array['ra'], src_idxs)
+    src_dec = np.take(src_array['dec'], src_idxs)
+
     psi = angular_separation(
-        ra1=tdm.get_data('ra'),
-        dec1=tdm.get_data('dec'),
-        ra2=tdm.get_data('src_array')['ra'][:, np.newaxis],
-        dec2=tdm.get_data('src_array')['dec'][:, np.newaxis],
+        ra1=ra,
+        dec1=dec,
+        ra2=src_ra,
+        dec2=src_dec,
         psi_floor=10**-5.95442953)
 
-    # For now we support only a single source, hence return psi[0].
-    return psi[0]
+    return psi
 
 
 def create_analysis(
@@ -389,7 +389,7 @@ def create_analysis(
             name='psi',
             func=tdm_field_func_psi,
             dt='dec',
-            pre_evt_sel=True)
+            is_srcevt_data=True)
 
         ana.add_dataset(
             dataset=ds,
