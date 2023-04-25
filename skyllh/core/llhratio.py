@@ -689,7 +689,8 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         log_lambda_i = np.empty_like(alpha_i, dtype=np.float64)
 
         # Calculate the log_lambda_i value for the numerical stable events.
-        log_lambda_i[m_stable] = np.log1p(alpha_i[m_stable])
+        np.log1p(alpha_i, where=m_stable, out=log_lambda_i)
+
         # Calculate the log_lambda_i value for the numerical unstable events.
         tildealpha_i = (alpha_i[m_unstable] - alpha) / one_plus_alpha
         log_lambda_i[m_unstable] =\
