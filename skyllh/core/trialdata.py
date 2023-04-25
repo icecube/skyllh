@@ -707,6 +707,17 @@ class TrialDataManager(object):
     def broadcast_selected_events_arrays_to_values_arrays(self, arrays):
         """Broadcasts the given arrays of length N_selected_events to arrays
         of length N_values.
+
+        Parameters
+        ----------
+        arrays : sequence of instance of ndarray
+            The sequence of instance of ndarray with the arrays to be
+            broadcasted.
+
+        Returns
+        -------
+        out_arrays : list of instance of ndarray
+            The list of broadcasted numpy ndarray instances.
         """
         evt_idxs = self._src_evt_idxs[1]
         out_arrays = [
