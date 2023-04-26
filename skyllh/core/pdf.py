@@ -418,6 +418,24 @@ class PDF(
         """
         pass
 
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """This method is called when a new trial is initialized. Derived
+        classes can use this call hook to pre-compute time-expensive data, which
+        do not depend on any fit parameters.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the new trial data.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to measure timing information.
+        """
+        pass
+
     @abc.abstractmethod
     def get_pd(
             self,
@@ -1974,6 +1992,28 @@ class PDFSet(
         pdf = self._gridparams_hash_pdf_dict[gridparams_hash]
 
         return pdf
+
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """This method is called whenever a new trial data is available. It
+        calls the :meth:`~skyllh.core.pdf.PDF.initialize_for_new_trial` method
+        of each PDF.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the new trial data events.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
+        """
+        for pdf in self._gridparams_hash_pdf_dict.values():
+            pdf.initialize_for_new_trial(
+                tdm=tdm,
+                tl=tl,
+                **kwargs)
 
     def assert_is_valid_for_trial_data(
             self,

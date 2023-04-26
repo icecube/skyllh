@@ -276,6 +276,26 @@ class PDBackgroundI3EnergyPDF(
             self._hist_mask_mc_covered &
             ~self._hist_mask_mc_covered_zero_physics)
 
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Pre-compute the probability densitiy values of the trial data,
+        which has to be done only once for a particular trial data.
+        """
+
+        logE_binning = self.get_binning('log_energy')
+        sinDec_binning = self.get_binning('sin_dec')
+
+        logE_idx = np.digitize(
+            tdm['log_energy'], logE_binning.binedges) - 1
+        sinDec_idx = np.digitize(
+            tdm['sin_dec'], sinDec_binning.binedges) - 1
+
+        with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
+            self._pd = self._hist_logE_sinDec[(logE_idx, sinDec_idx)]
+
     def assert_is_valid_for_trial_data(
             self,
             tdm,
@@ -364,20 +384,9 @@ class PDBackgroundI3EnergyPDF(
             w.r.t. each global fit parameter. By definition this PDF does not
             depend on any fit parameter, hence, this dictionary is empty.
         """
-        logE_binning = self.get_binning('log_energy')
-        sinDec_binning = self.get_binning('sin_dec')
-
-        logE_idx = np.digitize(
-            tdm['log_energy'], logE_binning.binedges) - 1
-        sinDec_idx = np.digitize(
-            tdm['sin_dec'], sinDec_binning.binedges) - 1
-
-        with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
-            pd = self._hist_logE_sinDec[(logE_idx, sinDec_idx)]
-
         grads = dict()
 
-        return (pd, grads)
+        return (self._pd, grads)
 
 
 class PDDataBackgroundI3EnergyPDF(

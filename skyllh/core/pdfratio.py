@@ -773,11 +773,19 @@ class SigOverBkgPDFRatio(
         :meth:`~skyllh.core.pdf.PDF.assert_is_valid_for_trial_data` of the
         signal and background :class:`~skyllh.core.pdf.PDF` instances.
         """
+        self._sig_pdf.initialize_for_new_trial(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
         self._sig_pdf.assert_is_valid_for_trial_data(
             tdm=tdm,
             tl=tl,
             **kwargs)
 
+        self._bkg_pdf.initialize_for_new_trial(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
         self._bkg_pdf.assert_is_valid_for_trial_data(
             tdm=tdm,
             tl=tl,
@@ -1037,11 +1045,19 @@ class SigSetOverBkgPDFRatio(
         tl : instance of TimeLord | None
             The optional instance of TimeLord for measuring timing information.
         """
+        self._sig_pdf_set.initialize_for_new_trial(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
         self._sig_pdf_set.assert_is_valid_for_trial_data(
             tdm=tdm,
             tl=tl,
             **kwargs)
 
+        self._bkg_pdf.initialize_for_new_trial(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
         self._bkg_pdf.assert_is_valid_for_trial_data(
             tdm=tdm,
             tl=tl,
