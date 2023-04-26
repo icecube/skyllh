@@ -626,55 +626,54 @@ class TrialDataManager(object):
 
         return s
 
-    def broadcast_params_recarray_to_values_array(
+    def broadcast_sources_array_to_values_array(
             self,
-            params_recarray):
-        """Broadcasts the given source parameter record array to all values of
-        a PDF evaluation, i.e. to all sources and trial events. The result is
-        a numpy record array of length N_values.
+            arr):
+        """Broadcasts the given 1d numpy ndarray of length 1 or N_sources to a
+        numpy ndarray of length N_values.
 
         Parameters
         ----------
-        params_recarray : instance of numpy record array
-            The numpy record array of length N_sources holding the parameter
-            names and values for all sources. The length of this record ndarray
-            can be 1. In that case the same set of parameter values is used for
-            all sources.
+        arr : instance of ndarray
+            The (N_sources,)- or (1,)-shaped numpy ndarray holding values for
+            each source.
 
         Returns
         -------
-        values_params_recarray : instance of numpy record ndarray
-            The numpy record array of length N_values holding the source
-            parameter names and values for all sources and trial events.
+        out_arr : instance of ndarray
+            The (N_values,)-shaped numpy ndarray holding the source values
+            broadcasted to each event value.
         """
-        if len(params_recarray) == 1:
-            values_params_recarray = np.tile(
-                params_recarray, self.get_n_values())
-            return values_params_recarray
+        arr_dtype = arr.dtype
+        n_values = self.get_n_values()
 
-        if len(params_recarray) != self.n_sources:
+        if len(arr) == 1:
+            return np.full((n_values,), arr[0], dtype=arr_dtype)
+
+        if len(arr) != self.n_sources:
             raise ValueError(
-                f'The length of params_recarray array ({len(params_recarray)}) '
-                f'must be equal to the number of sources ({self.n_sources})!')
+                f'The length of arr ({len(arr)}) must be 1 or equal to the '
+                f'number of sources ({self.n_sources})!')
 
-        (src_idxs, evt_idxs) = self.src_evt_idxs
-        values_params_recarray = np.empty(
-            (len(src_idxs),), dtype=params_recarray.dtype)
+        out_arr = np.empty(
+            (n_values,),
+            dtype=arr.dtype)
 
+        src_idxs = self.src_evt_idxs[0]
         v_start = 0
-        for (src_idx, src_params_recarray) in enumerate(params_recarray):
-            n = len(evt_idxs[src_idxs == src_idx])
-            values_params_recarray[v_start:v_start+n] = np.tile(
-                src_params_recarray, n)
+        for (src_idx, src_value) in enumerate(arr):
+            n = np.count_nonzero(src_idxs == src_idx)
+            # n = len(evt_idxs[src_idxs == src_idx])
+            out_arr[v_start:v_start+n] = np.full(
+                (n,), src_value, dtype=arr_dtype)
             v_start += n
 
-        return values_params_recarray
+        return out_arr
 
-    def broadcast_arrays_to_values_array(
+    def broadcast_sources_arrays_to_values_arrays(
             self,
             arrays):
-        """Broadcasts the 1d numpy ndarrays to the values array and returns the
-        result as a numpy record ndarray.
+        """Broadcasts the 1d numpy ndarrays to the values array.
 
         Parameters
         ----------
@@ -688,23 +687,16 @@ class TrialDataManager(object):
             The list of (N_values,)-shaped numpy ndarrays holding the
             broadcasted array values.
         """
-        n_x = len(arrays)
-
-        dt = [(f'{i}', np.float64) for i in range(n_x)]
-        in_recarray = np.empty(
-            (len(arrays[0]),),
-            dtype=dt)
-        for (i, x) in enumerate(arrays):
-            in_recarray[f'{i}'] = x
-
-        out_recarray = self.broadcast_params_recarray_to_values_array(
-            params_recarray=in_recarray)
-
-        out_arrays = [out_recarray[f'{i}'] for i in range(n_x)]
+        out_arrays = [
+            self.broadcast_sources_array_to_values_array(arr)
+            for arr in arrays
+        ]
 
         return out_arrays
 
-    def broadcast_selected_events_arrays_to_values_arrays(self, arrays):
+    def broadcast_selected_events_arrays_to_values_arrays(
+            self,
+            arrays):
         """Broadcasts the given arrays of length N_selected_events to arrays
         of length N_values.
 

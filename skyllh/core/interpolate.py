@@ -355,7 +355,7 @@ class Linear1DGridManifoldInterpolationMethod(
             m = self._cache['m']
             b = self._cache['b']
 
-            (x,) = tdm.broadcast_arrays_to_values_array((x,))
+            (x,) = tdm.broadcast_sources_arrays_to_values_arrays((x,))
 
             values = m*x + b
 
@@ -391,7 +391,8 @@ class Linear1DGridManifoldInterpolationMethod(
             n_values=n_values)
 
         # Broadcast x0 and x1 to the values array.
-        (x, v_x0, v_x1) = tdm.broadcast_arrays_to_values_array((x, x0, x1))
+        (x, v_x0, v_x1) = tdm.broadcast_sources_arrays_to_values_arrays(
+            (x, x0, x1))
 
         m = (M1 - M0) / (v_x1 - v_x0)
         b = M0 - m*v_x0
@@ -600,7 +601,7 @@ class Parabola1DGridManifoldInterpolationMethod(
                 b=b)
 
         # Broadcast x, x1, and (x-x1) to the values array.
-        (x, x1, x_minus_x1) = tdm.broadcast_arrays_to_values_array(
+        (x, x1, x_minus_x1) = tdm.broadcast_sources_arrays_to_values_arrays(
             (x, x1, x-x1))
 
         # Calculate the interpolated manifold values.
