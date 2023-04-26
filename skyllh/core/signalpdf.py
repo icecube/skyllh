@@ -282,6 +282,28 @@ class RayleighPSFPointSourceSignalSpatialPDF(
             **kwargs
         )
 
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Pre-computes the probability density values once a new trial data is
+        available.
+        """
+        get_data = tdm.get_data
+
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+
+        psi = get_data('psi')
+        sigma = get_data('ang_err')
+        sigma_sq = np.take(sigma**2, evt_idxs)
+
+        self._pd = (
+            0.5/(np.pi*np.sin(psi)) *
+            (psi / sigma_sq) *
+            np.exp(-0.5*(psi**2/sigma_sq))
+        )
+
     def get_pd(
             self,
             tdm,
@@ -320,23 +342,9 @@ class RayleighPSFPointSourceSignalSpatialPDF(
             depend on any global fit parameters and hence, this dictionary is
             empty.
         """
-        get_data = tdm.get_data
-
-        (src_idxs, evt_idxs) = tdm.src_evt_idxs
-
-        psi = get_data('psi')
-        sigma = get_data('ang_err')
-        sigma_sq = np.take(sigma**2, evt_idxs)
-
-        pd = (
-            0.5/(np.pi*np.sin(psi)) *
-            (psi / sigma_sq) *
-            np.exp(-0.5*(psi**2/sigma_sq))
-        )
-
         grads = dict()
 
-        return (pd, grads)
+        return (self._pd, grads)
 
 
 class SignalTimePDF(
