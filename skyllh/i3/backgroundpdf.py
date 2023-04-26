@@ -430,7 +430,7 @@ class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
         # Create the PDF using the base class.
         super().__init__(
             pmm=None,
-            data_log10_energy=data_log_energy,
+            data_log10_energy=data_log10_energy,
             data_sin_dec=data_sin_dec,
             data_mcweight=data_mcweight,
             data_physicsweight=data_physicsweight,
