@@ -864,10 +864,9 @@ class SpatialBoxEventSelectionMethod(
                             2*np.pi) - np.pi
                         ) < dRA_half[srcs_slice][:, np.newaxis])
             else:
-                mask_ra = np.fabs(
-                    np.mod(evts_ra - srcs_ra[:, np.newaxis] + np.pi, 2*np.pi) -
-                    np.pi
-                ) < dRA_half[:, np.newaxis]
+                ra_diff = np.fabs(evts_ra - srcs_ra[:, np.newaxis])
+                ra_mod = np.where(ra_diff >= np.pi, 2*np.pi-ra_diff, ra_diff)
+                mask_ra = ra_mod < dRA_half[:, np.newaxis]
 
         # Determine the mask for the events which fall inside the declination
         # window.
