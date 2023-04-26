@@ -28,7 +28,10 @@ from skyllh.i3.pdf import (
 )
 
 
-class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
+class BackgroundI3SpatialPDF(
+        SpatialPDF,
+        UsesBinning,
+        IsBackgroundPDF):
     """This is the base class for all IceCube specific spatial background PDF
     models. IceCube spatial background PDFs depend solely on the zenith angle,
     and hence, on the declination of the event.
@@ -152,7 +155,24 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
         """
         self._log_spline = self._orig_log_spline
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Pre-cumputes the probability density values when new trial data is
+        available.
+        """
+        with TaskTimer(tl, 'Evaluating bkg log-spline.'):
+            log_spline_val = self._log_spline(tdm.get_data('sin_dec'))
+
+        self._pd = 0.5 / np.pi * np.exp(log_spline_val)
+
+    def get_pd(
+            self,
+            tdm,
+            params_recarray=None,
+            tl=None):
         """Calculates the spatial background probability on the sphere of each
         event.
 
@@ -182,15 +202,11 @@ class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
             The background PDF does not depend on any global fit parameter,
             hence, this is an empty dictionary.
         """
-        with TaskTimer(tl, 'Evaluating bkg log-spline.'):
-            log_spline_val = self._log_spline(tdm.get_data('sin_dec'))
-
-        pd = 0.5 / np.pi * np.exp(log_spline_val)
-
-        return (pd, dict())
+        return (self._pd, dict())
 
 
-class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
+class DataBackgroundI3SpatialPDF(
+        BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     experimental data.
     """
@@ -235,7 +251,8 @@ class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
             spline_order_sin_dec=spline_order_sin_dec)
 
 
-class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
+class MCBackgroundI3SpatialPDF(
+        BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     monte-carlo data.
     """
@@ -302,7 +319,9 @@ class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
             spline_order_sin_dec=spline_order_sin_dec)
 
 
-class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
+class DataBackgroundI3EnergyPDF(
+        I3EnergyPDF,
+        IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     experimental data. This class is derived from I3EnergyPDF.
     """
@@ -359,7 +378,9 @@ class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
             smoothing_filter=smoothing_filter)
 
 
-class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
+class MCBackgroundI3EnergyPDF(
+        I3EnergyPDF,
+        IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     monte-carlo data. This class is derived from I3EnergyPDF.
     """
