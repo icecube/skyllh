@@ -9,9 +9,6 @@ import numpy as np
 from skyllh.core.detsigyield import (
     DetSigYield,
 )
-from skyllh.core.parameters import (
-    ParameterModelMapper,
-)
 from skyllh.core.py import (
     issequence,
     issequenceof,
