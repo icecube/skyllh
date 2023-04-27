@@ -54,6 +54,7 @@ class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
         groups.
         """
         return self._shg_mgr
+
     @shg_mgr.setter
     def shg_mgr(self, manager):
         if not isinstance(manager, SourceHypoGroupManager):
@@ -68,6 +69,7 @@ class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
         generated for.
         """
         return self._dataset_list
+
     @dataset_list.setter
     def dataset_list(self, datasets):
         if not issequenceof(datasets, Dataset):
@@ -83,6 +85,7 @@ class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
         property.
         """
         return self._data_list
+
     @data_list.setter
     def data_list(self, datas):
         if not issequenceof(datas, DatasetData):
@@ -186,7 +189,7 @@ class SignalGenerator(SignalGeneratorBase):
 
         # Go through the source hypothesis groups to get the signal event
         # candidates.
-        for ((shg_idx,shg), (j,(ds,data))) in itertools.product(
+        for ((shg_idx, shg), (j, (ds, data))) in itertools.product(
                 enumerate(shg_list),
                 enumerate(zip(self._dataset_list, self._data_list))):
             sig_gen_method = shg.sig_gen_method
@@ -272,7 +275,7 @@ class SignalGenerator(SignalGeneratorBase):
 
         shg_list = self._shg_mgr.shg_list
         mu_fluxes_idx_offset = 0
-        for (shg_idx,shg) in enumerate(shg_list):
+        for (shg_idx, shg) in enumerate(shg_list):
             fluxmodel = shg.fluxmodel
             # Calculate conversion factor from the flux model unit into the
             # internal flux unit.
@@ -289,7 +292,7 @@ class SignalGenerator(SignalGeneratorBase):
                 mu_fluxes[mu_fluxes_idx_offset + k] = mu_flux_k
             mu_fluxes_idx_offset += shg.n_sources
 
-        if(per_source):
+        if per_source:
             return mu_fluxes
 
         mu_flux = np.sum(mu_fluxes)
@@ -325,12 +328,15 @@ class SignalGenerator(SignalGeneratorBase):
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
         """
-        if(poisson):
-            mean = rss.random.poisson(float_cast(
-                mean, 'The mean argument must be castable to type of float!'))
+        if poisson:
+            mean = rss.random.poisson(
+                float_cast(
+                    mean,
+                    'The mean argument must be castable to type of float!'))
 
         n_signal = int_cast(
-            mean, 'The mean argument must be castable to type of int!')
+            mean,
+            'The mean argument must be castable to type of int!')
 
         # Draw n_signal signal candidates according to their weight.
         sig_events_meta = rss.random.choice(
@@ -352,11 +358,15 @@ class SignalGenerator(SignalGeneratorBase):
             ds_mask = sig_events_meta['ds_idx'] == ds_idx
             n_sig_events_ds = np.count_nonzero(ds_mask)
 
-            data = dict(
-                [(fname, np.empty(
-                    (n_sig_events_ds,),
-                    dtype=mc.get_field_dtype(fname))
-                 ) for fname in mc.field_name_list])
+            data = dict([
+                (
+                    fname,
+                    np.empty(
+                        (n_sig_events_ds,),
+                        dtype=mc.get_field_dtype(fname))
+                )
+                for fname in mc.field_name_list
+            ])
             sig_events = DataFieldRecordArray(data, copy=False)
 
             fill_start_idx = 0
