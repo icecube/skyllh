@@ -70,17 +70,17 @@ class PDDatasetSignalGenerator(
         self._logger = get_logger(module_classname(self))
 
         if sm is None:
-            self.smearing_matrix = PDSmearingMatrix(
+            self.sm = PDSmearingMatrix(
                 pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
         else:
-            self.smearing_matrix = sm
+            self.sm = sm
 
         if effA is None:
-            dec_idx = self.smearing_matrix.get_true_dec_idx(src_dec)
+            dec_idx = self.sm.get_true_dec_idx(src_dec)
             (min_log_true_e,
-             max_log_true_e) = \
-                self.smearing_matrix.get_true_log_e_range_with_valid_log_e_pdfs(
+             max_log_true_e) =\
+                self.sm.get_true_log_e_range_with_valid_log_e_pdfs(
                     dec_idx)
             kwargs = {
                 'src_dec': src_dec,
@@ -213,7 +213,7 @@ class PDDatasetSignalGenerator(
 
         events = DataFieldRecordArray(data, copy=False)
 
-        sm = self.smearing_matrix
+        sm = self.sm
 
         log_true_e = self._eval_spline(
             rss.random.uniform(size=n_events), log_true_e_inv_cdf_spl)
@@ -331,7 +331,7 @@ class PDDatasetSignalGenerator(
                 - 'ra'
                 - 'ang_err'
         """
-        sm = self.smearing_matrix
+        sm = self.sm
 
         # Find the declination bin index.
         dec_idx = sm.get_true_dec_idx(src_dec)
@@ -435,11 +435,16 @@ class PDSignalGenerator(
                                 'LLHRatio!')
         self._llhratio = llhratio
 
-    def generate_signal_events(self, rss, mean, poisson=True):  # noqa: C901
-        shg_list = self._src_hypo_group_manager.src_hypo_group_list
+    def generate_signal_events(  # noqa: C901
+            self,
+            rss,
+            mean,
+            poisson=True):
+        """Generates signal events.
+        """
         # Only supports a single source hypothesis group. Raise an error
         # if more than one shg is in the source hypo group manager.
-        if len(shg_list) > 1:
+        if self._shg_mgr.n_sources > 1:
             raise RuntimeError(
                 'Signal injection for multiple source hypothesis groups is '
                 'not supported yet.')
@@ -447,18 +452,27 @@ class PDSignalGenerator(
         tot_n_events = 0
         signal_events_dict = {}
 
-        for shg in shg_list:
-            # Only supports single point source signal injection. Raise
-            # an error if more than one source is in the source hypo group.
-            if len(shg.source_list) > 1:
-                raise RuntimeError(
-                    'Signal injection for multiple sources within a source '
-                    'hypothesis group is not supported yet.')
+        for shg in self._shg_mgr.shg_list:
+
             # This only works with power-laws for now.
             # Each source hypo group can have a different power-law
-            gamma = shg.fluxmodel.gamma
-            (weights, _) = self.llhratio.dataset_signal_weights([mean, gamma])
-            for (ds_idx, w) in enumerate(weights):
+
+            gamma = shg.fluxmodel.energy_profile.gamma
+
+            src_params_recarray = np.array(
+                [(gamma, -1)],
+                dtype=[
+                    ('gamma', np.float64),
+                    ('gamma:gpidx', np.int)])
+
+            self.llhratio.src_detsigyield_weights_service.calculate(
+                src_params_recarray=src_params_recarray)
+            ds_sig_weight_factors_service =\
+                self.llhratio.ds_sig_weight_factors_service
+            ds_sig_weight_factors_service.calculate()
+
+            (ds_weights, _) = ds_sig_weight_factors_service.get_weights()
+            for (ds_idx, w) in enumerate(ds_weights):
                 w_mean = mean * w
                 if poisson:
                     n_events = rss.random.poisson(
@@ -478,11 +492,15 @@ class PDSignalGenerator(
                 for (shg_src_idx, src) in enumerate(shg.source_list):
                     ds = self._dataset_list[ds_idx]
                     sig_gen = PDDatasetSignalGenerator(
-                        ds, src.dec, self.effA[ds_idx], self.sm[ds_idx])
+                        ds,
+                        src.dec,
+                        self.effA[ds_idx],
+                        self.sm[ds_idx])
+
                     if self.effA[ds_idx] is None:
                         self.effA[ds_idx] = sig_gen.effA
                     if self.sm[ds_idx] is None:
-                        self.sm[ds_idx] = sig_gen.smearing_matrix
+                        self.sm[ds_idx] = sig_gen.sm
                     # ToDo: here n_events should be split according to some
                     # source weight
                     events_ = sig_gen.generate_signal_events(
@@ -502,7 +520,7 @@ class PDSignalGenerator(
                     else:
                         signal_events_dict[ds_idx].append(events_)
 
-        return tot_n_events, signal_events_dict
+        return (tot_n_events, signal_events_dict)
 
 
 class PDTimeDependentSignalGenerator(
