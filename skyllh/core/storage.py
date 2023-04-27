@@ -1020,7 +1020,7 @@ class DataFieldRecordArray(
         DataFieldRecordArray.
         """
         if self._indices is None:
-            self._indices = np.indices((self._len,))[0]
+            self._indices = np.arange(self._len)
         return self._indices
 
     def append(self, arr):
