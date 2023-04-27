@@ -505,8 +505,9 @@ class Parabola1DGridManifoldInterpolationMethod(
         """
         self__cache = self._cache
         if (self__cache['trial_data_state_id'] is not None) and\
-           (self__cache['trial_data_state_id'] == trial_data_state_id) and\
-           (np.all(np.isclose(self__cache['x1'], x1))):
+           (self__cache['trial_data_state_id'] == trial_data_state_id):
+            if np.any(np.not_equal(self__cache['x1'], x1)):
+                return False
             return True
 
         return False
