@@ -851,18 +851,16 @@ class SpatialBoxEventSelectionMethod(
                     if bi == n_batches-1:
                         # We got the last batch of sources.
                         srcs_slice = slice(bi*batch_size, None)
-                        mask_ra[srcs_slice, :] = (
-                            np.fabs(
-                                np.mod(evts_ra - srcs_ra[srcs_slice][:, np.newaxis] + np.pi, 2*np.pi) - np.pi
-                            ) < dRA_half[srcs_slice][:, np.newaxis])
-                        break
+                    else:
+                        srcs_slice = slice(bi*batch_size, (bi+1)*batch_size)
 
-                    srcs_slice = slice(bi*batch_size, (bi+1)*batch_size)
+                    ra_diff = np.fabs(
+                        evts_ra - srcs_ra[srcs_slice][:, np.newaxis])
+                    ra_mod = np.where(
+                        ra_diff >= np.pi, 2*np.pi - ra_diff, ra_diff)
                     mask_ra[srcs_slice, :] = (
-                        np.fabs(np.mod(
-                            evts_ra - srcs_ra[srcs_slice][:, np.newaxis] + np.pi,
-                            2*np.pi) - np.pi
-                        ) < dRA_half[srcs_slice][:, np.newaxis])
+                        ra_mod < dRA_half[srcs_slice][:, np.newaxis]
+                    )
             else:
                 ra_diff = np.fabs(evts_ra - srcs_ra[:, np.newaxis])
                 ra_mod = np.where(ra_diff >= np.pi, 2*np.pi-ra_diff, ra_diff)
