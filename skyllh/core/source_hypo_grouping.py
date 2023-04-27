@@ -10,7 +10,6 @@ import numpy as np
 from skyllh.core.py import (
     classname,
     issequenceof,
-    make_dict_hash,
 )
 from skyllh.core.detsigyield import (
     DetSigYieldBuilder,
