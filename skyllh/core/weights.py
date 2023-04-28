@@ -18,7 +18,8 @@ from skyllh.core.source_hypo_grouping import (
 )
 
 
-class SrcDetSigYieldWeightsService(object):
+class SrcDetSigYieldWeightsService(
+        object):
     r"""This class provides a service for the source detector signal yield
     weights, which are the product of the source weights with the detector
     signal yield, denoted with :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})` in the
@@ -207,7 +208,9 @@ class SrcDetSigYieldWeightsService(object):
         self._src_weight_array_list = type(self).create_src_weight_array_list(
             shg_mgr=self._shg_mgr)
 
-    def calculate(self, src_params_recarray):
+    def calculate(
+            self,
+            src_params_recarray):
         """Calculates the source detector signal yield weights for each source
         and their derivative w.r.t. each global floating parameter. The result
         is stored internally as:
@@ -286,7 +289,8 @@ class SrcDetSigYieldWeightsService(object):
         return (self._a_jk, self._a_jk_grads)
 
 
-class DatasetSignalWeightFactorsService(object):
+class DatasetSignalWeightFactorsService(
+        object):
     r"""This class provides a service to calculates the dataset signal weight
     factors, :math:`f_j(\vec{p}_\mathrm{s})`, for each dataset.
     It utilizes the source detector signal yield weights
@@ -294,7 +298,9 @@ class DatasetSignalWeightFactorsService(object):
     :class:`~SrcDetSigYieldWeightsService` class.
     """
 
-    def __init__(self, src_detsigyield_weights_service):
+    def __init__(
+            self,
+            src_detsigyield_weights_service):
         r"""Creates a new DatasetSignalWeightFactors instance.
 
         Parameters
