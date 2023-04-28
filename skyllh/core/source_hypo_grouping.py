@@ -224,6 +224,13 @@ class SourceHypoGroupManager(
 
     @property
     def n_src_hypo_groups(self):
+        """DEPRICATED: Use n_shgs instead.
+        The number of defined source hypothesis groups.
+        """
+        return len(self._shg_list)
+
+    @property
+    def n_shgs(self):
         """The number of defined source hypothesis groups.
         """
         return len(self._shg_list)
