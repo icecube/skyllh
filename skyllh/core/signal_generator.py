@@ -101,6 +101,12 @@ class SignalGeneratorBase(
                 'instances!')
         self._data_list = datas
 
+    @property
+    def n_datasets(self):
+        """(read-only) The number of datasets.
+        """
+        return len(self._dataset_list)
+
     def change_shg_mgr(self, shg_mgr):
         """Changes the source hypothesis group manager. Derived classes can
         reimplement this method but this method of the base class must still be
