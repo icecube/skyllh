@@ -23,11 +23,18 @@ from skyllh.core.storage import (
 )
 
 
-class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
+class SignalGeneratorBase(
+        object,
+        metaclass=abc.ABCMeta):
     """This is the abstract base class for all signal generator classes in
     SkyLLH. It defines the interface for signal generators.
     """
-    def __init__(self, shg_mgr, dataset_list, data_list, **kwargs):
+    def __init__(
+            self,
+            shg_mgr,
+            dataset_list,
+            data_list,
+            **kwargs):
         """Constructs a new signal generator instance.
 
         Parameters
@@ -102,7 +109,11 @@ class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
         self.shg_mgr = shg_mgr
 
     @abc.abstractmethod
-    def generate_signal_events(self, rss, mean, poisson=True):
+    def generate_signal_events(
+            self,
+            rss,
+            mean,
+            poisson=True):
         """This abstract method must be implemented by the derived class to
         generate a given number of signal events.
 
@@ -135,7 +146,8 @@ class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
         pass
 
 
-class SignalGenerator(SignalGeneratorBase):
+class SignalGenerator(
+        SignalGeneratorBase):
     """This is the general signal generator class. It does not depend on the
     detector or source hypothesis, because these dependencies are factored out
     into the signal generation method. In fact the construction within this
@@ -143,7 +155,12 @@ class SignalGenerator(SignalGeneratorBase):
     of multiple sources the handling here is very suboptimal. Therefore the
     MultiSourceSignalGenerator should be used instead!
     """
-    def __init__(self, shg_mgr, dataset_list, data_list, **kwargs):
+    def __init__(
+            self,
+            shg_mgr,
+            dataset_list,
+            data_list,
+            **kwargs):
         """Constructs a new signal generator instance.
 
         Parameters
@@ -189,9 +206,9 @@ class SignalGenerator(SignalGeneratorBase):
 
         # Go through the source hypothesis groups to get the signal event
         # candidates.
-        for ((shg_idx, shg), (j, (ds, data))) in itertools.product(
+        for ((shg_idx, shg), (j, data)) in itertools.product(
                 enumerate(shg_list),
-                enumerate(zip(self._dataset_list, self._data_list))):
+                enumerate(self._data_list)):
             sig_gen_method = shg.sig_gen_method
             if sig_gen_method is None:
                 raise ValueError(
@@ -237,7 +254,10 @@ class SignalGenerator(SignalGeneratorBase):
 
         self._construct_signal_candidates()
 
-    def mu2flux(self, mu, per_source=False):
+    def mu2flux(
+            self,
+            mu,
+            per_source=False):
         """Translate the mean number of signal events `mu` into the
         corresponding flux. The unit of the returned flux is the internally used
         flux unit.
@@ -298,7 +318,11 @@ class SignalGenerator(SignalGeneratorBase):
         mu_flux = np.sum(mu_fluxes)
         return mu_flux
 
-    def generate_signal_events(self, rss, mean, poisson=True):
+    def generate_signal_events(
+            self,
+            rss,
+            mean,
+            poisson=True):
         """Generates a given number of signal events from the signal candidate
         monte-carlo events.
 
@@ -347,8 +371,8 @@ class SignalGenerator(SignalGeneratorBase):
         # Get the list of unique dataset and source hypothesis group indices of
         # the drawn signal events.
         # Note: This code does not assume the same format for each of the
-        #       individual MC dataset numpy record arrays, thus might be a bit
-        #       slower. If one could assume the same MC dataset format, one
+        #       individual MC datasets, thus might be a bit slower.
+        #       If one could assume the same MC dataset format, one
         #       could gather all the MC events of all the datasets first and do
         #       the signal event post processing for all datasets at once.
         signal_events_dict = dict()
@@ -383,7 +407,7 @@ class SignalGenerator(SignalGeneratorBase):
                 ev_idx = shg_sig_events_meta['ev_idx']
                 # Get the signal MC events of the current dataset and source
                 # hypothesis group.
-                shg_sig_events = mc.get_selection(ev_idx)
+                shg_sig_events = mc[ev_idx]
 
                 # Do the signal event post sampling processing.
                 shg_sig_events = shg.sig_gen_method.\
