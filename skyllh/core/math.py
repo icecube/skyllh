@@ -7,6 +7,7 @@ import abc
 from copy import (
     deepcopy,
 )
+import numpy as np
 
 from skyllh.core.py import (
     classname,
@@ -89,6 +90,29 @@ class MathFunction(
             f.set_params(newparams)
 
         return f
+
+    def get_param(
+            self,
+            name):
+        """Retrieves the value of the given parameter. It returns ``np.nan`` if
+        the parameter does not exist.
+
+        Parameters
+        ----------
+        name : str
+            The name of the parameter.
+
+        Returns
+        -------
+        value : float | np.nan
+            The value of the parameter.
+        """
+        if name not in self._param_names:
+            return np.nan
+
+        value = getattr(self, name)
+
+        return value
 
     def set_params(
             self,

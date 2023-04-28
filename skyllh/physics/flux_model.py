@@ -1774,6 +1774,31 @@ class FactorizedFluxModel(
 
         return flux
 
+    def get_param(self, name):
+        """Retrieves the value of the given parameter. It returns ``np.nan`` if
+        the parameter does not exist.
+
+        Parameters
+        ----------
+        name : str
+            The name of the parameter.
+
+        Returns
+        -------
+        value : float | np.nan
+            The value of the parameter.
+        """
+        for obj in (
+                super(),
+                self._spatial_profile,
+                self._energy_profile,
+                self._time_profile):
+            value = obj.get_param(name=name)
+            if not np.isnan(value):
+                return value
+
+        return np.nan
+
     def set_params(self, pdict):
         """Sets the parameters of the flux model. For this factorized flux model
         it means that it sets the parameters of the spatial, energy, and time
