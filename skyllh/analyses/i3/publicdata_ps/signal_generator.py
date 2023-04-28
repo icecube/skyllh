@@ -421,6 +421,8 @@ class PDSignalGenerator(
         self.splines = energy_cut_splines
         self.cut_sindec = cut_sindec
 
+        self._src_params_recarray = self._create_src_params_recarray()
+
     @property
     def llhratio(self):
         """The log-likelihood ratio function for the analysis.
@@ -434,6 +436,61 @@ class PDSignalGenerator(
                 raise TypeError('The llratio property must be an instance of '
                                 'LLHRatio!')
         self._llhratio = llhratio
+
+    def _create_src_params_recarray(self):
+        """Creates the src_params_recarray structured ndarray of length
+        N_sources holding the local source parameter names and values needed for
+        the calculation of the detector signal yields.
+        """
+        src_detsigyield_weights_service =\
+            self.llhratio.src_detsigyield_weights_service
+
+        # Get the parameter names needed for the detector signal yield
+        # calculation.
+        param_names = []
+        for detsigyield in src_detsigyield_weights_service.detsigyield_arr.flat:
+            param_names.extend(detsigyield.param_names)
+        param_names = set(param_names)
+
+        # Create an empty structured ndarray of length N_sources.
+        dt = []
+        for pname in param_names:
+            dt.extend([
+                (pname, np.float64),
+                (f'{pname}:gpidx', np.int)
+            ])
+        src_params_recarray = np.empty((self._shg_mgr.n_sources,), dtype=dt)
+
+        sidx = 0
+        for (shg_idx, shg) in enumerate(self._shg_mgr.shg_list):
+
+            shg_n_src = shg.n_sources
+
+            shg_src_slice = slice(sidx, sidx+shg_n_src)
+
+            pvalues = []
+            for pname in param_names:
+                pvalues.extend([
+                    shg.fluxmodel.get_param(pname),
+                    0
+                ])
+
+            src_params_recarray[shg_src_slice] = tuple(pvalues)
+
+            sidx += shg_n_src
+
+        return src_params_recarray
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
+        """Changes the source hypothesis group manager. This will recreate the
+        src_params_recarray needed for calculating the detector signal yields.
+        """
+        super().change_shg_mgr(
+            shg_mgr=shg_mgr)
+
+        self._src_params_recarray = self._create_src_params_recarray()
 
     def generate_signal_events(  # noqa: C901
             self,
@@ -454,19 +511,8 @@ class PDSignalGenerator(
 
         for shg in self._shg_mgr.shg_list:
 
-            # This only works with power-laws for now.
-            # Each source hypo group can have a different power-law
-
-            gamma = shg.fluxmodel.energy_profile.gamma
-
-            src_params_recarray = np.array(
-                [(gamma, -1)],
-                dtype=[
-                    ('gamma', np.float64),
-                    ('gamma:gpidx', np.int)])
-
             self.llhratio.src_detsigyield_weights_service.calculate(
-                src_params_recarray=src_params_recarray)
+                src_params_recarray=self._src_params_recarray)
             ds_sig_weight_factors_service =\
                 self.llhratio.ds_sig_weight_factors_service
             ds_sig_weight_factors_service.calculate()
