@@ -153,7 +153,7 @@ def create_analysis(
     gamma_min=1.,
     gamma_max=5.,
     kde_smoothing=False,
-    minimizer_impl="LBFGS",
+    minimizer_impl='LBFGS',
     cut_sindec=None,
     spl_smooth=None,
     cap_ratio=False,
@@ -195,10 +195,10 @@ def create_analysis(
     kde_smoothing : bool
         Apply a KDE-based smoothing to the data-driven background pdf.
         Default: False.
-    minimizer_impl : str | "LBFGS"
-        Minimizer implementation to be used. Supported options are "LBFGS"
+    minimizer_impl : str
+        Minimizer implementation to be used. Supported options are ``"LBFGS"``
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
-        "minuit" (Minuit minimizer used by the :mod:`iminuit` module).
+        ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module).
         Default: "LBFGS".
     cut_sindec : list of float | None
         sin(dec) values at which the energy cut in the southern sky should
@@ -273,7 +273,7 @@ def create_analysis(
     # The sin(dec) binning will be taken by the builder automatically from the
     # Dataset instance.
     gamma_grid = param_gamma.as_linear_grid(delta=0.1)
-    detsigyield_builder = \
+    detsigyield_builder =\
         PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             param_grid=gamma_grid)
 
@@ -326,7 +326,7 @@ def create_analysis(
         shg_mgr=shg_mgr,
         delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
 
-    # Prepare the spline parameters.
+    # Prepare the spline parameters for the signal generator.
     if cut_sindec is None:
         cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
     if spl_smooth is None:
@@ -339,7 +339,7 @@ def create_analysis(
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     energy_cut_splines = []
-    for (dataset_idx, ds) in enumerate(datasets):
+    for (ds_idx, ds) in enumerate(datasets):
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
             compress=compress_data,
@@ -402,13 +402,14 @@ def create_analysis(
         energy_cut_spline = create_energy_cut_spline(
             ds,
             data.exp,
-            spl_smooth[dataset_idx])
+            spl_smooth[ds_idx])
         energy_cut_splines.append(energy_cut_spline)
 
         pbar.increment()
     pbar.finish()
 
     ana.llhratio = ana.construct_llhratio(minimizer, ppbar=ppbar)
+
     ana.construct_signal_generator(
         llhratio=ana.llhratio,
         energy_cut_splines=energy_cut_splines,
