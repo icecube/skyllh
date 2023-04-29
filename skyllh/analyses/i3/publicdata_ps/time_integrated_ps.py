@@ -26,6 +26,7 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
+    tdm_field_func_psi,
 )
 
 from skyllh.core.analysis import (
@@ -93,9 +94,6 @@ from skyllh.core.utils.analysis import (
     create_trial_data_file,
     pointlikesource_to_data_field_array,
 )
-from skyllh.core.utils.coords import (
-    angular_separation,
-)
 
 from skyllh.datasets.i3 import (
     data_samples,
@@ -115,29 +113,6 @@ from skyllh.physics.flux_model import (
 from skyllh.physics.source_model import (
     PointLikeSource,
 )
-
-
-def tdm_field_func_psi(tdm, shg_mgr, pmm):
-    """TDM data field function to calculate the opening angle between the
-    source positions and the event's reconstructed position.
-    """
-    (src_idxs, evt_idxs) = tdm.src_evt_idxs
-
-    ra = np.take(tdm.get_data('ra'), evt_idxs)
-    dec = np.take(tdm.get_data('dec'), evt_idxs)
-
-    src_array = tdm.get_data('src_array')
-    src_ra = np.take(src_array['ra'], src_idxs)
-    src_dec = np.take(src_array['dec'], src_idxs)
-
-    psi = angular_separation(
-        ra1=ra,
-        dec1=dec,
-        ra2=src_ra,
-        dec2=src_dec,
-        psi_floor=10**-5.95442953)
-
-    return psi
 
 
 def create_analysis(

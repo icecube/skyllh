@@ -26,11 +26,9 @@ from skyllh.analyses.i3.publicdata_ps.signal_generator import (
 from skyllh.analyses.i3.publicdata_ps.signalpdf import (
     PDSignalEnergyPDFSet,
 )
-from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import (
-    tdm_field_func_psi,
-)
 from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
+    tdm_field_func_psi,
 )
 from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
