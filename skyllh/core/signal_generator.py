@@ -128,7 +128,7 @@ class SignalGeneratorBase(
         rss : instance of RandomStateService
             The instance of RandomStateService providing the random number
             generator state.
-        mean : float
+        mean : int | float
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
