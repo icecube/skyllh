@@ -492,12 +492,38 @@ class PDSignalGenerator(
 
         self._src_params_recarray = self._create_src_params_recarray()
 
-    def generate_signal_events(  # noqa: C901
+    def generate_signal_events(
             self,
             rss,
             mean,
             poisson=True):
         """Generates signal events.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService providing the random number
+            generator state.
+        mean : int | float
+            The mean number of signal events. If the ``poisson`` argument is set
+            to True, the actual number of generated signal events will be drawn
+            from a Poisson distribution with this given mean value of signal
+            events.
+        poisson : bool
+            If set to True, the actual number of generated signal events will
+            be drawn from a Poisson distribution with the given mean value of
+            signal events.
+            If set to False, the argument ``mean`` specifies the actual number
+            of generated signal events.
+
+        Returns
+        -------
+        n_signal : int
+            The number of generated signal events.
+        signal_events_dict : dict of DataFieldRecordArray
+            The dictionary holding the DataFieldRecordArray instances with the
+            generated signal events. Each key of this dictionary represents the
+            dataset index for which the signal events have been generated.
         """
         # Only supports a single source hypothesis group. Raise an error
         # if more than one shg is in the source hypo group manager.
@@ -506,34 +532,32 @@ class PDSignalGenerator(
                 'Signal injection for multiple source hypothesis groups is '
                 'not supported yet.')
 
-        tot_n_events = 0
+        if poisson:
+            mean = rss.random.poisson(
+                float_cast(
+                    mean,
+                    'The `mean` argument must be castable to type of float!'))
+
+        mean = int_cast(
+            mean,
+            'The `mean` argument must be castable to type of int!')
+
+        n_signal = 0
         signal_events_dict = {}
 
-        for shg in self._shg_mgr.shg_list:
+        # Calculate the dataset weights to distribute the mean over the
+        # datasets.
+        self.llhratio.src_detsigyield_weights_service.calculate(
+            src_params_recarray=self._src_params_recarray)
+        ds_sig_weight_factors_service =\
+            self.llhratio.ds_sig_weight_factors_service
+        ds_sig_weight_factors_service.calculate()
+        (ds_weights, _) = ds_sig_weight_factors_service.get_weights()
 
-            self.llhratio.src_detsigyield_weights_service.calculate(
-                src_params_recarray=self._src_params_recarray)
-            ds_sig_weight_factors_service =\
-                self.llhratio.ds_sig_weight_factors_service
-            ds_sig_weight_factors_service.calculate()
-
-            (ds_weights, _) = ds_sig_weight_factors_service.get_weights()
-            for (ds_idx, w) in enumerate(ds_weights):
-                w_mean = mean * w
-                if poisson:
-                    n_events = rss.random.poisson(
-                        float_cast(
-                            w_mean,
-                            '`mean` must be castable to type of float!'
-                        )
-                    )
-                else:
-                    n_events = int_cast(
-                        w_mean,
-                        '`mean` must be castable to type of int!'
-                    )
-                tot_n_events += n_events
-
+        for (ds_idx, w) in enumerate(ds_weights):
+            n_events = int(np.round(mean * w, 0))
+            n_signal += n_events
+            for shg in self._shg_mgr.shg_list:
                 events_ = None
                 for (shg_src_idx, src) in enumerate(shg.source_list):
                     ds = self._dataset_list[ds_idx]
@@ -566,7 +590,7 @@ class PDSignalGenerator(
                     else:
                         signal_events_dict[ds_idx].append(events_)
 
-        return (tot_n_events, signal_events_dict)
+        return (n_signal, signal_events_dict)
 
 
 class PDTimeDependentSignalGenerator(
