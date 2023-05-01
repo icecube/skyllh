@@ -354,7 +354,7 @@ class SignalGenerator(
         n_signal : int
             The number of generated signal events.
         signal_events_dict : dict of DataFieldRecordArray
-            The dictionary holding the DataFieldRecordArray instancs with the
+            The dictionary holding the DataFieldRecordArray instances with the
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
         """
