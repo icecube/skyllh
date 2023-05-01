@@ -82,16 +82,12 @@ class PDDatasetSignalGenerator(
              max_log_true_e) =\
                 self.sm.get_true_log_e_range_with_valid_log_e_pdfs(
                     dec_idx)
-            kwargs = {
-                'src_dec': src_dec,
-                'min_log10enu': min_log_true_e,
-                'max_log10enu': max_log_true_e
-            }
             self.effA = PDAeff(
                 pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('eff_area_datafile')),
-                **kwargs)
-
+                src_dec=src_dec,
+                min_log10enu=min_log_true_e,
+                max_log10enu=max_log_true_e)
         else:
             self.effA = effA
 
@@ -159,8 +155,13 @@ class PDDatasetSignalGenerator(
         return values
 
     def _generate_events(
-            self, rss, src_dec, src_ra, dec_idx,
-            log_true_e_inv_cdf_spl, n_events):
+            self,
+            rss,
+            src_dec,
+            src_ra,
+            dec_idx,
+            log_true_e_inv_cdf_spl,
+            n_events):
         """Generates `n_events` signal events for the given source location
         and flux model.
 
@@ -176,19 +177,27 @@ class PDDatasetSignalGenerator(
             The declination of the source in radians.
         src_ra : float
             The right-ascention of the source in radians.
+        dec_idx : int
+            The SM's declination bin index of the source's declination.
+        log_true_e_inv_cdf_spl : instance of scipy.interpolate.splrep
+            The linear spline interpolation representation of the inverse
+            cummulative density function of the log10(E_true/GeV) distribution.
+        n_events : int
+            The number of events to generate.
 
         Returns
         -------
-        events : numpy record array of size `n_events`
-            The numpy record array holding the event data.
-            It contains the following data fields:
-                - 'isvalid'
-                - 'log_true_energy'
-                - 'log_energy'
-                - 'sin_dec'
+        events : instance of DataFieldRecordArray of size `n_events`
+            The instance of DataFieldRecordArray of length `n_events` holding
+            the event data. It contains the following data fields:
+
+                ``'isvalid'``
+                ``'log_true_energy'``
+                ``'log_energy'``
+                ``'sin_dec'``
+
             Single values can be NaN in cases where a pdf was not available.
         """
-
         # Create the output event DataFieldRecordArray.
         out_dtype = [
             ('isvalid', np.bool_),
@@ -262,54 +271,70 @@ class PDDatasetSignalGenerator(
 
     @staticmethod
     @np.vectorize
-    def energy_filter(events, spline, cut_sindec, logger):
+    def energy_filter(
+            events,
+            spline,
+            cut_sindec,
+            logger):
         """The energy filter will select all events below `cut_sindec`
         that have an energy smaller than the energy spline at their
         declination.
 
         Paramters
         ---------
-        events : numpy record array
-            Numpy record array with the generated signal events.
-        energy_cut_splines : scipy.interpolate.UnivariateSpline
+        events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the generated signal
+            events.
+        energy_cut_splines : instance of scipy.interpolate.UnivariateSpline
             A spline of E(sin_dec) that defines the declination
             dependent energy cut in the IceCube southern sky.
         cut_sindec : float
             The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
-        logger : logging.Logger
+        logger : instance of logging.Logger
             The Logger instance.
 
         Returns
-        energy_filter : (len(events),)-shaped numpy ndarray
-            A mask of shape `len(events)` of the events to be cut.
+        filter_mask : instance of numpy ndarray
+            The (len(events),)-shaped numpy ndarray with the mask of the events
+            to cut.
         """
         if cut_sindec is None:
             logger.warn(
                 'No `cut_sindec` has been specified. The energy cut will be '
                 'applied in [-90, 0] deg.')
             cut_sindec = 0.
-        energy_filter = np.logical_and(
+
+        filter_mask = np.logical_and(
             events['sin_dec'] < cut_sindec,
             events['log_energy'] < spline(events['sin_dec']))
 
-        return energy_filter
+        return filter_mask
 
     def generate_signal_events(
-            self, rss, src_dec, src_ra, flux_model, n_events,
-            energy_cut_spline=None, cut_sindec=None):
+            self,
+            rss,
+            src_dec,
+            src_ra,
+            fluxmodel,
+            n_events,
+            energy_cut_spline=None,
+            cut_sindec=None):
         """Generates ``n_events`` signal events for the given source location
         and flux model.
 
         Paramters
         ---------
-        rss : RandomStateService
+        rss : instance of RandomStateService
+            The instance of RandomStateService providing the random number
+            generator state.
         src_dec : float
             Declination coordinate of the injection point.
         src_ra : float
             Right ascension coordinate of the injection point.
-        flux_model : FluxModel
-            Instance of the `FluxModel` class.
+        fluxmodel : instance of FactorizedFluxModel
+            The instance of FactorizedFluxModel representing the flux model of
+            the source.
         n_events : int
             Number of signal events to be generated.
         energy_cut_splines : scipy.interpolate.UnivariateSpline
@@ -321,7 +346,7 @@ class PDDatasetSignalGenerator(
 
         Returns
         -------
-        events : numpy record array
+        events : instance of DataFieldRecordArray
             The numpy record array holding the event data.
             It contains the following data fields:
                 - 'isvalid'
@@ -343,7 +368,9 @@ class PDDatasetSignalGenerator(
         # Build the spline for the inverse CDF and draw a true neutrino
         # energy from the hypothesis spectrum.
         log_true_e_inv_cdf_spl = self._generate_inv_cdf_spline(
-            flux_model, min_log_true_e, max_log_true_e)
+            fluxmodel=fluxmodel,
+            log_e_min=min_log_true_e,
+            log_e_max=max_log_true_e)
 
         events = None
         n_evt_generated = 0
@@ -351,15 +378,25 @@ class PDDatasetSignalGenerator(
             n_evt = n_events - n_evt_generated
 
             events_ = self._generate_events(
-                rss, src_dec, src_ra, dec_idx, log_true_e_inv_cdf_spl, n_evt)
+                rss=rss,
+                src_dec=src_dec,
+                src_ra=src_ra,
+                dec_idx=dec_idx,
+                log_true_e_inv_cdf_spl=log_true_e_inv_cdf_spl,
+                n_events=n_evt)
 
             # Cut events that failed to be generated due to missing PDFs.
             # Also cut low energy events if generating in the southern sky.
             events_ = events_[events_['isvalid']]
+
             if energy_cut_spline is not None:
                 to_cut = self.energy_filter(
-                    events_, energy_cut_spline, cut_sindec, self._logger)
+                    events=events_,
+                    spline=energy_cut_spline,
+                    cut_sindec=cut_sindec,
+                    logger=self._logger)
                 events_ = events_[~to_cut]
+
             if not len(events_) == 0:
                 n_evt_generated += len(events_)
                 if events is None:
@@ -380,8 +417,8 @@ class PDSignalGenerator(
             self,
             shg_mgr,
             dataset_list,
-            data_list=None,
-            llhratio=None,
+            data_list,
+            llhratio,
             energy_cut_splines=None,
             cut_sindec=None,
             **kwargs):
@@ -431,10 +468,9 @@ class PDSignalGenerator(
 
     @llhratio.setter
     def llhratio(self, llhratio):
-        if llhratio is not None:
-            if not isinstance(llhratio, LLHRatio):
-                raise TypeError('The llratio property must be an instance of '
-                                'LLHRatio!')
+        if not isinstance(llhratio, LLHRatio):
+            raise TypeError(
+                'The llratio property must be an instance of LLHRatio!')
         self._llhratio = llhratio
 
     def _create_src_params_recarray(self):
