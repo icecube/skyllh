@@ -3,18 +3,26 @@
 import itertools
 import logging
 import numpy as np
-from numpy.lib import recfunctions as np_rfn
-from os import makedirs
+from numpy.lib import (
+    recfunctions as np_rfn,
+)
+from os import (
+    makedirs,
+)
 import os.path
-from scipy.interpolate import interp1d
-from scipy.stats import gamma
+from scipy.interpolate import (
+    interp1d,
+)
+from scipy.stats import (
+    gamma,
+)
 
 try:
     from iminuit import minimize
-except:
-    IMINUIT_LOADED=False
+except Exception:
+    IMINUIT_LOADED = False
 else:
-    IMINUIT_LOADED=True
+    IMINUIT_LOADED = True
 
 from skyllh.core.progressbar import (
     ProgressBar,
@@ -41,6 +49,7 @@ from skyllh.physics.source_model import (
 
 """This module contains common utility functions useful for an analysis.
 """
+
 
 def pointlikesource_to_data_field_array(
         tdm, shg_mgr, pmm):
@@ -72,16 +81,17 @@ def pointlikesource_to_data_field_array(
     """
     sources = shg_mgr.source_list
 
-    if(not issequenceof(sources, PointLikeSource)):
+    if not issequenceof(sources, PointLikeSource):
         raise TypeError(
             'The sources of the SourceHypoGroupManager must be '
             'PointLikeSource instances!')
 
     arr = np.empty(
         (len(sources),),
-        dtype=[('ra', np.float64),
-               ('dec', np.float64),
-               ('weight', np.float64),
+        dtype=[
+            ('ra', np.float64),
+            ('dec', np.float64),
+            ('weight', np.float64),
         ],
         order='F')
 
@@ -129,8 +139,11 @@ def calculate_pval_from_trials(
     return (p, p_sigma)
 
 
-def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold,
-        eta=3.0, n_max=500000):
+def calculate_pval_from_gammafit_to_trials(
+        ts_vals,
+        ts_threshold,
+        eta=3.0,
+        n_max=500000):
     """Calculates the probability (p-value) of test-statistic exceeding
     the given test-statistic threshold. This calculation relies on fitting
     a gamma distribution to a list of ts values.
@@ -158,7 +171,7 @@ def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold,
             'This module is a requirement for the function '
             '"calculate_pval_from_gammafit_to_trials"!')
 
-    if(ts_threshold < eta):
+    if ts_threshold < eta:
         raise ValueError(
             'ts threshold value = %e, eta = %e. The calculation of the p-value'
             'from the fit is correct only for ts threshold larger than '
@@ -173,9 +186,14 @@ def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold,
     N_prime = len(ts_eta)
     alpha = N_prime/Ntot
 
-    obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta,
-                                           ts_above_eta=ts_eta,
-                                           N_above_eta=N_prime)
+    def obj(x):
+        return truncated_gamma_logpdf(
+            x[0],
+            x[1],
+            eta=eta,
+            ts_above_eta=ts_eta,
+            N_above_eta=N_prime)
+
     x0 = [0.75, 1.8]  # Initial values of function parameters.
     bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
     r = minimize(obj, x0, bounds=bounds)
@@ -192,8 +210,13 @@ def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold,
     return (p, p_sigma)
 
 
-def calculate_pval_from_trials_mixed(ts_vals, ts_threshold, switch_at_ts=3.0,
-        eta=None, n_max=500000, comp_operator='greater_equal'):
+def calculate_pval_from_trials_mixed(
+        ts_vals,
+        ts_threshold,
+        switch_at_ts=3.0,
+        eta=None,
+        n_max=500000,
+        comp_operator='greater_equal'):
     """Calculates the probability (p-value) of test-statistic exceeding
     the given test-statistic threshold. This calculation relies on fitting
     a gamma distribution to a list of ts values if ts_threshold is larger than
@@ -230,13 +253,24 @@ def calculate_pval_from_trials_mixed(ts_vals, ts_threshold, switch_at_ts=3.0,
         eta = switch_at_ts
 
     if ts_threshold < switch_at_ts:
-        return calculate_pval_from_trials(ts_vals, ts_threshold, comp_operator=comp_operator)
+        return calculate_pval_from_trials(
+            ts_vals,
+            ts_threshold,
+            comp_operator=comp_operator)
     else:
-        return calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold, eta=eta, n_max=n_max)
+        return calculate_pval_from_gammafit_to_trials(
+            ts_vals,
+            ts_threshold,
+            eta=eta,
+            n_max=n_max)
 
 
 def truncated_gamma_logpdf(
-        a, scale, eta, ts_above_eta, N_above_eta):
+        a,
+        scale,
+        eta,
+        ts_above_eta,
+        N_above_eta):
     """Calculates the -log(likelihood) of a sample of random numbers
     generated from a gamma pdf truncated from below at x=eta.
 
@@ -262,12 +296,20 @@ def truncated_gamma_logpdf(
     """
     c0 = 1. - gamma.cdf(eta, a=a, scale=scale)
     c0 = 1./c0
-    logl = N_above_eta*np.log(c0) + np.sum(gamma.logpdf(ts_above_eta,
-                                                        a=a, scale=scale))
+    logl = N_above_eta*np.log(c0)
+    logl += np.sum(
+        gamma.logpdf(
+            ts_above_eta,
+            a=a,
+            scale=scale))
+
     return -logl
 
+
 def calculate_critical_ts_from_gamma(
-        ts, h0_ts_quantile, eta=3.0):
+        ts,
+        h0_ts_quantile,
+        eta=3.0):
     """Calculates the critical test-statistic value corresponding
     to h0_ts_quantile by fitting the ts distribution with a truncated
     gamma function.
@@ -297,9 +339,14 @@ def calculate_critical_ts_from_gamma(
     N_prime = len(ts_eta)
     alpha = N_prime/Ntot
 
-    obj = lambda x: truncated_gamma_logpdf(x[0], x[1], eta=eta,
-                                           ts_above_eta=ts_eta,
-                                           N_above_eta=N_prime)
+    def obj(x):
+        return truncated_gamma_logpdf(
+            x[0],
+            x[1],
+            eta=eta,
+            ts_above_eta=ts_eta,
+            N_above_eta=N_prime)
+
     x0 = [0.75, 1.8]  # Initial values of function parameters.
     bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
     r = minimize(obj, x0, bounds=bounds)
@@ -308,7 +355,7 @@ def calculate_critical_ts_from_gamma(
     norm = alpha/gamma.sf(eta, a=pars[0], scale=pars[1])
     critical_ts = gamma.ppf(1 - 1./norm*h0_ts_quantile, a=pars[0], scale=pars[1])
 
-    if(critical_ts < eta):
+    if critical_ts < eta:
         raise ValueError(
             'Critical ts value = %e, eta = %e. The calculation of the critical '
             'ts value from the fit is correct only for critical ts larger than '
@@ -317,7 +364,13 @@ def calculate_critical_ts_from_gamma(
 
     return critical_ts
 
-def polynomial_fit(ns, p, p_weight, deg, p_thr):
+
+def polynomial_fit(
+        ns,
+        p,
+        p_weight,
+        deg,
+        p_thr):
     """Performs a polynomial fit on the p-values of test-statistic trials
     associated to each ns..
     Using the fitted parameters it computes the number of signal events
@@ -346,16 +399,16 @@ def polynomial_fit(ns, p, p_weight, deg, p_thr):
     # Check if the second order coefficient is positive and eventually
     # change to a polynomial fit of order 1 to avoid to overestimate
     # the mean number of signal events for the chosen ts quantile.
-    if(deg == 2 and params[0] > 0):
+    if deg == 2 and params[0] > 0:
         deg = 1
         (params, cov) = np.polyfit(ns, p, deg, w=p_weight, cov=True)
 
-    if(deg == 1):
+    if deg == 1:
         (a, b) = (params[0], params[1])
         ns = (p_thr - b)/a
         return ns
 
-    elif(deg == 2):
+    elif deg == 2:
         (a, b, c) = (params[0], params[1], params[2])
         ns = (- b + np.sqrt((b**2)-4*a*(c-p_thr))) / (2*a)
         return ns
@@ -366,10 +419,22 @@ def polynomial_fit(ns, p, p_weight, deg, p_thr):
             'must be 1 or 2.',
             deg)
 
-def estimate_mean_nsignal_for_ts_quantile(
-        ana, rss, p, eps_p, mu_range, critical_ts=None, h0_trials=None,
-        h0_ts_quantile=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None, tl=None, pathfilename=None):
+
+def estimate_mean_nsignal_for_ts_quantile(  # noqa: C901
+        ana,
+        rss,
+        p,
+        eps_p,
+        mu_range,
+        critical_ts=None,
+        h0_trials=None,
+        h0_ts_quantile=None,
+        min_dmu=0.5,
+        bkg_kwargs=None,
+        sig_kwargs=None,
+        ppbar=None,
+        tl=None,
+        pathfilename=None):
     """Calculates the mean number of signal events needed to be injected to
     reach a test statistic distribution with defined properties for the given
     analysis.
@@ -434,14 +499,13 @@ def estimate_mean_nsignal_for_ts_quantile(
 
     n_total_generated_trials = 0
 
-    if(critical_ts is None) and (h0_ts_quantile is None):
+    if (critical_ts is None) and (h0_ts_quantile is None):
         raise RuntimeError(
             "Both the critical test-statistic value and the null-hypothesis "
             "test-statistic quantile are set to None. One of the two is "
             "needed to have the critical test-statistic value that defines "
-            "the type of test to run."
-        )
-    elif(critical_ts is None):
+            "the type of test to run.")
+    elif critical_ts is None:
         n_trials_max = int(5.e5)
         # Via binomial statistics, calcuate the minimum number of trials
         # needed to get the required precision on the critial TS value.
@@ -452,21 +516,26 @@ def estimate_mean_nsignal_for_ts_quantile(
         # which one is smaller. If n_trials_max trials are computed, a
         # fit to the ts distribution is performed to get the critial TS.
         n_trials_total = min(n_trials_min, n_trials_max)
-        if(h0_trials is None):
+        if h0_trials is None:
             h0_ts_vals = ana.do_trials(
-                rss, n_trials_total, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-                sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+                rss=rss,
+                n=n_trials_total,
+                mean_n_sig=0,
+                bkg_kwargs=bkg_kwargs,
+                sig_kwargs=sig_kwargs,
+                ppbar=ppbar,
+                tl=tl)['ts']
 
             logger.debug(
                 'Generate %d null-hypothesis trials',
                 n_trials_total)
             n_total_generated_trials += n_trials_total
 
-            if(pathfilename is not None):
+            if pathfilename is not None:
                 makedirs(os.path.dirname(pathfilename), exist_ok=True)
                 np.save(pathfilename, h0_ts_vals)
         else:
-            if(h0_trials.size < n_trials_total):
+            if h0_trials.size < n_trials_total:
                 if not ('seed' in h0_trials.dtype.names):
                     logger.debug(
                         'Uploaded trials miss the rss_seed field. '
@@ -474,12 +543,21 @@ def estimate_mean_nsignal_for_ts_quantile(
                         'safely. Uploaded trials will *not* be used.')
                     n_trials = n_trials_total
                     h0_ts_vals = ana.do_trials(
-                        rss, n_trials, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-                        sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+                        rss=rss,
+                        n=n_trials,
+                        mean_n_sig=0,
+                        bkg_kwargs=bkg_kwargs,
+                        sig_kwargs=sig_kwargs,
+                        ppbar=ppbar,
+                        tl=tl)['ts']
                 else:
                     n_trials = n_trials_total - h0_trials.size
-                    h0_ts_vals = extend_trial_data_file(ana, rss,
-                        n_trials, trial_data=h0_trials, mean_n_sig=0,
+                    h0_ts_vals = extend_trial_data_file(
+                        ana,
+                        rss,
+                        n_trials,
+                        trial_data=h0_trials,
+                        mean_n_sig=0,
                         pathfilename=pathfilename)['ts']
                 logger.debug(
                     'Generate %d null-hypothesis trials',
@@ -500,14 +578,14 @@ def estimate_mean_nsignal_for_ts_quantile(
         # on the critical TS value is smaller then 500k, compute the critical ts
         # value directly from trials; otherwise calculate it from the gamma
         # function fitted to the ts distribution.
-        if(n_trials_min <= n_trials_max):
+        if n_trials_min <= n_trials_max:
             c = np.percentile(h0_ts_vals, (1 - h0_ts_quantile)*100)
         else:
             c = calculate_critical_ts_from_gamma(h0_ts_vals, h0_ts_quantile)
         logger.debug(
             'Critical ts value for bkg ts quantile %g: %e',
             h0_ts_quantile, c)
-    elif(h0_ts_quantile is None):
+    elif h0_ts_quantile is None:
         # Make sure that the critical ts is a float.
         if not isinstance(critical_ts, float):
             raise TypeError(
@@ -524,9 +602,7 @@ def estimate_mean_nsignal_for_ts_quantile(
             "quantile were given. If you want to use your critical_ts "
             "value, set h0_ts_quantile to None; if you want to compute the "
             "critical ts from the background distribution, set critical_ts "
-            "to None."
-        )
-
+            "to None.")
 
     # Make sure ns_range is mutable.
     ns_range_ = list(mu_range)
@@ -541,9 +617,9 @@ def estimate_mean_nsignal_for_ts_quantile(
     # Define the range of p-values that will be possible to fit with a
     # polynomial function of order not larger than 2.
     min_fit_p, max_fit_p = p - 0.35, p + 0.35
-    if(min_fit_p < 0.5):
+    if min_fit_p < 0.5:
         min_fit_p = 0.5
-    if(max_fit_p > 0.985):
+    if max_fit_p > 0.985:
         max_fit_p = 0.985
 
     (n_sig, p_vals, p_val_weights) = ([], [], [])
@@ -563,13 +639,17 @@ def estimate_mean_nsignal_for_ts_quantile(
         # Initially generate trials for a 5-times larger uncertainty ``eps_p``
         # to catch ns0 points far away from the desired propability quicker.
         dn_trials = max(100, int(n_trials/5**2 + 0.5))
-        trial_vals0 = None
         (ts_vals0, p0_sigma, delta_p) = ([], 2*eps_p, 0)
         while (delta_p < p0_sigma*5) and (p0_sigma > eps_p):
             ts_vals0 = np.concatenate((
                 ts_vals0, ana.do_trials(
-                    rss, dn_trials, mean_n_sig=ns0, bkg_kwargs=bkg_kwargs,
-                    sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']))
+                    rss=rss,
+                    n=dn_trials,
+                    mean_n_sig=ns0,
+                    bkg_kwargs=bkg_kwargs,
+                    sig_kwargs=sig_kwargs,
+                    ppbar=ppbar,
+                    tl=tl)['ts']))
             (p0, p0_sigma) = calculate_pval_from_trials(ts_vals0, c)
 
             n_total_generated_trials += dn_trials
@@ -588,11 +668,11 @@ def estimate_mean_nsignal_for_ts_quantile(
             # n_trials estimate was initially too low.
             dn_trials = max(100, n_trials - ts_vals0.size)
 
-            if((p0_sigma < eps_p) and (delta_p < eps_p)):
+            if (p0_sigma < eps_p) and (delta_p < eps_p):
                 # We found the ns0 value that corresponds to the desired
                 # probability within the desired uncertainty.
 
-                if(p0 < max_fit_p and p0 > min_fit_p):
+                if (p0 < max_fit_p) and (p0 > min_fit_p):
                     n_sig.append(ns0)
                     p_vals.append(p0)
                     p_val_weights.append(1. / p0_sigma)
@@ -601,22 +681,27 @@ def estimate_mean_nsignal_for_ts_quantile(
                     'Found mu value %g with p value %g within uncertainty +-%g',
                     ns0, p0, p0_sigma)
 
-                if(p0 > p):
+                if p0 > p:
                     ns1 = ns_range_[0]
-                    if(np.abs(ns0 - ns1) > 1.0):
+                    if np.abs(ns0 - ns1) > 1.0:
                         ns1 = ns0 - 1.0
-                    if(np.abs(ns0 - ns1) < min_dmu):
+                    if np.abs(ns0 - ns1) < min_dmu:
                         ns1 = ns0 - min_dmu
                 else:
                     ns1 = ns_range_[1]
-                    if(np.abs(ns0 - ns1) > 1.0):
+                    if np.abs(ns0 - ns1) > 1.0:
                         ns1 = ns0 + 1.0
-                    if(np.abs(ns0 - ns1) < min_dmu):
+                    if np.abs(ns0 - ns1) < min_dmu:
                         ns1 = ns0 + min_dmu
 
                 ts_vals1 = ana.do_trials(
-                    rss, ts_vals0.size, mean_n_sig=ns1, bkg_kwargs=bkg_kwargs,
-                    sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+                    rss=rss,
+                    n=ts_vals0.size,
+                    mean_n_sig=ns1,
+                    bkg_kwargs=bkg_kwargs,
+                    sig_kwargs=sig_kwargs,
+                    ppbar=ppbar,
+                    tl=tl)['ts']
                 n_total_generated_trials += ts_vals0.size
 
                 (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
@@ -625,15 +710,15 @@ def estimate_mean_nsignal_for_ts_quantile(
                     'corresponding to p=(%g +-%g, %g +-%g)',
                     ns0, ns1, p0, p0_sigma, p1, p1_sigma)
 
-                if(p1 < max_fit_p and p1 > min_fit_p):
+                if (p1 < max_fit_p) and (p1 > min_fit_p):
                     n_sig.append(ns1)
                     p_vals.append(p1)
                     p_val_weights.append(1. / p1_sigma)
 
-                if(len(n_sig)>2):
+                if len(n_sig) > 2:
                     scanned_range = np.max(n_sig) - np.min(n_sig)
 
-                    if(len(n_sig) < 5 or scanned_range < 1.5):
+                    if (len(n_sig) < 5) or (scanned_range < 1.5):
                         deg = 1
                     else:
                         deg = 2
@@ -656,14 +741,15 @@ def estimate_mean_nsignal_for_ts_quantile(
                         'Doing a linear interpolation.',
                         np.min(n_sig), np.max(n_sig), len(n_sig))
 
-                    # Check if p1 and p0 are equal, which would result in a divison
-                    # by zero.
-                    if(p0 == p1):
+                    # Check if p1 and p0 are equal, which would result in a
+                    # divison by zero.
+                    if p0 == p1:
                         mu = 0.5*(ns0 + ns1)
                         mu_err = 0.5*np.abs(ns1 - ns0)
 
                         logger.debug(
-                            'Probability for mu=%g and mu=%g has the same value %g',
+                            'Probability for mu=%g and mu=%g has the same '
+                            'value %g',
                             ns0, ns1, p0)
                     else:
                         dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
@@ -672,7 +758,7 @@ def estimate_mean_nsignal_for_ts_quantile(
                             'Estimated |dmu/dp| = %g within mu range (%g,%g) '
                             'corresponding to p=(%g +-%g, %g +-%g)',
                             dns_dp, ns0, ns1, p0, p0_sigma, p1, p1_sigma)
-                        if(p0 > p):
+                        if p0 > p:
                             mu = ns0 - dns_dp * delta_p
                         else:
                             mu = ns0 + dns_dp * delta_p
@@ -685,7 +771,7 @@ def estimate_mean_nsignal_for_ts_quantile(
 
                 return (mu, mu_err)
 
-        if(delta_p < p0_sigma*5):
+        if delta_p < p0_sigma*5:
             # The desired probability is within the 5 sigma region of the
             # current probability. So we use a linear approximation to find the
             # next ns range.
@@ -695,19 +781,19 @@ def estimate_mean_nsignal_for_ts_quantile(
             # Store ns0 for the new lower or upper bound depending on where the
             # p0 lies.
 
-            if(p0 < max_fit_p and p0 > min_fit_p):
+            if (p0 < max_fit_p) and (p0 > min_fit_p):
                 n_sig.append(ns0)
                 p_vals.append(p0)
                 p_val_weights.append(1. / p0_sigma)
 
-            if(p0+p0_sigma+eps_p <= p):
+            if p0+p0_sigma+eps_p <= p:
                 ns_lower_bound = ns0
-            elif(p0-p0_sigma-eps_p >= p):
+            elif p0-p0_sigma-eps_p >= p:
                 ns_upper_bound = ns0
 
             ns1 = ns0 * (1 - np.sign(p0 - p) * 0.05)
-            if(np.abs(ns0 - ns1) < min_dmu):
-                if((p0 - p) < 0):
+            if np.abs(ns0 - ns1) < min_dmu:
+                if (p0 - p) < 0:
                     ns1 = ns0 + min_dmu
                 else:
                     ns1 = ns0 - min_dmu
@@ -717,20 +803,25 @@ def estimate_mean_nsignal_for_ts_quantile(
                 ns0, ns1)
 
             ts_vals1 = ana.do_trials(
-                rss, ts_vals0.size, mean_n_sig=ns1, bkg_kwargs=bkg_kwargs,
-                sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+                rss=rss,
+                n=ts_vals0.size,
+                mean_n_sig=ns1,
+                bkg_kwargs=bkg_kwargs,
+                sig_kwargs=sig_kwargs,
+                ppbar=ppbar,
+                tl=tl)['ts']
             n_total_generated_trials += ts_vals0.size
 
             (p1, p1_sigma) = calculate_pval_from_trials(ts_vals1, c)
 
-            if(p1 < max_fit_p and p1 > min_fit_p):
+            if (p1 < max_fit_p) and (p1 > min_fit_p):
                 n_sig.append(ns1)
                 p_vals.append(p1)
                 p_val_weights.append(1. / p1_sigma)
 
             # Check if p0 and p1 are equal, which would result into a division
             # by zero.
-            if(p0 == p1):
+            if p0 == p1:
                 dp = 0.5*(p0_sigma + p1_sigma)
                 logger.debug(
                     'p1 and p0 are equal to %g, causing division by zero. '
@@ -741,7 +832,7 @@ def estimate_mean_nsignal_for_ts_quantile(
                 dns_dp = np.abs((ns1 - ns0) / (p1 - p0))
                 # p0 and p1 might be very similar, resulting into a numerically
                 # infitite slope.
-                if(np.isinf(dns_dp)):
+                if np.isinf(dns_dp):
                     dp = 0.5*(p0_sigma + p1_sigma)
                     logger.debug(
                         'Infinite dns/dp dedected: ns0=%g, ns1=%g, p0=%g, '
@@ -751,7 +842,7 @@ def estimate_mean_nsignal_for_ts_quantile(
                     dns_dp = np.abs((ns1 - ns0) / dp)
             logger.debug('dns/dp = %g', dns_dp)
 
-            if(p0 > p):
+            if p0 > p:
                 ns_range_[0] = ns0 - dns_dp * (delta_p + p0_sigma)
                 ns_range_[1] = ns0 + dns_dp * p0_sigma
             else:
@@ -765,7 +856,7 @@ def estimate_mean_nsignal_for_ts_quantile(
             # In case the new calculated mu range is smaller than the minimum
             # delta mu, the mu range gets widened by half of the minimum delta
             # mu on both sides.
-            if(np.abs(ns_range_[1] - ns_range_[0]) < min_dmu):
+            if np.abs(ns_range_[1] - ns_range_[0]) < min_dmu:
                 ns_range_[0] -= 0.5*min_dmu
                 ns_range_[1] += 0.5*min_dmu
         else:
@@ -773,30 +864,40 @@ def estimate_mean_nsignal_for_ts_quantile(
             # 5 sigma away from the desired probability p, hence
             # delta_p >= p0_sigma*5.
 
-            if(p0 < max_fit_p and p0 > min_fit_p):
+            if (p0 < max_fit_p) and (p0 > min_fit_p):
                 n_sig.append(ns0)
                 p_vals.append(p0)
                 p_val_weights.append(1. / p0_sigma)
 
-            if(p0 < p):
+            if p0 < p:
                 ns_range_[0] = ns0
             else:
                 ns_range_[1] = ns0
 
-            if(np.abs(ns_range_[1] - ns_range_[0]) < min_dmu):
+            if np.abs(ns_range_[1] - ns_range_[0]) < min_dmu:
                 # The mu range became smaller than the minimum delta mu and
                 # still beeing far away from the desired probability.
                 # So move the mu range towards the desired probability.
-                if(p0 < p):
+                if p0 < p:
                     ns_range_[1] += 10*min_dmu
                 else:
                     ns_range_[0] -= 10*min_dmu
 
 
 def estimate_sensitivity(
-        ana, rss, h0_trials=None, h0_ts_quantile=0.5, p=0.9, eps_p=0.005,
-        mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None, tl=None, pathfilename=None):
+        ana,
+        rss,
+        h0_trials=None,
+        h0_ts_quantile=0.5,
+        p=0.9,
+        eps_p=0.005,
+        mu_range=None,
+        min_dmu=0.5,
+        bkg_kwargs=None,
+        sig_kwargs=None,
+        ppbar=None,
+        tl=None,
+        pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -858,7 +959,7 @@ def estimate_sensitivity(
     mu_err : float
         The uncertainty of the estimated mean number of signal events.
     """
-    if(mu_range is None):
+    if mu_range is None:
         mu_range = (0, 10)
 
     (mu, mu_err) = estimate_mean_nsignal_for_ts_quantile(
@@ -880,9 +981,19 @@ def estimate_sensitivity(
 
 
 def estimate_discovery_potential(
-        ana, rss, h0_trials=None, h0_ts_quantile=2.8665e-7, p=0.5, eps_p=0.005,
-        mu_range=None, min_dmu=0.5, bkg_kwargs=None, sig_kwargs=None,
-        ppbar=None, tl=None, pathfilename=None):
+        ana,
+        rss,
+        h0_trials=None,
+        h0_ts_quantile=2.8665e-7,
+        p=0.5,
+        eps_p=0.005,
+        mu_range=None,
+        min_dmu=0.5,
+        bkg_kwargs=None,
+        sig_kwargs=None,
+        ppbar=None,
+        tl=None,
+        pathfilename=None):
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -944,17 +1055,18 @@ def estimate_discovery_potential(
     mu_err : float
         Estimated error of `mu`.
     """
-    if(mu_range is None):
+    if mu_range is None:
         mu_range = (0, 10)
 
     (mu, mu_err) = estimate_mean_nsignal_for_ts_quantile(
         ana=ana,
         rss=rss,
-        h0_trials=h0_trials,
-        h0_ts_quantile=h0_ts_quantile,
         p=p,
         eps_p=eps_p,
         mu_range=mu_range,
+        h0_trials=h0_trials,
+        h0_ts_quantile=h0_ts_quantile,
+        min_dmu=min_dmu,
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
         ppbar=ppbar,
@@ -965,8 +1077,18 @@ def estimate_discovery_potential(
 
 
 def generate_mu_of_p_spline_interpolation(
-        ana, rss, h0_ts_vals, h0_ts_quantile, eps_p, mu_range, mu_step,
-        kind='cubic', bkg_kwargs=None, sig_kwargs=None, ppbar=None, tl=None):
+        ana,
+        rss,
+        h0_ts_vals,
+        h0_ts_quantile,
+        eps_p,
+        mu_range,
+        mu_step,
+        kind='cubic',
+        bkg_kwargs=None,
+        sig_kwargs=None,
+        ppbar=None,
+        tl=None):
     """Generates a spline interpolation for mu(p) function for a pre-defined
     range of mu, where mu is the mean number of injected signal events and p the
     probability for the ts value larger than the ts value corresponding to the
@@ -1022,12 +1144,17 @@ def generate_mu_of_p_spline_interpolation(
 
     n_total_generated_trials = 0
 
-    if(h0_ts_vals is None):
+    if h0_ts_vals is None:
         n_bkg = int(100/(1 - h0_ts_quantile))
         logger.debug('Generate %d null-hypothesis trials', n_bkg)
         h0_ts_vals = ana.do_trials(
-            rss, n_bkg, mean_n_sig=0, bkg_kwargs=bkg_kwargs,
-            sig_kwargs=sig_kwargs, ppbar=ppbar, tl=tl)['ts']
+            rss=rss,
+            n=n_bkg,
+            mean_n_sig=0,
+            bkg_kwargs=bkg_kwargs,
+            sig_kwargs=sig_kwargs,
+            ppbar=ppbar,
+            tl=tl)['ts']
         n_total_generated_trials += n_bkg
 
     n_h0_ts_vals = len(h0_ts_vals)
@@ -1051,18 +1178,23 @@ def generate_mu_of_p_spline_interpolation(
 
     # Create the progress bar if we are in an interactive session.
     pbar = None
-    if(is_interactive_session()):
+    if is_interactive_session():
         pbar = ProgressBar(len(mu_vals), parent=ppbar).start()
 
-    for (idx,mu) in enumerate(mu_vals):
+    for (idx, mu) in enumerate(mu_vals):
         p = None
         (ts_vals, p_sigma) = ([], 2*eps_p)
         while (p_sigma > eps_p):
             ts_vals = np.concatenate(
                 (ts_vals,
                  ana.do_trials(
-                     rss, 100, mean_n_sig=mu, bkg_kwargs=bkg_kwargs,
-                     sig_kwargs=sig_kwargs, ppbar=pbar, tl=tl)['ts']))
+                     rss=rss,
+                     n=100,
+                     mean_n_sig=mu,
+                     bkg_kwargs=bkg_kwargs,
+                     sig_kwargs=sig_kwargs,
+                     ppbar=pbar,
+                     tl=tl)['ts']))
             (p, p_sigma) = calculate_pval_from_trials(ts_vals, c)
             n_total_generated_trials += 100
         logger.debug(
@@ -1070,7 +1202,7 @@ def generate_mu_of_p_spline_interpolation(
             mu, ts_vals.size, p, p_sigma)
         p_vals[idx] = p
 
-        if(pbar is not None):
+        if pbar is not None:
             pbar.increment()
 
     # Make a mu(p) spline via interp1d.
@@ -1081,16 +1213,25 @@ def generate_mu_of_p_spline_interpolation(
         copy=False,
         assume_sorted=True)
 
-    if(pbar is not None):
+    if pbar is not None:
         pbar.finish()
 
     return spline
 
 
-def create_trial_data_file(
-        ana, rss, n_trials, mean_n_sig=0, mean_n_sig_null=0,
-        mean_n_bkg_list=None, bkg_kwargs=None, sig_kwargs=None,
-        pathfilename=None, ncpu=None, ppbar=None, tl=None):
+def create_trial_data_file(  # noqa: C901
+        ana,
+        rss,
+        n_trials,
+        mean_n_sig=0,
+        mean_n_sig_null=0,
+        mean_n_bkg_list=None,
+        bkg_kwargs=None,
+        sig_kwargs=None,
+        pathfilename=None,
+        ncpu=None,
+        ppbar=None,
+        tl=None):
     """Creates and fills a trial data file with `n_trials` generated trials for
     each mean number of injected signal events from `ns_min` up to `ns_max` for
     a given analysis.
@@ -1099,7 +1240,7 @@ def create_trial_data_file(
     ----------
     ana : instance of Analysis
         The Analysis instance to use for the trial generation.
-    rss : RandomStateService
+    rss : instance of RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
     n_trials : int
@@ -1113,8 +1254,7 @@ def create_trial_data_file(
         MNOISEs with a step size of one.
         If a 3-element sequence of floats is given, it specifies the range plus
         the step size of the MNOISEs.
-    mean_n_sig_null : ndarray of float | float | 2- or 3-element sequence of
-                      float
+    mean_n_sig_null : ndarray of float | float | 2- or 3-element sequence of float
         The array of the fixed mean number of signal events (FMNOSEs) for the
         null-hypothesis for which to generate trials. If this argument is not a
         ndarray, an array of FMNOSEs is generated based on this argument.
@@ -1160,45 +1300,50 @@ def create_trial_data_file(
     trial_data : structured numpy ndarray
         The generated trial data.
     """
-    n_trials = int_cast(n_trials,
+    n_trials = int_cast(
+        n_trials,
         'The n_trials argument must be castable to type int!')
 
-    if(not isinstance(mean_n_sig, np.ndarray)):
-        if(not issequence(mean_n_sig)):
-            mean_n_sig = float_cast(mean_n_sig,
+    if not isinstance(mean_n_sig, np.ndarray):
+        if not issequence(mean_n_sig):
+            mean_n_sig = float_cast(
+                mean_n_sig,
                 'The mean_n_sig argument must be castable to type float!')
             mean_n_sig_min = mean_n_sig
             mean_n_sig_max = mean_n_sig
             mean_n_sig_step = 1
         else:
-            mean_n_sig = float_cast(mean_n_sig,
+            mean_n_sig = float_cast(
+                mean_n_sig,
                 'The sequence elements of the mean_n_sig argument must be '
                 'castable to float values!')
-            if(len(mean_n_sig) == 2):
+            if len(mean_n_sig) == 2:
                 (mean_n_sig_min, mean_n_sig_max) = mean_n_sig
                 mean_n_sig_step = 1
-            elif(len(mean_n_sig) == 3):
+            elif len(mean_n_sig) == 3:
                 (mean_n_sig_min, mean_n_sig_max, mean_n_sig_step) = mean_n_sig
 
         mean_n_sig = np.arange(
             mean_n_sig_min, mean_n_sig_max+1, mean_n_sig_step,
             dtype=np.float64)
 
-    if(not isinstance(mean_n_sig_null, np.ndarray)):
-        if(not issequence(mean_n_sig_null)):
-            mean_n_sig_null = float_cast(mean_n_sig_null,
+    if not isinstance(mean_n_sig_null, np.ndarray):
+        if not issequence(mean_n_sig_null):
+            mean_n_sig_null = float_cast(
+                mean_n_sig_null,
                 'The mean_n_sig_null argument must be castable to type float!')
             mean_n_sig_null_min = mean_n_sig_null
             mean_n_sig_null_max = mean_n_sig_null
             mean_n_sig_null_step = 1
         else:
-            mean_n_sig_null = float_cast(mean_n_sig_null,
+            mean_n_sig_null = float_cast(
+                mean_n_sig_null,
                 'The sequence elements of the mean_n_sig_null argument must '
                 'be castable to float values!')
-            if(len(mean_n_sig_null) == 2):
+            if len(mean_n_sig_null) == 2:
                 (mean_n_sig_null_min, mean_n_sig_null_max) = mean_n_sig_null
                 mean_n_sig_null_step = 1
-            elif(len(mean_n_sig_null) == 3):
+            elif len(mean_n_sig_null) == 3:
                 (mean_n_sig_null_min, mean_n_sig_null_max,
                  mean_n_sig_null_step) = mean_n_sig_null
 
@@ -1213,25 +1358,33 @@ def create_trial_data_file(
             mean_n_sig, mean_n_sig_null):
 
         trials = ana.do_trials(
-            rss, n=n_trials, mean_n_bkg_list=mean_n_bkg_list,
-            mean_n_sig=mean_n_sig_, mean_n_sig_0=mean_n_sig_null_,
-            bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, ncpu=ncpu, tl=tl,
+            rss=rss,
+            n=n_trials,
+            mean_n_bkg_list=mean_n_bkg_list,
+            mean_n_sig=mean_n_sig_,
+            mean_n_sig_0=mean_n_sig_null_,
+            bkg_kwargs=bkg_kwargs,
+            sig_kwargs=sig_kwargs,
+            ncpu=ncpu,
+            tl=tl,
             ppbar=pbar)
 
-        if(trial_data is None):
+        if trial_data is None:
             trial_data = trials
         else:
             trial_data = np_rfn.stack_arrays(
-                [trial_data, trials], usemask=False, asrecarray=True)
+                [trial_data, trials],
+                usemask=False,
+                asrecarray=True)
 
         pbar.increment()
     pbar.finish()
 
-    if(trial_data is None):
-        raise RuntimeError('No trials have been generated! Check your '
-            'generation boundaries!')
+    if trial_data is None:
+        raise RuntimeError(
+            'No trials have been generated! Check your generation boundaries!')
 
-    if(pathfilename is not None):
+    if pathfilename is not None:
         # Save the trial data to file.
         makedirs(os.path.dirname(pathfilename), exist_ok=True)
         np.save(pathfilename, trial_data)
@@ -1240,17 +1393,25 @@ def create_trial_data_file(
 
 
 def extend_trial_data_file(
-        ana, rss, n_trials, trial_data, mean_n_sig=0, mean_n_sig_null=0,
-        mean_n_bkg_list=None, bkg_kwargs=None, sig_kwargs=None,
-        pathfilename=None, **kwargs):
+        ana,
+        rss,
+        n_trials,
+        trial_data,
+        mean_n_sig=0,
+        mean_n_sig_null=0,
+        mean_n_bkg_list=None,
+        bkg_kwargs=None,
+        sig_kwargs=None,
+        pathfilename=None,
+        **kwargs):
     """Appends to the trial data file `n_trials` generated trials for each
     mean number of injected signal events up to `ns_max` for a given analysis.
 
     Parameters
     ----------
-    ana : Analysis
+    ana : instance of Analysis
         The Analysis instance to use for sensitivity estimation.
-    rss : RandomStateService
+    rss : instance of RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
     n_trials : int
@@ -1266,8 +1427,7 @@ def extend_trial_data_file(
         MNOISEs with a step size of one.
         If a 3-element sequence of floats is given, it specifies the range plus
         the step size of the MNOISEs.
-    mean_n_sig_null : ndarray of float | float | 2- or 3-element sequence of
-                      float
+    mean_n_sig_null : ndarray of float | float | 2- or 3-element sequence of float
         The array of the fixed mean number of signal events (FMNOSEs) for the
         null-hypothesis for which to generate trials. If this argument is not a
         ndarray, an array of FMNOSEs is generated based on this argument.
@@ -1300,9 +1460,11 @@ def extend_trial_data_file(
     """
     # Use unique seed to generate non identical trials.
     if rss.seed in trial_data['seed']:
-        seed = next(i for i, e in
-                    enumerate(sorted(np.unique(trial_data['seed'])) +
-                                [None], 1) if i != e)
+        seed = next(
+            i
+            for (i, e) in enumerate(
+                sorted(np.unique(trial_data['seed'])) + [None], 1)
+            if i != e)
         rss.reseed(seed)
 
     (seed, mean_n_sig, mean_n_sig_null, trials) = create_trial_data_file(
@@ -1310,6 +1472,10 @@ def extend_trial_data_file(
         rss=rss,
         n_trials=n_trials,
         mean_n_sig=mean_n_sig,
+        mean_n_sig_null=mean_n_sig_null,
+        mean_n_bkg_list=mean_n_bkg_list,
+        bkg_kwargs=bkg_kwargs,
+        sig_kwargs=sig_kwargs,
         **kwargs
     )
     trial_data = np_rfn.stack_arrays(
@@ -1317,15 +1483,20 @@ def extend_trial_data_file(
         usemask=False,
         asrecarray=True)
 
-    if(pathfilename is not None):
+    if pathfilename is not None:
         # Save the trial data to file.
         makedirs(os.path.dirname(pathfilename), exist_ok=True)
         np.save(pathfilename, trial_data)
 
     return trial_data
 
+
 def calculate_upper_limit_distribution(
-        analysis, rss, pathfilename, N_bkg=5000, n_bins=100):
+        ana,
+        rss,
+        pathfilename,
+        n_bkg=5000,
+        n_bins=100):
     """Function to calculate upper limit distribution. It loads the trial data
     file containing test statistic distribution and calculates 10 percentile
     value for each mean number of injected signal event. Then it finds upper
@@ -1334,14 +1505,14 @@ def calculate_upper_limit_distribution(
 
     Parameters
     ----------
-    analysis : Analysis
+    ana : instance of Analysis
         The Analysis instance to use for sensitivity estimation.
-    rss : RandomStateService
+    rss : instance of RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
     pathfilename : string
         Trial data file path including the filename.
-    N_bkg : int, optional
+    n_bkg : int, optional
         Number of times to perform background analysis trial.
     n_bins : int, optional
         Number of returned test statistic histograms bins.
@@ -1351,19 +1522,19 @@ def calculate_upper_limit_distribution(
     result : dict
         Result dictionary which contains the following fields:
 
-        - ul : list of float
+        ul : list of float
             List of upper limit values.
-        - mean : float
+        mean : float
             Mean of upper limit values.
-        - median : float
+        median : float
             Median of upper limit values.
-        - var : float
+        var : float
             Variance of upper limit values.
-        - ts_hist : numpy ndarray
+        ts_hist : numpy ndarray
             2D array of test statistic histograms calculated by axis 1.
-        - extent : list of float
+        extent : list of float
             Test statistic histogram boundaries.
-        - q_values : list of float
+        q_values : list of float
             `q` percentile values of test statistic for different injected
             events means.
     """
@@ -1372,7 +1543,7 @@ def calculate_upper_limit_distribution(
     ns_max = max(trial_data['sig_mean']) + 1
     ts_bins_range = (min(trial_data['TS']), max(trial_data['TS']))
 
-    q = 10 # Upper limit criterion.
+    q = 10  # Upper limit criterion.
     trial_data_q_values = np.empty((ns_max,))
     trial_data_ts_hist = np.empty((ns_max, n_bins))
     for ns in range(ns_max):
@@ -1383,7 +1554,10 @@ def calculate_upper_limit_distribution(
             bins=n_bins, range=ts_bins_range)
 
     ts_inv_f = interp1d(trial_data_q_values, range(ns_max), kind='linear')
-    ts_bkg = analysis.do_trials(rss, N_bkg, sig_mean=0)['TS']
+    ts_bkg = ana.do_trials(
+        rss=rss,
+        n=n_bkg,
+        mean_n_sig=0)['TS']
 
     # Cut away lower background test statistic values than the minimal
     # `ts_inv_f` interpolation boundary.
