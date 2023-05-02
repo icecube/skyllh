@@ -21,19 +21,20 @@ from skyllh.core.source_hypo_grouping import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
+from skyllh.core.weights import (
+    DatasetSignalWeightFactorsService,
+)
 
 
-class SignalGeneratorBase(
+class SignalGenerator(
         object,
         metaclass=abc.ABCMeta):
     """This is the abstract base class for all signal generator classes in
-    SkyLLH. It defines the interface for signal generators.
+    SkyLLH. It defines the interface for a signal generator.
     """
     def __init__(
             self,
             shg_mgr,
-            dataset_list,
-            data_list,
             **kwargs):
         """Constructs a new signal generator instance.
 
@@ -42,18 +43,11 @@ class SignalGeneratorBase(
         shg_mgr : instance of SourceHypoGroupManager
             The SourceHypoGroupManager instance defining the source hypothesis
             groups.
-        dataset_list : list of Dataset instances
-            The list of Dataset instances for which signal events should get
-            generated for.
-        data_list : list of DatasetData instances
-            The list of DatasetData instances holding the actual data of each
-            dataset. The order must match the order of ``dataset_list``.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         self.shg_mgr = shg_mgr
-        self.dataset_list = dataset_list
-        self.data_list = data_list
 
     @property
     def shg_mgr(self):
@@ -70,44 +64,65 @@ class SignalGeneratorBase(
                 'SourceHypoGroupManager!')
         self._shg_mgr = manager
 
-    @property
-    def dataset_list(self):
-        """The list of Dataset instances for which signal events should get
-        generated for.
+    def create_src_params_recarray(
+            self,
+            src_detsigyield_weights_service):
+        """Creates the src_params_recarray structured ndarray of length
+        N_sources holding the local source parameter names and values needed for
+        the calculation of the detector signal yields.
+
+        Parameters
+        ----------
+        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+            The instance of SrcDetSigYieldWeightsService providing the product
+            of the source weights with the detector signal yield.
+
+        Returns
+        -------
+        src_params_recarray : instance of numpy structured ndarray
+            The structured numpy ndarray of length N_sources, holding the local
+            parameter names and values of each source needed to calculate the
+            detector signal yield.
         """
-        return self._dataset_list
+        # Get the parameter names needed for the detector signal yield
+        # calculation.
+        param_names = []
+        for detsigyield in src_detsigyield_weights_service.detsigyield_arr.flat:
+            param_names.extend(detsigyield.param_names)
+        param_names = set(param_names)
 
-    @dataset_list.setter
-    def dataset_list(self, datasets):
-        if not issequenceof(datasets, Dataset):
-            raise TypeError(
-                'The dataset_list property must be a sequence of Dataset '
-                'instances!')
-        self._dataset_list = list(datasets)
+        # Create an empty structured ndarray of length N_sources.
+        dt = []
+        for pname in param_names:
+            dt.extend([
+                (pname, np.float64),
+                (f'{pname}:gpidx', np.int)
+            ])
+        src_params_recarray = np.empty((self._shg_mgr.n_sources,), dtype=dt)
 
-    @property
-    def data_list(self):
-        """The list of DatasetData instances holding the actual data of each
-        dataset. The order must match the order of the ``dataset_list``
-        property.
-        """
-        return self._data_list
+        sidx = 0
+        for (shg_idx, shg) in enumerate(self._shg_mgr.shg_list):
 
-    @data_list.setter
-    def data_list(self, datas):
-        if not issequenceof(datas, DatasetData):
-            raise TypeError(
-                'The data_list property must be a sequence of DatasetData '
-                'instances!')
-        self._data_list = datas
+            shg_n_src = shg.n_sources
 
-    @property
-    def n_datasets(self):
-        """(read-only) The number of datasets.
-        """
-        return len(self._dataset_list)
+            shg_src_slice = slice(sidx, sidx+shg_n_src)
 
-    def change_shg_mgr(self, shg_mgr):
+            pvalues = []
+            for pname in param_names:
+                pvalues.extend([
+                    shg.fluxmodel.get_param(pname),
+                    0
+                ])
+
+            src_params_recarray[shg_src_slice] = tuple(pvalues)
+
+            sidx += shg_n_src
+
+        return src_params_recarray
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
         """Changes the source hypothesis group manager. Derived classes can
         reimplement this method but this method of the base class must still be
         called by the derived class.
@@ -152,14 +167,233 @@ class SignalGeneratorBase(
         pass
 
 
-class SignalGenerator(
-        SignalGeneratorBase):
-    """This is the general signal generator class. It does not depend on the
-    detector or source hypothesis, because these dependencies are factored out
-    into the signal generation method. In fact the construction within this
-    class depends on the construction of the signal generation method. In case
-    of multiple sources the handling here is very suboptimal. Therefore the
-    MultiSourceSignalGenerator should be used instead!
+class MultiDatasetSignalGenerator(
+        SignalGenerator):
+    """This is a signal generator class handling multiple datasets by using the
+    individual signal generator instances for each dataset. This is the most
+    general way to support multiple datasets of different formats and signal
+    generation.
+    """
+    def __init__(
+            self,
+            shg_mgr,
+            ds_sig_weight_factors_service,
+            dataset_list,
+            data_list,
+            sig_generator_list=None,
+            **kwargs):
+        """Constructs a new signal generator handling multiple datasets.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The SourceHypoGroupManager instance defining the source hypothesis
+            groups.
+        ds_sig_weight_factors_service : instance of DatasetSignalWeightFactorsService
+            The instance of DatasetSignalWeightFactorsService providing the
+            dataset signal weight factor service for calculating the dataset
+            signal weights.
+        dataset_list : list of Dataset instances
+            The list of Dataset instances for which signal events should get
+            generated for.
+        data_list : list of DatasetData instances
+            The list of DatasetData instances holding the actual data of each
+            dataset. The order must match the order of ``dataset_list``.
+        sig_generator_list : list of instance of SignalGenerator | None
+            The optional list of instance of SignalGenerator holding
+            signal generator instances for each individual dataset. This can be
+            ``None`` if this signal generator does not require individual signal
+            generators for each dataset.
+        """
+        super().__init__(
+            shg_mgr=shg_mgr,
+            **kwargs)
+
+        self.ds_sig_weight_factors_service = ds_sig_weight_factors_service
+        self.dataset_list = dataset_list
+        self.data_list = data_list
+        self.sig_generator_list = sig_generator_list
+
+        self._src_params_recarray = None
+
+    @property
+    def ds_sig_weight_factors_service(self):
+        """The instance of DatasetSignalWeightFactorsService providing the
+        dataset signal weight factor service for calculating the dataset
+        signal weights.
+        """
+        return self._ds_sig_weight_factors_service
+
+    @ds_sig_weight_factors_service.setter
+    def ds_sig_weight_factors_service(self, service):
+        if not isinstance(service, DatasetSignalWeightFactorsService):
+            raise TypeError(
+                'The ds_sig_weight_factors_service property must be an '
+                'instance of DatasetSignalWeightFactorsService!')
+        self._ds_sig_weight_factors_service = service
+
+    @property
+    def dataset_list(self):
+        """The list of Dataset instances for which signal events should get
+        generated for.
+        """
+        return self._dataset_list
+
+    @dataset_list.setter
+    def dataset_list(self, datasets):
+        if not issequenceof(datasets, Dataset):
+            raise TypeError(
+                'The dataset_list property must be a sequence of Dataset '
+                'instances!')
+        self._dataset_list = list(datasets)
+
+    @property
+    def data_list(self):
+        """The list of DatasetData instances holding the actual data of each
+        dataset. The order must match the order of the ``dataset_list``
+        property.
+        """
+        return self._data_list
+
+    @data_list.setter
+    def data_list(self, datas):
+        if not issequenceof(datas, DatasetData):
+            raise TypeError(
+                'The data_list property must be a sequence of DatasetData '
+                'instances!')
+        self._data_list = list(datas)
+
+    @property
+    def sig_generator_list(self):
+        """The list of instance of SignalGenerator holding signal generator
+        instances for each individual dataset.
+        """
+        return self._sig_generator_list
+
+    @sig_generator_list.setter
+    def sig_generator_list(self, generators):
+        if generators is not None:
+            if not issequenceof(generators, SignalGenerator):
+                raise TypeError(
+                    'The sig_generator_list property must be a sequence of '
+                    'SignalGenerator instances!')
+        self._sig_generator_list = list(generators)
+
+    @property
+    def n_datasets(self):
+        """(read-only) The number of datasets.
+        """
+        return len(self._dataset_list)
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
+        """Changes the source hypothesis group manager. This will recreate the
+        src_params_recarray needed for calculating the detector signal yields.
+        """
+        super().change_shg_mgr(
+            shg_mgr=shg_mgr)
+
+        src_detsigyield_weights_service =\
+            self.ds_sig_weight_factors_service.src_detsigyield_weights_service
+        self._src_params_recarray = self.create_src_params_recarray(
+            src_detsigyield_weights_service=src_detsigyield_weights_service)
+
+    def generate_signal_events(
+            self,
+            rss,
+            mean,
+            poisson=True):
+        """Generates a given number of signal events distributed across the
+        individual datasets.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService providing the random number
+            generator state.
+        mean : float | int
+            The mean number of signal events. If the ``poisson`` argument is set
+            to True, the actual number of generated signal events will be drawn
+            from a Poisson distribution with this given mean value of signal
+            events.
+        poisson : bool
+            If set to True, the actual number of generated signal events will
+            be drawn from a Poisson distribution with the given mean value of
+            signal events.
+            If set to False, the argument ``mean`` must be an integer and
+            specifies the actual number of generated signal events.
+
+        Returns
+        -------
+        n_signal : int
+            The number of actual generated signal events.
+        signal_events_dict : dict of DataFieldRecordArray
+            The dictionary holding the DataFieldRecordArray instances with the
+            generated signal events. Each key of this dictionary represents the
+            dataset index for which the signal events have been generated.
+        """
+        if poisson:
+            mean = rss.random.poisson(
+                float_cast(
+                    mean,
+                    'The mean argument must be castable to type of float!'))
+
+        n_signal = int_cast(
+            mean,
+            'The mean argument must be castable to type of int!')
+
+        # Calculate the dataset weights to distribute the signal events over the
+        # datasets.
+        src_detsigyield_weights_service =\
+            self._ds_sig_weight_factors_service.src_detsigyield_weights_service
+
+        if self._src_params_recarray is None:
+            self._src_params_recarray = self.create_src_params_recarray(
+                src_detsigyield_weights_service=src_detsigyield_weights_service)
+
+        src_detsigyield_weights_service.calculate(
+            src_params_recarray=self._src_params_recarray)
+
+        self._ds_sig_weight_factors_service.calculate()
+        (ds_weights, _) = self._ds_sig_weight_factors_service.get_weights()
+
+        n_signal = 0
+        signal_events_dict = {}
+
+        for (ds_weight, ds_sig_generator) in zip(
+                ds_weights,
+                self._sig_generator_list):
+
+            n_events = int(np.round(mean * ds_weight, 0))
+
+            (ds_n_signal, ds_sig_events_dict) =\
+                ds_sig_generator.generate_signal_events(
+                    rss=rss,
+                    mean=n_events,
+                    poisson=False,
+                )
+
+            n_signal += ds_n_signal
+
+            for (k, v) in ds_sig_events_dict.items():
+                if k not in signal_events_dict:
+                    signal_events_dict[k] = v
+                else:
+                    signal_events_dict[k].append(v)
+
+        return (n_signal, signal_events_dict)
+
+
+class MCMultiDatasetSignalGenerator(
+        MultiDatasetSignalGenerator):
+    """This is a signal generator class, which handles multiple datasets with
+    monte-carlo (MC). It uses the MC events of all datasets to determine the
+    possible signal events for a source.
+    It does not depend on the detector or source hypothesis, because these
+    dependencies are factored out into the signal generation method.
+    In fact the construction within this class depends on the construction of
+    the signal generation method.
     """
     def __init__(
             self,
@@ -252,7 +486,9 @@ class SignalGenerator(
         self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
 
-    def change_shg_mgr(self, shg_mgr):
+    def change_shg_mgr(
+            self,
+            shg_mgr):
         """Recreates the signal candidates with the changed source hypothesis
         group manager.
         """
@@ -337,7 +573,7 @@ class SignalGenerator(
         rss : instance of RandomStateService
             The instance of RandomStateService providing the random number
             generator state.
-        mean : float
+        mean : float | int
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
@@ -346,13 +582,13 @@ class SignalGenerator(
             If set to True, the actual number of generated signal events will
             be drawn from a Poisson distribution with the given mean value of
             signal events.
-            If set to False, the argument ``mean`` specifies the actual number
-            of generated signal events.
+            If set to False, the argument ``mean`` must be an integer and
+            specifies the actual number of generated signal events.
 
         Returns
         -------
         n_signal : int
-            The number of generated signal events.
+            The number of actual generated signal events.
         signal_events_dict : dict of DataFieldRecordArray
             The dictionary holding the DataFieldRecordArray instances with the
             generated signal events. Each key of this dictionary represents the

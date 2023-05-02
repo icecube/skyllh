@@ -55,8 +55,8 @@ from skyllh.core.random import (
     RandomStateService,
 )
 from skyllh.core.signal_generator import (
-    SignalGeneratorBase,
     SignalGenerator,
+    MultiDatasetSignalGenerator,
 )
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
@@ -122,12 +122,12 @@ class Analysis(
             If set to ``None``, the
             :class:`skyllh.core.background_generator.BackgroundGenerator` class
             is used.
-        sig_generator_cls : class of SignalGeneratorBase | None
+        sig_generator_cls : class of MultiDatasetSignalGenerator | None
             The signal generator class used to create the signal generator
-            instance.
+            instance for multiple datasets.
             If set to ``None``, the
-            :class:`skyllh.core.signal_generator.SignalGenerator` class
-            is used.
+            :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
+            class is used.
         """
         super().__init__(**kwargs)
 
@@ -144,6 +144,7 @@ class Analysis(
         self._event_selection_method_list = []
 
         self._bkg_generator = None
+        self._sig_generator_list = []
         self._sig_generator = None
 
     @property
@@ -277,20 +278,27 @@ class Analysis(
         return self._bkg_generator
 
     @property
+    def sig_generator_list(self):
+        """(read-only) The list of instance of SignalGenerator, one for each
+        dataset.
+        """
+        return self._sig_generator_list
+
+    @property
     def sig_generator_cls(self):
         """The signal generator class that should be used to construct the
-        signal generator instance.
+        signal generator instance handling all datasets.
         """
         return self._sig_generator_cls
 
     @sig_generator_cls.setter
     def sig_generator_cls(self, cls):
         if cls is None:
-            cls = SignalGenerator
-        if not issubclass(cls, SignalGeneratorBase):
+            cls = MultiDatasetSignalGenerator
+        if not issubclass(cls, SignalGenerator):
             raise TypeError(
                 'The sig_generator_cls property must be a subclass of '
-                'SignalGeneratorBase! '
+                'SignalGenerator! '
                 f'Its current type is {classname(cls)}.')
         self._sig_generator_cls = cls
 
@@ -374,7 +382,8 @@ class Analysis(
             dataset,
             data,
             tdm=None,
-            event_selection_method=None):
+            event_selection_method=None,
+            sig_generator=None):
         """Adds the given dataset to the list of datasets for this analysis.
 
         Parameters
@@ -394,6 +403,9 @@ class Analysis(
             will be treated as pure background events. This reduces the amount
             of log-likelihood-ratio function evaluations. If set to None, all
             events will be evaluated.
+        sig_generator : instance of SignalGenerator | None
+            The optional instance of SignalGenerator, which should be used
+            to generate signal events for this particular dataset.
         """
         if not isinstance(dataset, Dataset):
             raise TypeError(
@@ -408,18 +420,28 @@ class Analysis(
         if not isinstance(tdm, TrialDataManager):
             raise TypeError(
                 'The tdm argument must be None or an instance of '
-                'TrialDataManager!')
+                'TrialDataManager! '
+                f'Its current type is {classname(tdm)}!')
 
         if event_selection_method is not None:
             if not isinstance(event_selection_method, EventSelectionMethod):
                 raise TypeError(
                     'The event_selection_method argument must be None or an '
-                    'instance of EventSelectionMethod!')
+                    'instance of EventSelectionMethod! '
+                    f'Its current type is {classname(event_selection_method)}!')
+
+        if sig_generator is not None:
+            if not isinstance(sig_generator, SignalGenerator):
+                raise TypeError(
+                    'The sig_generator argument must be None or an instance of '
+                    'SignalGenerator! '
+                    f'Its current type is {classname(sig_generator)}!')
 
         self._dataset_list.append(dataset)
         self._data_list.append(data)
         self._tdm_list.append(tdm)
         self._event_selection_method_list.append(event_selection_method)
+        self._sig_generator_list.append(sig_generator)
 
     def get_livetime(
             self,
@@ -527,6 +549,7 @@ class Analysis(
             shg_mgr=self._shg_mgr,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
+            sig_generator_list=self._sig_generator_list,
             **kwargs)
 
     @abc.abstractmethod
@@ -1232,10 +1255,12 @@ class LLHRatioAnalysis(
             If set to ``None``, the
             :class:`skyllh.core.background_generator.BackgroundGenerator` class
             is used.
-        sig_generator_cls : class of SignalGeneratorBase | None
+        sig_generator_cls : class of SignalGenerator | None
             The signal generator class used to create the signal generator
             instance.
-            If set to None, the `SignalGenerator` class is used.
+            If set to None, the
+            :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
+            class is used.
         """
         super().__init__(
             shg_mgr=shg_mgr,
@@ -1292,7 +1317,8 @@ class LLHRatioAnalysis(
             data,
             pdfratio,
             tdm=None,
-            event_selection_method=None):
+            event_selection_method=None,
+            sig_generator=None):
         """Adds a dataset with its PDF ratio instances to the analysis.
 
         Parameters
@@ -1313,12 +1339,16 @@ class LLHRatioAnalysis(
             will be treated as pure background events. This reduces the amount
             of log-likelihood-ratio function evaluations. If set to None, all
             events will be evaluated.
+        sig_generator : instance of SignalGenerator | None
+            The optional instance of SignalGenerator, which should be used
+            to generate signal events for this particular dataset.
         """
         super().add_dataset(
             dataset=dataset,
             data=data,
             tdm=tdm,
-            event_selection_method=event_selection_method)
+            event_selection_method=event_selection_method,
+            sig_generator=sig_generator)
 
         if not isinstance(pdfratio, PDFRatio):
             raise TypeError(
@@ -1378,7 +1408,9 @@ class LLHRatioAnalysis(
             n_events_list = [None] * len(events_list)
 
         for (tdm, events, n_events, evt_sel_method) in zip(
-                self._tdm_list, events_list, n_events_list,
+                self._tdm_list,
+                events_list,
+                n_events_list,
                 self._event_selection_method_list):
 
             # Initialize the trial data manager with the given raw events.
@@ -1586,10 +1618,11 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
             If set to ``None``, the
             :class:`skyllh.core.background_generator.BackgroundGenerator` class
             is used.
-        sig_generator_cls : SignalGeneratorBase class | None
-            The signal generator class used to create the signal generator
-            instance.
-            If set to None, the `SignalGenerator` class is used.
+        sig_generator_cls : SignalGenerator class | None
+            The signal generator class that should be used to create the signal
+            generator instance for multiple datasets. If set to None, the
+            :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
+            class is used.
         """
         super().__init__(
             shg_mgr=shg_mgr,
@@ -1774,10 +1807,12 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
             If set to ``None``, the
             :class:`skyllh.core.background_generator.BackgroundGenerator` class
             is used.
-        sig_generator_cls : class of SignalGeneratorBase | None
-            The signal generator class used to create the signal generator
-            instance.
-            If set to None, the `SignalGenerator` class is used.
+        sig_generator_cls : subclass of SignalGenerator| None
+            The signal generator class that should be used to create the signal
+            generator instance handling multiple datasets.
+            If set to None, the
+            :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
+            class is used.
         """
         super().__init__(
             shg_mgr=shg_mgr,
