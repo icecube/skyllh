@@ -129,7 +129,8 @@ class Analysis(
             :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
             class is used.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         self.shg_mgr = shg_mgr
         self.pmm = pmm
@@ -142,6 +143,9 @@ class Analysis(
         self._data_list = []
         self._tdm_list = []
         self._event_selection_method_list = []
+
+        self._src_detsigyield_weights_service = None
+        self._ds_sig_weight_factors_service = None
 
         self._bkg_generator = None
         self._sig_generator_list = []
@@ -278,6 +282,34 @@ class Analysis(
         return self._bkg_generator
 
     @property
+    def src_detsigyield_weights_service(self):
+        """The instance of SrcDetSigYieldWeightsService for the analysis.
+        """
+        return self._src_detsigyield_weights_service
+
+    @src_detsigyield_weights_service.setter
+    def src_detsigyield_weights_service(self, service):
+        if not isinstance(service, SrcDetSigYieldWeightsService):
+            raise TypeError(
+                'The src_detsigyield_weights_service property must be an '
+                'instance of SrcDetSigYieldWeightsService!')
+        self._src_detsigyield_weights_service = service
+
+    @property
+    def ds_sig_weight_factors_service(self):
+        """The instance of DatasetSignalWeightFactorsService for the analysis.
+        """
+        return self._ds_sig_weight_factors_service
+
+    @ds_sig_weight_factors_service.setter
+    def ds_sig_weight_factors_service(self, service):
+        if not isinstance(service, DatasetSignalWeightFactorsService):
+            raise TypeError(
+                'The ds_sig_weight_factors_service property must be an '
+                'instance of DatasetSignalWeightFactorsService!')
+        self._ds_sig_weight_factors_service = service
+
+    @property
     def sig_generator_list(self):
         """(read-only) The list of instance of SignalGenerator, one for each
         dataset.
@@ -319,7 +351,9 @@ class Analysis(
             livetime += data.livetime
         return livetime
 
-    def construct_detsigyield_arr(self, ppbar=None):
+    def construct_detsigyield_arr(
+            self,
+            ppbar=None):
         """Creates a (N_datasets,N_source_hypo_groups)-shaped numpy ndarray of
         object holding the constructed DetSigYield instances of the analysis.
 
@@ -335,21 +369,23 @@ class Analysis(
             object holding the constructed DetSigYield instances of the
             analysis.
         """
+        n_datasets = len(self._dataset_list)
+
         detsigyield_arr = np.empty(
-            (len(self._dataset_list),
+            (n_datasets,
              self._shg_mgr.n_src_hypo_groups),
             dtype=object
         )
 
         pbar = ProgressBar(
-            self._shg_mgr.n_src_hypo_groups * len(self._dataset_list),
+            self._shg_mgr.n_src_hypo_groups * n_datasets,
             parent=ppbar).start()
         for (g, shg) in enumerate(self._shg_mgr.shg_list):
             fluxmodel = shg.fluxmodel
             detsigyield_builder_list = shg.detsigyield_builder_list
 
             if (len(detsigyield_builder_list) != 1) and\
-               (len(detsigyield_builder_list) != self.n_datasets):
+               (len(detsigyield_builder_list) != n_datasets):
                 raise ValueError(
                     'The number of detector signal yield builders is not 1 and '
                     'does not match the number of used datasets in the '
@@ -376,6 +412,30 @@ class Analysis(
         pbar.finish()
 
         return detsigyield_arr
+
+    def construct_services(
+            self,
+            ppbar=None):
+        """Constructs the following services:
+
+            - source detector signal yield weights service
+            - dataset signal weight factors service
+
+        Parameters
+        ----------
+        ppbar : instance of ProgressBar | None
+            The instance of ProgressBar of the optional parent progress bar.
+        """
+        detsigyield_arr = self.construct_detsigyield_arr(ppbar=ppbar)
+
+        self.src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
+            shg_mgr=self._shg_mgr,
+            detsigyields=detsigyield_arr,
+        )
+
+        self.ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
+            src_detsigyield_weights_service=self.src_detsigyield_weights_service,
+        )
 
     def add_dataset(
             self,
@@ -550,6 +610,7 @@ class Analysis(
             dataset_list=self._dataset_list,
             data_list=self._data_list,
             sig_generator_list=self._sig_generator_list,
+            ds_sig_weight_factors_service=self.ds_sig_weight_factors_service,
             **kwargs)
 
     @abc.abstractmethod
@@ -1656,17 +1717,6 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
             The instance of MultiDatasetTCLLHRatio that implements the
             log-likelihood-ratio function of the analysis.
         """
-        # Create the detector signal yield instances for each dataset and
-        # source hypothesis group.
-        detsigyield_arr = self.construct_detsigyield_arr(ppbar=ppbar)
-
-        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=self._shg_mgr,
-            detsigyields=detsigyield_arr)
-
-        ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
-            src_detsigyield_weights_service=src_detsigyield_weights_service)
-
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
         llhratio_list = [
@@ -1684,8 +1734,8 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
         llhratio = MultiDatasetTCLLHRatio(
             pmm=self._pmm,
             minimizer=minimizer,
-            src_detsigyield_weights_service=src_detsigyield_weights_service,
-            ds_sig_weight_factors_service=ds_sig_weight_factors_service,
+            src_detsigyield_weights_service=self.src_detsigyield_weights_service,
+            ds_sig_weight_factors_service=self.ds_sig_weight_factors_service,
             llhratio_list=llhratio_list)
 
         return llhratio
@@ -1846,18 +1896,6 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
             The instance of MultiDatasetTCLLHRatio that implements the
             log-likelihood-ratio function of the analysis.
         """
-        # Create the detector signal yield instances for each dataset and
-        # source hypothesis group.
-        detsigyield_arr = self.construct_detsigyield_arr(
-            ppbar=ppbar)
-
-        src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=self._shg_mgr,
-            detsigyields=detsigyield_arr)
-
-        ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
-            src_detsigyield_weights_service=src_detsigyield_weights_service)
-
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
         llhratio_list = [
@@ -1868,7 +1906,7 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
                 tdm=tdm,
                 pdfratio=SourceWeightedPDFRatio(
                     dataset_idx=dataset_idx,
-                    src_detsigyield_weights_service=src_detsigyield_weights_service,
+                    src_detsigyield_weights_service=self.src_detsigyield_weights_service,
                     pdfratio=pdfratio)
             )
             for (dataset_idx, (tdm, pdfratio)) in enumerate(
@@ -1879,8 +1917,8 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
         llhratio = MultiDatasetTCLLHRatio(
             pmm=self._pmm,
             minimizer=minimizer,
-            src_detsigyield_weights_service=src_detsigyield_weights_service,
-            ds_sig_weight_factors_service=ds_sig_weight_factors_service,
+            src_detsigyield_weights_service=self.src_detsigyield_weights_service,
+            ds_sig_weight_factors_service=self.ds_sig_weight_factors_service,
             llhratio_list=llhratio_list)
 
         return llhratio

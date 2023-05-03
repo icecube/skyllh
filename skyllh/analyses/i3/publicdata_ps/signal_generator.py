@@ -22,6 +22,7 @@ from skyllh.core.llhratio import (
     LLHRatio,
 )
 from skyllh.core.py import (
+    classname,
     float_cast,
     int_cast,
     module_classname,
@@ -45,7 +46,6 @@ class PDDatasetSignalGenerator(
             shg_mgr,
             ds,
             ds_idx,
-            src_detsigyield_weight_service,
             energy_cut_spline=None,
             cut_sindec=None,
             **kwargs):
@@ -62,9 +62,6 @@ class PDDatasetSignalGenerator(
             generated.
         ds_idx : int
             The index of the dataset.
-        src_detsigyield_weight_service : instance of SrcDetSigYieldWeightsService
-            The instance of SrcDetSigYieldWeightsService providing the product
-            of the source weight with the detector signal yield.
         energy_cut_spline : scipy.interpolate.UnivariateSpline
             A spline of E(sin_dec) that defines the declination
             dependent energy cut in the IceCube southern sky.
@@ -79,7 +76,6 @@ class PDDatasetSignalGenerator(
         self._logger = get_logger(module_classname(self))
 
         self.ds_idx = ds_idx
-        self.src_detsigyield_weight_service = src_detsigyield_weight_service
         self.energy_cut_spline = energy_cut_spline
         self.cut_sindec = cut_sindec
 
@@ -439,6 +435,7 @@ class PDDatasetSignalGenerator(
             rss,
             mean,
             poisson=True,
+            src_detsigyield_weights_service=None,
             **kwargs):
         """Generates `mean` number of signal events.
 
@@ -458,6 +455,9 @@ class PDDatasetSignalGenerator(
             signal events.
             If set to False, the argument ``mean`` specifies the actual number
             of generated signal events.
+        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+            The instance of SrcDetSigYieldWeightsService providing the weighting
+            of the sources within the detector.
 
         Returns
         -------
@@ -478,7 +478,12 @@ class PDDatasetSignalGenerator(
             mean,
             'The `mean` argument must be castable to type of int!')
 
-        (a_jk, a_jk_grads) = self.src_detsigyield_weight_service.get_weights()
+        if src_detsigyield_weights_service is None:
+            raise ValueError(
+                'The src_detsigyield_weights_service argument must be provided '
+                f'for the signal generator {classname(self)}!')
+
+        (a_jk, a_jk_grads) = src_detsigyield_weights_service.get_weights()
 
         a_k = np.copy(a_jk[self.ds_idx])
         a_k /= np.sum(a_k)

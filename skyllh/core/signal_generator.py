@@ -134,7 +134,8 @@ class SignalGenerator(
             self,
             rss,
             mean,
-            poisson=True):
+            poisson=True,
+            src_detsigyield_weights_service=None):
         """This abstract method must be implemented by the derived class to
         generate a given number of signal events.
 
@@ -154,6 +155,10 @@ class SignalGenerator(
             signal events.
             If set to False, the argument ``mean`` specifies the actual number
             of generated signal events.
+        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService | None
+            The instance of SrcDetSigYieldWeightsService providing the weighting
+            of the sources within the detector. This can be ``None`` if this
+            signal generator does not need this information.
 
         Returns
         -------
@@ -303,7 +308,8 @@ class MultiDatasetSignalGenerator(
             self,
             rss,
             mean,
-            poisson=True):
+            poisson=True,
+            **kwargs):
         """Generates a given number of signal events distributed across the
         individual datasets.
 
@@ -343,11 +349,11 @@ class MultiDatasetSignalGenerator(
             mean,
             'The mean argument must be castable to type of int!')
 
+        src_detsigyield_weights_service =\
+            self.ds_sig_weight_factors_service.src_detsigyield_weights_service
+
         # Calculate the dataset weights to distribute the signal events over the
         # datasets.
-        src_detsigyield_weights_service =\
-            self._ds_sig_weight_factors_service.src_detsigyield_weights_service
-
         if self._src_params_recarray is None:
             self._src_params_recarray = self.create_src_params_recarray(
                 src_detsigyield_weights_service=src_detsigyield_weights_service)
@@ -372,6 +378,7 @@ class MultiDatasetSignalGenerator(
                     rss=rss,
                     mean=n_events,
                     poisson=False,
+                    src_detsigyield_weights_service=src_detsigyield_weights_service,
                 )
 
             n_signal += ds_n_signal
@@ -492,7 +499,8 @@ class MCMultiDatasetSignalGenerator(
         """Recreates the signal candidates with the changed source hypothesis
         group manager.
         """
-        super().change_shg_mgr(shg_mgr)
+        super().change_shg_mgr(
+            shg_mgr=shg_mgr)
 
         self._construct_signal_candidates()
 
@@ -564,7 +572,8 @@ class MCMultiDatasetSignalGenerator(
             self,
             rss,
             mean,
-            poisson=True):
+            poisson=True,
+            **kwargs):
         """Generates a given number of signal events from the signal candidate
         monte-carlo events.
 
