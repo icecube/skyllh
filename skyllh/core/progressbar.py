@@ -41,7 +41,8 @@ class ProgressBar(
         Additional keyword arguments are passed to the constructor of the tqdm
         class.
         """
-        super().__init__()
+        super().__init__(
+            **kwargs)
 
         self.maxval = maxval
         self.startval = startval
@@ -50,7 +51,8 @@ class ProgressBar(
         self._val = 0
         self._sub_pbar_list = []
 
-        if self._parent is None:
+        self._tqdm = None
+        if (self._parent is None) and self.is_shown:
             self._tqdm = tqdm(
                 total=maxval,
                 initial=startval,
@@ -160,6 +162,9 @@ class ProgressBar(
         """Rerenders this progress bar on the display. It calls the ``update``
         method of the tqdm progess bar.
         """
+        if not self.is_shown:
+            return
+
         pbar_list = self.get_progressbar_list()
 
         maxval = 0
@@ -179,9 +184,6 @@ class ProgressBar(
             self._parent.trigger_rerendering()
             return
 
-        if not self.is_shown:
-            return
-
         # We are the most top parent progress bar. So we need to get rerendered.
         self.rerender()
 
@@ -193,6 +195,8 @@ class ProgressBar(
 
         if self._parent is not None:
             self._parent.add_sub_progress_bar(self)
+        elif not self.is_shown:
+            return self
         else:
             self._tqdm.initial = self._val
             self._tqdm.n = self._val
@@ -212,7 +216,7 @@ class ProgressBar(
 
         self.trigger_rerendering()
 
-        if self._parent is None:
+        if (self._parent is None) and self.is_shown:
             self._tqdm.close()
 
         self.remove_sub_progress_bars()
