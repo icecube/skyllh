@@ -4,10 +4,15 @@
 convenience utility functions to set different configuration settings.
 """
 
-from astropy import units
+from astropy import (
+    units,
+)
 import os.path
 import sys
-from typing import Any, Dict
+from typing import (
+    Any,
+    Dict,
+)
 
 from skyllh.core.py import (
     issequenceof,
@@ -86,7 +91,8 @@ _BASECONFIG = {
 }
 
 
-class CFGClass(dict):
+class CFGClass(
+        dict):
     """This class holds the global configuration state.
 
     The class behaves like a dict, delegating all methods of the dict
@@ -112,13 +118,13 @@ class CFGClass(dict):
         yaml_file: str
             Path to yaml file containg the to-be-updated configuration items.
         """
-        if YAML_LOADED:
-            yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
-            self.update(yaml_config)
-        else:
+        if not YAML_LOADED:
             raise ImportError(
                 f'Could not import yaml package. Thus cannot'
                 f'import config from yaml file {yaml_file}!')
+
+        yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
+        self.update(yaml_config)
 
     def from_dict(self, user_dict: Dict[Any, Any]) -> None:
         """Updates the configuration with the given configuration
@@ -135,7 +141,8 @@ class CFGClass(dict):
 CFG = CFGClass(_BASECONFIG)
 
 
-def set_enable_tracing(flag):
+def set_enable_tracing(
+        flag):
     """Sets the global setting for tracing.
 
     Parameters
@@ -147,7 +154,8 @@ def set_enable_tracing(flag):
     CFG['debugging']['enable_tracing'] = flag
 
 
-def set_n_cpu(n_cpu):
+def set_n_cpu(
+        n_cpu):
     """Sets the global setting for the number of CPUs to use, when
     parallelization is available.
 
@@ -160,7 +168,10 @@ def set_n_cpu(n_cpu):
 
 
 def set_internal_units(
-        angle_unit=None, energy_unit=None, length_unit=None, time_unit=None):
+        angle_unit=None,
+        energy_unit=None,
+        length_unit=None,
+        time_unit=None):
     """Sets the units used internally to compute quantities. These units must
     match the units used in the monte-carlo files.
 
@@ -208,7 +219,8 @@ def set_internal_units(
         CFG['internal_units']['time'] = time_unit
 
 
-def set_wd(path):
+def set_wd(
+        path):
     """Sets the project's working directory configuration variable and adds it
     to the Python path variable.
 
@@ -234,7 +246,8 @@ def set_wd(path):
     return wd
 
 
-def add_analysis_required_exp_data_field_names(fieldnames):
+def add_analysis_required_exp_data_field_names(
+        fieldnames):
     """Adds the given data field names to the set of data field names of the
     experimental data that are required by the analysis.
 
@@ -255,7 +268,8 @@ def add_analysis_required_exp_data_field_names(fieldnames):
         CFG['dataset']['analysis_required_exp_field_names'] + fieldnames))
 
 
-def set_analysis_required_exp_data_field_names(fieldnames):
+def set_analysis_required_exp_data_field_names(
+        fieldnames):
     """Sets the data field names of the experimental data that are required by
     the analysis.
 
@@ -274,7 +288,8 @@ def set_analysis_required_exp_data_field_names(fieldnames):
     CFG['dataset']['analysis_required_exp_field_names'] = list(set(fieldnames))
 
 
-def set_analysis_required_mc_data_field_names(fieldnames):
+def set_analysis_required_mc_data_field_names(
+        fieldnames):
     """Sets the data field names of the monte-carlo data that are required by
     the analysis.
 

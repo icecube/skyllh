@@ -3,9 +3,7 @@
 """This file defines IceCube specific global configuration.
 """
 
-# Import everything from the core config, So the user sees the same
-# functionality as if using the core config.
-from skyllh.core.config import *
+from skyllh.core.config import CFG
 
 # Add default analysis required data fields for experimental and monte-carlo
 # data that are IceCube specific.
