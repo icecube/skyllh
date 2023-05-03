@@ -182,60 +182,44 @@ class MultiDatasetSignalGenerator(
     def __init__(
             self,
             shg_mgr,
-            ds_sig_weight_factors_service,
             dataset_list,
             data_list,
             sig_generator_list=None,
+            ds_sig_weight_factors_service=None,
             **kwargs):
         """Constructs a new signal generator handling multiple datasets.
 
         Parameters
         ----------
         shg_mgr : instance of SourceHypoGroupManager
-            The SourceHypoGroupManager instance defining the source hypothesis
-            groups.
-        ds_sig_weight_factors_service : instance of DatasetSignalWeightFactorsService
-            The instance of DatasetSignalWeightFactorsService providing the
-            dataset signal weight factor service for calculating the dataset
-            signal weights.
-        dataset_list : list of Dataset instances
-            The list of Dataset instances for which signal events should get
-            generated for.
-        data_list : list of DatasetData instances
-            The list of DatasetData instances holding the actual data of each
+            The instance of SourceHypoGroupManager that defines the list of
+            source hypothesis groups, i.e. the list of sources.
+        dataset_list : list of instance of Dataset
+            The list of instance of Dataset for which signal events should get
+            generated.
+        data_list : list of instance of DatasetData
+            The list of instance of DatasetData holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
         sig_generator_list : list of instance of SignalGenerator | None
             The optional list of instance of SignalGenerator holding
             signal generator instances for each individual dataset. This can be
             ``None`` if this signal generator does not require individual signal
             generators for each dataset.
+        ds_sig_weight_factors_service : instance of DatasetSignalWeightFactorsService
+            The instance of DatasetSignalWeightFactorsService providing the
+            dataset signal weight factor service for calculating the dataset
+            signal weights.
         """
         super().__init__(
             shg_mgr=shg_mgr,
             **kwargs)
 
-        self.ds_sig_weight_factors_service = ds_sig_weight_factors_service
         self.dataset_list = dataset_list
         self.data_list = data_list
         self.sig_generator_list = sig_generator_list
+        self.ds_sig_weight_factors_service = ds_sig_weight_factors_service
 
         self._src_params_recarray = None
-
-    @property
-    def ds_sig_weight_factors_service(self):
-        """The instance of DatasetSignalWeightFactorsService providing the
-        dataset signal weight factor service for calculating the dataset
-        signal weights.
-        """
-        return self._ds_sig_weight_factors_service
-
-    @ds_sig_weight_factors_service.setter
-    def ds_sig_weight_factors_service(self, service):
-        if not isinstance(service, DatasetSignalWeightFactorsService):
-            raise TypeError(
-                'The ds_sig_weight_factors_service property must be an '
-                'instance of DatasetSignalWeightFactorsService!')
-        self._ds_sig_weight_factors_service = service
 
     @property
     def dataset_list(self):
@@ -283,6 +267,22 @@ class MultiDatasetSignalGenerator(
                     'The sig_generator_list property must be a sequence of '
                     'SignalGenerator instances!')
         self._sig_generator_list = list(generators)
+
+    @property
+    def ds_sig_weight_factors_service(self):
+        """The instance of DatasetSignalWeightFactorsService providing the
+        dataset signal weight factor service for calculating the dataset
+        signal weights.
+        """
+        return self._ds_sig_weight_factors_service
+
+    @ds_sig_weight_factors_service.setter
+    def ds_sig_weight_factors_service(self, service):
+        if not isinstance(service, DatasetSignalWeightFactorsService):
+            raise TypeError(
+                'The ds_sig_weight_factors_service property must be an '
+                'instance of DatasetSignalWeightFactorsService!')
+        self._ds_sig_weight_factors_service = service
 
     @property
     def n_datasets(self):
