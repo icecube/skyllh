@@ -229,7 +229,8 @@ def parallelize(func, args_list, ncpu, rss=None, tl=None, ppbar=None):
     squeue = None
     if pbar.is_shown:
         squeue = mp.Queue()
-    sub_args_list_list = np.array_split(args_list, ncpu)
+
+    sub_args_list_list = np.array_split(np.array(args_list, dtype=object), ncpu)
 
     # Create a multiprocessing queue for each worker process.
     # Prepend it with None to be able to use `pid` as the list index.
