@@ -295,6 +295,8 @@ class MultiDatasetSignalGenerator(
             shg_mgr):
         """Changes the source hypothesis group manager. This will recreate the
         src_params_recarray needed for calculating the detector signal yields.
+        Also it calls the ``change_shg_mgr``methods of the signal generators of
+        the individual datasets.
         """
         super().change_shg_mgr(
             shg_mgr=shg_mgr)
@@ -303,6 +305,10 @@ class MultiDatasetSignalGenerator(
             self.ds_sig_weight_factors_service.src_detsigyield_weights_service
         self._src_params_recarray = self.create_src_params_recarray(
             src_detsigyield_weights_service=src_detsigyield_weights_service)
+
+        for sig_generator in self.sig_generator_list:
+            sig_generator.change_shg_mgr(
+                shg_mgr=shg_mgr)
 
     def generate_signal_events(
             self,
