@@ -1941,7 +1941,7 @@ class ParameterModelMapper(
         # Create the output record array with nan as default value.
         dtype = [('model_idx', np.int32)]
         for name in self.unique_source_param_names:
-            dtype += [(name, np.float), (f'{name}:gpidx', np.int32)]
+            dtype += [(name, np.float64), (f'{name}:gpidx', np.int32)]
 
         recarray = np.full(
             (len(smidxs),),
