@@ -4,7 +4,9 @@ import numpy as np
 
 from skyllh.core.storage import create_FileLoader
 
-def load_smearing_histogram(pathfilenames):
+
+def load_smearing_histogram(
+        pathfilenames):
     """Loads the 5D smearing histogram from the given data file.
 
     Parameters
@@ -79,10 +81,10 @@ def load_smearing_histogram(pathfilenames):
         # bin edge values.
         v0 = None
         for v in data:
-            if(v0 is not None and v < v0):
+            if (v0 is not None) and (v < v0):
                 # Reached the end of the edges block.
                 break
-            if(v0 is None or v > v0):
+            if (v0 is None) or (v > v0):
                 v0 = v
                 n += 1
         return n
@@ -172,12 +174,15 @@ def load_smearing_histogram(pathfilenames):
     )
 
 
-class PDSmearingMatrix(object):
+class PDSmearingMatrix(
+        object):
     """This class is a helper class for dealing with the smearing matrix
     provided by the public data.
     """
     def __init__(
-            self, pathfilenames, **kwargs):
+            self,
+            pathfilenames,
+            **kwargs):
         """Creates a smearing matrix instance by loading the smearing matrix
         from the given file.
         """
@@ -202,22 +207,22 @@ class PDSmearingMatrix(object):
         s = np.array(self.reco_e_lower_edges.shape)
         s[-1] += 1
         self.log10_reco_e_binedges = np.empty(s, dtype=np.double)
-        self.log10_reco_e_binedges[...,:-1] = self.reco_e_lower_edges
-        self.log10_reco_e_binedges[...,-1] = self.reco_e_upper_edges[...,-1]
+        self.log10_reco_e_binedges[..., :-1] = self.reco_e_lower_edges
+        self.log10_reco_e_binedges[..., -1] = self.reco_e_upper_edges[..., -1]
 
         # Create bin edges array for psi.
         s = np.array(self.psi_lower_edges.shape)
         s[-1] += 1
         self.psi_binedges = np.empty(s, dtype=np.double)
-        self.psi_binedges[...,:-1] = self.psi_lower_edges
-        self.psi_binedges[...,-1] = self.psi_upper_edges[...,-1]
+        self.psi_binedges[..., :-1] = self.psi_lower_edges
+        self.psi_binedges[..., -1] = self.psi_upper_edges[..., -1]
 
         # Create bin edges array for ang_err.
         s = np.array(self.ang_err_lower_edges.shape)
         s[-1] += 1
         self.ang_err_binedges = np.empty(s, dtype=np.double)
-        self.ang_err_binedges[...,:-1] = self.ang_err_lower_edges
-        self.ang_err_binedges[...,-1] = self.ang_err_upper_edges[...,-1]
+        self.ang_err_binedges[..., :-1] = self.ang_err_lower_edges
+        self.ang_err_binedges[..., -1] = self.ang_err_upper_edges[..., -1]
 
     @property
     def n_log10_true_e_bins(self):
@@ -345,7 +350,9 @@ class PDSmearingMatrix(object):
 
         return pdf
 
-    def get_true_dec_idx(self, true_dec):
+    def get_true_dec_idx(
+            self,
+            true_dec):
         """Returns the true declination index for the given true declination
         value.
 
@@ -361,14 +368,17 @@ class PDSmearingMatrix(object):
         """
         if (true_dec < self.true_dec_bin_edges[0]) or\
            (true_dec > self.true_dec_bin_edges[-1]):
-            raise ValueError('The declination {} degrees is not supported by '
-                'the smearing matrix!'.format(true_dec))
+            raise ValueError(
+                f'The declination {true_dec} degrees is not supported by the '
+                'smearing matrix!')
 
         true_dec_idx = np.digitize(true_dec, self.true_dec_bin_edges) - 1
 
         return true_dec_idx
 
-    def get_log10_true_e_idx(self, log10_true_e):
+    def get_log10_true_e_idx(
+            self,
+            log10_true_e):
         """Returns the bin index for the given true log10 energy value.
 
         Parameters
@@ -384,16 +394,20 @@ class PDSmearingMatrix(object):
         """
         if (log10_true_e < self.true_e_bin_edges[0]) or\
            (log10_true_e > self.true_e_bin_edges[-1]):
-               raise ValueError(
-                   'The log10 true energy value {} is not supported by the '
-                   'smearing matrix!'.format(log10_true_e))
+            raise ValueError(
+                f'The log10 true energy value {log10_true_e} is not supported '
+                'by the smearing matrix!')
 
         log10_true_e_idx = np.digitize(
             log10_true_e, self._true_e_bin_edges) - 1
 
         return log10_true_e_idx
 
-    def get_reco_e_idx(self, true_e_idx, true_dec_idx, reco_e):
+    def get_reco_e_idx(
+            self,
+            true_e_idx,
+            true_dec_idx,
+            reco_e):
         """Returns the bin index for the given reco energy value given the
         given true energy and true declination bin indices.
 
@@ -412,19 +426,24 @@ class PDSmearingMatrix(object):
             The index of the reco energy bin the given reco energy value falls
             into. It returns None if the value is out of range.
         """
-        lower_edges = self.reco_e_lower_edges[true_e_idx,true_dec_idx]
-        upper_edges = self.reco_e_upper_edges[true_e_idx,true_dec_idx]
+        lower_edges = self.reco_e_lower_edges[true_e_idx, true_dec_idx]
+        upper_edges = self.reco_e_upper_edges[true_e_idx, true_dec_idx]
 
         m = (lower_edges <= reco_e) & (upper_edges > reco_e)
         idxs = np.nonzero(m)[0]
-        if(len(idxs) == 0):
+        if (len(idxs) == 0):
             return None
 
         reco_e_idx = idxs[0]
 
         return reco_e_idx
 
-    def get_psi_idx(self, true_e_idx, true_dec_idx, reco_e_idx, psi):
+    def get_psi_idx(
+            self,
+            true_e_idx,
+            true_dec_idx,
+            reco_e_idx,
+            psi):
         """Returns the bin index for the given psi value given the
         true energy, true declination and reco energy bin indices.
 
@@ -446,12 +465,12 @@ class PDSmearingMatrix(object):
             The index of the psi bin the given psi value falls into.
             It returns None if the value is out of range.
         """
-        lower_edges = self.psi_lower_edges[true_e_idx,true_dec_idx,reco_e_idx]
-        upper_edges = self.psi_upper_edges[true_e_idx,true_dec_idx,reco_e_idx]
+        lower_edges = self.psi_lower_edges[true_e_idx, true_dec_idx, reco_e_idx]
+        upper_edges = self.psi_upper_edges[true_e_idx, true_dec_idx, reco_e_idx]
 
         m = (lower_edges <= psi) & (upper_edges > psi)
         idxs = np.nonzero(m)[0]
-        if(len(idxs) == 0):
+        if len(idxs) == 0:
             return None
 
         psi_idx = idxs[0]
@@ -459,7 +478,12 @@ class PDSmearingMatrix(object):
         return psi_idx
 
     def get_ang_err_idx(
-            self, true_e_idx, true_dec_idx, reco_e_idx, psi_idx, ang_err):
+            self,
+            true_e_idx,
+            true_dec_idx,
+            reco_e_idx,
+            psi_idx,
+            ang_err):
         """Returns the bin index for the given angular error value given the
         true energy, true declination, reco energy, and psi bin indices.
 
@@ -484,20 +508,22 @@ class PDSmearingMatrix(object):
             falls into. It returns None if the value is out of range.
         """
         lower_edges = self.ang_err_lower_edges[
-            true_e_idx,true_dec_idx,reco_e_idx,psi_idx]
+            true_e_idx, true_dec_idx, reco_e_idx, psi_idx]
         upper_edges = self.ang_err_upper_edges[
-            true_e_idx,true_dec_idx,reco_e_idx,psi_idx]
+            true_e_idx, true_dec_idx, reco_e_idx, psi_idx]
 
         m = (lower_edges <= ang_err) & (upper_edges > ang_err)
         idxs = np.nonzero(m)[0]
-        if(len(idxs) == 0):
+        if len(idxs) == 0:
             return None
 
         ang_err_idx = idxs[0]
 
         return ang_err_idx
 
-    def get_true_log_e_range_with_valid_log_e_pdfs(self, dec_idx):
+    def get_true_log_e_range_with_valid_log_e_pdfs(
+            self,
+            dec_idx):
         """Determines the true log energy range for which log_e PDFs are
         available for the given declination bin.
 
@@ -514,8 +540,8 @@ class PDSmearingMatrix(object):
             The maximum true log energy value.
         """
         m = np.sum(
-            (self.reco_e_upper_edges[:,dec_idx] -
-             self.reco_e_lower_edges[:,dec_idx] > 0),
+            (self.reco_e_upper_edges[:, dec_idx] -
+             self.reco_e_lower_edges[:, dec_idx] > 0),
             axis=1) != 0
         min_log_true_e = np.min(self.true_e_bin_edges[:-1][m])
         max_log_true_e = np.max(self.true_e_bin_edges[1:][m])
@@ -523,7 +549,9 @@ class PDSmearingMatrix(object):
         return (min_log_true_e, max_log_true_e)
 
     def get_log_e_pdf(
-            self, log_true_e_idx, dec_idx):
+            self,
+            log_true_e_idx,
+            dec_idx):
         """Retrieves the log_e PDF from the given true energy bin index and
         source bin index.
         Returns (None, None, None, None) if any of the bin indices are less then
@@ -571,7 +599,10 @@ class PDSmearingMatrix(object):
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
     def get_psi_pdf(
-            self, log_true_e_idx, dec_idx, log_e_idx):
+            self,
+            log_true_e_idx,
+            dec_idx,
+            log_e_idx):
         """Retrieves the psi PDF from the given true energy bin index, the
         source bin index, and the log_e bin index.
         Returns (None, None, None, None) if any of the bin indices are less then
@@ -621,7 +652,11 @@ class PDSmearingMatrix(object):
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
     def get_ang_err_pdf(
-            self, log_true_e_idx, dec_idx, log_e_idx, psi_idx):
+            self,
+            log_true_e_idx,
+            dec_idx,
+            log_e_idx,
+            psi_idx):
         """Retrieves the angular error PDF from the given true energy bin index,
         the source bin index, the log_e bin index, and the psi bin index.
         Returns (None, None, None, None) if any of the bin indices are less then
@@ -680,7 +715,10 @@ class PDSmearingMatrix(object):
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
     def sample_log_e(
-            self, rss, dec_idx, log_true_e_idxs):
+            self,
+            rss,
+            dec_idx,
+            log_true_e_idxs):
         """Samples log energy values for the given source declination and true
         energy bins.
 
@@ -739,7 +777,11 @@ class PDSmearingMatrix(object):
         return (log_e_idx, log_e)
 
     def sample_psi(
-            self, rss, dec_idx, log_true_e_idxs, log_e_idxs):
+            self,
+            rss,
+            dec_idx,
+            log_true_e_idxs,
+            log_e_idxs):
         """Samples psi values for the given source declination, true
         energy bins, and log_e bins.
 
@@ -763,7 +805,7 @@ class PDSmearingMatrix(object):
         psi : 1d ndarray of float
             The sampled psi values in radians.
         """
-        if(len(log_true_e_idxs) != len(log_e_idxs)):
+        if len(log_true_e_idxs) != len(log_e_idxs):
             raise ValueError(
                 'The lengths of log_true_e_idxs and log_e_idxs must be equal!')
 
@@ -808,7 +850,12 @@ class PDSmearingMatrix(object):
         return (psi_idx, psi)
 
     def sample_ang_err(
-            self, rss, dec_idx, log_true_e_idxs, log_e_idxs, psi_idxs):
+            self,
+            rss,
+            dec_idx,
+            log_true_e_idxs,
+            log_e_idxs,
+            psi_idxs):
         """Samples ang_err values for the given source declination, true
         energy bins, log_e bins, and psi bins.
 
