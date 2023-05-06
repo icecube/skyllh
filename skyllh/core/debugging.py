@@ -29,7 +29,8 @@ def is_tracing_enabled():
     return CFG['debugging']['enable_tracing']
 
 
-def get_logger(name):
+def get_logger(
+        name):
     """Retrieves the logger with the given name from the Python logging system.
 
     Parameters
@@ -47,7 +48,9 @@ def get_logger(name):
     return logger
 
 
-def setup_logger(name, log_level):
+def setup_logger(
+        name,
+        log_level):
     """Initializes logger with a given name and a log level.
 
     Parameters
@@ -62,7 +65,11 @@ def setup_logger(name, log_level):
     logger.setLevel(log_level)
 
 
-def setup_console_handler(name, log_level=None, log_format=None, stream=None):
+def setup_console_handler(
+        name,
+        log_level=None,
+        log_format=None,
+        stream=None):
     """Initializes `StreamHandler` for a logger with a given name and sets its
     handling level.
 
@@ -82,13 +89,13 @@ def setup_console_handler(name, log_level=None, log_format=None, stream=None):
     """
     logger = logging.getLogger(name)
 
-    if(log_level is None):
+    if log_level is None:
         log_level = logger.level
 
-    if(log_format is None):
+    if log_format is None:
         log_format = CFG['debugging']['log_format']
 
-    if(stream is None):
+    if stream is None:
         stream = sys.stderr
 
     # Create and add `StreamHandler` to the logger.
@@ -99,7 +106,12 @@ def setup_console_handler(name, log_level=None, log_format=None, stream=None):
 
 
 def setup_file_handler(
-        name, filename, log_level=None, path=None, log_format=None, mode='a'):
+        name,
+        filename,
+        log_level=None,
+        path=None,
+        log_format=None,
+        mode='a'):
     """Initializes `FileHandler` for a logger with a given name and sets its
     handling level.
 
@@ -124,13 +136,13 @@ def setup_file_handler(
     """
     logger = logging.getLogger(name)
 
-    if(log_level is None):
+    if log_level is None:
         log_level = logger.level
 
-    if(path is None):
+    if path is None:
         path = CFG['project']['working_directory']
 
-    if(log_format is None):
+    if log_format is None:
         log_format = CFG['debugging']['log_format']
 
     pathfilename = os.path.join(path, filename)
