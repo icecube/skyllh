@@ -1,23 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import numpy as np
+from logging.handlers import (
+    QueueHandler,
+)
 import multiprocessing as mp
-
-try:
-    # For Python 3.
-    from logging.handlers import QueueHandler
-except ImportError:
-    # For Python 2.
-    from skyllh.core.debugging import QueueHandler
-
-try:
-    # For Python 3.
-    import queue
-except ImportError:
-    # For Python 2.
-    import Queue as queue
-
+import numpy as np
+import queue
 import time
 
 from skyllh.core.config import CFG
