@@ -1895,7 +1895,7 @@ class ParameterModelMapper(
             The (N_floating_param,)-shaped 1D ndarray holding the global
             floating parameter values. The order must match the order of
             parameter definition in this ParameterModelMapper instance.
-        sources : SourceModel | sequence of SourceModel | ndarray of int | None
+        sources : SourceModel | sequence of SourceModel | ndarray of int32 | None
             The sources which should be considered.
             If a ndarray of type int is provides, it must contain the global
             source indices.
@@ -1930,7 +1930,7 @@ class ParameterModelMapper(
                 f'{len(gflp_values)}, but must be of length '
                 f'{n_global_floating_params}!')
 
-        if isinstance(sources, np.ndarray) and sources.dtype == np.int:
+        if isinstance(sources, np.ndarray) and sources.dtype == np.int32:
             # The sources are already specified in terms of their source
             # indices.
             smidxs = sources
@@ -1939,9 +1939,9 @@ class ParameterModelMapper(
             smidxs = self.get_src_model_idxs(sources=sources)
 
         # Create the output record array with nan as default value.
-        dtype = [('model_idx', np.int)]
+        dtype = [('model_idx', np.int32)]
         for name in self.unique_source_param_names:
-            dtype += [(name, np.float), (f'{name}:gpidx', np.int)]
+            dtype += [(name, np.float), (f'{name}:gpidx', np.int32)]
 
         recarray = np.full(
             (len(smidxs),),

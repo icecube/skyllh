@@ -96,7 +96,7 @@ class SignalGenerator(
         for pname in param_names:
             dt.extend([
                 (pname, np.float64),
-                (f'{pname}:gpidx', np.int)
+                (f'{pname}:gpidx', np.int32)
             ])
         src_params_recarray = np.empty((self._shg_mgr.n_sources,), dtype=dt)
 

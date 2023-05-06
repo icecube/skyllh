@@ -703,7 +703,7 @@ class PDSmearingMatrix(object):
             The sampled log_e values.
         """
         n_evt = len(log_true_e_idxs)
-        log_e_idx = np.empty((n_evt,), dtype=np.int_)
+        log_e_idx = np.empty((n_evt,), dtype=np.int64)
         log_e = np.empty((n_evt,), dtype=np.double)
 
         unique_log_true_e_idxs = np.unique(log_true_e_idxs)
@@ -768,7 +768,7 @@ class PDSmearingMatrix(object):
                 'The lengths of log_true_e_idxs and log_e_idxs must be equal!')
 
         n_evt = len(log_true_e_idxs)
-        psi_idx = np.empty((n_evt,), dtype=np.int_)
+        psi_idx = np.empty((n_evt,), dtype=np.int64)
         psi = np.empty((n_evt,), dtype=np.double)
 
         unique_log_true_e_idxs = np.unique(log_true_e_idxs)
@@ -841,7 +841,7 @@ class PDSmearingMatrix(object):
                 'be equal!')
 
         n_evt = len(log_true_e_idxs)
-        ang_err_idx = np.empty((n_evt,), dtype=np.int_)
+        ang_err_idx = np.empty((n_evt,), dtype=np.int64)
         ang_err = np.empty((n_evt,), dtype=np.double)
 
         unique_log_true_e_idxs = np.unique(log_true_e_idxs)
