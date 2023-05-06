@@ -73,6 +73,7 @@ class PDDatasetSignalGenerator(
 
         self._logger = get_logger(module_classname(self))
 
+        self.ds = ds
         self.ds_idx = ds_idx
         self.energy_cut_spline = energy_cut_spline
         self.cut_sindec = cut_sindec
@@ -81,15 +82,35 @@ class PDDatasetSignalGenerator(
             pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
 
-        # Get the right-ascention, declination, and the effective area for each
-        # source.
-        n_sources = self._shg_mgr.n_sources
-        self._src_ra_arr = np.empty((n_sources,), dtype=np.float64)
-        self._src_dec_arr = np.empty((n_sources,), dtype=np.float64)
-        self._effA_arr = np.empty((n_sources,), dtype=np.object_)
-        for (i, src) in enumerate(self._shg_mgr.source_list):
-            self._src_ra_arr[i] = src.ra
-            self._src_dec_arr[i] = src.dec
+        self._create_source_dependent_data_structures()
+
+    def _create_source_dependent_data_structures(self):
+        """Creates the source dependent data structures needed by this signal
+        generator. These are:
+
+            - source location in ra and dec
+            - effective area
+            - log10 true energy inv CDF spline
+
+        """
+        n_sources = self.shg_mgr.n_sources
+
+        self._src_ra_arr = np.empty(
+            (n_sources,),
+            dtype=np.float64)
+        self._src_dec_arr = np.empty(
+            (n_sources,),
+            dtype=np.float64)
+        self._effA_arr = np.empty(
+            (n_sources,),
+            dtype=np.object_)
+        self._log10_true_e_inv_cdf_spl_arr = np.empty(
+            (n_sources,),
+            dtype=np.object_)
+
+        for (src_idx, src) in enumerate(self._shg_mgr.source_list):
+            self._src_ra_arr[src_idx] = src.ra
+            self._src_dec_arr[src_idx] = src.dec
 
             dec_idx = self.sm.get_true_dec_idx(src.dec)
             (min_log_true_e,
@@ -97,12 +118,22 @@ class PDDatasetSignalGenerator(
                 self.sm.get_true_log_e_range_with_valid_log_e_pdfs(
                     dec_idx)
 
-            self._effA_arr[i] = PDAeff(
-                pathfilenames=ds.get_abs_pathfilename_list(
-                    ds.get_aux_data_definition('eff_area_datafile')),
+            self._effA_arr[src_idx] = PDAeff(
+                pathfilenames=self.ds.get_abs_pathfilename_list(
+                    self.ds.get_aux_data_definition('eff_area_datafile')),
                 src_dec=src.dec,
                 min_log10enu=min_log_true_e,
                 max_log10enu=max_log_true_e)
+
+            # Build the spline for the inverse CDF of the source flux's true
+            # energy probability distribution.
+            fluxmodel = self.shg_mgr.get_fluxmodel_by_src_idx(src_idx=src_idx)
+            self._log10_true_e_inv_cdf_spl_arr[src_idx] =\
+                self._create_inv_cdf_spline(
+                    src_idx=src_idx,
+                    fluxmodel=fluxmodel,
+                    log_e_min=min_log_true_e,
+                    log_e_max=max_log_true_e)
 
     @staticmethod
     def _eval_spline(x, spl):
@@ -296,6 +327,17 @@ class PDDatasetSignalGenerator(
 
         return events
 
+    def change_shg_mgr(
+            self,
+            shg_mgr):
+        """Changes the source hypothesis group manager. This will recreate the
+        internal source dependent data structures.
+        """
+        super().change_shg_mgr(
+            shg_mgr=shg_mgr)
+
+        self._create_source_dependent_data_structures()
+
     @staticmethod
     def create_energy_filter_mask(
             events,
@@ -341,9 +383,6 @@ class PDDatasetSignalGenerator(
             self,
             rss,
             src_idx,
-            src_dec,
-            src_ra,
-            fluxmodel,
             n_events):
         """Generates ``n_events`` signal events for the given source location
         and flux model.
@@ -355,13 +394,6 @@ class PDDatasetSignalGenerator(
             generator state.
         src_idx : int
             The index of the source.
-        src_dec : float
-            Declination coordinate of the injection point.
-        src_ra : float
-            Right ascension coordinate of the injection point.
-        fluxmodel : instance of FactorizedFluxModel
-            The instance of FactorizedFluxModel representing the flux model of
-            the source.
         n_events : int
             Number of signal events to be generated.
 
@@ -379,20 +411,13 @@ class PDDatasetSignalGenerator(
         """
         sm = self.sm
 
+        src_dec = self._src_dec_arr[src_idx]
+        src_ra = self._src_ra_arr[src_idx]
+
+        log10_true_e_inv_cdf_spl = self._log10_true_e_inv_cdf_spl_arr[src_idx]
+
         # Find the declination bin index.
         dec_idx = sm.get_true_dec_idx(src_dec)
-
-        # Determine the true energy range for which log_e PDFs are available.
-        (min_log_true_e,
-         max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
-             dec_idx)
-        # Build the spline for the inverse CDF and draw a true neutrino
-        # energy from the hypothesis spectrum.
-        log10_true_e_inv_cdf_spl = self._create_inv_cdf_spline(
-            src_idx=src_idx,
-            fluxmodel=fluxmodel,
-            log_e_min=min_log_true_e,
-            log_e_max=max_log_true_e)
 
         events = None
 
@@ -492,34 +517,23 @@ class PDDatasetSignalGenerator(
 
         # Loop over the sources and generate signal events according to the
         # weights of the sources.
-        src_idx = 0
-        for shg in self._shg_mgr.shg_list:
-            fluxmodel = shg.fluxmodel
-            for (shg_src_idx, src) in enumerate(shg.source_list):
-                n_events_src = int(np.round(n_events * a_k[src_idx], 0))
+        for src_idx in range(self.shg_mgr.n_sources):
+            n_events_src = int(np.round(n_events * a_k[src_idx], 0))
 
-                src_dec = self._src_dec_arr[src_idx]
-                src_ra = self._src_ra_arr[src_idx]
+            src_events = self.generate_signal_events_for_source(
+                rss=rss,
+                src_idx=src_idx,
+                n_events=n_events_src,
+            )
+            if src_events is None:
+                continue
 
-                src_events = self.generate_signal_events_for_source(
-                    rss=rss,
-                    src_idx=src_idx,
-                    src_dec=src_dec,
-                    src_ra=src_ra,
-                    fluxmodel=fluxmodel,
-                    n_events=n_events_src,
-                )
-                if src_events is None:
-                    continue
+            n_signal += len(src_events)
 
-                n_signal += len(src_events)
-
-                if self.ds_idx not in signal_events_dict:
-                    signal_events_dict[self.ds_idx] = src_events
-                else:
-                    signal_events_dict[self.ds_idx].append(src_events)
-
-                src_idx += shg_src_idx
+            if self.ds_idx not in signal_events_dict:
+                signal_events_dict[self.ds_idx] = src_events
+            else:
+                signal_events_dict[self.ds_idx].append(src_events)
 
         return (n_signal, signal_events_dict)
 
