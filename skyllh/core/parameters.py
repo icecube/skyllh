@@ -1512,7 +1512,7 @@ class ParameterModelMapper(
         # parameter names. Entries set to None, will indicate masked-out
         # global parameters.
         self._model_param_names = np.empty(
-            (len(self._models), 0), dtype=np.object)
+            (len(self._models), 0), dtype=np.object_)
 
     @property
     def models(self):
