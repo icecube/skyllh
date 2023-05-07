@@ -1194,12 +1194,15 @@ class GaussianTimeFluxProfile(
             time_unit_conv_factor = unit.to(self._time_unit)
             t = t * time_unit_conv_factor
 
+        m = (t >= self.t_start) & (t < self.t_end)
+
         s = self._sigma_t
         twossq = 2*s*s
         t0 = 0.5*(self._t_end + self._t_start)
-        dt = t - t0
+        dt = t[m] - t0
 
-        values = np.exp(-dt*dt/twossq)
+        values = np.zeros_like(t)
+        values[m] = np.exp(-dt*dt/twossq)
 
         return values
 
