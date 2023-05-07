@@ -13,11 +13,15 @@ from skyllh.core.py import (
 )
 
 
-class Model(object):
+class Model(
+        object):
     """This class provides a base class for all model classes used in SkyLLH.
     Models could be for instance source models or background models.
     """
-    def __init__(self, name=None, **kwargs):
+    def __init__(
+            self,
+            name=None,
+            **kwargs):
         """Creates a new Model instance.
 
         Parameters
@@ -26,9 +30,10 @@ class Model(object):
             The name of the model. If set to `None`, the id of the object is
             taken as name.
         """
-        super(Model, self).__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
-        if(name is None):
+        if name is None:
             name = self.id
 
         self.name = name
@@ -38,6 +43,7 @@ class Model(object):
         """The name of the model.
         """
         return self._name
+
     @name.setter
     def name(self, name):
         name = str_cast(
@@ -54,12 +60,16 @@ class Model(object):
         return id(self)
 
 
-class ModelCollection(NamedObjectCollection):
+class ModelCollection(
+        NamedObjectCollection):
     """This class describes a collection of Model instances. It can be
     used to group several models into a single object.
     """
     @staticmethod
-    def cast(obj, errmsg=None, **kwargs):
+    def cast(
+            obj,
+            errmsg=None,
+            **kwargs):
         """Casts the given object to a ModelCollection object.
         If the cast fails, a TypeError with the given error message is raised.
 
@@ -109,7 +119,11 @@ class ModelCollection(NamedObjectCollection):
                       f'"{typename(obj)}" to ModelCollection failed!')
         raise TypeError(errmsg)
 
-    def __init__(self, models=None, model_type=None, **kwargs):
+    def __init__(
+            self,
+            models=None,
+            model_type=None,
+            **kwargs):
         """Creates a new Model collection. The type of the model instances this
         collection holds can be restricted, by setting the model_type argument.
 
@@ -166,7 +180,12 @@ class SourceModel(Model):
     """The base class for all source models in SkyLLH. A source can have a
     relative weight w.r.t. other sources.
     """
-    def __init__(self, name=None, classification=None, weight=None, **kwargs):
+    def __init__(
+            self,
+            name=None,
+            classification=None,
+            weight=None,
+            **kwargs):
         """Creates a new source model instance.
 
         Parameters
@@ -191,6 +210,7 @@ class SourceModel(Model):
         """The astronomical classification of the source.
         """
         return self._classification
+
     @classification.setter
     def classification(self, c):
         self._classification = str_cast(
@@ -203,6 +223,7 @@ class SourceModel(Model):
         """The weight of the source.
         """
         return self._weight
+
     @weight.setter
     def weight(self, w):
         if w is None:
@@ -213,12 +234,16 @@ class SourceModel(Model):
         self._weight = w
 
 
-class SourceModelCollection(ModelCollection):
+class SourceModelCollection(
+        ModelCollection):
     """This class describes a collection of source models. It can be used to
     group sources into a single object, for instance for a stacking analysis.
     """
     @staticmethod
-    def cast(obj, errmsg=None, **kwargs):
+    def cast(
+            obj,
+            errmsg=None,
+            **kwargs):
         """Casts the given object to a SourceModelCollection object. If the cast
         fails, a TypeError with the given error message is raised.
 
@@ -262,8 +287,11 @@ class SourceModelCollection(ModelCollection):
                       f'"{typename(obj)}" to SourceModelCollection failed!')
         raise TypeError(errmsg)
 
-
-    def __init__(self, sources=None, source_type=None, **kwargs):
+    def __init__(
+            self,
+            sources=None,
+            source_type=None,
+            **kwargs):
         """Creates a new source collection.
 
         Parameters
@@ -275,7 +303,7 @@ class SourceModelCollection(ModelCollection):
             The type of the source.
             If set to None (default), SourceModel will be used.
         """
-        if(source_type is None):
+        if source_type is None:
             source_type = SourceModel
 
         super().__init__(
