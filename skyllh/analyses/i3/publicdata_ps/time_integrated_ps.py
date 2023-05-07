@@ -5,8 +5,6 @@ source analysis with a two-component likelihood function using a spacial and an
 energy event PDF.
 """
 
-import argparse
-import logging
 import numpy as np
 
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
@@ -34,12 +32,11 @@ from skyllh.core.analysis import (
 )
 from skyllh.core.config import (
     CFG,
+    set_enable_tracing,
+    set_n_cpu,
 )
 from skyllh.core.debugging import (
     get_logger,
-    setup_logger,
-    setup_console_handler,
-    setup_file_handler,
 )
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
@@ -115,6 +112,12 @@ from skyllh.physics.flux_model import (
 )
 from skyllh.physics.source_model import (
     PointLikeSource,
+)
+from skyllh.scripting.argparser import (
+    create_argparser,
+)
+from skyllh.scripting.logging import (
+    setup_logging,
 )
 
 
@@ -413,71 +416,51 @@ def create_analysis(
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(
+    parser = create_argparser(
         description='Calculates TS for a given source location using the '
-        '10-year public point source sample.',
-        formatter_class=argparse.RawTextHelpFormatter
+                    '10-year public point source sample.',
+
     )
-    p.add_argument(
+
+    parser.add_argument(
         '--dec',
-        default=23.8,
+        dest='dec',
+        default=5.7,
         type=float,
         help='The source declination in degrees.'
     )
-    p.add_argument(
+    parser.add_argument(
         '--ra',
-        default=216.76,
+        dest='ra',
+        default=77.35,
         type=float,
         help='The source right-ascention in degrees.'
     )
-    p.add_argument(
+    parser.add_argument(
         '--gamma-seed',
+        dest='gamma_seed',
         default=3,
         type=float,
         help='The seed value of the gamma fit parameter.'
     )
-    p.add_argument(
-        '--data_base_path',
-        default=None,
-        type=str,
-        help='The base path to the data samples (default=None)'
-    )
-    p.add_argument(
-        '--seed',
-        default=1,
-        type=int,
-        help='The random number generator seed for the likelihood '
-             'minimization.'
-    )
-    p.add_argument(
-        '--ncpu',
-        default=1,
-        type=int,
-        help='The number of CPUs to utilize where parallelization is possible.'
-    )
-    p.add_argument(
+
+    parser.add_argument(
         '--cap-ratio',
+        dest='cap_ratio',
+        default=False,
         action='store_true',
         help='Switch to cap the energy PDF ratio.')
-    p.set_defaults(cap_ratio=False)
-    args = p.parse_args()
 
-    # Setup `skyllh` package logging.
-    # To optimize logging set the logging level to the lowest handling level.
-    setup_logger('skyllh', logging.DEBUG)
-    log_format = '%(asctime)s %(processName)s %(name)s %(levelname)s: '\
-                 '%(message)s'
-    setup_console_handler(
-        'skyllh',
-        logging.INFO,
-        log_format)
-    setup_file_handler(
-        'skyllh',
-        'debug.log',
-        log_level=logging.DEBUG,
-        log_format=log_format)
+    args = parser.parse_args()
 
-    CFG['multiproc']['ncpu'] = args.ncpu
+    CFG.from_yaml(args.config)
+
+    setup_logging(
+        script_logger_name=__name__,
+        debug_pathfilename=args.debug_logfile)
+
+    set_enable_tracing(args.enable_tracing)
+    set_n_cpu(args.n_cpu)
 
     sample_seasons = [
         ('PublicData_10y_ps', 'IC40'),
@@ -491,7 +474,7 @@ if __name__ == '__main__':
     for (sample, season) in sample_seasons:
         # Get the dataset from the correct dataset collection.
         dsc = data_samples[sample].create_dataset_collection(
-            args.data_base_path)
+            args.data_basepath)
         datasets.append(dsc.get_dataset(season))
 
     # Define a random state service.
