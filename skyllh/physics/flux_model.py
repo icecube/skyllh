@@ -1501,6 +1501,32 @@ class FluxModel(
         return factor
 
 
+class NullFluxModel(
+        FluxModel):
+    """This class provides a dummy flux model class, which can be used for
+    testing purposes, in cases where an actual flux model is not required but
+    the framework interface requires one.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def math_function_str(self):
+        """Since this is a dummy flux model, calling this method will raise a
+        NotImplementedError.
+        """
+        raise NotImplementedError(
+            f'The {classname(self)} flux model is a dummy flux model which has '
+            'no math function prepresentation!')
+
+    def __call__(self, *args, **kwargs):
+        """Since this is a dummy flux model, calling this method will raise a
+        NotImplementedError.
+        """
+        raise NotImplementedError(
+            f'The {classname(self)} flux model is a dummy flux model and '
+            'cannot be called!')
+
+
 class FactorizedFluxModel(
         FluxModel):
     r"""This class describes a flux model where the spatial, energy, and time

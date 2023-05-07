@@ -275,3 +275,23 @@ class DetSigYieldBuilder(
             An instance derived from DetSigYield.
         """
         pass
+
+
+class NullDetSigYieldBuilder(
+        DetSigYieldBuilder):
+    """This class provides a dummy detector signal yield builder, which can
+    be used for testing purposes, when an actual builder is not required.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def construct_detsigyield(
+            self,
+            *args,
+            **kwargs):
+        """Since this is a dummy detector signal yield builder, calling this
+        method will raise a NotImplementedError!
+        """
+        raise NotImplementedError(
+            f'The {classname(self)} detector signal yield builder cannot '
+            'actually build a DetSigYield instance!')
