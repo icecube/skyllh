@@ -30,9 +30,9 @@ def create_argparser(
     )
 
     if options is True:
-        add_argparser_options(
-            parser=parser)
-    elif isinstance(options, dict):
+        options = dict()
+
+    if isinstance(options, dict):
         add_argparser_options(
             parser=parser,
             **options)
