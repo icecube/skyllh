@@ -102,22 +102,36 @@ class CFGClass(
     # Keep track of whether this class has been instantiated.
     _is_instantiated = False
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(
+            self,
+            *args,
+            **kwargs) -> None:
+        """Initializes a new CFGClass instance. Such a instance can be
+        initialized only once!
+        """
         if CFGClass._is_instantiated:
-            raise RuntimeError("Can instantiate CFGClass only once!")
+            raise RuntimeError(
+                'Can instantiate CFGClass only once!')
 
         super().__init__(*args, **kwargs)
+
         CFGClass._is_instantiated = True
 
-    def from_yaml(self, yaml_file: str) -> None:
+    def from_yaml(
+            self,
+            yaml_file: str) -> None:
         """Updates the configuration with the configuration items contained in
-        the yaml file. This calls `dict.update`.
+        the yaml file. This calls ``dict.update``.
 
         Parameters
         ----------
-        yaml_file: str
+        yaml_file: str | None
             Path to yaml file containg the to-be-updated configuration items.
+            If set to ``None``, nothing is done.
         """
+        if yaml_file is None:
+            return
+
         if not YAML_LOADED:
             raise ImportError(
                 f'Could not import yaml package. Thus cannot'
@@ -126,9 +140,11 @@ class CFGClass(
         yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
         self.update(yaml_config)
 
-    def from_dict(self, user_dict: Dict[Any, Any]) -> None:
+    def from_dict(
+            self,
+            user_dict: Dict[Any, Any]) -> None:
         """Updates the configuration with the given configuration
-        dictionary. This calls `dict.update`.
+        dictionary. This calls ``dict.update``.
 
         Parameters
         ----------
