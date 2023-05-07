@@ -1943,10 +1943,11 @@ class ParameterModelMapper(
         for name in self.unique_source_param_names:
             dtype += [(name, np.float64), (f'{name}:gpidx', np.int32)]
 
-        recarray = np.full(
+        recarray = np.zeros(
             (len(smidxs),),
-            np.nan,
             dtype=dtype)
+        for name in self.unique_source_param_names:
+            recarray[name] = np.nan
 
         recarray['model_idx'] = smidxs
 
