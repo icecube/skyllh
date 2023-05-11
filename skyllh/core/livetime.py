@@ -151,13 +151,13 @@ class Livetime(
 
     @property
     def time_start(self):
-        """(read-only) The start of the detector live-time.
+        """(read-only) The start time of the detector live-time.
         """
         return self._uptime_mjd_intervals_arr[0, 0]
 
     @property
-    def time_end(self):
-        """(read-only) The end of the detector live-time.
+    def time_stop(self):
+        """(read-only) The stop time of the detector live-time.
         """
         return self._uptime_mjd_intervals_arr[-1, 1]
 
@@ -385,7 +385,7 @@ class Livetime(
             if t_min is None:
                 t_min = self.time_start
             if t_max is None:
-                t_max = self.time_end
+                t_max = self.time_stop
 
             uptime_intervals_arr = self.get_uptime_intervals_between(
                 t_min, t_max)
