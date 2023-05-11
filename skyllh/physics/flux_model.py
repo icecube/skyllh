@@ -909,6 +909,44 @@ class BoxTimeFluxProfile(
 
     The box is centered at ``t0`` and extends to +/-``tw``/2 around ``t0``.
     """
+
+    @classmethod
+    def from_start_and_stop_time(
+            cls,
+            start,
+            stop,
+            time_unit=None,
+            **kwargs):
+        """Constructs a BoxTimeFluxProfile instance from the given start and
+        stop time.
+
+        Parameters
+        ----------
+        start : float
+            The start time of the box profile.
+        stop : float
+            The stop time of the box profile.
+        time_unit : instance of astropy.units.UnitBase | None
+            The used unit for time.
+            If set to ``None``, the configured default time unit for fluxes is
+            used.
+
+        Returns
+        -------
+        profile : instance of BoxTimeFluxProfile
+            The newly created instance of BoxTimeFluxProfile.
+        """
+        t0 = 0.5*(start + stop)
+        tw = stop - start
+
+        profile = cls(
+            t0=t0,
+            tw=tw,
+            time_unit=time_unit,
+            **kwargs)
+
+        return profile
+
     def __init__(
             self,
             t0,
