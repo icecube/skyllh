@@ -12,6 +12,9 @@ from skyllh.core.pdf import (
     NDPhotosplinePDF,
     TimePDF,
 )
+from skyllh.core.py import (
+    classname,
+)
 
 
 class BackgroundMultiDimGridPDF(
@@ -44,7 +47,6 @@ class BackgroundTimePDF(
 
     def __init__(
             self,
-            pmm,
             livetime,
             time_flux_profile,
             **kwargs):
@@ -53,9 +55,6 @@ class BackgroundTimePDF(
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the mapping of the
-            global parameters to the local source parameters.
         livetime : instance of Livetime
             An instance of Livetime, which provides the detector live-time
             information.
@@ -63,10 +62,47 @@ class BackgroundTimePDF(
             The signal's time flux profile.
         """
         super().__init__(
-            pmm=pmm,
+            pmm=None,
             livetime=livetime,
             time_flux_profile=time_flux_profile,
             **kwargs)
+
+        self._pd = None
+
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Initializes the background time PDF with new trial data. Because this
+        PDF does not depend on any parameters, the probability density values
+        can be pre-computed here.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF value. The following data fields must
+            exist:
+
+            ``'time'`` : float
+                The MJD time of the event.
+
+        tl : instance of TimeLord | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+        """
+        times = tdm.get_data('time')
+
+        self._pd = np.zeros((len(times),), dtype=np.float64)
+
+        # Get a mask of the event times which fall inside a detector on-time
+        # interval.
+        on = self._livetime.is_on(times)
+
+        norm = self._S / self._I**2
+
+        self._pd[on] = self._time_flux_profile(t=times[on]) * norm
 
     def get_pd(
             self,
@@ -101,19 +137,13 @@ class BackgroundTimePDF(
             The background PDF does not depend on any global fit parameter,
             hence, this is an empty dictionary.
         """
-        times = tdm.get_data('time')
+        if self._pd is None:
+            raise RuntimeError(
+                f'The {classname(self)} was not initialized with trial data!')
 
-        pd = np.zeros((len(times),), dtype=np.float64)
+        grads = dict()
 
-        # Get a mask of the event times which fall inside a detector on-time
-        # interval.
-        on = self._livetime.is_on(times)
-
-        norm = self._S / self._I**2
-
-        pd[on] = self._time_flux_profile(t=times[on]) * norm
-
-        return (pd, dict())
+        return (self._pd, grads)
 
 
 class BackgroundNDPhotosplinePDF(
