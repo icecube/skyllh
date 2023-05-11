@@ -343,6 +343,21 @@ class Analysis(
         return self._sig_generator
 
     @property
+    def tdm_list(self):
+        """The list of instance of TrialDataManager. One for each dataset.
+        """
+        return self._tdm_list
+
+    @tdm_list.setter
+    def tdm_list(self, tdms):
+        if not issequenceof(tdms, TrialDataManager):
+            raise TypeError(
+                'The tdm_list property must be a sequence of TrialDataManager '
+                'instances! '
+                f'Its current type is {classname(tdms)}.')
+        self._tdm_list = list(tdms)
+
+    @property
     def total_livetime(self):
         """(read-only) The total live-time in days of the loaded data.
         """
