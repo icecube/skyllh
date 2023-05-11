@@ -453,10 +453,194 @@ class SignalTimePDF(
         return (pd, dict())
 
 
+class FixedBoxSignalTimePDF(
+        PDF,
+        IsSignalPDF):
+    """This class provides a box-shaped time PDF, which is fixed to a given
+    position in time and has a fixed width. It does not depend on any fit
+    parameters.
+    """
+
+    def __init__(
+            self,
+            grl,
+            start,
+            end,
+            **kwargs):
+        """Creates a new box-shaped signal time PDF instance.
+
+        Parameters
+        ----------
+        grl : instance of structured ndarray
+            The structured numpy ndarray of length N_runs, holding the detector
+            good run list information. The following data fields need to be
+            present:
+
+            start : float
+                The start time of the run.
+            stop : float
+                The stop time of the run.
+
+        start : float
+            The start time of the box profile.
+        end : float
+            The end time of the box profile.
+        """
+        super().__init__(
+            pmm=None,
+            **kwargs)
+
+        self.grl = grl
+
+        # Clip the profile to the sample edges.
+        sample_start = grl['start'][0]
+        sample_end = grl['stop'][-1]
+        if start < sample_start and end > sample_start:
+            start = sample_start
+        if end > sample_end and start < sample_end:
+            end = sample_end
+
+        self.start = start
+        self.end = end
+
+        self._pd = None
+
+    def cdf(self, t):
+        """Computes the cumulative distribution function of this box PDF.
+
+        Parameters
+        ----------
+        t : float, instance of ndarray
+            The MJD times.
+
+        Returns
+        -------
+        cdf : instance of ndarray
+            The (N_times,)-shaped numpy ndarray holding the CDF values upto the
+            given times ``t``.
+        """
+        t = np.atleast_1d(t)
+
+        pdf_t_start = self.start
+        pdf_t_end = self.end
+
+        cdf = np.zeros(t.size, float)
+        # Values between the PDF's start and stop times.
+        mask = (pdf_t_start <= t) & (t <= pdf_t_end)
+        cdf[mask] = (t[mask] - pdf_t_start) / (pdf_t_end - pdf_t_start)
+
+        # Values beyond the PDF's stop time.
+        sample_start = self.grl['start'][0]
+        if pdf_t_end > sample_start:
+            mask = (t > pdf_t_end)
+            cdf[mask] = 1.
+
+        return cdf
+
+    def calc_uptime_norm(self):
+        """Calculates the normalization by taking the dataset uptime into
+        account. The PDF must be re-normalized such that the function sums to 1
+        over the finite good run list domain.
+
+        Returns
+        -------
+        norm : float
+            Normalization such that the CDF sums to 1 over the good run list
+            domain.
+        """
+        integral = np.sum(
+            self.cdf(self.grl['stop']) - self.cdf(self.grl['start']))
+
+        if np.isclose(integral, 0):
+            return 0
+
+        norm = 1. / integral
+
+        return norm
+
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Initializes the time PDF for the new trial data. Because this PDF
+        does not depend on any parameters, the probability density values can
+        be pre-calculated here.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF value. The following data fields must
+            exist:
+
+            time : float
+                The MJD time of the event.
+
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
+            information.
+        """
+        evt_idxs = tdm.src_evt_idxs[1]
+
+        time = np.take(tdm.get_data('time'), evt_idxs)
+
+        uptime_norm = self.calc_uptime_norm()
+
+        # Get a mask of the event times which fall inside a detector on-time
+        # interval.
+        # Gives 0 for outside the flare and 1 for inside the flare.
+        box_mask = np.piecewise(
+            time,
+            [self.start <= time, time <= self.end],
+            [1., 1.])
+
+        self._pd = box_mask / (self.end - self.start) * uptime_norm
+
+    def get_pd(
+            self,
+            tdm,
+            params_recarray=None,
+            tl=None):
+        """Calculates the signal time probability density of each event and
+        source.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF value. The following data fields must
+            exist:
+
+            time : float
+                The MJD time of the event.
+
+        params_recarray : None
+            Unused interface argument.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
+            information.
+
+        Returns
+        -------
+        pd : (N_values,)-shaped numpy ndarray
+            The 1D numpy ndarray with the probability density for each event.
+        grads : empty array of float
+            Empty, since it does not depend on any fit parameter.
+        """
+        if self._pd is None:
+            raise RuntimeError(
+                f'The {classname(self)} was not initialized with trial data!')
+
+        grads = dict()
+
+        return (self._pd, grads)
+
+
 class FixedGaussianSignalTimePDF(
         PDF,
         IsSignalPDF):
-    """This class provides a gaussian time PDF, which is fixed to a given
+    """This class provides a gaussian-shaped time PDF, which is fixed to a given
     position in time and has a fixed width. It does not depend on any fit
     parameters.
     """
@@ -467,8 +651,7 @@ class FixedGaussianSignalTimePDF(
             mu,
             sigma,
             **kwargs):
-        """Creates a new signal time PDF instance for a given time profile of
-        the source.
+        """Creates a new gaussian-shaped signal time PDF instance.
 
         Parameters
         ----------
@@ -579,7 +762,7 @@ class FixedGaussianSignalTimePDF(
         pd : (N_values,)-shaped numpy ndarray
             The 1D numpy ndarray with the probability density for each event.
         grads : empty array of float
-            Empty, since it does not depend on any fit parameter
+            Empty, since it does not depend on any fit parameter.
         """
         if self._pd is None:
             raise RuntimeError(
