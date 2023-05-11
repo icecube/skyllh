@@ -491,9 +491,11 @@ class FixedGaussianSignalTimePDF(
             pmm=None,
             **kwargs)
 
+        self.grl = grl
         self.mu = mu
         self.sigma = sigma
-        self.grl = grl
+
+        self._pd = None
 
     def calc_uptime_norm(self):
         """Calculates the normalization by taking the dataset uptime into
@@ -516,6 +518,37 @@ class FixedGaussianSignalTimePDF(
         norm = 1 / integral
 
         return norm
+
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        """Initializes the time PDF for the new trial data. Because this PDF
+        does not depend on any parameters, the probability density values can
+        be pre-calculated here.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF value. The following data fields must
+            exist:
+
+            time : float
+                The MJD time of the event.
+
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
+            information.
+        """
+        evt_idxs = tdm.src_evt_idxs[1]
+
+        time = np.take(tdm.get_data('time'), evt_idxs)
+
+        uptime_norm = self.calc_uptime_norm()
+
+        self._pd = scipy.stats.norm.pdf(time, self.mu, self.sigma) * uptime_norm
 
     def get_pd(
             self,
@@ -548,17 +581,13 @@ class FixedGaussianSignalTimePDF(
         grads : empty array of float
             Empty, since it does not depend on any fit parameter
         """
-        evt_idxs = tdm.src_evt_idxs[1]
-
-        time = np.take(tdm.get_data('time'), evt_idxs)
-
-        uptime_norm = self.calc_uptime_norm()
-
-        pd = scipy.stats.norm.pdf(time, self.mu, self.sigma) * uptime_norm
+        if self._pd is None:
+            raise RuntimeError(
+                f'The {classname(self)} was not initialized with trial data!')
 
         grads = dict()
 
-        return (pd, grads)
+        return (self._pd, grads)
 
 
 class SignalMultiDimGridPDF(
