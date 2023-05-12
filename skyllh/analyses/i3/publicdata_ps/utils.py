@@ -185,6 +185,30 @@ class FctSpline2D(object):
         return f
 
 
+def clip_grl_start_times(grl_data):
+    """Make sure that the start time of a run is not smaller than the stop time
+    of the previous run.
+
+    Parameters
+    ----------
+    grl_data : instance of numpy structured ndarray
+        The numpy structured ndarray of length N_runs, with the following
+        fields:
+
+        start : float
+            The start time of the run.
+        stop : float
+            The stop time of the run.
+    """
+    start = grl_data['start']
+    stop = grl_data['stop']
+
+    m = (start[1:] - stop[:-1]) < 0
+    new_start = np.where(m, stop[:-1], start[1:])
+
+    grl_data['start'][1:] = new_start
+
+
 def psi_to_dec_and_ra(
         rss,
         src_dec,
