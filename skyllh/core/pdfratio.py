@@ -239,9 +239,9 @@ class PDFRatioProduct(
         self.pdfratio2 = pdfratio2
 
         sig_param_names = set(
-            pdfratio1.sig_param_names + pdfratio2.sig_param_names)
+            list(pdfratio1.sig_param_names) + list(pdfratio2.sig_param_names))
         bkg_param_names = set(
-            pdfratio1.bkg_param_names + pdfratio2.bkg_param_names)
+            list(pdfratio1.bkg_param_names) + list(pdfratio2.bkg_param_names))
 
         super().__init__(
             sig_param_names=sig_param_names,
