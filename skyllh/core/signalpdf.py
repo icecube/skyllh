@@ -18,6 +18,7 @@ from skyllh.core.interpolate import (
 )
 from skyllh.core.pdf import (
     PDF,
+    PDFAxis,
     PDFSet,
     IsSignalPDF,
     MultiDimGridPDF,
@@ -490,6 +491,12 @@ class FixedBoxSignalTimePDF(
             pmm=None,
             **kwargs)
 
+        self.add_axis(
+            PDFAxis(
+                name='time',
+                vmin=0,
+                vmax=np.inf))
+
         self.grl = grl
 
         # Clip the profile to the sample edges.
@@ -597,6 +604,13 @@ class FixedBoxSignalTimePDF(
 
         self._pd = box_mask / (self.end - self.start) * uptime_norm
 
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        pass
+
     def get_pd(
             self,
             tdm,
@@ -674,6 +688,12 @@ class FixedGaussianSignalTimePDF(
             pmm=None,
             **kwargs)
 
+        self.add_axis(
+            PDFAxis(
+                name='time',
+                vmin=0,
+                vmax=np.inf))
+
         self.grl = grl
         self.mu = mu
         self.sigma = sigma
@@ -732,6 +752,13 @@ class FixedGaussianSignalTimePDF(
         uptime_norm = self.calc_uptime_norm()
 
         self._pd = scipy.stats.norm.pdf(time, self.mu, self.sigma) * uptime_norm
+
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs):
+        pass
 
     def get_pd(
             self,
