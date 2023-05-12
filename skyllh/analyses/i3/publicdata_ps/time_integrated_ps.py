@@ -417,7 +417,6 @@ if __name__ == '__main__':
     parser = create_argparser(
         description='Calculates TS for a given source location using the '
                     '10-year public point source sample.',
-
     )
 
     parser.add_argument(
@@ -479,8 +478,10 @@ if __name__ == '__main__':
     rss = RandomStateService(args.seed)
 
     # Define the point source.
-    source = PointLikeSource(np.deg2rad(args.ra), np.deg2rad(args.dec))
-    print('source: ', str(source))
+    source = PointLikeSource(
+        ra=np.deg2rad(args.ra),
+        dec=np.deg2rad(args.dec))
+    print(f'source: {source}')
 
     tl = TimeLord()
 
