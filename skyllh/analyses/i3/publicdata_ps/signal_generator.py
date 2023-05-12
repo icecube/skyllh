@@ -611,7 +611,7 @@ class TimeDependentPDDatasetSignalGenerator(
         self.box = box
         self.gauss = gauss
 
-        self.time_pdf = self._get_time_pdf()
+        self.time_pdf = self._create_time_pdf()
 
     def _create_time_pdf(self):
         """Creates the neutrino flare time pdf given parameters.
