@@ -108,11 +108,17 @@ class Livetime(
                 f'{arr.shape[1]}!')
 
         # Check if the bin edges are monotonically non decreasing.
-        bins = np.reshape(arr, (arr.size,))
-        if not np.all(np.diff(bins) >= 0):
+        diff = np.diff(arr.flat)
+        if not np.all(diff >= 0):
+            info = ''
+            for i in range(len(diff)-1):
+                if diff[i] < 0:
+                    info += f'i={int(i/2)}: {arr[int(i/2)]}\n'
+                    info += f'i={int(i/2)+1}: {arr[int(i/2)+1]}\n'
             raise ValueError(
                 'The interval edges of the internal MJD interval array are not '
-                'monotonically non-decreasing!')
+                'monotonically non-decreasing!\n'
+                f'{info}')
 
     @property
     def uptime_mjd_intervals_arr(self):
