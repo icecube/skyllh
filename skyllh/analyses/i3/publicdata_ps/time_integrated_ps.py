@@ -381,15 +381,13 @@ def create_analysis(
             data.exp,
             spl_smooth[ds_idx])
 
-        sig_generator = None
-        if construct_sig_generator is True:
-            sig_generator = PDDatasetSignalGenerator(
-                shg_mgr=shg_mgr,
-                ds=ds,
-                ds_idx=ds_idx,
-                energy_cut_spline=energy_cut_spline,
-                cut_sindec=cut_sindec[ds_idx],
-            )
+        sig_generator = PDDatasetSignalGenerator(
+            shg_mgr=shg_mgr,
+            ds=ds,
+            ds_idx=ds_idx,
+            energy_cut_spline=energy_cut_spline,
+            cut_sindec=cut_sindec[ds_idx],
+        )
 
         ana.add_dataset(
             dataset=ds,
