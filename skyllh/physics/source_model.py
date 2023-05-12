@@ -1,72 +1,24 @@
 # -*- coding: utf-8 -*-
 
-"""The ``source`` module contains the base class ``SourceModel`` for modelling a
-source in the sky. What kind of properties this source has is modeled by a
-derived class. The most common one is the PointLikeSource source model for a
-point-like source at a given location in the sky with a given flux model.
+"""The :mod:`~skyllh.core.model` module contains the base class ``SourceModel``
+for modelling a source in the sky. What kind of properties this source has is
+modeled by a derived class. The most common one is the PointLikeSource source
+model for a point-like source at a given location in the sky.
 """
 
 import numpy as np
 
-from skyllh.core.py import (
-    classname,
-    float_cast,
-    issequenceof,
-)
 from skyllh.core.model import (
     SourceModel,
 )
+from skyllh.core.py import (
+    classname,
+    float_cast,
+)
 
 
-# NOTE: This class should live somewhere close to the source stacking code.
-class SourceWeights(object):
-    """This class is DEPRECATED!
-    This is a helper class for the source stacking algorithm.
-    It stores the relative weights of a source, i.e. weights and gradients.
-    There are two weights that should be included. One is the detector weight,
-    which is declination dependent, and the other is a hypothesis weight, and
-    that is provided by the user.
-    """
-    def __init__(self, src_w=None, src_w_grad=None, src_w_W=None):
-        self.src_w = src_w
-        self.src_w_grad = src_w_grad
-        self.src_w_W = src_w_W
-
-    @property
-    def src_w(self):
-        """The relative weight of the source(s).
-        """
-        return self._src_w
-    @src_w.setter
-    def src_w(self, v):
-        v = float_cast(
-            v, 'The src_w property must be castable to type float!')
-        self._src_w = v
-
-    @property
-    def src_w_grad(self):
-        """The relative weight gradients of the source(s).
-        """
-        return self._src_w_grad
-    @src_w_grad.setter
-    def src_w_grad(self, v):
-        v = float_cast(
-            v, 'The src_w_grad property must be castable to type float!')
-        self._src_w_grad = v
-
-    @property
-    def src_w_W(self):
-        """The hypothesis weight of the source(s).
-        """
-        return self._src_w_W
-    @src_w_W.setter
-    def src_w_W(self, v):
-        v = float_cast(
-            v, 'The src_w_W property must be castable to type float!')
-        self._src_w_W = v
-
-
-class IsPointlike(object):
+class IsPointlike(
+        object):
     """This is a classifier class that can be used by other classes to indicate
     that the specific class describes a point-like object.
     """
@@ -122,10 +74,12 @@ class IsPointlike(object):
         """The right-ascention coordinate of the point-like source.
         """
         return self._get_ra_func(self._ra_func_instance)
+
     @ra.setter
     def ra(self, v):
         v = float_cast(
-            v, 'The ra property must be castable to type float!')
+            v,
+            'The ra property must be castable to type float!')
         self._set_ra_func(self._ra_func_instance, v)
 
     @property
@@ -133,18 +87,28 @@ class IsPointlike(object):
         """The declination coordinate of the point-like source.
         """
         return self._get_dec_func(self._dec_func_instance)
+
     @dec.setter
     def dec(self, v):
         v = float_cast(
-            v, 'The dec property must be castable to type float!')
+            v,
+            'The dec property must be castable to type float!')
         self._set_dec_func(self._dec_func_instance, v)
 
 
-class PointLikeSource(SourceModel, IsPointlike):
+class PointLikeSource(
+        SourceModel,
+        IsPointlike):
     """The PointLikeSource class is a source model for a point-like source
     object in the sky at a given location (right-ascention and declination).
     """
-    def __init__(self, ra, dec, name=None, weight=None, **kwargs):
+    def __init__(
+            self,
+            ra,
+            dec,
+            name=None,
+            weight=None,
+            **kwargs):
         """Creates a new PointLikeSource instance for defining a point-like
         source.
 
@@ -193,6 +157,14 @@ class PointLikeSource(SourceModel, IsPointlike):
         c = ''
         if self.classification is not None:
             c = f', classification={self.classification}'
-        s = classname(self) + ': "%s": { ra=%.3f deg, dec=%.3f deg%s }'%(
-            self.name, np.rad2deg(self.ra), np.rad2deg(self.dec), c)
+
+        s = (
+            f'{classname(self)}: "{self.name}": '
+            '{ '
+            f'ra={np.rad2deg(self.ra):.3f} deg, '
+            f'dec={np.rad2deg(self.dec):.3f} deg'
+            f'{c}'
+            ' }'
+        )
+
         return s
