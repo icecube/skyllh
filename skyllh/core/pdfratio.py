@@ -71,7 +71,8 @@ class PDFRatio(
         function of. This is the superset of signal and background parameter
         names.
         """
-        return list(set(self._sig_param_names + self._bkg_param_names))
+        return list(
+            set(list(self._sig_param_names) + list(self._bkg_param_names)))
 
     @property
     def n_sig_params(self):
