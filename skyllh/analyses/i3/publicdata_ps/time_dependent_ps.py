@@ -22,14 +22,21 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
     PDSignalEnergyPDFSet,
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
+    clip_grl_start_times,
     create_energy_cut_spline,
     tdm_field_func_psi,
 )
+
 from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
 from skyllh.core.backgroundpdf import (
     BackgroundTimePDF,
+)
+from skyllh.core.config import (
+    CFG,
+    set_enable_tracing,
+    set_n_cpu,
 )
 from skyllh.core.debugging import (
     get_logger,
@@ -84,12 +91,20 @@ from skyllh.core.source_hypo_grouping import (
 from skyllh.core.test_statistic import (
     WilksTestStatistic,
 )
+from skyllh.core.timing import (
+    TimeLord,
+)
 from skyllh.core.trialdata import (
     TrialDataManager,
 )
 from skyllh.core.utils.analysis import (
     pointlikesource_to_data_field_array
 )
+
+from skyllh.datasets.i3 import (
+    data_samples,
+)
+
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
 )
@@ -102,10 +117,21 @@ from skyllh.i3.livetime import (
 from skyllh.i3.scrambling import (
     I3SeasonalVariationTimeScramblingMethod,
 )
+
 from skyllh.physics.flux_model import (
     BoxTimeFluxProfile,
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
+)
+from skyllh.physics.source_model import (
+    PointLikeSource,
+)
+
+from skyllh.scripting.argparser import (
+    create_argparser,
+)
+from skyllh.scripting.logging import (
+    setup_logging,
 )
 
 
@@ -633,7 +659,7 @@ def create_analysis(  # noqa: C901
         energy_sigpdfset = PDSignalEnergyPDFSet(
             ds=ds,
             src_dec=source.dec,
-            flux_model=fluxmodel,
+            fluxmodel=fluxmodel,
             param_grid_set=gamma_grid,
             ppbar=ppbar
         )
@@ -654,6 +680,8 @@ def create_analysis(  # noqa: C901
 
         # Create the time PDF ratio instance for this dataset.
         if (gauss is not None) or (box is not None):
+            # Some runs might overlap slightly. So we need to clip those runs.
+            clip_grl_start_times(grl_data=data.grl)
             livetime = I3Livetime.from_grl_data(
                 grl_data=data.grl)
             time_bkgpdf = BackgroundTimePDF(
@@ -740,3 +768,84 @@ def create_analysis(  # noqa: C901
         ana.construct_signal_generator()
 
     return ana
+
+
+if __name__ == '__main__':
+    parser = create_argparser(
+        description='Calculates TS for a given source location using the '
+                    '10-year public point source sample assuming a signal '
+                    'time PDF.',
+    )
+
+    parser.add_argument(
+        '--dec',
+        dest='dec',
+        default=5.7,
+        type=float,
+        help='The source declination in degrees.'
+    )
+    parser.add_argument(
+        '--ra',
+        dest='ra',
+        default=77.35,
+        type=float,
+        help='The source right-ascention in degrees.'
+    )
+    parser.add_argument(
+        '--gamma-seed',
+        dest='gamma_seed',
+        default=3,
+        type=float,
+        help='The seed value of the gamma fit parameter.'
+    )
+
+    args = parser.parse_args()
+
+    CFG.from_yaml(args.config)
+
+    setup_logging(
+        script_logger_name=__name__,
+        debug_pathfilename=args.debug_logfile)
+
+    set_enable_tracing(args.enable_tracing)
+    set_n_cpu(args.n_cpu)
+
+    sample_seasons = [
+        ('PublicData_10y_ps', 'IC86_II-VII'),
+    ]
+
+    datasets = []
+    for (sample, season) in sample_seasons:
+        # Get the dataset from the correct dataset collection.
+        dsc = data_samples[sample].create_dataset_collection(
+            args.data_basepath)
+        datasets.append(dsc.get_dataset(season))
+
+    # Define a random state service.
+    rss = RandomStateService(args.seed)
+
+    # Define the point source.
+    source = PointLikeSource(
+        ra=np.deg2rad(args.ra),
+        dec=np.deg2rad(args.dec))
+    print(f'source: {source}')
+
+    tl = TimeLord()
+
+    with tl.task_timer('Creating analysis.'):
+        ana = create_analysis(
+            datasets=datasets,
+            source=source,
+            gamma_seed=args.gamma_seed,
+            gauss={'mu': 55500, 'sigma': 10},
+            tl=tl)
+
+    with tl.task_timer('Unblinding data.'):
+        (TS, param_dict, status) = ana.unblind(rss)
+
+    print(f'TS = {TS:g}')
+    print(f'ns_fit = {param_dict["ns"]:g}')
+    print(f'gamma_fit = {param_dict["gamma"]:g}')
+    print(f'minimizer status = {status}')
+
+    print(tl)
