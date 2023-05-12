@@ -26,7 +26,6 @@ from skyllh.core.py import (
     module_classname,
 )
 from skyllh.core.signal_generator import (
-    MultiDatasetSignalGenerator,
     SignalGenerator,
 )
 from skyllh.core.storage import (
@@ -320,10 +319,10 @@ class PDDatasetSignalGenerator(
         events['ang_err'][isvalid] = ang_err[isvalid]
 
         # Add fields required by the framework.
-        events['time'] = np.ones(n_events)
-        events['azi'] = np.ones(n_events)
-        events['zen'] = np.ones(n_events)
-        events['run'] = -1 * np.ones(n_events)
+        events['time'] = np.full((n_events,), np.nan, dtype=np.float64)
+        events['azi'] = np.full((n_events,), np.nan, dtype=np.float64)
+        events['zen'] = np.full((n_events,), np.nan, dtype=np.float64)
+        events['run'] = np.full((n_events,), -1, dtype=np.int64)
 
         return events
 
@@ -461,7 +460,7 @@ class PDDatasetSignalGenerator(
             poisson=True,
             src_detsigyield_weights_service=None,
             **kwargs):
-        """Generates `mean` number of signal events.
+        """Generates ``mean`` number of signal events.
 
         Parameters
         ----------
@@ -538,22 +537,24 @@ class PDDatasetSignalGenerator(
         return (n_signal, signal_events_dict)
 
 
-class TimeDependentMultiDatasetSignalGenerator(
-        MultiDatasetSignalGenerator):
-    """ The time dependent signal generator works so far only for one single
-    dataset. For multi datasets one needs to adjust the dataset weights
-    accordingly (scaling of the effective area with livetime of the flare in
-    the dataset).
+class TimeDependentPDDatasetSignalGenerator(
+        PDDatasetSignalGenerator):
+    """This time dependent signal generator for a public PS dataset generates
+    events using the
+    :class:`~skyllh.analyses.i3.publicdata_ps.signal_generator.PDDatasetSignalGenerator`
+    class. It then draws times for each event and adds them to the event array.
     """
+
     def __init__(
             self,
             shg_mgr,
-            dataset_list,
-            data_list=None,
-            sig_generator_list=None,
-            ds_sig_weight_factors_service=None,
-            gauss=None,
+            ds,
+            ds_idx,
+            grl,
             box=None,
+            gauss=None,
+            energy_cut_spline=None,
+            cut_sindec=None,
             **kwargs):
         """
         Parameters
@@ -561,49 +562,59 @@ class TimeDependentMultiDatasetSignalGenerator(
         shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager that defines the list of
             source hypothesis groups, i.e. the list of sources.
-        dataset_list : list of instance of Dataset
-            The list of instance of Dataset for which signal events should get
+        ds : instance of Dataset
+            The instance of Dataset for which signal events should get
             generated.
-        data_list : list of instance of DatasetData
-            The list of instance of DatasetData holding the actual data of each
-            dataset. The order must match the order of ``dataset_list``.
-        sig_generator_list : list of instance of SignalGenerator | None
-            The optional list of instance of SignalGenerator holding
-            signal generator instances for each individual dataset. This can be
-            ``None`` if this signal generator does not require individual signal
-            generators for each dataset.
-        ds_sig_weight_factors_service : instance of DatasetSignalWeightFactorsService
-            The instance of DatasetSignalWeightFactorsService providing the
-            dataset signal weight factor service for calculating the dataset
-            signal weights.
-        gauss : dict | None
-            None or dictionary with {"mu": float, "sigma": float}.
+        ds_idx : int
+            The index of the dataset.
+        grl : instance of numpy structured ndarray
+            The instance of numpy structured ndarray holding the good-run-list
+            data. The following fields need to exist:
+
+            start : float
+                The start time of the run.
+            stop : float
+                The stop time of the run.
+
         box : dict | None
-            None or dictionary with {"start": float, "end": float}.
+            The parameters for the box-shaped time PDF.
+            The dictionary must be of the form
+            ``{'start': float, 'end': float}``.
+        gauss : dict | None
+            The parameters for the gaussian-shaped time PDF.
+            The dictionary must be of the form
+            ``{'mu': float, 'sigma': float}``.
+        energy_cut_spline : scipy.interpolate.UnivariateSpline
+            A spline of E(sin_dec) that defines the declination
+            dependent energy cut in the IceCube southern sky.
+        cut_sindec : float
+            The sine of the declination to start applying the energy cut.
+            The cut will be applied from this declination down.
         """
         super().__init__(
             shg_mgr=shg_mgr,
-            dataset_list=dataset_list,
-            data_list=data_list,
-            sig_generator_list=sig_generator_list,
-            ds_sig_weight_factors_service=ds_sig_weight_factors_service,
-        )
+            ds=ds,
+            ds_idx=ds_idx,
+            energy_cut_spline=energy_cut_spline,
+            cut_sindec=cut_sindec,
+            **kwargs)
 
-        if gauss is None and box is None:
+        if (gauss is None) and (box is None):
             raise ValueError(
                 'Either box or gauss arguments must define the neutrino flare!')
-        if gauss is not None and box is not None:
+        if (gauss is not None) and (box is not None):
             raise ValueError(
                 'Either box or gauss arguments must define the neutrino flare, '
                 'cannot use both!')
 
+        self.grl = grl
         self.box = box
         self.gauss = gauss
 
         self.time_pdf = self._get_time_pdf()
 
-    def _get_time_pdf(self):
-        """Get the neutrino flare time pdf given parameters.
+    def _create_time_pdf(self):
+        """Creates the neutrino flare time pdf given parameters.
         Will be used to generate random numbers by calling `rvs()` method.
 
         Returns
@@ -612,20 +623,18 @@ class TimeDependentMultiDatasetSignalGenerator(
             Has to base scipy.stats.rv_continuous.
         """
         # Make sure flare is in dataset.
-        for data_list in self.data_list:
-            grl = data_list.grl
+        grl = self.grl
+        if self.gauss is not None:
+            if (self.gauss["mu"] - 4*self.gauss["sigma"] > grl["stop"][-1]) or\
+               (self.gauss["mu"] + 4*self.gauss["sigma"] < grl["start"][0]):
+                raise ValueError(
+                    f'Gaussian {str(self.gauss)} flare is not in dataset.')
 
-            if self.gauss is not None:
-                if (self.gauss["mu"] - 4 * self.gauss["sigma"] > grl["stop"][-1]) or (
-                        self.gauss["mu"] + 4 * self.gauss["sigma"] < grl["start"][0]):
-                    raise ValueError(
-                        f"Gaussian {str(self.gauss)} flare is not in dataset.")
-
-            if self.box is not None:
-                if (self.box["start"] > grl["stop"][-1]) or (
-                        self.box["end"] < grl["start"][0]):
-                    raise ValueError(
-                        f"Box {str(self.box)} flare is not in dataset.")
+        if self.box is not None:
+            if (self.box["start"] > grl["stop"][-1]) or\
+               (self.box["end"] < grl["start"][0]):
+                raise ValueError(
+                    f'Box {str(self.box)} flare is not in dataset.')
 
         # Create `time_pdf`.
         if self.gauss is not None:
@@ -633,8 +642,7 @@ class TimeDependentMultiDatasetSignalGenerator(
         if self.box is not None:
             time_pdf = scipy.stats.uniform(
                 self.box["start"],
-                self.box["end"] - self.box["start"]
-            )
+                self.box["end"] - self.box["start"])
 
         return time_pdf
 
@@ -651,10 +659,10 @@ class TimeDependentMultiDatasetSignalGenerator(
         box : dict | None
              None or dictionary with {"start": float, "end": float}.
         """
-        if gauss is None and box is None:
+        if (gauss is None) and (box is None):
             raise ValueError(
                 "Either box or gauss keywords must define the neutrino flare.")
-        if gauss is not None and box is not None:
+        if (gauss is not None) and (box is not None):
             raise ValueError(
                 "Either box or gauss keywords must define the neutrino flare, "
                 "cannot use both.")
@@ -662,41 +670,68 @@ class TimeDependentMultiDatasetSignalGenerator(
         self.box = box
         self.gauss = gauss
 
-        self.time_pdf = self._get_time_pdf()
+        self.time_pdf = self._create_time_pdf()
 
     def generate_signal_events(
             self,
             rss,
             mean,
             poisson=True,
+            src_detsigyield_weights_service=None,
             **kwargs):
-        """Same as in PDSignalGenerator, but we assign times here.
+        """Generates ``mean`` number of signal events with times.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService providing the random number
+            generator state.
+        mean : int | float
+            The mean number of signal events. If the ``poisson`` argument is set
+            to True, the actual number of generated signal events will be drawn
+            from a Poisson distribution with this given mean value of signal
+            events.
+        poisson : bool
+            If set to True, the actual number of generated signal events will
+            be drawn from a Poisson distribution with the given mean value of
+            signal events.
+            If set to False, the argument ``mean`` specifies the actual number
+            of generated signal events.
+        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+            The instance of SrcDetSigYieldWeightsService providing the weighting
+            of the sources within the detector.
+
+        Returns
+        -------
+        n_signal : int
+            The number of generated signal events.
+        signal_events_dict : dict of DataFieldRecordArray
+            The dictionary holding the DataFieldRecordArray instances with the
+            generated signal events. Each key of this dictionary represents the
+            dataset index for which the signal events have been generated.
         """
-        # Call method from the parent class to generate signal events.
         (n_signal, signal_events_dict) = super().generate_signal_events(
             rss=rss,
             mean=mean,
             poisson=poisson,
+            src_detsigyield_weights_service=src_detsigyield_weights_service,
             **kwargs)
 
-        # Assign times for flare. We can also use inverse transform
-        # sampling instead of the lazy version implemented here.
-        for (ds_idx, events) in signal_events_dict.items():
-            grl = self.data_list[ds_idx].grl
+        # Optimized time injection version, based on csky implementation.
+        # https://github.com/icecube/csky/blob/7e969639c5ef6dbb42872dac9b761e1e8b0ccbe2/csky/inj.py#L1122
+        events = signal_events_dict[self.ds_idx]
+        times = np.array([], dtype=np.float64)
+        n_events = len(events)
+        while len(times) < n_events:
+            new_times = self.time_pdf.rvs(
+                n_events - len(times),
+                random_state=rss.random)
+            mask = get_times_in_grl_mask(
+                times=new_times,
+                grl=self.grl)
+            new_times = new_times[mask]
 
-            # Optimized time injection version, based on csky implementation.
-            # https://github.com/icecube/csky/blob/7e969639c5ef6dbb42872dac9b761e1e8b0ccbe2/csky/inj.py#L1122
-            times = np.array([])
-            n_events = len(events)
-            while len(times) < n_events:
-                new_times = self.time_pdf.rvs(
-                    n_events - len(times),
-                    random_state=rss.random)
-                mask = get_times_in_grl_mask(times=new_times, grl=grl)
-                new_times = new_times[mask]
-
-                times = np.concatenate((times, new_times))
-
-            events['time'] = times
+            times = np.concatenate((times, new_times))
+        events['time'] = times
 
         return (n_signal, signal_events_dict)
