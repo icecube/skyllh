@@ -702,6 +702,7 @@ def create_analysis(  # noqa: C901
             time_pdfratio = SigOverBkgPDFRatio(
                 sig_pdf=time_sigpdf,
                 bkg_pdf=time_bkgpdf,
+                same_axes=False,
             )
 
             pdfratio = pdfratio * time_pdfratio
