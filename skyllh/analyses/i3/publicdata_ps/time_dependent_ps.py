@@ -15,11 +15,14 @@ from skyllh.analyses.i3.publicdata_ps.detsigyield import (
 from skyllh.analyses.i3.publicdata_ps.pdfratio import (
     PDSigSetOverBkgPDFRatio,
 )
+from skyllh.analyses.i3.publicdata_ps.signal_generator import (
+    TimeDependentPDDatasetSignalGenerator,
+)
 from skyllh.analyses.i3.publicdata_ps.signalpdf import (
     PDSignalEnergyPDFSet,
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
-    # create_energy_cut_spline,
+    create_energy_cut_spline,
     tdm_field_func_psi,
 )
 from skyllh.core.analysis import (
@@ -392,8 +395,8 @@ def unblind_flare(
 def create_analysis(  # noqa: C901
         datasets,
         source,
-        gauss=None,
         box=None,
+        gauss=None,
         refplflux_Phi0=1,
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
@@ -425,10 +428,10 @@ def create_analysis(  # noqa: C901
         analysis.
     source : PointLikeSource instance
         The PointLikeSource instance defining the point source position.
-    gauss : None or dictionary with mu, sigma
-        None if no Gaussian time pdf. Else dictionary with {"mu": float, "sigma": float} of Gauss
     box : None or dictionary with start, end
         None if no Box shaped time pdf. Else dictionary with {"start": float, "end": float} of box.
+    gauss : None or dictionary with mu, sigma
+        None if no Gaussian time pdf. Else dictionary with {"mu": float, "sigma": float} of Gauss
     refplflux_Phi0 : float
         The flux normalization to use for the reference power law flux model.
     refplflux_E0 : float
@@ -686,14 +689,21 @@ def create_analysis(  # noqa: C901
             dt='dec',
             is_srcevt_data=True)
 
-        # energy_cut_spline = create_energy_cut_spline(
-        #     ds,
-        #     data.exp,
-        #     spl_smooth[ds_idx])#
-        #
-        sig_generator = None
-        # if construct_sig_generator is True:
-        #     pass # FIXME
+        energy_cut_spline = create_energy_cut_spline(
+            ds,
+            data.exp,
+            spl_smooth[ds_idx])
+
+        sig_generator = TimeDependentPDDatasetSignalGenerator(
+            shg_mgr=shg_mgr,
+            ds=ds,
+            ds_idx=ds_idx,
+            grl=data.grl,
+            box=box,
+            gauss=gauss,
+            energy_cut_spline=energy_cut_spline,
+            cut_sindec=cut_sindec[ds_idx],
+        )
 
         ana.add_dataset(
             ds,
