@@ -200,6 +200,9 @@ class I3Dataset(Dataset):
                 efficiency_mode=efficiency_mode)
             grl_data.rename_fields(self._grl_field_name_renaming_dict)
 
+        with TaskTimer(tl, 'Sort grl data according to start time'):
+            grl_data.sort_by_field(name='start')
+
         return grl_data
 
     def load_data(
