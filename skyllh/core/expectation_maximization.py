@@ -1,20 +1,15 @@
 import numpy as np
 from scipy.stats import norm
 
-from skyllh.core.analysis import TimeIntegratedMultiDatasetSingleSourceAnalysis
-from skyllh.core.backgroundpdf import BackgroundUniformTimePDF
-from skyllh.core.pdf import TimePDF
-from skyllh.core.pdfratio import SigOverBkgPDFRatio
-from skyllh.core.random import RandomStateService
-from skyllh.core.signalpdf import (
-    SignalBoxTimePDF,
-    SignalGaussTimePDF,
-)
 
-
-def expectation_em(ns, mu, sigma, t, sob):
-    """
-    Expectation step of expectation maximization.
+def em_expectation_step(
+        ns,
+        mu,
+        sigma,
+        t,
+        sob,
+):
+    """Expectation step of expectation maximization algorithm.
 
     Parameters
     ----------
@@ -48,12 +43,14 @@ def expectation_em(ns, mu, sigma, t, sob):
     e_bg = (N - np.sum(ns)) / (np.max(t) - np.min(t)) / b_term
     denom = sum(e_sig) + e_bg
 
-    return [e / denom for e in e_sig], np.sum(np.log(denom))
+    return ([e / denom for e in e_sig], np.sum(np.log(denom)))
 
 
-def maximization_em(e_sig, t):
-    """
-    Maximization step of expectation maximization.
+def em_maximization_step(
+        e_sig,
+        t,
+):
+    """The maximization step of the expectation maximization algorithm.
 
     Parameters
     ----------
@@ -80,73 +77,95 @@ def maximization_em(e_sig, t):
         ns.append(np.sum(e_sig[i]))
     sigma = [max(1, s) for s in sigma]
 
-    return mu, sigma, ns
+    return (mu, sigma, ns)
 
 
-def em_fit(x, weights, n=1, tol=1.e-200, iter_max=500, weight_thresh=0, initial_width=5000,
-            remove_x=None):
-    """Run expectation maximization.
-    
+def em_fit(
+        x,
+        weights,
+        n=1,
+        tol=1.e-200,
+        iter_max=500,
+        weight_thresh=0,
+        initial_width=5000,
+        remove_x=None,
+):
+    """Perform the expectation maximization fit.
+
     Parameters
     ----------
-    x : array[float]
-        Quantity to run EM on (e.g. the time if EM should find time flares)
-    weights :
-        weights for each event (e.g. the signal over background ratio)
-    fitparams : dict
-        Dictionary with value for gamma, e.g. {'gamma': 2}.
+    x : array of float
+        The quantity to run EM on (e.g. the time if EM should find time flares).
+    weights : array of float
+        The weights for each x value (e.g. the signal over background ratio).
     n : int
         How many Gaussians flares we are looking for.
     tol : float
-        the stopping criteria for expectation maximization. This is the difference in the normalized likelihood over the
-        last 20 iterations.
+        The stopping criteria for the expectation maximization. This is the
+        difference in the normalized likelihood over the last 20 iterations.
     iter_max : int
-        The maximum number of iterations, even if stopping criteria tolerance (`tol`) is not yet reached.
+        The maximum number of iterations, even if stopping criteria tolerance
+        (``tol``) is not yet reached.
     weight_thresh : float
-        Set a minimum threshold for event weights. Events with smaller weights will be removed.
+        Set a minimum threshold for event weights. Events with smaller weights
+        will be removed.
     initial_width : float
-        Starting width for the gaussian flare in days.
+        The starting width for the gaussian flare in days.
     remove_x : float | None
         Specific x of event that should be removed.
-    
+
     Returns
     -------
-    Mean, width, normalization factor
+    mu : list of float
+        The list of size `n`` with the determined mean values.
+    sigma : list of float
+        The list of size ``n`` with the standard deviation values.
+    ns : list of float
+        The list of size ``n``with the normalization factor values.
     """
-
-    if weight_thresh > 0: # remove events below threshold
+    if weight_thresh > 0:
+        # Remove events below threshold.
         for i in range(len(weights)):
             mask = weights > weight_thresh
             weights[i] = weights[i][mask]
             x[i] = x[i][mask]
 
-    # in case, remove event
     if remove_x is not None:
+        # Remove data point.
         mask = x == remove_x
         weights = weights[~mask]
         x = x[~mask]
 
-    # expectation maximization
+    # Do the expectation maximization.
     mu = np.linspace(x[0], x[-1], n+2)[1:-1]
-    sigma = np.ones(n) * initial_width
-    ns = np.ones(n) * 10
+    sigma = np.full((n,), initial_width)
+    ns = np.full((n,), 10)
+
     llh_diff = 100
     llh_old = 0
     llh_diff_list = [100] * 20
 
+    # Run until convergence or maximum number of iterations is reached.
     iteration = 0
-
-    while iteration < iter_max and llh_diff > tol: # run until convergence or maximum number of iterations
+    while (iteration < iter_max) and (llh_diff > tol):
         iteration += 1
 
-        e, logllh = expectation_em(ns, mu, sigma, x, weights)
+        (e, llh_new) = em_expectation_step(
+            ns=ns,
+            mu=mu,
+            sigma=sigma,
+            t=x,
+            sob=weights)
 
-        llh_new = np.sum(logllh)
         tmp_diff = np.abs(llh_old - llh_new) / llh_new
         llh_diff_list = llh_diff_list[:-1]
         llh_diff_list.insert(0, tmp_diff)
         llh_diff = np.max(llh_diff_list)
-        llh_old = llh_new
-        mu, sigma, ns = maximization_em(e, x)
 
-    return mu, sigma, ns
+        llh_old = llh_new
+
+        (mu, sigma, ns) = em_maximization_step(
+            e_sig=e,
+            t=x)
+
+    return (mu, sigma, ns)
