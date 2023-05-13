@@ -76,6 +76,17 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
 
             return pd
 
+        def _cdf(self, t):
+            """Calculates the cumulative distribution function values for rhe
+            given time values. If the time flux profile instance provides a
+            ``cdf`` method, it will be used. Otherwise the generic ``_cdf``
+            method of the ``rv_continuous`` class will be used.
+            """
+            if hasattr(self._profile, 'cdf') and callable(self._profile.cdf):
+                return self._profile.cdf(t=t)
+
+            return super()._cdf(t)
+
     rv = rv_continuous_from_TimeFluxProfile(
         a=profile.t_start,
         b=profile.t_stop,
