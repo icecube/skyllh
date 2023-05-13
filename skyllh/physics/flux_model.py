@@ -644,7 +644,7 @@ class TimeFluxProfile(
     def __init__(
             self,
             t_start=-np.inf,
-            t_end=np.inf,
+            t_stop=np.inf,
             time_unit=None,
             **kwargs):
         """Creates a new time flux profile instance.
@@ -655,8 +655,8 @@ class TimeFluxProfile(
             The start time of the time profile.
             If set to -inf, it means, that the profile starts at the beginning
             of the entire time-span of the dataset.
-        t_end : float
-            The end time of the time profile.
+        t_stop : float
+            The stop time of the time profile.
             If set to +inf, it means, that the profile ends at the end of the
             entire time-span of the dataset.
         time_unit : instance of astropy.units.UnitBase | None
@@ -670,11 +670,11 @@ class TimeFluxProfile(
         self.time_unit = time_unit
 
         self.t_start = t_start
-        self.t_end = t_end
+        self.t_stop = t_stop
 
         # Define the parameters which can be set via the `set_params`
         # method.
-        self.param_names = ('t_start', 't_end')
+        self.param_names = ('t_start', 't_stop')
 
     @property
     def t_start(self):
@@ -692,25 +692,25 @@ class TimeFluxProfile(
         self._t_start = t
 
     @property
-    def t_end(self):
-        """The end time of the time profile. Can be +inf which means, that
+    def t_stop(self):
+        """The stop time of the time profile. Can be +inf which means, that
         the profile ends at the end of the entire dataset.
         """
-        return self._t_end
+        return self._t_stop
 
-    @t_end.setter
-    def t_end(self, t):
+    @t_stop.setter
+    def t_stop(self, t):
         t = float_cast(
             t,
-            'The t_end property must be castable to type float! '
+            'The t_stop property must be castable to type float! '
             f'Its current type is {classname(t)}!')
-        self._t_end = t
+        self._t_stop = t
 
     @property
     def duration(self):
         """(read-only) The duration of the time profile.
         """
-        return self._t_end - self._t_start
+        return self._t_stop - self._t_start
 
     @property
     def time_unit(self):
@@ -731,7 +731,7 @@ class TimeFluxProfile(
 
     def get_total_integral(self):
         """Calculates the total integral of the time profile from t_start to
-        t_end.
+        t_stop.
 
         Returns
         -------
@@ -739,7 +739,7 @@ class TimeFluxProfile(
             The integral value of the entire time profile.
             The value is in the set time unit of this TimeFluxProfile instance.
         """
-        integral = self.get_integral(self._t_start, self._t_end).squeeze()
+        integral = self.get_integral(self._t_start, self._t_stop).squeeze()
 
         return integral
 
@@ -967,11 +967,11 @@ class BoxTimeFluxProfile(
             used.
         """
         t_start = t0 - tw/2.
-        t_end = t0 + tw/2.
+        t_stop = t0 + tw/2.
 
         super().__init__(
             t_start=t_start,
-            t_end=t_end,
+            t_stop=t_stop,
             time_unit=time_unit,
             **kwargs)
 
@@ -984,7 +984,7 @@ class BoxTimeFluxProfile(
         """The time of the mid point of the box.
         The value is in the set time unit of this TimeFluxProfile instance.
         """
-        return 0.5*(self._t_start + self._t_end)
+        return 0.5*(self._t_start + self._t_stop)
 
     @t0.setter
     def t0(self, t):
@@ -997,13 +997,13 @@ class BoxTimeFluxProfile(
         """The time width of the box.
         The value is in the set time unit of this TimeFluxProfile instance.
         """
-        return self._t_end - self._t_start
+        return self._t_stop - self._t_start
 
     @tw.setter
     def tw(self, w):
         t0 = self.t0
         self._t_start = t0 - 0.5*w
-        self._t_end = t0 + 0.5*w
+        self._t_stop = t0 + 0.5*w
 
     @property
     def math_function_str(self):
@@ -1044,7 +1044,7 @@ class BoxTimeFluxProfile(
             t = t * unit.to(self._time_unit)
 
         values = np.zeros((t.shape[0],), dtype=np.int8)
-        m = (t >= self._t_start) & (t <= self._t_end)
+        m = (t >= self._t_start) & (t <= self._t_stop)
         values[m] = 1
 
         return values
@@ -1069,7 +1069,7 @@ class BoxTimeFluxProfile(
             dt = dt * unit.to(self._time_unit)
 
         self._t_start += dt
-        self._t_end += dt
+        self._t_stop += dt
 
     def get_integral(
             self,
@@ -1106,11 +1106,11 @@ class BoxTimeFluxProfile(
 
         integral = np.zeros((t1.shape[0],), dtype=np.float64)
 
-        m = (t2 >= self._t_start) & (t1 <= self._t_end)
+        m = (t2 >= self._t_start) & (t1 <= self._t_stop)
         N = np.count_nonzero(m)
 
         t1 = np.max(np.vstack((t1[m], np.repeat(self._t_start, N))).T, axis=1)
-        t2 = np.min(np.vstack((t2[m], np.repeat(self._t_end, N))).T, axis=1)
+        t2 = np.min(np.vstack((t2[m], np.repeat(self._t_stop, N))).T, axis=1)
 
         integral[m] = t2 - t1
 
@@ -1155,11 +1155,11 @@ class GaussianTimeFluxProfile(
         # at those times the gaussian values obey the given tolerance.
         dt = np.sqrt(-2 * sigma_t**2 * np.log(tol))
         t_start = t0 - dt
-        t_end = t0 + dt
+        t_stop = t0 + dt
 
         super().__init__(
             t_start=t_start,
-            t_end=t_end,
+            t_stop=t_stop,
             time_unit=time_unit,
             **kwargs)
 
@@ -1180,7 +1180,7 @@ class GaussianTimeFluxProfile(
         The unit of the value is the set time unit of this TimeFluxProfile
         instance.
         """
-        return 0.5*(self._t_start + self._t_end)
+        return 0.5*(self._t_start + self._t_stop)
 
     @t0.setter
     def t0(self, t):
@@ -1232,11 +1232,11 @@ class GaussianTimeFluxProfile(
             time_unit_conv_factor = unit.to(self._time_unit)
             t = t * time_unit_conv_factor
 
-        m = (t >= self.t_start) & (t < self.t_end)
+        m = (t >= self.t_start) & (t < self.t_stop)
 
         s = self._sigma_t
         twossq = 2*s*s
-        t0 = 0.5*(self._t_end + self._t_start)
+        t0 = 0.5*(self._t_stop + self._t_start)
         dt = t[m] - t0
 
         values = np.zeros_like(t)
@@ -1264,7 +1264,7 @@ class GaussianTimeFluxProfile(
             dt = dt * unit.to(self._time_unit)
 
         self._t_start += dt
-        self._t_end += dt
+        self._t_stop += dt
 
     def get_integral(
             self,
@@ -1296,7 +1296,7 @@ class GaussianTimeFluxProfile(
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
 
-        t0 = 0.5*(self._t_end + self._t_start)
+        t0 = 0.5*(self._t_stop + self._t_start)
         sigma_t = self._sigma_t
 
         c1 = np.sqrt(np.pi/2) * sigma_t
