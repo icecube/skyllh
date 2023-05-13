@@ -1054,7 +1054,23 @@ class BoxTimeFluxProfile(
             t,
             unit=None):
         """Calculates the cumulative distribution function value for the given
-        times ``t``.
+        time values ``t``.
+
+        Parameters
+        ----------
+        t : float | instance of numpy ndarray
+            The (N_times,)-shaped numpy ndarray holding the time values for
+            which to calculate the CDF values.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given times.
+            If set to ``None``, the set time unit of this TimeFluxProfile is
+            assumed.
+
+        Returns
+        -------
+        values : instance of numpy ndarray
+            The (N_times,)-shaped numpy ndarray holding the cumulative
+            distribution function values for each time ``t``.
         """
         t = np.atleast_1d(t)
 
@@ -1266,6 +1282,49 @@ class GaussianTimeFluxProfile(
 
         values = np.zeros_like(t)
         values[m] = np.exp(-dt*dt/twossq)
+
+        return values
+
+    def cdf(
+            self,
+            t,
+            unit=None):
+        """Calculates the cumulative distribution function values for the given
+        time values ``t``.
+
+        Parameters
+        ----------
+        t : float | instance of numpy ndarray
+            The (N_times,)-shaped numpy ndarray holding the time values for
+            which to calculate the CDF values.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given times.
+            If set to ``None``, the set time unit of this TimeFluxProfile is
+            assumed.
+
+        Returns
+        -------
+        values : instance of numpy ndarray
+            The (N_times,)-shaped numpy ndarray holding the cumulative
+            distribution function values for each time ``t``.
+        """
+        t = np.atleast_1d(t)
+
+        if (unit is not None) and (unit != self._time_unit):
+            t = t * unit.to(self._time_unit)
+
+        t_start = self._t_start
+        t_stop = self._t_stop
+
+        values = np.zeros(t.size, dtype=np.float64)
+
+        m = (t_start <= t) & (t <= t_stop)
+        values[m] = (
+            self.get_integral(t1=t_start, t2=t[m]) / self.get_total_integral()
+        )
+
+        m = (t > t_stop)
+        values[m] = 1
 
         return values
 
