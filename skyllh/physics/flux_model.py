@@ -1049,6 +1049,31 @@ class BoxTimeFluxProfile(
 
         return values
 
+    def cdf(
+            self,
+            t,
+            unit=None):
+        """Calculates the cumulative distribution function value for the given
+        times ``t``.
+        """
+        t = np.atleast_1d(t)
+
+        if (unit is not None) and (unit != self._time_unit):
+            t = t * unit.to(self._time_unit)
+
+        t_start = self._t_start
+        t_stop = self._t_stop
+
+        values = np.zeros(t.size, dtype=np.float64)
+
+        m = (t_start <= t) & (t <= t_stop)
+        values[m] = (t[m] - t_start) / (t_stop - t_start)
+
+        m = (t > t_stop)
+        values[m] = 1
+
+        return values
+
     def move(
             self,
             dt,
