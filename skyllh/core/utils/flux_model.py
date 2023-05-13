@@ -20,10 +20,26 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
         rss,
         profile
 ):
-    """This class provides a scipy.stats.rv_continuous subclass for
-        utilizing a TimeFluxProfile function. It can be used to generate
-        a random variates sample according to the given time flux profile
-        function.
+    """This function builds a scipy.stats.rv_continuous instance for a given
+    :class:`~skyllh.physics.flux_model.TimeFluxProfile` instance.
+
+    It can be used to generate random numbers according to the given time flux
+    profile function.
+
+    Parameters
+    ----------
+    rss : instance of RandomStateService
+        The instance of RandomStateService which should be used to draw random
+        numbers from.
+    profile : instance of TimeFluxProfile
+        The instance of TimeFluxProfile providing the function of the time flux
+        profile.
+
+    Returns
+    -------
+    rv : instance of rv_continuous_frozen
+        The instance of rv_continuous_frozen representing the time flux profile
+        as a continuous random variate instance.
     """
     if not isinstance(rss, RandomStateService):
         raise TypeError(
@@ -35,6 +51,11 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
             'The profile argument must be an instance of TimeFluxProfile! '
             f'Its current type is {classname(profile)}!')
 
+    norm = 0
+    tot_integral = profile.get_total_integral()
+    if tot_integral != 0:
+        norm = 1 / tot_integral
+
     class rv_continuous_from_TimeFluxProfile(
             rv_continuous):
 
@@ -43,10 +64,7 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
             the time flux profile.
             """
             self._profile = profile
-            self._norm = 0
-            tot_integral = profile.get_total_integral()
-            if tot_integral != 0:
-                self._norm = 1 / tot_integral
+            self._norm = norm
 
             super().__init__(*args, **kwargs)
 
