@@ -905,7 +905,7 @@ class TimePDF(
         """
         uptime_intervals = self._livetime.get_uptime_intervals_between(
             self._time_flux_profile.t_start,
-            self._time_flux_profile.t_end)
+            self._time_flux_profile.t_stop)
 
         total_integral = self._time_flux_profile.get_total_integral()
 
