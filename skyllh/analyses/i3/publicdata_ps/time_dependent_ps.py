@@ -120,6 +120,7 @@ from skyllh.i3.scrambling import (
 
 from skyllh.physics.flux_model import (
     BoxTimeFluxProfile,
+    GaussianTimeFluxProfile,
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
 )
@@ -138,7 +139,8 @@ from skyllh.scripting.logging import (
 def create_signal_time_pdf(
         grl,
         gauss=None,
-        box=None):
+        box=None,
+):
     """Creates the signal time PDF, either a gaussian or a box shaped PDF.
 
     Parameters
@@ -176,7 +178,8 @@ def create_signal_time_pdf(
 def change_signal_time_pdf_of_llhratio_function(
         ana,
         gauss=None,
-        box=None):
+        box=None,
+):
     """Changes the signal time PDF of the log-likelihood ratio function.
 
     Parameters
@@ -207,7 +210,8 @@ def change_signal_time_pdf_of_llhratio_function(
 def get_energy_spatial_signal_over_background(
         ana,
         fitparam_values,
-        tl=None):
+        tl=None,
+):
     """Returns the signal over background ratio for
     (spatial_signal * energy_signal) / (spatial_background * energy_background).
 
@@ -244,7 +248,8 @@ def get_energy_spatial_signal_over_background(
 
 def change_fluxmodel_gamma(
         ana,
-        gamma):
+        gamma,
+):
     """Sets the given gamma value to the flux model of the single source.
 
     Parameter
@@ -258,29 +263,29 @@ def change_fluxmodel_gamma(
     ana.change_shg_mgr(shg_mgr=ana.shg_mgr)
 
 
-def change_signal_time(
+def change_time_flux_profile_params(
         ana,
-        gauss=None,
-        box=None):
-    """Change the signal injection to gauss or box.
+        params,
+):
+    """Changes the parameters of the source's time flux profile.
 
     Parameters
     ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The analysis that should be used.
-    gauss : dict | None
-        None or dictionary {"mu": float, "sigma": float}.
-    box : dict | None
-        None or dictionary {"start" : float, "end" : float}.
+    params : dict
+        The dictionary with the parameter names and values to be set.
     """
-    # FIXME
-    ana.sig_generator.set_flare(box=box, gauss=gauss)
+    # Note: In the future the primary storage place for the time flux profile
+    #       will be within the flux model.
+    ana.sig_generator_list[0]._time_flux_profile.set_params(params)
 
 
 def calculate_TS(
         ana,
         em_results,
-        rss):
+        rss,
+):
     """Calculate the best TS value for the expectation maximization gamma scan.
 
     Parameters
@@ -334,7 +339,8 @@ def run_gamma_scan_single_flare(
         remove_time=None,
         gamma_min=1,
         gamma_max=5,
-        n_gamma=51):
+        n_gamma=51,
+):
     """Run em for different gammas in the signal energy pdf
 
     Parameters
@@ -368,7 +374,7 @@ def run_gamma_scan_single_flare(
         ('gamma', np.float64),
         ('mu', np.float64),
         ('sigma', np.float64),
-        ('ns_em', np.float64)
+        ('ns_em', np.float64),
     ]
     results = np.empty(n_gamma, dtype=dtype)
 
@@ -392,8 +398,10 @@ def run_gamma_scan_single_flare(
 
 def unblind_flare(
         ana,
-        remove_time=None):
-    """Run EM on unscrambled data. Similar to the original analysis, remove the alert event.
+        remove_time=None,
+):
+    """Run EM on unscrambled data. Similar to the original analysis, remove the
+    alert event.
 
     Parameters
     ----------
@@ -411,6 +419,7 @@ def unblind_flare(
     rss = RandomStateService(seed=1)
     ana.unblind(
         rss=rss)
+
     results = run_gamma_scan_single_flare(
         ana=ana,
         remove_time=remove_time)
@@ -455,9 +464,11 @@ def create_analysis(  # noqa: C901
     source : PointLikeSource instance
         The PointLikeSource instance defining the point source position.
     box : None or dictionary with start, end
-        None if no Box shaped time pdf. Else dictionary with {"start": float, "end": float} of box.
+        None if no box shaped time pdf, else dictionary of the format
+        ``{'start': float, 'stop': float}``.
     gauss : None or dictionary with mu, sigma
-        None if no Gaussian time pdf. Else dictionary with {"mu": float, "sigma": float} of Gauss
+        None if no gaussian time pdf, else dictionary of the format
+        ``{'mu': float, 'sigma': float}``.
     refplflux_Phi0 : float
         The flux normalization to use for the reference power law flux model.
     refplflux_E0 : float
@@ -557,6 +568,17 @@ def create_analysis(  # noqa: C901
         energy_profile=PowerLawEnergyFluxProfile(
             E0=refplflux_E0,
             gamma=refplflux_gamma))
+
+    # Define the time flux profile of the source.
+    time_flux_profile = None
+    if box is not None:
+        time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(
+            start=box['start'],
+            stop=box['stop'])
+    elif gauss is not None:
+        time_flux_profile = GaussianTimeFluxProfile(
+            t0=gauss['mu'],
+            sigma_t=gauss['sigma'])
 
     # Define the fit parameter ns.
     param_ns = Parameter(
@@ -698,7 +720,7 @@ def create_analysis(  # noqa: C901
                 time_sigpdf = FixedBoxSignalTimePDF(
                     grl=data.grl,
                     start=box['start'],
-                    end=box['end'])
+                    stop=box['stop'])
             time_pdfratio = SigOverBkgPDFRatio(
                 sig_pdf=time_sigpdf,
                 bkg_pdf=time_bkgpdf,
@@ -728,8 +750,7 @@ def create_analysis(  # noqa: C901
             ds=ds,
             ds_idx=ds_idx,
             grl=data.grl,
-            box=box,
-            gauss=gauss,
+            time_flux_profile=time_flux_profile,
             energy_cut_spline=energy_cut_spline,
             cut_sindec=cut_sindec[ds_idx],
         )
