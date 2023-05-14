@@ -7,9 +7,6 @@ from scipy.stats import (
 from skyllh.core.py import (
     classname,
 )
-from skyllh.core.random import (
-    RandomStateService,
-)
 
 from skyllh.physics.flux_model import (
     TimeFluxProfile,
@@ -17,8 +14,7 @@ from skyllh.physics.flux_model import (
 
 
 def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
-        rss,
-        profile
+        profile,
 ):
     """This function builds a scipy.stats.rv_continuous instance for a given
     :class:`~skyllh.physics.flux_model.TimeFluxProfile` instance.
@@ -28,9 +24,6 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
 
     Parameters
     ----------
-    rss : instance of RandomStateService
-        The instance of RandomStateService which should be used to draw random
-        numbers from.
     profile : instance of TimeFluxProfile
         The instance of TimeFluxProfile providing the function of the time flux
         profile.
@@ -41,11 +34,6 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
         The instance of rv_continuous_frozen representing the time flux profile
         as a continuous random variate instance.
     """
-    if not isinstance(rss, RandomStateService):
-        raise TypeError(
-            'The rss argument must be an instance of RandomStateService! '
-            f'Its current type is {classname(rss)}!')
-
     if not isinstance(profile, TimeFluxProfile):
         raise TypeError(
             'The profile argument must be an instance of TimeFluxProfile! '
@@ -90,7 +78,6 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
     rv = rv_continuous_from_TimeFluxProfile(
         a=profile.t_start,
         b=profile.t_stop,
-        seed=rss.random,
     ).freeze(loc=0, scale=1)
 
     return rv
