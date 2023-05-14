@@ -119,5 +119,5 @@ class NamedObjectCollection_TestCase(
         self.assertEqual(self.noc.get_index_by_name('a3'), 1)
 
 
-if(__name__ == '__main__'):
+if __name__ == '__main__':
     unittest.main()
