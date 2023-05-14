@@ -116,7 +116,7 @@ class ModelCollection(
 
         if errmsg is None:
             errmsg = (f'Cast of object "{str(obj)}" of type '
-                      f'"{typename(obj)}" to ModelCollection failed!')
+                      f'"{typename(type(obj))}" to ModelCollection failed!')
         raise TypeError(errmsg)
 
     def __init__(
