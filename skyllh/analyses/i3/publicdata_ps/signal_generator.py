@@ -4,7 +4,6 @@ import numpy as np
 from scipy import (
     interpolate,
 )
-import scipy.stats
 
 from skyllh.analyses.i3.publicdata_ps.aeff import (
     PDAeff,
@@ -30,6 +29,13 @@ from skyllh.core.signal_generator import (
 )
 from skyllh.core.storage import (
     DataFieldRecordArray,
+)
+from skyllh.core.utils.flux_model import (
+    create_scipy_stats_rv_continuous_from_TimeFluxProfile,
+)
+
+from skyllh.physics.flux_model import (
+    TimeFluxProfile,
 )
 
 
@@ -551,8 +557,7 @@ class TimeDependentPDDatasetSignalGenerator(
             ds,
             ds_idx,
             grl,
-            box=None,
-            gauss=None,
+            time_flux_profile,
             energy_cut_spline=None,
             cut_sindec=None,
             **kwargs):
@@ -576,14 +581,15 @@ class TimeDependentPDDatasetSignalGenerator(
             stop : float
                 The stop time of the run.
 
-        box : dict | None
-            The parameters for the box-shaped time PDF.
-            The dictionary must be of the form
-            ``{'start': float, 'end': float}``.
-        gauss : dict | None
-            The parameters for the gaussian-shaped time PDF.
-            The dictionary must be of the form
-            ``{'mu': float, 'sigma': float}``.
+        time_flux_profile : instance of TimeFluxProfile
+            The instance of TimeFluxProfile providing the time profile of the
+            source(s).
+
+            Note:
+
+                At this time the some time profile will be used for all
+                sources!
+
         energy_cut_spline : scipy.interpolate.UnivariateSpline
             A spline of E(sin_dec) that defines the declination
             dependent energy cut in the IceCube southern sky.
@@ -599,78 +605,14 @@ class TimeDependentPDDatasetSignalGenerator(
             cut_sindec=cut_sindec,
             **kwargs)
 
-        if (gauss is None) and (box is None):
-            raise ValueError(
-                'Either box or gauss arguments must define the neutrino flare!')
-        if (gauss is not None) and (box is not None):
-            raise ValueError(
-                'Either box or gauss arguments must define the neutrino flare, '
-                'cannot use both!')
+        if not isinstance(time_flux_profile, TimeFluxProfile):
+            raise TypeError(
+                'The time_flux_profile argument must be an instance of '
+                'TimeFluxProfile! '
+                f'Its current type is {classname(time_flux_profile)}!')
 
         self.grl = grl
-        self.box = box
-        self.gauss = gauss
-
-        self.time_pdf = self._create_time_pdf()
-
-    def _create_time_pdf(self):
-        """Creates the neutrino flare time pdf given parameters.
-        Will be used to generate random numbers by calling `rvs()` method.
-
-        Returns
-        -------
-        time_pdf : instance of scipy.stats.rv_continuous base class
-            Has to base scipy.stats.rv_continuous.
-        """
-        # Make sure flare is in dataset.
-        grl = self.grl
-        if self.gauss is not None:
-            if (self.gauss["mu"] - 4*self.gauss["sigma"] > grl["stop"][-1]) or\
-               (self.gauss["mu"] + 4*self.gauss["sigma"] < grl["start"][0]):
-                raise ValueError(
-                    f'Gaussian {str(self.gauss)} flare is not in dataset.')
-
-        if self.box is not None:
-            if (self.box["start"] > grl["stop"][-1]) or\
-               (self.box["end"] < grl["start"][0]):
-                raise ValueError(
-                    f'Box {str(self.box)} flare is not in dataset.')
-
-        # Create `time_pdf`.
-        if self.gauss is not None:
-            time_pdf = scipy.stats.norm(self.gauss["mu"], self.gauss["sigma"])
-        if self.box is not None:
-            time_pdf = scipy.stats.uniform(
-                self.box["start"],
-                self.box["end"] - self.box["start"])
-
-        return time_pdf
-
-    def set_flare(
-            self,
-            gauss=None,
-            box=None):
-        """Set the neutrino flare given parameters.
-
-        Parameters
-        ----------
-        gauss : dict | None
-            None or dictionary with {"mu": float, "sigma": float}.
-        box : dict | None
-             None or dictionary with {"start": float, "end": float}.
-        """
-        if (gauss is None) and (box is None):
-            raise ValueError(
-                "Either box or gauss keywords must define the neutrino flare.")
-        if (gauss is not None) and (box is not None):
-            raise ValueError(
-                "Either box or gauss keywords must define the neutrino flare, "
-                "cannot use both.")
-
-        self.box = box
-        self.gauss = gauss
-
-        self.time_pdf = self._create_time_pdf()
+        self._time_flux_profile = time_flux_profile
 
     def generate_signal_events(
             self,
@@ -717,14 +659,18 @@ class TimeDependentPDDatasetSignalGenerator(
             src_detsigyield_weights_service=src_detsigyield_weights_service,
             **kwargs)
 
+        # Create a scipy.stats.rv_continuous instance for the time flux profile.
+        time_rv = create_scipy_stats_rv_continuous_from_TimeFluxProfile(
+            profile=self._time_flux_profile)
+
         # Optimized time injection version, based on csky implementation.
         # https://github.com/icecube/csky/blob/7e969639c5ef6dbb42872dac9b761e1e8b0ccbe2/csky/inj.py#L1122
         events = signal_events_dict[self.ds_idx]
         times = np.array([], dtype=np.float64)
         n_events = len(events)
         while len(times) < n_events:
-            new_times = self.time_pdf.rvs(
-                n_events - len(times),
+            new_times = time_rv.rvs(
+                size=(n_events - len(times)),
                 random_state=rss.random)
             mask = get_times_in_grl_mask(
                 times=new_times,
