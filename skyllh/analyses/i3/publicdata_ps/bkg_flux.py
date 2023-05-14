@@ -3,8 +3,9 @@
 import numpy as np
 import pickle
 
-from skyllh.physics.flux import (
-    PowerLawFlux,
+from skyllh.physics.flux_model import (
+    PowerLawEnergyFluxProfile,
+    SteadyPointlikeFFM,
 )
 from skyllh.core.binning import (
     get_bincenters_from_binedges,
@@ -126,14 +127,18 @@ def get_flux_astro_decnu_log10enu(decnu_binedges, log10_enu_binedges):
     ----------
     [1] https://arxiv.org/pdf/2111.10299.pdf
     """
-    fluxmodel = PowerLawFlux(Phi0=1.44e-18, E0=100e3, gamma=2.37)
+    fluxmodel = SteadyPointlikeFFM(
+        Phi0=1.44e-18,
+        energy_profile=PowerLawEnergyFluxProfile(
+            E0=100e3,
+            gamma=2.37))
 
     n_decnu = len(decnu_binedges) - 1
 
     enu_binedges = np.power(10, log10_enu_binedges)
     enu_bincenters = get_bincenters_from_binedges(enu_binedges)
 
-    fl = fluxmodel(enu_bincenters)
+    fl = fluxmodel(E=enu_bincenters).squeeze()
     f_astro = np.tile(fl, (n_decnu, 1))
 
     return f_astro
@@ -327,7 +332,11 @@ def get_pd_astro_E_nu_sin_dec_nu(sin_dec_binedges, log10_e_grid_edges):
     ----------
     [1] https://arxiv.org/pdf/2111.10299.pdf
     """
-    fluxmodel = PowerLawFlux(Phi0=1.44e-18, E0=100e3, gamma=2.37)
+    fluxmodel = SteadyPointlikeFFM(
+        Phi0=1.44e-18,
+        energy_profile=PowerLawEnergyFluxProfile(
+            E0=100e3,
+            gamma=2.37))
 
     n_sin_dec = len(sin_dec_binedges) - 1
 
@@ -336,7 +345,7 @@ def get_pd_astro_E_nu_sin_dec_nu(sin_dec_binedges, log10_e_grid_edges):
 
     dE = np.diff(e_grid_edges)
 
-    fl = fluxmodel(e_grid_bc)
+    fl = fluxmodel(E=e_grid_bc).squeeze()
     pd = fl / np.sum(fl*dE)
     pd_astro = np.tile(pd, (n_sin_dec, 1))
 
