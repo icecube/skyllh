@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import division
-
+import numpy as np
 import os.path
 import unittest
-import numpy as np
 
 from skyllh.core.dataset import (
     get_data_subset,
-    DataFieldRecordArray,
-    DatasetData
+    DatasetData,
 )
-from skyllh.core.livetime import Livetime
-
-from skyllh.core.py import float_cast
+from skyllh.core.livetime import (
+    Livetime,
+)
+from skyllh.core.storage import (
+    DataFieldRecordArray,
+)
 
 
 class TestDatasetFunctions(unittest.TestCase):
@@ -105,5 +105,6 @@ class TestDatasetFunctions(unittest.TestCase):
         self.assertEqual(len(dataset_data_subset.mc), 3)
         self.assertAlmostEqual(livetime_subset.livetime, 0.75)
 
-if(__name__ == '__main__'):
+
+if __name__ == '__main__':
     unittest.main()
