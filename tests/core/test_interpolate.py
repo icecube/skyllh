@@ -90,7 +90,10 @@ def create_tdm(n_sources, n_selected_events):
         'n_sources',
         'n_selected_events',
         'broadcast_params_recarray_to_values_array',
-        'broadcast_arrays_to_values_array'])
+        'broadcast_arrays_to_values_array',
+        'broadcast_sources_array_to_values_array',
+        'broadcast_sources_arrays_to_values_arrays',
+    ])
 
     def tdm_broadcast_params_recarray_to_values_array(params_recarray):
         return TrialDataManager.broadcast_params_recarray_to_values_array(
@@ -99,6 +102,14 @@ def create_tdm(n_sources, n_selected_events):
     def tdm_broadcast_arrays_to_values_array(arrays):
         return TrialDataManager.broadcast_arrays_to_values_array(
             tdm, arrays)
+
+    def tdm_broadcast_sources_array_to_values_array(*args, **kwargs):
+        return TrialDataManager.broadcast_sources_array_to_values_array(
+            tdm, *args, **kwargs)
+
+    def tdm_broadcast_sources_arrays_to_values_arrays(*args, **kwargs):
+        return TrialDataManager.broadcast_sources_arrays_to_values_arrays(
+            tdm, *args, **kwargs)
 
     tdm.__class__ = TrialDataManager
     tdm.trial_data_state_id = 1
@@ -113,6 +124,10 @@ def create_tdm(n_sources, n_selected_events):
         tdm_broadcast_params_recarray_to_values_array
     tdm.broadcast_arrays_to_values_array =\
         tdm_broadcast_arrays_to_values_array
+    tdm.broadcast_sources_array_to_values_array =\
+        tdm_broadcast_sources_array_to_values_array
+    tdm.broadcast_sources_arrays_to_values_arrays =\
+        tdm_broadcast_sources_arrays_to_values_arrays
 
     return tdm
 
