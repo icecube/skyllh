@@ -266,7 +266,8 @@ class MultiDatasetSignalGenerator(
                 raise TypeError(
                     'The sig_generator_list property must be a sequence of '
                     'SignalGenerator instances!')
-        self._sig_generator_list = list(generators)
+            generators = list(generators)
+        self._sig_generator_list = generators
 
     @property
     def ds_sig_weight_factors_service(self):
