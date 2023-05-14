@@ -466,7 +466,7 @@ class FixedBoxSignalTimePDF(
             self,
             grl,
             start,
-            end,
+            stop,
             **kwargs):
         """Creates a new box-shaped signal time PDF instance.
 
@@ -484,31 +484,31 @@ class FixedBoxSignalTimePDF(
 
         start : float
             The start time of the box profile.
-        end : float
-            The end time of the box profile.
+        stop : float
+            The stop time of the box profile.
         """
         super().__init__(
             pmm=None,
             **kwargs)
 
-        self.add_axis(
-            PDFAxis(
-                name='time',
-                vmin=0,
-                vmax=np.inf))
-
         self.grl = grl
 
         # Clip the profile to the sample edges.
         sample_start = grl['start'][0]
-        sample_end = grl['stop'][-1]
-        if start < sample_start and end > sample_start:
+        sample_stop = grl['stop'][-1]
+        if start < sample_start and stop > sample_start:
             start = sample_start
-        if end > sample_end and start < sample_end:
-            end = sample_end
+        if stop > sample_stop and start < sample_stop:
+            stop = sample_stop
 
         self.start = start
-        self.end = end
+        self.stop = stop
+
+        self.add_axis(
+            PDFAxis(
+                name='time',
+                vmin=self.start,
+                vmax=self.stop))
 
         self._pd = None
 
@@ -529,17 +529,17 @@ class FixedBoxSignalTimePDF(
         t = np.atleast_1d(t)
 
         pdf_t_start = self.start
-        pdf_t_end = self.end
+        pdf_t_stop = self.stop
 
         cdf = np.zeros(t.size, float)
         # Values between the PDF's start and stop times.
-        mask = (pdf_t_start <= t) & (t <= pdf_t_end)
-        cdf[mask] = (t[mask] - pdf_t_start) / (pdf_t_end - pdf_t_start)
+        mask = (pdf_t_start <= t) & (t <= pdf_t_stop)
+        cdf[mask] = (t[mask] - pdf_t_start) / (pdf_t_stop - pdf_t_start)
 
         # Values beyond the PDF's stop time.
         sample_start = self.grl['start'][0]
-        if pdf_t_end > sample_start:
-            mask = (t > pdf_t_end)
+        if pdf_t_stop > sample_start:
+            mask = (t > pdf_t_stop)
             cdf[mask] = 1.
 
         return cdf
@@ -599,10 +599,10 @@ class FixedBoxSignalTimePDF(
         # Gives 0 for outside the flare and 1 for inside the flare.
         box_mask = np.piecewise(
             time,
-            [self.start <= time, time <= self.end],
+            [self.start <= time, time <= self.stop],
             [1., 1.])
 
-        self._pd = box_mask / (self.end - self.start) * uptime_norm
+        self._pd = box_mask / (self.stop - self.start) * uptime_norm
 
     def assert_is_valid_for_trial_data(
             self,
