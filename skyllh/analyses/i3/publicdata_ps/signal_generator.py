@@ -12,11 +12,13 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
     PDSmearingMatrix,
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
-    get_times_in_grl_mask,
     psi_to_dec_and_ra,
 )
 from skyllh.core.debugging import (
     get_logger,
+)
+from skyllh.core.livetime import (
+    Livetime,
 )
 from skyllh.core.py import (
     classname,
@@ -556,7 +558,7 @@ class TimeDependentPDDatasetSignalGenerator(
             shg_mgr,
             ds,
             ds_idx,
-            grl,
+            livetime,
             time_flux_profile,
             energy_cut_spline=None,
             cut_sindec=None,
@@ -572,15 +574,9 @@ class TimeDependentPDDatasetSignalGenerator(
             generated.
         ds_idx : int
             The index of the dataset.
-        grl : instance of numpy structured ndarray
-            The instance of numpy structured ndarray holding the good-run-list
-            data. The following fields need to exist:
-
-            start : float
-                The start time of the run.
-            stop : float
-                The stop time of the run.
-
+        livetime : instance of Livetime
+            The instance of Livetime providing the live-time information of the
+            dataset.
         time_flux_profile : instance of TimeFluxProfile
             The instance of TimeFluxProfile providing the time profile of the
             source(s).
@@ -611,8 +607,22 @@ class TimeDependentPDDatasetSignalGenerator(
                 'TimeFluxProfile! '
                 f'Its current type is {classname(time_flux_profile)}!')
 
-        self.grl = grl
+        self.livetime = livetime
         self._time_flux_profile = time_flux_profile
+
+    @property
+    def livetime(self):
+        """The instance of Livetime providing the live-time information of the
+        dataset.
+        """
+        return self._livetime
+
+    @livetime.setter
+    def livetime(self, lt):
+        if not isinstance(lt, Livetime):
+            raise TypeError(
+                'The livetime property must be an instance of Livetime! '
+                f'Its current type is {classname(lt)}!')
 
     def generate_signal_events(
             self,
@@ -672,9 +682,8 @@ class TimeDependentPDDatasetSignalGenerator(
             new_times = time_rv.rvs(
                 size=(n_events - len(times)),
                 random_state=rss.random)
-            mask = get_times_in_grl_mask(
-                times=new_times,
-                grl=self.grl)
+            mask = self._livetime.is_on(
+                mjd=new_times)
             new_times = new_times[mask]
 
             times = np.concatenate((times, new_times))

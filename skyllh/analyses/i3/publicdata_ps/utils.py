@@ -336,36 +336,3 @@ def tdm_field_func_psi(
         psi_floor=10**-5.95442953)
 
     return psi
-
-
-def get_times_in_grl_mask(times, grl):
-    """Checks if the given times are within the given good-run-list.
-
-    Parameters
-    ----------
-    times : instance of ndarray
-        The (n_times)-shaped numpy ndarray holding the time values to check.
-    grl : instance of structured ndarray
-        The instance of numpy structured ndarray of length n_runs holding the
-        GRL data with the following fields:
-
-            start
-                The start time of the run.
-            stop
-                The stop time of the run.
-
-    Returns
-    -------
-    mask : instance of ndarray
-        The (n_times,)-shaped nunpy ndarray holding the mask of the time values,
-        which are within the given good-run-list.
-    """
-    def f(time, grl):
-        return np.any((grl['start'] <= time) & (time <= grl['stop']))
-
-    # Vectorize `f`, but exclude `grl` argument from vectorization.
-    # This is needed to support `time` as an array argument.
-    f_v = np.vectorize(f, excluded=[1])
-    mask = f_v(times, grl)
-
-    return mask
