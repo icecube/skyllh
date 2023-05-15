@@ -295,6 +295,7 @@ class Analysis(
                 'The detsigyield_service property must be an instance of '
                 'DetSigYieldService! '
                 f'Its current type is {classname(service)}!')
+        self._detsigyield_service = service
 
     @property
     def src_detsigyield_weights_service(self):
