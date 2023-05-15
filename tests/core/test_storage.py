@@ -13,9 +13,9 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.field2 = np.array([2.5, 2.1, 2.3, 2.4, 2.2], dtype=np.float64)
         self.field3 = np.array([3.2, 3.5, 3.1, 3.3, 3.4], dtype=np.float64)
         data = dict(
-            field1 = self.field1,
-            field2 = self.field2,
-            field3 = self.field3
+            field1=self.field1,
+            field2=self.field2,
+            field3=self.field3
         )
         self.arr = DataFieldRecordArray(data)
         self.arr_len = 5
@@ -37,7 +37,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         assert_array_almost_equal(self.arr['field3'], self.field3)
 
         # Access rows of the dataset via indices.
-        idx = np.array([1,4,2])
+        idx = np.array([1, 4, 2])
         sub_arr = self.arr[idx]
         assert_array_almost_equal(sub_arr['field1'], self.field1[idx])
         assert_array_almost_equal(sub_arr['field2'], self.field2[idx])
@@ -65,11 +65,11 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.setUp()
 
         # Set selected rows with new values by indices.
-        idx = np.array([1,4,2])
+        idx = np.array([1, 4, 2])
         new_data = dict(
-            field1 = self.field1[idx],
-            field2 = new_field2[idx],
-            field3 = self.field3[idx]
+            field1=self.field1[idx],
+            field2=new_field2[idx],
+            field3=self.field3[idx]
         )
         new_arr = DataFieldRecordArray(new_data)
         self.arr[idx] = new_arr
@@ -85,9 +85,9 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         # Set selected rows with new values by mask.
         mask = np.array([True, True, False, True, False])
         new_data = dict(
-            field1 = self.field1[mask],
-            field2 = new_field2[mask],
-            field3 = self.field3[mask]
+            field1=self.field1[mask],
+            field2=new_field2[mask],
+            field3=self.field3[mask]
         )
         new_arr = DataFieldRecordArray(new_data)
         self.arr[mask] = new_arr
@@ -112,7 +112,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
     def test__str__(self):
         try:
             str(self.arr)
-        except:
+        except Exception:
             self.fail('The __str__ method raised an exception!')
 
     def test_field_name_list(self):
@@ -163,7 +163,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         # Reset the array.
         self.setUp()
 
-        self.arr.tidy_up(('field2','field3'))
+        self.arr.tidy_up(('field2', 'field3'))
         self.assertEqual(len(self.arr.field_name_list), 2)
         self.assertTrue('field2' in self.arr.field_name_list)
         self.assertTrue('field3' in self.arr.field_name_list)
@@ -171,5 +171,6 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.assertTrue('field2' in self.arr)
         self.assertTrue('field3' in self.arr)
 
-if(__name__ == '__main__'):
+
+if __name__ == '__main__':
     unittest.main()
