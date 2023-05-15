@@ -106,12 +106,12 @@ class TestSignalTimePDF(unittest.TestCase):
         np.testing.assert_almost_equal(
             pd,
             np.array([
-                1/(self.integral*self.S),
+                1*self.S/self.integral**2,
                 0.,
-                1/(self.integral*self.S),
-                1/(self.integral*self.S),
+                1*self.S/self.integral**2,
+                1*self.S/self.integral**2,
                 0.,
-                1/(self.integral*self.S)
+                1*self.S/self.integral**2
             ]))
 
         self.assertEqual(grads, {})
