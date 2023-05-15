@@ -740,6 +740,22 @@ class FixedGaussianSignalTimePDF(
 
         return norm
 
+    def is_ontime(self, t):
+        """Creates a mask array to select the times ``t``. which are within the
+        livetime of the dataset.
+        """
+        uptime_mjd_intervals_arr = np.zeros((len(self.grl), 2), dtype=np.float64)
+        uptime_mjd_intervals_arr[:, 0] = self.grl['start']
+        uptime_mjd_intervals_arr[:, 1] = self.grl['stop']
+        onoff_intervals = np.reshape(
+            uptime_mjd_intervals_arr,
+            (uptime_mjd_intervals_arr.size,))
+
+        onoff_idxs = np.digitize(t, onoff_intervals)
+        is_on = np.array(onoff_idxs & 0x1, dtype=np.bool_)
+
+        return is_on
+
     def initialize_for_new_trial(
             self,
             tdm,
@@ -769,7 +785,10 @@ class FixedGaussianSignalTimePDF(
 
         uptime_norm = self.calc_uptime_norm()
 
-        self._pd = scipy.stats.norm.pdf(time, self.mu, self.sigma) * uptime_norm
+        m = self.is_ontime(time)
+
+        self._pd = np.zeros((len(evt_idxs),), dtype=np.float64)
+        self._pd[m] = scipy.stats.norm.pdf(time[m], self.mu, self.sigma) * uptime_norm
 
     def assert_is_valid_for_trial_data(
             self,
