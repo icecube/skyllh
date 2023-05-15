@@ -37,7 +37,7 @@ class SimpleDetSigYieldWithoutGrads(DetSigYield):
         self._scale = scale
 
     def sources_to_recarray(self, sources):
-        recarr = np.empty((len(sources),), dtype=[('dec', np.double),])
+        recarr = np.empty((len(sources),), dtype=[('dec', np.double)])
         for (i, src) in enumerate(sources):
             recarr[i]['dec'] = src.dec
         return recarr
@@ -222,14 +222,14 @@ class TestSourceDetectorWeights(unittest.TestCase):
             'instance of a_jk')
 
         self.assertEqual(
-            a_jk.shape, (2,3),
+            a_jk.shape, (2, 3),
             'a_jk.shape')
 
         np.testing.assert_allclose(
             a_jk,
             np.array([
-                [1*10,2*20,3*30],
-                [1*10,2*20,3*30]
+                [1*10, 2*20, 3*30],
+                [1*10, 2*20, 3*30]
             ]),
             err_msg='a_jk values')
 
@@ -266,14 +266,14 @@ class TestSourceDetectorWeights(unittest.TestCase):
             'instance of a_jk')
 
         self.assertEqual(
-            a_jk.shape, (2,3),
+            a_jk.shape, (2, 3),
             'a_jk.shape')
 
         np.testing.assert_allclose(
             a_jk,
             [
-                [1*10,2*20,3*30],
-                [1*10,2*20,3*30]
+                [1*10, 2*20, 3*30],
+                [1*10, 2*20, 3*30]
             ],
             err_msg='a_jk values')
 
@@ -322,14 +322,14 @@ class TestSourceDetectorWeights(unittest.TestCase):
             'instance of a_jk')
 
         self.assertEqual(
-            a_jk.shape, (2,3),
+            a_jk.shape, (2, 3),
             'a_jk.shape')
 
         np.testing.assert_allclose(
             a_jk,
             [
-                [1*10,2*20,3*30],
-                [1*10,2*20,3*30]
+                [1*10, 2*20, 3*30],
+                [1*10, 2*20, 3*30]
             ],
             err_msg='a_jk values')
 
