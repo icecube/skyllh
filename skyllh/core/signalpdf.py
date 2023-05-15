@@ -447,7 +447,7 @@ class SignalTimePDF(
 
             pd_src = pd[src_m]
             pd_src[on] = (
-                self._time_flux_profile(t=times[on]) * self._S / self._I**2
+                self._time_flux_profile(t=times[on]) / self._S
             )
             pd[src_m] = pd_src
 
@@ -565,6 +565,22 @@ class FixedBoxSignalTimePDF(
 
         return norm
 
+    def is_ontime(self, t):
+        """Creates a mask array to select the times ``t``. which are within the
+        livetime of the dataset.
+        """
+        uptime_mjd_intervals_arr = np.zeros((len(self.grl), 2), dtype=np.float64)
+        uptime_mjd_intervals_arr[:, 0] = self.grl['start']
+        uptime_mjd_intervals_arr[:, 1] = self.grl['stop']
+        onoff_intervals = np.reshape(
+            uptime_mjd_intervals_arr,
+            (uptime_mjd_intervals_arr.size,))
+
+        onoff_idxs = np.digitize(t, onoff_intervals)
+        is_on = np.array(onoff_idxs & 0x1, dtype=np.bool_)
+
+        return is_on
+
     def initialize_for_new_trial(
             self,
             tdm,
@@ -597,12 +613,14 @@ class FixedBoxSignalTimePDF(
         # Get a mask of the event times which fall inside a detector on-time
         # interval.
         # Gives 0 for outside the flare and 1 for inside the flare.
-        box_mask = np.piecewise(
-            time,
-            [self.start <= time, time <= self.stop],
-            [1., 1.])
+        ones = np.zeros((len(evt_idxs),), dtype=np.float64)
+        m = (self.start <= time) & (time <= self.stop)
+        ones[m] = 1
 
-        self._pd = box_mask / (self.stop - self.start) * uptime_norm
+        m = self.is_ontime(time)
+
+        self._pd = np.zeros((len(evt_idxs),), dtype=np.float64)
+        self._pd[m] = ones[m] / (self.stop - self.start) * uptime_norm
 
     def assert_is_valid_for_trial_data(
             self,
