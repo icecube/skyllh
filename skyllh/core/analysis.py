@@ -712,26 +712,27 @@ class Analysis(
         shg_mgr : instance of SourceHypoGroupManager
             The new instance of SourceHypoGroupManager.
         """
-        # Change the source hypo group manager of the EventSelectionMethod
-        # instance.
         for evt_selection_method in self._event_selection_method_list:
             if evt_selection_method is not None:
                 evt_selection_method.change_shg_mgr(
                     shg_mgr=shg_mgr)
 
-        # Change the source hypo group manager of TrialDataManager for all
-        # data sets.
         for tdm in self._tdm_list:
             tdm.change_shg_mgr(
                 shg_mgr=shg_mgr)
 
-        # Change the source hypo group manager of the background generator
-        # instance.
+        if self._detsigyield_service is not None:
+            self._detsigyield_service.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+        if self._src_detsigyield_weights_service is not None:
+            self._src_detsigyield_weights_service.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
         if self._bkg_generator is not None:
             self._bkg_generator.change_shg_mgr(
                 shg_mgr=shg_mgr)
 
-        # Change the source hypo group manager of the signal generator instance.
         if self._sig_generator is not None:
             self._sig_generator.change_shg_mgr(
                 shg_mgr=shg_mgr)
@@ -1769,19 +1770,14 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
             self._pmm.create_src_params_recarray(
                 gflp_values=fitparam_values)
 
-        ds_sig_weight_factors_service =\
-            self._llhratio.ds_sig_weight_factors_service
-        src_detsigyield_weights_service =\
-            ds_sig_weight_factors_service.src_detsigyield_weights_service
-
         # Calculate the detector signal yield, i.e. the mean number of signal
         # events in the detector, for the given reference flux model.
         mean_ns_ref = 0
 
-        detsigyields = src_detsigyield_weights_service.detsigyield_arr[:, 0]
+        detsigyields = self.detsigyield_service.arr[:, 0]
         for (j, detsigyield) in enumerate(detsigyields):
             src_recarray =\
-                src_detsigyield_weights_service.src_recarray_list_list[j][0]
+                self.src_detsigyield_weights_service.src_recarray_list_list[j][0]
             (Yj, Yj_grads) = detsigyield(
                 src_recarray=src_recarray,
                 src_params_recarray=src_params_recarray)
@@ -1929,11 +1925,6 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
             self._pmm.create_src_params_recarray(
                 gflp_values=fitparam_values)
 
-        ds_sig_weight_factors_service =\
-            self._llhratio.ds_sig_weight_factors_service
-        src_detsigyield_weights_service =\
-            ds_sig_weight_factors_service.src_detsigyield_weights_service
-
         # Calculate the detector signal yield, i.e. the mean number of signal
         # events in the detector, for the given reference flux model.
         mean_ns_ref = np.zeros((self._shg_mgr.n_sources,), dtype=np.float64)
@@ -1941,10 +1932,10 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
         for (g, shg) in enumerate(self._shg_mgr.shg_list):
             shg_src_mask = self._shg_mgr.get_src_mask_of_shg(shg_idx=g)
 
-            detsigyields = src_detsigyield_weights_service.detsigyield_arr[:, g]
+            detsigyields = self.detsigyield_service.arr[:, g]
             for (j, detsigyield) in enumerate(detsigyields):
                 src_recarray =\
-                    src_detsigyield_weights_service.src_recarray_list_list[j][g]
+                    self.src_detsigyield_weights_service.src_recarray_list_list[j][g]
                 (Yj, Yj_grads) = detsigyield(
                     src_recarray=src_recarray,
                     src_params_recarray=src_params_recarray)
