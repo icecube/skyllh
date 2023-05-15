@@ -21,7 +21,7 @@ from skyllh.analyses.i3.publicdata_ps.pdfratio import (
     PDSigSetOverBkgPDFRatio,
 )
 from skyllh.analyses.i3.publicdata_ps.signal_generator import (
-    PDSignalGenerator,
+    PDDatasetSignalGenerator,
 )
 from skyllh.analyses.i3.publicdata_ps.signalpdf import (
     PDSignalEnergyPDFSet,
@@ -71,6 +71,9 @@ from skyllh.core.random import (
 from skyllh.core.scrambling import (
     DataScrambler,
     UniformRAScramblingMethod,
+)
+from skyllh.core.signal_generator import (
+    MultiDatasetSignalGenerator,
 )
 from skyllh.core.signalpdf import (
     RayleighPSFPointSourceSignalSpatialPDF,
@@ -296,7 +299,7 @@ def create_analysis(
         pmm=pmm,
         test_statistic=test_statistic,
         bkg_gen_method=bkg_gen_method,
-        sig_generator_cls=PDSignalGenerator,
+        sig_generator_cls=MultiDatasetSignalGenerator,
     )
 
     # Define the event selection method for pure optimization purposes.
@@ -317,7 +320,6 @@ def create_analysis(
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
-    energy_cut_splines = []
     for (ds_idx, ds) in enumerate(datasets):
         # Load the data of the data set.
         data = ds.load_and_prepare_data(
@@ -375,28 +377,38 @@ def create_analysis(
             dt='dec',
             is_srcevt_data=True)
 
+        energy_cut_spline = create_energy_cut_spline(
+            ds,
+            data.exp,
+            spl_smooth[ds_idx])
+
+        sig_generator = PDDatasetSignalGenerator(
+            shg_mgr=shg_mgr,
+            ds=ds,
+            ds_idx=ds_idx,
+            energy_cut_spline=energy_cut_spline,
+            cut_sindec=cut_sindec[ds_idx],
+        )
+
         ana.add_dataset(
             dataset=ds,
             data=data,
             pdfratio=pdfratio,
             tdm=tdm,
-            event_selection_method=event_selection_method)
-
-        energy_cut_spline = create_energy_cut_spline(
-            ds,
-            data.exp,
-            spl_smooth[ds_idx])
-        energy_cut_splines.append(energy_cut_spline)
+            event_selection_method=event_selection_method,
+            sig_generator=sig_generator)
 
         pbar.increment()
     pbar.finish()
 
-    ana.llhratio = ana.construct_llhratio(minimizer, ppbar=ppbar)
+    ana.construct_services(
+        ppbar=ppbar)
 
-    ana.construct_signal_generator(
-        llhratio=ana.llhratio,
-        energy_cut_splines=energy_cut_splines,
-        cut_sindec=cut_sindec)
+    ana.llhratio = ana.construct_llhratio(
+        minimizer=minimizer,
+        ppbar=ppbar)
+
+    ana.construct_signal_generator()
 
     return ana
 
