@@ -57,8 +57,8 @@ class PDDatasetSignalGenerator(
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager defining the source
             hypothesis groups.
@@ -355,8 +355,8 @@ class PDDatasetSignalGenerator(
         that have an energy smaller than the energy spline at their
         declination.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         events : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the generated signal
             events.
@@ -370,6 +370,7 @@ class PDDatasetSignalGenerator(
             The Logger instance.
 
         Returns
+        -------
         filter_mask : instance of numpy ndarray
             The (len(events),)-shaped numpy ndarray with the mask of the events
             to cut.
@@ -394,8 +395,8 @@ class PDDatasetSignalGenerator(
         """Generates ``n_events`` signal events for the given source location
         and flux model.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         rss : instance of RandomStateService
             The instance of RandomStateService providing the random number
             generator state.
@@ -409,12 +410,14 @@ class PDDatasetSignalGenerator(
         events : instance of DataFieldRecordArray
             The numpy record array holding the event data.
             It contains the following data fields:
+
                 - 'isvalid'
                 - 'log_true_energy'
                 - 'log_energy'
                 - 'dec'
                 - 'ra'
                 - 'ang_err'
+
         """
         sm = self.sm
 

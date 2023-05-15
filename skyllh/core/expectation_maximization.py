@@ -117,11 +117,11 @@ def em_fit(
     Returns
     -------
     mu : list of float
-        The list of size `n`` with the determined mean values.
+        The list of size ``n`` with the determined mean values.
     sigma : list of float
         The list of size ``n`` with the standard deviation values.
     ns : list of float
-        The list of size ``n``with the normalization factor values.
+        The list of size ``n`` with the normalization factor values.
     """
     if weight_thresh > 0:
         # Remove events below threshold.

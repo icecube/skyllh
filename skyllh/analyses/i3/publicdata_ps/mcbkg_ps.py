@@ -144,8 +144,8 @@ def create_analysis(
 ):
     """Creates the Analysis instance for this particular analysis.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     datasets : list of Dataset instances
         The list of Dataset instances, which should be used in the
         analysis.

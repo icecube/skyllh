@@ -340,7 +340,7 @@ class SourceHypoGroupManager(
         return self._shg_list[gidx]._detsigyield_builder_list
 
     def get_src_mask_of_shg(self, shg_idx):
-        """Creates a source mask for the sources of the ``shg_idx``th source
+        """Creates a source mask for the sources of the ``shg_idx`` th source
         hypothesis group.
 
         Parameters

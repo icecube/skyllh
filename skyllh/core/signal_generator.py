@@ -296,7 +296,7 @@ class MultiDatasetSignalGenerator(
             shg_mgr):
         """Changes the source hypothesis group manager. This will recreate the
         src_params_recarray needed for calculating the detector signal yields.
-        Also it calls the ``change_shg_mgr``methods of the signal generators of
+        Also it calls the ``change_shg_mgr`` methods of the signal generators of
         the individual datasets.
         """
         super().change_shg_mgr(

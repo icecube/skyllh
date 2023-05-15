@@ -215,8 +215,8 @@ def get_energy_spatial_signal_over_background(
     """Returns the signal over background ratio for
     (spatial_signal * energy_signal) / (spatial_background * energy_background).
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     fitparam_values : instance of ndarray
         The (N_fitparams,)-shaped numpy ndarray holding the values of the global
         fit parameters, e.g. ns and gamma.
@@ -252,8 +252,8 @@ def change_fluxmodel_gamma(
 ):
     """Sets the given gamma value to the flux model of the single source.
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The analysis that should be used.
     gamma : float
@@ -456,8 +456,8 @@ def create_analysis(  # noqa: C901
         logger_name=None):
     """Creates the Analysis instance for this particular analysis.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     datasets : list of Dataset instances
         The list of Dataset instances, which should be used in the
         analysis.
@@ -532,7 +532,7 @@ def create_analysis(  # noqa: C901
 
     Returns
     -------
-    ana : SingleSourceMultiDatasetLLHRatioAnalysis
+    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The Analysis instance for this analysis.
     """
     if logger_name is None:
