@@ -17,6 +17,7 @@ from skyllh.core.livetime import (
 from skyllh.core.progressbar import (
     ProgressBar,
 )
+
 from skyllh.physics.flux_model import (
     FluxModel,
 )
@@ -38,7 +39,14 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
     Hence, for a given detector, source, flux model, and dataset, an appropriate
     implementation method needs to be chosen.
     """
-    def __init__(self, param_names, dataset, fluxmodel, livetime, **kwargs):
+    def __init__(
+            self,
+            param_names,
+            dataset,
+            fluxmodel,
+            livetime,
+            **kwargs,
+    ):
         """Constructs a new detector signal yield object. It takes
         the monte-carlo data events, a flux model of the signal, and the live
         time to compute the detector signal yield.
@@ -130,7 +138,10 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         self._livetime = lt
 
     @abc.abstractmethod
-    def sources_to_recarray(self, sources):
+    def sources_to_recarray(
+            self,
+            sources,
+    ):
         """This method is supposed to convert a (list of) source model(s) into
         a numpy record array that is understood by the detector signal yield
         class.
@@ -156,7 +167,11 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def __call__(self, src_recarray, src_params_recarray):
+    def __call__(
+            self,
+            src_recarray,
+            src_params_recarray,
+    ):
         """Abstract method to retrieve the detector signal yield for the given
         sources and source parameter values.
 
@@ -200,10 +215,14 @@ class DetSigYieldBuilder(
     the internal objects to calculate the detector signal yield.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(
+            self,
+            **kwargs,
+    ):
         """Constructor.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
     def assert_types_of_construct_detsigyield_arguments(
             self,
@@ -211,7 +230,8 @@ class DetSigYieldBuilder(
             data,
             fluxmodel,
             livetime,
-            ppbar):
+            ppbar,
+    ):
         """Checks the types of the arguments for the ``construct_detsigyield``
         method. It raises errors if the arguments have the wrong type.
         """
@@ -250,7 +270,8 @@ class DetSigYieldBuilder(
             data,
             fluxmodel,
             livetime,
-            ppbar=None):
+            ppbar=None,
+    ):
         """Abstract method to construct the DetSigYield instance.
         This method must be called by the derived class method implementation
         to ensure the compatibility check of the given flux model with the
@@ -282,13 +303,18 @@ class NullDetSigYieldBuilder(
     """This class provides a dummy detector signal yield builder, which can
     be used for testing purposes, when an actual builder is not required.
     """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+            self,
+            **kwargs,
+    ):
+        super().__init__(
+            **kwargs)
 
     def construct_detsigyield(
             self,
             *args,
-            **kwargs):
+            **kwargs,
+    ):
         """Since this is a dummy detector signal yield builder, calling this
         method will raise a NotImplementedError!
         """
