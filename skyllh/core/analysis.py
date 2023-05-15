@@ -53,6 +53,7 @@ from skyllh.core.random import (
 )
 from skyllh.core.services import (
     DetSigYieldService,
+    SrcDetSigYieldWeightsService,
 )
 from skyllh.core.signal_generator import (
     SignalGenerator,
@@ -75,7 +76,6 @@ from skyllh.core.trialdata import (
 )
 from skyllh.core.weights import (
     DatasetSignalWeightFactorsService,
-    SrcDetSigYieldWeightsService,
 )
 
 
@@ -405,8 +405,7 @@ class Analysis(
         )
 
         self.src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=self._shg_mgr,
-            detsigyields=self.detsigyield_service.arr,
+            detsigyield_service=self.detsigyield_service,
         )
 
         self.ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(

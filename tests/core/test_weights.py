@@ -5,6 +5,9 @@
 
 import numpy as np
 import unittest
+from unittest.mock import (
+    Mock,
+)
 
 from skyllh.core.detsigyield import (
     DetSigYield,
@@ -14,13 +17,16 @@ from skyllh.core.parameters import (
     Parameter,
     ParameterModelMapper,
 )
+from skyllh.core.services import (
+    DetSigYieldService,
+    SrcDetSigYieldWeightsService,
+)
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroup,
     SourceHypoGroupManager,
 )
 from skyllh.core.weights import (
     DatasetSignalWeightFactorsService,
-    SrcDetSigYieldWeightsService,
 )
 from skyllh.physics.flux_model import (
     SteadyPointlikeFFM,
@@ -32,7 +38,8 @@ from skyllh.physics.source_model import (
 
 # Define a DetSigYield class that is a simple function of the source declination
 # position.
-class SimpleDetSigYieldWithoutGrads(DetSigYield):
+class SimpleDetSigYieldWithoutGrads(
+        DetSigYield):
     def __init__(self, scale=1, **kwargs):
         self._scale = scale
 
@@ -79,7 +86,8 @@ class SimpleDetSigYieldWithoutGrads(DetSigYield):
         return (values, grads)
 
 
-class SimpleDetSigYieldWithGrads(SimpleDetSigYieldWithoutGrads):
+class SimpleDetSigYieldWithGrads(
+        SimpleDetSigYieldWithoutGrads):
     def __init__(self, pname, **kwargs):
         super().__init__(**kwargs)
 
@@ -153,7 +161,8 @@ class SimpleDetSigYieldWithGrads(SimpleDetSigYieldWithoutGrads):
 
 
 # Define placeholder class to satisfy type checks.
-class NoDetSigYieldBuilder(DetSigYieldBuilder):
+class NoDetSigYieldBuilder(
+        DetSigYieldBuilder):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -190,6 +199,27 @@ def create_shg_mgr_and_pmm():
     return (shg_mgr, pmm)
 
 
+def create_DetSigYieldService(shg_mgr, detsigyield_arr):
+    """Creates a Mock instance mimicing a DetSigYieldService instance with a
+    given detsigyield array.
+    """
+    detsigyield_service = Mock(spec_set=[
+        '__class__',
+        'arr',
+        'shg_mgr',
+        'n_datasets',
+        'n_shgs',
+    ])
+
+    detsigyield_service.__class__ = DetSigYieldService
+    detsigyield_service.arr = detsigyield_arr
+    detsigyield_service.shg_mgr = shg_mgr
+    detsigyield_service.n_datasets = detsigyield_arr.shape[0]
+    detsigyield_service.n_shgs = detsigyield_arr.shape[1]
+
+    return detsigyield_service
+
+
 class TestSourceDetectorWeights(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -201,15 +231,18 @@ class TestSourceDetectorWeights(unittest.TestCase):
         """Tests the __call__ method of the SourceDetectorWeights class
         using a DetSigYield instance without any gradients.
         """
-        # detsigyields is (N_datasets, N_shgs)-shaped.
-        detsigyields = [
+        # detsigyield_arr is (N_datasets, N_shgs)-shaped.
+        detsigyield_arr = np.array([
             [SimpleDetSigYieldWithoutGrads()],
             [SimpleDetSigYieldWithoutGrads()]
-        ]
+        ])
+
+        detsigyield_service = create_DetSigYieldService(
+            shg_mgr=type(self)._shg_mgr,
+            detsigyield_arr=detsigyield_arr)
 
         src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=type(self)._shg_mgr,
-            detsigyields=detsigyields)
+            detsigyield_service=detsigyield_service)
 
         gflp_values = np.array([120.0, 177.7])
         src_params_recarray = type(self)._pmm.create_src_params_recarray(
@@ -245,15 +278,18 @@ class TestSourceDetectorWeights(unittest.TestCase):
         """Tests the __call__ method of the SourceDetectorWeights class
         using a DetSigYield instance with gradients for the parameter p1.
         """
-        # detsigyields is (N_datasets, N_shgs)-shaped.
-        detsigyields = [
+        # detsigyield_arr is (N_datasets, N_shgs)-shaped.
+        detsigyield_arr = np.array([
             [SimpleDetSigYieldWithGrads(pname='p1')],
             [SimpleDetSigYieldWithGrads(pname='p1')]
-        ]
+        ])
+
+        detsigyield_service = create_DetSigYieldService(
+            shg_mgr=type(self)._shg_mgr,
+            detsigyield_arr=detsigyield_arr)
 
         src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=type(self)._shg_mgr,
-            detsigyields=detsigyields)
+            detsigyield_service=detsigyield_service)
 
         gflp_values = np.array([120.0, 177.7])
         src_params_recarray = type(self)._pmm.create_src_params_recarray(
@@ -301,15 +337,18 @@ class TestSourceDetectorWeights(unittest.TestCase):
         """Tests the __call__ method of the SourceDetectorWeights class
         using a DetSigYield instance with gradients for the parameter p2.
         """
-        # detsigyields is (N_datasets, N_shgs)-shaped.
-        detsigyields = [
+        # detsigyield_arr is (N_datasets, N_shgs)-shaped.
+        detsigyield_arr = np.array([
             [SimpleDetSigYieldWithGrads(pname='p2')],
             [SimpleDetSigYieldWithGrads(pname='p2')]
-        ]
+        ])
+
+        detsigyield_service = create_DetSigYieldService(
+            shg_mgr=type(self)._shg_mgr,
+            detsigyield_arr=detsigyield_arr)
 
         src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=type(self)._shg_mgr,
-            detsigyields=detsigyields)
+            detsigyield_service=detsigyield_service)
 
         gflp_values = np.array([120., 177.])
         src_params_recarray = type(self)._pmm.create_src_params_recarray(
@@ -365,15 +404,18 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
         """Tests the __call__ method of the DatasetSignalWeightFactors class
         using a DetSigYield instance without any gradients.
         """
-        # detsigyields is (N_datasets, N_shgs)-shaped.
-        detsigyields = [
+        # detsigyield_arr is (N_datasets, N_shgs)-shaped.
+        detsigyield_arr = np.array([
             [SimpleDetSigYieldWithoutGrads(scale=1)],
             [SimpleDetSigYieldWithoutGrads(scale=2)]
-        ]
+        ])
+
+        detsigyield_service = create_DetSigYieldService(
+            shg_mgr=type(self)._shg_mgr,
+            detsigyield_arr=detsigyield_arr)
 
         src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=type(self)._shg_mgr,
-            detsigyields=detsigyields)
+            detsigyield_service=detsigyield_service)
 
         ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
             src_detsigyield_weights_service=src_detsigyield_weights_service)
@@ -410,15 +452,18 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
         """Tests the __call__ method of the DatasetSignalWeightFactors class
         using a DetSigYield instance with gradients for the parameter p1.
         """
-        # detsigyields is (N_datasets, N_shgs)-shaped.
-        detsigyields = [
+        # detsigyield_arr is (N_datasets, N_shgs)-shaped.
+        detsigyield_arr = np.array([
             [SimpleDetSigYieldWithGrads(pname='p1', scale=1)],
             [SimpleDetSigYieldWithGrads(pname='p1', scale=2)]
-        ]
+        ])
+
+        detsigyield_service = create_DetSigYieldService(
+            shg_mgr=type(self)._shg_mgr,
+            detsigyield_arr=detsigyield_arr)
 
         src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=type(self)._shg_mgr,
-            detsigyields=detsigyields)
+            detsigyield_service=detsigyield_service)
 
         ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
             src_detsigyield_weights_service=src_detsigyield_weights_service)
@@ -464,15 +509,18 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
         """Tests the __call__ method of the DatasetSignalWeightFactors class
         using a DetSigYield instance with gradients for the parameter p2.
         """
-        # detsigyields is (N_datasets, N_shgs)-shaped.
-        detsigyields = [
+        # detsigyield_arr is (N_datasets, N_shgs)-shaped.
+        detsigyield_arr = np.array([
             [SimpleDetSigYieldWithGrads(pname='p2', scale=1)],
             [SimpleDetSigYieldWithGrads(pname='p2', scale=2)]
-        ]
+        ])
+
+        detsigyield_service = create_DetSigYieldService(
+            shg_mgr=type(self)._shg_mgr,
+            detsigyield_arr=detsigyield_arr)
 
         src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-            shg_mgr=type(self)._shg_mgr,
-            detsigyields=detsigyields)
+            detsigyield_service=detsigyield_service)
 
         ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
             src_detsigyield_weights_service=src_detsigyield_weights_service)
