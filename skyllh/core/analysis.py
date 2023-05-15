@@ -44,15 +44,15 @@ from skyllh.core.pdfratio import (
     PDFRatio,
     SourceWeightedPDFRatio,
 )
-from skyllh.core.progressbar import (
-    ProgressBar,
-)
 from skyllh.core.py import (
     classname,
     issequenceof,
 )
 from skyllh.core.random import (
     RandomStateService,
+)
+from skyllh.core.services import (
+    DetSigYieldService,
 )
 from skyllh.core.signal_generator import (
     SignalGenerator,
@@ -144,6 +144,7 @@ class Analysis(
         self._tdm_list = []
         self._event_selection_method_list = []
 
+        self._detsigyield_service = None
         self._src_detsigyield_weights_service = None
         self._ds_sig_weight_factors_service = None
 
@@ -282,6 +283,20 @@ class Analysis(
         return self._bkg_generator
 
     @property
+    def detsigyield_service(self):
+        """The instance of DetSigYieldService for the analysis.
+        """
+        return self._detsigyield_service
+
+    @detsigyield_service.setter
+    def detsigyield_service(self, service):
+        if not isinstance(service, DetSigYieldService):
+            raise TypeError(
+                'The detsigyield_service property must be an instance of '
+                'DetSigYieldService! '
+                f'Its current type is {classname(service)}!')
+
+    @property
     def src_detsigyield_weights_service(self):
         """The instance of SrcDetSigYieldWeightsService for the analysis.
         """
@@ -292,7 +307,8 @@ class Analysis(
         if not isinstance(service, SrcDetSigYieldWeightsService):
             raise TypeError(
                 'The src_detsigyield_weights_service property must be an '
-                'instance of SrcDetSigYieldWeightsService!')
+                'instance of SrcDetSigYieldWeightsService! '
+                f'Its current type is {classname(service)}!')
         self._src_detsigyield_weights_service = service
 
     @property
@@ -306,7 +322,8 @@ class Analysis(
         if not isinstance(service, DatasetSignalWeightFactorsService):
             raise TypeError(
                 'The ds_sig_weight_factors_service property must be an '
-                'instance of DatasetSignalWeightFactorsService!')
+                'instance of DatasetSignalWeightFactorsService! '
+                f'Its current type is {classname(service)}!')
         self._ds_sig_weight_factors_service = service
 
     @property
@@ -366,73 +383,12 @@ class Analysis(
             livetime += data.livetime
         return livetime
 
-    def construct_detsigyield_arr(
-            self,
-            ppbar=None):
-        """Creates a (N_datasets,N_source_hypo_groups)-shaped numpy ndarray of
-        object holding the constructed DetSigYield instances of the analysis.
-
-        Parameters
-        ----------
-        ppbar : instance of ProgressBar | None
-            The instance of ProgressBar of the optional parent progress bar.
-
-        Returns
-        -------
-        detsigyield_arr : instance of numpy ndarray
-            The (N_datasets,N_source_hypo_groups)-shaped numpy ndarray of
-            object holding the constructed DetSigYield instances of the
-            analysis.
-        """
-        n_datasets = len(self._dataset_list)
-
-        detsigyield_arr = np.empty(
-            (n_datasets,
-             self._shg_mgr.n_src_hypo_groups),
-            dtype=object
-        )
-
-        pbar = ProgressBar(
-            self._shg_mgr.n_src_hypo_groups * n_datasets,
-            parent=ppbar).start()
-        for (g, shg) in enumerate(self._shg_mgr.shg_list):
-            fluxmodel = shg.fluxmodel
-            detsigyield_builder_list = shg.detsigyield_builder_list
-
-            if (len(detsigyield_builder_list) != 1) and\
-               (len(detsigyield_builder_list) != n_datasets):
-                raise ValueError(
-                    'The number of detector signal yield builders is not 1 and '
-                    'does not match the number of used datasets in the '
-                    'analysis!')
-
-            for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
-                                                      self.data_list)):
-                if len(detsigyield_builder_list) == 1:
-                    # Only one detsigyield builder was defined,
-                    # so we use it for all datasets.
-                    detsigyield_builder = detsigyield_builder_list[0]
-                else:
-                    detsigyield_builder = detsigyield_builder_list[j]
-
-                detsigyield = detsigyield_builder.construct_detsigyield(
-                    dataset=dataset,
-                    data=data,
-                    fluxmodel=fluxmodel,
-                    livetime=data.livetime,
-                    ppbar=pbar)
-                detsigyield_arr[j, g] = detsigyield
-
-                pbar.increment()
-        pbar.finish()
-
-        return detsigyield_arr
-
     def construct_services(
             self,
             ppbar=None):
         """Constructs the following services:
 
+            - detector signal yield service
             - source detector signal yield weights service
             - dataset signal weight factors service
 
@@ -441,11 +397,16 @@ class Analysis(
         ppbar : instance of ProgressBar | None
             The instance of ProgressBar of the optional parent progress bar.
         """
-        detsigyield_arr = self.construct_detsigyield_arr(ppbar=ppbar)
+        self.detsigyield_service = DetSigYieldService(
+            shg_mgr=self._shg_mgr,
+            dataset_list=self._dataset_list,
+            data_list=self._data_list,
+            ppbar=ppbar,
+        )
 
         self.src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
             shg_mgr=self._shg_mgr,
-            detsigyields=detsigyield_arr,
+            detsigyields=self.detsigyield_service.arr,
         )
 
         self.ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(

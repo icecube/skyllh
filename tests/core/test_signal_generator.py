@@ -3,16 +3,22 @@
 import numpy as np
 import unittest
 
-
 from skyllh.core.parameters import (
     ParameterGrid,
 )
+from skyllh.core.services import (
+    DetSigYieldService,
+)
 from skyllh.core.signal_generator import (
-    SignalGenerator,
+    MCMultiDatasetSignalGenerator,
 )
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroup,
     SourceHypoGroupManager,
+)
+from skyllh.core.weights import (
+    DatasetSignalWeightFactorsService,
+    SrcDetSigYieldWeightsService,
 )
 from skyllh.i3.detsigyield import (
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
@@ -32,17 +38,24 @@ DATA_SAMPLES_IMPORTED = True
 try:
     from i3skyllh.datasets import repository
     from i3skyllh.datasets import data_samples
-except:
+except Exception:
     DATA_SAMPLES_IMPORTED = False
 
-def create_signal_generator(sig_generator_cls, sig_gen_method):
+if DATA_SAMPLES_IMPORTED is True:
+    repository.setup_repository()
+
+
+def create_signal_generator(
+        sig_generator_cls,
+        sig_gen_method,
+):
     """Creates a SignalGenerator instance of the given class
     ``sig_generator_cls`` using the signal generation method instance
     ``sig_gen_method``.
 
     Parameters
     ----------
-    sig_generator_cls : class of SignalGeneratorBase
+    sig_generator_cls : class of SignalGenerator
         The class object of the signal generator.
     sig_gen_method : instance of SignalGenerationMethod
         The SignalGenerationMethod instance that should be used for the
@@ -52,7 +65,7 @@ def create_signal_generator(sig_generator_cls, sig_gen_method):
     -------
     sig_gen : instance of ``sig_generator_cls``
         The created instance of ``sig_generator_cls`` which is derived from
-        SignalGeneratorBase.
+        SignalGenerator.
     """
     dataset_name = 'PointSourceTracks_v004p00'
     dsc = data_samples[dataset_name].create_dataset_collection()
@@ -81,10 +94,27 @@ def create_signal_generator(sig_generator_cls, sig_gen_method):
             detsigyield_builders=detsigyield_builder,
             sig_gen_method=sig_gen_method))
 
+    detsigyield_service = DetSigYieldService(
+        shg_mgr=shg_mgr,
+        dataset_list=ds_list,
+        data_list=data_list,
+    )
+
+    src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
+        shg_mgr=shg_mgr,
+        detsigyields=detsigyield_service.arr,
+    )
+
+    ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
+        src_detsigyield_weights_service=src_detsigyield_weights_service,
+    )
+
     sig_gen = sig_generator_cls(
         shg_mgr=shg_mgr,
         dataset_list=ds_list,
-        data_list=data_list)
+        data_list=data_list,
+        ds_sig_weight_factors_service=ds_sig_weight_factors_service,
+    )
 
     return sig_gen
 
@@ -98,7 +128,7 @@ class TestSignalGenerator(unittest.TestCase):
             return
 
         cls._sig_gen = create_signal_generator(
-            sig_generator_cls=SignalGenerator,
+            sig_generator_cls=MCMultiDatasetSignalGenerator,
             sig_gen_method=PointLikeSourceI3SignalGenerationMethod())
 
     @unittest.skipIf(not DATA_SAMPLES_IMPORTED, 'Data samples not imported!')
@@ -155,7 +185,7 @@ class TestSignalGenerator(unittest.TestCase):
             'shg_src_idxs shape'
         )
         self.assertTrue(
-            np.all(np.equal(shg_src_idxs, np.array([0,1]))),
+            np.all(np.equal(shg_src_idxs, np.array([0, 1]))),
             'shg_idx values'
         )
 
@@ -168,5 +198,5 @@ class TestSignalGenerator(unittest.TestCase):
         )
 
 
-if(__name__ == '__main__'):
+if __name__ == '__main__':
     unittest.main()
