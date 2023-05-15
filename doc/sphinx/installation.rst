@@ -40,19 +40,20 @@ Using pip
 The latest `skyllh` release can be installed from `PyPI <https://pypi.org/project/skyllh/>`_ repository:
 
 .. code:: bash
+
     pip install skyllh
 
 The current development version can be installed using pip:
 
 .. code:: bash
 
-    pip install git+https://github.com/icecube/skyllh.git#egg=skyllh 
+    pip install git+https://github.com/icecube/skyllh.git#egg=skyllh
 
 Optionally, the editable package version with a specified reference can be installed by:
 
 .. code:: bash
 
-    pip install -e git+https://github.com/icecube/skyllh.git@[ref]#egg=skyllh 
+    pip install -e git+https://github.com/icecube/skyllh.git@[ref]#egg=skyllh
 
 where
 
