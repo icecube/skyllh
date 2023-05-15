@@ -22,11 +22,11 @@ from skyllh.core.pdf import (
     IsBackgroundPDF,
     IsSignalPDF,
 )
+from skyllh.core.services import (
+    SrcDetSigYieldWeightsService,
+)
 from skyllh.core.timing import (
     TaskTimer,
-)
-from skyllh.core.weights import (
-    SrcDetSigYieldWeightsService,
 )
 
 

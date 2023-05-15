@@ -18,6 +18,7 @@ from skyllh.core.parameters import (
     ParameterModelMapper,
 )
 from skyllh.core.services import (
+    DatasetSignalWeightFactorsService,
     DetSigYieldService,
     SrcDetSigYieldWeightsService,
 )
@@ -25,9 +26,7 @@ from skyllh.core.source_hypo_grouping import (
     SourceHypoGroup,
     SourceHypoGroupManager,
 )
-from skyllh.core.weights import (
-    DatasetSignalWeightFactorsService,
-)
+
 from skyllh.physics.flux_model import (
     SteadyPointlikeFFM,
 )

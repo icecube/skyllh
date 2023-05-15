@@ -15,14 +15,14 @@ from skyllh.core.py import (
     int_cast,
     get_smallest_numpy_int_type,
 )
+from skyllh.core.services import (
+    DatasetSignalWeightFactorsService,
+)
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
 from skyllh.core.storage import (
     DataFieldRecordArray,
-)
-from skyllh.core.weights import (
-    DatasetSignalWeightFactorsService,
 )
 
 

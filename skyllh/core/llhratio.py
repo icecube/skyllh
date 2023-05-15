@@ -36,12 +36,12 @@ from skyllh.core.parameters import (
 from skyllh.core.pdfratio import (
     PDFRatio,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
-from skyllh.core.weights import (
+from skyllh.core.services import (
     DatasetSignalWeightFactorsService,
     SrcDetSigYieldWeightsService,
+)
+from skyllh.core.timing import (
+    TaskTimer,
 )
 
 

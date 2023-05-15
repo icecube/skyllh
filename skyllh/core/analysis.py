@@ -52,6 +52,7 @@ from skyllh.core.random import (
     RandomStateService,
 )
 from skyllh.core.services import (
+    DatasetSignalWeightFactorsService,
     DetSigYieldService,
     SrcDetSigYieldWeightsService,
 )
@@ -73,9 +74,6 @@ from skyllh.core.timing import (
 )
 from skyllh.core.trialdata import (
     TrialDataManager,
-)
-from skyllh.core.weights import (
-    DatasetSignalWeightFactorsService,
 )
 
 
