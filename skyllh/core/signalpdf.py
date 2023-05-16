@@ -350,7 +350,8 @@ class RayleighPSFPointSourceSignalSpatialPDF(
 
 class SignalTimePDF(
         TimePDF,
-        IsSignalPDF):
+        IsSignalPDF,
+):
     """This class provides a signal time PDF class. It consists of
     a :class:`~skyllh.core.livetime.Livetime` instance and a
     :class:`~skyllh.physics.flux_model.TimeFluxProfile` instance. Together they
@@ -360,18 +361,15 @@ class SignalTimePDF(
 
     def __init__(
             self,
-            pmm,
             livetime,
             time_flux_profile,
-            **kwargs):
+            **kwargs
+    ):
         """Creates a new signal time PDF instance for a given time flux profile
         and detector live time.
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the mapping of the
-            global parameters to the local source parameters.
         livetime : instance of Livetime
             An instance of Livetime, which provides the detector live-time
             information.
@@ -379,44 +377,42 @@ class SignalTimePDF(
             The signal's time flux profile.
         """
         super().__init__(
-            pmm=pmm,
             livetime=livetime,
             time_flux_profile=time_flux_profile,
             **kwargs)
 
-    def get_pd(
+        self._pd = None
+
+    def _calc_pd_values(
             self,
             tdm,
             src_params_recarray,
-            tl=None):
-        """Calculates the signal time probability density of each event for the
-        given set of time parameter values for each source.
+            tl=None,
+    ):
+        """Calculates the probability density values for the given trial data
+        and source parameters.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
-            The instance of TrialDataManager holding the trial event data for
-            which to calculate the PDF value. The following data fields must
-            exist:
+            The instance of TrialDataManager holding the trial data.
+            The following data fields must exist:
 
             ``'time'`` : float
-                The MJD time of the event.
+                The time of the event.
 
-        src_params_recarray : instance of numpy structured ndarray
-            The numpy structured ndarray holding the local parameter values for
-            each source.
+        src_params_recarray : instance of structured ndarray
+            The structured numpy ndarray of length N_sources holding the local
+            parameter names and values of the sources.
         tl : instance of TimeLord | None
-            The optional TimeLord instance that should be used to measure
+            The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
-            The (N_values,)-shaped 1D numpy ndarray holding the probability
-            density value for each trial event and source.
-        grads : dict
-            The dictionary holding the gradients of the probability density
-            w.r.t. each global fit parameter.
+        pd : instance of ndarray
+            The (N_values,)-shaped numpy ndarray holding the probability density
+            values for each trial data event and source.
         """
         (src_idxs, evt_idxs) = tdm.src_evt_idxs
         n_values = len(evt_idxs)
@@ -450,6 +446,85 @@ class SignalTimePDF(
                 self._time_flux_profile(t=times[on]) / self._S
             )
             pd[src_m] = pd_src
+
+        return pd
+
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs,
+    ):
+        # Check if this time PDF is not constant and does depend on any global
+        # floating parameters. If that's not the case we can pre-calculate the
+        # PDF values.
+        is_constant = (
+            (self.param_set is None) or
+            (len(self.param_set.params_name_list) == 0) or
+            ((self.pmm is not None) and
+             np.all(~self.pmm.get_local_param_is_global_floating_param_mask(
+                 self.param_set.params_name_list)))
+        )
+        if not is_constant:
+            self._pd = None
+            return
+
+        # At this point it has been checked that the PDF is constant and we can
+        # pre-calculate the PDF values.
+
+        if self.pmm is None:
+            src_params_recarray = np.empty((tdm.n_sources,), dtype=[])
+        else:
+            src_params_recarray = self.pmm.create_src_params_recarray()
+
+        self._pd = self._calc_pd_values(
+            tdm=tdm,
+            src_params_recarray=src_params_recarray,
+            tl=tl)
+
+    def get_pd(
+            self,
+            tdm,
+            src_params_recarray,
+            tl=None,
+    ):
+        """Calculates the signal time probability density of each event for the
+        given set of time parameter values for each source.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial event data for
+            which to calculate the PDF value. The following data fields must
+            exist:
+
+            ``'time'`` : float
+                The MJD time of the event.
+
+        src_params_recarray : instance of numpy structured ndarray
+            The numpy structured ndarray holding the local parameter values for
+            each source.
+        tl : instance of TimeLord | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        pd : instance of numpy ndarray
+            The (N_values,)-shaped 1D numpy ndarray holding the probability
+            density value for each trial event and source.
+        grads : dict
+            The dictionary holding the gradients of the probability density
+            w.r.t. each global fit parameter.
+        """
+        # Check if we have pre-calculated PDF values.
+        if self._pd is not None:
+            return (self._pd, dict())
+
+        pd = self._calc_pd_values(
+            tdm=tdm,
+            src_params_recarray=src_params_recarray,
+            tl=tl)
 
         return (pd, dict())
 
