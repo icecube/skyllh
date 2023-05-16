@@ -1877,7 +1877,7 @@ class ParameterModelMapper(
 
     def create_src_params_recarray(
             self,
-            gflp_values,
+            gflp_values=None,
             sources=None):
         """Creates a numpy record ndarray with a field for each local source
         parameter name and parameter's value. In addition each parameter field
@@ -1886,15 +1886,17 @@ class ParameterModelMapper(
         For values mapping to fixed parameters, the index is negative. Local
         parameter values that do not apply to a particular source are set to
         NaN. The parameter index in such cases is undefined.
-        In addition to the parameter fields, the field ``model_idx`` holds the
+        In addition to the parameter fields, the field ``:model_idx`` holds the
         index of the model for which the local parameter values apply.
 
         Parameters
         ----------
-        gflp_values : numpy ndarray
-            The (N_floating_param,)-shaped 1D ndarray holding the global
+        gflp_values : numpy ndarray | None
+            The (N_global_floating_param,)-shaped 1D ndarray holding the global
             floating parameter values. The order must match the order of
             parameter definition in this ParameterModelMapper instance.
+            If set to ``None``, the value ``numpy.nan`` will be used as
+            parameter value for floating parameters.
         sources : SourceModel | sequence of SourceModel | ndarray of int32 | None
             The sources which should be considered.
             If a ndarray of type int is provides, it must contain the global
@@ -1903,12 +1905,12 @@ class ParameterModelMapper(
 
         Returns
         -------
-        recarray : numpy record ndarray
-            The (N_sources,)-shaped numpy record ndarray holding the local
+        recarray : numpy structured ndarray
+            The (N_sources,)-shaped numpy structured ndarray holding the local
             parameter names and their values for each requested source.
             It contains the following fields:
 
-                model_idx
+                :model_idx
                     The field holding the index of the model to which the set
                     of local parameters apply.
                 <name>
@@ -1920,6 +1922,9 @@ class ParameterModelMapper(
                     the local parameter <name>. Example: "gamma:gpidx". Indices
                     for values mapping to fixed parameters are negative.
         """
+        if gflp_values is None:
+            gflp_values = np.full((self.n_global_floating_params,), np.nan)
+
         gflp_values = np.atleast_1d(gflp_values)
 
         # Check input.
@@ -1939,7 +1944,7 @@ class ParameterModelMapper(
             smidxs = self.get_src_model_idxs(sources=sources)
 
         # Create the output record array with nan as default value.
-        dtype = [('model_idx', np.int32)]
+        dtype = [(':model_idx', np.int32)]
         for name in self.unique_source_param_names:
             dtype += [(name, np.float64), (f'{name}:gpidx', np.int32)]
 
@@ -1949,7 +1954,7 @@ class ParameterModelMapper(
         for name in self.unique_source_param_names:
             recarray[name] = np.nan
 
-        recarray['model_idx'] = smidxs
+        recarray[':model_idx'] = smidxs
 
         # Loop over the requested sources.
         _model_param_names = self._model_param_names
