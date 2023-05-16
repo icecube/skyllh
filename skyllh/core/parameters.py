@@ -2062,11 +2062,9 @@ class ParameterModelMapper(
 
         # Get the global parameter indices for each local parameter name.
         for (local_param_idx, local_param_name) in enumerate(local_param_names):
-            gpidxs = [
-                gpidx
-                for gpidx in range(self._model_param_names.shape[1])
-                if np.any(self._model_param_names[:, gpidx] == local_param_name)
-            ]
+            gpidxs = np.unique(
+                np.nonzero(self._model_param_names == local_param_name)[1]
+            )
             if np.any(np.isin(gpidxs, global_floating_params_idxs)):
                 mask[local_param_idx] = True
 
