@@ -293,7 +293,7 @@ class PDF(
 
     def __init__(
             self,
-            pmm,
+            pmm=None,
             param_set=None,
             **kwargs):
         """Creates a new PDF instance.
@@ -465,8 +465,8 @@ class PDF(
             source value. For values mapping to non-fit parameters, the index
             should be negative.
             This can be ``Ǹone`` for PDFs that do not depend on any parameters.
-        tl : TimeLord instance | None
-            The optional TimeLord instance that should be used to measure
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
@@ -808,26 +808,25 @@ class TimePDF(
 
     def __init__(
             self,
-            pmm,
             livetime,
             time_flux_profile,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new time PDF instance for a given time flux profile and
         detector live time.
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper defining the mapping of the
-            global parameters to local model parameters.
         livetime : instance of Livetime
             An instance of Livetime, which provides the detector live-time
             information.
         time_profile : instance of TimeFluxProfile
             The signal's time flux profile.
+        **kwargs
+            Additional keyword arguments are passed to the constructor of the
+            base class, :class:`~skyllh.core.pdf.PDF`.
         """
         super().__init__(
-            pmm=pmm,
             **kwargs)
 
         self.livetime = livetime
@@ -840,11 +839,10 @@ class TimePDF(
                 vmin=self._livetime.time_window[0],
                 vmax=self._livetime.time_window[1]))
 
-        # Get the total integral, I, of the time flux profile and the sum, S, of
-        # the integrals for each detector on-time interval during the time flux
-        # profile, in order to be able to rescale the time flux profile to unity
-        # with overlapping detector off-times removed.
-        (self._I, self._S) = self._calculate_time_flux_profile_integrals()
+        # Get sum, S, of the integrals for each detector on-time interval during
+        # the time flux profile, in order to be able to rescale the time flux
+        # profile to unity with overlapping detector off-times removed.
+        self._S = self._calculate_sum_of_ontime_time_flux_profile_integrals()
 
     @property
     def livetime(self):
@@ -890,15 +888,12 @@ class TimePDF(
 
         return s
 
-    def _calculate_time_flux_profile_integrals(self):
-        """Calculates the total integral of the time flux profile and the
-        sum, S, of the time flux profile integrals during the detector on-time
-        intervals.
+    def _calculate_sum_of_ontime_time_flux_profile_integrals(self):
+        """Calculates the sum, S, of the time flux profile integrals during the
+        detector on-time intervals.
 
         Returns
         -------
-        total_integral : float
-            The total integral of the time flux profile.
         S : float
             The sum of the time flux profile integrals during the detector
             on-time intervals.
@@ -907,14 +902,12 @@ class TimePDF(
             self._time_flux_profile.t_start,
             self._time_flux_profile.t_stop)
 
-        total_integral = self._time_flux_profile.get_total_integral()
-
         S = np.sum(
             self._time_flux_profile.get_integral(
                 uptime_intervals[:, 0],
                 uptime_intervals[:, 1]))
 
-        return (total_integral, S)
+        return S
 
     def assert_is_valid_for_trial_data(
             self,
