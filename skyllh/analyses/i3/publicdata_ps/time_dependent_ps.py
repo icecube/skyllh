@@ -77,9 +77,8 @@ from skyllh.core.signal_generator import (
     MultiDatasetSignalGenerator,
 )
 from skyllh.core.signalpdf import (
-    FixedBoxSignalTimePDF,
-    FixedGaussianSignalTimePDF,
     RayleighPSFPointSourceSignalSpatialPDF,
+    SignalTimePDF,
 )
 from skyllh.core.smoothing import (
     BlockSmoothingFilter,
@@ -150,7 +149,7 @@ def create_signal_time_pdf(
     gauss : dict | None
         None or dictionary with {"mu": float, "sigma": float}.
     box : dict | None
-        None or dictionary with {"start": float, "end": float}.
+        None or dictionary with {"start": float, "stop": float}.
 
     Returns
     -------
@@ -161,16 +160,22 @@ def create_signal_time_pdf(
         raise TypeError(
             'Either gauss or box have to be specified as time pdf.')
 
+    livetime = I3Livetime.from_grl_data(
+        grl_data=grl)
+
     if gauss is not None:
-        pdf = FixedGaussianSignalTimePDF(
-            grl=grl,
-            mu=gauss['mu'],
-            sigma=gauss['sigma'])
+        time_flux_profile = GaussianTimeFluxProfile(
+            t0=gauss['mu'],
+            sigma_t=gauss['sigma'])
     elif box is not None:
-        pdf = FixedBoxSignalTimePDF(
-            grl=grl,
+        time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(
             start=box['start'],
-            end=box['end'])
+            stop=box['stop'])
+
+    pdf = SignalTimePDF(
+        livetime=livetime,
+        time_flux_profile=time_flux_profile,
+    )
 
     return pdf
 
@@ -187,7 +192,7 @@ def change_signal_time_pdf_of_llhratio_function(
     gauss : dict | None
         None or dictionary with {"mu": float, "sigma": float}.
     box : dict | None
-        None or dictionary with {"start": float, "end": float}.
+        None or dictionary with {"start": float, "stop": float}.
     """
     grl = ana.data_list[0].grl
 
@@ -713,16 +718,10 @@ def create_analysis(  # noqa: C901
                 time_flux_profile=BoxTimeFluxProfile.from_start_and_stop_time(
                     start=livetime.time_start,
                     stop=livetime.time_stop))
-            if gauss is not None:
-                time_sigpdf = FixedGaussianSignalTimePDF(
-                    grl=data.grl,
-                    mu=gauss['mu'],
-                    sigma=gauss['sigma'])
-            elif box is not None:
-                time_sigpdf = FixedBoxSignalTimePDF(
-                    grl=data.grl,
-                    start=box['start'],
-                    stop=box['stop'])
+            time_sigpdf = create_signal_time_pdf(
+                grl=data.grl,
+                gauss=gauss,
+                box=box)
             time_pdfratio = SigOverBkgPDFRatio(
                 sig_pdf=time_sigpdf,
                 bkg_pdf=time_bkgpdf,
