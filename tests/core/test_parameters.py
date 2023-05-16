@@ -612,6 +612,14 @@ class ParameterModelMapperTestCase(unittest.TestCase):
         self.assertAlmostEqual(m1_param_dict['p2'], 11.1)
         self.assertAlmostEqual(m1_param_dict['p0'], 42)
 
+    def test_get_local_param_is_global_floating_param_mask(self):
+        # Add some parameters to the model parameter mapper.
+        self.test_def_param()
+
+        mask = self.pmm.get_local_param_is_global_floating_param_mask(
+            ['p0', 'fp', 'p2'])
+        np.testing.assert_equal(mask, [False, True, True])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -2036,3 +2036,38 @@ class ParameterModelMapper(
             floating_param_values=gflp_values)
 
         return params_dict
+
+    def get_local_param_is_global_floating_param_mask(
+            self,
+            local_param_names,
+    ):
+        """Checks which local parameter name is mapped to a global floating
+        parameter.
+
+        Parameters
+        ----------
+        local_param_names : sequence of str
+            The sequence of the local parameter names to test.
+
+        Returns
+        -------
+        mask : instance of ndarray
+            The (N_local_param_names,)-shaped numpy ndarray holding the mask
+            for each local parameter name if it is mapped to a global floating
+            parameter.
+        """
+        mask = np.zeros(len(local_param_names), dtype=np.bool_)
+
+        global_floating_params_idxs = self._global_paramset.floating_params_idxs
+
+        # Get the global parameter indices for each local parameter name.
+        for (local_param_idx, local_param_name) in enumerate(local_param_names):
+            gpidxs = [
+                gpidx
+                for gpidx in range(self._model_param_names.shape[1])
+                if np.any(self._model_param_names[:, gpidx] == local_param_name)
+            ]
+            if np.any(np.isin(gpidxs, global_floating_params_idxs)):
+                mask[local_param_idx] = True
+
+        return mask
