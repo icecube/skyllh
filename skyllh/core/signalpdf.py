@@ -375,6 +375,12 @@ class SignalTimePDF(
             information.
         time_flux_profile : instance of TimeFluxProfile
             The signal's time flux profile.
+
+            .. note::
+
+                This instance of TimeFluxProfile will be altered by this PDF
+                class when calculating the probability density values!
+
         """
         super().__init__(
             livetime=livetime,
@@ -383,7 +389,7 @@ class SignalTimePDF(
 
         self._pd = None
 
-    def _calc_pd_values(
+    def _calculate_pd(
             self,
             tdm,
             src_params_recarray,
@@ -430,7 +436,7 @@ class SignalTimePDF(
             # performed.
             updated = self._time_flux_profile.set_params(params)
             if updated:
-                (self._I, self._S) = self._calculate_time_flux_profile_integrals()
+                self._S = self._calculate_sum_of_ontime_time_flux_profile_integrals()
 
             src_m = src_idxs == src_idx
             idxs = evt_idxs[src_m]
@@ -477,7 +483,7 @@ class SignalTimePDF(
         else:
             src_params_recarray = self.pmm.create_src_params_recarray()
 
-        self._pd = self._calc_pd_values(
+        self._pd = self._calculate_pd(
             tdm=tdm,
             src_params_recarray=src_params_recarray,
             tl=tl)
@@ -499,7 +505,7 @@ class SignalTimePDF(
             exist:
 
             ``'time'`` : float
-                The MJD time of the event.
+                The time of the event.
 
         src_params_recarray : instance of numpy structured ndarray
             The numpy structured ndarray holding the local parameter values for
@@ -521,7 +527,7 @@ class SignalTimePDF(
         if self._pd is not None:
             return (self._pd, dict())
 
-        pd = self._calc_pd_values(
+        pd = self._calculate_pd(
             tdm=tdm,
             src_params_recarray=src_params_recarray,
             tl=tl)
