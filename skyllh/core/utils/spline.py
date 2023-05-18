@@ -149,6 +149,8 @@ class CatmullRomRegular1DSpline(
 
             (t1, t2, t3, Px, Py) = self._segment_data[seg_idx]
 
+            # Note: This linear relation between x and t is the reason why the
+            # data point x values must be equal distant.
             t = (x[mask] - Px[1]) / (Px[2] - Px[1]) * (t2 - t1) + t1
             t = t.reshape(n_points, 1)
 
