@@ -389,7 +389,7 @@ class SignalTimePDF(
     def _calculate_pd(
             self,
             tdm,
-            src_params_recarray,
+            params_recarray,
             tl=None,
     ):
         """Calculates the probability density values for the given trial data
@@ -404,7 +404,7 @@ class SignalTimePDF(
             ``'time'`` : float
                 The time of the event.
 
-        src_params_recarray : instance of structured ndarray
+        params_recarray : instance of structured ndarray
             The structured numpy ndarray of length N_sources holding the local
             parameter names and values of the sources.
         tl : instance of TimeLord | None
@@ -423,9 +423,9 @@ class SignalTimePDF(
         pd = np.zeros((n_values,), dtype=np.float64)
 
         events_time = tdm.get_data('time')
-        for (src_idx, src_params_row) in enumerate(src_params_recarray):
+        for (src_idx, src_params_row) in enumerate(params_recarray):
             params = dict(zip(
-                src_params_recarray.dtype.fields.keys(),
+                params_recarray.dtype.fields.keys(),
                 src_params_row))
 
             # Update the time flux profile if its parameter values have changed
@@ -476,19 +476,19 @@ class SignalTimePDF(
         # pre-calculate the PDF values.
 
         if self.pmm is None:
-            src_params_recarray = np.empty((tdm.n_sources,), dtype=[])
+            params_recarray = np.empty((tdm.n_sources,), dtype=[])
         else:
-            src_params_recarray = self.pmm.create_src_params_recarray()
+            params_recarray = self.pmm.create_src_params_recarray()
 
         self._pd = self._calculate_pd(
             tdm=tdm,
-            src_params_recarray=src_params_recarray,
+            params_recarray=params_recarray,
             tl=tl)
 
     def get_pd(
             self,
             tdm,
-            src_params_recarray,
+            params_recarray,
             tl=None,
     ):
         """Calculates the signal time probability density of each event for the
@@ -504,7 +504,7 @@ class SignalTimePDF(
             ``'time'`` : float
                 The time of the event.
 
-        src_params_recarray : instance of numpy structured ndarray
+        params_recarray : instance of numpy structured ndarray
             The numpy structured ndarray holding the local parameter values for
             each source.
         tl : instance of TimeLord | None
@@ -526,7 +526,7 @@ class SignalTimePDF(
 
         pd = self._calculate_pd(
             tdm=tdm,
-            src_params_recarray=src_params_recarray,
+            src_params_recarray=params_recarray,
             tl=tl)
 
         return (pd, dict())
