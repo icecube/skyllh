@@ -860,7 +860,7 @@ if __name__ == '__main__':
             datasets=datasets,
             source=source,
             gamma_seed=args.gamma_seed,
-            gauss={'mu': 57000, 'sigma': 10},
+            gauss={'mu': 57000, 'sigma': 62},
             tl=tl)
 
     with tl.task_timer('Unblinding data.'):
