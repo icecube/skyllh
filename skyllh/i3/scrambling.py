@@ -107,7 +107,7 @@ class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
         run_idxs = rss.random.choice(
             self.grl['start'].size,
             size=len(data['time']),
-            p=self.weights)
+            p=self.run_weights)
 
         # Draw random times uniformely within the runs.
         times = rss.random.uniform(
