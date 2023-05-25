@@ -386,7 +386,8 @@ def run_gamma_scan_single_flare(
     time = ana._tdm_list[0].get_data('time')
 
     for (i, g) in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
-        ratio = get_energy_spatial_signal_over_background(ana, {"gamma": g})
+        fitparam_values = np.array([0, g], dtype=np.float64)
+        ratio = get_energy_spatial_signal_over_background(ana, fitparam_values)
         (mu, sigma, ns) = em_fit(
             time,
             ratio,
