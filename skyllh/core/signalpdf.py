@@ -526,7 +526,7 @@ class SignalTimePDF(
 
         pd = self._calculate_pd(
             tdm=tdm,
-            src_params_recarray=params_recarray,
+            params_recarray=params_recarray,
             tl=tl)
 
         return (pd, dict())
