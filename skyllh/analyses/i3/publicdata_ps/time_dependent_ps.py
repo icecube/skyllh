@@ -291,14 +291,16 @@ def calculate_TS(
         em_results,
         rss,
 ):
-    """Calculate the best TS value for the expectation maximization gamma scan.
+    """Calculate the best TS value from the expectation maximization gamma scan
+    results.
 
     Parameters
     ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The analysis that should be used.
-    em_results : 1d ndarray of tuples
-        Gamma scan result.
+    em_results : instance of structured ndarray
+        The numpy structured ndarray holding the EM results (from the gamma
+        scan).
     rss : instance of RandomStateService
         The instance of RandomStateService that should be used to generate
         random numbers from.
@@ -307,15 +309,14 @@ def calculate_TS(
     -------
     max_TS : float
         The maximal TS value of all maximized time hypotheses.
-    best_time : tuple
-        The tuple(gamma from em scan [float], best fit mean time [float],
-        best fit width [float]).
+    best_em_result : instance of numpy structured ndarray
+        The row of ``em_results`` that corresponds to the best fit.
     best_fitparam_values : instance of numpy ndarray
         The instance of numpy ndarray holding the fit parameter values of the
         overall best fit result.
     """
     max_TS = 0
-    best_time = None
+    best_em_result = None
     best_fitparam_values = None
     for em_result in em_results:
         change_signal_time_pdf_of_llhratio_function(
@@ -333,10 +334,10 @@ def calculate_TS(
 
         if TS > max_TS:
             max_TS = TS
-            best_time = em_result
+            best_em_result = em_result
             best_fitparam_values = fitparam_values
 
-    return (max_TS, best_time, best_fitparam_values)
+    return (max_TS, best_em_result, best_fitparam_values)
 
 
 def run_gamma_scan_single_flare(
@@ -346,7 +347,7 @@ def run_gamma_scan_single_flare(
         gamma_max=5,
         n_gamma=51,
 ):
-    """Run em for different gammas in the signal energy pdf
+    """Runs ``em_fit`` for different gamma values in the signal energy PDF.
 
     Parameters
     ----------
@@ -385,8 +386,8 @@ def run_gamma_scan_single_flare(
 
     time = ana._tdm_list[0].get_data('time')
 
-    for (i, g) in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
-        fitparam_values = np.array([0, g], dtype=np.float64)
+    for (i, gamma) in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
+        fitparam_values = np.array([0, gamma], dtype=np.float64)
         ratio = get_energy_spatial_signal_over_background(ana, fitparam_values)
         (mu, sigma, ns) = em_fit(
             time,
@@ -397,7 +398,7 @@ def run_gamma_scan_single_flare(
             weight_thresh=0,
             initial_width=5000,
             remove_x=remove_time)
-        results[i] = (g, mu[0], sigma[0], ns[0])
+        results[i] = (gamma, mu[0], sigma[0], ns[0])
 
     return results
 
@@ -431,6 +432,151 @@ def unblind_flare(
         remove_time=remove_time)
 
     return results
+
+
+def do_trials_with_em(
+        ana,
+        n_trials=1000,
+        mean_n_sig=0,
+        gamma_src=2,
+        gamma_min=1,
+        gamma_max=5,
+        n_gamma=21,
+        seed=1,
+        gauss=None,
+        box=None,
+):
+    """Performs ``n_trials`` trials using the expectation maximization
+    algorithm. For each trial it runs a gamma scan and does the EM for each
+    gamma value.
+
+    Parameters
+    ----------
+    n_trials : int
+        The number of trials to generate.
+    mean_n_sig : float
+        The mean number of signal events that should be generated.
+    gamma_src : float
+        The spectral index of the source.
+    gamma_min : float
+        Lower bound of the gamma scan.
+    gamma_max : float
+        Upper bound of the gamma scan.
+    n_gamma : int
+        Number of steps of the gamma scan.
+    seed : int
+        The seed for the random number generator.
+    gauss : dict | None
+        Properties of the Gaussian time PDF.
+        None or dictionary with {"mu": float, "sigma": float}.
+    box : dict | None
+        Properties of the box time PDF.
+        None or dictionary with {"start": float, "stop": float}.
+
+    Returns
+    -------
+    trials : instance of numpy structured ndarray
+        The numpy structured ndarray of length ``n_trials`` with the results for
+        each trial. The array has the following fields:
+
+        seed : numpy.int64
+            The seed value used to generate the trial.
+        mean_n_sig : numpy.float64
+            The mean number of signal events of the trial.
+        n_sig : numpy.int64
+            The actual number of signal events in the trial.
+        gamma_src : numpy.float64
+            The spectral index of the source.
+        mu_sig : numpy.float64
+            The mean value of the Gaussian time PDF of the source.
+        sigma_sig : numpy.float64
+            The sigma value of the Gaussian time PDF of the source.
+        start_sig : numpy.float64
+            The start time of the box time PDF of the source.
+        stop_sig : numpy.float64
+            The stop time of the box time PDF of the source.
+        ts : numpy.float64
+            The test-statistic value of the trial.
+        ns_fit : numpy.float64
+            The fitted number of signal events.
+        ns_em : numpy.float64
+            The scaling factor of the flare.
+        gamma_fit : numpy.float64
+            The fitted spectial index of the trial.
+        gamma_em : numpy.float64
+            The spectral index of the best EM trial.
+        mu_fit : numpy.float64
+            The fitted mean value of the Gaussian time PDF.
+        sigma_fit : numpy.float64
+            The fitted sigma value of the Gaussian time PDF.
+    """
+    trials_dt = [
+        ('seed', np.int64),
+        ('mean_n_sig', np.float64),
+        ('n_sig', np.int64),
+        ('gamma_src', np.float64),
+        ('mu_sig', np.float64),
+        ('sigma_sig', np.float64),
+        ('start_sig', np.float64),
+        ('stop_sig', np.float64),
+        ('ts', np.float64),
+        ('ns_fit', np.float64),
+        ('ns_em', np.float64),
+        ('gamma_fit', np.float64),
+        ('gamma_em', np.float64),
+        ('mu_fit', np.float64),
+        ('sigma_fit', np.float64)
+    ]
+
+    rss = RandomStateService(seed=seed)
+
+    if mean_n_sig > 0:
+        change_signal_time_pdf_of_llhratio_function(
+            ana=ana,
+            gauss=gauss,
+            box=box)
+        change_fluxmodel_gamma(
+            ana=ana,
+            gamma=gamma_src)
+
+    trials = np.empty((n_trials), dtype=trials_dt)
+
+    for trial_idx in range(n_trials):
+        (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(
+            rss=rss,
+            mean_n_sig=mean_n_sig)
+        ana.initialize_trial(events_list, n_events_list)
+
+        em_results = run_gamma_scan_single_flare(
+            ana=ana,
+            gamma_min=gamma_min,
+            gamma_max=gamma_max,
+            n_gamma=n_gamma)
+
+        (max_ts, best_em_result, best_fitparams) = calculate_TS(
+            ana=ana,
+            em_results=em_results,
+            rss=rss)
+
+        trials[trial_idx] = (
+            seed,
+            mean_n_sig,
+            n_sig,
+            gamma_src,
+            gauss['mu'] if gauss is not None else -1,
+            gauss['sigma'] if gauss is not None else -1,
+            box['start'] if box is not None else -1,
+            box['end'] if box is not None else -1,
+            max_ts,
+            best_fitparams[0],
+            best_em_result['ns_em'],
+            best_fitparams[1],
+            best_em_result['gamma'],
+            best_em_result['mu'],
+            best_em_result['sigma']
+        )
+
+    return trials
 
 
 def create_analysis(  # noqa: C901
