@@ -346,6 +346,7 @@ def run_gamma_scan_single_flare(
         gamma_min=1,
         gamma_max=5,
         n_gamma=51,
+        ppbar=None,
 ):
     """Runs ``em_fit`` for different gamma values in the signal energy PDF.
 
@@ -361,6 +362,8 @@ def run_gamma_scan_single_flare(
         Upper bound for gamma scan.
     n_gamma : int
         Number of steps for gamma scan.
+    ppbar : instance of ProgressBar | None
+        The optional parent instance of ProgressBar.
 
     Returns
     -------
@@ -386,7 +389,10 @@ def run_gamma_scan_single_flare(
 
     time = ana._tdm_list[0].get_data('time')
 
-    for (i, gamma) in enumerate(np.linspace(gamma_min, gamma_max, n_gamma)):
+    gamma_values = np.linspace(gamma_min, gamma_max, n_gamma)
+
+    pbar = ProgressBar(len(gamma_values), parent=ppbar).start()
+    for (i, gamma) in enumerate(gamma_values):
         fitparam_values = np.array([0, gamma], dtype=np.float64)
         ratio = get_energy_spatial_signal_over_background(ana, fitparam_values)
         (mu, sigma, ns) = em_fit(
@@ -399,6 +405,8 @@ def run_gamma_scan_single_flare(
             initial_width=5000,
             remove_x=remove_time)
         results[i] = (gamma, mu[0], sigma[0], ns[0])
+        pbar.increment()
+    pbar.finish()
 
     return results
 
@@ -445,6 +453,7 @@ def do_trials_with_em(
         seed=1,
         gauss=None,
         box=None,
+        ppbar=None,
 ):
     """Performs ``n_trials`` trials using the expectation maximization
     algorithm. For each trial it runs a gamma scan and does the EM for each
@@ -472,6 +481,8 @@ def do_trials_with_em(
     box : dict | None
         Properties of the box time PDF.
         None or dictionary with {"start": float, "stop": float}.
+    ppbar : instance of ProgressBar | None
+        The optional parent instance of ProgressBar.
 
     Returns
     -------
@@ -541,6 +552,7 @@ def do_trials_with_em(
 
     trials = np.empty((n_trials), dtype=trials_dt)
 
+    pbar = ProgressBar(n_trials, parent=ppbar).start()
     for trial_idx in range(n_trials):
         (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(
             rss=rss,
@@ -551,7 +563,8 @@ def do_trials_with_em(
             ana=ana,
             gamma_min=gamma_min,
             gamma_max=gamma_max,
-            n_gamma=n_gamma)
+            n_gamma=n_gamma,
+            ppbar=pbar)
 
         (max_ts, best_em_result, best_fitparams) = calculate_TS(
             ana=ana,
@@ -575,6 +588,8 @@ def do_trials_with_em(
             best_em_result['mu'],
             best_em_result['sigma']
         )
+        pbar.increment()
+    pbar.finish()
 
     return trials
 
