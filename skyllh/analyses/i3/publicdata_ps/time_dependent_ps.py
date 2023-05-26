@@ -315,7 +315,7 @@ def calculate_TS(
         The instance of numpy ndarray holding the fit parameter values of the
         overall best fit result.
     """
-    max_TS = 0
+    max_TS = None
     best_em_result = None
     best_fitparam_values = None
     for em_result in em_results:
@@ -332,7 +332,7 @@ def calculate_TS(
             log_lambda=log_lambda_max,
             fitparam_values=fitparam_values)
 
-        if TS > max_TS:
+        if (TS is None) or (TS > max_TS):
             max_TS = TS
             best_em_result = em_result
             best_fitparam_values = fitparam_values
@@ -440,6 +440,52 @@ def unblind_flare(
         remove_time=remove_time)
 
     return results
+
+
+def do_trial_with_em(
+        ana,
+        rss,
+        mean_n_sig=0,
+        gamma_src=2,
+        gamma_min=1,
+        gamma_max=5,
+        n_gamma=21,
+        gauss=None,
+        box=None,
+        ppbar=None,
+):
+    """Performs a trial using the expectation maximization algorithm.
+    It runs a gamma scan and does the EM for each gamma value.
+
+    Parameters
+    ----------
+    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+        The instance of SingleSourceMultiDatasetLLHRatioAnalysis that should
+        be used.
+    rss : instance of RandomStateService
+        The instance of RandomStateService that should be used to generate
+        random numbers.
+    mean_n_sig : float
+        The mean number of signal events that should be generated.
+    gamma_src : float
+        The spectral index of the source.
+    gamma_min : float
+        Lower bound of the gamma scan.
+    gamma_max : float
+        Upper bound of the gamma scan.
+    n_gamma : int
+        Number of steps of the gamma scan.
+    gauss : dict | None
+        Properties of the Gaussian time PDF.
+        None or dictionary with {"mu": float, "sigma": float}.
+    box : dict | None
+        Properties of the box time PDF.
+        None or dictionary with {"start": float, "stop": float}.
+    ppbar : instance of ProgressBar | None
+        The optional parent instance of ProgressBar.
+
+    """
+    pass
 
 
 def do_trials_with_em(
