@@ -332,7 +332,7 @@ def calculate_TS(
             log_lambda=log_lambda_max,
             fitparam_values=fitparam_values)
 
-        if (TS is None) or (TS > max_TS):
+        if (max_TS is None) or (TS > max_TS):
             max_TS = TS
             best_em_result = em_result
             best_fitparam_values = fitparam_values
