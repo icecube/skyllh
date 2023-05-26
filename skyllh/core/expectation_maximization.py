@@ -13,49 +13,59 @@ def em_expectation_step(
 
     Parameters
     ----------
-    ns : float | 1d ndarray of float
-        The number of signal neutrinos, as weight for the gaussian flare.
-    mu : float | 1d ndarray of float
-        The mean time of the gaussian flare.
-    sigma: float | 1d ndarray of float
-        Sigma of the gaussian flare.
-    t : 1d ndarray of float
-        Times of the events.
-    sob : 1d ndarray of float
-        The signal over background values of events, or weights of events
+    ns : instance of ndarray
+        The (n_flares,)-shaped numpy ndarray holding the number of signal
+        neutrinos, as weight for each gaussian flare.
+    mu : instance of ndarray
+        The (n_flares,)-shaped numpy ndarray holding the mean for each gaussian
+        flare.
+    sigma: instance of ndarray
+        The (n_flares,)-shaped numpy ndarray holding the sigma for each gaussian
+        flare.
+    t : instance of ndarray
+        The (n_events,)-shaped numpy ndarray holding the time of each event.
+    sob : instance of ndarray
+        The (n_events,)-shaped numpy ndarray holding the signal-over-background
+        values of each event.
 
     Returns
     -------
-    expectation : list of 1d ndarray of float
-        Weighted "responsibility" function of each event to belong to the flare.
-    sum_log_denom : float
-        Sum of log of denominators.
+    expectations : instane of ndarray
+        The (n_flares, n_events)-shaped numpy ndarray holding the expectation
+        of each flare and event.
+    llh : float
+        The log-likelihood value, which is the sum of log of the signal and
+        background expectations.
     """
-    ns = np.atleast_1d(ns)
-    mu = np.atleast_1d(mu)
-    sigma = np.atleast_1d(sigma)
+    n_flares = len(ns)
 
     b_term = (1 - np.cos(10 / 180 * np.pi)) / 2
     N = len(t)
-    e_sig = []
-    for i in range(len(ns)):
-        e_sig.append(norm(loc=mu[i], scale=sigma[i]).pdf(t) * sob * ns[i])
-    e_bg = (N - np.sum(ns)) / (np.max(t) - np.min(t)) / b_term
-    denom = sum(e_sig) + e_bg
+    e_sig = np.empty((n_flares, N), dtype=np.float64)
+    for i in range(n_flares):
+        e_sig[i] = norm(loc=mu[i], scale=sigma[i]).pdf(t)
+        e_sig[i] *= sob
+        e_sig[i] *= ns[i]
+    e_bkg = (N - np.sum(ns)) / (np.max(t) - np.min(t)) / b_term
+    denom = np.sum(e_sig, axis=0) + e_bkg
 
-    return ([e / denom for e in e_sig], np.sum(np.log(denom)))
+    expectations = e_sig / denom
+    llh = np.sum(np.log(denom))
+
+    return (expectations, llh)
 
 
 def em_maximization_step(
-        e_sig,
+        e,
         t,
 ):
     """The maximization step of the expectation maximization algorithm.
 
     Parameters
     ----------
-    e_sig : list of 1d ndarray of float
-        The weights for each event from the expectation step.
+    e : instance of ndarray
+        The (n_flares, n_events)-shaped numpy ndarray holding the expectation
+        for each event and flare.
     t : 1d ndarray of float
         The times of each event.
 
@@ -71,10 +81,10 @@ def em_maximization_step(
     mu = []
     sigma = []
     ns = []
-    for i in range(len(e_sig)):
-        mu.append(np.average(t, weights=e_sig[i]))
-        sigma.append(np.sqrt(np.average(np.square(t - mu[i]), weights=e_sig[i])))
-        ns.append(np.sum(e_sig[i]))
+    for i in range(e.shape[0]):
+        mu.append(np.average(t, weights=e[i]))
+        sigma.append(np.sqrt(np.average(np.square(t - mu[i]), weights=e[i])))
+        ns.append(np.sum(e[i]))
     sigma = [max(1, s) for s in sigma]
 
     return (mu, sigma, ns)
@@ -165,7 +175,7 @@ def em_fit(
         llh_old = llh_new
 
         (mu, sigma, ns) = em_maximization_step(
-            e_sig=e,
+            e=e,
             t=x)
 
     return (mu, sigma, ns)
