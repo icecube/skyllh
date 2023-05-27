@@ -700,10 +700,6 @@ def do_trials_with_em(
     rss = RandomStateService(seed=seed)
 
     if mean_n_sig > 0:
-        change_signal_time_pdf_of_llhratio_function(
-            ana=ana,
-            gauss=gauss,
-            box=box)
         change_fluxmodel_gamma(
             ana=ana,
             gamma=gamma_src)
