@@ -134,6 +134,12 @@ from skyllh.scripting.logging import (
     setup_logging,
 )
 
+TXS_0506_PLUS056_SOURCE = PointLikeSource(
+    name='TXS 0506+056',
+    ra=np.deg2rad(77.3581851),
+    dec=np.deg2rad(5.69314828))
+TXS_0506_PLUS056_ALERT_TIME = 58018.8711856
+
 
 def create_signal_time_pdf(
         grl,
@@ -340,7 +346,7 @@ def calculate_TS(
     return (max_TS, best_em_result, best_fitparam_values)
 
 
-def run_gamma_scan_single_flare(
+def run_gamma_scan_for_single_flare(
         ana,
         remove_time=None,
         gamma_min=1,
@@ -367,7 +373,7 @@ def run_gamma_scan_single_flare(
 
     Returns
     -------
-    results : instance of numpy structured ndarray
+    em_results : instance of numpy structured ndarray
         The numpy structured ndarray with fields
 
         gamma : float
@@ -379,13 +385,13 @@ def run_gamma_scan_single_flare(
         ns_em : float
             The scaling factor of the flare.
     """
-    dtype = [
+    em_results_dt = [
         ('gamma', np.float64),
         ('mu', np.float64),
         ('sigma', np.float64),
         ('ns_em', np.float64),
     ]
-    results = np.empty(n_gamma, dtype=dtype)
+    em_results = np.empty(n_gamma, dtype=em_results_dt)
 
     time = ana._tdm_list[0].get_data('time')
 
@@ -404,38 +410,53 @@ def run_gamma_scan_single_flare(
             weight_thresh=0,
             initial_width=5000,
             remove_x=remove_time)
-        results[i] = (gamma, mu[0], sigma[0], ns[0])
+        em_results[i] = (
+            gamma,
+            mu[0],
+            sigma[0],
+            ns[0],
+        )
         pbar.increment()
     pbar.finish()
 
-    return results
+    return em_results
 
 
-def unblind_flare(
+def unblind_single_flare(
         ana,
         remove_time=None,
 ):
-    """Run EM on unscrambled data. Similar to the original analysis, remove the
-    alert event.
+    """Run EM for a single flare on unblinded data.
+    Similar to the original analysis, remove the alert event.
 
     Parameters
     ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The analysis that should be used.
     remove_time : float
-        Time information of event that should be removed.
-        In the case of the TXS analysis: remove_time=58018.8711856
+        Time of the event that should be removed.
+        In the case of the TXS analysis:
+        ``remove_time=TXS_0506_PLUS056_ALERT_TIME``.
 
     Returns
     -------
-    results :
-    array with "gamma", "mu", "sigma", and scaling factor for flare "ns_em"
+    results : instance of numpy structured ndarray
+        The numpy structured ndarray with fields
+
+        gamma : float
+            The spectral index value.
+        mu : float
+            The determined mean value of the gauss curve.
+        sigma : float
+            The determoned standard deviation of the gauss curve.
+        ns_em : float
+            The scaling factor of the flare.
     """
     rss = RandomStateService(seed=1)
     ana.unblind(
         rss=rss)
 
-    results = run_gamma_scan_single_flare(
+    results = run_gamma_scan_for_single_flare(
         ana=ana,
         remove_time=remove_time)
 
@@ -460,8 +481,7 @@ def do_trial_with_em(
     Parameters
     ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
-        The instance of SingleSourceMultiDatasetLLHRatioAnalysis that should
-        be used.
+        The anaylsis instance that should be used to perform the trial.
     rss : instance of RandomStateService
         The instance of RandomStateService that should be used to generate
         random numbers.
@@ -484,19 +504,109 @@ def do_trial_with_em(
     ppbar : instance of ProgressBar | None
         The optional parent instance of ProgressBar.
 
+    Returns
+    -------
+    trial : instance of structured ndarray
+        The numpy structured ndarray of length 1 with the following fields:
+
+        seed : numpy.int64
+            The seed value used to generate the trial.
+        mean_n_sig : numpy.float64
+            The mean number of signal events of the trial.
+        n_sig : numpy.int64
+            The actual number of signal events in the trial.
+        gamma_src : numpy.float64
+            The spectral index of the source.
+        mu_sig : numpy.float64
+            The mean value of the Gaussian time PDF of the source.
+        sigma_sig : numpy.float64
+            The sigma value of the Gaussian time PDF of the source.
+        start_sig : numpy.float64
+            The start time of the box time PDF of the source.
+        stop_sig : numpy.float64
+            The stop time of the box time PDF of the source.
+        ts : numpy.float64
+            The test-statistic value of the trial.
+        ns_fit : numpy.float64
+            The fitted number of signal events.
+        ns_em : numpy.float64
+            The scaling factor of the flare.
+        gamma_fit : numpy.float64
+            The fitted spectial index of the trial.
+        gamma_em : numpy.float64
+            The spectral index of the best EM trial.
+        mu_fit : numpy.float64
+            The fitted mean value of the Gaussian time PDF.
+        sigma_fit : numpy.float64
+            The fitted sigma value of the Gaussian time PDF.
     """
-    pass
+    trial_dt = [
+        ('seed', np.int64),
+        ('mean_n_sig', np.float64),
+        ('n_sig', np.int64),
+        ('gamma_src', np.float64),
+        ('mu_sig', np.float64),
+        ('sigma_sig', np.float64),
+        ('start_sig', np.float64),
+        ('stop_sig', np.float64),
+        ('ts', np.float64),
+        ('ns_fit', np.float64),
+        ('ns_em', np.float64),
+        ('gamma_fit', np.float64),
+        ('gamma_em', np.float64),
+        ('mu_fit', np.float64),
+        ('sigma_fit', np.float64)
+    ]
+
+    trial = np.empty((1,), dtype=trial_dt)
+
+    (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(
+        rss=rss,
+        mean_n_sig=mean_n_sig)
+    ana.initialize_trial(events_list, n_events_list)
+
+    em_results = run_gamma_scan_for_single_flare(
+        ana=ana,
+        gamma_min=gamma_min,
+        gamma_max=gamma_max,
+        n_gamma=n_gamma,
+        ppbar=ppbar)
+
+    (max_ts, best_em_result, best_fitparams) = calculate_TS(
+        ana=ana,
+        em_results=em_results,
+        rss=rss)
+
+    trial[0] = (
+        rss.seed,
+        mean_n_sig,
+        n_sig,
+        gamma_src,
+        gauss['mu'] if gauss is not None else -1,
+        gauss['sigma'] if gauss is not None else -1,
+        box['start'] if box is not None else -1,
+        box['end'] if box is not None else -1,
+        max_ts,
+        best_fitparams[0],
+        best_em_result['ns_em'],
+        best_fitparams[1],
+        best_em_result['gamma'],
+        best_em_result['mu'],
+        best_em_result['sigma']
+    )
+
+    return trial
 
 
 def do_trials_with_em(
         ana,
-        n_trials=1000,
+        n=1000,
+        seed=1,
         mean_n_sig=0,
         gamma_src=2,
         gamma_min=1,
         gamma_max=5,
         n_gamma=21,
-        seed=1,
         gauss=None,
         box=None,
         ppbar=None,
@@ -507,7 +617,9 @@ def do_trials_with_em(
 
     Parameters
     ----------
-    n_trials : int
+    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+        The anaylsis instance that should be used to perform the trials.
+    n : int
         The number of trials to generate.
     mean_n_sig : float
         The mean number of signal events that should be generated.
@@ -596,44 +708,24 @@ def do_trials_with_em(
             ana=ana,
             gamma=gamma_src)
 
-    trials = np.empty((n_trials), dtype=trials_dt)
+    trials = np.empty((n,), dtype=trials_dt)
 
-    pbar = ProgressBar(n_trials, parent=ppbar).start()
-    for trial_idx in range(n_trials):
-        (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(
-            rss=rss,
-            mean_n_sig=mean_n_sig)
-        ana.initialize_trial(events_list, n_events_list)
-
-        em_results = run_gamma_scan_single_flare(
+    pbar = ProgressBar(n, parent=ppbar).start()
+    for trial_idx in range(n):
+        trial = do_trial_with_em(
             ana=ana,
+            rss=rss,
+            mean_n_sig=mean_n_sig,
+            gamma_src=gamma_src,
             gamma_min=gamma_min,
             gamma_max=gamma_max,
             n_gamma=n_gamma,
+            gauss=gauss,
+            box=box,
             ppbar=pbar)
 
-        (max_ts, best_em_result, best_fitparams) = calculate_TS(
-            ana=ana,
-            em_results=em_results,
-            rss=rss)
+        trials[trial_idx] = trial[0]
 
-        trials[trial_idx] = (
-            seed,
-            mean_n_sig,
-            n_sig,
-            gamma_src,
-            gauss['mu'] if gauss is not None else -1,
-            gauss['sigma'] if gauss is not None else -1,
-            box['start'] if box is not None else -1,
-            box['end'] if box is not None else -1,
-            max_ts,
-            best_fitparams[0],
-            best_em_result['ns_em'],
-            best_fitparams[1],
-            best_em_result['gamma'],
-            best_em_result['mu'],
-            best_em_result['sigma']
-        )
         pbar.increment()
     pbar.finish()
 
