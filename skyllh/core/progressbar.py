@@ -32,9 +32,13 @@ class ProgressBar(
             The maximal value the progress can reach.
         startval : int
             The progress value to start with. Must be smaller than `maxval`.
-        parent : instance of ProgressBar
+        parent : instance of ProgressBar | False | None
             The parent instance of ProgressBar if this progress bar is a sub
             progress bar.
+            If set to ``False``, this progress bar is deactivated and the
+            property ``is_shown`` will return ``False``.
+            If set to ``None``, this progress bar will be a primary progress
+            bar.
 
         Additional keyword arguments
         ----------------------------
@@ -43,6 +47,11 @@ class ProgressBar(
         """
         super().__init__(
             **kwargs)
+
+        self._is_deactivated = False
+        if parent is False:
+            self._is_deactivated = True
+            parent = None
 
         self.maxval = maxval
         self.startval = startval
@@ -104,6 +113,8 @@ class ProgressBar(
         """(read-only) Flag if the progress bar is shown. This is ``True``
         if the program is run in an interactive session, ``False`` otherwise.
         """
+        if self._is_deactivated is True:
+            return False
         return session.is_interactive_session()
 
     @property
