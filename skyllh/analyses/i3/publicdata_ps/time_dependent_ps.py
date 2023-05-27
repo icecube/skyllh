@@ -57,6 +57,10 @@ from skyllh.core.minimizers.iminuit import (
 from skyllh.core.model import (
     DetectorModel,
 )
+from skyllh.core.multiproc import (
+    get_ncpu,
+    parallelize,
+)
 from skyllh.core.parameters import (
     Parameter,
     ParameterModelMapper,
@@ -473,6 +477,7 @@ def do_trial_with_em(
         n_gamma=21,
         gauss=None,
         box=None,
+        tl=None,
         ppbar=None,
 ):
     """Performs a trial using the expectation maximization algorithm.
@@ -501,6 +506,8 @@ def do_trial_with_em(
     box : dict | None
         Properties of the box time PDF.
         None or dictionary with {"start": float, "stop": float}.
+    tl : instance of TimeLord | None
+        The optional instance of TimeLord to measure timing information.
     ppbar : instance of ProgressBar | None
         The optional parent instance of ProgressBar.
 
@@ -562,7 +569,8 @@ def do_trial_with_em(
 
     (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(
         rss=rss,
-        mean_n_sig=mean_n_sig)
+        mean_n_sig=mean_n_sig,
+        tl=tl)
     ana.initialize_trial(events_list, n_events_list)
 
     em_results = run_gamma_scan_for_single_flare(
@@ -601,6 +609,7 @@ def do_trial_with_em(
 def do_trials_with_em(
         ana,
         n=1000,
+        ncpu=None,
         seed=1,
         mean_n_sig=0,
         gamma_src=2,
@@ -609,6 +618,7 @@ def do_trials_with_em(
         n_gamma=21,
         gauss=None,
         box=None,
+        tl=None,
         ppbar=None,
 ):
     """Performs ``n_trials`` trials using the expectation maximization
@@ -621,6 +631,9 @@ def do_trials_with_em(
         The anaylsis instance that should be used to perform the trials.
     n : int
         The number of trials to generate.
+    ncpu : int | None
+        The number of CPUs to use to generate the trials. If set to ``None``
+        the configured default value will be used.
     mean_n_sig : float
         The mean number of signal events that should be generated.
     gamma_src : float
@@ -639,6 +652,8 @@ def do_trials_with_em(
     box : dict | None
         Properties of the box time PDF.
         None or dictionary with {"start": float, "stop": float}.
+    tl : instance of TimeLord | None
+        The optional instance of TimeLord to measure timing information.
     ppbar : instance of ProgressBar | None
         The optional parent instance of ProgressBar.
 
@@ -679,24 +694,6 @@ def do_trials_with_em(
         sigma_fit : numpy.float64
             The fitted sigma value of the Gaussian time PDF.
     """
-    trials_dt = [
-        ('seed', np.int64),
-        ('mean_n_sig', np.float64),
-        ('n_sig', np.int64),
-        ('gamma_src', np.float64),
-        ('mu_sig', np.float64),
-        ('sigma_sig', np.float64),
-        ('start_sig', np.float64),
-        ('stop_sig', np.float64),
-        ('ts', np.float64),
-        ('ns_fit', np.float64),
-        ('ns_em', np.float64),
-        ('gamma_fit', np.float64),
-        ('gamma_em', np.float64),
-        ('mu_fit', np.float64),
-        ('sigma_fit', np.float64)
-    ]
-
     rss = RandomStateService(seed=seed)
 
     if mean_n_sig > 0:
@@ -704,26 +701,38 @@ def do_trials_with_em(
             ana=ana,
             gamma=gamma_src)
 
-    trials = np.empty((n,), dtype=trials_dt)
+    args_list = [
+        (
+            tuple(),
+            dict(
+                ana=ana,
+                mean_n_sig=mean_n_sig,
+                gamma_src=gamma_src,
+                gamma_min=gamma_min,
+                gamma_max=gamma_max,
+                n_gamma=n_gamma,
+                gauss=gauss,
+                box=box,
+                ppbar=False,
+            )
+        )
+        for i in range(n)
+    ]
 
-    pbar = ProgressBar(n, parent=ppbar).start()
-    for trial_idx in range(n):
-        trial = do_trial_with_em(
-            ana=ana,
-            rss=rss,
-            mean_n_sig=mean_n_sig,
-            gamma_src=gamma_src,
-            gamma_min=gamma_min,
-            gamma_max=gamma_max,
-            n_gamma=n_gamma,
-            gauss=gauss,
-            box=box,
-            ppbar=pbar)
+    result_list = parallelize(
+        func=do_trial_with_em,
+        args_list=args_list,
+        ncpu=get_ncpu(ncpu),
+        rss=rss,
+        tl=tl,
+        ppbar=ppbar,
+    )
 
-        trials[trial_idx] = trial[0]
-
-        pbar.increment()
-    pbar.finish()
+    trials = None
+    for (i, result) in enumerate(result_list):
+        if trials is None:
+            trials = np.empty((n,), dtype=result.dtype)
+        trials[i] = result[0]
 
     return trials
 
