@@ -444,27 +444,29 @@ def unblind_single_flare(
 
     Returns
     -------
-    results : instance of numpy structured ndarray
-        The numpy structured ndarray with fields
-
-        gamma : float
-            The spectral index value.
-        mu : float
-            The determined mean value of the gauss curve.
-        sigma : float
-            The determoned standard deviation of the gauss curve.
-        ns_em : float
-            The scaling factor of the flare.
+    max_TS : float
+        The maximal TS value of all maximized time hypotheses.
+    best_em_result : instance of numpy structured ndarray
+        The EM result from the gamma scan corresponding to the best fit.
+    best_fitparam_values : instance of numpy ndarray
+        The instance of numpy ndarray holding the fit parameter values of the
+        overall best fit result.
     """
     rss = RandomStateService(seed=1)
+
     ana.unblind(
         rss=rss)
 
-    results = run_gamma_scan_for_single_flare(
+    em_results = run_gamma_scan_for_single_flare(
         ana=ana,
         remove_time=remove_time)
 
-    return results
+    (max_ts, best_em_result, best_fitparam_values) = calculate_TS(
+        ana=ana,
+        em_results=em_results,
+        rss=rss)
+
+    return (max_ts, best_em_result, best_fitparam_values)
 
 
 def do_trial_with_em(
