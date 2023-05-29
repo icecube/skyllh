@@ -3,10 +3,11 @@
 """This module contains utility functions related analysis trials.
 """
 
-import numpy as np
 import pickle
 
-from skyllh.core.timing import TaskTimer
+from skyllh.core.timing import (
+    TaskTimer,
+)
 
 
 def create_pseudo_data_file(
@@ -18,8 +19,9 @@ def create_pseudo_data_file(
         bkg_kwargs=None,
         sig_kwargs=None,
         tl=None
-    ):
-    """Creates a pickle file that contains the pseudo data for a single trial.
+):
+    """Creates a pickle file that contains the pseudo data for a single trial
+    by generating background and signal events.
 
     Parameters
     ----------
@@ -51,29 +53,29 @@ def create_pseudo_data_file(
 
     """
     (n_bkg_events_list, bkg_events_list) = ana.generate_background_events(
-        rss = rss,
-        mean_n_bkg_list = mean_n_bkg_list,
-        bkg_kwargs = bkg_kwargs,
-        tl = tl
+        rss=rss,
+        mean_n_bkg_list=mean_n_bkg_list,
+        bkg_kwargs=bkg_kwargs,
+        tl=tl
     )
 
     (n_sig, n_sig_events_list, sig_events_list) = ana.generate_signal_events(
-        rss = rss,
-        mean_n_sig = mean_n_sig,
-        sig_kwargs = sig_kwargs,
-        tl = tl
+        rss=rss,
+        mean_n_sig=mean_n_sig,
+        sig_kwargs=sig_kwargs,
+        tl=tl
     )
 
     trial_data = dict(
-        mean_n_bkg_list = mean_n_bkg_list,
-        mean_n_sig = mean_n_sig,
-        bkg_kwargs = bkg_kwargs,
-        sig_kwargs = sig_kwargs,
-        n_sig = n_sig,
-        n_bkg_events_list = n_bkg_events_list,
-        n_sig_events_list = n_sig_events_list,
-        bkg_events_list = bkg_events_list,
-        sig_events_list = sig_events_list
+        mean_n_bkg_list=mean_n_bkg_list,
+        mean_n_sig=mean_n_sig,
+        bkg_kwargs=bkg_kwargs,
+        sig_kwargs=sig_kwargs,
+        n_sig=n_sig,
+        n_bkg_events_list=n_bkg_events_list,
+        n_sig_events_list=n_sig_events_list,
+        bkg_events_list=bkg_events_list,
+        sig_events_list=sig_events_list
     )
 
     with TaskTimer(tl, 'Writing pseudo data to file.'):

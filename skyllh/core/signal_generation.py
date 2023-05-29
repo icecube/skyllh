@@ -8,13 +8,20 @@ from skyllh.core.py import (
 )
 
 
-class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
+class SignalGenerationMethod(
+        object,
+        metaclass=abc.ABCMeta
+):
     """This is a base class for a source and detector specific signal generation
     method, that calculates the source flux for a given monte-carlo event, which
     is needed to calculate the MC event weights for the signal generator.
     """
 
-    def __init__(self, energy_range, **kwargs):
+    def __init__(
+            self,
+            energy_range,
+            **kwargs,
+    ):
         """Constructs a new signal generation method instance.
 
         Parameters
@@ -34,6 +41,7 @@ class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
         take MC events into account for signal event generation.
         """
         return self._energy_range
+
     @energy_range.setter
     def energy_range(self, r):
         if r is not None:
@@ -45,20 +53,23 @@ class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
                     'The energy_range property must be a sequence of 2 '
                     'elements!')
             r = tuple(
-                (float_cast(
+                float_cast(
                     r[0],
                     'The first element of the energy_range '
                     'sequence must be castable to type float!'),
-                 float_cast(
-                     r[1],
-                     'The second element of the energy_range '
-                     'sequence must be castable to type float!')
-                )
+                float_cast(
+                    r[1],
+                    'The second element of the energy_range '
+                    'sequence must be castable to type float!')
             )
         self._energy_range = r
 
     @abc.abstractmethod
-    def calc_source_signal_mc_event_flux(self, data_mc, shg):
+    def calc_source_signal_mc_event_flux(
+            self,
+            data_mc,
+            shg,
+    ):
         """This method is supposed to calculate the signal flux of each given
         MC event for each source hypothesis of the given source hypothesis
         group.
@@ -87,7 +98,10 @@ class SignalGenerationMethod(object, metaclass=abc.ABCMeta):
         pass
 
     def signal_event_post_sampling_processing(
-        self, shg, shg_sig_events_meta, shg_sig_events
+        self,
+        shg,
+        shg_sig_events_meta,
+        shg_sig_events,
     ):
         """This method should be reimplemented by the derived class if there
         is some processing needed after the MC signal events have been sampled
