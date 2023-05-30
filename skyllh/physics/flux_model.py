@@ -16,6 +16,9 @@ from astropy import (
     units,
 )
 import numpy as np
+from scipy.integrate import (
+    quad,
+)
 import scipy.special
 import scipy.stats
 
@@ -632,6 +635,150 @@ class PowerLawEnergyFluxProfile(
             np.power(self._E0, gamma) / (1-gamma) *
             (np.power(E2, 1-gamma) - np.power(E1, 1-gamma))
         )
+
+        return integral
+
+
+class CutoffPowerLawEnergyFluxProfile(
+        PowerLawEnergyFluxProfile
+):
+    r"""Cut-off power law energy flux profile of the form
+
+    .. math::
+
+        (E / E_0)^{-\gamma} \exp(-E/E_{\mathrm{cut}})
+
+    """
+    def __init__(
+            self,
+            E0,
+            gamma,
+            Ecut,
+            energy_unit=None,
+            **kwargs,
+    ):
+        """Creates a new cut-off power law flux profile with the reference
+        energy ``E0``, spectral index ``gamma``, and cut-off energy ``Ecut``.
+
+        Parameters
+        ----------
+        E0 : castable to float
+            The reference energy.
+        gamma : castable to float
+            The spectral index.
+        Ecut : castable to float
+            The cut-off energy.
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
+        """
+        super().__init__(
+            E0=E0,
+            gamma=gamma,
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.Ecut = Ecut
+
+    @property
+    def Ecut(self):
+        """The energy cut value.
+        """
+        return self._Ecut
+
+    @Ecut.setter
+    def Ecut(self, v):
+        v = float_cast(
+            v,
+            'The Property Ecut  must be castable to type float!')
+        self._Ecut = v
+
+    @property
+    def math_function_str(self):
+        """(read-only) The string representation of this energy flux profile
+        instance.
+        """
+        s = (f'(E / ({self._E0:g} {self._energy_unit}))^-{self._gamma:g} '
+             f'exp(-E / ({self._Ecut:g} {self._energy_unit}))')
+
+        return s
+
+    def __call__(
+            self,
+            E,
+            unit=None
+    ):
+        """Returns the cut-off power law values for the given energies as
+        numpy ndarray in the same shape as E.
+
+        Parameters
+        ----------
+        E : float | 1D numpy ndarray of float
+            The energy value for which to retrieve the energy profile value.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        values : 1D numpy ndarray of float
+            The energy profile values for the given energies.
+        """
+        E = np.atleast_1d(E)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            E = E * unit.to(self._energy_unit)
+
+        value = super().__call__(E=E, unit=None)
+        value *= np.exp(-E / self._Ecut)
+
+        return value
+
+    def get_integral(
+            self,
+            E1,
+            E2,
+            unit=None,
+    ):
+        """Calculates the integral value of this cut-off power-law energy flux
+        profile in the range ``[E1, E2]``.
+
+        .. note::
+
+            This method uses the scipy.integrate.quad function to calculate the
+            integral numerically, since the upper incomplete gamma function of
+            scipy does not support arguments a < 0!
+
+        Parameters
+        ----------
+        E1 : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E2 : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral : 1d ndarray of float
+            The integral values of the given integral ranges.
+        """
+        E1 = np.atleast_1d(E1)
+        E2 = np.atleast_1d(E2)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            time_unit_conv_factor = unit.to(self._energy_unit)
+            E1 = E1 * time_unit_conv_factor
+            E2 = E2 * time_unit_conv_factor
+
+        integral = np.empty((len(E1),), dtype=np.float64)
+
+        for (i, (E1_i, E2_i)) in enumerate(zip(E1, E2)):
+            integral[i] = quad(self, E1_i, E2_i, full_output=True)[0]
 
         return integral
 
