@@ -9,7 +9,6 @@ import numpy as np
 from skyllh.core.pdf import (
     IsBackgroundPDF,
     MultiDimGridPDF,
-    NDPhotosplinePDF,
     TimePDF,
 )
 from skyllh.core.py import (
@@ -142,24 +141,3 @@ class BackgroundTimePDF(
         grads = dict()
 
         return (self._pd, grads)
-
-
-class BackgroundNDPhotosplinePDF(
-        NDPhotosplinePDF,
-        IsBackgroundPDF):
-    """DEPRECATED This class provides a multi-dimensional background PDF created
-    from a n-dimensional photospline fit. The photospline package is used to
-    evaluate the PDF fit.
-    """
-
-    def __init__(
-            self,
-            *args,
-            **kwargs):
-        """Creates a new :class:`~skyllh.core.pdf.NDPhotosplinePDF` instance
-        that is also derived from :class:`~skyllh.core.pdf.IsBackgroundPDF`.
-
-        For the documentation of arguments see the documentation of the
-        :meth:`~skyllh.core.pdf.NDPhotosplinePDF.__init__` method.
-        """
-        super().__init__(*args, **kwargs)

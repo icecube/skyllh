@@ -19,7 +19,6 @@ from skyllh.core.pdf import (
     PDFSet,
     IsSignalPDF,
     MultiDimGridPDF,
-    NDPhotosplinePDF,
     SpatialPDF,
     TimePDF,
 )
@@ -1048,27 +1047,3 @@ class SignalSHGMappedMultiDimGridPDFSet(
             pd[values_mask] = pd_shg
 
         return (pd, dict())
-
-
-class SignalNDPhotosplinePDF(
-        NDPhotosplinePDF,
-        IsSignalPDF):
-    """This class provides a multi-dimensional signal PDF created from a
-    n-dimensional photospline fit. The photospline package is used to evaluate
-    the PDF fit.
-    """
-
-    def __init__(
-            self,
-            *args,
-            **kwargs):
-        """Creates a new signal PDF instance for a n-dimensional photospline PDF
-        fit.
-
-        See the documentation of the
-        :meth:`skyllh.core.pdf.NDPhotosplinePDF.__init__` method for
-        the documentation of arguments.
-        """
-        super().__init__(
-            *args,
-            **kwargs)
