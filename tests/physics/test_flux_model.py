@@ -6,6 +6,7 @@ import numpy as np
 from astropy import units
 
 from skyllh.physics.flux_model import (
+    BoxTimeFluxProfile,
     CutoffPowerLawEnergyFluxProfile,
     LogParabolaPowerLawEnergyFluxProfile,
     PointSpatialFluxProfile,
@@ -204,6 +205,79 @@ class LogParabolaPowerLawEnergyFluxProfileTestCase(
         self.assertEqual(
             self.fluxprofile.math_function_str,
             test_string)
+
+
+class BoxTimeFluxProfileTestCase(
+        unittest.TestCase,
+):
+    def setUp(self):
+        self.t0 = 58430     # MJD time 2018.11.08
+        self.tw = 2         # 2 day width of the box profile
+        self.time_unit = units.day
+        self.profile = BoxTimeFluxProfile(
+            t0=self.t0,
+            tw=self.tw,
+            time_unit=self.time_unit)
+
+    def test_move(self):
+        dt = 5
+        self.profile.move(dt=dt)
+        self.assertEqual(self.profile.t0, self.t0 + dt)
+        self.assertEqual(self.profile.tw, self.tw)
+
+    def test_t0(self):
+        self.assertEqual(self.profile.t0, self.t0)
+
+        t0 = 0
+        self.profile.t0 = t0
+        self.assertEqual(self.profile.t0, t0)
+
+    def test_tw(self):
+        self.assertEqual(self.profile.tw, self.tw)
+
+        tw = 2.5
+        self.profile.tw = tw
+        self.assertEqual(self.profile.tw, tw)
+
+    def test_get_integral(self):
+        t1 = self.t0
+        t2 = self.t0 + self.tw/2
+        times1 = np.array([self.t0 - self.tw,
+                          self.t0 - self.tw/2,
+                          self.t0])
+        times2 = np.array([self.t0 + self.tw,
+                          self.t0 + self.tw/2,
+                          self.t0 + self.tw/2])
+
+        self.assertEqual(self.profile.get_integral(t1, t1), 0)
+        self.assertEqual(self.profile.get_integral(t1, t2), 1.0)
+        np.testing.assert_array_equal(
+            self.profile.get_integral(times1, times2),
+            np.array([2, 2, 1]))
+
+        # Test cases when t1 > t2.
+        self.assertEqual(
+            self.profile.get_integral(t2, t1), -1)
+        np.testing.assert_array_equal(
+            self.profile.get_integral(times2, times1),
+            np.array([0, -2, -1]))
+
+    def test_get_total_integral(self):
+        self.assertEqual(self.profile.get_total_integral(), 2)
+
+    def test_call(self):
+        self.assertEqual(self.profile(t=self.t0 - self.tw), 0)
+        self.assertEqual(self.profile(t=self.t0), 1)
+        self.assertEqual(self.profile(t=self.t0 + self.tw), 0)
+
+        times = np.array([
+            self.t0 - self.tw,
+            self.t0,
+            self.t0 + self.tw
+        ])
+        np.testing.assert_array_equal(
+            self.profile(t=times),
+            np.array([0, 1, 0]))
 
 
 if __name__ == '__main__':
