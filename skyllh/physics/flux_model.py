@@ -737,8 +737,8 @@ class CutoffPowerLawEnergyFluxProfile(
 
         Parameters
         ----------
-        E : float | 1D numpy ndarray of float
-            The energy value for which to retrieve the energy profile value.
+        E : float | instance of numpy ndarray
+            The energy value(s) for which to retrieve the energy profile value.
         unit : instance of astropy.units.UnitBase | None
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
@@ -746,7 +746,7 @@ class CutoffPowerLawEnergyFluxProfile(
 
         Returns
         -------
-        values : 1D numpy ndarray of float
+        values : instance of numpy ndarray
             The energy profile values for the given energies.
         """
         E = np.atleast_1d(E)
@@ -754,10 +754,112 @@ class CutoffPowerLawEnergyFluxProfile(
         if (unit is not None) and (unit != self._energy_unit):
             E = E * unit.to(self._energy_unit)
 
-        value = super().__call__(E=E, unit=None)
-        value *= np.exp(-E / self._Ecut)
+        values = super().__call__(E=E, unit=None)
+        values *= np.exp(-E / self._Ecut)
 
-        return value
+        return values
+
+
+class LogParabolaPowerLawEnergyFluxProfile(
+        PowerLawEnergyFluxProfile
+):
+    r"""This class provides an energy flux profile for a power-law with a
+    spectral index that varies as a log parabola in energy of the form
+
+    .. math::
+
+        (E / E_0)^(-(\alpha + \beta\log(E / E_0)))
+
+    """
+    def __init__(
+            self,
+            E0,
+            alpha,
+            beta,
+            energy_unit=None,
+            **kwargs,
+    ):
+        super().__init__(
+            E0=E0,
+            gamma=np.nan,
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.alpha = alpha
+        self.beta = beta
+
+    @property
+    def alpha(self):
+        """The alpha parameter of the log-parabola spectral index.
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, v):
+        v = float_cast(
+            v,
+            'Property alpha must be castable to type float!')
+        self._alpha = v
+
+    @property
+    def beta(self):
+        """The beta parameter of the log-parabola spectral index.
+        """
+        return self._beta
+
+    @beta.setter
+    def beta(self, v):
+        v = float_cast(
+            v,
+            'Property beta must be castable to type float!')
+        self._beta = v
+
+    @property
+    def math_function_str(self):
+        """(read-only) The string representation of this energy flux profile
+        instance.
+        """
+        s_E0 = f'{self._E0:g} {self._energy_unit}'
+        s = (
+            f'(E / {s_E0})'
+            f'^(-({self.alpha:g} + {self.beta:g} log(E / {s_E0})))'
+        )
+
+        return s
+
+    def __call__(
+            self,
+            E,
+            unit=None,
+    ):
+        """Returns the log-parabola power-law values for the given energies as
+        numpy ndarray in the same shape as E.
+
+        Parameters
+        ----------
+        E : float | instance of numpy ndarray
+            The energy value(s) for which to retrieve the energy profile value.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        values : instance of numpy ndarray
+            The energy profile values for the given energies.
+        """
+        E = np.atleast_1d(E)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            E = E * unit.to(self._energy_unit)
+
+        values = np.power(
+            E / self._E0,
+            -self._alpha - self._beta * np.log(E / self._E0)
+        )
+
+        return values
 
 
 class TimeFluxProfile(
