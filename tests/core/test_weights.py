@@ -26,12 +26,12 @@ from skyllh.core.source_hypo_grouping import (
     SourceHypoGroup,
     SourceHypoGroupManager,
 )
+from skyllh.core.source_model import (
+    PointLikeSource,
+)
 
 from skyllh.physics.flux_model import (
     SteadyPointlikeFFM,
-)
-from skyllh.physics.source_model import (
-    PointLikeSource,
 )
 
 

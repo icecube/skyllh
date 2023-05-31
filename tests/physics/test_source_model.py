@@ -5,7 +5,7 @@ import unittest
 from skyllh.core.catalog import (
     SourceCatalog,
 )
-from skyllh.physics.source_model import (
+from skyllh.core.source_model import (
     PointLikeSource,
     SourceModel,
     SourceModelCollection,

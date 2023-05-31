@@ -21,7 +21,7 @@ from skyllh.core.py import (
     issequence,
     issequenceof,
 )
-from skyllh.physics.source_model import (
+from skyllh.core.source_model import (
     SourceModel,
 )
 

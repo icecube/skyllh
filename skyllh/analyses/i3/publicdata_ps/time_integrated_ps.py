@@ -81,6 +81,9 @@ from skyllh.core.source_hypo_grouping import (
     SourceHypoGroup,
     SourceHypoGroupManager,
 )
+from skyllh.core.source_model import (
+    PointLikeSource,
+)
 from skyllh.core.test_statistic import (
     WilksTestStatistic,
 )
@@ -109,9 +112,6 @@ from skyllh.i3.backgroundpdf import (
 from skyllh.physics.flux_model import (
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
-)
-from skyllh.physics.source_model import (
-    PointLikeSource,
 )
 from skyllh.scripting.argparser import (
     create_argparser,

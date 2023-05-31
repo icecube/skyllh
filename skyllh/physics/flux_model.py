@@ -35,7 +35,7 @@ from skyllh.core.py import (
     classname,
     float_cast,
 )
-from skyllh.physics.source_model import (
+from skyllh.core.source_model import (
     IsPointlike,
 )
 

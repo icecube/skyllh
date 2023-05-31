@@ -10,7 +10,7 @@ from skyllh.core.utils.analysis import (
 from skyllh.core.progressbar import (
     ProgressBar,
 )
-from skyllh.physics.source_model import (
+from skyllh.core.source_model import (
     PointLikeSource,
 )
 

@@ -21,14 +21,16 @@ from skyllh.core.event_selection import (
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
+from skyllh.core.source_model import (
+    PointLikeSource,
+)
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
-from skyllh.physics.source_model import (
-    PointLikeSource,
-)
 
-from tests.core.testdata.testdata_generator import generate_testdata
+from tests.core.testdata.testdata_generator import (
+    generate_testdata,
+)
 
 
 def shgm_setup(n_sources=1):

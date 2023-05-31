@@ -7,7 +7,9 @@ from skyllh.core.parameters import (
     ParameterGrid,
 )
 from skyllh.core.services import (
+    DatasetSignalWeightFactorsService,
     DetSigYieldService,
+    SrcDetSigYieldWeightsService,
 )
 from skyllh.core.signal_generator import (
     MCMultiDatasetSignalGenerator,
@@ -16,18 +18,14 @@ from skyllh.core.source_hypo_grouping import (
     SourceHypoGroup,
     SourceHypoGroupManager,
 )
-from skyllh.core.weights import (
-    DatasetSignalWeightFactorsService,
-    SrcDetSigYieldWeightsService,
+from skyllh.core.source_model import (
+    PointLikeSource,
 )
 from skyllh.i3.detsigyield import (
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
 )
 from skyllh.i3.signal_generation import (
     PointLikeSourceI3SignalGenerationMethod,
-)
-from skyllh.physics.source_model import (
-    PointLikeSource,
 )
 from skyllh.physics.flux_model import (
     PowerLawEnergyFluxProfile,

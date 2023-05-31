@@ -17,11 +17,11 @@ from skyllh.core.detsigyield import (
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
 )
+from skyllh.core.source_model import (
+    SourceModel,
+)
 from skyllh.physics.flux_model import (
     FluxModel,
-)
-from skyllh.physics.source_model import (
-    SourceModel,
 )
 
 

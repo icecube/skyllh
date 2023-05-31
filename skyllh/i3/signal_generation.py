@@ -13,7 +13,7 @@ from skyllh.core.utils.coords import (
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
 )
-from skyllh.physics.source_model import (
+from skyllh.core.source_model import (
     PointLikeSource,
 )
 
@@ -87,7 +87,7 @@ def source_sin_dec_shift_cubic(x, w, L, U):
     x = np.atleast_1d(x)
 
     m = w / (x - 0.5*(L+U))**3
-    S = m * np.power(x-0.5*(L+U),3)
+    S = m * np.power(x-0.5*(L+U), 3)
 
     return S
 
@@ -132,7 +132,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         self.src_sin_dec_half_bandwidth = src_sin_dec_half_bandwidth
 
-        if(src_sin_dec_shift_func is None):
+        if src_sin_dec_shift_func is None:
             src_sin_dec_shift_func = source_sin_dec_shift_linear
         self.src_sin_dec_shift_func = src_sin_dec_shift_func
 
@@ -144,6 +144,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         source.
         """
         return self._src_sin_dec_half_bandwidth
+
     @src_sin_dec_half_bandwidth.setter
     def src_sin_dec_half_bandwidth(self, v):
         v = float_cast(
@@ -159,6 +160,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         monte-carlo events from.
         """
         return self._src_sin_dec_shift_func
+
     @src_sin_dec_shift_func.setter
     def src_sin_dec_shift_func(self, func):
         if not callable(func):
@@ -173,6 +175,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         calculation.
         """
         return self._src_batch_size
+
     @src_batch_size.setter
     def src_batch_size(self, v):
         v = int_cast(

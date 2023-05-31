@@ -27,7 +27,7 @@ from skyllh.core.detsigyield import (
 from skyllh.core.livetime import (
     Livetime,
 )
-from skyllh.physics.source_model import (
+from skyllh.core.source_model import (
     PointLikeSource,
 )
 

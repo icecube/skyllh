@@ -36,14 +36,14 @@ from skyllh.core.py import (
 from skyllh.core.session import (
     is_interactive_session,
 )
+from skyllh.core.source_model import (
+    PointLikeSource,
+)
 from skyllh.core.storage import (
     NPYFileLoader,
 )
 from skyllh.core.utils.spline import (
     make_spline_1d,
-)
-from skyllh.physics.source_model import (
-    PointLikeSource,
 )
 
 

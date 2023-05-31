@@ -60,6 +60,9 @@ from skyllh.core.signal_generator import (
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
+from skyllh.core.source_model import (
+    SourceModel,
+)
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
@@ -71,9 +74,6 @@ from skyllh.core.timing import (
 )
 from skyllh.core.trialdata import (
     TrialDataManager,
-)
-from skyllh.physics.source_model import (
-    SourceModel,
 )
 
 

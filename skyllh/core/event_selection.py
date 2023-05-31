@@ -5,9 +5,6 @@ import inspect
 import numpy as np
 import scipy.sparse
 
-from skyllh.physics.source_model import (
-    SourceModel,
-)
 from skyllh.core.py import (
     classname,
     float_cast,
@@ -15,6 +12,9 @@ from skyllh.core.py import (
 )
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
+)
+from skyllh.core.source_model import (
+    SourceModel,
 )
 from skyllh.core.timing import (
     TaskTimer,
