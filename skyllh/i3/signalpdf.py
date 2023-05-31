@@ -5,6 +5,9 @@ import numpy as np
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.flux_model import (
+    FluxModel,
+)
 from skyllh.core.multiproc import (
     IsParallelizable,
     parallelize,
@@ -22,9 +25,6 @@ from skyllh.core.smoothing import (
 from skyllh.core.pdf import (
     PDFSet,
     IsSignalPDF,
-)
-from skyllh.physics.flux_model import (
-    FluxModel,
 )
 from skyllh.i3.pdf import (
     I3EnergyPDF,

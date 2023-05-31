@@ -14,14 +14,14 @@ from skyllh.core.py import (
 from skyllh.core.detsigyield import (
     DetSigYieldBuilder,
 )
+from skyllh.core.flux_model import (
+    FluxModel,
+)
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
 )
 from skyllh.core.source_model import (
     SourceModel,
-)
-from skyllh.physics.flux_model import (
-    FluxModel,
 )
 
 

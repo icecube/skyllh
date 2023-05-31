@@ -45,6 +45,10 @@ from skyllh.core.debugging import (
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
+from skyllh.core.flux_model import (
+    PowerLawEnergyFluxProfile,
+    SteadyPointlikeFFM,
+)
 from skyllh.core.minimizer import (
     LBFGSMinimizerImpl,
     Minimizer,
@@ -105,10 +109,6 @@ from skyllh.i3.background_generation import (
 )
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
-)
-from skyllh.physics.flux_model import (
-    PowerLawEnergyFluxProfile,
-    SteadyPointlikeFFM,
 )
 
 

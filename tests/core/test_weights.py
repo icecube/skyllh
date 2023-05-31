@@ -13,6 +13,9 @@ from skyllh.core.detsigyield import (
     DetSigYield,
     DetSigYieldBuilder,
 )
+from skyllh.core.flux_model import (
+    SteadyPointlikeFFM,
+)
 from skyllh.core.parameters import (
     Parameter,
     ParameterModelMapper,
@@ -28,10 +31,6 @@ from skyllh.core.source_hypo_grouping import (
 )
 from skyllh.core.source_model import (
     PointLikeSource,
-)
-
-from skyllh.physics.flux_model import (
-    SteadyPointlikeFFM,
 )
 
 

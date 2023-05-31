@@ -11,15 +11,14 @@ from skyllh.core.dataset import (
     Dataset,
     DatasetData,
 )
+from skyllh.core.flux_model import (
+    FluxModel,
+)
 from skyllh.core.livetime import (
     Livetime,
 )
 from skyllh.core.progressbar import (
     ProgressBar,
-)
-
-from skyllh.physics.flux_model import (
-    FluxModel,
 )
 
 

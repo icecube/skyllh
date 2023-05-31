@@ -17,6 +17,9 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.core.debugging import (
     get_logger,
 )
+from skyllh.core.flux_model import (
+    TimeFluxProfile,
+)
 from skyllh.core.livetime import (
     Livetime,
 )
@@ -34,10 +37,6 @@ from skyllh.core.storage import (
 )
 from skyllh.core.utils.flux_model import (
     create_scipy_stats_rv_continuous_from_TimeFluxProfile,
-)
-
-from skyllh.physics.flux_model import (
-    TimeFluxProfile,
 )
 
 

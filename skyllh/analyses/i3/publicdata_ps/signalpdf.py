@@ -19,6 +19,9 @@ from skyllh.core.binning import (
 from skyllh.core.debugging import (
     get_logger,
 )
+from skyllh.core.flux_model import (
+    FactorizedFluxModel,
+)
 from skyllh.core.multiproc import (
     IsParallelizable,
     parallelize,
@@ -42,9 +45,6 @@ from skyllh.core.timing import (
 )
 from skyllh.i3.dataset import (
     I3Dataset,
-)
-from skyllh.physics.flux_model import (
-    FactorizedFluxModel,
 )
 
 

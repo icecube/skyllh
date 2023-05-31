@@ -350,7 +350,7 @@ class SignalTimePDF(
 ):
     """This class provides a signal time PDF class. It consists of
     a :class:`~skyllh.core.livetime.Livetime` instance and a
-    :class:`~skyllh.physics.flux_model.TimeFluxProfile` instance. Together they
+    :class:`~skyllh.core.flux_model.TimeFluxProfile` instance. Together they
     construct the actual signal time PDF, which has detector down-time taking
     into account.
     """

@@ -13,6 +13,9 @@ from skyllh.core import (
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.flux_model import (
+    FactorizedFluxModel,
+)
 from skyllh.core.livetime import (
     Livetime,
 )
@@ -22,9 +25,6 @@ from skyllh.core.py import (
 from skyllh.i3.detsigyield import (
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
     SingleParamFluxPointLikeSourceI3DetSigYield,
-)
-from skyllh.physics.flux_model import (
-    FactorizedFluxModel,
 )
 
 

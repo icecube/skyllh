@@ -26,6 +26,9 @@ from skyllh.core.debugging import (
     get_logger,
     is_tracing_enabled,
 )
+from skyllh.core.flux_model import (
+    TimeFluxProfile,
+)
 from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet,
@@ -34,9 +37,6 @@ from skyllh.core.parameters import (
 )
 from skyllh.core.timing import (
     TaskTimer,
-)
-from skyllh.physics.flux_model import (
-    TimeFluxProfile,
 )
 
 
@@ -801,7 +801,7 @@ class TimePDF(
         metaclass=abc.ABCMeta):
     """This is the abstract base class for a time PDF. It consists of
     a :class:`~skyllh.core.livetime.Livetime` instance and a
-    :class:`~skyllh.physics.flux_model.TimeFluxProfile` instance. Together they
+    :class:`~skyllh.core.flux_model.TimeFluxProfile` instance. Together they
     construct the actual time PDF, which has detector down-time taking
     into account.
     """

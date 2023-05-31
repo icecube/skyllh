@@ -3,6 +3,10 @@
 import numpy as np
 import unittest
 
+from skyllh.core.flux_model import (
+    PowerLawEnergyFluxProfile,
+    SteadyPointlikeFFM,
+)
 from skyllh.core.parameters import (
     ParameterGrid,
 )
@@ -26,10 +30,6 @@ from skyllh.i3.detsigyield import (
 )
 from skyllh.i3.signal_generation import (
     PointLikeSourceI3SignalGenerationMethod,
-)
-from skyllh.physics.flux_model import (
-    PowerLawEnergyFluxProfile,
-    SteadyPointlikeFFM,
 )
 
 DATA_SAMPLES_IMPORTED = True

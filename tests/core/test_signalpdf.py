@@ -9,6 +9,9 @@ import numpy as np
 import unittest
 from unittest.mock import Mock
 
+from skyllh.core.flux_model import (
+    BoxTimeFluxProfile,
+)
 from skyllh.core.livetime import (
     Livetime,
 )
@@ -23,9 +26,6 @@ from skyllh.core.signalpdf import (
 )
 from skyllh.core.trialdata import (
     TrialDataManager,
-)
-from skyllh.physics.flux_model import (
-    BoxTimeFluxProfile,
 )
 
 

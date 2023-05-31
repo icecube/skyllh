@@ -4,12 +4,11 @@ from scipy.stats import (
     rv_continuous,
 )
 
+from skyllh.core.flux_model import (
+    TimeFluxProfile,
+)
 from skyllh.core.py import (
     classname,
-)
-
-from skyllh.physics.flux_model import (
-    TimeFluxProfile,
 )
 
 
@@ -17,7 +16,7 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
         profile,
 ):
     """This function builds a scipy.stats.rv_continuous instance for a given
-    :class:`~skyllh.physics.flux_model.TimeFluxProfile` instance.
+    :class:`~skyllh.core.flux_model.TimeFluxProfile` instance.
 
     It can be used to generate random numbers according to the given time flux
     profile function.

@@ -3,12 +3,12 @@
 import numpy as np
 import pickle
 
-from skyllh.physics.flux_model import (
-    PowerLawEnergyFluxProfile,
-    SteadyPointlikeFFM,
-)
 from skyllh.core.binning import (
     get_bincenters_from_binedges,
+)
+from skyllh.core.flux_model import (
+    PowerLawEnergyFluxProfile,
+    SteadyPointlikeFFM,
 )
 
 

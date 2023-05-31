@@ -47,6 +47,12 @@ from skyllh.core.event_selection import (
 from skyllh.core.expectation_maximization import (
     em_fit,
 )
+from skyllh.core.flux_model import (
+    BoxTimeFluxProfile,
+    GaussianTimeFluxProfile,
+    PowerLawEnergyFluxProfile,
+    SteadyPointlikeFFM,
+)
 from skyllh.core.minimizer import (
     LBFGSMinimizerImpl,
     Minimizer,
@@ -122,13 +128,6 @@ from skyllh.i3.livetime import (
 )
 from skyllh.i3.scrambling import (
     I3SeasonalVariationTimeScramblingMethod,
-)
-
-from skyllh.physics.flux_model import (
-    BoxTimeFluxProfile,
-    GaussianTimeFluxProfile,
-    PowerLawEnergyFluxProfile,
-    SteadyPointlikeFFM,
 )
 
 from skyllh.scripting.argparser import (
