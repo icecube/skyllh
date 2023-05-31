@@ -1991,11 +1991,14 @@ def generate_data_file_root_dir(
     path and sub path format. If base_path is None, default_base_path is used.
     If sub_path_fmt is None, default_sub_path_fmt is used.
 
-    The default_sub_path_fmt and sub_path_fmt arguments can contain the
+    The ``default_sub_path_fmt`` and ``sub_path_fmt`` arguments can contain the
     following wildcards:
 
-        - '{version:d}'
-        - '{<verqualifiers_key>:d}'
+        ``{version:d}``
+            The version integer number of the dataset.
+        ``{<verqualifiers_key>:d}``
+            The integer number of the specific version qualifier
+            ``'verqualifiers_key'``.
 
     Parameters
     ----------
