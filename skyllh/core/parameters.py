@@ -10,7 +10,6 @@ from skyllh.core import (
 from skyllh.core.model import (
     Model,
     ModelCollection,
-    SourceModel,
 )
 from skyllh.core.py import (
     NamedObjectCollection,
@@ -21,6 +20,9 @@ from skyllh.core.py import (
     int_cast,
     issequence,
     issequenceof,
+)
+from skyllh.physics.source_model import (
+    SourceModel,
 )
 
 

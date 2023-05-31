@@ -30,9 +30,6 @@ from skyllh.core.llhratio import (
     MultiDatasetTCLLHRatio,
     ZeroSigH0SingleDatasetTCLLHRatio,
 )
-from skyllh.core.model import (
-    SourceModel,
-)
 from skyllh.core.multiproc import (
     get_ncpu,
     parallelize,
@@ -74,6 +71,9 @@ from skyllh.core.timing import (
 )
 from skyllh.core.trialdata import (
     TrialDataManager,
+)
+from skyllh.physics.source_model import (
+    SourceModel,
 )
 
 

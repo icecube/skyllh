@@ -4,7 +4,7 @@
 """This module provides classes for defining source catalogs.
 """
 
-from skyllh.core.model import (
+from skyllh.physics.source_model import (
     SourceModelCollection,
 )
 from skyllh.core.py import (

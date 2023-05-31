@@ -5,7 +5,7 @@ import inspect
 import numpy as np
 import scipy.sparse
 
-from skyllh.core.model import (
+from skyllh.physics.source_model import (
     SourceModel,
 )
 from skyllh.core.py import (
