@@ -768,7 +768,7 @@ class LogParabolaPowerLawEnergyFluxProfile(
 
     .. math::
 
-        (E / E_0)^(-(\alpha + \beta\log(E / E_0)))
+        \frac{E}{E_0}^{-\left(\alpha + \beta\log(\frac{E}{E_0})\right)}
 
     """
     def __init__(
