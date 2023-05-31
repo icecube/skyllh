@@ -369,14 +369,21 @@ class EnergyFluxProfile(
         """
         pass
 
-    @abc.abstractclassmethod
     def get_integral(
             self,
             E1,
             E2,
-            unit=None):
-        """This method is supposed to compute the integral of the energy flux
-        profile in the range [``E1``, ``E2``].
+            unit=None,
+    ):
+        """This is the default implementation for calculating the integral value
+        of this energy flux profile in the range ``[E1, E2]``.
+
+        .. note::
+
+            This implementation utilizes the ``scipy.integrate.quad`` function
+            to perform a generic numeric integration. Hence, this implementation
+            is slow and should be reimplemented by the derived class if an
+            analytic integral form is available.
 
         Parameters
         ----------
@@ -391,10 +398,24 @@ class EnergyFluxProfile(
 
         Returns
         -------
-        integral : 1d ndarray of float
-            The integral values of the given integral ranges.
+        integral : instance of ndarray
+            The (n,)-shaped numpy ndarray holding the integral values of the
+            given integral ranges.
         """
-        pass
+        E1 = np.atleast_1d(E1)
+        E2 = np.atleast_1d(E2)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            time_unit_conv_factor = unit.to(self._energy_unit)
+            E1 = E1 * time_unit_conv_factor
+            E2 = E2 * time_unit_conv_factor
+
+        integral = np.empty((len(E1),), dtype=np.float64)
+
+        for (i, (E1_i, E2_i)) in enumerate(zip(E1, E2)):
+            integral[i] = quad(self, E1_i, E2_i, full_output=True)[0]
+
+        return integral
 
 
 class UnityEnergyFluxProfile(
@@ -482,7 +503,9 @@ class UnityEnergyFluxProfile(
             E1 = E1 * time_unit_conv_factor
             E2 = E2 * time_unit_conv_factor
 
-        return E2 - E1
+        integral = E2 - E1
+
+        return integral
 
 
 class PowerLawEnergyFluxProfile(
@@ -707,7 +730,7 @@ class CutoffPowerLawEnergyFluxProfile(
     def __call__(
             self,
             E,
-            unit=None
+            unit=None,
     ):
         """Returns the cut-off power law values for the given energies as
         numpy ndarray in the same shape as E.
@@ -735,52 +758,6 @@ class CutoffPowerLawEnergyFluxProfile(
         value *= np.exp(-E / self._Ecut)
 
         return value
-
-    def get_integral(
-            self,
-            E1,
-            E2,
-            unit=None,
-    ):
-        """Calculates the integral value of this cut-off power-law energy flux
-        profile in the range ``[E1, E2]``.
-
-        .. note::
-
-            This method uses the scipy.integrate.quad function to calculate the
-            integral numerically, since the upper incomplete gamma function of
-            scipy does not support arguments a < 0!
-
-        Parameters
-        ----------
-        E1 : float | 1d numpy ndarray of float
-            The lower energy bound of the integration.
-        E2 : float | 1d numpy ndarray of float
-            The upper energy bound of the integration.
-        unit : instance of astropy.units.UnitBase | None
-            The unit of the given energies.
-            If set to ``None``, the set energy unit of this EnergyFluxProfile
-            instance is assumed.
-
-        Returns
-        -------
-        integral : 1d ndarray of float
-            The integral values of the given integral ranges.
-        """
-        E1 = np.atleast_1d(E1)
-        E2 = np.atleast_1d(E2)
-
-        if (unit is not None) and (unit != self._energy_unit):
-            time_unit_conv_factor = unit.to(self._energy_unit)
-            E1 = E1 * time_unit_conv_factor
-            E2 = E2 * time_unit_conv_factor
-
-        integral = np.empty((len(E1),), dtype=np.float64)
-
-        for (i, (E1_i, E2_i)) in enumerate(zip(E1, E2)):
-            integral[i] = quad(self, E1_i, E2_i, full_output=True)[0]
-
-        return integral
 
 
 class TimeFluxProfile(
