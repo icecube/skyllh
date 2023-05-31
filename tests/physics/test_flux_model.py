@@ -1,45 +1,38 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import division
-
 import unittest
 import numpy as np
 
 from astropy import units
 
 from skyllh.physics.flux_model import (
-    UnitySpatialFluxProfile,
+    CutoffPowerLawEnergyFluxProfile,
+    LogParabolaPowerLawEnergyFluxProfile,
     PointSpatialFluxProfile,
-    EnergyFluxProfile,
-    UnityEnergyFluxProfile,
     PowerLawEnergyFluxProfile,
-    TimeFluxProfile,
-    UnityTimeFluxProfile,
-    BoxTimeFluxProfile,
-    FactorizedFluxModel,
-    PointlikeSourceFFM,
-    SteadyPointlikeSourceFFM
+    UnitySpatialFluxProfile,
 )
 
-from skyllh.core.py import float_cast
 
-
-class UnitySpatialFluxProfileTestCase(unittest.TestCase):
+class UnitySpatialFluxProfileTestCase(
+        unittest.TestCase,
+):
     def setUp(self):
         self.fluxprofile = UnitySpatialFluxProfile()
 
     def test_math_function_str(self):
-        try:
-            math_func_str = self.fluxprofile.math_function_str
-        except:
-            self.fail('The math_function_str property raised an exception!')
+        self.assertEqual(
+            self.fluxprofile.math_function_str,
+            '1'
+        )
 
     def test_call(self):
         alpha = 1.5
         delta = 2.5
 
-        np.testing.assert_array_equal(self.fluxprofile(alpha, delta),
-                                      np.array([1]))
+        np.testing.assert_array_equal(
+            self.fluxprofile(alpha, delta),
+            np.array([1]))
 
         alpha = np.array([1.5, 2])
         delta = np.array([2.5, 3])
@@ -47,90 +40,171 @@ class UnitySpatialFluxProfileTestCase(unittest.TestCase):
         np.testing.assert_array_equal(self.fluxprofile(alpha, delta),
                                       np.array([1, 1]))
 
-class PointSpatialFluxProfileTestCase(unittest.TestCase):
+
+class PointSpatialFluxProfileTestCase(
+        unittest.TestCase,
+):
     def setUp(self):
-        self.alpha_s = 1.5
-        self.delta_s = 2.5
+        self.ra = 1.5
+        self.dec = 2.5
+        self.angle_unit = units.radian
         self.fluxprofile = PointSpatialFluxProfile(
-            self.alpha_s, self.delta_s, angle_unit=units.radian)
+            self.ra, self.dec, angle_unit=units.radian)
 
     def test_init(self):
-        self.assertEqual(self.fluxprofile.alpha_s, self.alpha_s)
-        self.assertEqual(self.fluxprofile.delta_s, self.delta_s)
+        self.assertEqual(self.fluxprofile.ra, self.ra)
+        self.assertEqual(self.fluxprofile.dec, self.dec)
 
     def test_param_names(self):
         param_names = self.fluxprofile.param_names
-        print(param_names)
         self.assertEqual(len(param_names), 2)
-        self.assertEqual(param_names[0], 'alpha_s')
-        self.assertEqual(param_names[1], 'delta_s')
+        self.assertEqual(param_names[0], 'ra')
+        self.assertEqual(param_names[1], 'dec')
 
     def test_angle_unit(self):
         self.assertEqual(self.fluxprofile.angle_unit, units.radian)
 
-    def test_alpha_s(self):
-        alpha_s = 5.5
-        self.fluxprofile.alpha_s = alpha_s
-        self.assertAlmostEqual(self.fluxprofile.alpha_s, alpha_s)
+    def test_ra(self):
+        ra = 5.5
+        self.fluxprofile.ra = ra
+        self.assertAlmostEqual(self.fluxprofile.ra, ra)
 
-    def test_delta_s(self):
-        delta_s = -1.4
-        self.fluxprofile.delta_s = delta_s
-        self.assertAlmostEqual(self.fluxprofile.delta_s, delta_s)
+    def test_dec(self):
+        dec = -1.4
+        self.fluxprofile.dec = dec
+        self.assertAlmostEqual(self.fluxprofile.dec, dec)
 
     def test_math_function_str(self):
-        try:
-            math_func_str = self.fluxprofile.math_function_str
-        except:
-            self.fail('The math_function_str property raised an exception!')
+        self.assertEqual(
+            self.fluxprofile.math_function_str,
+            (f'delta(alpha-{self.ra:g}{self.angle_unit})*'
+             f'delta(delta-{self.dec:g}{self.angle_unit})')
+        )
 
     def test_call(self):
-        alpha = 1.5
-        delta = 2.5
+        ra = 1.5
+        dec = 2.5
 
-        np.testing.assert_array_equal(self.fluxprofile(alpha, delta),
-                                      np.array([1]))
+        np.testing.assert_array_equal(
+            self.fluxprofile(ra, dec),
+            np.array([1]))
 
-        alpha = np.array([1.5, 2])
-        delta = np.array([2.5, 3])
+        ra = np.array([1.5, 2])
+        dec = np.array([2.5, 3])
 
-        np.testing.assert_array_equal(self.fluxprofile(alpha, delta),
-                                      np.array([1, 0]))
+        np.testing.assert_array_equal(
+            self.fluxprofile(ra, dec),
+            np.array([1, 0]))
 
-@unittest.skip("Skip")
-class TestFactorizedFluxModel(unittest.TestCase):
+
+class PowerLawEnergyFluxProfileTestCase(
+        unittest.TestCase,
+):
     def setUp(self):
-        self.flux_model = FactorizedFluxModel()
+        self.E0 = 2.5
+        self.gamma = 2.7
+        self.energy_unit = units.GeV
+        self.fluxprofile = PowerLawEnergyFluxProfile(
+            E0=self.E0,
+            gamma=self.gamma,
+            energy_unit=self.energy_unit)
 
-    def test_init(self):
-        self.assertEqual(self.flux_model.angle_unit, units.radian)
-        self.assertEqual(self.flux_model.energy_unit, units.GeV)
-        self.assertEqual(self.flux_model.length_unit, units.cm)
-        self.assertEqual(self.flux_model.time_unit, units.s)
+    def test_gamma(self):
+        self.assertEqual(self.fluxprofile.gamma, self.gamma)
 
-    def test_angle_unit(self):
-        self.flux_model.angle_unit = units.deg
+        gamma = 2.6
+        self.fluxprofile.gamma = gamma
+        self.assertEqual(self.fluxprofile.gamma, gamma)
 
-        self.assertEqual(self.flux_model.angle_unit, units.deg)
+    def test_math_function_str(self):
+        self.assertEqual(
+            self.fluxprofile.math_function_str,
+            f'(E / ({self.E0:g} {self.energy_unit}))^-{self.gamma:g}'
+        )
 
-    def test_energy_unit(self):
-        self.flux_model.energy_unit = units.eV
+    def test_call(self):
+        E = np.array([5])
+        values = np.power(E / self.E0, -self.gamma)
 
-        self.assertEqual(self.flux_model.angle_unit, units.eV)
-
-    def test_length_unit(self):
-        self.flux_model.length_unit = units.m
-
-        self.assertEqual(self.flux_model.length_unit, units.m)
-
-    def test_time_unit(self):
-        self.flux_model.time_unit = units.min
-
-        self.assertEqual(self.flux_model.time_unit, units.min)
-
-    def test_unit_str(self):
-        print(self.flux_model.unit_str)
+        self.assertEqual(
+            self.fluxprofile(E=E, unit=self.energy_unit),
+            values)
 
 
-if(__name__ == '__main__'):
+class CutoffPowerLawEnergyFluxProfileTestCase(
+        unittest.TestCase,
+):
+    def setUp(self):
+        self.E0 = 2.5
+        self.gamma = 2.7
+        self.Ecut = 2
+        self.energy_unit = units.GeV
+        self.fluxprofile = CutoffPowerLawEnergyFluxProfile(
+            E0=self.E0,
+            gamma=self.gamma,
+            Ecut=self.Ecut,
+            energy_unit=self.energy_unit)
+
+    def test_Ecut(self):
+        self.assertEqual(self.fluxprofile.Ecut, self.Ecut)
+
+        Ecut = 2.5
+        self.fluxprofile.Ecut = Ecut
+        self.assertEqual(self.fluxprofile.Ecut, Ecut)
+
+    def test_math_function_str(self):
+        self.assertEqual(
+            self.fluxprofile.math_function_str,
+            (f'(E / ({self.E0:g} {self.energy_unit}))^-{self.gamma:g} '
+             f'exp(-E / ({self.Ecut:g} {self.energy_unit}))'))
+
+    def test_call(self):
+        E = np.array([5])
+        values = np.power(E / self.E0, -self.gamma) * np.exp(-E / self.Ecut)
+
+        self.assertEqual(
+            self.fluxprofile(E=E, unit=self.energy_unit),
+            values)
+
+
+class LogParabolaPowerLawEnergyFluxProfileTestCase(
+        unittest.TestCase,
+):
+    def setUp(self):
+        self.E0 = 2.5
+        self.alpha = 1
+        self.beta = 2
+        self.energy_unit = units.GeV
+        self.fluxprofile = LogParabolaPowerLawEnergyFluxProfile(
+            E0=self.E0,
+            alpha=self.alpha,
+            beta=self.beta,
+            energy_unit=self.energy_unit)
+
+    def test_alpha(self):
+        self.assertEqual(self.fluxprofile.alpha, self.alpha)
+
+        alpha = 1.5
+        self.fluxprofile.alpha = alpha
+        self.assertEqual(self.fluxprofile.alpha, alpha)
+
+    def test_beta(self):
+        self.assertEqual(self.fluxprofile.beta, self.beta)
+
+        beta = 2.5
+        self.fluxprofile.beta = beta
+        self.assertEqual(self.fluxprofile.beta, beta)
+
+    def test_math_funciton_str(self):
+        s_E0 = f'{self.E0:g} {self.energy_unit}'
+        test_string = (
+            f'(E / {s_E0})'
+            f'^(-({self.alpha:g} + {self.beta:g} log(E / {s_E0})))'
+        )
+        self.assertEqual(
+            self.fluxprofile.math_function_str,
+            test_string)
+
+
+if __name__ == '__main__':
     unittest.main()

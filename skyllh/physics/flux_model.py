@@ -254,8 +254,8 @@ class PointSpatialFluxProfile(
         if (self._ra is None) or (self._dec is None):
             return None
 
-        s = (f'delta(alpha-{self._ra:g}{self._angle_unit.to_string()})*'
-             f'delta(delta-{self._dec:g}{self._angle_unit.to_string()})')
+        s = (f'delta(alpha-{self._ra:g}{self._angle_unit})*'
+             f'delta(delta-{self._dec:g}{self._angle_unit})')
 
         return s
 
@@ -822,7 +822,7 @@ class LogParabolaPowerLawEnergyFluxProfile(
         s_E0 = f'{self._E0:g} {self._energy_unit}'
         s = (
             f'(E / {s_E0})'
-            f'^(-({self.alpha:g} + {self.beta:g} log(E / {s_E0})))'
+            f'^(-({self._alpha:g} + {self._beta:g} log(E / {s_E0})))'
         )
 
         return s
