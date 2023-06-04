@@ -126,7 +126,7 @@ class LLHRatio(
     def evaluate(
             self,
             fitparam_values,
-            src_params_recarray,
+            src_params_recarray=None,
             tl=None):
         """This method evaluates the LLH ratio function for the given set of
         fit parameter values.
