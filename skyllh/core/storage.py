@@ -5,6 +5,8 @@ import copy
 import pickle
 import os.path
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 import sys
 
 from skyllh.core.py import (
@@ -379,6 +381,80 @@ class NPYFileLoader(
         return data
 
 
+class ParquetFileLoader(
+        FileLoader
+):
+    """The ParquetFileLoader class provides the data loading functionality for
+    parquet files. It uses the ``pyarrow`` package.
+    """
+    def __init__(
+            self,
+            pathfilenames,
+            **kwargs
+    ):
+        """Creates a new file loader instance for parquet data files.
+
+        Parameters
+        ----------
+        pathfilenames : str | sequence of str
+            The sequence of fully qualified file names of the data files that
+            need to be loaded.
+        """
+        super().__init__(
+            pathfilenames=pathfilenames,
+            **kwargs)
+
+    def load_data(
+            self,
+            keep_fields=None,
+            dtype_convertions=None,
+            dtype_convertion_except_fields=None,
+            copy=False,
+            **kwargs,
+    ):
+        """Loads the data from the files specified through their fully qualified
+        file names.
+
+        Parameters
+        ----------
+        keep_fields : str | sequence of str | None
+            Load the data into memory only for these data fields. If set to
+            ``None``, all in-file-present data fields are loaded into memory.
+        dtype_convertions : dict | None
+            If not ``None``, this dictionary defines how data fields of specific
+            data types get converted into the specified data types.
+            This can be used to use less memory.
+        dtype_convertion_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
+        copy : bool
+            If set to ``True``, the column data from the pyarrow.Table instance
+            will be copied into the DataFieldRecordArray. This should not be
+            necessary.
+
+        Returns
+        -------
+        data : instance of DataFieldRecordArray
+            The DataFieldRecordArray holding the loaded data.
+        """
+        assert_file_exists(self.pathfilename_list[0])
+        table = pq.read_table(self.pathfilename_list[0], columns=keep_fields)
+        for pathfilename in self.pathfilename_list[1:]:
+            assert_file_exists(pathfilename)
+            next_table = pq.read_table(pathfilename, columns=keep_fields)
+            table = pa.concat_tables([table, next_table])
+
+        data = DataFieldRecordArray(
+            data=table,
+            data_table_accessor=ParquetDataTableAccessor(),
+            keep_fields=keep_fields,
+            dtype_convertions=dtype_convertions,
+            dtype_convertion_except_fields=dtype_convertion_except_fields,
+            copy=copy)
+
+        return data
+
+
 class PKLFileLoader(
         FileLoader):
     """The PKLFileLoader class provides the data loading functionality for
@@ -717,6 +793,214 @@ class TextFileLoader(
         return data
 
 
+class DataTableAccessor(
+        object,
+        metaclass=abc.ABCMeta,
+):
+    """This class provides an interface wrapper to access the data table of a
+    particular format in a unified way.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @abc.abstractmethod
+    def get_column(self, data, name):
+        """This method is supposed to return a numpy.ndarray holding the data of
+        the column with name ``name``.
+
+        Parameters
+        ----------
+        data : any
+            The data table.
+        name : str
+            The name of the column.
+
+        Returns
+        -------
+        arr : instance of numpy.ndarray
+            The column data as numpy ndarray.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_field_names(self, data):
+        """This method is supposed to return a list of field names.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_field_name_to_dtype_dict(self, data):
+        """This method is supposed to return a dictionary with field name and
+        numpy dtype instance for each field.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_length(self, data):
+        """This method is supposed to return the length of the data table.
+        """
+        pass
+
+
+class NDArrayDataTableAccessor(
+        DataTableAccessor,
+):
+    """This class provides an interface wrapper to access the data table stored
+    as a structured numpy ndarray.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def get_column(self, data, name):
+        """Gets the column data from the structured ndarray.
+
+        Parameters
+        ----------
+        data : instance of numpy.ndarray
+            The structured numpy ndarray holding the table data.
+        name : str
+            The name of the column.
+        """
+        return data[name]
+
+    def get_field_names(self, data):
+        return data.dtype.names
+
+    def get_field_name_to_dtype_dict(self, data):
+        """Returns the dictionary with field name and numpy dtype instance for
+        each field.
+        """
+        fname_to_dtype_dict = dict([
+            (k, v[0]) for (k, v) in data.dtype.fields.items()
+        ])
+        return fname_to_dtype_dict
+
+    def get_length(self, data):
+        """Returns the length of the data table.
+        """
+        length = data.shape[0]
+        return length
+
+
+class DictDataTableAccessor(
+        DataTableAccessor,
+):
+    """This class provides an interface wrapper to access the data table stored
+    as a Python dictionary.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def get_column(self, data, name):
+        """Gets the column data from the dictionary.
+
+        Parameters
+        ----------
+        data : dict
+            The dictionary holding the table data.
+        name : str
+            The name of the column.
+        """
+        return data[name]
+
+    def get_field_names(self, data):
+        return list(data.keys())
+
+    def get_field_name_to_dtype_dict(self, data):
+        """Returns the dictionary with field name and numpy dtype instance for
+        each field.
+        """
+        fname_to_dtype_dict = dict([
+            (fname, data[fname].dtype) for fname in data.keys()
+        ])
+        return fname_to_dtype_dict
+
+    def get_length(self, data):
+        """Returns the length of the data table.
+        """
+        length = 0
+        if len(data) > 0:
+            length = data[next(iter(data))].shape[0]
+        return length
+
+
+class ParquetDataTableAccessor(
+        DataTableAccessor,
+):
+    """This class provides an interface wrapper to access the data table stored
+    as a Parquet table.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def get_column(self, data, name):
+        """Gets the column data from the Parquet table.
+
+        Parameters
+        ----------
+        data : instance of pyarrow.Table
+            The instance of pyarrow.Table holding the table data.
+        name : str
+            The name of the column.
+        """
+        return data[name].to_numpy()
+
+    def get_field_names(self, data):
+        return data.column_names
+
+    def get_field_name_to_dtype_dict(self, data):
+        """Returns the dictionary with field name and numpy dtype instance for
+        each field.
+        """
+        fname_to_dtype_dict = dict([
+            (fname, data.field(fname).type.to_pandas_dtype())
+            for fname in data.column_names
+        ])
+        return fname_to_dtype_dict
+
+    def get_length(self, data):
+        """Returns the length of the data table.
+        """
+        return len(data)
+
+
+class DataFieldRecordArrayDataTableAccessor(
+        DataTableAccessor,
+):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def get_column(self, data, name):
+        """Gets the column data from the Parquet table.
+
+        Parameters
+        ----------
+        data : instance of pyarrow.Table
+            The instance of pyarrow.Table holding the table data.
+        name : str
+            The name of the column.
+        """
+        return data[name]
+
+    def get_field_names(self, data):
+        return data.field_name_list
+
+    def get_field_name_to_dtype_dict(self, data):
+        """Returns the dictionary with field name and numpy dtype instance for
+        each field.
+        """
+        fname_to_dtype_dict = dict([
+            (fname, data[fname].dtype)
+            for fname in data.field_name_list
+        ])
+        return fname_to_dtype_dict
+
+    def get_length(self, data):
+        """Returns the length of the data table.
+        """
+        return len(data)
+
+
 class DataFieldRecordArray(
         object):
     """The DataFieldRecordArray class provides a data container similar to a numpy
@@ -727,23 +1011,37 @@ class DataFieldRecordArray(
     def __init__(  # noqa: C901
             self,
             data,
+            data_table_accessor=None,
             keep_fields=None,
             dtype_convertions=None,
             dtype_convertion_except_fields=None,
-            copy=True):
-        """Creates a DataFieldRecordArray from the given numpy record ndarray.
+            copy=True,
+    ):
+        """Creates a DataFieldRecordArray from the given data.
 
         Parameters
         ----------
-        data : numpy record ndarray | dict | instance of DataFieldRecordArray | None
-            The numpy record ndarray that needs to get transformed into the
-            DataFieldRecordArray instance. Alternative a dictionary with field
-            names as keys and numpy ndarrays as values can be provided. If an
-            instance of DataFieldRecordArray is provided, the new
-            DataFieldRecordArray gets constructed from the copy of the data of
-            the provided DataFieldRecordArray instance.
+        data : any | None
+            The tabulated data in any format. The only requirement is that
+            there is a DataTableAccessor instance available for the given data
+            format. Supported data types are:
+
+                numpy.ndarray
+                    A structured numpy ndarray.
+                dict
+                    A Python dictionary with field names as keys and
+                    one-dimensional numpy ndarrays as values.
+                pyarrow.Table
+                    An instance of pyarrow.Table.
+                DataFieldRecordArray
+                    An instance of DataFieldRecordArray.
+
             If set to `None`, the DataFieldRecordArray instance is initialized
             with no data and the length of the array is set to 0.
+        data_table_accessor : instance of DataTableAccessor | None
+            The instance of DataTableAccessor which provides column access to
+            ``data``. If set to ``None``, an appropriate ``DataTableAccessor``
+            instance will be selected based on the type of ``data``.
         keep_fields : str | sequence of str | None
             If not None (default), this specifies the data fields that should
             get kept from the given data. Otherwise all data fields get kept.
@@ -789,31 +1087,24 @@ class DataFieldRecordArray(
                 'The dtype_convertion_except_fields argument must be a '
                 'sequence of str instances.')
 
-        if isinstance(data, np.ndarray):
-            field_names = data.dtype.names
-            fname2dtype = dict([
-                (k, v[0]) for (k, v) in data.dtype.fields.items()
-            ])
-            length = data.shape[0]
-        elif isinstance(data, dict):
-            field_names = list(data.keys())
-            fname2dtype = dict([
-                (fname, data[fname].dtype) for fname in field_names
-            ])
-            length = 0
-            if len(field_names) > 0:
-                length = data[field_names[0]].shape[0]
-        elif isinstance(data, DataFieldRecordArray):
-            field_names = data.field_name_list
-            fname2dtype = dict([
-                (fname, data[fname].dtype) for fname in field_names
-            ])
-            length = len(data)
-            copy = True
-        else:
-            raise TypeError(
-                'The data argument must be an instance of ndarray, dict, or '
-                'DataFieldRecordArray!')
+        # Select an appropriate data table accessor for the type of data.
+        if data_table_accessor is None:
+            if isinstance(data, np.ndarray):
+                data_table_accessor = NDArrayDataTableAccessor()
+            elif isinstance(data, dict):
+                data_table_accessor = DictDataTableAccessor()
+            elif isinstance(data, pa.Table):
+                data_table_accessor = ParquetDataTableAccessor()
+            elif isinstance(data, DataFieldRecordArray):
+                data_table_accessor = DataFieldRecordArrayDataTableAccessor()
+            else:
+                raise TypeError(
+                    'No TableDataAccessor instance has been specified for the '
+                    f'data of type {type(data)}!')
+
+        field_names = data_table_accessor.get_field_names(data)
+        fname2dtype = data_table_accessor.get_field_name_to_dtype_dict(data)
+        length = data_table_accessor.get_length(data)
 
         for fname in field_names:
             # Ignore fields that should not get kept.
@@ -833,9 +1124,10 @@ class DataFieldRecordArray(
                 # Create a ndarray with the final data type and then assign the
                 # values from the data, which technically is a copy.
                 field_arr = np.empty((length,), dtype=dt)
-                np.copyto(field_arr, data[fname])
+                np.copyto(field_arr, data_table_accessor.get_column(data, fname))
             else:
-                field_arr = data[fname]
+                field_arr = data_table_accessor.get_column(data, fname)
+
             if self._len is None:
                 self._len = len(field_arr)
             elif len(field_arr) != self._len:
@@ -1332,5 +1624,6 @@ class DataFieldRecordArray(
 
 
 register_FileLoader(['.npy'], NPYFileLoader)
+register_FileLoader(['.parquet'], ParquetFileLoader)
 register_FileLoader(['.pkl'], PKLFileLoader)
 register_FileLoader(['.csv'], TextFileLoader)
