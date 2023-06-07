@@ -2,6 +2,7 @@
 
 import abc
 import copy
+import functools
 import inspect
 import numpy as np
 import sys
@@ -79,6 +80,47 @@ class ConstPyQualifier(
 
 
 const = ConstPyQualifier()
+
+
+def get_class_of_func(f):
+    """Determines the class object that defined the given method or function
+    ``f``.
+
+    Parameters
+    ----------
+    f : function | method
+        The function or method whose parent class should be determined.
+
+    Returns
+    -------
+    cls : class | None
+        The class object which defines the given function or method. ``None``
+        is returned when no class could be determined.
+    """
+    if isinstance(f, functools.partial):
+        return get_class_of_func(f.func)
+
+    if inspect.ismethod(f) or\
+        ((inspect.isbuiltin(f)) and
+         (getattr(f, '__self__', None) is not None) and
+         (getattr(f.__self__, '__class__', None))):
+        for cls in inspect.getmro(f.__self__.__class__):
+            if hasattr(cls, '__dict__') and (f.__name__ in cls.__dict__):
+                return cls
+        # Fall back to normal function evaluation.
+        f = getattr(f, '__func__', f)
+
+    if inspect.isfunction(f):
+        cls = getattr(
+            inspect.getmodule(f),
+            f.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)[0],
+            None)
+        if isinstance(cls, type):
+            return cls
+
+    # Handle special descriptor objects.
+    cls = getattr(f, '__objclass__', None)
+    return cls
 
 
 def typename(t):
