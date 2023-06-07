@@ -5,8 +5,6 @@ import copy
 import pickle
 import os.path
 import numpy as np
-import pyarrow as pa
-import pyarrow.parquet as pq
 import sys
 
 from skyllh.core.py import (
@@ -15,6 +13,9 @@ from skyllh.core.py import (
     getsizeof,
     issequence,
     issequenceof,
+)
+from skyllh.core import (
+    tool,
 )
 from skyllh.core import display as dsp
 
@@ -404,6 +405,13 @@ class ParquetFileLoader(
             pathfilenames=pathfilenames,
             **kwargs)
 
+        if not tool.is_available('pyarrow'):
+            raise ModuleNotFoundError(
+                'The Python module "pyarrow" is not available!')
+
+        self.pa = tool.get('pyarrow')
+        self.pq = tool.get('pyarrow.parquet')
+
     def load_data(
             self,
             keep_fields=None,
@@ -438,11 +446,11 @@ class ParquetFileLoader(
             The DataFieldRecordArray holding the loaded data.
         """
         assert_file_exists(self.pathfilename_list[0])
-        table = pq.read_table(self.pathfilename_list[0], columns=keep_fields)
+        table = self.pq.read_table(self.pathfilename_list[0], columns=keep_fields)
         for pathfilename in self.pathfilename_list[1:]:
             assert_file_exists(pathfilename)
-            next_table = pq.read_table(pathfilename, columns=keep_fields)
-            table = pa.concat_tables([table, next_table])
+            next_table = self.pq.read_table(pathfilename, columns=keep_fields)
+            table = self.pa.concat_tables([table, next_table])
 
         data = DataFieldRecordArray(
             data=table,
@@ -1093,7 +1101,8 @@ class DataFieldRecordArray(
                 data_table_accessor = NDArrayDataTableAccessor()
             elif isinstance(data, dict):
                 data_table_accessor = DictDataTableAccessor()
-            elif isinstance(data, pa.Table):
+            elif (tool.is_available('pyarrow') and
+                  isinstance(data, tool.get('pyarrow').Table)):
                 data_table_accessor = ParquetDataTableAccessor()
             elif isinstance(data, DataFieldRecordArray):
                 data_table_accessor = DataFieldRecordArrayDataTableAccessor()
