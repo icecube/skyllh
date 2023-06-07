@@ -18,6 +18,11 @@ def is_available(name):
     name : str
         The name of the Python package.
 
+    Returns
+    -------
+    check : bool
+        ``True`` if the given Python package is available, ``False`` otherwise.
+
     Raises
     ------
     ModuleNotFoundError
@@ -36,12 +41,17 @@ def is_available(name):
 
 def get(name):
     """Returns the module object of the given tool. This will import the Python
-    package if it was not imported yet.
+    package if it was not yet imported.
 
     Parameters
     ----------
     name : str
         The name of the Python package.
+
+    Returns
+    -------
+    module : Python module
+        The (imported) Python module object.
     """
     if name in sys.modules:
         return sys.modules[name]
