@@ -388,6 +388,7 @@ class ParquetFileLoader(
     """The ParquetFileLoader class provides the data loading functionality for
     parquet files. It uses the ``pyarrow`` package.
     """
+    @tool.requires('pyarrow', 'pyarrow.parquet')
     def __init__(
             self,
             pathfilenames,
@@ -404,10 +405,6 @@ class ParquetFileLoader(
         super().__init__(
             pathfilenames=pathfilenames,
             **kwargs)
-
-        if not tool.is_available('pyarrow'):
-            raise ModuleNotFoundError(
-                'The Python module "pyarrow" is not available!')
 
         self.pa = tool.get('pyarrow')
         self.pq = tool.get('pyarrow.parquet')

@@ -9,6 +9,10 @@ import importlib
 import importlib.util
 import sys
 
+from skyllh.core.py import (
+    get_class_of_func,
+)
+
 
 def is_available(name):
     """Checks if the given Python package is available for import.
@@ -58,3 +62,29 @@ def get(name):
 
     module = importlib.import_module(name)
     return module
+
+
+def requires(*tools):
+    """This is decorator function that can be used whenever a function requires
+    optional tools.
+
+    Parameters
+    ----------
+    *tools : sequence of str
+        The name of the required Python packages.
+
+    Raises
+    ------
+    ModuleNotFoundError
+        If any of the specified tools is not available.
+    """
+    def decorator(f):
+        def wrapper(*args, **kwargs):
+            for tool in tools:
+                if not is_available(tool):
+                    raise ModuleNotFoundError(
+                        f'The Python module "{tool}" is not available, but is '
+                        f'required by "{get_class_of_func(f)}.{f.__name__}"!')
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
