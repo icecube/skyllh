@@ -43,7 +43,7 @@ sys.path.insert(0, '/path/to/i3skyllh')  # optional
 
 # Publications
 
-Several publications about the `skyllh` software are available:
+Several publications about the SkyLLH software are available:
 
 - IceCube Collaboration, T. Kontrimas, M. Wolf, et al. PoS ICRC2021 (2022) 1073
   [DOI](http://doi.org/10.22323/1.395.1073)
