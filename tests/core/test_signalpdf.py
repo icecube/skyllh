@@ -15,14 +15,14 @@ from skyllh.core.flux_model import (
 from skyllh.core.livetime import (
     Livetime,
 )
-from skyllh.core.model import (
-    SourceModel,
-)
 from skyllh.core.parameters import (
     ParameterModelMapper,
 )
 from skyllh.core.signalpdf import (
     SignalTimePDF,
+)
+from skyllh.core.source_model import (
+    SourceModel,
 )
 from skyllh.core.trialdata import (
     TrialDataManager,
@@ -62,7 +62,9 @@ def create_tdm(n_sources, n_selected_events):
     return tdm
 
 
-class TestSignalTimePDF(unittest.TestCase):
+class SignalTimePDFTestCase(
+        unittest.TestCase,
+):
     def setUp(self):
         self.pmm = ParameterModelMapper(
             models=[
@@ -75,7 +77,6 @@ class TestSignalTimePDF(unittest.TestCase):
             [7.7, 10],
         ]))
 
-        self.integral = 10
         self.S = (1-0) + (4.6-1.3) + (10-7.7)
 
         self.time_flux_profile = BoxTimeFluxProfile(
@@ -90,9 +91,8 @@ class TestSignalTimePDF(unittest.TestCase):
     def test__str__(self):
         str(self.sig_time_pdf)
 
-    def test_calculate_time_flux_profile_integrals(self):
-        (integral, S) = self.sig_time_pdf._calculate_time_flux_profile_integrals()
-        self.assertEqual(integral, 10)
+    def test__calculate_sum_of_ontime_time_flux_profile_integrals(self):
+        S = self.sig_time_pdf._calculate_sum_of_ontime_time_flux_profile_integrals()
         self.assertEqual(S, self.S)
 
     def test_get_pd(self):
@@ -101,17 +101,17 @@ class TestSignalTimePDF(unittest.TestCase):
 
         (pd, grads) = self.sig_time_pdf.get_pd(
             tdm=tdm,
-            src_params_recarray=src_params_recarray)
+            params_recarray=src_params_recarray)
 
         np.testing.assert_almost_equal(
             pd,
             np.array([
-                1*self.S/self.integral**2,
+                1/self.S,
                 0.,
-                1*self.S/self.integral**2,
-                1*self.S/self.integral**2,
+                1/self.S,
+                1/self.S,
                 0.,
-                1*self.S/self.integral**2
+                1/self.S,
             ]))
 
         self.assertEqual(grads, {})
