@@ -99,8 +99,7 @@ def create_signal_generator(
     )
 
     src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
-        shg_mgr=shg_mgr,
-        detsigyields=detsigyield_service.arr,
+        detsigyield_service=detsigyield_service,
     )
 
     ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
