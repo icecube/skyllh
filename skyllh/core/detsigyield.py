@@ -31,7 +31,7 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
 
     To construct a detector signal yield object, four ingredients are
     needed: the dataset holding the monte-carlo data events, a signal flux
-    model, the live-time, and a builder instance that knows howto contruct
+    model, the livetime, and a builder instance that knows how to construct
     the actual detector yield in an efficient way.
     In general, the implementation method depends on the detector, the source,
     the flux model with its flux model's signal parameters, and the dataset.
