@@ -1,0 +1,19 @@
+This file contains a log-book for major changes between releases.
+
+v23.2.0
+=======
+- Complete overhaul of SkyLLH for more generic handling of parameters
+  (fixed & fit parameters) and their mapping to sources
+- Intrinsic support for multiple sources
+- Simplification of the class hierarchy & source code structure
+- New generic flux model function concept
+- New generic PDF class for time PDFs
+- Support for Parquet data files via pyarrow Python package
+- Speed improvements for analysis creation and trial generation
+- Usage of the tqdm Python package for progress bars
+- More unit tests
+- Improved documentation
+- Following PEP8 coding style standard
+
+v23.1.0
+=======
