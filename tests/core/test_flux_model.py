@@ -78,8 +78,8 @@ class PointSpatialFluxProfileTestCase(
     def test_math_function_str(self):
         self.assertEqual(
             self.fluxprofile.math_function_str,
-            (f'delta(alpha-{self.ra:g}{self.angle_unit})*'
-             f'delta(delta-{self.dec:g}{self.angle_unit})')
+            (f'delta(ra-{self.ra:g}{self.angle_unit})*'
+             f'delta(dec-{self.dec:g}{self.angle_unit})')
         )
 
     def test_call(self):

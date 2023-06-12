@@ -254,8 +254,8 @@ class PointSpatialFluxProfile(
         if (self._ra is None) or (self._dec is None):
             return None
 
-        s = (f'delta(alpha-{self._ra:g}{self._angle_unit})*'
-             f'delta(delta-{self._dec:g}{self._angle_unit})')
+        s = (f'delta(ra-{self._ra:g}{self._angle_unit})*'
+             f'delta(dec-{self._dec:g}{self._angle_unit})')
 
         return s
 
