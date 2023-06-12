@@ -800,7 +800,7 @@ class NamedObjectCollection(ObjectCollection):
         ])
 
     def __contains__(self, name):
-        """Retruns ``True`` if an object of the given name exists in this
+        """Returns ``True`` if an object of the given name exists in this
         NamedObjectCollection instance, ``False`` otherwise.
 
         Parameters
