@@ -24,7 +24,7 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
-    tdm_field_func_psi,
+    get_tdm_field_func_psi,
 )
 
 from skyllh.core.analysis import (
@@ -372,7 +372,7 @@ def create_analysis(
             func=pointlikesource_to_data_field_array)
         tdm.add_data_field(
             name='psi',
-            func=tdm_field_func_psi,
+            func=get_tdm_field_func_psi(),
             dt='dec',
             is_srcevt_data=True)
 
