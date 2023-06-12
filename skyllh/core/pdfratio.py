@@ -437,9 +437,6 @@ class SourceWeightedPDFRatio(
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
-            The instance of ParameterModelMapper providing the global parameters
-            and their mapping to local source parameters.
         dataset_idx : int
             The index of the dataset. It is used to access the source detector
             signal yield weight.
