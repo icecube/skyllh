@@ -80,7 +80,6 @@ def create_MultiDimGridPDF_from_photosplinetable(
         kde_pdf_axis_name_map_key='KDE_PDF_axis_name_map',
         norm_factor_func=None,
         cache_pd_values=False,
-        kind=None,
         tl=None):
     """
     Creates a MultiDimGridPDF instance with pdf values taken from a photospline
@@ -120,10 +119,8 @@ def create_MultiDimGridPDF_from_photosplinetable(
 
     Returns
     -------
-    pdf : instance of SignalMultiDimGridPDF | instance of BackgroundMultiDimGridPDF | instance of MultiDimGridPDF
-        The created PDF instance. Depending on the ``kind`` argument, this is
-        a ``SignalMultiDimGridPDF``, a ``BackgroundMultiDimGridPDF``, or a
-        ``MultiDimGridPDF`` instance.
+    pdf : instance of ``multidimgridpdf_cls``
+        The created PDF instance of MultiDimGridPDF.
     """
     if not issubclass(multidimgridpdf_cls, MultiDimGridPDF):
         raise TypeError(
@@ -180,7 +177,6 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
         kde_pdf_axis_name_map_key='KDE_PDF_axis_name_map',
         norm_factor_func=None,
         cache_pd_values=False,
-        kind=None,
         tl=None):
     """Creates a MultiDimGridPDF instance with pdf values taken from KDE PDF
     values stored in the dataset's auxiliary data.
@@ -212,20 +208,14 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
     cache_pd_values : bool
         Flag if the probability density values should get cached by the
         MultiDimGridPDF class.
-    kind : str | None
-        The kind of PDF to create. This is either ``'sig'`` for a
-        SignalMultiDimGridPDF or ``'bkg'`` for a BackgroundMultiDimGridPDF
-        instance. If set to None, a MultiDimGridPDF instance is created.
     tl : instance of TimeLord | None
         The optional instance of TimeLord to use for measuring timing
         information.
 
     Returns
     -------
-    pdf : instance of SignalMultiDimGridPDF | instance of BackgroundMultiDimGridPDF | instance of MultiDimGridPDF
-        The created PDF instance. Depending on the ``kind`` argument, this is
-        a ``SignalMultiDimGridPDF``, a ``BackgroundMultiDimGridPDF``, or a
-        ``MultiDimGridPDF`` instance.
+    pdf : instance of ``multidimgridpdf_cls``
+        The created PDF instance of MultiDimGridPDF.
     """
     if not issubclass(multidimgridpdf_cls, MultiDimGridPDF):
         raise TypeError(
