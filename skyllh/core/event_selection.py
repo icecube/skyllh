@@ -1225,7 +1225,6 @@ class AngErrOfPsiEventSelectionMethod(
                 dec1=np.take(self._src_arr['dec'], src_idxs),
                 ra2=np.take(events['ra'], evt_idxs),
                 dec2=np.take(events['dec'], evt_idxs),
-                psi_floor=10**(-5.95442953)
             )
 
         with TaskTimer(tl, 'ESM: Create mask_psi.'):
