@@ -312,14 +312,14 @@ def create_energy_cut_spline(
     return spline
 
 
-def get_tdm_field_func_psi(psi_floor=0):
+def get_tdm_field_func_psi(psi_floor=None):
     """Returns the TrialDataManager (TDM) field function for psi with an
     optional psi value floor.
 
     Parameters
     ----------
-    psi_floor : float
-        The optional floor value for psi. This should be 0 for a standard
+    psi_floor : float | None
+        The optional floor value for psi. This should be ``None`` for a standard
         point-source analysis that uses an analytic function for the detector's
         point-spread-function (PSF).
 
