@@ -262,7 +262,7 @@ class MultiDatasetSignalGenerator(
     @sig_generator_list.setter
     def sig_generator_list(self, generators):
         if generators is not None:
-            if not issequenceof(generators, SignalGenerator):
+            if not issequenceof(generators, (SignalGenerator, type(None))):
                 raise TypeError(
                     'The sig_generator_list property must be a sequence of '
                     'SignalGenerator instances!')
