@@ -296,8 +296,23 @@ class I3Dataset(Dataset):
             The TimeLord instance that should be used to time the data
             preparation.
         """
+        # Set the livetime of the dataset from the GRL data when no livetime
+        # was specified previously.
+        if data.livetime is None and data.grl is not None:
+            if 'start' not in data.grl:
+                raise KeyError(
+                    f'The GRL data for dataset "{self.name}" has no data '
+                    'field named "start"!')
+            if 'stop' not in data.grl:
+                raise KeyError(
+                    f'The GRL data for dataset "{self.name}" has no data '
+                    'field named "stop"!')
+            data.livetime = np.sum(data.grl['stop'] - data.grl['start'])
+
         # Execute all the data preparation functions for this dataset.
-        super(I3Dataset, self).prepare_data(data, tl=tl)
+        super().prepare_data(
+            data=data,
+            tl=tl)
 
         if(data.exp is not None):
             # Append sin(dec) data field to the experimental data.
@@ -317,17 +332,6 @@ class I3Dataset(Dataset):
                 if 'sin_true_dec' not in data.mc.field_name_list:
                     data.mc.append_field(
                         'sin_true_dec', np.sin(data.mc['true_dec']))
-
-        # Set the livetime of the dataset from the GRL data when no livetime
-        # was specified previously.
-        if(data.livetime is None and data.grl is not None):
-            if('start' not in data.grl):
-                raise KeyError('The GRL data for dataset "{}" has no data '
-                    'field named "start"!'.format(self.name))
-            if('stop' not in data.grl):
-                raise KeyError('The GRL data for dataset "{}" has no data '
-                    'field named "stop"!'.format(self.name))
-            data.livetime = np.sum(data.grl['stop'] - data.grl['start'])
 
         # Select only the experimental data which fits the good-run-list for
         # this dataset.
