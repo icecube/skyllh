@@ -117,7 +117,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             data_sin_dec,
             bins=[log10_energy_binning.binedges, sin_dec_binning.binedges],
             range=[log10_energy_binning.range, sin_dec_binning.range],
-            normed=False)
+            density=False)
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered = h > 0
 
@@ -133,7 +133,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             data_sin_dec[mask],
             bins=[log10_energy_binning.binedges, sin_dec_binning.binedges],
             range=[log10_energy_binning.range, sin_dec_binning.range],
-            normed=False)
+            density=False)
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered_zero_physics = h > 0
 
@@ -147,7 +147,7 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             bins=[log10_energy_binning.binedges, sin_dec_binning.binedges],
             weights=data_weights,
             range=[log10_energy_binning.range, sin_dec_binning.range],
-            normed=False)
+            density=False)
 
         # Calculate the normalization for each logE bin. Hence we need to sum
         # over the logE bins (axis 0) for each sin(dec) bin and need to divide
