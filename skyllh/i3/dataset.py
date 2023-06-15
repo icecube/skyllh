@@ -72,6 +72,7 @@ class I3Dataset(
 
     def __init__(
             self,
+            livetime=None,
             grl_pathfilenames=None,
             **kwargs,
     ):
@@ -80,11 +81,16 @@ class I3Dataset(
 
         Parameters
         ----------
+        livetime : float | None
+            The live-time of the dataset in days. It can be ``None``, if
+            good-run-list data files are provided.
         grl_pathfilenames : str | sequence of str
             The sequence of pathfilenames pointing to the good-run-list (GRL)
             data files.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            livetime=livetime,
+            **kwargs)
 
         self._logger = get_logger(module_classname(self))
 
