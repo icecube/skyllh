@@ -279,6 +279,8 @@ class RayleighPSFPointSourceSignalSpatialPDF(
             **kwargs
         )
 
+        self._pd = None
+
     def initialize_for_new_trial(
             self,
             tdm,
@@ -339,6 +341,10 @@ class RayleighPSFPointSourceSignalSpatialPDF(
             depend on any global fit parameters and hence, this dictionary is
             empty.
         """
+        if self._pd is None:
+            raise ValueError(
+                'The PDF has not been initialized with trial data!')
+
         grads = dict()
 
         return (self._pd, grads)
