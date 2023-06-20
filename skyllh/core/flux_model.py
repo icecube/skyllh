@@ -22,6 +22,9 @@ from scipy.integrate import (
 import scipy.special
 import scipy.stats
 
+from skyllh.core import (
+    tool,
+)
 from skyllh.core.config import (
     CFG,
 )
@@ -860,6 +863,89 @@ class LogParabolaPowerLawEnergyFluxProfile(
         )
 
         return values
+
+
+class PhotosplineEnergyFluxProfile(
+        EnergyFluxProfile,
+):
+    """The abstract base class for an energy flux profile based on a
+    photospline.
+    """
+    @tool.requires('photospline')
+    def __init__(
+            self,
+            splinetable,
+            crit_log10_energy_lower,
+            crit_log10_energy_upper,
+            energy_unit=None,
+            **kwargs,
+    ):
+        """Creates a new instance of PhotosplineEnergyFluxProfile.
+
+        Parameters
+        ----------
+        splinetable : instance of photospline.SplineTable
+            The instance of photospline.SplineTable representing the energy flux
+            profile as a spline.
+        crit_log10_energy_lower : float
+            The lower edge of the spline's supported energy range in log10(E).
+        crit_log10_energy_upper : float
+            The upper edge of the spline's supported energy range in log10(E).
+        """
+        super().__init__(
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.photospline = tool.get('photospline')
+
+        self.splinetable = splinetable
+        self.crit_log10_energy_lower = crit_log10_energy_lower
+        self.crit_log10_energy_upper = crit_log10_energy_upper
+
+    @property
+    def splinetable(self):
+        """The instance of photospline.SplineTable that describes the neutrino
+        energy flux profile as function of neutrino energy via B-spline
+        interpolation.
+        """
+        return self._splinetable
+
+    @splinetable.setter
+    def splinetable(self, table):
+        if not isinstance(table, self.photospline.SplineTable):
+            raise TypeError(
+                'The splinetable property must be an instance of '
+                'photospline.SplineTable! '
+                f'Its current type is {classname(table)}!')
+        self._splinetable = table
+
+    @property
+    def crit_log10_energy_lower(self):
+        """The lower energy bound of the spline's support.
+        """
+        return self._crit_log10_energy_lower
+
+    @crit_log10_energy_lower.setter
+    def crit_log10_energy_lower(self, v):
+        v = float_cast(
+            v,
+            'The property crit_log10_energy_lower must be castable to type '
+            'float!')
+        self._crit_log10_energy_lower = v
+
+    @property
+    def crit_log10_energy_upper(self):
+        """The upper energy bound of the spline's support.
+        """
+        return self._crit_log10_energy_lower
+
+    @crit_log10_energy_upper.setter
+    def crit_log10_energy_lower(self, v):
+        v = float_cast(
+            v,
+            'The property crit_log10_energy_upper must be castable to type '
+            'float!')
+        self._crit_log10_energy_upper = v
 
 
 class TimeFluxProfile(
