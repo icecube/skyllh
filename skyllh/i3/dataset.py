@@ -352,7 +352,7 @@ class I3Dataset(Dataset):
                                              data.grl['stop']):
                         mask |= (
                             (data.exp['time'] >= start) &
-                            (data.exp['time'] < stop)
+                            (data.exp['time'] <= stop)
                         )
 
                     if np.any(~mask):
