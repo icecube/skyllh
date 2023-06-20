@@ -1651,6 +1651,8 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         # ``MultiDimGridPDF.get_prob_with_eventdata`` method.
         # All PDFs of this PDFSet should have the same axes, so use the axes
         # from any of the PDFs in this PDF set.
+        pdf_axes = next(iter(self.items()))[1].axes
+
         if(isinstance(self, IsSignalPDF)):
             # Evaluate the relevant quantities for
             # all events and sources (relevant for stacking analyses).
@@ -1668,7 +1670,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
 
                         # Default case.
                         else tdm.get_data(axis.name)[ev_idxs]
-                        for axis in self.pdf_axes
+                        for axis in pdf_axes
                     ]
                 ).T
             else:
@@ -1688,13 +1690,13 @@ class MultiDimGridPDFSet(PDF, PDFSet):
 
                         # Default case.
                         else np.tile(tdm.get_data(axis.name), n_src)
-                        for axis in self.pdf_axes
+                        for axis in pdf_axes
                     ]
                 ).T
 
         elif (isinstance(self, IsBackgroundPDF)):
             eventdata = np.array([tdm.get_data(axis.name)
-                                  for axis in self.pdf_axes]).T
+                                  for axis in pdf_axes]).T
 
         # Get the interpolated PDF values for the arbitrary parameter values.
         # The (D,N_events)-shaped grads_ ndarray contains the gradient of the
