@@ -366,7 +366,7 @@ class I3Dataset(
 
         # Select only the experimental data which fits the good-run-list for
         # this dataset.
-        if data.grl is not None:
+        if (data.grl is not None) and (data.exp is not None):
             # Select based on run information.
             if ('run' in data.grl) and ('run' in data.exp):
                 task = (
@@ -375,7 +375,13 @@ class I3Dataset(
                 with TaskTimer(tl, task):
                     runs = np.unique(data.grl['run'])
                     mask = np.isin(data.exp['run'], runs)
-                    data.exp = data.exp[mask]
+
+                    if np.any(~mask):
+                        n_cut_runs = np.count_nonzero(~mask)
+                        self._logger.info(
+                            f'Cutting {n_cut_runs} runs from dataset '
+                            f'{self.name} due to GRL run information.')
+                        data.exp = data.exp[mask]
 
             # Select based on detector on-time information.
             if ('start' in data.grl) and\
@@ -391,7 +397,7 @@ class I3Dataset(
                                              data.grl['stop']):
                         mask |= (
                             (data.exp['time'] >= start) &
-                            (data.exp['time'] < stop)
+                            (data.exp['time'] <= stop)
                         )
 
                     if np.any(~mask):
