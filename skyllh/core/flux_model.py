@@ -944,7 +944,7 @@ class PhotosplineEnergyFluxProfile(
         return self._crit_log10_energy_lower
 
     @crit_log10_energy_upper.setter
-    def crit_log10_energy_lower(self, v):
+    def crit_log10_energy_upper(self, v):
         v = float_cast(
             v,
             'The property crit_log10_energy_upper must be castable to type '
