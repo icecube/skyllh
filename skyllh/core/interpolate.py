@@ -183,23 +183,24 @@ class NullGridManifoldInterpolationMethod(
         ----------
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
-        eventdata : numpy ndarray
+        eventdata : instance of numpy.ndarray
             The (N_events,V)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
-        params_recarray : instance of numpy record ndarray
-            The numpy record ndarray holding the D parameter values,
-            defining the point on the manifold for which the values should get
-            calculated.
+        params_recarray : instance of numpy.ndarray
+            The structured numpy ndarray of length N_sources holding the
+            parameter names and values of the sources, defining the point on the
+            manifold for which the values should get calculated.
 
         Returns
         -------
-        values : ndarray of float
+        values : instance of numpy.ndarray
             The (N,)-shaped numpy ndarray holding the interpolated manifold
             values for the given events and sources.
-        grads :  ndarray of float
+        grads : instance of numpy.ndarray
             The (D,N)-shaped ndarray of float holding the D manifold gradients
-            for the N values, where D is the number of parameters.
+            for the N values, where D is the number of parameters of the
+            manifold.
             By definition, all gradients are zero.
         """
         # Round the given parameter values to their nearest grid values.
