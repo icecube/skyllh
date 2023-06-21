@@ -891,6 +891,10 @@ class PhotosplineEnergyFluxProfile(
             The lower edge of the spline's supported energy range in log10(E).
         crit_log10_energy_upper : float
             The upper edge of the spline's supported energy range in log10(E).
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
         """
         super().__init__(
             energy_unit=energy_unit,
