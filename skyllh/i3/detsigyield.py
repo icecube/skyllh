@@ -455,7 +455,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         # The unit of mcweight is assumed to be GeV cm^2 sr.
         weights = (
             data.mc["mcweight"] *
-            fluxmodel(data.mc["true_energy"])*to_internal_flux_unit *
+            fluxmodel(E=data.mc["true_energy"]).squeeze()*to_internal_flux_unit *
             livetime_days*86400.
         )
 
