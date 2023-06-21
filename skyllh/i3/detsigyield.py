@@ -453,17 +453,18 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         # Calculate the detector signal yield contribution of each event.
         # The unit of mcweight is assumed to be GeV cm^2 sr.
+        flux = fluxmodel(E=data.mc['true_energy']).squeeze()
         weights = (
-            data.mc["mcweight"] *
-            fluxmodel(E=data.mc["true_energy"]).squeeze()*to_internal_flux_unit *
+            data.mc['mcweight'] *
+            flux*to_internal_flux_unit *
             livetime_days*86400.
         )
 
         # Create a histogram along sin(true_dec).
-        (h, bins) = np.histogram(
-            np.sin(data.mc["true_dec"]),
-            weights=weights,
+        (h, edges) = np.histogram(
+            np.sin(data.mc['true_dec']),
             bins=sin_dec_binning.binedges,
+            weights=weights,
             density=False)
 
         # Normalize by solid angle of each bin which is
@@ -472,7 +473,9 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         # Create spline in ln(h) at the histogram's bin centers.
         log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
-            sin_dec_binning.bincenters, np.log(h), k=self.spline_order_sinDec)
+            sin_dec_binning.bincenters,
+            np.log(h),
+            k=self.spline_order_sinDec)
 
         detsigyield = FixedFluxPointLikeSourceI3DetSigYield(
             param_names=[],
