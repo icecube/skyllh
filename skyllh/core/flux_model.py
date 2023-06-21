@@ -941,7 +941,7 @@ class PhotosplineEnergyFluxProfile(
     def crit_log10_energy_upper(self):
         """The upper energy bound of the spline's support.
         """
-        return self._crit_log10_energy_lower
+        return self._crit_log10_energy_upper
 
     @crit_log10_energy_upper.setter
     def crit_log10_energy_upper(self, v):
