@@ -203,9 +203,17 @@ class NullGridManifoldInterpolationMethod(
             By definition, all gradients are zero.
         """
         # Round the given parameter values to their nearest grid values.
-        gridparams_recarray = np.empty_like(params_recarray)
-        for pname in params_recarray.dtype.fields.keys():
-            p_grid = self._param_grid_set[pname]
+        gridparams_recarray_dtype = [
+            (p_grid.name, np.float64)
+            for p_grid in self._param_grid_set
+        ]
+
+        gridparams_recarray = np.empty(
+            params_recarray.shape,
+            dtype=gridparams_recarray_dtype)
+
+        for p_grid in self._param_grid_set:
+            pname = p_grid.name
             pvalues = params_recarray[pname]
             gridparams_recarray[pname] = p_grid.round_to_nearest_grid_point(
                 pvalues)
