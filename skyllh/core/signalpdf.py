@@ -562,9 +562,10 @@ class SignalMultiDimGridPDF(
 
 
 class SignalMultiDimGridPDFSet(
-        PDF,
+        IsSignalPDF,
         PDFSet,
-        IsSignalPDF):
+        PDF,
+):
     """This class provides a set of MultiDimGridPDF instances that implements
     also the PDF interface.
     """
@@ -900,9 +901,10 @@ class SignalMultiDimGridPDFSet(
 
 
 class SignalSHGMappedMultiDimGridPDFSet(
-        PDF,
+        IsSignalPDF,
         PDFSet,
-        IsSignalPDF):
+        PDF,
+):
     """This class provides a set of MultiDimGridPDF instances, one for each
     source hypothesis group.
     """
@@ -1033,7 +1035,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
         src_idxs = tdm.src_evt_idxs[0]
         src_idxs_arr = np.arange(self._shg_mgr.n_sources)
-        for (shg_idx, shg) in enumerate(self._shg_mgr.shg_list):
+        for shg_idx in range(len(self._shg_mgr.shg_list)):
             # Check if a PDF is defined for this SHG.
             pdf_key = self.make_key({'shg_idx': shg_idx})
             if pdf_key not in self:
