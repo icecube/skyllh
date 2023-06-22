@@ -7,6 +7,10 @@ analysis.
 
 import numpy as np
 
+from skyllh.core.display import (
+    add_leading_text_line_padding,
+    INDENTATION_WIDTH,
+)
 from skyllh.core.py import (
     classname,
     issequenceof,
@@ -146,6 +150,33 @@ class SourceHypoGroup(
         """
         return len(self._source_list)
 
+    def __str__(self):
+        """Pretty string representation of this SourceHypoGroup instance.
+        """
+        s = f'{classname(self)}:\n'
+
+        s1 = f'sources ({len(self._source_list)}):'
+        for (idx, source) in enumerate(self._source_list):
+            s1 += '\n'
+            s2 = f'{idx}: {source}'
+            s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
+        s1 += '\n'
+        s1 += 'fluxmodel:\n'
+        s2 = f'{self._fluxmodel}'
+        s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
+        s1 += '\n'
+        s1 += f'detector signal yield builders ({len(self._detsigyield_builder_list)}):\n'
+        s2 = '\n'.join((classname(builder) for builder in self._detsigyield_builder_list))
+        s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
+        s1 += '\n'
+        s1 += 'signal generation method:\n'
+        s2 = f'{classname(self._sig_gen_method)}'
+        s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
+
+        s += add_leading_text_line_padding(INDENTATION_WIDTH, s1)
+
+        return s
+
     def get_source_weights(self):
         """Gets the weight from each source of this source hypothesis group.
 
@@ -241,6 +272,21 @@ class SourceHypoGroupManager(
         SourceHypoGroup instances.
         """
         return self._shg_list
+
+    def __str__(self):
+        """Pretty string representation of this SourceHypoGroupManager.
+        """
+        s = f'{classname(self)}\n'
+
+        s1 = 'Source Hypothesis Groups:\n'
+        s1 += '========================='
+        for (idx, shg) in enumerate(self._shg_list):
+            s1 += '\n'
+            s1 += add_leading_text_line_padding(INDENTATION_WIDTH, f'{idx}: {shg}')
+
+        s += add_leading_text_line_padding(INDENTATION_WIDTH, s1)
+
+        return s
 
     def _extend_sidx_to_gidx_gsidx_map_arr(self, shg):
         """Extends the source index to (group index, group source index) map
