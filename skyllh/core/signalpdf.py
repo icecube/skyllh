@@ -905,18 +905,20 @@ class SignalSHGMappedMultiDimGridPDFSet(
         PDFSet,
         PDF,
 ):
-    """This class provides a set of MultiDimGridPDF instances, one for each
-    source hypothesis group.
+    """This class provides a set of MultiDimGridPDF instances, one for one or
+    more source hypothesis groups.
     """
 
     def __init__(
             self,
             shg_mgr,
             pmm,
-            shgidxs_pdfs,
-            **kwargs):
+            shgidxs_pdf_list,
+            **kwargs,
+    ):
         """Creates a new SignalSHGMappedMultiDimGridPDFSet instance, which holds
-        a set of MultiDimGridPDF instances, one for each point of a parameter grid set.
+        a set of MultiDimGridPDF instances, one for one or more source
+        hypothesis groups.
 
         Parameters
         ----------
@@ -926,9 +928,9 @@ class SignalSHGMappedMultiDimGridPDFSet(
         pmm : instance of ParameterModelMapper
             The instance of ParameterModelMapper which defines the mapping of
             global parameters to local source parameters.
-        shgidxs_pdfs : sequence of (shg_idx, MultiDimGridPDF) tuples
-            The sequence of 2-element tuples which define the mapping of a
-            source hypothesis group to a PDF instance.
+        shgidxs_pdf_list : sequence of (shg_idxs, MultiDimGridPDF) tuples
+            The sequence of 2-element tuples which define the mapping of the
+            source hypothesis groups to a PDF instance.
         """
         super().__init__(
             pmm=pmm,
@@ -943,10 +945,12 @@ class SignalSHGMappedMultiDimGridPDFSet(
                 f'Its current type is {classname(shg_mgr)}.')
         self._shg_mgr = shg_mgr
 
-        for (shg_idx, pdf) in shgidxs_pdfs:
+        self._shgidxs_list = []
+        for (shg_idxs, pdf) in shgidxs_pdf_list:
+            self._shgidxs_list.append(shg_idxs)
             self.add_pdf(
                 pdf=pdf,
-                gridparams={'shg_idx': shg_idx})
+                gridparams={'shg_idxs': shg_idxs})
 
         self._cache_tdm_trial_data_state_id = None
         self._cache_eventdata = None
@@ -1035,23 +1039,26 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
         src_idxs = tdm.src_evt_idxs[0]
         src_idxs_arr = np.arange(self._shg_mgr.n_sources)
-        for shg_idx in range(len(self._shg_mgr.shg_list)):
-            # Check if a PDF is defined for this SHG.
-            pdf_key = self.make_key({'shg_idx': shg_idx})
-            if pdf_key not in self:
-                continue
 
-            shg_src_idxs = src_idxs_arr[
-                self._shg_mgr.get_src_mask_of_shg(shg_idx)]
-            values_mask = np.isin(src_idxs, shg_src_idxs)
+        # Loop over the individual PDFs (via their key).
+        for shg_idxs in self._shgidxs_list:
+
+            src_mask = np.zeros((self._shg_mgr.n_sources,), dtype=np.bool_)
+            for shg_idx in shg_idxs:
+                src_mask |= self._shg_mgr.get_src_mask_of_shg(shg_idx)
+            pdf_src_idxs = src_idxs_arr[src_mask]
+            values_mask = np.isin(src_idxs, pdf_src_idxs)
+
+            pdf_key = self.make_key({'shg_idxs': shg_idxs})
+            pdf = self.get_pdf(pdf_key)
 
             with TaskTimer(tl, f'Get PD values for PDF of SHG {shg_idx}.'):
-                pd_shg = self.get_pdf(pdf_key).get_pd_with_eventdata(
+                pd_pdf = pdf.get_pd_with_eventdata(
                     tdm=tdm,
                     params_recarray=params_recarray,
                     eventdata=eventdata,
                     evt_mask=values_mask)
 
-            pd[values_mask] = pd_shg
+            pd[values_mask] = pd_pdf
 
         return (pd, dict())
