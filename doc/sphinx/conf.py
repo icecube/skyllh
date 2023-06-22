@@ -27,7 +27,7 @@ copyright = u'%s, The IceCube Collaboration, T. Kontrimas, M. Wolf' % year
 author = u'The IceCube Collaboration'
 
 # The short X.Y version
-version = u'0.1'
+version = u'23.1.1'
 # The full version, including alpha/beta/rc tags
 release = u''
 
@@ -62,7 +62,7 @@ apidoc_toc_file = False
 apidoc_extra_args = ['-d', '0']
 
 smv_branch_whitelist = r'^(?!HEAD|gh-pages).*$'
-smv_remote_whitelist = r'^.*$' 
+smv_remote_whitelist = r'^.*$'
 smv_tag_whitelist = None
 smv_outputdir_format = '{ref.name}/html'
 
