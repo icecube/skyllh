@@ -1395,14 +1395,6 @@ class PDFSet(object):
         return list(self._gridfitparams_hash_pdf_dict.keys())
 
     @property
-    def pdf_axes(self):
-        """DEPRECATED (read-only) The PDFAxes object of one of the PDFs of this
-        PDF set.
-        All PDFs of this set are supposed to have the same axes.
-        """
-        return self.axes
-
-    @property
     def axes(self):
         """(read-only) The PDFAxes object of one of the PDFs of this PDF set.
         All PDFs of this set are supposed to have the same axes.
@@ -1524,7 +1516,7 @@ class PDFSet(object):
         return pdf
 
 
-class MultiDimGridPDFSet(PDF, PDFSet):
+class MultiDimGridPDFSet(PDFSet, PDF):
     def __init__(
             self, param_set, param_grid_set, gridparams_pdfs,
             interpolmethod=None, pdf_type=MultiDimGridPDF,
@@ -1649,10 +1641,6 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         """
         # Create the ndarray for the event data that is needed for the
         # ``MultiDimGridPDF.get_prob_with_eventdata`` method.
-        # All PDFs of this PDFSet should have the same axes, so use the axes
-        # from any of the PDFs in this PDF set.
-        pdf_axes = next(iter(self.items()))[1].axes
-
         if(isinstance(self, IsSignalPDF)):
             # Evaluate the relevant quantities for
             # all events and sources (relevant for stacking analyses).
@@ -1670,7 +1658,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
 
                         # Default case.
                         else tdm.get_data(axis.name)[ev_idxs]
-                        for axis in pdf_axes
+                        for axis in self.axes
                     ]
                 ).T
             else:
@@ -1690,13 +1678,13 @@ class MultiDimGridPDFSet(PDF, PDFSet):
 
                         # Default case.
                         else np.tile(tdm.get_data(axis.name), n_src)
-                        for axis in pdf_axes
+                        for axis in self.axes
                     ]
                 ).T
 
         elif (isinstance(self, IsBackgroundPDF)):
             eventdata = np.array([tdm.get_data(axis.name)
-                                  for axis in pdf_axes]).T
+                                  for axis in self.axes]).T
 
         # Get the interpolated PDF values for the arbitrary parameter values.
         # The (D,N_events)-shaped grads_ ndarray contains the gradient of the
@@ -1737,7 +1725,7 @@ class MultiDimGridPDFSet(PDF, PDFSet):
         return (prob, grads)
 
 
-class MappedMultiDimGridPDFSet(PDF, PDFSet):
+class MappedMultiDimGridPDFSet(PDFSet, PDF):
     def __init__(
             self, param_grid_set, gridparams_pdfs, src_hypo_group_manager,
             pdf_type=MultiDimGridPDF, **kwargs):
@@ -1818,8 +1806,6 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
         """
         # Create the ndarray for the event data that is needed for the
         # ``MultiDimGridPDF.get_prob_with_eventdata`` method.
-        # All PDFs of this PDFSet should have the same axes, so use the axes
-        # from any of the PDFs in this PDF set.
         if(isinstance(self, IsSignalPDF)):
             # Evaluate the relevant quantities for
             # all events and sources (relevant for stacking analyses).
@@ -1837,7 +1823,7 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
 
                         # Default case.
                         else tdm.get_data(axis.name)[ev_idxs]
-                        for axis in self.pdf_axes
+                        for axis in self.axes
                     ]
                 ).T
             else:
@@ -1857,7 +1843,7 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
 
                         # Default case.
                         else np.tile(tdm.get_data(axis.name), n_src)
-                        for axis in self.pdf_axes
+                        for axis in self.axes
                     ]
                 ).T
 
@@ -1866,7 +1852,7 @@ class MappedMultiDimGridPDFSet(PDF, PDFSet):
 
         elif (isinstance(self, IsBackgroundPDF)):
             eventdata = np.array([tdm.get_data(axis.name)
-                                  for axis in self.pdf_axes]).T
+                                  for axis in self.axes]).T
 
         # Get the interpolated PDF values for the arbitrary parameter values.
         # The (D,N_events)-shaped grads ndarray contains the gradient of the
