@@ -1,0 +1,8 @@
+v23.1.1
+=======
+- bugfix of core.pdf.MultiDimGridPDFSet
+- bugfix of core.pdf.MappedMultiDimGridPDFSet
+- removal of depricated proptery core.pdf.PDFSet.pdf_axes
+
+v23.1.0
+=======
