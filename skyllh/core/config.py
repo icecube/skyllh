@@ -157,6 +157,23 @@ class CFGClass(
 CFG = CFGClass(_BASECONFIG)
 
 
+def to_internal_time_unit(
+        time_unit,
+):
+    """Calculates the conversion factor from the given time unit to the internal
+    time unit.
+
+    Parameters
+    ----------
+    time_unit : instance of astropy.units.UnitBase
+        The time unit from which to convert to the internal time unit.
+    """
+    internal_time_unit = CFG['internal_units']['time']
+    factor = time_unit.to(internal_time_unit)
+
+    return factor
+
+
 def set_enable_tracing(
         flag):
     """Sets the global setting for tracing.
