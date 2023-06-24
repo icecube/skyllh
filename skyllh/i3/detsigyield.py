@@ -5,11 +5,15 @@ for a variation of source model and flux model combinations.
 """
 
 import abc
+from astropy import units
 import numpy as np
 
 import scipy.interpolate
 
 from skyllh.core import multiproc
+from skyllh.core.config import (
+    to_internal_time_unit,
+)
 from skyllh.core.py import (
     classname,
     issequenceof,
@@ -398,17 +402,65 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
                 f'Its current type is {classname(order)}.')
         self._spline_order_sinDec = order
 
+    def _create_hist(
+            self,
+            data_sin_true_dec,
+            data_true_energy,
+            sin_dec_binning,
+            weights,
+            fluxmodel,
+    ):
+        """Creates a histogram of the detector signal yield with the
+        given sin(dec) binning for the given flux model.
+
+        Parameters
+        ----------
+        data_sin_true_dec : instance of numpy.ndarray
+            The (N_data,)-shaped numpy.ndarray holding the sin(true_dec) values
+            of the monte-carlo events.
+        data_true_energy : instance of numpy.ndarray
+            The (N_data,)-shaped numpy.ndarray holding the true energy of the
+            monte-carlo events.
+        sin_dec_binning : instance of BinningDefinition
+            The sin(dec) binning definition to use for the histogram.
+        weights : 1d ndarray
+            The (N_data,)-shaped numpy.ndarray holding the weight factor of
+            each monte-carlo event where only the flux value needs to be
+            multiplied with in order to get the detector signal yield.
+        fluxmodel : instance of FluxModel
+            The flux model to get the flux values from.
+
+        Returns
+        -------
+        h : instance of numpy.ndarray
+            The (N_sin_dec_bins,)-shaped numpy.ndarray containing the histogram
+            values.
+        """
+        weights = weights * fluxmodel(E=data_true_energy).squeeze()
+        (h, _) = np.histogram(
+            data_sin_true_dec,
+            bins=sin_dec_binning.binedges,
+            weights=weights,
+            density=False)
+        return h
+
     def construct_detsigyield(
-            self, dataset, data, fluxmodel, livetime, ppbar=None):
+            self,
+            dataset,
+            data,
+            fluxmodel,
+            livetime,
+            ppbar=None,
+    ):
         """Constructs a detector signal yield log spline function for the
         given fixed flux model.
 
         Parameters
         ----------
-        dataset : Dataset instance
-            The Dataset instance holding meta information about the data.
-        data : DatasetData instance
-            The DatasetData instance holding the monte-carlo event data.
+        dataset : instance of Dataset
+            The instance of Dataset holding meta information about the data.
+        data : instance of DatasetData
+            The instance of DatasetData holding the monte-carlo event data.
             The numpy record ndarray holding the monte-carlo event data must
             contain the following data fields:
 
@@ -420,17 +472,20 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
                 The monte-carlo weight of the data event in the unit
                 GeV cm^2 sr.
 
-        fluxmodel : FluxModel
-            The flux model instance. Must be an instance of FluxModel.
+        fluxmodel : instance of FluxModel
+            The instance of FluxModel specifying the flux model.
         livetime : float | Livetime
             The live-time in days to use for the detector signal yield.
-        ppbar : ProgressBar instance | None
-            The instance of ProgressBar of the optional parent progress bar.
+            This can also be an instance of Livetime.
+        ppbar : instance of ProgressBar | None
+            The optional instance of ProgressBar of the parent progress bar.
 
         Returns
         -------
-        detsigyield : FixedFluxPointLikeSourceI3DetSigYield instance
-            The DetSigYield instance for point-like source with a fixed flux.
+        detsigyield : instance of FixedFluxPointLikeSourceI3DetSigYield
+            The instance of FixedFluxPointLikeSourceI3DetSigYield providing the
+            detector signal yield function for a point-like source with a
+            fixed flux.
         """
         self.assert_types_of_construct_detsigyield_arguments(
             dataset=dataset,
@@ -448,24 +503,38 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit (usually GeV^-1 cm^-2 s^-1).
-        to_internal_flux_unit =\
+        to_internal_flux_unit_factor =\
             fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
-        # Calculate the detector signal yield contribution of each event.
-        # The unit of mcweight is assumed to be GeV cm^2 sr.
-        flux = fluxmodel(E=data.mc['true_energy']).squeeze()
-        weights = (
-            data.mc['mcweight'] *
-            flux*to_internal_flux_unit *
-            livetime_days*86400.
+        to_internal_time_unit_factor = to_internal_time_unit(
+            time_unit=units.day
         )
 
-        # Create a histogram along sin(true_dec).
-        (h, edges) = np.histogram(
-            np.sin(data.mc['true_dec']),
-            bins=sin_dec_binning.binedges,
+        data_sin_true_dec = np.sin(data.mc['true_dec'])
+
+        # Generate a list of indices that would sort the data according to the
+        # sin(true_dec) values. We will sort the MC data according to it,
+        # because the histogram creation is much faster (2x) when the
+        # to-be-histogrammed values are already sorted.
+        sorted_idxs = np.argsort(data_sin_true_dec)
+
+        data_sin_true_dec = np.take(data_sin_true_dec, sorted_idxs)
+        data_true_energy = np.take(data.mc['true_energy'], sorted_idxs)
+        mc_weight = np.take(data.mc['mcweight'], sorted_idxs)
+
+        weights = (
+            mc_weight *
+            to_internal_flux_unit_factor *
+            livetime_days*to_internal_time_unit_factor
+        )
+
+        h = self._create_hist(
+            data_sin_true_dec=data_sin_true_dec,
+            data_true_energy=data_true_energy,
+            sin_dec_binning=sin_dec_binning,
             weights=weights,
-            density=False)
+            fluxmodel=fluxmodel,
+        )
 
         # Normalize by solid angle of each bin which is
         # 2*\pi*(\Delta sin(\delta)).
