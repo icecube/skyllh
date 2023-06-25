@@ -346,7 +346,9 @@ class FixedFluxPointLikeSourceI3DetSigYield(
 
 
 class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
-        PointLikeSourceI3DetSigYieldBuilder):
+        PointLikeSourceI3DetSigYieldBuilder,
+        multiproc.IsParallelizable,
+):
     """This detector signal yield builder constructs a
     detector signal yield for a fixed flux model, assuming a point-like
     source. This means that the detector signal yield does not depend on
@@ -441,7 +443,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         Returns
         -------
-        h : instance of numpy.ndarray
+        hist : instance of numpy.ndarray
             The (N_sin_dec_bins,)-shaped numpy.ndarray containing the histogram
             values.
         """
@@ -451,46 +453,34 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             to_internal_flux_unit_factor
         )
 
-        (h, _) = np.histogram(
+        (hist, _) = np.histogram(
             data_sin_true_dec,
             bins=sin_dec_binning.binedges,
             weights=weights,
             density=False)
 
-        return h
+        # Normalize by solid angle of each bin which is
+        # 2*\pi*(\Delta sin(\delta)).
+        hist /= (2.*np.pi * np.diff(sin_dec_binning.binedges))
 
-    def _create_detsigyield(
+        return hist
+
+    def _create_detsigyield_from_hist(
             self,
-            data_sin_true_dec,
-            data_true_energy,
+            hist,
             sin_dec_binning,
-            weights,
-            fluxmodel,
-            to_internal_flux_unit_factor,
             **kwargs,
     ):
         """Create a single instance of FixedFluxPointLikeSourceI3DetSigYield
-        for the given flux model.
+        from the given histogram.
 
         Parameters
         ----------
-        data_sin_true_dec : instance of numpy.ndarray
-            The (N_data,)-shaped numpy.ndarray holding the sin(true_dec) values
-            of the monte-carlo events.
-        data_true_energy : instance of numpy.ndarray
-            The (N_data,)-shaped numpy.ndarray holding the true energy of the
-            monte-carlo events.
+        hist : instance of numpy.ndarray
+            The (N_sin_dec_bins,)-shaped numpy.ndarray holding the normalized
+            histogram of the detector signal yield.
         sin_dec_binning : instance of BinningDefinition
             The sin(dec) binning definition to use for the histogram.
-        weights : 1d ndarray
-            The (N_data,)-shaped numpy.ndarray holding the weight factor of
-            each monte-carlo event where only the flux value needs to be
-            multiplied with in order to get the detector signal yield.
-        fluxmodel : instance of FluxModel
-            The flux model to get the flux values from.
-        to_internal_flux_unit_factor : float
-            The conversion factor to convert the flux unit into the internal
-            flux unit.
         **kwargs
             Additional keyword arguments are passed to the constructor of the
             FixedFluxPointLikeSourceI3DetSigYield class.
@@ -501,44 +491,30 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             The instance of FixedFluxPointLikeSourceI3DetSigYield for the given
             flux model.
         """
-        h = self._create_hist(
-            data_sin_true_dec=data_sin_true_dec,
-            data_true_energy=data_true_energy,
-            sin_dec_binning=sin_dec_binning,
-            weights=weights,
-            fluxmodel=fluxmodel,
-            to_internal_flux_unit_factor=to_internal_flux_unit_factor,
-        )
-
-        # Normalize by solid angle of each bin which is
-        # 2*\pi*(\Delta sin(\delta)).
-        h /= (2.*np.pi * np.diff(sin_dec_binning.binedges))
-
-        # Create spline in ln(h) at the histogram's bin centers.
+        # Create spline in ln(hist) at the histogram's bin centers.
         log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
             sin_dec_binning.bincenters,
-            np.log(h),
+            np.log(hist),
             k=self.spline_order_sinDec)
 
         detsigyield = FixedFluxPointLikeSourceI3DetSigYield(
             param_names=[],
-            fluxmodel=fluxmodel,
             sin_dec_binning=sin_dec_binning,
             log_spl_sinDec=log_spl_sinDec,
             **kwargs)
 
         return detsigyield
 
-    def construct_detsigyield(
+    def construct_detsigyields(
             self,
             dataset,
             data,
-            fluxmodel,
+            fluxmodels,
             livetime,
             ppbar=None,
     ):
-        """Constructs a detector signal yield log spline function for the
-        given fixed flux model.
+        """Constructs a set of FixedFluxPointLikeSourceI3DetSigYield instances,
+        one for each provided fluxmodel.
 
         Parameters
         ----------
@@ -557,83 +533,14 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
                 The monte-carlo weight of the data event in the unit
                 GeV cm^2 sr.
 
-        fluxmodel : instance of FluxModel
-            The instance of FluxModel specifying the flux model.
+        fluxmodels : sequence of instance of FluxModel
+            The sequence of instance of FluxModel specifying the flux models for
+            which the detector signal yields should get constructed.
         livetime : float | Livetime
             The live-time in days to use for the detector signal yield.
             This can also be an instance of Livetime.
         ppbar : instance of ProgressBar | None
             The optional instance of ProgressBar of the parent progress bar.
-
-        Returns
-        -------
-        detsigyield : instance of FixedFluxPointLikeSourceI3DetSigYield
-            The instance of FixedFluxPointLikeSourceI3DetSigYield providing the
-            detector signal yield function for a point-like source with a
-            fixed flux.
-        """
-        self.assert_types_of_construct_detsigyield_arguments(
-            dataset=dataset,
-            data=data,
-            fluxmodel=fluxmodel,
-            livetime=livetime,
-            ppbar=ppbar)
-
-        # Get integrated live-time in days.
-        livetime_days = Livetime.get_integrated_livetime(livetime)
-
-        # Get the sin(dec) binning definition either as setting from this
-        # implementation method, or from the dataset.
-        sin_dec_binning = self.get_sin_dec_binning(dataset)
-
-        # Calculate conversion factor from the flux model unit into the internal
-        # flux unit (usually GeV^-1 cm^-2 s^-1).
-        to_internal_flux_unit_factor =\
-            fluxmodel.get_conversion_factor_to_internal_flux_unit()
-
-        to_internal_time_unit_factor = to_internal_time_unit(
-            time_unit=units.day
-        )
-
-        data_sin_true_dec = np.sin(data.mc['true_dec'])
-
-        # Generate a list of indices that would sort the data according to the
-        # sin(true_dec) values. We will sort the MC data according to it,
-        # because the histogram creation is much faster (2x) when the
-        # to-be-histogrammed values are already sorted.
-        sorted_idxs = np.argsort(data_sin_true_dec)
-
-        data_sin_true_dec = np.take(data_sin_true_dec, sorted_idxs)
-        data_true_energy = np.take(data.mc['true_energy'], sorted_idxs)
-        mc_weight = np.take(data.mc['mcweight'], sorted_idxs)
-
-        weights = (
-            mc_weight *
-            livetime_days*to_internal_time_unit_factor
-        )
-
-        detsigyield = self._create_detsigyield(
-            data_sin_true_dec=data_sin_true_dec,
-            data_true_energy=data_true_energy,
-            sin_dec_binning=sin_dec_binning,
-            weights=weights,
-            fluxmodel=fluxmodel,
-            to_internal_flux_unit_factor=to_internal_flux_unit_factor,
-            dataset=dataset,
-            livetime=livetime)
-
-        return detsigyield
-
-    def construct_detsigyields(
-            self,
-            dataset,
-            data,
-            fluxmodels,
-            livetime,
-            ppbar=None,
-    ):
-        """Constructs a set of FixedFluxPointLikeSourceI3DetSigYield instances,
-        one for each provided fluxmodel.
 
         Returns
         -------
@@ -684,30 +591,107 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             livetime_days*to_internal_time_unit_factor
         )
 
-        detsigyields = []
-
-        for (fluxmodel, to_internal_flux_unit_factor) in zip(
-                fluxmodels, to_internal_flux_unit_factors):
-
-            detsigyield = self._create_detsigyield(
+        args_list = [
+            ((), dict(
                 data_sin_true_dec=data_sin_true_dec,
                 data_true_energy=data_true_energy,
                 sin_dec_binning=sin_dec_binning,
                 weights=weights,
                 fluxmodel=fluxmodel,
                 to_internal_flux_unit_factor=to_internal_flux_unit_factor,
-                dataset=dataset,
-                livetime=livetime)
+            ))
+            for (fluxmodel, to_internal_flux_unit_factor) in zip(
+                fluxmodels, to_internal_flux_unit_factors)
+        ]
 
-            detsigyields.append(detsigyield)
+        hists = multiproc.parallelize(
+            func=self._create_hist,
+            args_list=args_list,
+            ncpu=multiproc.get_ncpu(local_ncpu=self.ncpu),
+            ppbar=ppbar,
+        )
+
+        detsigyields = [
+            self._create_detsigyield_from_hist(
+                hist=hist,
+                sin_dec_binning=sin_dec_binning,
+                dataset=dataset,
+                livetime=livetime,
+                fluxmodel=fluxmodel,
+            )
+            for (hist, fluxmodel) in zip(hists, fluxmodels)
+        ]
 
         return detsigyields
+
+    def construct_detsigyield(
+            self,
+            dataset,
+            data,
+            fluxmodel,
+            livetime,
+            ppbar=None,
+    ):
+        """Constructs a detector signal yield log spline function for the
+        given fixed flux model.
+
+        This method calls the :meth:`construct_detsigyiels` method of this
+        class.
+
+        Parameters
+        ----------
+        dataset : instance of Dataset
+            The instance of Dataset holding meta information about the data.
+        data : instance of DatasetData
+            The instance of DatasetData holding the monte-carlo event data.
+            The numpy record ndarray holding the monte-carlo event data must
+            contain the following data fields:
+
+            - 'true_dec' : float
+                The true declination of the data event.
+            - 'true_energy' : float
+                The true energy value of the data event.
+            - 'mcweight' : float
+                The monte-carlo weight of the data event in the unit
+                GeV cm^2 sr.
+
+        fluxmodel : instance of FluxModel
+            The instance of FluxModel specifying the flux model.
+        livetime : float | Livetime
+            The live-time in days to use for the detector signal yield.
+            This can also be an instance of Livetime.
+        ppbar : instance of ProgressBar | None
+            The optional instance of ProgressBar of the parent progress bar.
+
+        Returns
+        -------
+        detsigyield : instance of FixedFluxPointLikeSourceI3DetSigYield
+            The instance of FixedFluxPointLikeSourceI3DetSigYield providing the
+            detector signal yield function for a point-like source with a
+            fixed flux.
+        """
+        detsigyield = self.construct_detsigyields(
+            dataset=dataset,
+            data=data,
+            fluxmodels=[fluxmodel],
+            livetime=livetime,
+            ppbar=ppbar,
+        )[0]
+
+        return detsigyield
 
     def get_detsigyield_construction_factory(self):
         """Returns the factory callable for constructing a set of instance of
         FixedFluxPointLikeSourceI3DetSigYield.
+
+        Returns
+        -------
+        factory : callable
+            The factory callable for constructing a set of instance of
+            FixedFluxPointLikeSourceI3DetSigYield.
         """
-        return self.construct_detsigyields
+        factory = self.construct_detsigyields
+        return factory
 
 
 class SingleParamFluxPointLikeSourceI3DetSigYield(
