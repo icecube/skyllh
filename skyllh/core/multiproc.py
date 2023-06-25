@@ -15,7 +15,9 @@ from skyllh.core.random import RandomStateService
 from skyllh.core.timing import TimeLord
 
 
-def get_ncpu(local_ncpu):
+def get_ncpu(
+        local_ncpu,
+):
     """Determines the number of CPUs to use for functions that support
     multi-processing.
 
@@ -37,12 +39,15 @@ def get_ncpu(local_ncpu):
         ncpu = CFG['multiproc']['ncpu']
     if ncpu is None:
         ncpu = 1
+
     if not isinstance(ncpu, int):
         raise TypeError(
             'The ncpu setting must be of type int!')
+
     if ncpu < 1:
         raise ValueError(
             'The ncpu setting must be >= 1!')
+
     return ncpu
 
 
@@ -52,7 +57,8 @@ def parallelize(  # noqa: C901
         ncpu,
         rss=None,
         tl=None,
-        ppbar=None):
+        ppbar=None,
+):
     """Parallelizes the execution of the given function for different arguments.
 
     Parameters
@@ -92,7 +98,8 @@ def parallelize(  # noqa: C901
             lqueue,
             squeue=None,
             rss=None,
-            tl=None):
+            tl=None,
+    ):
         """Wrapper function for the multiprocessing module that evaluates
         ``func`` for the subset ``sub_args_list`` of ``args_list`` on a worker
         process.
@@ -158,7 +165,8 @@ def parallelize(  # noqa: C901
             sub_args_list,
             squeue=None,
             rss=None,
-            tl=None):
+            tl=None,
+    ):
         """This is the wrapper function for the master process.
 
         Parameters
@@ -365,13 +373,21 @@ def parallelize(  # noqa: C901
     return result_list
 
 
-class IsParallelizable(object):
+class IsParallelizable(
+        object,
+):
     """Classifier class defining the ncpu property. Classes that derive from
     this class indicate, that they can make use of multi-processing on several
     CPUs at the same time.
     """
-    def __init__(self, ncpu=None, *args, **kwargs):
-        super(IsParallelizable, self).__init__(*args, **kwargs)
+    def __init__(
+            self,
+            *args,
+            ncpu=None,
+            **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+
         self.ncpu = ncpu
 
     @property
