@@ -409,6 +409,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             sin_dec_binning,
             weights,
             fluxmodel,
+            to_internal_flux_unit_factor,
     ):
         """Creates a histogram of the detector signal yield with the
         given sin(dec) binning for the given flux model.
@@ -429,6 +430,9 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             multiplied with in order to get the detector signal yield.
         fluxmodel : instance of FluxModel
             The flux model to get the flux values from.
+        to_internal_flux_unit_factor : float
+            The conversion factor to convert the flux unit into the internal
+            flux unit.
 
         Returns
         -------
@@ -436,12 +440,18 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             The (N_sin_dec_bins,)-shaped numpy.ndarray containing the histogram
             values.
         """
-        weights = weights * fluxmodel(E=data_true_energy).squeeze()
+        weights = (
+            weights *
+            fluxmodel(E=data_true_energy).squeeze() *
+            to_internal_flux_unit_factor
+        )
+
         (h, _) = np.histogram(
             data_sin_true_dec,
             bins=sin_dec_binning.binedges,
             weights=weights,
             density=False)
+
         return h
 
     def construct_detsigyield(
@@ -524,7 +534,6 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         weights = (
             mc_weight *
-            to_internal_flux_unit_factor *
             livetime_days*to_internal_time_unit_factor
         )
 
@@ -534,6 +543,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             sin_dec_binning=sin_dec_binning,
             weights=weights,
             fluxmodel=fluxmodel,
+            to_internal_flux_unit_factor=to_internal_flux_unit_factor,
         )
 
         # Normalize by solid angle of each bin which is
@@ -555,6 +565,108 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             log_spl_sinDec=log_spl_sinDec)
 
         return detsigyield
+
+    def construct_detsigyields(
+            self,
+            dataset,
+            data,
+            fluxmodels,
+            livetime,
+            ppbar=None,
+    ):
+        """Constructs a set of FixedFluxPointLikeSourceI3DetSigYield instances,
+        one for each provided fluxmodel.
+
+        Returns
+        -------
+        detsigyields : list of instance of FixedFluxPointLikeSourceI3DetSigYield
+            The list of instance of FixedFluxPointLikeSourceI3DetSigYield
+            providing the detector signal yield function for a point-like source
+            with each of the given fixed flux models.
+        """
+        to_internal_flux_unit_factors = []
+        for fluxmodel in fluxmodels:
+            self.assert_types_of_construct_detsigyield_arguments(
+                dataset=dataset,
+                data=data,
+                fluxmodel=fluxmodel,
+                livetime=livetime,
+                ppbar=ppbar)
+
+            # Calculate conversion factor from the flux model unit into the
+            # internal flux unit (usually GeV^-1 cm^-2 s^-1).
+            to_internal_flux_unit_factors.append(
+                fluxmodel.get_conversion_factor_to_internal_flux_unit())
+
+        to_internal_time_unit_factor = to_internal_time_unit(
+            time_unit=units.day
+        )
+
+        # Get integrated live-time in days.
+        livetime_days = Livetime.get_integrated_livetime(livetime)
+
+        # Get the sin(dec) binning definition either as setting from this
+        # implementation method, or from the dataset.
+        sin_dec_binning = self.get_sin_dec_binning(dataset)
+
+        data_sin_true_dec = np.sin(data.mc['true_dec'])
+
+        # Generate a list of indices that would sort the data according to the
+        # sin(true_dec) values. We will sort the MC data according to it,
+        # because the histogram creation is much faster (2x) when the
+        # to-be-histogrammed values are already sorted.
+        sorted_idxs = np.argsort(data_sin_true_dec)
+
+        data_sin_true_dec = np.take(data_sin_true_dec, sorted_idxs)
+        data_true_energy = np.take(data.mc['true_energy'], sorted_idxs)
+        mc_weight = np.take(data.mc['mcweight'], sorted_idxs)
+
+        weights = (
+            mc_weight *
+            livetime_days*to_internal_time_unit_factor
+        )
+
+        detsigyields = []
+
+        for (fluxmodel, to_internal_flux_unit_factor) in zip(
+                fluxmodels, to_internal_flux_unit_factors):
+
+            h = self._create_hist(
+                data_sin_true_dec=data_sin_true_dec,
+                data_true_energy=data_true_energy,
+                sin_dec_binning=sin_dec_binning,
+                weights=weights,
+                fluxmodel=fluxmodel,
+                to_internal_flux_unit_factor=to_internal_flux_unit_factor,
+            )
+
+            # Normalize by solid angle of each bin which is
+            # 2*\pi*(\Delta sin(\delta)).
+            h /= (2.*np.pi * np.diff(sin_dec_binning.binedges))
+
+            # Create spline in ln(h) at the histogram's bin centers.
+            log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
+                sin_dec_binning.bincenters,
+                np.log(h),
+                k=self.spline_order_sinDec)
+
+            detsigyield = FixedFluxPointLikeSourceI3DetSigYield(
+                param_names=[],
+                dataset=dataset,
+                fluxmodel=fluxmodel,
+                livetime=livetime,
+                sin_dec_binning=sin_dec_binning,
+                log_spl_sinDec=log_spl_sinDec)
+
+            detsigyields.append(detsigyield)
+
+        return detsigyields
+
+    def get_detsigyield_construction_factory(self):
+        """Returns the factory callable for constructing a set of instance of
+        FixedFluxPointLikeSourceI3DetSigYield.
+        """
+        return self.construct_detsigyields
 
 
 class SingleParamFluxPointLikeSourceI3DetSigYield(
