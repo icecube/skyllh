@@ -20,6 +20,11 @@ v23.2.0
 - New generic flux model function concept.
 - New generic PDF class for time PDFs.
 - Support for Parquet data files via optional pyarrow Python package.
+- Introduce factory concept for detector signal yield construction.
+
+    DetSigYieldBuilder classes can provide a factory function to construct
+    DetSigYield instances efficiently for multiple flux models.
+
 - Speed improvements for analysis creation and trial generation.
 
     - i3.detsigyield.SingleParamFluxPointLikeSourceI3DetSigYieldBuilder:
