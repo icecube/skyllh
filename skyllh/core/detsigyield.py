@@ -258,6 +258,30 @@ class DetSigYieldBuilder(
                     'The ppbar argument must be an instance of ProgressBar! '
                     f'Its current type is {classname(ppbar)}.')
 
+    def get_detsigyield_construction_factory(self):
+        """This method is supposed to return a callable with the call-signature
+
+            __call__(
+                dataset,
+                data,
+                fluxmodels,
+                livetime,
+                ppbar,
+            )
+
+        to construct several DetSigYield instances, one for each provided
+        fluxmodel. The return value of this callable must be a sequence of
+        DetSigYield instances of the same length as the sequence of
+        ``fluxmodels``.
+
+        Returns
+        -------
+        factory : callable | None
+            This default implementation returns ``None``, indicating that a
+            factory is not supported by this builder.
+        """
+        return None
+
     @abc.abstractmethod
     def construct_detsigyield(
             self,

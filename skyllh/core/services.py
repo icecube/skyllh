@@ -131,12 +131,71 @@ class DetSigYieldService(
         self._arr = self.construct_detsigyield_array(
             ppbar=ppbar)
 
+    def get_builder_to_shgidxs_dict(
+            self,
+            ds_idx,
+    ):
+        """Creates a dictionary with the builder instance as key and the list of
+        source hypo group indices to which the builder applies as value.
+        Hence, SHGs using the same builder will be grouped for DetSigYield
+        construction.
+
+        Parameters
+        ----------
+        ds_idx : int
+            The index of the dataset for which the same builders apply.
+
+        Returns
+        -------
+        builder_shgidxs_dict : dict
+            The dictionary with the builder instance as key and the list of
+            source hypo group indices to which the builder applies as value.
+        """
+        n_datasets = len(self._dataset_list)
+
+        if ds_idx < 0 or ds_idx >= n_datasets:
+            raise ValueError(
+                f'The dataset index {ds_idx} must be within the range '
+                f'[0,{n_datasets-1}]!')
+
+        buildercls_to_builder_shgidxs_dict = defaultdict(lambda: [None, list()])
+        for (g, shg) in enumerate(self._shg_mgr.shg_list):
+
+            builder_list = shg.detsigyield_builder_list
+            if (len(builder_list) != 1) and (len(builder_list) != n_datasets):
+                raise ValueError(
+                    'The number of detector signal yield builders '
+                    f'({len(builder_list)}) is not 1 and does not '
+                    f'match the number of datasets ({n_datasets}) for the '
+                    f'{g}th source hypothesis group!')
+
+            builder = (
+                builder_list[0] if len(builder_list) == 1 else
+                builder_list[ds_idx]
+            )
+            buildercls = builder.__class__
+            buildercls_to_builder_shgidxs_dict[buildercls][0] = builder
+            buildercls_to_builder_shgidxs_dict[buildercls][1].append(g)
+
+        builder_shgidxs_dict = {
+            builder: shgidxs
+            for (builder, shgidxs) in buildercls_to_builder_shgidxs_dict.values()
+        }
+
+        return builder_shgidxs_dict
+
     def construct_detsigyield_array(
             self,
             ppbar=None,
     ):
         """Creates a (N_datasets, N_source_hypo_groups)-shaped numpy ndarray of
         object holding the constructed DetSigYield instances.
+
+        If the same DetSigYieldBuilder class is used for all source hypotheses
+        of a particular dataset, the
+        :meth:`~skyllh.core.detsigyield.DetSigYieldBuilder.construct_detsigyields`
+        method is called with different flux models to optimize the construction
+        of the detector signal yield functions.
 
         Parameters
         ----------
@@ -145,7 +204,7 @@ class DetSigYieldService(
 
         Returns
         -------
-        detsigyield_arr : instance of numpy ndarray
+        detsigyield_arr : instance of numpy.ndarray
             The (N_datasets, N_source_hypo_groups)-shaped numpy ndarray of
             object holding the constructed DetSigYield instances.
         """
@@ -160,35 +219,54 @@ class DetSigYieldService(
         pbar = ProgressBar(
             self._shg_mgr.n_src_hypo_groups * n_datasets,
             parent=ppbar).start()
-        for (g, shg) in enumerate(self._shg_mgr.shg_list):
-            fluxmodel = shg.fluxmodel
-            detsigyield_builder_list = shg.detsigyield_builder_list
 
-            if (len(detsigyield_builder_list) != 1) and\
-               (len(detsigyield_builder_list) != n_datasets):
-                raise ValueError(
-                    'The number of detector signal yield builders '
-                    f'({len(detsigyield_builder_list)}) is not 1 and does not '
-                    f'match the number of datasets ({n_datasets})!')
+        shg_list = self.shg_mgr.shg_list
 
-            for (j, (dataset, data)) in enumerate(zip(self._dataset_list,
-                                                      self._data_list)):
-                if len(detsigyield_builder_list) == 1:
-                    # Only one detsigyield builder was defined,
-                    # so we use it for all datasets.
-                    detsigyield_builder = detsigyield_builder_list[0]
+        for (j, (dataset, data)) in enumerate(zip(self._dataset_list,
+                                                  self._data_list)):
+
+            builder_to_shgidxs_dict = self.get_builder_to_shgidxs_dict(ds_idx=j)
+
+            for (builder, shgidxs) in builder_to_shgidxs_dict.items():
+                factory = builder.get_detsigyield_construction_factory()
+                if factory is None:
+                    # The builder does not provide a factory for DetSigYield
+                    # instance construction. So we have to construct the
+                    # detector signal yields one by one for each SHG.
+                    for g in shgidxs:
+                        fluxmodel = shg_list[g].fluxmodel
+
+                        detsigyield = builder.construct_detsigyield(
+                            dataset=dataset,
+                            data=data,
+                            fluxmodel=fluxmodel,
+                            livetime=data.livetime,
+                            ppbar=pbar)
+
+                        detsigyield_arr[j, g] = detsigyield
+
+                        pbar.increment()
                 else:
-                    detsigyield_builder = detsigyield_builder_list[j]
+                    # The builder provides a factory for the construction of
+                    # several DetSigYield instances simultaniously, one for each
+                    # flux model.
+                    fluxmodels = [
+                        shg_list[g].fluxmodel
+                        for g in shgidxs
+                    ]
 
-                detsigyield = detsigyield_builder.construct_detsigyield(
-                    dataset=dataset,
-                    data=data,
-                    fluxmodel=fluxmodel,
-                    livetime=data.livetime,
-                    ppbar=pbar)
-                detsigyield_arr[j, g] = detsigyield
+                    detsigyields = factory(
+                        dataset=dataset,
+                        data=data,
+                        fluxmodels=fluxmodels,
+                        livetime=data.livetime,
+                        ppbar=pbar)
 
-                pbar.increment()
+                    for (i, g) in enumerate(shgidxs):
+                        detsigyield_arr[j, g] = detsigyields[i]
+
+                    pbar.increment(len(detsigyields))
+
         pbar.finish()
 
         return detsigyield_arr
