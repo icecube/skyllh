@@ -362,7 +362,12 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
     declination, of the source.
     """
 
-    def __init__(self, sin_dec_binning=None, spline_order_sinDec=2, **kwargs):
+    def __init__(
+            self,
+            sin_dec_binning=None,
+            spline_order_sinDec=2,
+            **kwargs,
+    ):
         """Creates a new IceCube detector signal yield builder object for a
         fixed flux model. It requires a sinDec binning definition to compute
         the sin(dec) dependency of the detector effective area.
@@ -454,6 +459,76 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         return h
 
+    def _create_detsigyield(
+            self,
+            data_sin_true_dec,
+            data_true_energy,
+            sin_dec_binning,
+            weights,
+            fluxmodel,
+            to_internal_flux_unit_factor,
+            **kwargs,
+    ):
+        """Create a single instance of FixedFluxPointLikeSourceI3DetSigYield
+        for the given flux model.
+
+        Parameters
+        ----------
+        data_sin_true_dec : instance of numpy.ndarray
+            The (N_data,)-shaped numpy.ndarray holding the sin(true_dec) values
+            of the monte-carlo events.
+        data_true_energy : instance of numpy.ndarray
+            The (N_data,)-shaped numpy.ndarray holding the true energy of the
+            monte-carlo events.
+        sin_dec_binning : instance of BinningDefinition
+            The sin(dec) binning definition to use for the histogram.
+        weights : 1d ndarray
+            The (N_data,)-shaped numpy.ndarray holding the weight factor of
+            each monte-carlo event where only the flux value needs to be
+            multiplied with in order to get the detector signal yield.
+        fluxmodel : instance of FluxModel
+            The flux model to get the flux values from.
+        to_internal_flux_unit_factor : float
+            The conversion factor to convert the flux unit into the internal
+            flux unit.
+        **kwargs
+            Additional keyword arguments are passed to the constructor of the
+            FixedFluxPointLikeSourceI3DetSigYield class.
+
+        Returns
+        -------
+        detsigyield : instance of FixedFluxPointLikeSourceI3DetSigYield
+            The instance of FixedFluxPointLikeSourceI3DetSigYield for the given
+            flux model.
+        """
+        h = self._create_hist(
+            data_sin_true_dec=data_sin_true_dec,
+            data_true_energy=data_true_energy,
+            sin_dec_binning=sin_dec_binning,
+            weights=weights,
+            fluxmodel=fluxmodel,
+            to_internal_flux_unit_factor=to_internal_flux_unit_factor,
+        )
+
+        # Normalize by solid angle of each bin which is
+        # 2*\pi*(\Delta sin(\delta)).
+        h /= (2.*np.pi * np.diff(sin_dec_binning.binedges))
+
+        # Create spline in ln(h) at the histogram's bin centers.
+        log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
+            sin_dec_binning.bincenters,
+            np.log(h),
+            k=self.spline_order_sinDec)
+
+        detsigyield = FixedFluxPointLikeSourceI3DetSigYield(
+            param_names=[],
+            fluxmodel=fluxmodel,
+            sin_dec_binning=sin_dec_binning,
+            log_spl_sinDec=log_spl_sinDec,
+            **kwargs)
+
+        return detsigyield
+
     def construct_detsigyield(
             self,
             dataset,
@@ -537,32 +612,15 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             livetime_days*to_internal_time_unit_factor
         )
 
-        h = self._create_hist(
+        detsigyield = self._create_detsigyield(
             data_sin_true_dec=data_sin_true_dec,
             data_true_energy=data_true_energy,
             sin_dec_binning=sin_dec_binning,
             weights=weights,
             fluxmodel=fluxmodel,
             to_internal_flux_unit_factor=to_internal_flux_unit_factor,
-        )
-
-        # Normalize by solid angle of each bin which is
-        # 2*\pi*(\Delta sin(\delta)).
-        h /= (2.*np.pi * np.diff(sin_dec_binning.binedges))
-
-        # Create spline in ln(h) at the histogram's bin centers.
-        log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
-            sin_dec_binning.bincenters,
-            np.log(h),
-            k=self.spline_order_sinDec)
-
-        detsigyield = FixedFluxPointLikeSourceI3DetSigYield(
-            param_names=[],
             dataset=dataset,
-            fluxmodel=fluxmodel,
-            livetime=livetime,
-            sin_dec_binning=sin_dec_binning,
-            log_spl_sinDec=log_spl_sinDec)
+            livetime=livetime)
 
         return detsigyield
 
@@ -631,32 +689,15 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         for (fluxmodel, to_internal_flux_unit_factor) in zip(
                 fluxmodels, to_internal_flux_unit_factors):
 
-            h = self._create_hist(
+            detsigyield = self._create_detsigyield(
                 data_sin_true_dec=data_sin_true_dec,
                 data_true_energy=data_true_energy,
                 sin_dec_binning=sin_dec_binning,
                 weights=weights,
                 fluxmodel=fluxmodel,
                 to_internal_flux_unit_factor=to_internal_flux_unit_factor,
-            )
-
-            # Normalize by solid angle of each bin which is
-            # 2*\pi*(\Delta sin(\delta)).
-            h /= (2.*np.pi * np.diff(sin_dec_binning.binedges))
-
-            # Create spline in ln(h) at the histogram's bin centers.
-            log_spl_sinDec = scipy.interpolate.InterpolatedUnivariateSpline(
-                sin_dec_binning.bincenters,
-                np.log(h),
-                k=self.spline_order_sinDec)
-
-            detsigyield = FixedFluxPointLikeSourceI3DetSigYield(
-                param_names=[],
                 dataset=dataset,
-                fluxmodel=fluxmodel,
-                livetime=livetime,
-                sin_dec_binning=sin_dec_binning,
-                log_spl_sinDec=log_spl_sinDec)
+                livetime=livetime)
 
             detsigyields.append(detsigyield)
 
