@@ -27,10 +27,13 @@ from skyllh.core.signal_generation import (
 from skyllh.core.source_model import (
     SourceModel,
 )
+from skyllh.core.types import (
+    SourceHypoGroup_t,
+)
 
 
 class SourceHypoGroup(
-        object):
+        SourceHypoGroup_t):
     """The source hypothesis group class provides a data container to describe
     a group of sources that share the same flux model, detector signal yield,
     and signal generation methods.

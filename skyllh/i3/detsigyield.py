@@ -100,7 +100,11 @@ class I3DetSigYieldBuilder(
     builder class.
     """
 
-    def __init__(self, sin_dec_binning=None, **kwargs):
+    def __init__(
+            self,
+            sin_dec_binning=None,
+            **kwargs,
+    ):
         """Constructor of the IceCube specific detector signal yield
         builder class.
 
@@ -222,7 +226,8 @@ class PointLikeSourceI3DetSigYield(
 
 class PointLikeSourceI3DetSigYieldBuilder(
         I3DetSigYieldBuilder,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """Abstract base class for all IceCube specific detector signal yield
     builders for point-like sources. All IceCube detector signal
     yield builders require a sin(dec) binning definition for
@@ -231,7 +236,11 @@ class PointLikeSourceI3DetSigYieldBuilder(
     if needed.
     """
 
-    def __init__(self, sin_dec_binning=None, **kwargs):
+    def __init__(
+            self,
+            sin_dec_binning=None,
+            **kwargs,
+    ):
         """Initializes a new detector signal yield builder object.
 
         Parameters
@@ -509,8 +518,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             self,
             dataset,
             data,
-            fluxmodels,
-            livetime,
+            shgs,
             ppbar=None,
     ):
         """Constructs a set of FixedFluxPointLikeSourceI3DetSigYield instances,
@@ -533,12 +541,10 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
                 The monte-carlo weight of the data event in the unit
                 GeV cm^2 sr.
 
-        fluxmodels : sequence of instance of FluxModel
-            The sequence of instance of FluxModel specifying the flux models for
-            which the detector signal yields should get constructed.
-        livetime : float | Livetime
-            The live-time in days to use for the detector signal yield.
-            This can also be an instance of Livetime.
+        shgs : sequence of instance of SourceHypoGroup
+            The sequence of instance of SourceHypoGroup specifying the
+            source hypothesis groups (i.e. flux model) for which the detector
+            signal yields should get constructed.
         ppbar : instance of ProgressBar | None
             The optional instance of ProgressBar of the parent progress bar.
 
@@ -549,26 +555,25 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             providing the detector signal yield function for a point-like source
             with each of the given fixed flux models.
         """
-        to_internal_flux_unit_factors = []
-        for fluxmodel in fluxmodels:
-            self.assert_types_of_construct_detsigyield_arguments(
-                dataset=dataset,
-                data=data,
-                fluxmodel=fluxmodel,
-                livetime=livetime,
-                ppbar=ppbar)
+        self.assert_types_of_construct_detsigyield_arguments(
+            dataset=dataset,
+            data=data,
+            shgs=shgs,
+            ppbar=ppbar)
 
-            # Calculate conversion factor from the flux model unit into the
-            # internal flux unit (usually GeV^-1 cm^-2 s^-1).
-            to_internal_flux_unit_factors.append(
-                fluxmodel.get_conversion_factor_to_internal_flux_unit())
+        # Calculate conversion factor from the flux model unit into the
+        # internal flux unit (usually GeV^-1 cm^-2 s^-1).
+        to_internal_flux_unit_factors = [
+            shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
+            for shg in shgs
+        ]
 
         to_internal_time_unit_factor = to_internal_time_unit(
             time_unit=units.day
         )
 
         # Get integrated live-time in days.
-        livetime_days = Livetime.get_integrated_livetime(livetime)
+        livetime_days = Livetime.get_integrated_livetime(data.livetime)
 
         # Get the sin(dec) binning definition either as setting from this
         # implementation method, or from the dataset.
@@ -597,11 +602,11 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
                 data_true_energy=data_true_energy,
                 sin_dec_binning=sin_dec_binning,
                 weights=weights,
-                fluxmodel=fluxmodel,
+                fluxmodel=shg.fluxmodel,
                 to_internal_flux_unit_factor=to_internal_flux_unit_factor,
             ))
-            for (fluxmodel, to_internal_flux_unit_factor) in zip(
-                fluxmodels, to_internal_flux_unit_factors)
+            for (shg, to_internal_flux_unit_factor) in zip(
+                shgs, to_internal_flux_unit_factors)
         ]
 
         hists = multiproc.parallelize(
@@ -616,10 +621,10 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
                 hist=hist,
                 sin_dec_binning=sin_dec_binning,
                 dataset=dataset,
-                livetime=livetime,
-                fluxmodel=fluxmodel,
+                livetime=data.livetime,
+                fluxmodel=shg.fluxmodel,
             )
-            for (hist, fluxmodel) in zip(hists, fluxmodels)
+            for (hist, shg) in zip(hists, shgs)
         ]
 
         return detsigyields
@@ -628,8 +633,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             self,
             dataset,
             data,
-            fluxmodel,
-            livetime,
+            shg,
             ppbar=None,
     ):
         """Constructs a detector signal yield log spline function for the
@@ -655,11 +659,9 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
                 The monte-carlo weight of the data event in the unit
                 GeV cm^2 sr.
 
-        fluxmodel : instance of FluxModel
-            The instance of FluxModel specifying the flux model.
-        livetime : float | Livetime
-            The live-time in days to use for the detector signal yield.
-            This can also be an instance of Livetime.
+        shg : instance of SourceHypoGroup
+            The instance of SourceHypoGroup (i.e. sources and flux model) for
+            which the detector signal yield should get constructed.
         ppbar : instance of ProgressBar | None
             The optional instance of ProgressBar of the parent progress bar.
 
@@ -673,8 +675,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         detsigyield = self.construct_detsigyields(
             dataset=dataset,
             data=data,
-            fluxmodels=[fluxmodel],
-            livetime=livetime,
+            shgs=[shg],
             ppbar=ppbar,
         )[0]
 
@@ -840,7 +841,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(
 
 class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         PointLikeSourceI3DetSigYieldBuilder,
-        multiproc.IsParallelizable):
+        multiproc.IsParallelizable,
+):
     """This detector signal yield builder constructs a
     detector signal yield for a variable flux model with a single parameter,
     assuming a point-like source.
@@ -860,7 +862,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             spline_order_sinDec=2,
             spline_order_param=2,
             ncpu=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new IceCube detector signal yield builder instance for a
         flux model with a single parameter.
         It requires a sinDec binning definition to compute the sin(dec)
@@ -948,9 +951,9 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             self,
             dataset,
             data,
-            fluxmodel,
-            livetime,
-            ppbar=None):
+            shg,
+            ppbar=None,
+    ):
         """Constructs a detector signal yield 2-dimensional log spline
         function for the given flux model with varying parameter values.
 
@@ -971,11 +974,9 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             ``'true_energy'`` : float
                 The true energy value of the data event.
 
-        fluxmodel : instance of FluxModel
-            The flux model instance. Must be an instance of FluxModel.
-        livetime : float | instance of Livetime
-            The live-time in days or an instance of Livetime to use for the
-            detector signal yield.
+        shg : instance of SourceHypoGroup
+            The instance of SourceHypoGroup for which the detector signal yield
+            should get constructed.
         ppbar : instance of ProgressBar | None
             The instance of ProgressBar of the optional parent progress bar.
 
@@ -988,12 +989,11 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         self.assert_types_of_construct_detsigyield_arguments(
             dataset=dataset,
             data=data,
-            fluxmodel=fluxmodel,
-            livetime=livetime,
+            shgs=shg,
             ppbar=ppbar)
 
         # Get integrated live-time in days.
-        livetime_days = Livetime.get_integrated_livetime(livetime)
+        livetime_days = Livetime.get_integrated_livetime(data.livetime)
 
         # Get the sin(dec) binning definition either as setting from this
         # implementation method, or from the dataset.
@@ -1001,7 +1001,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
+        toGeVcm2s = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Define a function that creates a detector signal yield histogram
         # along sin(dec) for a given flux model, i.e. for given spectral index,
@@ -1011,7 +1011,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 data_true_energy,
                 sin_dec_binning,
                 weights,
-                fluxmodel):
+                fluxmodel,
+        ):
             """Creates a histogram of the detector signal yield with the
             given sin(dec) binning.
 
@@ -1073,7 +1074,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                     data_true_energy,
                     sin_dec_binning,
                     weights,
-                    fluxmodel.copy({param_grid.name: param_val})
+                    shg.fluxmodel.copy({param_grid.name: param_val})
                 ),
                 {}
             )
@@ -1100,8 +1101,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         detsigyield = SingleParamFluxPointLikeSourceI3DetSigYield(
             param_name=self._param_grid.name,
             dataset=dataset,
-            fluxmodel=fluxmodel,
-            livetime=livetime,
+            fluxmodel=shg.fluxmodel,
+            livetime=data.livetime,
             sin_dec_binning=sin_dec_binning,
             log_spl_sinDec_param=log_spl_sinDec_param)
 

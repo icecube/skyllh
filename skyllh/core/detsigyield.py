@@ -20,9 +20,15 @@ from skyllh.core.livetime import (
 from skyllh.core.progressbar import (
     ProgressBar,
 )
+from skyllh.core.types import (
+    SourceHypoGroup_t,
+)
 
 
-class DetSigYield(object, metaclass=abc.ABCMeta):
+class DetSigYield(
+        object,
+        metaclass=abc.ABCMeta,
+):
     """This is the abstract base class for a detector signal yield.
 
     The detector signal yield, Y_s(p_s), is defined as the expected mean
@@ -204,7 +210,8 @@ class DetSigYield(object, metaclass=abc.ABCMeta):
 
 class DetSigYieldBuilder(
         object,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """Abstract base class for a builder of a detector signal yield. Via the
     ``construct_detsigyield`` method it creates a DetSigYield instance holding
     the internal objects to calculate the detector signal yield.
@@ -223,10 +230,10 @@ class DetSigYieldBuilder(
             self,
             dataset,
             data,
-            fluxmodel,
-            livetime,
+            shgs,
             ppbar,
     ):
+
         """Checks the types of the arguments for the ``construct_detsigyield``
         method. It raises errors if the arguments have the wrong type.
         """
@@ -240,17 +247,12 @@ class DetSigYieldBuilder(
                 'The data argument must be an instance of DatasetData! '
                 f'Its current type is {classname(data)}.')
 
-        if not isinstance(fluxmodel, FluxModel):
+        if (not isinstance(shgs, SourceHypoGroup_t)) and\
+           (not issequenceof(shgs, SourceHypoGroup_t)):
             raise TypeError(
-                'The fluxmodel argument must be an instance of FluxModel! '
-                f'Its current type is {classname(fluxmodel)}.')
-
-        if (not isinstance(livetime, float)) and\
-           (not isinstance(livetime, Livetime)):
-            raise TypeError(
-                'The livetime argument must be an instance of float or '
-                'Livetime! '
-                f'Its current type is {classname(livetime)}.')
+                'The shgs argument must be an instance of SourceHypoGroup '
+                'or a sequence of SourceHypoGroup instances!'
+                f'Its current type is {classname(shgs)}.')
 
         if ppbar is not None:
             if not isinstance(ppbar, ProgressBar):
@@ -264,15 +266,14 @@ class DetSigYieldBuilder(
             __call__(
                 dataset,
                 data,
-                fluxmodels,
-                livetime,
+                shgs,
                 ppbar,
             )
 
         to construct several DetSigYield instances, one for each provided
-        fluxmodel. The return value of this callable must be a sequence of
-        DetSigYield instances of the same length as the sequence of
-        ``fluxmodels``.
+        source hypo group (i.e. sources and fluxmodel).
+        The return value of this callable must be a sequence of DetSigYield
+        instances of the same length as the sequence of ``shgs``.
 
         Returns
         -------
@@ -287,8 +288,7 @@ class DetSigYieldBuilder(
             self,
             dataset,
             data,
-            fluxmodel,
-            livetime,
+            shg,
             ppbar=None,
     ):
         """Abstract method to construct the DetSigYield instance.
@@ -298,20 +298,19 @@ class DetSigYieldBuilder(
 
         Parameters
         ----------
-        dataset : Dataset
-            The Dataset instance holding possible dataset specific settings.
-        data : DatasetData
-            The DatasetData instance holding the monte-carlo event data.
-        fluxmodel : FluxModel
-            The flux model instance. Must be an instance of FluxModel.
-        livetime : float | Livetime
-            The live-time in days to use for the detector signal yield.
-        ppbar : ProgressBar instance | None
+        dataset : instance of Dataset
+            The instance of Dataset holding possible dataset specific settings.
+        data : instance of DatasetData
+            The instance of DatasetData holding the monte-carlo event data.
+        shg : instance of SourceHypoGroup
+            The instance of SourceHypoGroup (i.e. sources and flux model) for
+            which the detector signal yield should be constructed.
+        ppbar : instance of ProgressBar | None
             The instance of ProgressBar of the optional parent progress bar.
 
         Returns
         -------
-        detsigyield : DetSigYield instance
+        detsigyield : instance of DetSigYield
             An instance derived from DetSigYield.
         """
         pass

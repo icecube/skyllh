@@ -228,13 +228,12 @@ class DetSigYieldService(
                     # instance construction. So we have to construct the
                     # detector signal yields one by one for each SHG.
                     for g in shgidxs:
-                        fluxmodel = shg_list[g].fluxmodel
+                        shg = shg_list[g]
 
                         detsigyield = builder.construct_detsigyield(
                             dataset=dataset,
                             data=data,
-                            fluxmodel=fluxmodel,
-                            livetime=data.livetime,
+                            shg=shg,
                             ppbar=pbar)
 
                         detsigyield_arr[j, g] = detsigyield
@@ -244,16 +243,15 @@ class DetSigYieldService(
                     # The builder provides a factory for the construction of
                     # several DetSigYield instances simultaniously, one for each
                     # flux model.
-                    fluxmodels = [
-                        shg_list[g].fluxmodel
+                    shgs = [
+                        shg_list[g]
                         for g in shgidxs
                     ]
 
                     detsigyields = factory(
                         dataset=dataset,
                         data=data,
-                        fluxmodels=fluxmodels,
-                        livetime=data.livetime,
+                        shgs=shgs,
                         ppbar=pbar)
 
                     for (i, g) in enumerate(shgidxs):

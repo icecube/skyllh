@@ -21,6 +21,7 @@ from skyllh.core.livetime import (
 )
 from skyllh.core.py import (
     classname,
+    issequence,
 )
 from skyllh.i3.detsigyield import (
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
@@ -29,7 +30,8 @@ from skyllh.i3.detsigyield import (
 
 
 class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
-        SingleParamFluxPointLikeSourceI3DetSigYieldBuilder):
+        SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
+):
     """This detector signal yield builder class constructs a
     detector signal yield instance for a variable flux model of a single
     parameter, assuming a point-like source.
@@ -52,7 +54,8 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             spline_order_sinDec=2,
             spline_order_param=2,
             ncpu=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new IceCube detector signal yield builder instance for
         a flux model with a single parameter.
         It requires the effective area from the public data, and a parameter
@@ -85,27 +88,29 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
     def assert_types_of_construct_detsigyield_arguments(
             self,
-            fluxmodel,
+            shgs,
             **kwargs):
         """Checks the correct types of the arguments for the
         ``construct_detsigyield`` method.
         """
         super().assert_types_of_construct_detsigyield_arguments(
-            fluxmodel=fluxmodel,
+            shgs=shgs,
             **kwargs)
 
-        if not isinstance(fluxmodel, FactorizedFluxModel):
-            raise TypeError(
-                'The fluxmodel argument must be an instance of '
-                'FactorizedFluxModel! '
-                f'Its current type is {classname(fluxmodel)}!')
+        if not issequence(shgs):
+            shgs = [shgs]
+        for shg in shgs:
+            if not isinstance(shg.fluxmodel, FactorizedFluxModel):
+                raise TypeError(
+                    'The fluxmodel of the source hypothesis group must be an '
+                    'instance of FactorizedFluxModel! '
+                    f'Its current type is {classname(shg.fluxmodel)}!')
 
     def construct_detsigyield(
             self,
             dataset,
             data,
-            fluxmodel,
-            livetime,
+            shg,
             ppbar=None):
         """Constructs a detector signal yield 2-dimensional log spline
         function for the given flux model with varying parameter values.
@@ -118,11 +123,9 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             The instance of DatasetData holding the monte-carlo event data.
             This implementation loads the effective area from the provided
             public data and hence does not need monte-carlo data.
-        fluxmodel : instance of FluxModel
-            The flux model instance. Must be an instance of PowerLawFlux.
-        livetime : float | Livetime instance
-            The live-time in days or an instance of Livetime to use for the
-            detector signal yield.
+        shg : instance of SourceHypoGroup
+            The instance of SourceHypoGroup (i.e. sources and flux model) for
+            which the detector signal yield should get constructed.
         ppbar : ProgressBar instance | None
             The instance of ProgressBar of the optional parent progress bar.
 
@@ -135,17 +138,16 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         self.assert_types_of_construct_detsigyield_arguments(
             dataset=dataset,
             data=data,
-            fluxmodel=fluxmodel,
-            livetime=livetime,
-            ppbar=ppbar
+            shgs=shg,
+            ppbar=ppbar,
         )
 
         # Get integrated live-time in days.
-        livetime_days = Livetime.get_integrated_livetime(livetime)
+        livetime_days = Livetime.get_integrated_livetime(data.livetime)
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = fluxmodel.get_conversion_factor_to_internal_flux_unit()
+        toGeVcm2s = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Load the effective area data from the public dataset.
         aeff_fnames = dataset.get_abs_pathfilename_list(
@@ -163,7 +165,8 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 energy_bin_edges_lower,
                 energy_bin_edges_upper,
                 aeff,
-                fluxmodel):
+                fluxmodel,
+        ):
             """Creates a histogram of the detector signal yield for the given
             sin(dec) binning.
 
@@ -208,7 +211,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                     energy_bin_edges_lower,
                     energy_bin_edges_upper,
                     aeff_arr,
-                    fluxmodel.copy({param_grid.name: param_val})
+                    shg.fluxmodel.copy({param_grid.name: param_val})
                 ),
                 {}
             )
@@ -238,8 +241,8 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         detsigyield = SingleParamFluxPointLikeSourceI3DetSigYield(
             param_name=param_grid.name,
             dataset=dataset,
-            fluxmodel=fluxmodel,
-            livetime=livetime,
+            fluxmodel=shg.fluxmodel,
+            livetime=data.livetime,
             sin_dec_binning=sin_dec_binning,
             log_spl_sinDec_param=log_spl_sinDec_param)
 
