@@ -137,8 +137,8 @@ class DetSigYieldService(
     ):
         """Creates a dictionary with the builder instance as key and the list of
         source hypo group indices to which the builder applies as value.
-        Hence, SHGs using the same builder will be grouped for DetSigYield
-        construction.
+        Hence, SHGs using the same builder instance can be grouped for
+        DetSigYield construction.
 
         Parameters
         ----------
@@ -158,7 +158,7 @@ class DetSigYieldService(
                 f'The dataset index {ds_idx} must be within the range '
                 f'[0,{n_datasets-1}]!')
 
-        buildercls_to_builder_shgidxs_dict = defaultdict(lambda: [None, list()])
+        builder_shgidxs_dict = defaultdict(list)
         for (g, shg) in enumerate(self._shg_mgr.shg_list):
 
             builder_list = shg.detsigyield_builder_list
@@ -173,14 +173,8 @@ class DetSigYieldService(
                 builder_list[0] if len(builder_list) == 1 else
                 builder_list[ds_idx]
             )
-            buildercls = builder.__class__
-            buildercls_to_builder_shgidxs_dict[buildercls][0] = builder
-            buildercls_to_builder_shgidxs_dict[buildercls][1].append(g)
 
-        builder_shgidxs_dict = {
-            builder: shgidxs
-            for (builder, shgidxs) in buildercls_to_builder_shgidxs_dict.values()
-        }
+            builder_shgidxs_dict[builder].append(g)
 
         return builder_shgidxs_dict
 
