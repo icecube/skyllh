@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 
 import abc
+from astropy import units
 import itertools
 import numpy as np
 
 
+from skyllh.core.config import (
+    to_internal_time_unit,
+)
 from skyllh.core.dataset import (
     Dataset,
     DatasetData,
+)
+from skyllh.core.livetime import (
+    Livetime,
 )
 from skyllh.core.py import (
     issequenceof,
@@ -458,6 +465,10 @@ class MCMultiDatasetSignalGenerator(
         self._sig_candidates = np.empty(
             (0,), dtype=sig_candidates_dtype, order='F')
 
+        to_internal_time_unit_factor = to_internal_time_unit(
+            time_unit=units.day
+        )
+
         # Go through the source hypothesis groups to get the signal event
         # candidates.
         for ((shg_idx, shg), (j, data)) in itertools.product(
@@ -475,10 +486,12 @@ class MCMultiDatasetSignalGenerator(
                     data_mc=data_mc,
                     shg=shg)
 
+            livetime_days = Livetime.get_integrated_livetime(data.livetime)
+
             weight = (
                 data_mc[ev_idx_arr]['mcweight'] *
                 flux_arr *
-                data.livetime * 86400
+                livetime_days*to_internal_time_unit_factor
             )
 
             sig_candidates = np.empty(
