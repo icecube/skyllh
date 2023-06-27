@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from astropy import units
 import numpy as np
 
 import scipy.interpolate
@@ -12,6 +13,9 @@ from skyllh.core import (
 )
 from skyllh.core.binning import (
     BinningDefinition,
+)
+from skyllh.core.config import (
+    to_internal_time_unit,
 )
 from skyllh.core.flux_model import (
     FactorizedFluxModel,
@@ -145,9 +149,13 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         # Get integrated live-time in days.
         livetime_days = Livetime.get_integrated_livetime(data.livetime)
 
+        to_internal_time_unit_factor = to_internal_time_unit(
+            time_unit=units.day
+        )
+
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
+        to_internal_flux_unit_factor = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Load the effective area data from the public dataset.
         aeff_fnames = dataset.get_abs_pathfilename_list(
@@ -166,6 +174,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 energy_bin_edges_upper,
                 aeff,
                 fluxmodel,
+                to_internal_flux_unit_factor,
         ):
             """Creates a histogram of the detector signal yield for the given
             sin(dec) binning.
@@ -189,6 +198,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             h_phi = fluxmodel.energy_profile.get_integral(
                 E1=energy_bin_edges_lower,
                 E2=energy_bin_edges_upper)
+            h_phi *= to_internal_flux_unit_factor
 
             # Sum over the enegry bins for each sin_dec row.
             h = np.sum(aeff*h_phi, axis=1)
@@ -211,7 +221,8 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                     energy_bin_edges_lower,
                     energy_bin_edges_upper,
                     aeff_arr,
-                    shg.fluxmodel.copy({param_grid.name: param_val})
+                    shg.fluxmodel.copy({param_grid.name: param_val}),
+                    to_internal_flux_unit_factor,
                 ),
                 {}
             )
@@ -220,7 +231,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         h = np.vstack(
             multiproc.parallelize(
                 _create_hist, args_list, self.ncpu, ppbar=ppbar)).T
-        h *= toGeVcm2s * livetime_days * 86400.
+        h *= livetime_days*to_internal_time_unit_factor
 
         # Create a 2d spline in log of the detector signal yield.
         sin_dec_bincenters = 0.5*(

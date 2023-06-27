@@ -1001,7 +1001,11 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        toGeVcm2s = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
+        to_internal_flux_unit_factor = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
+
+        to_internal_time_unit_factor = to_internal_time_unit(
+            time_unit=units.day
+        )
 
         # Define a function that creates a detector signal yield histogram
         # along sin(dec) for a given flux model, i.e. for given spectral index,
@@ -1012,6 +1016,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 sin_dec_binning,
                 weights,
                 fluxmodel,
+                to_internal_flux_unit_factor,
         ):
             """Creates a histogram of the detector signal yield with the
             given sin(dec) binning.
@@ -1030,18 +1035,27 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 detector signal yield.
             fluxmodel : FluxModel
                 The flux model to get the flux values from.
+            to_internal_flux_unit_factor : float
+                The conversion factor to convert the flux unit into the internal
+                flux unit.
 
             Returns
             -------
             h : 1d ndarray
                 The numpy array containing the histogram values.
             """
-            weights = weights * fluxmodel(E=data_true_energy).squeeze()
+            weights = (
+                weights *
+                fluxmodel(E=data_true_energy).squeeze() *
+                to_internal_flux_unit_factor
+            )
+
             (h, edges) = np.histogram(
                 data_sin_true_dec,
                 bins=sin_dec_binning.binedges,
                 weights=weights,
                 density=False)
+
             return h
 
         data_sin_true_dec = np.sin(data.mc['true_dec'])
@@ -1057,7 +1071,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         weights = (
             np.take(data.mc['mcweight'], sorted_idxs) *
-            toGeVcm2s * livetime_days * 86400.
+            livetime_days*to_internal_time_unit_factor
         )
 
         # Make a copy of the parameter grid and extend the grid by one bin on
@@ -1074,7 +1088,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                     data_true_energy,
                     sin_dec_binning,
                     weights,
-                    shg.fluxmodel.copy({param_grid.name: param_val})
+                    shg.fluxmodel.copy({param_grid.name: param_val}),
+                    to_internal_flux_unit_factor,
                 ),
                 {}
             )
