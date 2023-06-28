@@ -4,6 +4,9 @@ import abc
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
+from skyllh.core import (
+    tool,
+)
 from skyllh.core.binning import (
     BinningDefinition,
 )
@@ -38,14 +41,6 @@ from skyllh.core.parameters import (
 from skyllh.core.timing import (
     TaskTimer,
 )
-
-
-# Try to load the photospline tool.
-PHOTOSPLINE_LOADED = True
-try:
-    import photospline
-except ImportError:
-    PHOTOSPLINE_LOADED = False
 
 
 logger = get_logger(__name__)
@@ -1043,7 +1038,7 @@ class MultiDimGridPDF(
                     'Its current type is '
                     f'{classname(path_to_pdf_splinetable)}.')
 
-            if not PHOTOSPLINE_LOADED:
+            if not tool.is_available('photospline'):
                 raise ImportError(
                     'The path_to_pdf_splinetable argument is specified, but '
                     'the "photospline" package is not available!')
@@ -1075,7 +1070,8 @@ class MultiDimGridPDF(
                 bounds_error=False,
                 fill_value=0)
         else:
-            self._pdf = photospline.SplineTable(path_to_pdf_splinetable)
+            self._pdf = tool.get('photospline').SplineTable(
+                path_to_pdf_splinetable)
 
         # Because this PDF does not depend on any fit parameters, the PDF values
         # can be cached as long as the trial data state ID of the trial data
