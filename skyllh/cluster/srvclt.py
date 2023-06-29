@@ -2,7 +2,10 @@
 
 import pickle
 
-from skyllh.core.py import str_cast
+from skyllh.core.py import (
+    str_cast,
+)
+
 
 class Message(object):
     @staticmethod
@@ -31,7 +34,7 @@ class Message(object):
         # a bytes object.
         msg = read_from_socket(sock, msglen, blocksize=blocksize)
 
-        if(as_bytes):
+        if as_bytes:
             return Message(msg)
 
         return Message(str(msg, 'utf-8'))
@@ -52,10 +55,12 @@ class Message(object):
         instance.
         """
         return self._msg
+
     @msg.setter
     def msg(self, m):
-        if(not isinstance(m, bytes)):
-            m = str_cast(m,
+        if not isinstance(m, bytes):
+            m = str_cast(
+                m,
                 'The msg property must be of type bytes or castable to type '
                 'str!')
         self._msg = m
@@ -71,7 +76,7 @@ class Message(object):
         socket. The first two bytes hold the length of the message.
         """
         smsg = len(self.msg).to_bytes(2, 'little')
-        if(isinstance(self.msg, bytes)):
+        if isinstance(self.msg, bytes):
             smsg += self.msg
         else:
             smsg += bytes(self.msg, 'utf-8')
@@ -87,9 +92,10 @@ def send_to_socket(sock, msg):
     n_bytes_sent = 0
     while n_bytes_sent < msglen:
         sent = sock.send(msg[n_bytes_sent:])
-        if(sent == 0):
+        if sent == 0:
             raise RuntimeError('Socket connection broken!')
         n_bytes_sent += sent
+
 
 def read_from_socket(sock, size, blocksize=2048):
     """Reads ``size`` bytes from the socket ``sock``.
@@ -98,11 +104,12 @@ def read_from_socket(sock, size, blocksize=2048):
     n_bytes_recd = 0
     while (n_bytes_recd < size):
         chunk = sock.recv(min(size - n_bytes_recd, blocksize))
-        if(chunk == b''):
+        if chunk == b'':
             raise RuntimeError('Socket connection broken!')
         chunks.append(chunk)
         n_bytes_recd += len(chunk)
     return b''.join(chunks)
+
 
 def receive_object_from_socket(sock, blocksize=2048):
     """Receives a pickled Python object from the given socket.

@@ -9,9 +9,8 @@ from skyllh.cluster.commands import (
     MSG,
     ShutdownCN,
     RegisterCN,
-    receive_command_from_socket
+    receive_command_from_socket,
 )
-from skyllh.cluster.srvclt import Message
 
 
 class CNRegistryEntry(object):
@@ -34,11 +33,12 @@ class CNRegistryEntry(object):
     def key(self):
         """(read-only) The CN's identification key.
         """
-        return '%s:%d'%(self.addr, self.port)
+        return f'{self.addr:s}:{self.port:d}'
 
     def send_command(self, cmd):
-        if(not isinstance(cmd, Command)):
-            raise TypeError('The cmd argument must be an instance of Command!')
+        if not isinstance(cmd, Command):
+            raise TypeError(
+                'The cmd argument must be an instance of Command!')
         cmd.send(self.sock)
 
 
@@ -58,10 +58,12 @@ class MasterNode(object):
         """The dictionary with the registered compute nodes.
         """
         return self._cn_registry
+
     @cn_registry.setter
     def cn_registry(self, d):
-        if(not isinstance(d, dict)):
-            raise TypeError('The cn_registry property must be of type dict!')
+        if not isinstance(d, dict):
+            raise TypeError(
+                'The cn_registry property must be of type dict!')
         self._cn_registry = d
 
     def clear_cn_registry(self):
@@ -100,9 +102,10 @@ class MasterNode(object):
 
                 cmd = receive_command_from_socket(
                     clientsock, blocksize=blocksize)
-                if(not cmd.is_same_as(RegisterCN)):
-                    raise RuntimeError('The compute node provided an unknown '
-                        'command "%s"!'%(cmd.as_message().msg))
+                if not cmd.is_same_as(RegisterCN):
+                    raise RuntimeError(
+                        'The compute node provided an unknown command '
+                        f'"{cmd.as_message().msg}"!')
                 ACK().send(clientsock)
 
                 cn = CNRegistryEntry(
@@ -120,4 +123,3 @@ class MasterNode(object):
         """
         for (cn_key, cn) in self._cn_registry.items():
             cn.send_command(ShutdownCN())
-

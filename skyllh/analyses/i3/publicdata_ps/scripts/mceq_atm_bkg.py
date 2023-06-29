@@ -1,18 +1,23 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import numpy as np
 import os.path
 import pickle
 
 import crflux.models as pm
 import mceq_config as config
+import numpy as np
+
 from MCEq.core import (
     MCEqRun,
 )
 
-from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
-from skyllh.datasets.i3 import PublicData_10y_ps
+from skyllh.analyses.i3.publicdata_ps.aeff import (
+    PDAeff,
+)
+from skyllh.datasets.i3 import (
+    PublicData_10y_ps,
+)
 
 
 def create_flux_file(save_path, ds):

@@ -3,8 +3,12 @@
 
 import numpy as np
 
-from skyllh.core.dataset import DatasetCollection
-from skyllh.i3.dataset import I3Dataset
+from skyllh.core.dataset import (
+    DatasetCollection,
+)
+from skyllh.i3.dataset import (
+    I3Dataset,
+)
 
 
 def create_dataset_collection(base_path=None, sub_path_fmt=None):
@@ -247,17 +251,17 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # Define the common keyword arguments for all data sets.
     ds_kwargs = dict(
-        livetime = None,
-        version = version,
-        verqualifiers = verqualifiers,
-        base_path = base_path,
-        default_sub_path_fmt = default_sub_path_fmt,
-        sub_path_fmt = sub_path_fmt
+        livetime=None,
+        version=version,
+        verqualifiers=verqualifiers,
+        base_path=base_path,
+        default_sub_path_fmt=default_sub_path_fmt,
+        sub_path_fmt=sub_path_fmt,
     )
 
     grl_field_name_renaming_dict = {
         'MJD_start[days]': 'start',
-        'MJD_stop[days]': 'stop'
+        'MJD_stop[days]': 'stop',
     }
 
     # Define the datasets for the different seasons.
@@ -267,11 +271,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC40 ----------------------------------------------------------
     IC40 = I3Dataset(
-        name = 'IC40',
-        exp_pathfilenames = 'events/IC40_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC40_exp.csv',
-        **ds_kwargs
+        name='IC40',
+        exp_pathfilenames='events/IC40_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC40_exp.csv',
+        **ds_kwargs,
     )
     IC40.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC40.add_aux_data_definition(
@@ -291,11 +295,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC59 ----------------------------------------------------------
     IC59 = I3Dataset(
-        name = 'IC59',
-        exp_pathfilenames = 'events/IC59_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC59_exp.csv',
-        **ds_kwargs
+        name='IC59',
+        exp_pathfilenames='events/IC59_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC59_exp.csv',
+        **ds_kwargs,
     )
     IC59.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC59.add_aux_data_definition(
@@ -316,11 +320,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC79 ----------------------------------------------------------
     IC79 = I3Dataset(
-        name = 'IC79',
-        exp_pathfilenames = 'events/IC79_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC79_exp.csv',
-        **ds_kwargs
+        name='IC79',
+        exp_pathfilenames='events/IC79_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC79_exp.csv',
+        **ds_kwargs,
     )
     IC79.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC79.add_aux_data_definition(
@@ -329,10 +333,10 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'smearing_datafile', 'irfs/IC79_smearing.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
-                        np.linspace(-1., -0.75, 10 + 1),
-                        np.linspace(-0.75, 0., 15 + 1),
-                        np.linspace(0., 1., 20 + 1)
-                        ]))
+        np.linspace(-1., -0.75, 10 + 1),
+        np.linspace(-0.75, 0., 15 + 1),
+        np.linspace(0., 1., 20 + 1),
+    ]))
     IC79.define_binning('sin_dec', sin_dec_bins)
 
     energy_bins = np.arange(2., 9.5 + 0.01, 0.125)
@@ -340,11 +344,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC86-I --------------------------------------------------------
     IC86_I = I3Dataset(
-        name = 'IC86_I',
-        exp_pathfilenames = 'events/IC86_I_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC86_I_exp.csv',
-        **ds_kwargs
+        name='IC86_I',
+        exp_pathfilenames='events/IC86_I_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC86_I_exp.csv',
+        **ds_kwargs,
     )
     IC86_I.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_I.add_aux_data_definition(
@@ -352,7 +356,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_I.add_aux_data_definition(
         'smearing_datafile', 'irfs/IC86_I_smearing.csv')
 
-    b = np.sin(np.radians(-5.)) # North/South transition boundary.
+    b = np.sin(np.radians(-5.))  # North/South transition boundary.
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.2, 10 + 1),
         np.linspace(-0.2, b, 4 + 1),
@@ -366,11 +370,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC86-II -------------------------------------------------------
     IC86_II = I3Dataset(
-        name = 'IC86_II',
-        exp_pathfilenames = 'events/IC86_II_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC86_II_exp.csv',
-        **ds_kwargs
+        name='IC86_II',
+        exp_pathfilenames='events/IC86_II_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC86_II_exp.csv',
+        **ds_kwargs,
     )
     IC86_II.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_II.add_aux_data_definition(
@@ -391,11 +395,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC86-III ------------------------------------------------------
     IC86_III = I3Dataset(
-        name = 'IC86_III',
-        exp_pathfilenames = 'events/IC86_III_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC86_III_exp.csv',
-        **ds_kwargs
+        name='IC86_III',
+        exp_pathfilenames='events/IC86_III_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC86_III_exp.csv',
+        **ds_kwargs,
     )
     IC86_III.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_III.add_aux_data_definition(
@@ -410,11 +414,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC86-IV -------------------------------------------------------
     IC86_IV = I3Dataset(
-        name = 'IC86_IV',
-        exp_pathfilenames = 'events/IC86_IV_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC86_IV_exp.csv',
-        **ds_kwargs
+        name='IC86_IV',
+        exp_pathfilenames='events/IC86_IV_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC86_IV_exp.csv',
+        **ds_kwargs,
     )
     IC86_IV.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_IV.add_aux_data_definition(
@@ -429,11 +433,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC86-V --------------------------------------------------------
     IC86_V = I3Dataset(
-        name = 'IC86_V',
-        exp_pathfilenames = 'events/IC86_V_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC86_V_exp.csv',
-        **ds_kwargs
+        name='IC86_V',
+        exp_pathfilenames='events/IC86_V_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC86_V_exp.csv',
+        **ds_kwargs,
     )
     IC86_V.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_V.add_aux_data_definition(
@@ -448,11 +452,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC86-VI -------------------------------------------------------
     IC86_VI = I3Dataset(
-        name = 'IC86_VI',
-        exp_pathfilenames = 'events/IC86_VI_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC86_VI_exp.csv',
-        **ds_kwargs
+        name='IC86_VI',
+        exp_pathfilenames='events/IC86_VI_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC86_VI_exp.csv',
+        **ds_kwargs,
     )
     IC86_VI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_VI.add_aux_data_definition(
@@ -467,11 +471,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     # ---------- IC86-VII ------------------------------------------------------
     IC86_VII = I3Dataset(
-        name = 'IC86_VII',
-        exp_pathfilenames = 'events/IC86_VII_exp.csv',
-        mc_pathfilenames = None,
-        grl_pathfilenames = 'uptime/IC86_VII_exp.csv',
-        **ds_kwargs
+        name='IC86_VII',
+        exp_pathfilenames='events/IC86_VII_exp.csv',
+        mc_pathfilenames=None,
+        grl_pathfilenames='uptime/IC86_VII_exp.csv',
+        **ds_kwargs,
     )
     IC86_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_VII.add_aux_data_definition(
@@ -494,11 +498,11 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         IC86_VII,
     ]
     IC86_II_VII = I3Dataset(
-        name = 'IC86_II-VII',
-        exp_pathfilenames = I3Dataset.get_combined_exp_pathfilenames(ds_list),
-        mc_pathfilenames = None,
-        grl_pathfilenames = I3Dataset.get_combined_grl_pathfilenames(ds_list),
-        **ds_kwargs
+        name='IC86_II-VII',
+        exp_pathfilenames=I3Dataset.get_combined_exp_pathfilenames(ds_list),
+        mc_pathfilenames=None,
+        grl_pathfilenames=I3Dataset.get_combined_grl_pathfilenames(ds_list),
+        **ds_kwargs,
     )
     IC86_II_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_II_VII.add_aux_data_definition(
@@ -514,7 +518,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     IC86_II_VII.add_binning_definition(
         IC86_II.get_binning_definition('log_energy'))
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     dsc.add_datasets((
         IC40,
@@ -527,7 +531,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         IC86_V,
         IC86_VI,
         IC86_VII,
-        IC86_II_VII
+        IC86_II_VII,
     ))
 
     dsc.set_exp_field_name_renaming_dict({
@@ -537,7 +541,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
         'RA[deg]':      'ra',
         'Dec[deg]':     'dec',
         'Azimuth[deg]': 'azi',
-        'Zenith[deg]':  'zen'
+        'Zenith[deg]':  'zen',
     })
 
     def add_run_number(data):
