@@ -8,7 +8,9 @@ from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
 from skyllh.core.py import classname
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.trialdata import TrialDataManager
 from skyllh.i3.backgroundpdf import BackgroundI3SpatialPDF
@@ -98,7 +100,7 @@ class BackgroundI3SpatialPDFPlotter(object):
         for i in range(len(events)):
             pdfprobs[0,i] = event_probs[i]
 
-        ra_axis = self.pdf.axes.get_axis('ra')
+        ra_axis = self.pdf.axes['ra']
         (left, right, bottom, top) = (
             ra_axis.vmin, ra_axis.vmax,
             sin_dec_binning.lower_edge, sin_dec_binning.upper_edge)

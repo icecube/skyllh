@@ -1,6 +1,8 @@
 astropy
 numpy
+pyarrow
 scipy
 iminuit
 matplotlib
 pre-commit
+tqdm

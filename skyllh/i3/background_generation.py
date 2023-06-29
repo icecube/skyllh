@@ -30,11 +30,13 @@ class FixedScrambledExpDataI3BkgGenMethod(BackgroundGenerationMethod):
         """The DataScrambler instance that implements the data scrambling.
         """
         return self._data_scrambler
+
     @data_scrambler.setter
     def data_scrambler(self, scrambler):
-        if(not isinstance(scrambler, DataScrambler)):
-            raise TypeError('The data_scrambler property must be an instance '
-                'of DataScrambler!')
+        if not isinstance(scrambler, DataScrambler):
+            raise TypeError(
+                'The data_scrambler property must be an instance of '
+                'DataScrambler!')
         self._data_scrambler = scrambler
 
     def generate_events(self, rss, dataset, data, **kwargs):

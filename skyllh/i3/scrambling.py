@@ -6,7 +6,7 @@ from skyllh.core.scrambling import (
     DataScramblingMethod,
     TimeScramblingMethod,
 )
-from skyllh.i3.coords import (
+from skyllh.i3.utils.coords import (
     azi_to_ra_transform,
     hor_to_equ_transform,
 )
@@ -107,7 +107,7 @@ class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
         run_idxs = rss.random.choice(
             self.grl['start'].size,
             size=len(data['time']),
-            p=self.weights)
+            p=self.run_weights)
 
         # Draw random times uniformely within the runs.
         times = rss.random.uniform(

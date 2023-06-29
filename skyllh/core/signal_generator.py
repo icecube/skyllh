@@ -1,101 +1,148 @@
 # -*- coding: utf-8 -*-
 
 import abc
+from astropy import units
 import itertools
 import numpy as np
 
+
+from skyllh.core.config import (
+    to_internal_time_unit,
+)
+from skyllh.core.dataset import (
+    Dataset,
+    DatasetData,
+)
+from skyllh.core.livetime import (
+    Livetime,
+)
 from skyllh.core.py import (
     issequenceof,
     float_cast,
     int_cast,
-    get_smallest_numpy_int_type
+    get_smallest_numpy_int_type,
 )
-from skyllh.core.dataset import Dataset, DatasetData
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
-from skyllh.core.storage import DataFieldRecordArray
-from skyllh.physics.flux import (
-    get_conversion_factor_to_internal_flux_unit
+from skyllh.core.services import (
+    DatasetSignalWeightFactorsService,
+)
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
+from skyllh.core.storage import (
+    DataFieldRecordArray,
 )
 
 
-class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
+class SignalGenerator(
+        object,
+        metaclass=abc.ABCMeta):
     """This is the abstract base class for all signal generator classes in
-    SkyLLH. It defines the interface for signal generators.
+    SkyLLH. It defines the interface for a signal generator.
     """
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list,
-                 *args, **kwargs):
+    def __init__(
+            self,
+            shg_mgr,
+            **kwargs):
         """Constructs a new signal generator instance.
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
+        shg_mgr : instance of SourceHypoGroupManager
             The SourceHypoGroupManager instance defining the source hypothesis
             groups.
-        dataset_list : list of Dataset instances
-            The list of Dataset instances for which signal events should get
-            generated for.
-        data_list : list of DatasetData instances
-            The list of DatasetData instances holding the actual data of each
-            dataset. The order must match the order of ``dataset_list``.
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            **kwargs)
 
-        self.src_hypo_group_manager = src_hypo_group_manager
-        self.dataset_list = dataset_list
-        self.data_list = data_list
+        self.shg_mgr = shg_mgr
 
     @property
-    def src_hypo_group_manager(self):
+    def shg_mgr(self):
         """The SourceHypoGroupManager instance defining the source hypothesis
         groups.
         """
-        return self._src_hypo_group_manager
-    @src_hypo_group_manager.setter
-    def src_hypo_group_manager(self, manager):
-        if(not isinstance(manager, SourceHypoGroupManager)):
+        return self._shg_mgr
+
+    @shg_mgr.setter
+    def shg_mgr(self, manager):
+        if not isinstance(manager, SourceHypoGroupManager):
             raise TypeError(
-                'The src_hypo_group_manager property must be an instance of '
+                'The shg_mgr property must be an instance of '
                 'SourceHypoGroupManager!')
-        self._src_hypo_group_manager = manager
+        self._shg_mgr = manager
 
-    @property
-    def dataset_list(self):
-        """The list of Dataset instances for which signal events should get
-        generated for.
+    def create_src_params_recarray(
+            self,
+            src_detsigyield_weights_service):
+        """Creates the src_params_recarray structured ndarray of length
+        N_sources holding the local source parameter names and values needed for
+        the calculation of the detector signal yields.
+
+        Parameters
+        ----------
+        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+            The instance of SrcDetSigYieldWeightsService providing the product
+            of the source weights with the detector signal yield.
+
+        Returns
+        -------
+        src_params_recarray : instance of numpy structured ndarray
+            The structured numpy ndarray of length N_sources, holding the local
+            parameter names and values of each source needed to calculate the
+            detector signal yield.
         """
-        return self._dataset_list
-    @dataset_list.setter
-    def dataset_list(self, datasets):
-        if(not issequenceof(datasets, Dataset)):
-            raise TypeError(
-                'The dataset_list property must be a sequence of Dataset '
-                'instances!')
-        self._dataset_list = list(datasets)
+        # Get the parameter names needed for the detector signal yield
+        # calculation.
+        param_names = []
+        for detsigyield in src_detsigyield_weights_service.detsigyield_arr.flat:
+            param_names.extend(detsigyield.param_names)
+        param_names = set(param_names)
 
-    @property
-    def data_list(self):
-        """The list of DatasetData instances holding the actual data of each
-        dataset. The order must match the order of the ``dataset_list``
-        property.
-        """
-        return self._data_list
-    @data_list.setter
-    def data_list(self, datas):
-        if(not issequenceof(datas, DatasetData)):
-            raise TypeError(
-                'The data_list property must be a sequence of DatasetData '
-                'instances!')
-        self._data_list = datas
+        # Create an empty structured ndarray of length N_sources.
+        dt = []
+        for pname in param_names:
+            dt.extend([
+                (pname, np.float64),
+                (f'{pname}:gpidx', np.int32)
+            ])
+        src_params_recarray = np.empty((self._shg_mgr.n_sources,), dtype=dt)
 
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+        sidx = 0
+        for (shg_idx, shg) in enumerate(self._shg_mgr.shg_list):
+
+            shg_n_src = shg.n_sources
+
+            shg_src_slice = slice(sidx, sidx+shg_n_src)
+
+            pvalues = []
+            for pname in param_names:
+                pvalues.extend([
+                    shg.fluxmodel.get_param(pname),
+                    0
+                ])
+
+            src_params_recarray[shg_src_slice] = tuple(pvalues)
+
+            sidx += shg_n_src
+
+        return src_params_recarray
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
         """Changes the source hypothesis group manager. Derived classes can
         reimplement this method but this method of the base class must still be
         called by the derived class.
         """
-        self.src_hypo_group_manager = src_hypo_group_manager
+        self.shg_mgr = shg_mgr
 
     @abc.abstractmethod
-    def generate_signal_events(self, rss, mean, poisson=True):
+    def generate_signal_events(
+            self,
+            rss,
+            mean,
+            poisson=True,
+            src_detsigyield_weights_service=None):
         """This abstract method must be implemented by the derived class to
         generate a given number of signal events.
 
@@ -104,7 +151,7 @@ class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
         rss : instance of RandomStateService
             The instance of RandomStateService providing the random number
             generator state.
-        mean : float
+        mean : int | float
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
@@ -115,6 +162,10 @@ class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
             signal events.
             If set to False, the argument ``mean`` specifies the actual number
             of generated signal events.
+        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService | None
+            The instance of SrcDetSigYieldWeightsService providing the weighting
+            of the sources within the detector. This can be ``None`` if this
+            signal generator does not need this information.
 
         Returns
         -------
@@ -128,23 +179,256 @@ class SignalGeneratorBase(object, metaclass=abc.ABCMeta):
         pass
 
 
-class SignalGenerator(SignalGeneratorBase):
-    """This is the general signal generator class. It does not depend on the
-    detector or source hypothesis, because these dependencies are factored out
-    into the signal generation method. In fact the construction within this
-    class depends on the construction of the signal generation method. In case
-    of multiple sources the handling here is very suboptimal. Therefore the
-    MultiSourceSignalGenerator should be used instead!
+class MultiDatasetSignalGenerator(
+        SignalGenerator):
+    """This is a signal generator class handling multiple datasets by using the
+    individual signal generator instances for each dataset. This is the most
+    general way to support multiple datasets of different formats and signal
+    generation.
     """
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list,
-                 *args, **kwargs):
+    def __init__(
+            self,
+            shg_mgr,
+            dataset_list,
+            data_list,
+            sig_generator_list=None,
+            ds_sig_weight_factors_service=None,
+            **kwargs):
+        """Constructs a new signal generator handling multiple datasets.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager that defines the list of
+            source hypothesis groups, i.e. the list of sources.
+        dataset_list : list of instance of Dataset
+            The list of instance of Dataset for which signal events should get
+            generated.
+        data_list : list of instance of DatasetData
+            The list of instance of DatasetData holding the actual data of each
+            dataset. The order must match the order of ``dataset_list``.
+        sig_generator_list : list of instance of SignalGenerator | None
+            The optional list of instance of SignalGenerator holding
+            signal generator instances for each individual dataset. This can be
+            ``None`` if this signal generator does not require individual signal
+            generators for each dataset.
+        ds_sig_weight_factors_service : instance of DatasetSignalWeightFactorsService
+            The instance of DatasetSignalWeightFactorsService providing the
+            dataset signal weight factor service for calculating the dataset
+            signal weights.
+        """
+        super().__init__(
+            shg_mgr=shg_mgr,
+            **kwargs)
+
+        self.dataset_list = dataset_list
+        self.data_list = data_list
+        self.sig_generator_list = sig_generator_list
+        self.ds_sig_weight_factors_service = ds_sig_weight_factors_service
+
+        self._src_params_recarray = None
+
+    @property
+    def dataset_list(self):
+        """The list of Dataset instances for which signal events should get
+        generated for.
+        """
+        return self._dataset_list
+
+    @dataset_list.setter
+    def dataset_list(self, datasets):
+        if not issequenceof(datasets, Dataset):
+            raise TypeError(
+                'The dataset_list property must be a sequence of Dataset '
+                'instances!')
+        self._dataset_list = list(datasets)
+
+    @property
+    def data_list(self):
+        """The list of DatasetData instances holding the actual data of each
+        dataset. The order must match the order of the ``dataset_list``
+        property.
+        """
+        return self._data_list
+
+    @data_list.setter
+    def data_list(self, datas):
+        if not issequenceof(datas, DatasetData):
+            raise TypeError(
+                'The data_list property must be a sequence of DatasetData '
+                'instances!')
+        self._data_list = list(datas)
+
+    @property
+    def sig_generator_list(self):
+        """The list of instance of SignalGenerator holding signal generator
+        instances for each individual dataset.
+        """
+        return self._sig_generator_list
+
+    @sig_generator_list.setter
+    def sig_generator_list(self, generators):
+        if generators is not None:
+            if not issequenceof(generators, (SignalGenerator, type(None))):
+                raise TypeError(
+                    'The sig_generator_list property must be a sequence of '
+                    'SignalGenerator instances!')
+            generators = list(generators)
+        self._sig_generator_list = generators
+
+    @property
+    def ds_sig_weight_factors_service(self):
+        """The instance of DatasetSignalWeightFactorsService providing the
+        dataset signal weight factor service for calculating the dataset
+        signal weights.
+        """
+        return self._ds_sig_weight_factors_service
+
+    @ds_sig_weight_factors_service.setter
+    def ds_sig_weight_factors_service(self, service):
+        if not isinstance(service, DatasetSignalWeightFactorsService):
+            raise TypeError(
+                'The ds_sig_weight_factors_service property must be an '
+                'instance of DatasetSignalWeightFactorsService!')
+        self._ds_sig_weight_factors_service = service
+
+    @property
+    def n_datasets(self):
+        """(read-only) The number of datasets.
+        """
+        return len(self._dataset_list)
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
+        """Changes the source hypothesis group manager. This will recreate the
+        src_params_recarray needed for calculating the detector signal yields.
+        Also it calls the ``change_shg_mgr`` methods of the signal generators of
+        the individual datasets.
+        """
+        super().change_shg_mgr(
+            shg_mgr=shg_mgr)
+
+        src_detsigyield_weights_service =\
+            self.ds_sig_weight_factors_service.src_detsigyield_weights_service
+        self._src_params_recarray = self.create_src_params_recarray(
+            src_detsigyield_weights_service=src_detsigyield_weights_service)
+
+        for sig_generator in self.sig_generator_list:
+            sig_generator.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+    def generate_signal_events(
+            self,
+            rss,
+            mean,
+            poisson=True,
+            **kwargs):
+        """Generates a given number of signal events distributed across the
+        individual datasets.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService providing the random number
+            generator state.
+        mean : float | int
+            The mean number of signal events. If the ``poisson`` argument is set
+            to True, the actual number of generated signal events will be drawn
+            from a Poisson distribution with this given mean value of signal
+            events.
+        poisson : bool
+            If set to True, the actual number of generated signal events will
+            be drawn from a Poisson distribution with the given mean value of
+            signal events.
+            If set to False, the argument ``mean`` must be an integer and
+            specifies the actual number of generated signal events.
+
+        Returns
+        -------
+        n_signal : int
+            The number of actual generated signal events.
+        signal_events_dict : dict of DataFieldRecordArray
+            The dictionary holding the DataFieldRecordArray instances with the
+            generated signal events. Each key of this dictionary represents the
+            dataset index for which the signal events have been generated.
+        """
+        if poisson:
+            mean = rss.random.poisson(
+                float_cast(
+                    mean,
+                    'The mean argument must be castable to type of float!'))
+
+        n_signal = int_cast(
+            mean,
+            'The mean argument must be castable to type of int!')
+
+        src_detsigyield_weights_service =\
+            self.ds_sig_weight_factors_service.src_detsigyield_weights_service
+
+        # Calculate the dataset weights to distribute the signal events over the
+        # datasets.
+        if self._src_params_recarray is None:
+            self._src_params_recarray = self.create_src_params_recarray(
+                src_detsigyield_weights_service=src_detsigyield_weights_service)
+
+        src_detsigyield_weights_service.calculate(
+            src_params_recarray=self._src_params_recarray)
+
+        self._ds_sig_weight_factors_service.calculate()
+        (ds_weights, _) = self._ds_sig_weight_factors_service.get_weights()
+
+        n_signal = 0
+        signal_events_dict = {}
+
+        for (ds_weight, ds_sig_generator) in zip(
+                ds_weights,
+                self._sig_generator_list):
+
+            n_events = int(np.round(mean * ds_weight, 0))
+
+            (ds_n_signal, ds_sig_events_dict) =\
+                ds_sig_generator.generate_signal_events(
+                    rss=rss,
+                    mean=n_events,
+                    poisson=False,
+                    src_detsigyield_weights_service=src_detsigyield_weights_service,
+                )
+
+            n_signal += ds_n_signal
+
+            for (k, v) in ds_sig_events_dict.items():
+                if k not in signal_events_dict:
+                    signal_events_dict[k] = v
+                else:
+                    signal_events_dict[k].append(v)
+
+        return (n_signal, signal_events_dict)
+
+
+class MCMultiDatasetSignalGenerator(
+        MultiDatasetSignalGenerator):
+    """This is a signal generator class, which handles multiple datasets with
+    monte-carlo (MC). It uses the MC events of all datasets to determine the
+    possible signal events for a source.
+    It does not depend on the detector or source hypothesis, because these
+    dependencies are factored out into the signal generation method.
+    In fact the construction within this class depends on the construction of
+    the signal generation method.
+    """
+    def __init__(
+            self,
+            shg_mgr,
+            dataset_list,
+            data_list,
+            **kwargs):
         """Constructs a new signal generator instance.
 
         Parameters
         ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The SourceHypoGroupManager instance defining the source groups with
-            their spectra.
+        shg_mgr : instance of SourceHypoGroupManager
+            The SourceHypoGroupManager instance defining the source hypothesis
+            groups.
         dataset_list : list of Dataset instances
             The list of Dataset instances for which signal events should get
             generated for.
@@ -155,8 +439,7 @@ class SignalGenerator(SignalGeneratorBase):
             A typical keyword argument is the instance of MultiDatasetTCLLHRatio.
         """
         super().__init__(
-            *args,
-            src_hypo_group_manager=src_hypo_group_manager,
+            shg_mgr=shg_mgr,
             dataset_list=dataset_list,
             data_list=data_list,
             **kwargs)
@@ -168,8 +451,8 @@ class SignalGenerator(SignalGeneratorBase):
         events pointing into the real MC dataset(s).
         """
         n_datasets = len(self._dataset_list)
-        n_sources = self._src_hypo_group_manager.n_sources
-        shg_list = self._src_hypo_group_manager.src_hypo_group_list
+        n_sources = self._shg_mgr.n_sources
+        shg_list = self._shg_mgr.shg_list
         sig_candidates_dtype = [
             ('ds_idx', get_smallest_numpy_int_type((0, n_datasets))),
             ('ev_idx', get_smallest_numpy_int_type(
@@ -182,51 +465,72 @@ class SignalGenerator(SignalGeneratorBase):
         self._sig_candidates = np.empty(
             (0,), dtype=sig_candidates_dtype, order='F')
 
+        to_internal_time_unit_factor = to_internal_time_unit(
+            time_unit=units.day
+        )
+
         # Go through the source hypothesis groups to get the signal event
         # candidates.
-        for ((shg_idx,shg), (j,(ds,data))) in itertools.product(
-            enumerate(shg_list), enumerate(zip(self._dataset_list, self._data_list))):
+        for ((shg_idx, shg), (j, data)) in itertools.product(
+                enumerate(shg_list),
+                enumerate(self._data_list)):
             sig_gen_method = shg.sig_gen_method
-            if(sig_gen_method is None):
-                raise ValueError('No signal generation method has been '
-                    'specified for the %dth source hypothesis group!'%(shg_idx))
+            if sig_gen_method is None:
+                raise ValueError(
+                    'No signal generation method has been specified for the '
+                    f'source hypothesis group with index {shg_idx}!')
             data_mc = data.mc
-            (ev_indices_list, flux_list) = sig_gen_method.calc_source_signal_mc_event_flux(
-                data_mc, shg
+
+            (ev_idx_arr, src_idx_arr, flux_arr) =\
+                sig_gen_method.calc_source_signal_mc_event_flux(
+                    data_mc=data_mc,
+                    shg=shg)
+
+            livetime_days = Livetime.get_integrated_livetime(data.livetime)
+
+            weight = (
+                data_mc[ev_idx_arr]['mcweight'] *
+                flux_arr *
+                livetime_days*to_internal_time_unit_factor
             )
-            for (k, (ev_indices, flux)) in enumerate(zip(ev_indices_list, flux_list)):
-                ev = data_mc[ev_indices]
-                # The weight of the event specifies the number of signal events
-                # this one event corresponds to for the given reference flux.
-                # [weight] = GeV cm^2 sr * s * 1/(GeV cm^2 s sr)
-                weight = ev['mcweight'] * data.livetime * 86400 * flux
 
-                sig_candidates = np.empty(
-                    (len(ev_indices),), dtype=sig_candidates_dtype, order='F'
-                )
-                sig_candidates['ds_idx'] = j
-                sig_candidates['ev_idx'] = ev_indices
-                sig_candidates['shg_idx'] = shg_idx
-                sig_candidates['shg_src_idx'] = k
-                sig_candidates['weight'] = weight
+            sig_candidates = np.empty(
+                (len(ev_idx_arr),),
+                dtype=sig_candidates_dtype,
+                order='F'
+            )
+            sig_candidates['ds_idx'] = j
+            sig_candidates['ev_idx'] = ev_idx_arr
+            sig_candidates['shg_idx'] = shg_idx
+            sig_candidates['shg_src_idx'] = src_idx_arr
+            sig_candidates['weight'] = weight
 
-                self._sig_candidates = np.append(self._sig_candidates, sig_candidates)
+            self._sig_candidates = np.append(
+                self._sig_candidates, sig_candidates)
+            del sig_candidates
 
         # Normalize the signal candidate weights.
         self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
 
-    def change_source_hypo_group_manager(self, src_hypo_group_manager):
+    def change_shg_mgr(
+            self,
+            shg_mgr):
         """Recreates the signal candidates with the changed source hypothesis
         group manager.
         """
-        super().change_source_hypo_group_manager(src_hypo_group_manager)
+        super().change_shg_mgr(
+            shg_mgr=shg_mgr)
 
         self._construct_signal_candidates()
 
-    def mu2flux(self, mu, per_source=False):
+    def mu2flux(
+            self,
+            mu,
+            per_source=False):
         """Translate the mean number of signal events `mu` into the
-        corresponding flux. The unit of the returned flux is 1/(GeV cm^2 s).
+        corresponding flux. The unit of the returned flux is the internally used
+        flux unit.
 
         Parameters
         ----------
@@ -256,31 +560,40 @@ class SignalGenerator(SignalGeneratorBase):
 
         # The mu_fluxes array is the flux of each source for mu mean detected
         # signal events.
-        n_sources = self._src_hypo_group_manager.n_sources
+        n_sources = self._shg_mgr.n_sources
         mu_fluxes = np.empty((n_sources,), dtype=np.float64)
 
-        shg_list = self._src_hypo_group_manager.src_hypo_group_list
+        shg_list = self._shg_mgr.shg_list
         mu_fluxes_idx_offset = 0
-        for (shg_idx,shg) in enumerate(shg_list):
+        for (shg_idx, shg) in enumerate(shg_list):
             fluxmodel = shg.fluxmodel
             # Calculate conversion factor from the flux model unit into the
-            # internal flux unit GeV^-1 cm^-2 s^-1.
-            toGeVcm2s = get_conversion_factor_to_internal_flux_unit(fluxmodel)
+            # internal flux unit.
+            to_internal_flux_unit =\
+                fluxmodel.get_conversion_factor_to_internal_flux_unit()
             for k in range(shg.n_sources):
                 mask = ((self._sig_candidates['shg_idx'] == shg_idx) &
                         (self._sig_candidates['shg_src_idx'] == k))
                 ref_N_k = np.sum(self._sig_candidates[mask]['weight']) * ref_N
-                mu_flux_k = mu / ref_N * (ref_N_k / ref_N) * fluxmodel.Phi0*toGeVcm2s
+                mu_flux_k = (
+                    (mu / ref_N) *
+                    (ref_N_k / ref_N) *
+                    fluxmodel.Phi0 * to_internal_flux_unit)
                 mu_fluxes[mu_fluxes_idx_offset + k] = mu_flux_k
             mu_fluxes_idx_offset += shg.n_sources
 
-        if(per_source):
+        if per_source:
             return mu_fluxes
 
         mu_flux = np.sum(mu_fluxes)
         return mu_flux
 
-    def generate_signal_events(self, rss, mean, poisson=True):
+    def generate_signal_events(
+            self,
+            rss,
+            mean,
+            poisson=True,
+            **kwargs):
         """Generates a given number of signal events from the signal candidate
         monte-carlo events.
 
@@ -289,7 +602,7 @@ class SignalGenerator(SignalGeneratorBase):
         rss : instance of RandomStateService
             The instance of RandomStateService providing the random number
             generator state.
-        mean : float
+        mean : float | int
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
@@ -298,24 +611,27 @@ class SignalGenerator(SignalGeneratorBase):
             If set to True, the actual number of generated signal events will
             be drawn from a Poisson distribution with the given mean value of
             signal events.
-            If set to False, the argument ``mean`` specifies the actual number
-            of generated signal events.
+            If set to False, the argument ``mean`` must be an integer and
+            specifies the actual number of generated signal events.
 
         Returns
         -------
         n_signal : int
-            The number of generated signal events.
+            The number of actual generated signal events.
         signal_events_dict : dict of DataFieldRecordArray
-            The dictionary holding the DataFieldRecordArray instancs with the
+            The dictionary holding the DataFieldRecordArray instances with the
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
         """
-        if(poisson):
-            mean = rss.random.poisson(float_cast(
-                mean, 'The mean argument must be castable to type of float!'))
+        if poisson:
+            mean = rss.random.poisson(
+                float_cast(
+                    mean,
+                    'The mean argument must be castable to type of float!'))
 
         n_signal = int_cast(
-            mean, 'The mean argument must be castable to type of int!')
+            mean,
+            'The mean argument must be castable to type of int!')
 
         # Draw n_signal signal candidates according to their weight.
         sig_events_meta = rss.random.choice(
@@ -326,8 +642,8 @@ class SignalGenerator(SignalGeneratorBase):
         # Get the list of unique dataset and source hypothesis group indices of
         # the drawn signal events.
         # Note: This code does not assume the same format for each of the
-        #       individual MC dataset numpy record arrays, thus might be a bit
-        #       slower. If one could assume the same MC dataset format, one
+        #       individual MC datasets, thus might be a bit slower.
+        #       If one could assume the same MC dataset format, one
         #       could gather all the MC events of all the datasets first and do
         #       the signal event post processing for all datasets at once.
         signal_events_dict = dict()
@@ -337,11 +653,15 @@ class SignalGenerator(SignalGeneratorBase):
             ds_mask = sig_events_meta['ds_idx'] == ds_idx
             n_sig_events_ds = np.count_nonzero(ds_mask)
 
-            data = dict(
-                [(fname, np.empty(
-                    (n_sig_events_ds,),
-                    dtype=mc.get_field_dtype(fname))
-                 ) for fname in mc.field_name_list])
+            data = dict([
+                (
+                    fname,
+                    np.empty(
+                        (n_sig_events_ds,),
+                        dtype=mc.get_field_dtype(fname))
+                )
+                for fname in mc.field_name_list
+            ])
             sig_events = DataFieldRecordArray(data, copy=False)
 
             fill_start_idx = 0
@@ -349,7 +669,7 @@ class SignalGenerator(SignalGeneratorBase):
             # current dataset.
             shg_idxs = np.unique(sig_events_meta[ds_mask]['shg_idx'])
             for shg_idx in shg_idxs:
-                shg = self._src_hypo_group_manager.src_hypo_group_list[shg_idx]
+                shg = self._shg_mgr.shg_list[shg_idx]
                 shg_mask = sig_events_meta['shg_idx'] == shg_idx
                 # Get the MC events for the drawn signal events.
                 ds_shg_mask = ds_mask & shg_mask
@@ -358,92 +678,18 @@ class SignalGenerator(SignalGeneratorBase):
                 ev_idx = shg_sig_events_meta['ev_idx']
                 # Get the signal MC events of the current dataset and source
                 # hypothesis group.
-                shg_sig_events = mc.get_selection(ev_idx)
+                shg_sig_events = mc[ev_idx]
 
                 # Do the signal event post sampling processing.
-                shg_sig_events = shg.sig_gen_method.signal_event_post_sampling_processing(
-                    shg, shg_sig_events_meta, shg_sig_events)
+                shg_sig_events = shg.sig_gen_method.\
+                    signal_event_post_sampling_processing(
+                        shg, shg_sig_events_meta, shg_sig_events)
 
                 indices = np.indices((n_shg_sig_events,))[0] + fill_start_idx
                 sig_events.set_selection(indices, shg_sig_events)
 
-                #sig_events[fill_start_idx:fill_start_idx+n_shg_sig_events] = shg_sig_events
                 fill_start_idx += n_shg_sig_events
 
             signal_events_dict[ds_idx] = sig_events
 
         return (n_signal, signal_events_dict)
-
-
-class MultiSourceSignalGenerator(SignalGenerator):
-    """More optimal signal generator for multiple sources.
-    """
-    def __init__(self, src_hypo_group_manager, dataset_list, data_list,
-                **kwargs):
-        """Constructs a new signal generator instance.
-
-        Parameters
-        ----------
-        src_hypo_group_manager : SourceHypoGroupManager instance
-            The SourceHypoGroupManager instance defining the source groups with
-            their spectra.
-        dataset_list : list of Dataset instances
-            The list of Dataset instances for which signal events should get
-            generated for.
-        data_list : list of DatasetData instances
-            The list of DatasetData instances holding the actual data of each
-            dataset. The order must match the order of ``dataset_list``.
-        kwargs
-            A typical keyword argument is the instance of MultiDatasetTCLLHRatio.
-        """
-        super(MultiSourceSignalGenerator, self).__init__(
-            src_hypo_group_manager, dataset_list, data_list, **kwargs)
-
-    def _construct_signal_candidates(self):
-        """Constructs an array holding pointer information of signal candidate
-        events pointing into the real MC dataset(s).
-        """
-        n_datasets = len(self._dataset_list)
-        n_sources = self._src_hypo_group_manager.n_sources
-        shg_list = self._src_hypo_group_manager.src_hypo_group_list
-        sig_candidates_dtype = [
-            ('ds_idx', get_smallest_numpy_int_type((0, n_datasets))),
-            ('ev_idx', get_smallest_numpy_int_type(
-                [0]+[len(data.mc) for data in self._data_list])),
-            ('shg_idx', get_smallest_numpy_int_type((0, n_sources))),
-            ('shg_src_idx', get_smallest_numpy_int_type(
-                [0]+[shg.n_sources for shg in shg_list])),
-            ('weight', np.float64)
-        ]
-        self._sig_candidates = np.empty(
-            (0,), dtype=sig_candidates_dtype, order='F')
-
-        # Go through the source hypothesis groups to get the signal event
-        # candidates.
-        for ((shg_idx, shg), (j, (ds, data))) in itertools.product(
-                enumerate(shg_list),
-                enumerate(zip(self._dataset_list, self._data_list))):
-            sig_gen_method = shg.sig_gen_method
-            if(sig_gen_method is None):
-                raise ValueError(
-                    'No signal generation method has been specified '
-                    'for the %dth source hypothesis group!' % (shg_idx))
-            data_mc = data.mc
-            (ev_indices, src_indices, flux) = sig_gen_method.calc_source_signal_mc_event_flux(
-                data_mc, shg)
-
-            sig_candidates = np.empty(
-                    (len(ev_indices),), dtype=sig_candidates_dtype, order='F'
-                )
-            sig_candidates['ds_idx'] = j
-            sig_candidates['ev_idx'] = ev_indices
-            sig_candidates['shg_idx'] = shg_idx
-            sig_candidates['shg_src_idx'] = src_indices
-            sig_candidates['weight'] = data_mc[ev_indices]['mcweight'] * data.livetime * 86400 * flux
-
-            self._sig_candidates = np.append(self._sig_candidates, sig_candidates)
-            del sig_candidates
-
-        # Normalize the signal candidate weights.
-        self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
-        self._sig_candidates['weight'] /= self._sig_candidates_weight_sum

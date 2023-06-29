@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import argparse
 import numpy as np
 import os.path
@@ -5,10 +7,13 @@ import pickle
 
 import crflux.models as pm
 import mceq_config as config
-from MCEq.core import MCEqRun
+from MCEq.core import (
+    MCEqRun,
+)
 
 from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
 from skyllh.datasets.i3 import PublicData_10y_ps
+
 
 def create_flux_file(save_path, ds):
     """Creates a pickle file containing the flux for the given dataset.
@@ -21,7 +26,7 @@ def create_flux_file(save_path, ds):
         output_pathfilename = os.path.join(
             save_path, output_filename)
 
-    print('Output path filename: %s'%(output_pathfilename))
+    print(f'Output path filename: {output_pathfilename}')
 
     # Load the effective area instance to get the binning information.
     aeff = PDAeff(
@@ -37,8 +42,8 @@ def create_flux_file(save_path, ds):
     config.e_max = float(
         10**(np.min([aeff._log10_enu_binedges_upper[-1], 9])+0.05))
 
-    print('E_min = %s'%(config.e_min))
-    print('E_max = %s'%(config.e_max))
+    print(f'E_min = {config.e_min}')
+    print(f'E_max = {config.e_max}')
 
     mceq = MCEqRun(
         interaction_model="SIBYLL2.3c",
@@ -47,17 +52,17 @@ def create_flux_file(save_path, ds):
         density_model=("MSIS00_IC", ("SouthPole", "January")),
     )
 
-    print('MCEq log10(e_grid) = %s'%(str(np.log10(mceq.e_grid))))
+    print(f'MCEq log10(e_grid) = {np.log10(mceq.e_grid)}')
 
     mag = 0
     # Use the same binning as for the effective area.
     # theta = delta + pi/2
-    print('sin_true_dec_binedges: %s'%(str(aeff.sin_decnu_binedges)))
+    print(f'sin_true_dec_binedges: {aeff.sin_decnu_binedges}')
     theta_angles_binedges = np.rad2deg(
         np.arcsin(aeff.sin_decnu_binedges) + np.pi/2
     )
     theta_angles = 0.5*(theta_angles_binedges[:-1] + theta_angles_binedges[1:])
-    print('Theta angles = %s'%(str(theta_angles)))
+    print(f'Theta angles = {theta_angles}')
 
     flux_def = dict()
 
@@ -142,9 +147,8 @@ def create_flux_file(save_path, ds):
     # Save the result to the output file.
     with open(output_pathfilename, 'wb') as f:
         pickle.dump(((mceq.e_grid, theta_angles_binedges), flux_def), f)
-    print('Saved fluxes for dataset %s to: %s'%(ds.name, output_pathfilename))
+    print(f'Saved fluxes for dataset {ds.name} to: {output_pathfilename}')
 
-#-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
 
@@ -173,6 +177,6 @@ if __name__ == '__main__':
     for ds_name in dataset_names:
         ds = dsc.get_dataset(ds_name)
         create_flux_file(
-            save_path = args.save_path,
+            save_path=args.save_path,
             ds=ds
         )

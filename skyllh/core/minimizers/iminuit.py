@@ -149,6 +149,7 @@ class IMinuitMinimizerImpl(MinimizerImpl):
                 Flag if the function ``func`` also returns its gradients.
                 Default is ``True``.
 
+
         Any additional keyword arguments are passed on to the underlaying
         :func:`iminuit.minimize` minimization function.
 

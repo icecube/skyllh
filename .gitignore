@@ -69,7 +69,8 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+doc/sphinx/_build
+doc/sphinx/reference
 
 # PyBuilder
 target/
@@ -127,3 +128,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# VisualCode IDE
+.vscode
+
+# Scalene profiling files
+profile.json
+profile.html

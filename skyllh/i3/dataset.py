@@ -6,25 +6,37 @@ import os.path
 from skyllh.core import display
 from skyllh.core.py import (
     issequenceof,
-    module_classname
+    module_classname,
 )
 from skyllh.core.dataset import (
     Dataset,
-    DatasetData
+    DatasetData,
 )
-from skyllh.core.debugging import get_logger
+from skyllh.core.debugging import (
+    get_logger,
+)
 from skyllh.core.storage import (
     DataFieldRecordArray,
-    create_FileLoader
+    create_FileLoader,
 )
-from skyllh.core.timing import TaskTimer
+from skyllh.core.timing import (
+    TaskTimer,
+)
 
 # Load the IceCube specific config defaults.
 # This will change the skyllh.core.config.CFG dictionary.
-from skyllh.i3 import config
+from skyllh.i3.config import (
+    add_icecube_specific_analysis_required_data_fields,
+)
+
+# Add default analysis required data fields for experimental and monte-carlo
+# data that are IceCube specific.
+add_icecube_specific_analysis_required_data_fields()
 
 
-class I3Dataset(Dataset):
+class I3Dataset(
+        Dataset,
+):
     """The I3Dataset class is an IceCube specific Dataset class that adds
     IceCube specific properties to the Dataset class. These additional
     properties are:
@@ -47,8 +59,10 @@ class I3Dataset(Dataset):
         grl_pathfilenames : list
             The combined list of grl pathfilenames.
         """
-        if(not issequenceof(datasets, I3Dataset)):
-            raise TypeError('The datasets argument must be a sequence of I3Dataset instances!')
+        if not issequenceof(datasets, I3Dataset):
+            raise TypeError(
+                'The datasets argument must be a sequence of I3Dataset '
+                'instances!')
 
         grl_pathfilenames = []
         for ds in datasets:
@@ -56,16 +70,27 @@ class I3Dataset(Dataset):
 
         return grl_pathfilenames
 
-    def __init__(self, grl_pathfilenames=None, *args, **kwargs):
+    def __init__(
+            self,
+            livetime=None,
+            grl_pathfilenames=None,
+            **kwargs,
+    ):
         """Creates a new IceCube specific dataset, that also can hold a list
         of GRL data files.
 
         Parameters
         ----------
+        livetime : float | None
+            The live-time of the dataset in days. It can be ``None``, if
+            good-run-list data files are provided.
         grl_pathfilenames : str | sequence of str
-
+            The sequence of pathfilenames pointing to the good-run-list (GRL)
+            data files.
         """
-        super(I3Dataset, self).__init__(*args, **kwargs)
+        super().__init__(
+            livetime=livetime,
+            **kwargs)
 
         self._logger = get_logger(module_classname(self))
 
@@ -75,21 +100,21 @@ class I3Dataset(Dataset):
 
     @property
     def grl_pathfilename_list(self):
-        """The list of file names of the good-run-list data files for this
-        dataset.
-        If a file name is given with a relative path, it will be relative to the
-        root_dir property of this Dataset instance.
+        """The list of file names of the good-run-list (GRL) data files for this
+        dataset. If a file name is given with a relative path, it will be
+        relative to the ``root_dir`` property of this Dataset instance.
         """
         return self._grl_pathfilename_list
+
     @grl_pathfilename_list.setter
     def grl_pathfilename_list(self, pathfilenames):
-        if(pathfilenames is None):
+        if pathfilenames is None:
             pathfilenames = []
-        if(isinstance(pathfilenames, str)):
+        if isinstance(pathfilenames, str):
             pathfilenames = [pathfilenames]
-        if(not issequenceof(pathfilenames, str)):
-            raise TypeError('The grl_pathfilename_list property must be a '
-                'sequence of str!')
+        if not issequenceof(pathfilenames, str):
+            raise TypeError(
+                'The grl_pathfilename_list property must be a sequence of str!')
         self._grl_pathfilename_list = list(pathfilenames)
 
     @property
@@ -106,11 +131,13 @@ class I3Dataset(Dataset):
         keys are the old names and their values are the new names.
         """
         return self._grl_field_name_renaming_dict
+
     @grl_field_name_renaming_dict.setter
     def grl_field_name_renaming_dict(self, d):
-        if(not isinstance(d, dict)):
-            raise TypeError('The grl_field_name_renaming_dict property must '
-                'be an instance of dict!')
+        if not isinstance(d, dict):
+            raise TypeError(
+                'The grl_field_name_renaming_dict property must be an '
+                'instance of dict!')
         self._grl_field_name_renaming_dict = d
 
     @property
@@ -118,11 +145,11 @@ class I3Dataset(Dataset):
         """(read-only) Flag if all the data files of this data set exists. It is
         ``True`` if all data files exist and ``False`` otherwise.
         """
-        if(not super(I3Dataset,self).exists):
+        if not super().exists:
             return False
 
         for pathfilename in self.grl_abs_pathfilename_list:
-            if(not os.path.exists(pathfilename)):
+            if not os.path.exists(pathfilename):
                 return False
 
         return True
@@ -131,15 +158,15 @@ class I3Dataset(Dataset):
         """Implementation of the pretty string representation of the I3Dataset
         object.
         """
-        s = super(I3Dataset, self).__str__()
+        s = super().__str__()
         s += '\n'
 
         s1 = ''
         s1 += 'GRL data:\n'
         s2 = ''
-        if(len(self._grl_pathfilename_list) > 0):
+        if len(self._grl_pathfilename_list) > 0:
             for (idx, pathfilename) in enumerate(self.grl_abs_pathfilename_list):
-                if(idx > 0):
+                if idx > 0:
                     s2 += '\n'
                 s2 += self._gen_datafile_pathfilename_entry(pathfilename)
         else:
@@ -200,6 +227,9 @@ class I3Dataset(Dataset):
                 efficiency_mode=efficiency_mode)
             grl_data.rename_fields(self._grl_field_name_renaming_dict)
 
+        with TaskTimer(tl, 'Sort grl data according to start time'):
+            grl_data.sort_by_field(name='start')
+
         return grl_data
 
     def load_data(
@@ -255,7 +285,7 @@ class I3Dataset(Dataset):
         # Load the good-run-list (GRL) data if it is provided for this dataset,
         # and calculate the livetime based on the GRL.
         data_grl = None
-        if(len(self._grl_pathfilename_list) > 0):
+        if len(self._grl_pathfilename_list) > 0:
             data_grl = self.load_grl(
                 efficiency_mode=efficiency_mode,
                 tl=tl)
@@ -273,7 +303,11 @@ class I3Dataset(Dataset):
 
         return data
 
-    def prepare_data(self, data, tl=None):
+    def prepare_data(  # noqa: C901
+            self,
+            data,
+            tl=None
+    ):
         """Prepares the data for IceCube by pre-calculating the following
         experimental data fields:
 
@@ -293,10 +327,25 @@ class I3Dataset(Dataset):
             The TimeLord instance that should be used to time the data
             preparation.
         """
-        # Execute all the data preparation functions for this dataset.
-        super(I3Dataset, self).prepare_data(data, tl=tl)
+        # Set the livetime of the dataset from the GRL data when no livetime
+        # was specified previously.
+        if data.livetime is None and data.grl is not None:
+            if 'start' not in data.grl:
+                raise KeyError(
+                    f'The GRL data for dataset "{self.name}" has no data '
+                    'field named "start"!')
+            if 'stop' not in data.grl:
+                raise KeyError(
+                    f'The GRL data for dataset "{self.name}" has no data '
+                    'field named "stop"!')
+            data.livetime = np.sum(data.grl['stop'] - data.grl['start'])
 
-        if(data.exp is not None):
+        # Execute all the data preparation functions for this dataset.
+        super().prepare_data(
+            data=data,
+            tl=tl)
+
+        if data.exp is not None:
             # Append sin(dec) data field to the experimental data.
             task = 'Appending IceCube-specific data fields to exp data.'
             with TaskTimer(tl, task):
@@ -304,7 +353,7 @@ class I3Dataset(Dataset):
                     data.exp.append_field(
                         'sin_dec', np.sin(data.exp['dec']))
 
-        if(data.mc is not None):
+        if data.mc is not None:
             # Append sin(dec) and sin(true_dec) to the MC data.
             task = 'Appending IceCube-specific data fields to MC data.'
             with TaskTimer(tl, task):
@@ -315,44 +364,40 @@ class I3Dataset(Dataset):
                     data.mc.append_field(
                         'sin_true_dec', np.sin(data.mc['true_dec']))
 
-        # Set the livetime of the dataset from the GRL data when no livetime
-        # was specified previously.
-        if(data.livetime is None and data.grl is not None):
-            if('start' not in data.grl):
-                raise KeyError('The GRL data for dataset "{}" has no data '
-                    'field named "start"!'.format(self.name))
-            if('stop' not in data.grl):
-                raise KeyError('The GRL data for dataset "{}" has no data '
-                    'field named "stop"!'.format(self.name))
-            data.livetime = np.sum(data.grl['stop'] - data.grl['start'])
-
         # Select only the experimental data which fits the good-run-list for
         # this dataset.
-        if data.grl is not None:
+        if (data.grl is not None) and (data.exp is not None):
             # Select based on run information.
-            if (('run' in data.grl) and
-                ('run' in data.exp)):
-                task = 'Selected only the experimental data that matches the '\
-                    'run information in the GRL for dataset "%s".'%(self.name)
+            if ('run' in data.grl) and ('run' in data.exp):
+                task = (
+                    'Select only the experimental data that matches the run '
+                    f'information in the GRL for dataset "{self.name}".')
                 with TaskTimer(tl, task):
                     runs = np.unique(data.grl['run'])
                     mask = np.isin(data.exp['run'], runs)
-                    data.exp = data.exp[mask]
+
+                    if np.any(~mask):
+                        n_cut_runs = np.count_nonzero(~mask)
+                        self._logger.info(
+                            f'Cutting {n_cut_runs} runs from dataset '
+                            f'{self.name} due to GRL run information.')
+                        data.exp = data.exp[mask]
 
             # Select based on detector on-time information.
-            if (('start' in data.grl) and
-                ('stop' in data.grl) and
-                ('time' in data.exp)):
-                task = 'Selected only the experimental data that matches the '\
-                    'detector\'s on-time information in the GRL for dataset '\
-                    '"%s".'%(self.name)
+            if ('start' in data.grl) and\
+               ('stop' in data.grl) and\
+               ('time' in data.exp):
+                task = (
+                    'Select only the experimental data that matches the '
+                    'detector\'s on-time information in the GRL for dataset '
+                    f'"{self.name}".')
                 with TaskTimer(tl, task):
                     mask = np.zeros((len(data.exp),), dtype=np.bool_)
                     for (start, stop) in zip(data.grl['start'],
                                              data.grl['stop']):
                         mask |= (
                             (data.exp['time'] >= start) &
-                            (data.exp['time'] < stop)
+                            (data.exp['time'] <= stop)
                         )
 
                     if np.any(~mask):
@@ -364,7 +409,9 @@ class I3Dataset(Dataset):
                         data.exp = data.exp[mask]
 
 
-class I3DatasetData(DatasetData):
+class I3DatasetData(
+        DatasetData,
+):
     """The class provides the container for the loaded experimental and
     monto-carlo data of a data set. It's the IceCube specific class that also
     holds the good-run-list (GRL) data.
@@ -393,10 +440,12 @@ class I3DatasetData(DatasetData):
         available for this IceCube data set.
         """
         return self._grl
+
     @grl.setter
     def grl(self, data):
-        if(data is not None):
-            if(not isinstance(data, DataFieldRecordArray)):
-                raise TypeError('The grl property must be an instance of '
+        if data is not None:
+            if not isinstance(data, DataFieldRecordArray):
+                raise TypeError(
+                    'The grl property must be an instance of '
                     'DataFieldRecordArray!')
         self._grl = data

@@ -4,93 +4,109 @@
 """
 
 import abc
+from astropy import units
 import numpy as np
 
-from skyllh.core.py import (
-    classname,
-    issequenceof
+
+from skyllh.core.background_generation import (
+    BackgroundGenerationMethod,
 )
-from skyllh.core.debugging import get_logger
-from skyllh.core.storage import DataFieldRecordArray
+from skyllh.core.background_generator import (
+    BackgroundGenerator,
+    BackgroundGeneratorBase,
+)
 from skyllh.core.dataset import (
     Dataset,
     DatasetData,
 )
-from skyllh.core.parameters import (
-    FitParameter,
-    SourceFitParameterMapper,
-    SingleSourceFitParameterMapper,
+from skyllh.core.debugging import (
+    get_logger,
 )
-from skyllh.core.pdfratio import PDFRatio
-from skyllh.core.progressbar import ProgressBar
-from skyllh.core.random import RandomStateService
+from skyllh.core.event_selection import (
+    EventSelectionMethod,
+)
 from skyllh.core.llhratio import (
     LLHRatio,
     MultiDatasetTCLLHRatio,
-    SingleSourceDatasetSignalWeights,
-    SingleSourceZeroSigH0SingleDatasetTCLLHRatio,
-    MultiSourceZeroSigH0SingleDatasetTCLLHRatio,
-    MultiSourceDatasetSignalWeights,
+    ZeroSigH0SingleDatasetTCLLHRatio,
 )
-from skyllh.core.timing import TaskTimer
-from skyllh.core.trialdata import TrialDataManager
-from skyllh.core.optimize import EventSelectionMethod
-from skyllh.core.source_hypothesis import SourceHypoGroupManager
-from skyllh.core.test_statistic import TestStatistic
-from skyllh.core.multiproc import get_ncpu, parallelize
-from skyllh.core.background_generation import BackgroundGenerationMethod
-from skyllh.core.background_generator import BackgroundGenerator
+from skyllh.core.multiproc import (
+    get_ncpu,
+    parallelize,
+)
+from skyllh.core.parameters import (
+    ParameterModelMapper,
+)
+from skyllh.core.pdfratio import (
+    PDFRatio,
+    SourceWeightedPDFRatio,
+)
+from skyllh.core.py import (
+    classname,
+    issequenceof,
+)
+from skyllh.core.random import (
+    RandomStateService,
+)
+from skyllh.core.services import (
+    DatasetSignalWeightFactorsService,
+    DetSigYieldService,
+    SrcDetSigYieldWeightsService,
+)
 from skyllh.core.signal_generator import (
-    SignalGeneratorBase,
     SignalGenerator,
+    MultiDatasetSignalGenerator,
 )
-from skyllh.physics.source import SourceModel
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
+from skyllh.core.source_model import (
+    SourceModel,
+)
+from skyllh.core.storage import (
+    DataFieldRecordArray,
+)
+from skyllh.core.test_statistic import (
+    TestStatistic,
+)
+from skyllh.core.timing import (
+    TaskTimer,
+)
+from skyllh.core.trialdata import (
+    TrialDataManager,
+)
 
 
 logger = get_logger(__name__)
 
 
-class Analysis(object, metaclass=abc.ABCMeta):
-    """This is the abstract base class for all analysis classes. It contains
-    common properties required by all analyses and defines the overall analysis
-    interface howto set-up and run an analysis.
-
-    Note: This analysis base class assumes the analysis to be a log-likelihood
-          ratio test, i.e. requires a mathematical log-likelihood ratio
-          function.
-
-    To set-up and run an analysis the following procedure applies:
-
-        1. Create an analysis instance.
-        2. Add the datasets and their PDF ratio instances via the
-           :meth:`.add_dataset` method.
-        3. Construct the log-likelihood ratio function via the
-           :meth:`.construct_llhratio` method.
-        4. Call the :meth:`do_trial` or :meth:`unblind` method to perform a
-           random trial or to unblind the data. Both methods will fit the global
-           fit parameters using the set up data. Finally, the test statistic
-           is calculated via the :meth:`.calculate_test_statistic` method.
-
-    In order to calculate sensitivities and discovery potentials, analysis
-    trials have to be performed on random data samples with injected signal
-    events. To perform a trial with injected signal events, the signal generator
-    has to be constructed via the ``construct_signal_generator`` method before
-    any random trial data can be generated.
+class Analysis(
+        object,
+        metaclass=abc.ABCMeta):
+    """This is the abstract base class for all analysis classes.
+    It contains common properties required by all analyses and defines the
+    overall analysis interface how to setup and run an analysis.
     """
-
-    def __init__(self, src_hypo_group_manager, src_fitparam_mapper,
-                 test_statistic, bkg_gen_method=None, sig_generator_cls=None):
+    def __init__(
+            self,
+            shg_mgr,
+            pmm,
+            test_statistic,
+            bkg_gen_method=None,
+            bkg_generator_cls=None,
+            sig_generator_cls=None,
+            **kwargs):
         """Constructor of the analysis base class.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
-            efficiency implementation method.
-        src_fitparam_mapper : instance of SourceFitParameterMapper
-            The SourceFitParameterMapper instance managing the global fit
-            parameters and their relation to the individual sources.
+            yield implementation method.
+        pmm : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
@@ -98,18 +114,27 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The instance of BackgroundGenerationMethod that should be used to
             generate background events for pseudo data. This can be set to None,
             if there is no need to generate background events.
-        sig_generator_cls : SignalGeneratorBase class | None
+        bkg_generator_cls : class of BackgroundGeneratorBase | None
+            The background generator class used to create the background
+            generator instance.
+            If set to ``None``, the
+            :class:`skyllh.core.background_generator.BackgroundGenerator` class
+            is used.
+        sig_generator_cls : class of MultiDatasetSignalGenerator | None
             The signal generator class used to create the signal generator
-            instance.
-            If set to None, the `SignalGenerator` class is used.
+            instance for multiple datasets.
+            If set to ``None``, the
+            :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
+            class is used.
         """
-        # Call the super function to allow for multiple class inheritance.
-        super(Analysis, self).__init__()
+        super().__init__(
+            **kwargs)
 
-        self.src_hypo_group_manager = src_hypo_group_manager
-        self.src_fitparam_mapper = src_fitparam_mapper
+        self.shg_mgr = shg_mgr
+        self.pmm = pmm
         self.test_statistic = test_statistic
         self.bkg_gen_method = bkg_gen_method
+        self.bkg_generator_cls = bkg_generator_cls
         self.sig_generator_cls = sig_generator_cls
 
         self._dataset_list = []
@@ -117,43 +142,46 @@ class Analysis(object, metaclass=abc.ABCMeta):
         self._tdm_list = []
         self._event_selection_method_list = []
 
-        # Predefine the variable for the global fit parameter set, which holds
-        # all the global fit parameters.
-        self._fitparamset = None
+        self._detsigyield_service = None
+        self._src_detsigyield_weights_service = None
+        self._ds_sig_weight_factors_service = None
 
-        # Predefine the variable for the log-likelihood ratio function.
-        self._llhratio = None
-
-        # Predefine the variable for the background and signal generators.
         self._bkg_generator = None
+        self._sig_generator_list = []
         self._sig_generator = None
 
     @property
-    def src_hypo_group_manager(self):
+    def shg_mgr(self):
         """The SourceHypoGroupManager instance, which defines the groups of
         source hypothesis, their flux model, and their detector signal
-        efficiency implementation method.
+        yield implementation method.
         """
-        return self._src_hypo_group_manager
-    @src_hypo_group_manager.setter
-    def src_hypo_group_manager(self, manager):
-        if(not isinstance(manager, SourceHypoGroupManager)):
-            raise TypeError('The src_hypo_group_manager property must be an '
-                'instance of SourceHypoGroupManager!')
-        self._src_hypo_group_manager = manager
+        return self._shg_mgr
+
+    @shg_mgr.setter
+    def shg_mgr(self, mgr):
+        if not isinstance(mgr, SourceHypoGroupManager):
+            raise TypeError(
+                'The shg_mgr property must be an instance of '
+                'SourceHypoGroupManager! '
+                f'Its current type is {classname(mgr)}.')
+        self._shg_mgr = mgr
 
     @property
-    def src_fitparam_mapper(self):
-        """The SourceFitParameterMapper instance that manages the global fit
-        parameters and their relation to the sources.
+    def pmm(self):
+        """The ParameterModelMapper instance that manages the global set of
+        parameters and their relation to individual models, e.g. sources.
         """
-        return self._src_fitparam_mapper
-    @src_fitparam_mapper.setter
-    def src_fitparam_mapper(self, mapper):
-        if(not isinstance(mapper, SourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper property must be an '
-                'instance of SourceFitParameterMapper!')
-        self._src_fitparam_mapper = mapper
+        return self._pmm
+
+    @pmm.setter
+    def pmm(self, mapper):
+        if not isinstance(mapper, ParameterModelMapper):
+            raise TypeError(
+                'The pmm property must be an instance of '
+                'ParameterModelMapper! '
+                f'Its current type is {classname(mapper)}.')
+        self._pmm = mapper
 
     @property
     def test_statistic(self):
@@ -161,11 +189,14 @@ class Analysis(object, metaclass=abc.ABCMeta):
         of the analysis.
         """
         return self._test_statistic
+
     @test_statistic.setter
     def test_statistic(self, ts):
-        if(not isinstance(ts, TestStatistic)):
-            raise TypeError('The test_statistic property must be an instance '
-                'of TestStatistic, but is %s!'%(classname(ts)))
+        if not isinstance(ts, TestStatistic):
+            raise TypeError(
+                'The test_statistic property must be an instance of '
+                'TestStatistic! '
+                f'Its current type is {classname(ts)}.')
         self._test_statistic = ts
 
     @property
@@ -175,24 +206,48 @@ class Analysis(object, metaclass=abc.ABCMeta):
         generation method has been defined.
         """
         return self._bkg_gen_method
+
     @bkg_gen_method.setter
     def bkg_gen_method(self, method):
-        if(method is not None):
-            if(not isinstance(method, BackgroundGenerationMethod)):
-                raise TypeError('The bkg_gen_method property must be an '
-                    'instance of BackgroundGenerationMethod!')
+        if method is not None:
+            if not isinstance(method, BackgroundGenerationMethod):
+                raise TypeError(
+                    'The bkg_gen_method property must be an instance of '
+                    'BackgroundGenerationMethod! '
+                    f'Its current type is {classname(method)}.')
         self._bkg_gen_method = method
+
+    @property
+    def bkg_generator_cls(self):
+        """The background generator class that should be used to construct the
+        background generator instance.
+        """
+        return self._bkg_generator_cls
+
+    @bkg_generator_cls.setter
+    def bkg_generator_cls(self, cls):
+        if cls is None:
+            cls = BackgroundGenerator
+        if not issubclass(cls, BackgroundGeneratorBase):
+            raise TypeError(
+                'The bkg_generator_cls property must be a subclass of '
+                'BackgroundGeneratorBase! '
+                f'Its current type is {classname(cls)}.')
+        self._bkg_generator_cls = cls
 
     @property
     def dataset_list(self):
         """The list of Dataset instances.
         """
         return self._dataset_list
+
     @dataset_list.setter
     def dataset_list(self, datasets):
-        if(not issequenceof(datasets, Dataset)):
-            raise TypeError('The dataset_list property must be a sequence '
-                'of Dataset instances!')
+        if not issequenceof(datasets, Dataset):
+            raise TypeError(
+                'The dataset_list property must be a sequence of Dataset '
+                'instances! '
+                f'Its current type is {classname(datasets)}.')
         self._dataset_list = list(datasets)
 
     @property
@@ -201,11 +256,14 @@ class Analysis(object, metaclass=abc.ABCMeta):
         dataset.
         """
         return self._data_list
+
     @data_list.setter
     def data_list(self, datas):
-        if(not issequenceof(datas, DatasetData)):
-            raise TypeError('The data_list property must be a sequence '
-                'of DatasetData instances!')
+        if not issequenceof(datas, DatasetData):
+            raise TypeError(
+                'The data_list property must be a sequence of DatasetData '
+                'instances! '
+                f'Its current type is {classname(datas)}.')
         self._data_list = list(datas)
 
     @property
@@ -213,29 +271,6 @@ class Analysis(object, metaclass=abc.ABCMeta):
         """(read-only) The number of datasets used in this analysis.
         """
         return len(self._dataset_list)
-
-    @property
-    def fitparamset(self):
-        """(read-only) The instance of FitParameterSet holding all the global
-        fit parameters of the log-likelihood ratio function.
-        """
-        return self._fitparamset
-
-    @property
-    def llhratio(self):
-        """The log-likelihood ratio function instance. It is None, if it has
-        not been constructed yet.
-        """
-        if(self._llhratio is None):
-            raise RuntimeError('The log-likelihood ratio function is not '
-                'defined yet. Call the construct_analysis method first!')
-        return self._llhratio
-    @llhratio.setter
-    def llhratio(self, obj):
-        if(not isinstance(obj, LLHRatio)):
-            raise TypeError('The llhratio property must be an instance of '
-                'LLHRatio!')
-        self._llhratio = obj
 
     @property
     def bkg_generator(self):
@@ -246,19 +281,73 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return self._bkg_generator
 
     @property
+    def detsigyield_service(self):
+        """The instance of DetSigYieldService for the analysis.
+        """
+        return self._detsigyield_service
+
+    @detsigyield_service.setter
+    def detsigyield_service(self, service):
+        if not isinstance(service, DetSigYieldService):
+            raise TypeError(
+                'The detsigyield_service property must be an instance of '
+                'DetSigYieldService! '
+                f'Its current type is {classname(service)}!')
+        self._detsigyield_service = service
+
+    @property
+    def src_detsigyield_weights_service(self):
+        """The instance of SrcDetSigYieldWeightsService for the analysis.
+        """
+        return self._src_detsigyield_weights_service
+
+    @src_detsigyield_weights_service.setter
+    def src_detsigyield_weights_service(self, service):
+        if not isinstance(service, SrcDetSigYieldWeightsService):
+            raise TypeError(
+                'The src_detsigyield_weights_service property must be an '
+                'instance of SrcDetSigYieldWeightsService! '
+                f'Its current type is {classname(service)}!')
+        self._src_detsigyield_weights_service = service
+
+    @property
+    def ds_sig_weight_factors_service(self):
+        """The instance of DatasetSignalWeightFactorsService for the analysis.
+        """
+        return self._ds_sig_weight_factors_service
+
+    @ds_sig_weight_factors_service.setter
+    def ds_sig_weight_factors_service(self, service):
+        if not isinstance(service, DatasetSignalWeightFactorsService):
+            raise TypeError(
+                'The ds_sig_weight_factors_service property must be an '
+                'instance of DatasetSignalWeightFactorsService! '
+                f'Its current type is {classname(service)}!')
+        self._ds_sig_weight_factors_service = service
+
+    @property
+    def sig_generator_list(self):
+        """(read-only) The list of instance of SignalGenerator, one for each
+        dataset.
+        """
+        return self._sig_generator_list
+
+    @property
     def sig_generator_cls(self):
         """The signal generator class that should be used to construct the
-        signal generator instance.
+        signal generator instance handling all datasets.
         """
         return self._sig_generator_cls
+
     @sig_generator_cls.setter
     def sig_generator_cls(self, cls):
         if cls is None:
-            cls = SignalGenerator
-        if not issubclass(cls, SignalGeneratorBase):
+            cls = MultiDatasetSignalGenerator
+        if not issubclass(cls, SignalGenerator):
             raise TypeError(
-                'The sig_generator_cls property must be an subclass of '
-                'SignalGeneratorBase!')
+                'The sig_generator_cls property must be a subclass of '
+                'SignalGenerator! '
+                f'Its current type is {classname(cls)}.')
         self._sig_generator_cls = cls
 
     @property
@@ -270,6 +359,21 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return self._sig_generator
 
     @property
+    def tdm_list(self):
+        """The list of instance of TrialDataManager. One for each dataset.
+        """
+        return self._tdm_list
+
+    @tdm_list.setter
+    def tdm_list(self, tdms):
+        if not issequenceof(tdms, TrialDataManager):
+            raise TypeError(
+                'The tdm_list property must be a sequence of TrialDataManager '
+                'instances! '
+                f'Its current type is {classname(tdms)}.')
+        self._tdm_list = list(tdms)
+
+    @property
     def total_livetime(self):
         """(read-only) The total live-time in days of the loaded data.
         """
@@ -278,17 +382,52 @@ class Analysis(object, metaclass=abc.ABCMeta):
             livetime += data.livetime
         return livetime
 
-    def add_dataset(self, dataset, data, tdm=None, event_selection_method=None):
+    def construct_services(
+            self,
+            ppbar=None):
+        """Constructs the following services:
+
+            - detector signal yield service
+            - source detector signal yield weights service
+            - dataset signal weight factors service
+
+        Parameters
+        ----------
+        ppbar : instance of ProgressBar | None
+            The instance of ProgressBar of the optional parent progress bar.
+        """
+        self.detsigyield_service = DetSigYieldService(
+            shg_mgr=self._shg_mgr,
+            dataset_list=self._dataset_list,
+            data_list=self._data_list,
+            ppbar=ppbar,
+        )
+
+        self.src_detsigyield_weights_service = SrcDetSigYieldWeightsService(
+            detsigyield_service=self.detsigyield_service,
+        )
+
+        self.ds_sig_weight_factors_service = DatasetSignalWeightFactorsService(
+            src_detsigyield_weights_service=self.src_detsigyield_weights_service,
+        )
+
+    def add_dataset(
+            self,
+            dataset,
+            data,
+            tdm=None,
+            event_selection_method=None,
+            sig_generator=None):
         """Adds the given dataset to the list of datasets for this analysis.
 
         Parameters
         ----------
-        dataset : Dataset instance
+        dataset : instance of Dataset
             The Dataset instance that should get added.
-        data : DatasetData instance
+        data : instance of DatasetData
             The DatasetData instance holding the original (prepared) data of the
             dataset.
-        tdm : TrialDataManager instance | None
+        tdm : instance of TrialDataManager | None
             The TrialDataManager instance managing the trial data and additional
             data fields of the data set. If set to None, it means that no
             additional data fields are defined.
@@ -298,35 +437,96 @@ class Analysis(object, metaclass=abc.ABCMeta):
             will be treated as pure background events. This reduces the amount
             of log-likelihood-ratio function evaluations. If set to None, all
             events will be evaluated.
+        sig_generator : instance of SignalGenerator | None
+            The optional instance of SignalGenerator, which should be used
+            to generate signal events for this particular dataset.
         """
-        if(not isinstance(dataset, Dataset)):
+        if not isinstance(dataset, Dataset):
             raise TypeError(
                 'The dataset argument must be an instance of Dataset!')
 
-        if(not isinstance(data, DatasetData)):
+        if not isinstance(data, DatasetData):
             raise TypeError(
                 'The data argument must be an instance of DatasetData!')
 
-        if(tdm is None):
+        if tdm is None:
             tdm = TrialDataManager()
-        if(not isinstance(tdm, TrialDataManager)):
+        if not isinstance(tdm, TrialDataManager):
             raise TypeError(
                 'The tdm argument must be None or an instance of '
-                'TrialDataManager!')
+                'TrialDataManager! '
+                f'Its current type is {classname(tdm)}!')
 
-        if(event_selection_method is not None):
-            if(not isinstance(event_selection_method, EventSelectionMethod)):
+        if event_selection_method is not None:
+            if not isinstance(event_selection_method, EventSelectionMethod):
                 raise TypeError(
                     'The event_selection_method argument must be None or an '
-                    'instance of EventSelectionMethod!')
+                    'instance of EventSelectionMethod! '
+                    f'Its current type is {classname(event_selection_method)}!')
+
+        if sig_generator is not None:
+            if not isinstance(sig_generator, SignalGenerator):
+                raise TypeError(
+                    'The sig_generator argument must be None or an instance of '
+                    'SignalGenerator! '
+                    f'Its current type is {classname(sig_generator)}!')
 
         self._dataset_list.append(dataset)
         self._data_list.append(data)
         self._tdm_list.append(tdm)
         self._event_selection_method_list.append(event_selection_method)
+        self._sig_generator_list.append(sig_generator)
+
+    def get_livetime(
+            self,
+            dataset_key=None,
+            unit=None):
+        """Retrieves the numeric livetime of the given dataset in the specified
+        unit. The dataset can be specified either through its index or its name.
+        If no dataset is specified, the total livetime, i.e. the sum of the
+        livetime of all datasets, is returned.
+
+        Parameters
+        ----------
+        dataset_key : int | str | None
+            The index or name of the dataset for which the livetime should get
+            retrieved. If set to ``None``, the total livetime of all datasets
+            will be returned.
+        unit : instance of astropy.units.Unit | None
+            The time unit in which the livetime should be returned. If set to
+            ``None``, ``astropy.units.day`` will be used.
+        """
+        if dataset_key is None:
+            livetime = np.sum([data.livetime for data in self._data_list])
+        else:
+            if isinstance(dataset_key, int):
+                dataset_idx = dataset_key
+            elif isinstance(dataset_key, str):
+                dataset_idx = None
+                for (idx, ds) in enumerate(self._dataset_list):
+                    if ds.name == dataset_key:
+                        dataset_idx = idx
+                        break
+                if dataset_idx is None:
+                    raise KeyError(
+                        f'The dataset of name "{dataset_key}" does not exist!')
+            else:
+                raise TypeError(
+                    'The dataset_key argument must be an instance of int, str, '
+                    'or None! '
+                    f'Its current type is {classname(dataset_key)}.')
+            livetime = self._data_list[dataset_idx].livetime
+
+        if isinstance(unit, units.Unit):
+            livetime *= units.day.to(unit)
+
+        return livetime
 
     def calculate_test_statistic(
-            self, log_lambda, fitparam_values, *args, **kwargs):
+            self,
+            log_lambda,
+            fitparam_values,
+            **kwargs):
         """Calculates the test statistic value by calling the ``evaluate``
         method of the TestStatistic class with the given log_lambda value and
         fit parameter values.
@@ -336,29 +536,24 @@ class Analysis(object, metaclass=abc.ABCMeta):
         log_lambda : float
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_values : (N_fitparam+1)-shaped 1D ndarray
-            The 1D ndarray holding the fit parameter values of the
-            log-likelihood ratio function for the given log_lambda value.
-
-        Additional arguments and keyword arguments
-        ------------------------------------------
-        Any additional arguments and keyword arguments are passed to the
-        evaluate method of the TestStatistic class instance.
+        fitparam_values : instance of numpy ndarray
+            The (N_fitparam,)-shaped 1D ndarray holding the global
+            fit parameter values of the log-likelihood ratio function for
+            the given log_lambda value.
+        **kwargs
+            Any additional keyword arguments are passed to the
+            ``__call__`` method of the TestStatistic instance.
 
         Returns
         -------
         TS : float
             The calculated test-statistic value.
         """
-        return self._test_statistic.evaluate(
-            self._llhratio, log_lambda, fitparam_values, *args, **kwargs)
-
-    @abc.abstractmethod
-    def construct_llhratio(self):
-        """This method is supposed to construct the log-likelihood ratio
-        function and sets it as the _llhratio property.
-        """
-        pass
+        return self._test_statistic(
+            pmm=self._pmm,
+            log_lambda=log_lambda,
+            fitparam_values=fitparam_values,
+            **kwargs)
 
     def construct_background_generator(self, **kwargs):
         """Constructs the background generator for all added datasets.
@@ -366,12 +561,15 @@ class Analysis(object, metaclass=abc.ABCMeta):
         add_dataset method. It sets the `bkg_generator` property of this
         Analysis class instance.
         """
-        if(self._bkg_gen_method is None):
-            raise RuntimeError('No background generation method has been '
-                'defined for this analysis!')
+        if self._bkg_gen_method is None:
+            raise RuntimeError(
+                'No background generation method has been '
+                f'defined for this analysis ({classname(self)})!')
 
-        self._bkg_generator = BackgroundGenerator(
-            self._bkg_gen_method, self._dataset_list, self._data_list,
+        self._bkg_generator = self.bkg_generator_cls(
+            bkg_gen_method=self._bkg_gen_method,
+            dataset_list=self._dataset_list,
+            data_list=self._data_list,
             **kwargs)
 
     def construct_signal_generator(self, **kwargs):
@@ -382,13 +580,18 @@ class Analysis(object, metaclass=abc.ABCMeta):
         through the source hypothesis group.
         """
         self._sig_generator = self.sig_generator_cls(
-            src_hypo_group_manager=self._src_hypo_group_manager,
+            shg_mgr=self._shg_mgr,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
+            sig_generator_list=self._sig_generator_list,
+            ds_sig_weight_factors_service=self.ds_sig_weight_factors_service,
             **kwargs)
 
     @abc.abstractmethod
-    def initialize_trial(self, events_list, n_events_list=None):
+    def initialize_trial(
+            self,
+            events_list,
+            n_events_list=None):
         """This method is supposed to initialize the log-likelihood ratio
         function with a new set of given trial data. This is a low-level method.
         For convenient methods see the `unblind` and `do_trial` methods.
@@ -409,150 +612,359 @@ class Analysis(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def maximize_llhratio(self, rss, tl=None):
-        """This method is supposed to maximize the log-likelihood ratio
-        function, by calling the ``maximize`` method of the LLHRatio class.
+    def unblind(
+            self,
+            rss,
+            tl=None):
+        """This method is supposed to run the analysis on the experimental data,
+        i.e. unblinds the data.
 
         Parameters
         ----------
-        rss : RandomStateService instance
-            The RandomStateService instance to draw random numbers from.
-        tl : TimeLord instance | None
-            The optional TimeLord instance that should be used to time the
+        rss : instance of RandomStateService
+            The instance of RandomStateService that should be used draw random
+            numbers from. It can be used to generate random initial values for
+            fit parameters.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to time the
             maximization of the LLH ratio function.
-
-        Returns
-        -------
-        fitparamset : FitParameterSet instance
-            The instance of FitParameterSet holding the global fit parameter
-            definitions used in the maximization process.
-        log_lambda_max : float
-            The value of the log-likelihood ratio function at its maximum.
-        fitparam_values : (N_fitparam,)-shaped 1D ndarray
-            The ndarray holding the global fit parameter values.
-            By definition, the first element is the value of the fit parameter
-            ns.
-        status : dict
-            The dictionary with status information about the maximization
-            process, i.e. from the minimizer.
-        """
-        pass
-
-    def unblind(self, rss):
-        """Evaluates the unscrambled data, i.e. unblinds the data.
-
-        Parameters
-        ----------
-        rss : RandomStateService instance
-            The RandomStateService instance that should be used draw random
-            numbers from.
 
         Returns
         -------
         TS : float
             The test-statistic value.
-        fitparam_dict : dict
-            The dictionary holding the global fit parameter names and their best
-            fit values.
+        global_params_dict : dict
+            The dictionary holding the global parameter names and their
+            best fit values. It includes fixed and floating parameters.
         status : dict
             The status dictionary with information about the performed
-            minimization process of the negative of the log-likelihood ratio
-            function.
+            minimization process of the analysis.
         """
-        events_list = [ data.exp for data in self._data_list ]
-        self.initialize_trial(events_list)
-        (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss)
-        TS = self.calculate_test_statistic(log_lambda_max, fitparam_values)
+        pass
 
-        fitparam_dict = fitparamset.fitparam_values_to_dict(fitparam_values)
+    @abc.abstractmethod
+    def do_trial_with_given_pseudo_data(
+            self,
+            rss,
+            mean_n_sig,
+            n_sig,
+            n_events_list,
+            events_list,
+            minimizer_status_dict=None,
+            tl=None,
+            **kwargs):
+        """This method is supposed to perform an analysis trial on a given
+        pseudo data.
 
-        return (TS, fitparam_dict, status)
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use for generating random
+            numbers.
+        mean_n_sig : float
+            The mean number of signal events the pseudo data was generated with.
+        n_sig : int
+            The total number of actual signal events in the pseudo data.
+        n_events_list : list of int
+            The total number of events for each data set of the pseudo data.
+        events_list : list of instance of DataFieldRecordArray
+            The list of instance of DataFieldRecordArray containing the pseudo
+            data events for each data sample. The number of events for each
+            data sample can be less than the number of events given by
+            ``n_events_list`` if an event selection method was already utilized
+            when generating background events.
+        minimizer_status_dict : dict | None
+            If a dictionary is provided, it will be updated with the minimizer
+            status dictionary.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to time
+            individual tasks.
+
+        Returns
+        -------
+        recarray : instance of numpy record ndarray
+            The numpy record ndarray holding the result of the trial. It must
+            contain the following data fields:
+
+            rss_seed : int
+                The RandomStateService seed.
+            mean_n_sig : float
+                The mean number of signal events.
+            n_sig : int
+                The actual number of injected signal events.
+            ts : float
+                The test-statistic value.
+            [<global_param_name> : float ]
+                Any additional parameters of the analysis.
+        """
+        pass
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
+        """If the SourceHypoGroupManager instance changed, this method needs to
+        be called to propagate the change to all components of the analysis.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The new instance of SourceHypoGroupManager.
+        """
+        for evt_selection_method in self._event_selection_method_list:
+            if evt_selection_method is not None:
+                evt_selection_method.change_shg_mgr(
+                    shg_mgr=shg_mgr)
+
+        for tdm in self._tdm_list:
+            tdm.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+        if self._detsigyield_service is not None:
+            self._detsigyield_service.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+        if self._src_detsigyield_weights_service is not None:
+            self._src_detsigyield_weights_service.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+        if self._bkg_generator is not None:
+            self._bkg_generator.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+        if self._sig_generator is not None:
+            self._sig_generator.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
+    def do_trial_with_given_bkg_and_sig_pseudo_data(
+            self,
+            rss,
+            mean_n_sig,
+            n_sig,
+            n_bkg_events_list,
+            n_sig_events_list,
+            bkg_events_list,
+            sig_events_list,
+            minimizer_status_dict=None,
+            tl=None,
+            **kwargs):
+        """Performs an analysis trial on the given background and signal pseudo
+        data. This method merges the background and signal pseudo events and
+        calls the ``do_trial_with_given_pseudo_data`` method of this class.
+
+        Note
+        ----
+        This method alters the DataFieldRecordArray instances of the
+        bkg_events_list argument!
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService instance to use for generating
+            random numbers.
+        mean_n_sig : float
+            The mean number of signal events the pseudo data was generated with.
+        n_sig : int
+            The total number of actual signal events in the pseudo data.
+        n_bkg_events_list : list of int
+            The total number of background events for each data set of the
+            pseudo data.
+        n_sig_events_list : list of int
+            The total number of signal events for each data set of the
+            pseudo data.
+        bkg_events_list : list of instance of DataFieldRecordArray
+            The list of instance of DataFieldRecordArray containing the
+            background pseudo data events for each data set.
+        sig_events_list : list of instance of DataFieldRecordArray | None
+            The list of instance of DataFieldRecordArray containing the signal
+            pseudo data events for each data set. If a particular dataset has
+            no signal events, the entry for that dataset can be ``None``.
+        minimizer_status_dict : dict | None
+            If a dictionary is provided, it will be updated with the minimizer
+            status dictionary.
+        tl : instance of TimeLord | None
+            The instance of TimeLord that should be used to time individual
+            tasks.
+        **kwargs : dict
+            Additional keyword arguments are passed to the
+            :meth:`~skyllh.core.analysis.Analysis.do_trial_with_given_pseudo_data`
+            method.
+
+        Returns
+        -------
+        recarray : instance of numpy record ndarray
+            The numpy record ndarray holding the result of the trial.
+            See the documentation of the
+            :meth:`~skyllh.core.analysis.Analysis.do_trial_with_given_pseudo_data`
+            method for further information.
+        """
+        n_events_list = list(
+            np.array(n_bkg_events_list) +
+            np.array(n_sig_events_list)
+        )
+
+        events_list = bkg_events_list
+
+        # Add potential signal events to the background events.
+        for ds_idx in range(len(events_list)):
+            if sig_events_list[ds_idx] is not None:
+                if events_list[ds_idx] is None:
+                    events_list[ds_idx] = sig_events_list[ds_idx]
+                else:
+                    events_list[ds_idx].append(sig_events_list[ds_idx])
+
+        recarray = self.do_trial_with_given_pseudo_data(
+            rss=rss,
+            mean_n_sig=mean_n_sig,
+            n_sig=n_sig,
+            n_events_list=n_events_list,
+            events_list=events_list,
+            minimizer_status_dict=minimizer_status_dict,
+            tl=tl,
+            **kwargs)
+
+        return recarray
 
     def generate_background_events(
-            self, rss, mean_n_bkg_list=None, bkg_kwargs=None, tl=None):
+            self,
+            rss,
+            mean_n_bkg_list=None,
+            bkg_kwargs=None,
+            tl=None):
         """Generates background events utilizing the background generator.
 
         Parameters
         ----------
-        rss : RandomStateService
-            The RandomStateService instance to use for generating random
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use for generating random
             numbers.
         mean_n_bkg_list : list of float | None
             The mean number of background events that should be generated for
             each dataset. If set to None (the default), the background
             generation method needs to obtain this number itself.
+        bkg_kwargs : dict | None
+            Optional keyword arguments for the ``generate_background_events``
+            method of the background generator.
         tl : instance of TimeLord | None
-            The instance of TimeLord that should be used to time individual
-            tasks of this method.
+            The optional instance of TimeLord that should be used to time
+            individual tasks of this method.
 
         Returns
         -------
         n_events_list : list of int
             The list of the number of events that have been generated for each
             pseudo data set.
-        events_list : list of DataFieldRecordArray instances
-            The list of DataFieldRecordArray instances containing the pseudo
+        events_list : list of instance of DataFieldRecordArray
+            The list of instance of DataFieldRecordArray containing the pseudo
             data events for each data sample. The number of events for each
             data set can be less than the number of events given by
-            `n_events_list` if an event selection method was already utilized
+            ``n_events_list`` if an event selection method was already utilized
             when generating background events.
         """
         n_datasets = self.n_datasets
 
-        if(not isinstance(rss, RandomStateService)):
+        if not isinstance(rss, RandomStateService):
             raise TypeError(
-                'The rss argument must be an instance of RandomStateService!')
+                'The rss argument must be an instance of RandomStateService! '
+                f'Its current type is {classname(rss)}.')
 
-        if(mean_n_bkg_list is None):
-            mean_n_bkg_list = [ None ] * n_datasets
-        if(not issequenceof(mean_n_bkg_list, (type(None), float))):
+        if mean_n_bkg_list is None:
+            mean_n_bkg_list = [None] * n_datasets
+        if not issequenceof(mean_n_bkg_list, (type(None), float)):
             raise TypeError(
                 'The mean_n_bkg_list argument must be a sequence of None '
-                'and/or floats!')
+                'and/or floats! '
+                f'Its current type is {classname(mean_n_bkg_list)}.')
 
-        if(bkg_kwargs is None):
+        if bkg_kwargs is None:
             bkg_kwargs = dict()
 
         # Construct the background event generator in case it's not constructed
         # yet.
-        if(self._bkg_generator is None):
+        if self._bkg_generator is None:
             self.construct_background_generator()
 
         n_events_list = []
         events_list = []
         for ds_idx in range(n_datasets):
             bkg_kwargs.update(mean=mean_n_bkg_list[ds_idx])
-            with TaskTimer(tl, 'Generating background events for data set '
-                '{:d}.'.format(ds_idx)):
-                (n_bkg, bkg_events) = self._bkg_generator.generate_background_events(
-                    rss, ds_idx, tl=tl, **bkg_kwargs)
+            with TaskTimer(
+                    tl,
+                    f'Generating background events for data set {ds_idx}.'):
+                (n_bkg, bkg_events) =\
+                    self._bkg_generator.generate_background_events(
+                        rss=rss,
+                        dataset_idx=ds_idx,
+                        tl=tl,
+                        **bkg_kwargs)
             n_events_list.append(n_bkg)
             events_list.append(bkg_events)
 
         return (n_events_list, events_list)
 
+    def _assert_input_arguments_of_generate_signal_events(
+            self,
+            rss,
+            n_events_list,
+            events_list):
+        """Checks the input arguments of the ``generate_signal_events`` method
+        for correct type and value.
+        """
+        n_datasets = self.n_datasets
+
+        if not isinstance(rss, RandomStateService):
+            raise TypeError(
+                'The rss argument must be an instance of RandomStateService! '
+                f'Its current type is {classname(rss)}.')
+
+        if not issequenceof(n_events_list, int):
+            raise TypeError(
+                'The n_events_list argument must be a sequence of '
+                'instances of type int! '
+                f'Its current type is {classname(n_events_list)}.')
+        if len(n_events_list) != n_datasets:
+            raise ValueError(
+                'The n_events_list argument must be a list of int of '
+                f'length {n_datasets}! Currently it is of length '
+                f'{len(n_events_list)}.')
+
+        if not issequenceof(events_list, (type(None), DataFieldRecordArray)):
+            raise TypeError(
+                'The events_list argument must be a sequence of '
+                'instances of type DataFieldRecordArray! '
+                f'Its current type is {classname(events_list)}.')
+        if len(events_list) != n_datasets:
+            raise ValueError(
+                'The events_list argument must be a list of instances of '
+                f'type DataFieldRecordArray with a length of {n_datasets}! '
+                f'Currently it is of length {len(events_list)}.')
+
     def generate_signal_events(
-            self, rss, mean_n_sig, sig_kwargs=None, n_events_list=None,
-            events_list=None, tl=None):
+            self,
+            rss,
+            mean_n_sig,
+            sig_kwargs=None,
+            n_events_list=None,
+            events_list=None,
+            tl=None):
         """Generates signal events utilizing the signal generator.
 
         Parameters
         ----------
-        rss : RandomStateService
-            The RandomStateService instance to use for generating random
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use for generating random
             numbers.
         mean_n_sig : float
             The mean number of signal events that should be generated for the
             trial. The actual number of generated events will be drawn from a
             Poisson distribution with this given signal mean as mean.
         sig_kwargs : dict | None
-            Additional keyword arguments for the `generate_signal_events` method
-            of the `sig_generator_cls` class. An usual keyword argument is
-            `poisson`.
+            Additional keyword arguments for the ``generate_signal_events``
+            method of the ``sig_generator_cls`` class. An usual keyword argument
+            is ``poisson``.
         n_events_list : list of int | None
             If given, it specifies the number of events of each data set already
             present and the number of signal events will be added.
-        events_list : list of DataFieldRecordArray instances | None
+        events_list : list of instance of DataFieldRecordArray | None
             If given, it specifies the events of each data set already present
             and the signal events will be added.
         tl : instance of TimeLord | None
@@ -564,69 +976,50 @@ class Analysis(object, metaclass=abc.ABCMeta):
         n_sig : int
             The actual number of injected signal events.
         n_events_list : list of int
-            The list of the number of events that have been generated for each
-            pseudo data set.
-        events_list : list of DataFieldRecordArray instances
-            The list of DataFieldRecordArray instances containing the pseudo
+            The list of the number of signal events that have been generated for
+            each data set.
+        events_list : list of instance of DataFieldRecordArray
+            The list of instance of DataFieldRecordArray containing the
             signal data events for each data set. An entry is None, if no signal
             events were generated for this particular data set.
         """
-        n_datasets = self.n_datasets
-
-        if(not isinstance(rss, RandomStateService)):
-            raise TypeError(
-                'The rss argument must be an instance of RandomStateService!')
-
-        if(sig_kwargs is None):
+        if sig_kwargs is None:
             sig_kwargs = dict()
 
-        if(n_events_list is None):
-            n_events_list = [0] * n_datasets
-        else:
-            if(not issequenceof(n_events_list, int)):
-                raise TypeError(
-                    'The n_events_list argument must be a sequence of '
-                    'instances of type int!')
-            if(len(n_events_list) != n_datasets):
-                raise ValueError(
-                    'The n_events_list argument must be a list of int of '
-                    'length {:d}! Currently it is of length {:d}.'.format(
-                        n_datasets, len(n_events_list)))
+        if n_events_list is None:
+            n_events_list = [0] * self.n_datasets
 
-        if(events_list is None):
-            events_list = [None] * n_datasets
-        else:
-            if(not issequenceof(
-                    events_list, (type(None), DataFieldRecordArray))):
-                raise TypeError(
-                    'The events_list argument must be a sequence of '
-                    'instances of type DataFieldRecordArray!')
-            if(len(events_list) != n_datasets):
-                raise ValueError(
-                    'The events_list argument must be a list of instances of '
-                    'type DataFieldRecordArray with a length of {:d}! '
-                    'Currently it is of length {:d}.'.format(
-                        n_datasets, len(events_list)))
+        if events_list is None:
+            events_list = [None] * self.n_datasets
+
+        self._assert_input_arguments_of_generate_signal_events(
+            rss=rss,
+            n_events_list=n_events_list,
+            events_list=events_list)
 
         n_sig = 0
 
-        if(mean_n_sig == 0):
+        if mean_n_sig == 0:
             return (n_sig, n_events_list, events_list)
 
         # Construct the signal generator if not done yet.
-        if(self._sig_generator is None):
+        if self._sig_generator is None:
             with TaskTimer(tl, 'Constructing signal generator.'):
                 self.construct_signal_generator()
+
         # Generate signal events with the given mean number of signal
         # events.
         sig_kwargs.update(mean=mean_n_sig)
         with TaskTimer(tl, 'Generating signal events.'):
-            (n_sig, ds_sig_events_dict) = self._sig_generator.generate_signal_events(
-                rss, **sig_kwargs)
+            (n_sig, ds_sig_events_dict) =\
+                self._sig_generator.generate_signal_events(
+                    rss=rss,
+                    **sig_kwargs)
+
         # Inject the signal events to the generated background data.
         for (ds_idx, sig_events) in ds_sig_events_dict.items():
             n_events_list[ds_idx] += len(sig_events)
-            if(events_list[ds_idx] is None):
+            if events_list[ds_idx] is None:
                 events_list[ds_idx] = sig_events
             else:
                 events_list[ds_idx].append(sig_events)
@@ -634,16 +1027,21 @@ class Analysis(object, metaclass=abc.ABCMeta):
         return (n_sig, n_events_list, events_list)
 
     def generate_pseudo_data(
-            self, rss, mean_n_bkg_list=None, mean_n_sig=0, bkg_kwargs=None,
-            sig_kwargs=None, tl=None):
+            self,
+            rss,
+            mean_n_bkg_list=None,
+            mean_n_sig=0,
+            bkg_kwargs=None,
+            sig_kwargs=None,
+            tl=None):
         """Generates pseudo data with background and possible signal
         events for each data set using the background and signal generation
         methods of the analysis.
 
         Parameters
         ----------
-        rss : RandomStateService
-            The RandomStateService instance to use for generating random
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use for generating random
             numbers.
         mean_n_bkg_list : list of float | None
             The mean number of background events that should be generated for
@@ -662,8 +1060,8 @@ class Analysis(object, metaclass=abc.ABCMeta):
             of the `SignalGenerator` class. An usual keyword argument is
             `poisson`.
         tl : instance of TimeLord | None
-            The instance of TimeLord that should be used to time individual
-            tasks of this method.
+            The optional instance of TimeLord that should be used to time
+            individual tasks of this method.
 
         Returns
         -------
@@ -672,7 +1070,7 @@ class Analysis(object, metaclass=abc.ABCMeta):
         n_events_list : list of int
             The list of the number of events that have been generated for each
             pseudo data set.
-        events_list : list of DataFieldRecordArray instances
+        events_list : list of instance of DataFieldRecordArray
             The list of DataFieldRecordArray instances containing the pseudo
             data events for each data sample. The number of events for each
             data set can be less than the number of events given by
@@ -698,17 +1096,430 @@ class Analysis(object, metaclass=abc.ABCMeta):
 
         return (n_sig, n_events_list, events_list)
 
-    def do_trial_with_given_pseudo_data(
-            self, rss, mean_n_sig, n_sig, n_events_list, events_list,
-            mean_n_sig_0=None,
+    def do_trial(
+            self,
+            rss,
+            mean_n_bkg_list=None,
+            mean_n_sig=0,
+            bkg_kwargs=None,
+            sig_kwargs=None,
             minimizer_status_dict=None,
+            tl=None,
+            **kwargs):
+        """This method performs an analysis trial by generating a
+        pseudo data sample with background events and possible signal events
+        via the :meth:`generate_pseudo_data` method, and performs the analysis
+        on that random pseudo data sample by calling the
+        :meth:`do_trial_with_given_pseudo_data` method.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService instance to use for generating
+            random numbers.
+        mean_n_bkg_list : list of float | None
+            The mean number of background events that should be generated for
+            each dataset. If set to None (the default), the background
+            generation method needs to obtain this number itself.
+        mean_n_sig : float
+            The mean number of signal events that should be generated for the
+            trial.
+        bkg_kwargs : dict | None
+            Additional keyword arguments for the `generate_events` method of the
+            background generation method class. An usual keyword argument is
+            `poisson`.
+        sig_kwargs : dict | None
+            Additional keyword arguments for the `generate_signal_events` method
+            of the `SignalGenerator` class. An usual keyword argument is
+            `poisson`.
+        minimizer_status_dict : dict | None
+            If a dictionary is provided, it will be updated with the minimizer
+            status dictionary.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to time
+            individual tasks.
+        **kwargs : dict
+            Additional keyword arguments are passed to the
+            :meth:`do_trial_with_given_pseudo_data` method.
+
+        Returns
+        -------
+        recarray : instance of numpy record ndarray
+            The numpy record ndarray holding the result of the trial.
+            See the documentation of the
+            :py:meth:`~skyllh.core.analysis.Analysis.do_trial_with_given_pseudo_data`
+            method for further information.
+        """
+        with TaskTimer(tl, 'Generating pseudo data.'):
+            (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
+                rss=rss,
+                mean_n_bkg_list=mean_n_bkg_list,
+                mean_n_sig=mean_n_sig,
+                bkg_kwargs=bkg_kwargs,
+                sig_kwargs=sig_kwargs,
+                tl=tl)
+
+        recarray = self.do_trial_with_given_pseudo_data(
+            rss=rss,
+            mean_n_sig=mean_n_sig,
+            n_sig=n_sig,
+            n_events_list=n_events_list,
+            events_list=events_list,
+            minimizer_status_dict=minimizer_status_dict,
+            tl=tl,
+            **kwargs)
+
+        return recarray
+
+    def do_trials(
+            self,
+            rss,
+            n,
+            ncpu=None,
+            tl=None,
+            ppbar=None,
+            **kwargs):
+        """Executes the :meth:`do_trial` method ``n`` times with possible
+        multi-processing.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The RandomStateService instance to use for generating random
+            numbers.
+        n : int
+            Number of trials to generate using the `do_trial` method.
+        ncpu : int | None
+            The number of CPUs to use, i.e. the number of subprocesses to
+            spawn. If set to None, the global setting will be used.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to time
+            individual tasks.
+        ppbar : instance of ProgressBar | None
+            The possible parent ProgressBar instance.
+        **kwargs
+            Additional keyword arguments are passed to the :meth:`do_trial`
+            method. See the documentation of that method for allowed keyword
+            arguments.
+
+        Returns
+        -------
+        recarray : numpy record ndarray
+            The numpy record ndarray holding the result of all trials.
+            See the documentation of the
+            :py:meth:`~skyllh.core.analysis.Analysis.do_trial` method for the
+            list of data fields.
+        """
+        ncpu = get_ncpu(ncpu)
+
+        args_list = [((), kwargs) for i in range(n)]
+        result_list = parallelize(
+            func=self.do_trial,
+            args_list=args_list,
+            ncpu=ncpu,
+            rss=rss,
+            tl=tl,
+            ppbar=ppbar)
+
+        recarray_dtype = result_list[0].dtype
+        recarray = np.empty(n, dtype=recarray_dtype)
+        recarray[:] = np.array(result_list)[:, 0]
+
+        return recarray
+
+
+class LLHRatioAnalysis(
+        Analysis,
+        metaclass=abc.ABCMeta):
+    """This is the abstract base class for all log-likelihood ratio analysis
+    classes. It requires a mathematical log-likelihood ratio function.
+
+    To set-up and run an analysis the following procedure applies:
+
+        1. Create an Analysis instance.
+        2. Add the datasets and their PDF ratio instances via the
+           :meth:`skyllh.core.analysis.Analysis.add_dataset` method.
+        3. Construct the log-likelihood ratio function via the
+           :meth:`construct_llhratio` method.
+        4. Initialize a trial via the :meth:`initialize_trial` method.
+        5. Fit the global fit parameters to the trial data via the
+           :meth:`maximize` method of the ``llhratio`` property.
+
+    Alternatively, one can use the convenient methods :meth:`do_trial` or
+    :meth:`unblind` to perform a random trial or to unblind the data,
+    respectively. Both methods will fit the global fit parameters using the set
+    up data. Finally, the test statistic is calculated via the
+    :meth:`calculate_test_statistic` method.
+
+    In order to calculate sensitivities and discovery potentials, analysis
+    trials have to be performed on random data samples with injected signal
+    events. To perform a trial with injected signal events, the signal generator
+    has to be constructed via the :meth:`construct_signal_generator` method
+    before any random trial data can be generated.
+    """
+
+    def __init__(
+            self,
+            shg_mgr,
+            pmm,
+            test_statistic,
+            bkg_gen_method=None,
+            bkg_generator_cls=None,
+            sig_generator_cls=None,
+            **kwargs):
+        """Constructs a new instance of LLHRatioAnalysis.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager, which defines the groups of
+            source hypotheses, their flux model, and their detector signal
+            yield implementation method.
+        pmm : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
+        test_statistic : TestStatistic instance
+            The TestStatistic instance that defines the test statistic function
+            of the analysis.
+        bkg_gen_method : instance of BackgroundGenerationMethod | None
+            The instance of BackgroundGenerationMethod that should be used to
+            generate background events for pseudo data. This can be set to None,
+            if there is no need to generate background events.
+        bkg_generator_cls : class of BackgroundGeneratorBase | None
+            The background generator class used to create the background
+            generator instance.
+            If set to ``None``, the
+            :class:`skyllh.core.background_generator.BackgroundGenerator` class
+            is used.
+        sig_generator_cls : class of SignalGenerator | None
+            The signal generator class used to create the signal generator
+            instance.
+            If set to None, the
+            :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
+            class is used.
+        """
+        super().__init__(
+            shg_mgr=shg_mgr,
+            pmm=pmm,
+            test_statistic=test_statistic,
+            bkg_gen_method=bkg_gen_method,
+            bkg_generator_cls=bkg_generator_cls,
+            sig_generator_cls=sig_generator_cls,
+            **kwargs)
+
+        # Define the member variable for the list of PDFRatio instances, one for
+        # each dataset.
+        self._pdfratio_list = []
+
+        self._llhratio = None
+
+    @property
+    def llhratio(self):
+        """The log-likelihood ratio function instance. It is None, if it has
+        not been constructed yet.
+        """
+        if self._llhratio is None:
+            raise RuntimeError(
+                'The log-likelihood ratio function is not defined yet. '
+                'Call the "construct_llhratio" method first!')
+        return self._llhratio
+
+    @llhratio.setter
+    def llhratio(self, obj):
+        if not isinstance(obj, LLHRatio):
+            raise TypeError(
+                'The llhratio property must be an instance of LLHRatio! '
+                f'Its current type is {classname(obj)}.')
+        self._llhratio = obj
+
+    @abc.abstractmethod
+    def construct_llhratio(
+            self,
+            minimizer,
+            ppbar=None):
+        """This method is supposed to construct the LLH ratio function.
+
+        Returns
+        -------
+        llhratio : instance of LLHRatio
+            The instance of LLHRatio that implements the
+            log-likelihood-ratio function of this LLH ratio analysis.
+        """
+        pass
+
+    def add_dataset(
+            self,
+            dataset,
+            data,
+            pdfratio,
+            tdm=None,
+            event_selection_method=None,
+            sig_generator=None):
+        """Adds a dataset with its PDF ratio instances to the analysis.
+
+        Parameters
+        ----------
+        dataset : instance of Dataset
+            The instance of Dataset that should get added.
+        data : instance of DatasetData
+            The instance of DatasetData holding the original (prepared) data of
+            the dataset.
+        pdfratio : instance of PDFRatio
+            The instance of PDFRatio for the to-be-added data set.
+        tdm : instance of TrialDataManager | None
+            The TrialDataManager instance that manages the trial data and
+            additional data fields for this data set.
+        event_selection_method : instance of EventSelectionMethod | None
+            The instance of EventSelectionMethod to use to select only
+            signal-like events from the trial data. All other events
+            will be treated as pure background events. This reduces the amount
+            of log-likelihood-ratio function evaluations. If set to None, all
+            events will be evaluated.
+        sig_generator : instance of SignalGenerator | None
+            The optional instance of SignalGenerator, which should be used
+            to generate signal events for this particular dataset.
+        """
+        super().add_dataset(
+            dataset=dataset,
+            data=data,
+            tdm=tdm,
+            event_selection_method=event_selection_method,
+            sig_generator=sig_generator)
+
+        if not isinstance(pdfratio, PDFRatio):
+            raise TypeError(
+                'The pdfratio argument must be an instance of PDFRatio! '
+                f'Its current type is {classname(pdfratio)}')
+
+        self._pdfratio_list.append(pdfratio)
+
+    def change_shg_mgr(
+            self,
+            shg_mgr):
+        """If the SourceHypoGroupManager instance changed, this method needs to
+        be called to propagate the change to all components of the analysis.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The new instance of SourceHypoGroupManager.
+        """
+        if self._llhratio is None:
+            raise RuntimeError(
+                'The LLH ratio function has to be constructed '
+                'before the `change_shg_mgr` method can be called!')
+
+        super().change_shg_mgr(
+            shg_mgr=shg_mgr)
+
+        # Change the source hypo group manager of the LLH ratio function
+        # instance.
+        self._llhratio.change_shg_mgr(
+            shg_mgr=shg_mgr)
+
+    def initialize_trial(
+            self,
+            events_list,
+            n_events_list=None,
             tl=None):
+        """This method initializes the log-likelihood ratio
+        function with a new set of given trial data. This is a low-level method.
+        For convenient methods see the ``unblind`` and ``do_trial`` methods.
+
+        Parameters
+        ----------
+        events_list : list of DataFieldRecordArray instances
+            The list of DataFieldRecordArray instances holding the data events
+            to use for the log-likelihood function evaluation. The data arrays
+            for the datasets must be in the same order than the added datasets.
+        n_events_list : list of int | None
+            The list of the number of events of each data set. If set to None,
+            the number of events is taken from the size of the given events
+            arrays.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used for timing
+            measurements.
+        """
+        if n_events_list is None:
+            n_events_list = [None] * len(events_list)
+
+        for (tdm, events, n_events, evt_sel_method) in zip(
+                self._tdm_list,
+                events_list,
+                n_events_list,
+                self._event_selection_method_list):
+
+            # Initialize the trial data manager with the given raw events.
+            tdm.initialize_trial(
+                shg_mgr=self._shg_mgr,
+                pmm=self._pmm,
+                events=events,
+                n_events=n_events,
+                evt_sel_method=evt_sel_method,
+                tl=tl)
+
+        self._llhratio.initialize_for_new_trial(
+            tl=tl)
+
+    def unblind(
+            self,
+            rss,
+            tl=None):
+        """Evaluates the unscrambled data, i.e. unblinds the data.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService that should be used draw random
+            numbers from.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to time the
+            maximization of the LLH ratio function.
+
+        Returns
+        -------
+        TS : float
+            The test-statistic value.
+        global_params_dict : dict
+            The dictionary holding the global parameter names and their
+            best fit values. It includes fixed and floating parameters.
+        status : dict
+            The status dictionary with information about the performed
+            minimization process of the negative of the log-likelihood ratio
+            function.
+        """
+        events_list = [data.exp for data in self._data_list]
+        self.initialize_trial(events_list)
+
+        (log_lambda, fitparam_values, status) = self._llhratio.maximize(
+            rss=rss,
+            tl=tl)
+
+        TS = self.calculate_test_statistic(
+            log_lambda=log_lambda,
+            fitparam_values=fitparam_values)
+
+        global_params_dict = self._pmm.create_global_params_dict(
+            gflp_values=fitparam_values)
+
+        return (TS, global_params_dict, status)
+
+    def do_trial_with_given_pseudo_data(
+            self,
+            rss,
+            mean_n_sig,
+            n_sig,
+            n_events_list,
+            events_list,
+            minimizer_status_dict=None,
+            tl=None,
+            mean_n_sig_0=None):
         """Performs an analysis trial on the given pseudo data.
 
         Parameters
         ----------
-        rss : RandomStateService
-            The RandomStateService instance to use for generating random
+        rss : instance of RandomStateService
+            The instance of RandomStateService to use for generating random
             numbers.
         mean_n_sig : float
             The mean number of signal events the pseudo data was generated with.
@@ -716,27 +1527,27 @@ class Analysis(object, metaclass=abc.ABCMeta):
             The total number of actual signal events in the pseudo data.
         n_events_list : list of int
             The total number of events for each data set of the pseudo data.
-        events_list : list of DataFieldRecordArray instances
-            The list of DataFieldRecordArray instances containing the pseudo
+        events_list : list of instance of DataFieldRecordArray
+            The list of instance of DataFieldRecordArray containing the pseudo
             data events for each data sample. The number of events for each
             data sample can be less than the number of events given by
-            `n_events_list` if an event selection method was already utilized
+            ``n_events_list`` if an event selection method was already utilized
             when generating background events.
-        mean_n_sig_0 : float | None
-            The fixed mean number of signal events for the null-hypothesis,
-            when using a ns-profile log-likelihood-ratio function.
-            If set to None, this argument is interpreted as 0.
         minimizer_status_dict : dict | None
             If a dictionary is provided, it will be updated with the minimizer
             status dictionary.
         tl : instance of TimeLord | None
-            The instance of TimeLord that should be used to time individual
-            tasks.
+            The optional instance of TimeLord that should be used to time
+            individual tasks.
+        mean_n_sig_0 : float | None
+            The fixed mean number of signal events for the null-hypothesis,
+            when using a ns-profile log-likelihood-ratio function.
+            If set to None, this argument is interpreted as 0.
 
         Returns
         -------
-        result : structured numpy ndarray
-            The structured numpy ndarray holding the result of the trial. It
+        recarray : instance of numpy record ndarray
+            The numpy record ndarray holding the result of the trial. It
             contains the following data fields:
 
             rss_seed : int
@@ -749,316 +1560,87 @@ class Analysis(object, metaclass=abc.ABCMeta):
                 The fixed mean number of signal events for the null-hypothesis.
             ts : float
                 The test-statistic value.
-            [<fitparam_name> ... : float ]
-                Any additional fit parameters of the LLH function.
+            [<global_param_name> : float ]
+                Any additional parameters of the LLH ratio function.
         """
-        if(mean_n_sig_0 is not None):
-            self._llhratio.mean_n_sig_0 = mean_n_sig_0
-        else:
+        if mean_n_sig_0 is None:
             mean_n_sig_0 = 0
+
+        self._llhratio.mean_n_sig_0 = mean_n_sig_0
 
         with TaskTimer(tl, 'Initializing trial.'):
             self.initialize_trial(events_list, n_events_list)
 
         with TaskTimer(tl, 'Maximizing LLH ratio function.'):
-            (fitparamset, log_lambda_max, fitparam_values, status) = self.maximize_llhratio(rss, tl=tl)
-        if(isinstance(minimizer_status_dict, dict)):
+            (log_lambda, fitparam_values, status) = self._llhratio.maximize(
+                rss=rss,
+                tl=tl)
+        if isinstance(minimizer_status_dict, dict):
             minimizer_status_dict.update(status)
 
         with TaskTimer(tl, 'Calculating test statistic.'):
-            ts = self.calculate_test_statistic(log_lambda_max, fitparam_values)
+            ts = self.calculate_test_statistic(
+                log_lambda=log_lambda,
+                fitparam_values=fitparam_values)
+
+        # Get the dictionary holding all floating and fixed parameter names
+        # and values.
+        global_params_dict = self._pmm.create_global_params_dict(
+            gflp_values=fitparam_values)
 
         # Create the structured array data type for the result array.
-        result_dtype = [
+        recarray_dtype = [
             ('seed', np.int64),
             ('mean_n_sig', np.float64),
             ('n_sig', np.int64),
             ('mean_n_sig_0', np.float64),
             ('ts', np.float64)
         ] + [
-            (fitparam_name, np.float64)
-                for fitparam_name in fitparamset.fitparam_name_list
+            (param_name, np.float64)
+            for param_name in global_params_dict.keys()
         ]
-        result = np.empty((1,), dtype=result_dtype)
-        result['seed'] = rss.seed
-        result['mean_n_sig'] = mean_n_sig
-        result['n_sig'] = n_sig
-        result['mean_n_sig_0'] = mean_n_sig_0
-        result['ts'] = ts
-        for (idx, fitparam_name) in enumerate(fitparamset.fitparam_name_list):
-            result[fitparam_name] = fitparam_values[idx]
+        recarray = np.empty((1,), dtype=recarray_dtype)
+        recarray['seed'] = rss.seed
+        recarray['mean_n_sig'] = mean_n_sig
+        recarray['n_sig'] = n_sig
+        recarray['mean_n_sig_0'] = mean_n_sig_0
+        recarray['ts'] = ts
+        for (param_name, param_value) in global_params_dict.items():
+            recarray[param_name] = param_value
 
-        return result
-
-    def do_trial_with_given_bkg_and_sig_pseudo_data(
-            self, rss, mean_n_sig, n_sig, n_bkg_events_list, n_sig_events_list,
-            bkg_events_list, sig_events_list,
-            mean_n_sig_0=None,
-            minimizer_status_dict=None,
-            tl=None):
-        """Performs an analysis trial on the given background and signal pseudo
-        data. This method merges the background and signal pseudo events and
-        calls the ``do_trial_with_given_pseudo_data`` method of this class.
-
-        Note
-        ----
-        This method alters the DataFieldRecordArray instances of the
-        bkg_events_list argument!
-
-        Parameters
-        ----------
-        rss : RandomStateService
-            The RandomStateService instance to use for generating random
-            numbers.
-        mean_n_sig : float
-            The mean number of signal events the pseudo data was generated with.
-        n_sig : int
-            The total number of actual signal events in the pseudo data.
-        n_bkg_events_list : list of int
-            The total number of background events for each data set of the
-            pseudo data.
-        n_sig_events_list : list of int
-            The total number of signal events for each data set of the
-            pseudo data.
-        bkg_events_list : list of DataFieldRecordArray instances
-            The list of DataFieldRecordArray instances containing the background
-            pseudo data events for each data set.
-        sig_events_list : list of DataFieldRecordArray instances or None
-            The list of DataFieldRecordArray instances containing the signal
-            pseudo data events for each data set. If a particular dataset has
-            no signal events, the entry for that dataset can be None.
-        mean_n_sig_0 : float | None
-            The fixed mean number of signal events for the null-hypothesis,
-            when using a ns-profile log-likelihood-ratio function.
-            If set to None, this argument is interpreted as 0.
-        minimizer_status_dict : dict | None
-            If a dictionary is provided, it will be updated with the minimizer
-            status dictionary.
-        tl : instance of TimeLord | None
-            The instance of TimeLord that should be used to time individual
-            tasks.
-
-        Returns
-        -------
-        result : structured numpy ndarray
-            The structured numpy ndarray holding the result of the trial.
-            See the documentation of the ``do_trial_with_given_pseudo_data``
-            method for further information.
-        """
-        n_events_list = list(
-            np.array(n_bkg_events_list) +
-            np.array(n_sig_events_list)
-        )
-
-        events_list = bkg_events_list
-
-        # Add potential signal events to the background events.
-        for ds_idx in range(len(events_list)):
-            if(sig_events_list[ds_idx] is not None):
-                if(events_list[ds_idx] is None):
-                    events_list[ds_idx] = sig_events_list[ds_idx]
-                else:
-                    events_list[ds_idx].append(sig_events_list[ds_idx])
-
-        return self.do_trial_with_given_pseudo_data(
-            rss = rss,
-            mean_n_sig = mean_n_sig,
-            n_sig = n_sig,
-            n_events_list = n_events_list,
-            events_list = events_list,
-            mean_n_sig_0 = mean_n_sig_0,
-            minimizer_status_dict = minimizer_status_dict,
-            tl = tl
-        )
-
-    def do_trial(
-            self, rss, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
-            bkg_kwargs=None, sig_kwargs=None, minimizer_status_dict=None,
-            tl=None):
-        """Performs an analysis trial by generating a pseudo data sample with
-        background events and possible signal events, and performs the LLH
-        analysis on that random pseudo data sample.
-
-        Parameters
-        ----------
-        rss : RandomStateService
-            The RandomStateService instance to use for generating random
-            numbers.
-        mean_n_bkg_list : list of float | None
-            The mean number of background events that should be generated for
-            each dataset. If set to None (the default), the background
-            generation method needs to obtain this number itself.
-        mean_n_sig : float
-            The mean number of signal events that should be generated for the
-            trial. The actual number of generated events will be drawn from a
-            Poisson distribution with this given signal mean as mean.
-        mean_n_sig_0 : float | None
-            The fixed mean number of signal events for the null-hypothesis,
-            when using a ns-profile log-likelihood-ratio function.
-            If set to None, this argument is interpreted as 0.
-        bkg_kwargs : dict | None
-            Additional keyword arguments for the `generate_events` method of the
-            background generation method class. An usual keyword argument is
-            `poisson`.
-        sig_kwargs : dict | None
-            Additional keyword arguments for the `generate_signal_events` method
-            of the `SignalGenerator` class. An usual keyword argument is
-            `poisson`.
-        minimizer_status_dict : dict | None
-            If a dictionary is provided, it will be updated with the minimizer
-            status dictionary.
-        tl : instance of TimeLord | None
-            The instance of TimeLord that should be used to time individual
-            tasks.
-
-        Returns
-        -------
-        result : structured numpy ndarray
-            The structured numpy ndarray holding the result of the trial. It
-            contains the following data fields:
-
-            mean_n_sig : float
-                The mean number of signal events.
-            n_sig : int
-                The actual number of injected signal events.
-            mean_n_sig_0 : float
-                The fixed mean number of signal events for the null-hypothesis.
-            ts : float
-                The test-statistic value.
-            [<fitparam_name> ... : float ]
-                Any additional fit parameters of the LLH function.
-        """
-        if(mean_n_sig_0 is not None):
-            self._llhratio.mean_n_sig_0 = mean_n_sig_0
-        else:
-            mean_n_sig_0 = 0
-
-        with TaskTimer(tl, 'Generating pseudo data.'):
-            (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
-                rss=rss, mean_n_bkg_list=mean_n_bkg_list, mean_n_sig=mean_n_sig,
-                bkg_kwargs=bkg_kwargs, sig_kwargs=sig_kwargs, tl=tl)
-
-        result = self.do_trial_with_given_pseudo_data(
-            rss=rss,
-            mean_n_sig=mean_n_sig,
-            n_sig=n_sig,
-            n_events_list=n_events_list,
-            events_list=events_list,
-            mean_n_sig_0=mean_n_sig_0,
-            minimizer_status_dict=minimizer_status_dict,
-            tl=tl
-        )
-
-        return result
-
-    def do_trials(
-            self, rss, n, mean_n_bkg_list=None, mean_n_sig=0, mean_n_sig_0=None,
-            bkg_kwargs=None, sig_kwargs=None, ncpu=None, tl=None, ppbar=None):
-        """Executes `do_trial` method `N` times with possible multi-processing.
-        One trial performs an analysis trial by generating a pseudo data sample
-        with background events and possible signal events, and performs the LLH
-        analysis on that random pseudo data sample.
-
-        Parameters
-        ----------
-        rss : RandomStateService
-            The RandomStateService instance to use for generating random
-            numbers.
-        n : int
-            Number of trials to generate using the `do_trial` method.
-        mean_n_bkg_list : list of float | None
-            The mean number of background events that should be generated for
-            each dataset. If set to None (the default), the number of data
-            events of each data sample will be used as mean.
-        mean_n_sig : float
-            The mean number of signal events that should be generated for the
-            trial. The actual number of generated events will be drawn from a
-            Poisson distribution with this given signal mean as mean.
-        mean_n_sig_0 : float | None
-            The fixed mean number of signal events for the null-hypothesis,
-            when using a ns-profile log-likelihood-ratio function.
-        bkg_kwargs : dict | None
-            Additional keyword arguments for the `generate_events` method of the
-            background generation method class. An usual keyword argument is
-            `poisson`.
-        sig_kwargs : dict | None
-            Additional keyword arguments for the `generate_signal_events` method
-            of the `SignalGenerator` class. An usual keyword argument is
-            `poisson`. If `poisson` is set to True, the actual number of
-            generated signal events will be drawn from a Poisson distribution
-            with the given mean number of signal events.
-            If set to False, the argument ``mean_n_sig`` specifies the actual
-            number of generated signal events.
-        ncpu : int | None
-            The number of CPUs to use, i.e. the number of subprocesses to
-            spawn. If set to None, the global setting will be used.
-        tl : instance of TimeLord | None
-            The instance of TimeLord that should be used to time individual
-            tasks.
-        ppbar : instance of ProgressBar | None
-            The possible parent ProgressBar instance.
-
-        Returns
-        -------
-        result : structured numpy ndarray
-            The structured numpy ndarray holding the result of the trial. It
-            contains the following data fields:
-
-            n_sig : int
-                The actual number of injected signal events.
-            ts : float
-                The test-statistic value.
-            [<fitparam_name> ... : float ]
-                Any additional fit parameters of the LLH function.
-        """
-        ncpu = get_ncpu(ncpu)
-        args_list = [((), {
-            'mean_n_bkg_list': mean_n_bkg_list,
-            'mean_n_sig': mean_n_sig,
-            'mean_n_sig_0': mean_n_sig_0,
-            'bkg_kwargs': bkg_kwargs,
-            'sig_kwargs': sig_kwargs
-            }) for i in range(n)
-        ]
-        result_list = parallelize(
-            self.do_trial, args_list, ncpu, rss=rss, tl=tl, ppbar=ppbar)
-
-        result_dtype = result_list[0].dtype
-        result = np.empty(n, dtype=result_dtype)
-        result[:] = np.array(result_list)[:,0]
-        return result
+        return recarray
 
 
-class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
-    """This is an analysis class that implements a time-integrated LLH ratio
-    analysis for multiple datasets assuming a single source.
+class SingleSourceMultiDatasetLLHRatioAnalysis(
+        LLHRatioAnalysis):
+    """This is an analysis class that implements a log-likelihood ratio analysis
+    for multiple datasets assuming a single source.
+    It is a special case of the multi-source analysis.
 
-    To run this analysis the following procedure applies:
-
-        1. Add the datasets and their spatial and energy PDF ratio instances
-           via the :meth:`.add_dataset` method.
-        2. Construct the log-likelihood ratio function via the
-           :meth:`construct_llhratio` method.
-        3. Initialize a trial via the :meth:`initialize_trial` method.
-        4. Fit the global fit parameters to the trial data via the
-           :meth:`maximize_llhratio` method.
+    For more information how to construct and run the analysis see the
+    documentation of the :class:`~skyllh.core.analysis.LLHRatioAnalysis` class.
     """
-    def __init__(self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns,
-                 test_statistic, bkg_gen_method=None, sig_generator_cls=None):
+    def __init__(
+            self,
+            shg_mgr,
+            pmm,
+            test_statistic,
+            bkg_gen_method=None,
+            bkg_generator_cls=None,
+            sig_generator_cls=None,
+            **kwargs):
         """Creates a new time-integrated point-like source analysis assuming a
         single source.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
             efficiency implementation method.
-        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
-            The instance of SingleSourceFitParameterMapper defining the global
-            fit parameters and their mapping to the source fit parameters.
-        fitparam_ns : FitParameter instance
-            The FitParameter instance defining the fit parameter ns.
+        pmm : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
@@ -1066,93 +1648,42 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The instance of BackgroundGenerationMethod that will be used to
             generate background events for a new analysis trial. This can be set
             to None, if no background events have to get generated.
-        sig_generator_cls : SignalGeneratorBase class | None
-            The signal generator class used to create the signal generator
-            instance.
-            If set to None, the `SignalGenerator` class is used.
+        bkg_generator_cls : class of BackgroundGeneratorBase | None
+            The background generator class used to create the background
+            generator instance.
+            If set to ``None``, the
+            :class:`skyllh.core.background_generator.BackgroundGenerator` class
+            is used.
+        sig_generator_cls : SignalGenerator class | None
+            The signal generator class that should be used to create the signal
+            generator instance for multiple datasets. If set to None, the
+            :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
+            class is used.
         """
-        if(not isinstance(src_fitparam_mapper, SingleSourceFitParameterMapper)):
-            raise TypeError('The src_fitparam_mapper argument must be an '
-                'instance of SingleSourceFitParameterMapper!')
-
         super().__init__(
-            src_hypo_group_manager=src_hypo_group_manager,
-            src_fitparam_mapper=src_fitparam_mapper,
+            shg_mgr=shg_mgr,
+            pmm=pmm,
             test_statistic=test_statistic,
             bkg_gen_method=bkg_gen_method,
-            sig_generator_cls=sig_generator_cls)
+            bkg_generator_cls=bkg_generator_cls,
+            sig_generator_cls=sig_generator_cls,
+            **kwargs)
 
-        self.fitparam_ns = fitparam_ns
-
-        # Define the member for the list of PDF ratio lists. Each list entry is
-        # a list of PDF ratio instances for each data set.
-        self._pdfratio_list_list = []
-
-        # Create the FitParameterSet instance holding the fit parameter ns and
-        # all the other additional fit parameters. This set is used by the
-        # ``maximize_llhratio`` method.
-        self._fitparamset = self._src_fitparam_mapper.fitparamset.copy()
-        self._fitparamset.add_fitparam(self._fitparam_ns, atfront=True)
-
-    @property
-    def fitparam_ns(self):
-        """The FitParameter instance for the fit parameter ns.
-        """
-        return self._fitparam_ns
-    @fitparam_ns.setter
-    def fitparam_ns(self, fitparam):
-        if(not isinstance(fitparam, FitParameter)):
-            raise TypeError('The fitparam_ns property must be an instance of FitParameter!')
-        self._fitparam_ns = fitparam
-
-    def add_dataset(self, dataset, data, pdfratios, tdm=None,
-                    event_selection_method=None):
-        """Adds a dataset with its PDF ratio instances to the analysis.
-
-        Parameters
-        ----------
-        dataset : Dataset instance
-            The Dataset instance that should get added.
-        data : DatasetData instance
-            The DatasetData instance holding the original (prepared) data of the
-            dataset.
-        pdfratios : PDFRatio instance | sequence of PDFRatio instances
-            The PDFRatio instance or the sequence of PDFRatio instances for the
-            to-be-added data set.
-        tdm : TrialDataManager instance | None
-            The TrialDataManager instance that manages the trial data and
-            additional data fields for this data set.
-        event_selection_method : instance of EventSelectionMethod | None
-            The instance of EventSelectionMethod to use to select only
-            signal-like events from the trial data. All other events
-            will be treated as pure background events. This reduces the amount
-            of log-likelihood-ratio function evaluations. If set to None, all
-            events will be evaluated.
-        """
-        super(TimeIntegratedMultiDatasetSingleSourceAnalysis, self).add_dataset(
-            dataset, data, tdm, event_selection_method)
-
-        if(isinstance(pdfratios, PDFRatio)):
-            pdfratios = [pdfratios]
-        if(not issequenceof(pdfratios, PDFRatio)):
-            raise TypeError('The pdfratios argument must be an instance of '
-                'PDFRatio or a sequence of PDFRatio!')
-
-        self._pdfratio_list_list.append(list(pdfratios))
-
-    def construct_llhratio(self, minimizer, ppbar=None):
-        """Constructs the log-likelihood-ratio (LLH-ratio) function of the
-        analysis. This setups all the necessary analysis
-        objects like detector signal efficiencies and dataset signal weights,
-        constructs the log-likelihood ratio functions for each dataset and the
-        final composite llh ratio function.
+    def construct_llhratio(
+            self,
+            minimizer,
+            ppbar=None):
+        """Constructs the log-likelihood (LLH) ratio function of the analysis.
+        This setups all the necessary analysis objects like detector signal
+        yields and dataset signal weights, constructs the log-likelihood ratio
+        functions for each dataset and the final composite LLH ratio function.
 
         Parameters
         ----------
         minimizer : instance of Minimizer
             The instance of Minimizer that should be used to minimize the
             negative of the log-likelihood ratio function.
-        ppbar : ProgressBar instance | None
+        ppbar : instance of ProgressBar | None
             The instance of ProgressBar of the optional parent progress bar.
 
         Returns
@@ -1161,218 +1692,57 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
             The instance of MultiDatasetTCLLHRatio that implements the
             log-likelihood-ratio function of the analysis.
         """
-        # Create the detector signal yield instances for each dataset.
-        # Since this is for a single source, we don't have to have individual
-        # detector signal yield instances for each source as well.
-        detsigyield_list = []
-        fluxmodel = self._src_hypo_group_manager.get_fluxmodel_by_src_idx(0)
-        detsigyield_implmethod_list = self._src_hypo_group_manager.get_detsigyield_implmethod_list_by_src_idx(0)
-        if((len(detsigyield_implmethod_list) != 1) and
-           (len(detsigyield_implmethod_list) != self.n_datasets)):
-            raise ValueError('The number of detector signal yield '
-                'implementation methods is not 1 and does not match the number '
-                'of used datasets in the analysis!')
-        pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
-        for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
-                                                  self.data_list)):
-            if(len(detsigyield_implmethod_list) == 1):
-                # Only one detsigyield implementation method was defined, so we
-                # use it for all datasets.
-                detsigyield_implmethod = detsigyield_implmethod_list[0]
-            else:
-                detsigyield_implmethod = detsigyield_implmethod_list[j]
-
-            detsigyield = detsigyield_implmethod.construct_detsigyield(
-                dataset, data, fluxmodel, data.livetime, ppbar=pbar)
-            detsigyield_list.append(detsigyield)
-            pbar.increment()
-        pbar.finish()
-
-        # For multiple datasets we need a dataset signal weights instance in
-        # order to distribute ns over the different datasets.
-        dataset_signal_weights = SingleSourceDatasetSignalWeights(
-            self._src_hypo_group_manager, self._src_fitparam_mapper,
-            detsigyield_list)
-
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
-        llhratio_list = []
-        for j in range(self.n_datasets):
-            tdm = self._tdm_list[j]
-            pdfratio_list = self._pdfratio_list_list[j]
-            llhratio = SingleSourceZeroSigH0SingleDatasetTCLLHRatio(
-                minimizer,
-                self._src_hypo_group_manager,
-                self._src_fitparam_mapper,
-                tdm,
-                pdfratio_list
+        llhratio_list = [
+            ZeroSigH0SingleDatasetTCLLHRatio(
+                pmm=self._pmm,
+                minimizer=minimizer,
+                shg_mgr=self._shg_mgr,
+                tdm=tdm,
+                pdfratio=pdfratio
             )
-            llhratio_list.append(llhratio)
+            for (tdm, pdfratio) in zip(self._tdm_list, self._pdfratio_list)
+        ]
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
-            minimizer, dataset_signal_weights, llhratio_list)
+            pmm=self._pmm,
+            minimizer=minimizer,
+            src_detsigyield_weights_service=self.src_detsigyield_weights_service,
+            ds_sig_weight_factors_service=self.ds_sig_weight_factors_service,
+            llhratio_list=llhratio_list)
 
         return llhratio
 
-    def change_source(self, source):
+    def change_source(
+            self,
+            source):
         """Changes the source of the analysis to the given source. It makes the
         necessary changes to all the objects of the analysis.
 
         Parameters
         ----------
-        source : SourceModel instance
-            The SourceModel instance describing the new source.
+        source : instance of SourceModel
+            The instance of SourceModel describing the new source.
         """
-        if(not isinstance(source, SourceModel)):
-            raise TypeError('The source argument must be an instance of SourceModel')
-
-        if(self._llhratio is None):
-            raise RuntimeError('The LLH ratio function has to be constructed, '
-                'before the `change_source` method can be called!')
+        if not isinstance(source, SourceModel):
+            raise TypeError(
+                'The source argument must be an instance of SourceModel! '
+                f'Its current type is {classname(source)}.')
 
         # Change the source in the SourceHypoGroupManager instance.
         # Because this is a single source analysis, there can only be one source
         # hypothesis group defined.
-        self._src_hypo_group_manager.src_hypo_group_list[0].source_list[0] = source
+        self._shg_mgr.shg_list[0].source_list[0] = source
 
-        # Change the source hypo group manager of the EventSelectionMethod
-        # instance.
-        for event_selection_method in self._event_selection_method_list:
-            if(event_selection_method is not None):
-                event_selection_method.change_source_hypo_group_manager(
-                    self._src_hypo_group_manager)
+        self.change_shg_mgr(
+            shg_mgr=self._shg_mgr)
 
-        # Change the source hypo group manager of the LLH ratio function
-        # instance.
-        self._llhratio.change_source_hypo_group_manager(self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the background generator
-        # instance.
-        if(self._bkg_generator is not None):
-            self._bkg_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the signal generator instance.
-        if(self._sig_generator is not None):
-            self._sig_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
-
-    def change_sources(self, sources):
-        """Changes the sources of the analysis to the given source list. It
-        makes the necessary changes to all the objects of the analysis.
-
-        Parameters
-        ----------
-        sources : list of SourceModel instances
-            The SourceModel instances describing new sources.
-        """
-        if(isinstance(sources, SourceModel)):
-            sources = [sources]
-        if(not issequenceof(sources, SourceModel)):
-            raise TypeError('The sources argument must be a list of instances '
-                            'of SourceModel')
-
-        if(self._llhratio is None):
-            raise RuntimeError(
-                'The LLH ratio function has to be constructed, '
-                'before the `change_source` method can be called!')
-
-        # Change the source in the SourceHypoGroupManager instance.
-        # Because this is a single type sources analysis, there can only be one
-        # source hypothesis group defined.
-        self._src_hypo_group_manager.src_hypo_group_list[0].source_list = sources
-
-        # Change the source hypo group manager of the EventSelectionMethod
-        # instance.
-        for event_selection_method in self._event_selection_method_list:
-            if(event_selection_method is not None):
-                event_selection_method.change_source_hypo_group_manager(
-                    self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the LLH ratio function
-        # instance.
-        self._llhratio.change_source_hypo_group_manager(
-            self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the background generator
-        # instance.
-        if(self._bkg_generator is not None):
-            self._bkg_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
-
-        # Change the source hypo group manager of the signal generator instance.
-        if(self._sig_generator is not None):
-            self._sig_generator.change_source_hypo_group_manager(
-                self._src_hypo_group_manager)
-
-    def initialize_trial(self, events_list, n_events_list=None, tl=None):
-        """This method initializes the multi-dataset log-likelihood ratio
-        function with a new set of given trial data. This is a low-level method.
-        For convenient methods see the `unblind` and `do_trial` methods.
-
-        Parameters
-        ----------
-        events_list : list of DataFieldRecordArray instances
-            The list of DataFieldRecordArray instances holding the data events
-            to use for the log-likelihood function evaluation. The data arrays
-            for the datasets must be in the same order than the added datasets.
-        n_events_list : list of int | None
-            The list of the number of events of each data set. If set to None,
-            the number of events is taken from the size of the given events
-            arrays.
-        tl : TimeLord | None
-            The optional TimeLord instance that should be used for timing
-            measurements.
-        """
-        if(n_events_list is None):
-            n_events_list = [None] * len(events_list)
-
-        for (idx, (tdm, events, n_events, evt_sel_method)) in enumerate(zip(
-                self._tdm_list, events_list, n_events_list,
-                self._event_selection_method_list)):
-
-            # Initialize the trial data manager with the given raw events.
-            self._tdm_list[idx].initialize_trial(
-                self._src_hypo_group_manager, events, n_events, evt_sel_method,
-                tl=tl)
-
-        self._llhratio.initialize_for_new_trial(tl=tl)
-
-    def maximize_llhratio(self, rss, tl=None):
-        """Maximizes the log-likelihood ratio function, by minimizing its
-        negative.
-
-        Parameters
-        ----------
-        rss : RandomStateService instance
-            The RandomStateService instance that should be used to draw random
-            numbers from. It is used by the minimizer to generate random
-            fit parameter initial values.
-        tl : TimeLord instance | None
-            The optional TimeLord instance that should be used to time the
-            maximization of the LLH ratio function.
-
-        Returns
-        -------
-        fitparamset : FitParameterSet instance
-            The instance of FitParameterSet holding the global fit parameter
-            definitions used in the maximization process.
-        log_lambda_max : float
-            The value of the log-likelihood ratio function at its maximum.
-        fitparam_values : (N_fitparam,)-shaped 1D ndarray
-            The ndarray holding the global fit parameter values.
-            By definition, the first element is the value of the fit parameter
-            ns.
-        status : dict
-            The dictionary with status information about the maximization
-            process, i.e. from the minimizer.
-        """
-        (log_lambda_max, fitparam_values, status) = self._llhratio.maximize(
-            rss, self._fitparamset, tl=tl)
-        return (self._fitparamset, log_lambda_max, fitparam_values, status)
-
-    def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
+    def calculate_fluxmodel_scaling_factor(
+            self,
+            mean_ns,
+            fitparam_values):
         """Calculates the factor the source's fluxmodel has to be scaled
         in order to obtain the given mean number of signal events in the
         detector.
@@ -1382,30 +1752,33 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         mean_ns : float
             The mean number of signal events in the detector for which the
             scaling factor is calculated.
-        fitparam_values : (N_fitparams,)-shaped 1D ndarray
-            The ndarray holding the fit parameter values that should be used for
-            the flux calculation.
+        fitparam_values : instance of numpy ndarray
+            The (N_fitparam,)-shaped 1D ndarray holding the values of the global
+            fit parameters, that should be used for the flux calculation.
+            The order of the values must match the order the fit parameters were
+            defined in the parameter model mapper.
 
         Returns
         -------
         factor : float
-            The factor the given fluxmodel needs to be scaled in order to obtain
-            the given mean number of signal events in the detector.
+            The factor the source's fluxmodel needs to be scaled in order to
+            obtain the given mean number of signal events in the detector.
         """
-        fitparams_arr = self._src_fitparam_mapper.get_fitparams_array(
-            fitparam_values)
-
-        # We use the DatasetSignalWeights class instance of this analysis to
-        # calculate the detector signal yield for all datasets.
-        dataset_signal_weights = self._llhratio.dataset_signal_weights
+        src_params_recarray =\
+            self._pmm.create_src_params_recarray(
+                gflp_values=fitparam_values)
 
         # Calculate the detector signal yield, i.e. the mean number of signal
         # events in the detector, for the given reference flux model.
         mean_ns_ref = 0
-        detsigyields = dataset_signal_weights.detsigyield_arr[0]
-        for detsigyield in detsigyields:
+
+        detsigyields = self.detsigyield_service.arr[:, 0]
+        for (j, detsigyield) in enumerate(detsigyields):
+            src_recarray =\
+                self.src_detsigyield_weights_service.src_recarray_list_list[j][0]
             (Yj, Yj_grads) = detsigyield(
-                dataset_signal_weights._src_arr_list[0], fitparams_arr)
+                src_recarray=src_recarray,
+                src_params_recarray=src_params_recarray)
             mean_ns_ref += Yj[0]
 
         factor = mean_ns / mean_ns_ref
@@ -1413,71 +1786,78 @@ class TimeIntegratedMultiDatasetSingleSourceAnalysis(Analysis):
         return factor
 
 
-class TimeIntegratedMultiDatasetMultiSourceAnalysis(
-        TimeIntegratedMultiDatasetSingleSourceAnalysis):
-    """This is an analysis class that implements a time-integrated LLH ratio
-    analysis for multiple datasets assuming multiple sources.
+class MultiSourceMultiDatasetLLHRatioAnalysis(
+        LLHRatioAnalysis):
+    """This is an analysis class that implements a log-likelihood ratio analysis
+    for multiple datasets assuming a multiple sources.
 
-    To run this analysis the following procedure applies:
-
-        1. Add the datasets and their spatial and energy PDF ratio instances
-           via the :meth:`.add_dataset` method.
-        2. Construct the log-likelihood ratio function via the
-           :meth:`construct_llhratio` method.
-        3. Initialize a trial via the :meth:`initialize_trial` method.
-        4. Fit the global fit parameters to the trial data via the
-           :meth:`maximize_llhratio` method.
+    For more information how to construct and run the analysis see the
+    documentation of the :class:`~skyllh.core.analysis.LLHRatioAnalysis` class.
     """
     def __init__(
-            self, src_hypo_group_manager, src_fitparam_mapper, fitparam_ns,
-            test_statistic, bkg_gen_method=None, sig_generator_cls=None):
-        """Creates a new time-integrated point-like source analysis assuming
-        multiple sources.
+            self,
+            shg_mgr,
+            pmm,
+            test_statistic,
+            bkg_gen_method=None,
+            bkg_generator_cls=None,
+            sig_generator_cls=None,
+            **kwargs):
+        """Constructs a new instance of MultiDatasetLLHRatioAnalysis.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses, their flux model, and their detector signal
-            efficiency implementation method.
-        src_fitparam_mapper : instance of SingleSourceFitParameterMapper
-            The instance of SingleSourceFitParameterMapper defining the global
-            fit parameters and their mapping to the source fit parameters.
-        fitparam_ns : FitParameter instance
-            The FitParameter instance defining the fit parameter ns.
+            yield implementation method.
+        pmm : instance of ParameterModelMapper
+            The ParameterModelMapper instance managing the global set of
+            parameters and their relation to individual models, e.g. sources.
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
         bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial. This can be set
-            to None, if no background events have to get generated.
-        sig_generator_cls : SignalGeneratorBase class | None
-            The signal generator class used to create the signal generator
-            instance.
-            If set to None, the `SignalGenerator` class is used.
+            The instance of BackgroundGenerationMethod that should be used to
+            generate background events for pseudo data. This can be set to None,
+            if there is no need to generate background events.
+        bkg_generator_cls : class of BackgroundGeneratorBase | None
+            The background generator class used to create the background
+            generator instance.
+            If set to ``None``, the
+            :class:`skyllh.core.background_generator.BackgroundGenerator` class
+            is used.
+        sig_generator_cls : subclass of SignalGenerator| None
+            The signal generator class that should be used to create the signal
+            generator instance handling multiple datasets.
+            If set to None, the
+            :class:`~skyllh.core.signal_generator.MultiDatasetSignalGenerator`
+            class is used.
         """
         super().__init__(
-            src_hypo_group_manager=src_hypo_group_manager,
-            src_fitparam_mapper=src_fitparam_mapper,
-            fitparam_ns=fitparam_ns,
+            shg_mgr=shg_mgr,
+            pmm=pmm,
             test_statistic=test_statistic,
             bkg_gen_method=bkg_gen_method,
-            sig_generator_cls=sig_generator_cls)
+            bkg_generator_cls=bkg_generator_cls,
+            sig_generator_cls=sig_generator_cls,
+            **kwargs)
 
-    def construct_llhratio(self, minimizer, ppbar=None):
-        """Constructs the log-likelihood-ratio (LLH-ratio) function of the
-        analysis. This setups all the necessary analysis
-        objects like detector signal efficiencies and dataset signal weights,
-        constructs the log-likelihood ratio functions for each dataset and the
-        final composite llh ratio function.
+    def construct_llhratio(
+            self,
+            minimizer,
+            ppbar=None):
+        """Constructs the log-likelihood (LLH) ratio function of the analysis.
+        This setups all the necessary analysis objects like detector signal
+        yields and dataset signal weights, constructs the log-likelihood ratio
+        functions for each dataset and the final composite LLH ratio function.
 
         Parameters
         ----------
         minimizer : instance of Minimizer
             The instance of Minimizer that should be used to minimize the
             negative of the log-likelihood ratio function.
-        ppbar : ProgressBar instance | None
+        ppbar : instance of ProgressBar | None
             The instance of ProgressBar of the optional parent progress bar.
 
         Returns
@@ -1486,99 +1866,79 @@ class TimeIntegratedMultiDatasetMultiSourceAnalysis(
             The instance of MultiDatasetTCLLHRatio that implements the
             log-likelihood-ratio function of the analysis.
         """
-        # Create the detector signal yield instances for each dataset.
-        # Multi source analysis has to also support multiple source hypothesis
-        # groups.
-        # Initialize empty (N_source_hypo_groups, N_datasets)-shaped ndarray.
-        detsigyield_array = np.empty(
-            (self._src_hypo_group_manager.n_src_hypo_groups,
-             len(self.dataset_list)),
-            dtype=object
-        )
-
-        for (g, shg) in enumerate(self._src_hypo_group_manager._src_hypo_group_list):
-            fluxmodel = shg.fluxmodel
-            detsigyield_implmethod_list = shg.detsigyield_implmethod_list
-
-            if((len(detsigyield_implmethod_list) != 1) and
-               (len(detsigyield_implmethod_list) != self.n_datasets)):
-                raise ValueError(
-                    'The number of detector signal yield '
-                    'implementation methods is not 1 and does not match the number '
-                    'of used datasets in the analysis!')
-            pbar = ProgressBar(len(self.dataset_list), parent=ppbar).start()
-            for (j, (dataset, data)) in enumerate(zip(self.dataset_list,
-                                                      self.data_list)):
-                if(len(detsigyield_implmethod_list) == 1):
-                    # Only one detsigyield implementation method was defined, so we
-                    # use it for all datasets.
-                    detsigyield_implmethod = detsigyield_implmethod_list[0]
-                else:
-                    detsigyield_implmethod = detsigyield_implmethod_list[j]
-
-                detsigyield = detsigyield_implmethod.construct_detsigyield(
-                    dataset, data, fluxmodel, data.livetime, ppbar=pbar)
-                detsigyield_array[g, j] = detsigyield
-                pbar.increment()
-            pbar.finish()
-
-        # For multiple datasets we need a dataset signal weights instance in
-        # order to distribute ns over the different datasets.
-        dataset_signal_weights = MultiSourceDatasetSignalWeights(
-            self._src_hypo_group_manager, self._src_fitparam_mapper,
-            detsigyield_array)
-
         # Create the list of log-likelihood ratio functions, one for each
         # dataset.
-        llhratio_list = []
-        for j in range(self.n_datasets):
-            tdm = self._tdm_list[j]
-            pdfratio_list = self._pdfratio_list_list[j]
-            llhratio = MultiSourceZeroSigH0SingleDatasetTCLLHRatio(
-                minimizer,
-                self._src_hypo_group_manager,
-                self._src_fitparam_mapper,
-                tdm,
-                pdfratio_list,
-                detsigyield_array[:, j]
+        llhratio_list = [
+            ZeroSigH0SingleDatasetTCLLHRatio(
+                pmm=self._pmm,
+                minimizer=minimizer,
+                shg_mgr=self._shg_mgr,
+                tdm=tdm,
+                pdfratio=SourceWeightedPDFRatio(
+                    dataset_idx=dataset_idx,
+                    src_detsigyield_weights_service=self.src_detsigyield_weights_service,
+                    pdfratio=pdfratio)
             )
-            llhratio_list.append(llhratio)
+            for (dataset_idx, (tdm, pdfratio)) in enumerate(
+                zip(self._tdm_list, self._pdfratio_list))
+        ]
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
-            minimizer, dataset_signal_weights, llhratio_list)
+            pmm=self._pmm,
+            minimizer=minimizer,
+            src_detsigyield_weights_service=self.src_detsigyield_weights_service,
+            ds_sig_weight_factors_service=self.ds_sig_weight_factors_service,
+            llhratio_list=llhratio_list)
 
         return llhratio
 
-    def initialize_trial(self, events_list, n_events_list=None, tl=None):
-        """This method initializes the multi-dataset log-likelihood ratio
-        function with a new set of given trial data. This is a low-level method.
-        For convenient methods see the `unblind` and `do_trial` methods.
+    def calculate_fluxmodel_scaling_factors(
+            self,
+            mean_ns,
+            fitparam_values):
+        """Calculates the factors the source's fluxmodel has to be scaled
+        in order to obtain the given mean number of signal events in the
+        detector.
 
         Parameters
         ----------
-        events_list : list of DataFieldRecordArray instances
-            The list of DataFieldRecordArray instances holding the data events
-            to use for the log-likelihood function evaluation. The data arrays
-            for the datasets must be in the same order than the added datasets.
-        n_events_list : list of int | None
-            The list of the number of events of each data set. If set to None,
-            the number of events is taken from the size of the given events
-            arrays.
-        tl : TimeLord | None
-            The optional TimeLord instance that should be used for timing
-            measurements.
+        mean_ns : float
+            The mean number of signal events in the detector for which the
+            scaling factors will be calculated.
+        fitparam_values : instance of numpy ndarray
+            The (N_fitparam,)-shaped 1D ndarray holding the values of the global
+            fit parameters, which should be used for the flux calculation.
+            The order of the values must match the order the fit parameters were
+            defined in the parameter model mapper.
+
+        Returns
+        -------
+        factors : instance of numpy ndarray
+            The (N_sources,)-shaped numpy ndarray of float holding the factors
+            the fluxmodels of the sources need to be scaled in order to obtain
+            the given mean number of signal events in the detector.
         """
-        if(n_events_list is None):
-            n_events_list = [None] * len(events_list)
+        src_params_recarray =\
+            self._pmm.create_src_params_recarray(
+                gflp_values=fitparam_values)
 
-        for (idx, (tdm, events, n_events, evt_sel_method)) in enumerate(zip(
-                self._tdm_list, events_list, n_events_list,
-                self._event_selection_method_list)):
+        # Calculate the detector signal yield, i.e. the mean number of signal
+        # events in the detector, for the given reference flux model.
+        mean_ns_ref = np.zeros((self._shg_mgr.n_sources,), dtype=np.float64)
 
-            # Initialize the trial data manager with the given raw events.
-            self._tdm_list[idx].initialize_trial(
-                self._src_hypo_group_manager, events, n_events, evt_sel_method,
-                store_src_ev_idxs=True, tl=tl)
+        for (g, shg) in enumerate(self._shg_mgr.shg_list):
+            shg_src_mask = self._shg_mgr.get_src_mask_of_shg(shg_idx=g)
 
-        self._llhratio.initialize_for_new_trial(tl=tl)
+            detsigyields = self.detsigyield_service.arr[:, g]
+            for (j, detsigyield) in enumerate(detsigyields):
+                src_recarray =\
+                    self.src_detsigyield_weights_service.src_recarray_list_list[j][g]
+                (Yj, Yj_grads) = detsigyield(
+                    src_recarray=src_recarray,
+                    src_params_recarray=src_params_recarray)
+                mean_ns_ref[shg_src_mask] += Yj
+
+        factors = mean_ns / mean_ns_ref
+
+        return factors

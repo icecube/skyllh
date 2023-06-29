@@ -21,12 +21,12 @@ pip install skyllh
 
 The current development version can be installed using pip:
 ```bash
-pip install git+https://github.com/icecube/skyllh.git#egg=skyllh 
+pip install git+https://github.com/icecube/skyllh.git#egg=skyllh
 ```
 
 Optionally, the editable package version with a specified reference can be installed by:
 ```bash
-pip install -e git+https://github.com/icecube/skyllh.git@[ref]#egg=skyllh 
+pip install -e git+https://github.com/icecube/skyllh.git@[ref]#egg=skyllh
 ```
 where
 - `-e` is an editable flag
@@ -58,6 +58,15 @@ pre-commit install
 inside the cloned repository once. The pre-commit hook will then automatically run before any commit and will show `Passed`/`Failed` tests. In case of `Failed` test you can review automatic changes using `git diff`, add updated files using `git add -u`, and commit again.
 
 It will also show existing `flake8` errors, but treat them as warnings. Feel free to fix them!
+
+# Publications
+
+Several publications about the SkyLLH software are available:
+
+- IceCube Collaboration, T. Kontrimas, M. Wolf, et al. PoS ICRC2021 (2022) 1073
+  [DOI](http://doi.org/10.22323/1.395.1073)
+- IceCube Collaboration, M. Wolf, et al. PoS ICRC2019 (2020) 1035
+  [DOI](https://doi.org/10.22323/1.358.1035)
 
 # i3skyllh
 
