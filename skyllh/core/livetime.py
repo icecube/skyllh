@@ -11,7 +11,8 @@ from skyllh.core.py import (
 )
 
 
-class Livetime(object):
+class Livetime(
+        object):
     """The ``Livetime`` class defines an interface to query the up-time of the
     detector.
     """
@@ -38,7 +39,10 @@ class Livetime(object):
 
         return intgrated_livetime
 
-    def __init__(self, uptime_mjd_intervals_arr, **kwargs):
+    def __init__(
+            self,
+            uptime_mjd_intervals_arr,
+            **kwargs):
         """Creates a new Livetime object from a (N,2)-shaped ndarray holding
         the uptime intervals.
 
@@ -63,7 +67,9 @@ class Livetime(object):
 
         self.uptime_mjd_intervals_arr = uptime_mjd_intervals_arr
 
-    def assert_mjd_intervals_integrity(self, arr):
+    def assert_mjd_intervals_integrity(
+            self,
+            arr):
         """Checks if the given MJD interval array conforms with all its
         data requirements.
 
@@ -81,43 +87,38 @@ class Livetime(object):
         """
         if not isinstance(arr, np.ndarray):
             raise TypeError(
-                "The internal MJD interval array must be of type ndarray! "
-                "Its current type is "
-                f"{classname(arr)}!"
-            )
+                'The internal MJD interval array must be of type ndarray! '
+                'Its current type is '
+                f'{classname(arr)}!')
 
         if arr.dtype != np.float64:
             raise TypeError(
-                "The type of the internal MJD interval array is not float64!"
-            )
+                'The type of the internal MJD interval array is not float64!')
 
         # Check the shape of the array.
         if arr.ndim != 2:
             raise ValueError(
-                "The dimensionality of the internel MJD interval array must "
-                "be 2! Its current dimensionality is "
-                f"{arr.ndim}!"
-            )
+                'The dimensionality of the internel MJD interval array must '
+                'be 2! Its current dimensionality is '
+                f'{arr.ndim}!')
         if arr.shape[1] != 2:
             raise ValueError(
-                "The length of the second axis of the internal MJD interval "
-                "array must be 2! Its current length is "
-                f"{arr.shape[1]}!"
-            )
+                'The length of the second axis of the internal MJD interval '
+                'array must be 2! Its current length is '
+                f'{arr.shape[1]}!')
 
         # Check if the bin edges are monotonically non decreasing.
         diff = np.diff(arr.flat)
         if not np.all(diff >= 0):
-            info = ""
-            for i in range(len(diff) - 1):
+            info = ''
+            for i in range(len(diff)-1):
                 if diff[i] < 0:
-                    info += f"i={int(i/2)}: {arr[int(i/2)]}\n"
-                    info += f"i={int(i/2)+1}: {arr[int(i/2)+1]}\n"
+                    info += f'i={int(i/2)}: {arr[int(i/2)]}\n'
+                    info += f'i={int(i/2)+1}: {arr[int(i/2)+1]}\n'
             raise ValueError(
-                "The interval edges of the internal MJD interval array are not "
-                "monotonically non-decreasing!\n"
-                f"{info}"
-            )
+                'The interval edges of the internal MJD interval array are not '
+                'monotonically non-decreasing!\n'
+                f'{info}')
 
     @property
     def uptime_mjd_intervals_arr(self):
@@ -134,7 +135,8 @@ class Livetime(object):
 
     @property
     def n_uptime_mjd_intervals(self):
-        """The number of on-time intervals defined."""
+        """The number of on-time intervals defined.
+        """
         return self._uptime_mjd_intervals_arr.shape[0]
 
     @property
@@ -150,27 +152,26 @@ class Livetime(object):
         spanned by all the MJD uptime intervals.
         By definition this included possible detector down-time periods.
         """
-        return (
-            self._uptime_mjd_intervals_arr[0, 0],
-            self._uptime_mjd_intervals_arr[-1, 1],
-        )
+        return (self._uptime_mjd_intervals_arr[0, 0],
+                self._uptime_mjd_intervals_arr[-1, 1])
 
     @property
     def time_start(self):
-        """(read-only) The start time of the detector live-time."""
+        """(read-only) The start time of the detector live-time.
+        """
         return self._uptime_mjd_intervals_arr[0, 0]
 
     @property
     def time_stop(self):
-        """(read-only) The stop time of the detector live-time."""
+        """(read-only) The stop time of the detector live-time.
+        """
         return self._uptime_mjd_intervals_arr[-1, 1]
 
     def __str__(self):
-        """Pretty string representation of the Livetime class instance."""
-        s = (
-            f"{classname(self)}(time_window=("
-            f"{self.time_window[0]:.6f}, {self.time_window[1]:.6f}))"
-        )
+        """Pretty string representation of the Livetime class instance.
+        """
+        s = (f'{classname(self)}(time_window=('
+             f'{self.time_window[0]:.6f}, {self.time_window[1]:.6f}))')
         return s
 
     def _get_onoff_intervals(self):
@@ -186,8 +187,7 @@ class Livetime(object):
         """
         onoff_intervals = np.reshape(
             self._uptime_mjd_intervals_arr,
-            (self._uptime_mjd_intervals_arr.size,),
-        )
+            (self._uptime_mjd_intervals_arr.size,))
 
         return onoff_intervals
 
@@ -223,7 +223,10 @@ class Livetime(object):
 
         return idxs
 
-    def get_uptime_intervals_between(self, t_start, t_end):
+    def get_uptime_intervals_between(
+            self,
+            t_start,
+            t_end):
         """Creates a (N,2)-shaped ndarray holding the on-time detector intervals
         between the given time range from t_start to t_end.
 
@@ -244,8 +247,7 @@ class Livetime(object):
         onoff_intervals = self._get_onoff_intervals()
 
         (t_start_idx, t_end_idx) = self._get_onoff_interval_indices(
-            (t_start, t_end)
-        )
+            (t_start, t_end))
         if t_start_idx % 2 == 0:
             # t_start is during off-time. Use the next on-time lower edge as
             # first on-time edge.
@@ -255,28 +257,25 @@ class Livetime(object):
         if t_end_idx % 2 == 0:
             # t_end is during off-time. Use the previous on-time upper edge as
             # the last on-time edge.
-            t_end = onoff_intervals[t_end_idx - 1]
+            t_end = onoff_intervals[t_end_idx-1]
         else:
             t_end_idx += 1
 
         # The t_start_idx and t_end_idx variables hold even indices.
-        N_ontime_intervals = int((t_end_idx - t_start_idx) / 2)
+        N_ontime_intervals = int((t_end_idx - t_start_idx)/2)
 
         ontime_intervals_flat = np.empty(
-            (N_ontime_intervals * 2,), dtype=np.float64
-        )
+            (N_ontime_intervals*2,), dtype=np.float64)
         # Set the first and last on-time interval edges.
         ontime_intervals_flat[0] = t_start
         ontime_intervals_flat[-1] = t_end
         if N_ontime_intervals > 1:
             # Fill also the interval edges of the intermediate on-time bins.
-            ontime_intervals_flat[1:-1] = onoff_intervals[
-                t_start_idx + 1 : t_end_idx - 1
-            ]
+            ontime_intervals_flat[1:-1] = onoff_intervals[t_start_idx+1:t_end_idx-1]
 
         ontime_intervals = np.reshape(
-            ontime_intervals_flat, (N_ontime_intervals, 2)
-        )
+            ontime_intervals_flat,
+            (N_ontime_intervals, 2))
 
         return ontime_intervals
 
@@ -306,7 +305,7 @@ class Livetime(object):
         # Map the indices to the cum_ontime_bins array. Off-time indices will
         # be mapped to its prior on-time interval.
         #                               Odd indices.     Even indices.
-        idxs = np.where(odd_idxs_mask, (onoff_idxs - 1) / 2, onoff_idxs / 2 - 1)
+        idxs = np.where(odd_idxs_mask, (onoff_idxs-1)/2, onoff_idxs/2 - 1)
         # At this point, there could be indices of value -1 from MJD values
         # prior to the first on-time interval. So we just move all the indices
         # by one.
@@ -315,8 +314,7 @@ class Livetime(object):
         # Create a cumulative on-time array with a leading 0 element for MJDs
         # prior to the first on-time interval.
         ontime_bins = np.diff(self._uptime_mjd_intervals_arr).reshape(
-            (self.n_uptime_mjd_intervals,)
-        )
+            (self.n_uptime_mjd_intervals,))
         cum_ontime_bins = np.array([0], dtype=np.float64)
         cum_ontime_bins = np.append(cum_ontime_bins, np.cumsum(ontime_bins))
 
@@ -324,11 +322,10 @@ class Livetime(object):
         # and add the part of the interval bin up to the mjd value.
         livetimes = np.where(
             odd_idxs_mask,
-            cum_ontime_bins[idxs - 1]
+            cum_ontime_bins[idxs-1]
             + mjds
-            - self._get_onoff_intervals()[onoff_idxs - 1],
-            cum_ontime_bins[idxs],
-        )
+            - self._get_onoff_intervals()[onoff_idxs-1],
+            cum_ontime_bins[idxs])
 
         if not issequence(mjd):
             return np.asscalar(livetimes)
@@ -361,7 +358,12 @@ class Livetime(object):
 
         return is_on
 
-    def draw_ontimes(self, rss, size, t_min=None, t_max=None):
+    def draw_ontimes(
+            self,
+            rss,
+            size,
+            t_min=None,
+            t_max=None):
         """Draws random MJD times based on the detector on-time intervals.
 
         Parameters
@@ -392,22 +394,19 @@ class Livetime(object):
                 t_max = self.time_stop
 
             uptime_intervals_arr = self.get_uptime_intervals_between(
-                t_min, t_max
-            )
+                t_min, t_max)
 
         onoff_intervals = np.reshape(
-            uptime_intervals_arr, (uptime_intervals_arr.size,)
-        )
+            uptime_intervals_arr,
+            (uptime_intervals_arr.size,))
 
         # Create bin array with only on-time bins. We have to mask out the
         # off-time bins.
         ontime_bins = np.diff(onoff_intervals)
         mask = np.invert(
             np.array(
-                np.linspace(0, ontime_bins.size - 1, ontime_bins.size) % 2,
-                dtype=np.bool_,
-            )
-        )
+                np.linspace(0, ontime_bins.size-1, ontime_bins.size) % 2,
+                dtype=np.bool_))
         ontime_bins = ontime_bins[mask]
 
         # Create the cumulative array of the on-time bins.
@@ -424,10 +423,10 @@ class Livetime(object):
         x = rss.random.uniform(0, 1, size)
         # Get the sum L of all the on-time intervals.
         L = cum_ontime_bins[-1]
-        w = x * L
+        w = x*L
         idxs = np.digitize(w, cum_ontime_bins)
         lower = uptime_intervals_arr[:, 0]
-        y = w - cum_ontime_bins[idxs - 1]
-        ontimes = lower[idxs - 1] + y
+        y = w - cum_ontime_bins[idxs-1]
+        ontimes = lower[idxs-1] + y
 
         return ontimes

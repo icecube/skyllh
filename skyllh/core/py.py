@@ -4,19 +4,17 @@ import abc
 import copy
 import functools
 import inspect
-import sys
-from collections import (
-    OrderedDict,
-)
-
 import numpy as np
+import sys
 
-from skyllh.core.display import (
-    INDENTATION_WIDTH,
-)
+from collections import OrderedDict
+
+from skyllh.core.display import INDENTATION_WIDTH
 
 
-class PyQualifier(object, metaclass=abc.ABCMeta):
+class PyQualifier(
+        object,
+        metaclass=abc.ABCMeta):
     """This is the abstract base class for any Python qualifier class.
     An object can get qualified by calling a PyQualifier instance with that
     object. The PyQualifier class will be added to the ``__pyqualifiers__``
@@ -42,8 +40,8 @@ class PyQualifier(object, metaclass=abc.ABCMeta):
             The given object, but modified to be declared for this Python
             qualifier.
         """
-        if not hasattr(obj, "__pyqualifiers__"):
-            setattr(obj, "__pyqualifiers__", ())
+        if not hasattr(obj, '__pyqualifiers__'):
+            setattr(obj, '__pyqualifiers__', ())
 
         obj.__pyqualifiers__ += (self.__class__,)
 
@@ -64,7 +62,7 @@ class PyQualifier(object, metaclass=abc.ABCMeta):
             The check result. `True` if the object is declared for this Python
             qualifier, and `False` otherwise.
         """
-        if not hasattr(obj, "__pyqualifiers__"):
+        if not hasattr(obj, '__pyqualifiers__'):
             return False
 
         if self.__class__ in obj.__pyqualifiers__:
@@ -73,9 +71,10 @@ class PyQualifier(object, metaclass=abc.ABCMeta):
         return False
 
 
-class ConstPyQualifier(PyQualifier):
-    """This class defines a PyQualifier for constant Python objects."""
-
+class ConstPyQualifier(
+        PyQualifier):
+    """This class defines a PyQualifier for constant Python objects.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -101,44 +100,45 @@ def get_class_of_func(f):
     if isinstance(f, functools.partial):
         return get_class_of_func(f.func)
 
-    if inspect.ismethod(f) or (
-        (inspect.isbuiltin(f))
-        and (getattr(f, "__self__", None) is not None)
-        and (getattr(f.__self__, "__class__", None))
-    ):
+    if inspect.ismethod(f) or\
+        ((inspect.isbuiltin(f)) and
+         (getattr(f, '__self__', None) is not None) and
+         (getattr(f.__self__, '__class__', None))):
         for cls in inspect.getmro(f.__self__.__class__):
-            if hasattr(cls, "__dict__") and (f.__name__ in cls.__dict__):
+            if hasattr(cls, '__dict__') and (f.__name__ in cls.__dict__):
                 return cls
         # Fall back to normal function evaluation.
-        f = getattr(f, "__func__", f)
+        f = getattr(f, '__func__', f)
 
     if inspect.isfunction(f):
         cls = getattr(
             inspect.getmodule(f),
-            f.__qualname__.split(".<locals>", 1)[0].rsplit(".", 1)[0],
-            None,
-        )
+            f.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)[0],
+            None)
         if isinstance(cls, type):
             return cls
 
     # Handle special descriptor objects.
-    cls = getattr(f, "__objclass__", None)
+    cls = getattr(f, '__objclass__', None)
     return cls
 
 
 def typename(t):
-    """Returns the name of the given type ``t``."""
+    """Returns the name of the given type ``t``.
+    """
     return t.__name__
 
 
 def classname(obj):
-    """Returns the name of the class of the class instance ``obj``."""
+    """Returns the name of the class of the class instance ``obj``.
+    """
     return typename(type(obj))
 
 
 def module_classname(obj):
-    """Returns the module and class name of the given instance ``obj``."""
-    return f"{obj.__module__}.{classname(obj)}"
+    """Returns the module and class name of the given instance ``obj``.
+    """
+    return f'{obj.__module__}.{classname(obj)}'
 
 
 def module_class_method_name(obj, meth_name):
@@ -151,7 +151,7 @@ def module_class_method_name(obj, meth_name):
     meth_name : str
         The name of the method.
     """
-    return f"{module_classname(obj)}.{meth_name}"
+    return f'{module_classname(obj)}.{meth_name}'
 
 
 def get_byte_size_prefix(size):
@@ -171,15 +171,10 @@ def get_byte_size_prefix(size):
         The biggest byte size prefix.
     """
     prefix_factor_list = [
-        ("", 1),
-        ("K", 1024),
-        ("M", 1024**2),
-        ("G", 1024**3),
-        ("T", 1024**4),
-    ]
+        ('', 1), ('K', 1024), ('M', 1024**2), ('G', 1024**3), ('T', 1024**4)]
 
     prefix_idx = 0
-    for prefix, factor in prefix_factor_list[1:]:
+    for (prefix, factor) in prefix_factor_list[1:]:
         if size / factor < 1:
             break
         prefix_idx += 1
@@ -355,7 +350,7 @@ def func_has_n_args(func, n):
     check : bool
         True if the given function has `n` arguments. False otherwise.
     """
-    check = len(inspect.signature(func).parameters) == n
+    check = (len(inspect.signature(func).parameters) == n)
     return check
 
 
@@ -409,7 +404,6 @@ def float_cast(v, errmsg, allow_None=False):
         The float / ``None`` value casted from ``v``. If a sequence of objects
         was provided, a list of casted values is returned.
     """
-
     # Define cast function for a single object.
     def _obj_float_cast(v, errmsg, allow_None):
         if allow_None and v is None:
@@ -493,7 +487,8 @@ def get_smallest_numpy_int_type(values):
         if vmin >= ii.min and vmax <= ii.max:
             return inttype
 
-    raise ValueError(f"No integer type spans [{vmin}, {vmax}]!")
+    raise ValueError(
+        f'No integer type spans [{vmin}, {vmax}]!')
 
 
 def get_number_of_float_decimals(value):
@@ -517,13 +512,14 @@ def get_number_of_float_decimals(value):
         If a nan value was provided.
     """
     if np.isnan(value):
-        raise ValueError("The provided value is nan!")
+        raise ValueError(
+            'The provided value is nan!')
 
-    val_str = "{:.16f}".format(value)
-    (val_num_str, val_decs_str) = val_str.split(".", 1)
-    for idx in range(len(val_decs_str) - 1, -1, -1):
+    val_str = '{:.16f}'.format(value)
+    (val_num_str, val_decs_str) = val_str.split('.', 1)
+    for idx in range(len(val_decs_str)-1, -1, -1):
         if int(val_decs_str[idx]) != 0:
-            return idx + 1
+            return idx+1
 
     return 0
 
@@ -546,7 +542,8 @@ def make_dict_hash(d):
         d = {}
 
     if not isinstance(d, dict):
-        raise TypeError("The d argument must be of type dict!")
+        raise TypeError(
+            'The d argument must be of type dict!')
 
     # A note on the ordering of Python dictionary items: The items are ordered
     # internally according to the hash value of their keys. Hence, if we don't
@@ -556,14 +553,14 @@ def make_dict_hash(d):
     return hash(tuple(d.items()))
 
 
-class ObjectCollection(object):
+class ObjectCollection(
+        object):
     """This class provides a collection of objects of a specific type. Objects
     can be added to the collection via the ``add`` method or can be removed
     from the collection via the ``pop`` method. The objects of another object
     collection can be added to this object collection via the ``add`` method as
     well.
     """
-
     def __init__(self, objs=None, obj_type=None):
         """Constructor of the ObjectCollection class. Must be called by the
         derived class.
@@ -588,8 +585,7 @@ class ObjectCollection(object):
 
         if not issubclass(obj_type, object):
             raise TypeError(
-                "The obj_type argument must be a subclass of object!"
-            )
+                'The obj_type argument must be a subclass of object!')
 
         self._obj_type = obj_type
         self._objects = []
@@ -603,7 +599,8 @@ class ObjectCollection(object):
 
     @property
     def obj_type(self):
-        """(read-only) The object type."""
+        """(read-only) The object type.
+        """
         return self._obj_type
 
     @property
@@ -615,7 +612,8 @@ class ObjectCollection(object):
         return self._objects
 
     def __len__(self):
-        """Returns the number of objects being in this object collection."""
+        """Returns the number of objects being in this object collection.
+        """
         return len(self._objects)
 
     def __getitem__(self, key):
@@ -644,10 +642,11 @@ class ObjectCollection(object):
         return oc
 
     def __str__(self):
-        """Pretty string representation of this object collection."""
-        obj_str = ",\n".join(
-            [" " * INDENTATION_WIDTH + str(obj) for obj in self._objects]
-        )
+        """Pretty string representation of this object collection.
+        """
+        obj_str = ",\n".join([
+            ' '*INDENTATION_WIDTH + str(obj) for obj in self._objects
+        ])
         return classname(self) + ": {\n" + obj_str + "\n}"
 
     def copy(self):
@@ -682,23 +681,20 @@ class ObjectCollection(object):
         if isinstance(obj, ObjectCollection):
             if not issubclass(obj.obj_type, self.obj_type):
                 raise TypeError(
-                    "Cannot add objects from ObjectCollection for objects of "
+                    'Cannot add objects from ObjectCollection for objects of '
                     f'type "{typename(obj.obj_type)}" to this ObjectCollection '
-                    f'for objects of type "{typename(self._obj_type)}"!'
-                )
+                    f'for objects of type "{typename(self._obj_type)}"!')
             self._objects.extend(obj.objects)
             return self
 
         if not isinstance(obj, self._obj_type):
             raise TypeError(
                 f'The object of type "{classname(obj)}" cannot be added to the '
-                "object collection for objects of type "
-                f'"{typename(self._obj_type)}"!'
-            )
+                'object collection for objects of type '
+                f'"{typename(self._obj_type)}"!')
 
         self._objects.append(obj)
         return self
-
     __iadd__ = add
 
     def index(self, obj):
@@ -743,7 +739,6 @@ class NamedObjectCollection(ObjectCollection):
     via the object name is efficient because the index of each object is
     tracked w.r.t. its name.
     """
-
     def __init__(self, objs=None, obj_type=None, **kwargs):
         """Creates a new NamedObjectCollection instance. Must be called by the
         derived class.
@@ -761,13 +756,15 @@ class NamedObjectCollection(ObjectCollection):
 
         # The ObjectCollection class will call the add method to add individual
         # objects. This will update the _obj_name_to_idx attribute.
-        super().__init__(objs=objs, obj_type=obj_type, **kwargs)
+        super().__init__(
+            objs=objs,
+            obj_type=obj_type,
+            **kwargs)
 
-        if not hasattr(self.obj_type, "name"):
+        if not hasattr(self.obj_type, 'name'):
             raise TypeError(
                 f'The object type "{typename(self.obj_type)}" has no '
-                'attribute named "name"!'
-            )
+                'attribute named "name"!')
 
     @property
     def name_list(self):
@@ -797,12 +794,10 @@ class NamedObjectCollection(ObjectCollection):
         if start is None:
             start = 0
 
-        return OrderedDict(
-            [
-                (o.name, start + idx)
-                for (idx, o) in enumerate(self._objects[start:end])
-            ]
-        )
+        return OrderedDict([
+            (o.name, start+idx)
+            for (idx, o) in enumerate(self._objects[start:end])
+        ])
 
     def __contains__(self, name):
         """Returns ``True`` if an object of the given name exists in this
@@ -866,10 +861,10 @@ class NamedObjectCollection(ObjectCollection):
 
         super().add(obj)
 
-        self._obj_name_to_idx.update(self._create_obj_name_to_idx_dict(n_objs))
+        self._obj_name_to_idx.update(
+            self._create_obj_name_to_idx_dict(n_objs))
 
         return self
-
     __iadd__ = add
 
     def get_index_by_name(self, name):

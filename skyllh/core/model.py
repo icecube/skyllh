@@ -12,12 +12,15 @@ from skyllh.core.py import (
 )
 
 
-class Model(object):
+class Model(
+        object):
     """This class provides a base class for all model classes used in SkyLLH.
     Models could be for instance source models or background models.
     """
-
-    def __init__(self, name=None, **kwargs):
+    def __init__(
+            self,
+            name=None,
+            **kwargs):
         """Creates a new Model instance.
 
         Parameters
@@ -26,7 +29,8 @@ class Model(object):
             The name of the model. If set to `None`, the id of the object is
             taken as name.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         if name is None:
             name = self.id
@@ -35,12 +39,15 @@ class Model(object):
 
     @property
     def name(self):
-        """The name of the model."""
+        """The name of the model.
+        """
         return self._name
 
     @name.setter
     def name(self, name):
-        name = str_cast(name, "The name property must be castable to type str!")
+        name = str_cast(
+            name,
+            'The name property must be castable to type str!')
         self._name = name
 
     @property
@@ -52,13 +59,16 @@ class Model(object):
         return id(self)
 
 
-class ModelCollection(NamedObjectCollection):
+class ModelCollection(
+        NamedObjectCollection):
     """This class describes a collection of Model instances. It can be
     used to group several models into a single object.
     """
-
     @staticmethod
-    def cast(obj, errmsg=None, **kwargs):
+    def cast(
+            obj,
+            errmsg=None,
+            **kwargs):
         """Casts the given object to a ModelCollection object.
         If the cast fails, a TypeError with the given error message is raised.
 
@@ -89,25 +99,30 @@ class ModelCollection(NamedObjectCollection):
             ModelCollection instance, it will be returned.
         """
         if obj is None:
-            return ModelCollection(models=None, model_type=Model, **kwargs)
+            return ModelCollection(
+                models=None, model_type=Model, **kwargs)
 
         if isinstance(obj, Model):
-            return ModelCollection(models=[obj], model_type=Model, **kwargs)
+            return ModelCollection(
+                models=[obj], model_type=Model, **kwargs)
 
         if isinstance(obj, ModelCollection):
             return obj
 
         if issequenceof(obj, Model):
-            return ModelCollection(models=obj, model_type=Model, **kwargs)
+            return ModelCollection(
+                models=obj, model_type=Model, **kwargs)
 
         if errmsg is None:
-            errmsg = (
-                f'Cast of object "{str(obj)}" of type '
-                f'"{typename(type(obj))}" to ModelCollection failed!'
-            )
+            errmsg = (f'Cast of object "{str(obj)}" of type '
+                      f'"{typename(type(obj))}" to ModelCollection failed!')
         raise TypeError(errmsg)
 
-    def __init__(self, models=None, model_type=None, **kwargs):
+    def __init__(
+            self,
+            models=None,
+            model_type=None,
+            **kwargs):
         """Creates a new Model collection. The type of the model instances this
         collection holds can be restricted, by setting the model_type argument.
 
@@ -123,19 +138,23 @@ class ModelCollection(NamedObjectCollection):
             model_type = Model
         if not issubclass(model_type, Model):
             raise TypeError(
-                "The model_type argument must be a subclass of Model!"
-            )
+                'The model_type argument must be a subclass of Model!')
 
-        super().__init__(objs=models, obj_type=model_type, **kwargs)
+        super().__init__(
+            objs=models,
+            obj_type=model_type,
+            **kwargs)
 
     @property
     def model_type(self):
-        """(read-only) The type of the model."""
+        """(read-only) The type of the model.
+        """
         return self.obj_type
 
     @property
     def models(self):
-        """(read-only) The list of models of type `model_type`."""
+        """(read-only) The list of models of type `model_type`.
+        """
         return self.objects
 
 
@@ -143,7 +162,6 @@ class DetectorModel(Model):
     """This class provides a base class for a detector model. It can be used
     in combination with the ParameterModelMapper class.
     """
-
     def __init__(self, name, **kwargs):
         """Creates a new DetectorModel instance.
 
@@ -152,4 +170,6 @@ class DetectorModel(Model):
         name : str
             The name of the detector model.
         """
-        super().__init__(name=name, **kwargs)
+        super().__init__(
+            name=name,
+            **kwargs)

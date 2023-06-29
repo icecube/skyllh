@@ -11,14 +11,16 @@ IS_INTERACTIVE_SESSION = False
 
 
 def enable_interactive_session():
-    """Enables interactive session mode."""
+    """Enables interactive session mode.
+    """
     global IS_INTERACTIVE_SESSION
 
     IS_INTERACTIVE_SESSION = True
 
 
 def disable_interactive_session():
-    """Disables interactive session mode."""
+    """Disables interactive session mode.
+    """
     global IS_INTERACTIVE_SESSION
 
     IS_INTERACTIVE_SESSION = False
@@ -43,4 +45,4 @@ def is_python_interpreter_in_interactive_mode():
     check : bool
         True if the Python interpreter is in interactive mode, False otherwise.
     """
-    return bool(getattr(sys, "ps1", sys.flags.interactive))
+    return bool(getattr(sys, 'ps1', sys.flags.interactive))

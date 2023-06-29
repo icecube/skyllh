@@ -4,30 +4,33 @@ import logging
 import os.path
 import sys
 
-from skyllh.core.config import (
-    CFG,
-)
+from skyllh.core.config import CFG
+
 
 # Initialize the root logger.
 logging.root.setLevel(logging.NOTSET)
 
 
 def enable_tracing():
-    """Enables the tracing log debug messages of SkyLLH."""
-    CFG["debugging"]["enable_tracing"] = True
+    """Enables the tracing log debug messages of SkyLLH.
+    """
+    CFG['debugging']['enable_tracing'] = True
 
 
 def disable_tracing():
-    """Disables the tracing log debug messages of SkyLLH."""
-    CFG["debugging"]["enable_tracing"] = False
+    """Disables the tracing log debug messages of SkyLLH.
+    """
+    CFG['debugging']['enable_tracing'] = False
 
 
 def is_tracing_enabled():
-    """Returns True, if tracing is enabled, False otherwise."""
-    return CFG["debugging"]["enable_tracing"]
+    """Returns True, if tracing is enabled, False otherwise.
+    """
+    return CFG['debugging']['enable_tracing']
 
 
-def get_logger(name):
+def get_logger(
+        name):
     """Retrieves the logger with the given name from the Python logging system.
 
     Parameters
@@ -45,7 +48,9 @@ def get_logger(name):
     return logger
 
 
-def setup_logger(name, log_level):
+def setup_logger(
+        name,
+        log_level):
     """Initializes logger with a given name and a log level.
 
     Parameters
@@ -60,7 +65,11 @@ def setup_logger(name, log_level):
     logger.setLevel(log_level)
 
 
-def setup_console_handler(name, log_level=None, log_format=None, stream=None):
+def setup_console_handler(
+        name,
+        log_level=None,
+        log_format=None,
+        stream=None):
     """Initializes `StreamHandler` for a logger with a given name and sets its
     handling level.
 
@@ -84,7 +93,7 @@ def setup_console_handler(name, log_level=None, log_format=None, stream=None):
         log_level = logger.level
 
     if log_format is None:
-        log_format = CFG["debugging"]["log_format"]
+        log_format = CFG['debugging']['log_format']
 
     if stream is None:
         stream = sys.stderr
@@ -97,8 +106,12 @@ def setup_console_handler(name, log_level=None, log_format=None, stream=None):
 
 
 def setup_file_handler(
-    name, filename, log_level=None, path=None, log_format=None, mode="a"
-):
+        name,
+        filename,
+        log_level=None,
+        path=None,
+        log_format=None,
+        mode='a'):
     """Initializes `FileHandler` for a logger with a given name and sets its
     handling level.
 
@@ -127,10 +140,10 @@ def setup_file_handler(
         log_level = logger.level
 
     if path is None:
-        path = CFG["project"]["working_directory"]
+        path = CFG['project']['working_directory']
 
     if log_format is None:
-        log_format = CFG["debugging"]["log_format"]
+        log_format = CFG['debugging']['log_format']
 
     pathfilename = os.path.join(path, filename)
 

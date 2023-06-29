@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from astropy import units
 import numpy as np
+
 import scipy.interpolate
-from astropy import (
-    units,
-)
 
 from skyllh.analyses.i3.publicdata_ps.aeff import (
     load_effective_area_array,
@@ -29,13 +28,13 @@ from skyllh.core.py import (
     issequence,
 )
 from skyllh.i3.detsigyield import (
-    SingleParamFluxPointLikeSourceI3DetSigYield,
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
+    SingleParamFluxPointLikeSourceI3DetSigYield,
 )
 
 
 class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
-    SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
+        SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
 ):
     """This detector signal yield builder class constructs a
     detector signal yield instance for a variable flux model of a single
@@ -54,12 +53,12 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
     """
 
     def __init__(
-        self,
-        param_grid,
-        spline_order_sinDec=2,
-        spline_order_param=2,
-        ncpu=None,
-        **kwargs,
+            self,
+            param_grid,
+            spline_order_sinDec=2,
+            spline_order_param=2,
+            ncpu=None,
+            **kwargs,
     ):
         """Creates a new IceCube detector signal yield builder instance for
         a flux model with a single parameter.
@@ -89,28 +88,34 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             spline_order_sinDec=spline_order_sinDec,
             spline_order_param=spline_order_param,
             ncpu=ncpu,
-            **kwargs,
-        )
+            **kwargs)
 
-    def assert_types_of_construct_detsigyield_arguments(self, shgs, **kwargs):
+    def assert_types_of_construct_detsigyield_arguments(
+            self,
+            shgs,
+            **kwargs):
         """Checks the correct types of the arguments for the
         ``construct_detsigyield`` method.
         """
         super().assert_types_of_construct_detsigyield_arguments(
-            shgs=shgs, **kwargs
-        )
+            shgs=shgs,
+            **kwargs)
 
         if not issequence(shgs):
             shgs = [shgs]
         for shg in shgs:
             if not isinstance(shg.fluxmodel, FactorizedFluxModel):
                 raise TypeError(
-                    "The fluxmodel of the source hypothesis group must be an "
-                    "instance of FactorizedFluxModel! "
-                    f"Its current type is {classname(shg.fluxmodel)}!"
-                )
+                    'The fluxmodel of the source hypothesis group must be an '
+                    'instance of FactorizedFluxModel! '
+                    f'Its current type is {classname(shg.fluxmodel)}!')
 
-    def construct_detsigyield(self, dataset, data, shg, ppbar=None):
+    def construct_detsigyield(
+            self,
+            dataset,
+            data,
+            shg,
+            ppbar=None):
         """Constructs a detector signal yield 2-dimensional log spline
         function for the given flux model with varying parameter values.
 
@@ -150,29 +155,26 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        to_internal_flux_unit_factor = (
-            shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
-        )
+        to_internal_flux_unit_factor = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
 
         # Load the effective area data from the public dataset.
         aeff_fnames = dataset.get_abs_pathfilename_list(
-            dataset.get_aux_data_definition("eff_area_datafile")
-        )
+            dataset.get_aux_data_definition('eff_area_datafile'))
         (
             aeff_arr,
             sin_true_dec_binedges_lower,
             sin_true_dec_binedges_upper,
             log_true_e_binedges_lower,
-            log_true_e_binedges_upper,
+            log_true_e_binedges_upper
         ) = load_effective_area_array(aeff_fnames)
 
         # Calculate the detector signal yield in sin_dec vs gamma.
         def _create_hist(
-            energy_bin_edges_lower,
-            energy_bin_edges_upper,
-            aeff,
-            fluxmodel,
-            to_internal_flux_unit_factor,
+                energy_bin_edges_lower,
+                energy_bin_edges_upper,
+                aeff,
+                fluxmodel,
+                to_internal_flux_unit_factor,
         ):
             """Creates a histogram of the detector signal yield for the given
             sin(dec) binning.
@@ -194,12 +196,12 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 the given flux model.
             """
             h_phi = fluxmodel.energy_profile.get_integral(
-                E1=energy_bin_edges_lower, E2=energy_bin_edges_upper
-            )
+                E1=energy_bin_edges_lower,
+                E2=energy_bin_edges_upper)
             h_phi *= to_internal_flux_unit_factor
 
             # Sum over the enegry bins for each sin_dec row.
-            h = np.sum(aeff * h_phi, axis=1)
+            h = np.sum(aeff*h_phi, axis=1)
 
             return h
 
@@ -222,35 +224,30 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                     shg.fluxmodel.copy({param_grid.name: param_val}),
                     to_internal_flux_unit_factor,
                 ),
-                {},
+                {}
             )
             for param_val in param_grid.grid
         ]
         h = np.vstack(
             multiproc.parallelize(
-                _create_hist, args_list, self.ncpu, ppbar=ppbar
-            )
-        ).T
-        h *= livetime_days * to_internal_time_unit_factor
+                _create_hist, args_list, self.ncpu, ppbar=ppbar)).T
+        h *= livetime_days*to_internal_time_unit_factor
 
         # Create a 2d spline in log of the detector signal yield.
-        sin_dec_bincenters = 0.5 * (
-            sin_true_dec_binedges_lower + sin_true_dec_binedges_upper
-        )
+        sin_dec_bincenters = 0.5*(
+            sin_true_dec_binedges_lower + sin_true_dec_binedges_upper)
         log_spl_sinDec_param = scipy.interpolate.RectBivariateSpline(
             sin_dec_bincenters,
             param_grid.grid,
             np.log(h),
             kx=self.spline_order_sinDec,
             ky=self.spline_order_param,
-            s=0,
-        )
+            s=0)
 
         # Construct the detector signal yield instance with the created spline.
         sin_dec_binedges = np.concatenate(
-            (sin_true_dec_binedges_lower, [sin_true_dec_binedges_upper[-1]])
-        )
-        sin_dec_binning = BinningDefinition("sin_dec", sin_dec_binedges)
+            (sin_true_dec_binedges_lower, [sin_true_dec_binedges_upper[-1]]))
+        sin_dec_binning = BinningDefinition('sin_dec', sin_dec_binedges)
 
         detsigyield = SingleParamFluxPointLikeSourceI3DetSigYield(
             param_name=param_grid.name,
@@ -258,7 +255,6 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             fluxmodel=shg.fluxmodel,
             livetime=data.livetime,
             sin_dec_binning=sin_dec_binning,
-            log_spl_sinDec_param=log_spl_sinDec_param,
-        )
+            log_spl_sinDec_param=log_spl_sinDec_param)
 
         return detsigyield

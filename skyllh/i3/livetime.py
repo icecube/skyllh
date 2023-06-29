@@ -13,7 +13,8 @@ from skyllh.i3.dataset import (
 )
 
 
-class I3Livetime(Livetime):
+class I3Livetime(
+        Livetime):
     """The I3Livetime class provides the functionality to load a Livetime object
     from a good-run-list data file.
     """
@@ -39,19 +40,19 @@ class I3Livetime(Livetime):
         livetime : instance of I3Livetime
             The created instance of I3Livetime for the provided GRL data.
         """
-        uptime_mjd_intervals_arr = np.hstack(
-            (
-                grl_data["start"].reshape((len(grl_data), 1)),
-                grl_data["stop"].reshape((len(grl_data), 1)),
-            )
-        )
+        uptime_mjd_intervals_arr = np.hstack((
+            grl_data['start'].reshape((len(grl_data), 1)),
+            grl_data['stop'].reshape((len(grl_data), 1))
+        ))
 
-        livetime = cls(uptime_mjd_intervals_arr=uptime_mjd_intervals_arr)
+        livetime = cls(
+            uptime_mjd_intervals_arr=uptime_mjd_intervals_arr)
 
         return livetime
 
     @staticmethod
-    def from_grl_files(pathfilenames):
+    def from_grl_files(
+            pathfilenames):
         """Loads an I3Livetime instance from the given good-run-list (GRL) data
         file. The data file needs to contain the following data fields:
 
@@ -72,14 +73,13 @@ class I3Livetime(Livetime):
         """
         grl_data = create_FileLoader(pathfilenames).load_data()
 
-        uptime_mjd_intervals_arr = np.hstack(
-            (
-                grl_data["start"].reshape((len(grl_data), 1)),
-                grl_data["stop"].reshape((len(grl_data), 1)),
-            )
-        )
+        uptime_mjd_intervals_arr = np.hstack((
+            grl_data['start'].reshape((len(grl_data), 1)),
+            grl_data['stop'].reshape((len(grl_data), 1))
+        ))
 
-        livetime = I3Livetime(uptime_mjd_intervals_arr=uptime_mjd_intervals_arr)
+        livetime = I3Livetime(
+            uptime_mjd_intervals_arr=uptime_mjd_intervals_arr)
 
         return livetime
 
@@ -101,18 +101,23 @@ class I3Livetime(Livetime):
             provided dataset.
         """
         if not isinstance(ds, I3Dataset):
-            raise TypeError("The ds argument must be an instance of I3Dataset!")
+            raise TypeError(
+                'The ds argument must be an instance of I3Dataset!')
         if len(ds.grl_pathfilename_list) == 0:
             raise ValueError(
-                "No GRL files have been defined for the given dataset!"
-            )
+                'No GRL files have been defined for the given dataset!')
 
         livetime = I3Livetime.from_grl_files(
-            pathfilenames=ds.grl_pathfilename_list
-        )
+            pathfilenames=ds.grl_pathfilename_list)
 
         return livetime
 
-    def __init__(self, *args, **kwargs):
-        """Creates a new instance of I3Livetime."""
-        super().__init__(*args, **kwargs)
+    def __init__(
+            self,
+            *args,
+            **kwargs):
+        """Creates a new instance of I3Livetime.
+        """
+        super().__init__(
+            *args,
+            **kwargs)

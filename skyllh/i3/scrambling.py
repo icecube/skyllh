@@ -17,7 +17,6 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
     perform time scrambling of the data,
     by drawing a MJD time from a given time generator.
     """
-
     def __init__(self, timegen):
         """Initializes a new I3 time scrambling instance.
 
@@ -26,9 +25,7 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
         timegen : TimeGenerator
             The time generator that should be used to generate random MJD times.
         """
-        super(I3TimeScramblingMethod, self).__init__(
-            timegen, hor_to_equ_transform
-        )
+        super(I3TimeScramblingMethod, self).__init__(timegen, hor_to_equ_transform)
 
     # We override the scramble method because for IceCube we only need to change
     # the ``ra`` field.
@@ -53,8 +50,8 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
         """
         mjds = self._timegen.generate_times(rss, len(data))
 
-        data["time"] = mjds
-        data["ra"] = azi_to_ra_transform(data["azi"], mjds)
+        data['time'] = mjds
+        data['ra'] = azi_to_ra_transform(data['azi'], mjds)
 
         return data
 
@@ -64,7 +61,6 @@ class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
     scrambling method to perform data coordinate scrambling based on a generated
     time, which follows seasonal variations within the experimental data.
     """
-
     def __init__(self, data, **kwargs):
         """Initializes a new seasonal time scrambling instance.
 
@@ -79,11 +75,10 @@ class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
         # The run weights are the number of events in each run relative to all
         # the events to account for possible seasonal variations.
         self.run_weights = np.zeros((len(data.grl),), dtype=np.float64)
-        n_events = len(data.exp["time"])
-        for i, (start, stop) in enumerate(
-            zip(data.grl["start"], data.grl["stop"])
-        ):
-            mask = (data.exp["time"] >= start) & (data.exp["time"] < stop)
+        n_events = len(data.exp['time'])
+        for (i, (start, stop)) in enumerate(
+                zip(data.grl['start'], data.grl['stop'])):
+            mask = (data.exp['time'] >= start) & (data.exp['time'] < stop)
             self.run_weights[i] = len(data.exp[mask]) / n_events
         self.run_weights /= np.sum(self.run_weights)
 
@@ -110,16 +105,19 @@ class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
         """
         # Get run indices based on their seasonal weights.
         run_idxs = rss.random.choice(
-            self.grl["start"].size, size=len(data["time"]), p=self.run_weights
-        )
+            self.grl['start'].size,
+            size=len(data['time']),
+            p=self.run_weights)
 
         # Draw random times uniformely within the runs.
         times = rss.random.uniform(
-            self.grl["start"][run_idxs], self.grl["stop"][run_idxs]
-        )
+            self.grl['start'][run_idxs],
+            self.grl['stop'][run_idxs])
 
         # Get the correct right ascension.
-        data["time"] = times
-        data["ra"] = azi_to_ra_transform(azi=data["azi"], mjd=times)
+        data['time'] = times
+        data['ra'] = azi_to_ra_transform(
+            azi=data['azi'],
+            mjd=times)
 
         return data

@@ -1,50 +1,49 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import numpy as np
 import os.path
 import pickle
 
 import crflux.models as pm
 import mceq_config as config
-import numpy as np
 from MCEq.core import (
     MCEqRun,
 )
 
-from skyllh.analyses.i3.publicdata_ps.aeff import (
-    PDAeff,
-)
-from skyllh.datasets.i3 import (
-    PublicData_10y_ps,
-)
+from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
+from skyllh.datasets.i3 import PublicData_10y_ps
 
 
 def create_flux_file(save_path, ds):
-    """Creates a pickle file containing the flux for the given dataset."""
-    output_filename = ds.get_aux_data_definition("mceq_flux_datafile")[0]
-    output_pathfilename = ""
+    """Creates a pickle file containing the flux for the given dataset.
+    """
+    output_filename = ds.get_aux_data_definition('mceq_flux_datafile')[0]
+    output_pathfilename = ''
     if save_path is None:
         output_pathfilename = ds.get_abs_pathfilename_list([output_filename])[0]
     else:
-        output_pathfilename = os.path.join(save_path, output_filename)
+        output_pathfilename = os.path.join(
+            save_path, output_filename)
 
-    print(f"Output path filename: {output_pathfilename}")
+    print(f'Output path filename: {output_pathfilename}')
 
     # Load the effective area instance to get the binning information.
     aeff = PDAeff(
         os.path.join(
-            ds.root_dir, ds.get_aux_data_definition("eff_area_datafile")[0]
+            ds.root_dir,
+            ds.get_aux_data_definition('eff_area_datafile')[0]
         )
     )
 
     # Setup MCeq.
-    config.e_min = float(10 ** (np.max([aeff._log10_enu_binedges_lower[0], 2])))
+    config.e_min = float(
+        10**(np.max([aeff._log10_enu_binedges_lower[0], 2])))
     config.e_max = float(
-        10 ** (np.min([aeff._log10_enu_binedges_upper[-1], 9]) + 0.05)
-    )
+        10**(np.min([aeff._log10_enu_binedges_upper[-1], 9])+0.05))
 
-    print(f"E_min = {config.e_min}")
-    print(f"E_max = {config.e_max}")
+    print(f'E_min = {config.e_min}')
+    print(f'E_max = {config.e_max}')
 
     mceq = MCEqRun(
         interaction_model="SIBYLL2.3c",
@@ -53,19 +52,17 @@ def create_flux_file(save_path, ds):
         density_model=("MSIS00_IC", ("SouthPole", "January")),
     )
 
-    print(f"MCEq log10(e_grid) = {np.log10(mceq.e_grid)}")
+    print(f'MCEq log10(e_grid) = {np.log10(mceq.e_grid)}')
 
     mag = 0
     # Use the same binning as for the effective area.
     # theta = delta + pi/2
-    print(f"sin_true_dec_binedges: {aeff.sin_decnu_binedges}")
+    print(f'sin_true_dec_binedges: {aeff.sin_decnu_binedges}')
     theta_angles_binedges = np.rad2deg(
-        np.arcsin(aeff.sin_decnu_binedges) + np.pi / 2
+        np.arcsin(aeff.sin_decnu_binedges) + np.pi/2
     )
-    theta_angles = 0.5 * (
-        theta_angles_binedges[:-1] + theta_angles_binedges[1:]
-    )
-    print(f"Theta angles = {theta_angles}")
+    theta_angles = 0.5*(theta_angles_binedges[:-1] + theta_angles_binedges[1:])
+    print(f'Theta angles = {theta_angles}')
 
     flux_def = dict()
 
@@ -84,7 +81,8 @@ def create_flux_file(save_path, ds):
 
     # Initialize empty grid
     for frac in all_component_names:
-        flux_def[frac] = np.zeros((len(mceq.e_grid), len(theta_angles)))
+        flux_def[frac] = np.zeros(
+            (len(mceq.e_grid), len(theta_angles)))
 
     # fluxes calculated for different theta_angles
     for ti, theta in enumerate(theta_angles):
@@ -92,74 +90,93 @@ def create_flux_file(save_path, ds):
         mceq.solve()
 
         # same meaning of prefixes for muon neutrinos as for muons
-        flux_def["mu_conv"][:, ti] = mceq.get_solution(
-            "conv_mu+", mag
-        ) + mceq.get_solution("conv_mu-", mag)
+        flux_def["mu_conv"][:, ti] = (
+            mceq.get_solution("conv_mu+", mag) +
+            mceq.get_solution("conv_mu-", mag)
+        )
 
-        flux_def["mu_pr"][:, ti] = mceq.get_solution(
-            "pr_mu+", mag
-        ) + mceq.get_solution("pr_mu-", mag)
+        flux_def["mu_pr"][:, ti] = (
+            mceq.get_solution("pr_mu+", mag) +
+            mceq.get_solution("pr_mu-", mag)
+        )
 
-        flux_def["mu_total"][:, ti] = mceq.get_solution(
-            "total_mu+", mag
-        ) + mceq.get_solution("total_mu-", mag)
+        flux_def["mu_total"][:, ti] = (
+            mceq.get_solution("total_mu+", mag) +
+            mceq.get_solution("total_mu-", mag)
+        )
 
         # same meaning of prefixes for muon neutrinos as for muons
-        flux_def["numu_conv"][:, ti] = mceq.get_solution(
-            "conv_numu", mag
-        ) + mceq.get_solution("conv_antinumu", mag)
+        flux_def["numu_conv"][:, ti] = (
+            mceq.get_solution("conv_numu", mag) +
+            mceq.get_solution("conv_antinumu", mag)
+        )
 
-        flux_def["numu_pr"][:, ti] = mceq.get_solution(
-            "pr_numu", mag
-        ) + mceq.get_solution("pr_antinumu", mag)
+        flux_def["numu_pr"][:, ti] = (
+            mceq.get_solution("pr_numu", mag) +
+            mceq.get_solution("pr_antinumu", mag)
+        )
 
-        flux_def["numu_total"][:, ti] = mceq.get_solution(
-            "total_numu", mag
-        ) + mceq.get_solution("total_antinumu", mag)
+        flux_def["numu_total"][:, ti] = (
+            mceq.get_solution("total_numu", mag) +
+            mceq.get_solution("total_antinumu", mag)
+        )
 
         # same meaning of prefixes for electron neutrinos as for muons
-        flux_def["nue_conv"][:, ti] = mceq.get_solution(
-            "conv_nue", mag
-        ) + mceq.get_solution("conv_antinue", mag)
+        flux_def["nue_conv"][:, ti] = (
+            mceq.get_solution("conv_nue", mag) +
+            mceq.get_solution("conv_antinue", mag)
+        )
 
-        flux_def["nue_pr"][:, ti] = mceq.get_solution(
-            "pr_nue", mag
-        ) + mceq.get_solution("pr_antinue", mag)
+        flux_def["nue_pr"][:, ti] = (
+            mceq.get_solution("pr_nue", mag) +
+            mceq.get_solution("pr_antinue", mag)
+        )
 
-        flux_def["nue_total"][:, ti] = mceq.get_solution(
-            "total_nue", mag
-        ) + mceq.get_solution("total_antinue", mag)
+        flux_def["nue_total"][:, ti] = (
+            mceq.get_solution("total_nue", mag) +
+            mceq.get_solution("total_antinue", mag)
+        )
 
         # since there are no conventional tau neutrinos, prompt=total
-        flux_def["nutau_pr"][:, ti] = mceq.get_solution(
-            "total_nutau", mag
-        ) + mceq.get_solution("total_antinutau", mag)
+        flux_def["nutau_pr"][:, ti] = (
+            mceq.get_solution("total_nutau", mag) +
+            mceq.get_solution("total_antinutau", mag)
+        )
     print("\U0001F973")
 
     # Save the result to the output file.
-    with open(output_pathfilename, "wb") as f:
+    with open(output_pathfilename, 'wb') as f:
         pickle.dump(((mceq.e_grid, theta_angles_binedges), flux_def), f)
-    print(f"Saved fluxes for dataset {ds.name} to: {output_pathfilename}")
+    print(f'Saved fluxes for dataset {ds.name} to: {output_pathfilename}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(
-        description="Generate atmospheric background fluxes with MCEq."
+        description='Generate atmospheric background fluxes with MCEq.'
     )
     parser.add_argument(
-        "-b",
-        "--data-base-path",
+        '-b',
+        '--data-base-path',
         type=str,
-        default="/data/ana/analyses",
-        help="The base path of the data repository.",
+        default='/data/ana/analyses',
+        help='The base path of the data repository.'
     )
-    parser.add_argument("-s", "--save-path", type=str, default=None)
+    parser.add_argument(
+        '-s',
+        '--save-path',
+        type=str,
+        default=None
+    )
 
     args = parser.parse_args()
 
     dsc = PublicData_10y_ps.create_dataset_collection(args.data_base_path)
 
-    dataset_names = ["IC40", "IC59", "IC79", "IC86_I", "IC86_II"]
+    dataset_names = ['IC40', 'IC59', 'IC79', 'IC86_I', 'IC86_II']
     for ds_name in dataset_names:
         ds = dsc.get_dataset(ds_name)
-        create_flux_file(save_path=args.save_path, ds=ds)
+        create_flux_file(
+            save_path=args.save_path,
+            ds=ds
+        )

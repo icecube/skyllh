@@ -2,7 +2,6 @@
 
 import abc
 import inspect
-
 import numpy as np
 import scipy.sparse
 
@@ -25,14 +24,19 @@ from skyllh.core.utils.coords import (
 )
 
 
-class EventSelectionMethod(object, metaclass=abc.ABCMeta):
+class EventSelectionMethod(
+        object,
+        metaclass=abc.ABCMeta):
     """This is the abstract base class for all event selection method classes.
     The idea is to pre-select only events that contribute to the likelihood
     function, i.e. are more signal than background like. The different methods
     are implemented through derived classes of this base class.
     """
 
-    def __init__(self, shg_mgr, **kwargs):
+    def __init__(
+            self,
+            shg_mgr,
+            **kwargs):
         """Creates a new event selection method instance.
 
         Parameters
@@ -43,7 +47,8 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
             It can be ``None`` if the event selection method does not depend on
             the sources.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         self._src_arr = None
 
@@ -51,17 +56,15 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
         if self._shg_mgr is not None:
             if not isinstance(self._shg_mgr, SourceHypoGroupManager):
                 raise TypeError(
-                    "The shg_mgr argument must be None or an instance of "
-                    "SourceHypoGroupManager! "
-                    f"Its current type is {classname(self._shg_mgr)}."
-                )
+                    'The shg_mgr argument must be None or an instance of '
+                    'SourceHypoGroupManager! '
+                    f'Its current type is {classname(self._shg_mgr)}.')
 
             # The _src_arr variable holds a numpy record array with the
             # necessary source information needed for the event selection
             # method.
             self._src_arr = self.sources_to_array(
-                sources=self._shg_mgr.source_list
-            )
+                sources=self._shg_mgr.source_list)
 
     @property
     def shg_mgr(self):
@@ -107,14 +110,12 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
         if self._shg_mgr is not None:
             if not isinstance(self._shg_mgr, SourceHypoGroupManager):
                 raise TypeError(
-                    "The shg_mgr argument must be None or an instance of "
-                    "SourceHypoGroupManager! "
-                    f"Its current type is {classname(self._shg_mgr)}."
-                )
+                    'The shg_mgr argument must be None or an instance of '
+                    'SourceHypoGroupManager! '
+                    f'Its current type is {classname(self._shg_mgr)}.')
 
             self._src_arr = self.sources_to_array(
-                sources=self._shg_mgr.source_list
-            )
+                sources=self._shg_mgr.source_list)
 
     def sources_to_array(self, sources):
         """This method is supposed to convert a sequence of SourceModel
@@ -139,8 +140,11 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def select_events(
-        self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None
-    ):
+            self,
+            events,
+            src_evt_idxs=None,
+            ret_original_evt_idxs=False,
+            tl=None):
         """This method selects the events, which will contribute to the
         log-likelihood ratio function.
 
@@ -176,13 +180,17 @@ class EventSelectionMethod(object, metaclass=abc.ABCMeta):
         pass
 
 
-class IntersectionEventSelectionMethod(EventSelectionMethod):
+class IntersectionEventSelectionMethod(
+        EventSelectionMethod):
     """This class provides an event selection method for the intersection of two
     event selection methods. It can be created using the ``&`` operator:
     ``evt_sel_method1 & evt_sel_method2``.
     """
-
-    def __init__(self, evt_sel_method1, evt_sel_method2, **kwargs):
+    def __init__(
+            self,
+            evt_sel_method1,
+            evt_sel_method2,
+            **kwargs):
         """Creates a compounded event selection method of two given event
         selection methods.
 
@@ -195,7 +203,9 @@ class IntersectionEventSelectionMethod(EventSelectionMethod):
             The instance of EventSelectionMethod for the second event selection
             method.
         """
-        super().__init__(shg_mgr=None, **kwargs)
+        super().__init__(
+            shg_mgr=None,
+            **kwargs)
 
         self.evt_sel_method1 = evt_sel_method1
         self.evt_sel_method2 = evt_sel_method2
@@ -211,10 +221,9 @@ class IntersectionEventSelectionMethod(EventSelectionMethod):
     def evt_sel_method1(self, method):
         if not isinstance(method, EventSelectionMethod):
             raise TypeError(
-                "The evt_sel_method1 property must be an instance of "
-                "EventSelectionMethod!"
-                f"Its current type is {classname(method)}."
-            )
+                'The evt_sel_method1 property must be an instance of '
+                'EventSelectionMethod!'
+                f'Its current type is {classname(method)}.')
         self._evt_sel_method1 = method
 
     @property
@@ -228,10 +237,9 @@ class IntersectionEventSelectionMethod(EventSelectionMethod):
     def evt_sel_method2(self, method):
         if not isinstance(method, EventSelectionMethod):
             raise TypeError(
-                "The evt_sel_method2 property must be an instance of "
-                "EventSelectionMethod!"
-                f"Its current type is {classname(method)}."
-            )
+                'The evt_sel_method2 property must be an instance of '
+                'EventSelectionMethod!'
+                f'Its current type is {classname(method)}.')
         self._evt_sel_method2 = method
 
     def change_shg_mgr(self, shg_mgr):
@@ -251,8 +259,11 @@ class IntersectionEventSelectionMethod(EventSelectionMethod):
         self._evt_sel_method2.change_shg_mgr(shg_mgr=shg_mgr)
 
     def select_events(
-        self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None
-    ):
+            self,
+            events,
+            src_evt_idxs=None,
+            ret_original_evt_idxs=False,
+            tl=None):
         """Selects events by calling the ``select_events`` methods of the
         individual event selection methods.
 
@@ -283,44 +294,37 @@ class IntersectionEventSelectionMethod(EventSelectionMethod):
             to ``True``.
         """
         if ret_original_evt_idxs:
-            (
-                events,
-                src_evt_idxs,
-                org_evt_idxs1,
-            ) = self._evt_sel_method1.select_events(
-                events=events,
-                src_evt_idxs=src_evt_idxs,
-                ret_original_evt_idxs=True,
-            )
+            (events, src_evt_idxs, org_evt_idxs1) =\
+                self._evt_sel_method1.select_events(
+                    events=events,
+                    src_evt_idxs=src_evt_idxs,
+                    ret_original_evt_idxs=True)
 
-            (
-                events,
-                src_evt_idxs,
-                org_evt_idxs2,
-            ) = self._evt_sel_method2.select_events(
-                events=events,
-                src_evt_idxs=src_evt_idxs,
-                ret_original_evt_idxs=True,
-            )
+            (events, src_evt_idxs, org_evt_idxs2) =\
+                self._evt_sel_method2.select_events(
+                    events=events,
+                    src_evt_idxs=src_evt_idxs,
+                    ret_original_evt_idxs=True)
 
             org_evt_idxs = np.take(org_evt_idxs1, org_evt_idxs2)
 
             return (events, src_evt_idxs, org_evt_idxs)
 
         (events, src_evt_idxs) = self._evt_sel_method1.select_events(
-            events=events, src_evt_idxs=src_evt_idxs
-        )
+            events=events,
+            src_evt_idxs=src_evt_idxs)
 
         (events, src_evt_idxs) = self._evt_sel_method2.select_events(
-            events=events, src_evt_idxs=src_evt_idxs
-        )
+            events=events,
+            src_evt_idxs=src_evt_idxs)
 
         return (events, src_evt_idxs)
 
 
-class AllEventSelectionMethod(EventSelectionMethod):
-    """This event selection method selects all events."""
-
+class AllEventSelectionMethod(
+        EventSelectionMethod):
+    """This event selection method selects all events.
+    """
     def __init__(self, shg_mgr):
         """Creates a new event selection method instance.
 
@@ -332,7 +336,8 @@ class AllEventSelectionMethod(EventSelectionMethod):
             event selection method it has no meaning, but it is an interface
             parameter.
         """
-        super().__init__(shg_mgr=shg_mgr)
+        super().__init__(
+            shg_mgr=shg_mgr)
 
     def sources_to_array(self, sources):
         """Creates the source array from the given list of sources. This event
@@ -349,8 +354,11 @@ class AllEventSelectionMethod(EventSelectionMethod):
         return None
 
     def select_events(
-        self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None
-    ):
+            self,
+            events,
+            src_evt_idxs=None,
+            ret_original_evt_idxs=False,
+            tl=None):
         """Selects all of the given events. Hence, the returned event array is
         the same as the given array.
 
@@ -381,7 +389,7 @@ class AllEventSelectionMethod(EventSelectionMethod):
             indices of the selected events, if ``ret_original_evt_idxs`` is set
             to ``True``.
         """
-        with TaskTimer(tl, "ESM: Calculate indices of selected events."):
+        with TaskTimer(tl, 'ESM: Calculate indices of selected events.'):
             if src_evt_idxs is None:
                 n_sources = self.shg_mgr.n_sources
                 src_idxs = np.repeat(np.arange(n_sources), len(events))
@@ -395,12 +403,17 @@ class AllEventSelectionMethod(EventSelectionMethod):
         return (events, (src_idxs, evt_idxs))
 
 
-class SpatialEventSelectionMethod(EventSelectionMethod, metaclass=abc.ABCMeta):
+class SpatialEventSelectionMethod(
+        EventSelectionMethod,
+        metaclass=abc.ABCMeta):
     """This abstract base class defines the base class for all spatial event
     selection methods.
     """
 
-    def __init__(self, shg_mgr, **kwargs):
+    def __init__(
+            self,
+            shg_mgr,
+            **kwargs):
         """Creates a new event selection method instance.
 
         Parameters
@@ -409,7 +422,9 @@ class SpatialEventSelectionMethod(EventSelectionMethod, metaclass=abc.ABCMeta):
             The instance of SourceHypoGroupManager that defines the list of
             sources, i.e. the list of SourceModel instances.
         """
-        super().__init__(shg_mgr=shg_mgr, **kwargs)
+        super().__init__(
+            shg_mgr=shg_mgr,
+            **kwargs)
 
     def sources_to_array(self, sources):
         """Converts the given sequence of SourceModel instances into a
@@ -430,30 +445,34 @@ class SpatialEventSelectionMethod(EventSelectionMethod, metaclass=abc.ABCMeta):
         """
         if not issequenceof(sources, SourceModel):
             raise TypeError(
-                "The sources argument must be a sequence of SourceModel "
-                "instances! "
-                f"Its current type is {classname(sources)}."
-            )
+                'The sources argument must be a sequence of SourceModel '
+                'instances! '
+                f'Its current type is {classname(sources)}.')
 
         arr = np.empty(
             (len(sources),),
-            dtype=[("ra", np.float64), ("dec", np.float64)],
-            order="F",
-        )
+            dtype=[
+                ('ra', np.float64),
+                ('dec', np.float64)
+            ],
+            order='F')
 
-        for i, src in enumerate(sources):
-            arr["ra"][i] = src.ra
-            arr["dec"][i] = src.dec
+        for (i, src) in enumerate(sources):
+            arr['ra'][i] = src.ra
+            arr['dec'][i] = src.dec
 
         return arr
 
 
-class DecBandEventSectionMethod(SpatialEventSelectionMethod):
+class DecBandEventSectionMethod(
+        SpatialEventSelectionMethod):
     """This event selection method selects events within a declination band
     around a list of point-like source positions.
     """
-
-    def __init__(self, shg_mgr, delta_angle):
+    def __init__(
+            self,
+            shg_mgr,
+            delta_angle):
         """Creates and configures a spatial declination band event selection
         method object.
 
@@ -466,7 +485,8 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
             The half-opening angle around the source in declination for which
             events should get selected.
         """
-        super().__init__(shg_mgr=shg_mgr)
+        super().__init__(
+            shg_mgr=shg_mgr)
 
         self.delta_angle = delta_angle
 
@@ -480,13 +500,16 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
     @delta_angle.setter
     def delta_angle(self, angle):
         angle = float_cast(
-            angle, "The delta_angle property must be castable to type float!"
-        )
+            angle,
+            'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
     def select_events(
-        self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None
-    ):
+            self,
+            events,
+            src_evt_idxs=None,
+            ret_original_evt_idxs=False,
+            tl=None):
         """Selects the events within the declination band.
 
         Parameters
@@ -525,25 +548,26 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
 
         # Calculates the minus and plus declination around each source and
         # bound it to -90deg and +90deg, respectively.
-        src_dec_minus = np.maximum(-np.pi / 2, src_arr["dec"] - delta_angle)
-        src_dec_plus = np.minimum(src_arr["dec"] + delta_angle, np.pi / 2)
+        src_dec_minus = np.maximum(-np.pi/2, src_arr['dec'] - delta_angle)
+        src_dec_plus = np.minimum(src_arr['dec'] + delta_angle, np.pi/2)
 
         # Determine the mask for the events which fall inside the declination
         # window.
         # mask_dec is a (N_sources,N_events)-shaped ndarray.
-        with TaskTimer(tl, "ESM-DecBand: Calculate mask_dec."):
-            mask_dec = (events["dec"] > src_dec_minus[:, np.newaxis]) & (
-                events["dec"] < src_dec_plus[:, np.newaxis]
+        with TaskTimer(tl, 'ESM-DecBand: Calculate mask_dec.'):
+            mask_dec = (
+                (events['dec'] > src_dec_minus[:, np.newaxis]) &
+                (events['dec'] < src_dec_plus[:, np.newaxis])
             )
 
         # Determine the mask for the events that fall inside at least one
         # source declination band.
         # mask is a (N_events,)-shaped ndarray.
-        with TaskTimer(tl, "ESM-DecBand: Calculate mask."):
+        with TaskTimer(tl, 'ESM-DecBand: Calculate mask.'):
             mask = np.any(mask_dec, axis=0)
 
         # Reduce the events according to the mask.
-        with TaskTimer(tl, "ESM-DecBand: Create selected_events."):
+        with TaskTimer(tl, 'ESM-DecBand: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
             selected_events_idxs = events.indices[mask]
@@ -560,12 +584,15 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         return (selected_events, (src_idxs, evt_idxs))
 
 
-class RABandEventSectionMethod(SpatialEventSelectionMethod):
+class RABandEventSectionMethod(
+        SpatialEventSelectionMethod):
     """This event selection method selects events within a right-ascension band
     around a list of point-like source positions.
     """
-
-    def __init__(self, shg_mgr, delta_angle):
+    def __init__(
+            self,
+            shg_mgr,
+            delta_angle):
         """Creates and configures a right-ascension band event selection
         method object.
 
@@ -578,7 +605,8 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
             The half-opening angle around the source in right-ascension for
             which events should get selected.
         """
-        super().__init__(shg_mgr=shg_mgr)
+        super().__init__(
+            shg_mgr=shg_mgr)
 
         self.delta_angle = delta_angle
 
@@ -592,13 +620,16 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
     @delta_angle.setter
     def delta_angle(self, angle):
         angle = float_cast(
-            angle, "The delta_angle property must be castable to type float!"
-        )
+            angle,
+            'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
     def select_events(
-        self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None
-    ):
+            self,
+            events,
+            src_evt_idxs=None,
+            ret_original_evt_idxs=False,
+            tl=None):
         """Selects the events within the right-ascention band.
 
         The solid angle dOmega = dRA * dSinDec = dRA * dDec * cos(dec) is a
@@ -642,8 +673,8 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         src_arr = self._src_arr
 
         # Get the minus and plus declination around the sources.
-        src_dec_minus = np.maximum(-np.pi / 2, src_arr["dec"] - delta_angle)
-        src_dec_plus = np.minimum(src_arr["dec"] + delta_angle, np.pi / 2)
+        src_dec_minus = np.maximum(-np.pi/2, src_arr['dec'] - delta_angle)
+        src_dec_plus = np.minimum(src_arr['dec'] + delta_angle, np.pi/2)
 
         # Calculate the cosine factor for the largest declination distance from
         # the source. We use np.amin here because smaller cosine values are
@@ -654,40 +685,33 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         # Calculate delta RA, which is a function of declination.
         # dRA is a (N_sources,)-shaped ndarray.
         dRA_half = np.amin(
-            [
-                np.repeat(2 * np.pi, len(src_arr["ra"])),
-                np.fabs(delta_angle / cosfact),
-            ],
-            axis=0,
-        )
+            [np.repeat(2*np.pi, len(src_arr['ra'])),
+             np.fabs(delta_angle / cosfact)], axis=0)
 
         # Calculate the right-ascension distance of the events w.r.t. the
         # source. We make sure to use the smaller distance on the circle, thus
         # the maximal distance is 180deg, i.e. pi.
         # ra_dist is a (N_sources,N_events)-shaped 2D ndarray.
-        with TaskTimer(tl, "ESM-RaBand: Calculate ra_dist."):
+        with TaskTimer(tl, 'ESM-RaBand: Calculate ra_dist.'):
             ra_dist = np.fabs(
                 np.mod(
-                    events["ra"] - src_arr["ra"][:, np.newaxis] + np.pi,
-                    2 * np.pi,
-                )
-                - np.pi
-            )
+                    events['ra'] - src_arr['ra'][:, np.newaxis] + np.pi,
+                    2*np.pi) - np.pi)
 
         # Determine the mask for the events which fall inside the
         # right-ascention window.
         # mask_ra is a (N_sources,N_events)-shaped ndarray.
-        with TaskTimer(tl, "ESM-RaBand: Calculate mask_ra."):
+        with TaskTimer(tl, 'ESM-RaBand: Calculate mask_ra.'):
             mask_ra = ra_dist < dRA_half[:, np.newaxis]
 
         # Determine the mask for the events that fall inside at least one
         # source sky window.
         # mask is a (N_events,)-shaped ndarray.
-        with TaskTimer(tl, "ESM-RaBand: Calculate mask."):
+        with TaskTimer(tl, 'ESM-RaBand: Calculate mask.'):
             mask = np.any(mask_ra, axis=0)
 
         # Reduce the events according to the mask.
-        with TaskTimer(tl, "ESM-RaBand: Create selected_events."):
+        with TaskTimer(tl, 'ESM-RaBand: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
             selected_events_idxs = events.indices[mask]
@@ -704,13 +728,16 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         return (selected_events, (src_idxs, evt_idxs))
 
 
-class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
+class SpatialBoxEventSelectionMethod(
+        SpatialEventSelectionMethod):
     """This event selection method selects events within a spatial box in
     right-ascention and declination around a list of point-like source
     positions.
     """
-
-    def __init__(self, shg_mgr, delta_angle):
+    def __init__(
+            self,
+            shg_mgr,
+            delta_angle):
         """Creates and configures a spatial box event selection method object.
 
         Parameters
@@ -722,7 +749,8 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
             The half-opening angle around the source for which events should
             get selected.
         """
-        super().__init__(shg_mgr=shg_mgr)
+        super().__init__(
+            shg_mgr=shg_mgr)
 
         self.delta_angle = delta_angle
 
@@ -736,13 +764,16 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
     @delta_angle.setter
     def delta_angle(self, angle):
         angle = float_cast(
-            angle, "The delta_angle property must be castable to type float!"
-        )
+            angle,
+            'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
     def select_events(
-        self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None
-    ):
+            self,
+            events,
+            src_evt_idxs=None,
+            ret_original_evt_idxs=False,
+            tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination.
 
@@ -787,12 +818,12 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         src_arr = self._src_arr
         n_sources = len(src_arr)
 
-        srcs_ra = src_arr["ra"]
-        srcs_dec = src_arr["dec"]
+        srcs_ra = src_arr['ra']
+        srcs_dec = src_arr['dec']
 
         # Get the minus and plus declination around the sources.
-        src_dec_minus = np.maximum(-np.pi / 2, srcs_dec - delta_angle)
-        src_dec_plus = np.minimum(srcs_dec + delta_angle, np.pi / 2)
+        src_dec_minus = np.maximum(-np.pi/2, srcs_dec - delta_angle)
+        src_dec_plus = np.minimum(srcs_dec + delta_angle, np.pi/2)
 
         # Calculate the cosine factor for the largest declination distance from
         # the source. We use np.amin here because smaller cosine values are
@@ -803,57 +834,51 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         # Calculate delta RA, which is a function of declination.
         # dRA is a (N_sources,)-shaped ndarray.
         dRA_half = np.amin(
-            [np.repeat(2 * np.pi, n_sources), np.fabs(delta_angle / cosfact)],
-            axis=0,
-        )
+            [np.repeat(2*np.pi, n_sources),
+             np.fabs(delta_angle / cosfact)], axis=0)
 
         # Determine the mask for the events which fall inside the
         # right-ascention window.
         # mask_ra is a (N_sources,N_events)-shaped ndarray.
-        with TaskTimer(tl, "ESM: Calculate mask_ra."):
-            evts_ra = events["ra"]
+        with TaskTimer(tl, 'ESM: Calculate mask_ra.'):
+            evts_ra = events['ra']
             # Fill in batch sizes of 128 maximum to save memory.
             batch_size = 128
             if n_sources > batch_size:
                 mask_ra = np.zeros((n_sources, len(evts_ra)), dtype=bool)
                 n_batches = int(np.ceil(n_sources / float(batch_size)))
                 for bi in range(n_batches):
-                    if bi == n_batches - 1:
+                    if bi == n_batches-1:
                         # We got the last batch of sources.
-                        srcs_slice = slice(bi * batch_size, None)
+                        srcs_slice = slice(bi*batch_size, None)
                     else:
-                        srcs_slice = slice(
-                            bi * batch_size, (bi + 1) * batch_size
-                        )
+                        srcs_slice = slice(bi*batch_size, (bi+1)*batch_size)
 
                     ra_diff = np.fabs(
-                        evts_ra - srcs_ra[srcs_slice][:, np.newaxis]
-                    )
+                        evts_ra - srcs_ra[srcs_slice][:, np.newaxis])
                     ra_mod = np.where(
-                        ra_diff >= np.pi, 2 * np.pi - ra_diff, ra_diff
-                    )
+                        ra_diff >= np.pi, 2*np.pi - ra_diff, ra_diff)
                     mask_ra[srcs_slice, :] = (
                         ra_mod < dRA_half[srcs_slice][:, np.newaxis]
                     )
             else:
                 ra_diff = np.fabs(evts_ra - srcs_ra[:, np.newaxis])
-                ra_mod = np.where(
-                    ra_diff >= np.pi, 2 * np.pi - ra_diff, ra_diff
-                )
+                ra_mod = np.where(ra_diff >= np.pi, 2*np.pi-ra_diff, ra_diff)
                 mask_ra = ra_mod < dRA_half[:, np.newaxis]
 
         # Determine the mask for the events which fall inside the declination
         # window.
         # mask_dec is a (N_sources,N_events)-shaped ndarray.
-        with TaskTimer(tl, "ESM: Calculate mask_dec."):
-            mask_dec = (events["dec"] > src_dec_minus[:, np.newaxis]) & (
-                events["dec"] < src_dec_plus[:, np.newaxis]
+        with TaskTimer(tl, 'ESM: Calculate mask_dec.'):
+            mask_dec = (
+                (events['dec'] > src_dec_minus[:, np.newaxis]) &
+                (events['dec'] < src_dec_plus[:, np.newaxis])
             )
 
         # Determine the mask for the events which fall inside the
         # right-ascension and declination window.
         # mask_sky is a (N_sources,N_events)-shaped ndarray.
-        with TaskTimer(tl, "ESM: Calculate mask_sky."):
+        with TaskTimer(tl, 'ESM: Calculate mask_sky.'):
             mask_sky = mask_ra & mask_dec
             del mask_ra
             del mask_dec
@@ -861,11 +886,11 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         # Determine the mask for the events that fall inside at least one
         # source sky window.
         # mask is a (N_events,)-shaped ndarray.
-        with TaskTimer(tl, "ESM: Calculate mask."):
+        with TaskTimer(tl, 'ESM: Calculate mask.'):
             mask = np.any(mask_sky, axis=0)
 
         # Reduce the events according to the mask.
-        with TaskTimer(tl, "ESM: Create selected_events."):
+        with TaskTimer(tl, 'ESM: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
             selected_events_idxs = events.indices[mask]
@@ -882,13 +907,18 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         return (selected_events, (src_idxs, evt_idxs))
 
 
-class PsiFuncEventSelectionMethod(EventSelectionMethod):
+class PsiFuncEventSelectionMethod(
+        EventSelectionMethod):
     """This event selection method selects events whose psi value, i.e. the
     great circle distance of the event to the source, is smaller than the value
     of the provided function.
     """
-
-    def __init__(self, shg_mgr, psi_name, func, axis_name_list):
+    def __init__(
+            self,
+            shg_mgr,
+            psi_name,
+            func,
+            axis_name_list):
         """Creates a new PsiFuncEventSelectionMethod instance.
 
         Parameters
@@ -912,7 +942,8 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
             All field names must be valid field names of the trial data's
             DataFieldRecordArray instance.
         """
-        super().__init__(shg_mgr=shg_mgr)
+        super().__init__(
+            shg_mgr=shg_mgr)
 
         self.psi_name = psi_name
         self.func = func
@@ -921,31 +952,29 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         n_func_args = len(inspect.signature(self._func).parameters)
         if n_func_args < len(self._axis_name_list):
             raise TypeError(
-                "The func argument must be a callable instance with at least "
-                f"{len(self._axis_name_list)} arguments! Its current number "
-                f"of arguments is {n_func_args}."
-            )
+                'The func argument must be a callable instance with at least '
+                f'{len(self._axis_name_list)} arguments! Its current number '
+                f'of arguments is {n_func_args}.')
 
         n_sources = self.shg_mgr.n_sources
         if n_sources != 1:
             raise ValueError(
-                "The `PsiFuncEventSelectionMethod.select_events` currently "
-                "supports only a single source. It was called with "
-                f"{n_sources} sources."
-            )
+                'The `PsiFuncEventSelectionMethod.select_events` currently '
+                'supports only a single source. It was called with '
+                f'{n_sources} sources.')
 
     @property
     def psi_name(self):
-        """The name of the data field that provides the psi value of the event."""
+        """The name of the data field that provides the psi value of the event.
+        """
         return self._psi_name
 
     @psi_name.setter
     def psi_name(self, name):
         if not isinstance(name, str):
             raise TypeError(
-                "The psi_name property must be an instance of type str! "
-                f"Its current type is {classname(name)}."
-            )
+                'The psi_name property must be an instance of type str! '
+                f'Its current type is {classname(name)}.')
         self._psi_name = name
 
     @property
@@ -961,9 +990,8 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
     def func(self, f):
         if not callable(f):
             raise TypeError(
-                "The func property must be a callable instance! "
-                f"Its current type is {classname(f)}."
-            )
+                'The func property must be a callable instance! '
+                f'Its current type is {classname(f)}.')
         self._func = f
 
     @property
@@ -977,15 +1005,17 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
     def axis_name_list(self, names):
         if not issequenceof(names, str):
             raise TypeError(
-                "The axis_name_list property must be a sequence of str "
-                "instances! "
-                f"Its current type is {classname(names)}."
-            )
+                'The axis_name_list property must be a sequence of str '
+                'instances! '
+                f'Its current type is {classname(names)}.')
         self._axis_name_list = list(names)
 
     def select_events(
-        self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None
-    ):
+            self,
+            events,
+            src_evt_idxs=None,
+            ret_original_evt_idxs=False,
+            tl=None):
         """Selects the events whose psi value is smaller than the value of the
         predefined function.
 
@@ -1025,16 +1055,16 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         """
         cls_name = classname(self)
 
-        with TaskTimer(tl, f"{cls_name}: Get psi values."):
+        with TaskTimer(tl, f'{cls_name}: Get psi values.'):
             psi = events[self._psi_name]
 
-        with TaskTimer(tl, f"{cls_name}: Get axis data values."):
+        with TaskTimer(tl, f'{cls_name}: Get axis data values.'):
             func_args = [events[axis] for axis in self._axis_name_list]
 
-        with TaskTimer(tl, f"{cls_name}: Creating mask."):
+        with TaskTimer(tl, f'{cls_name}: Creating mask.'):
             mask = psi < self._func(*func_args)
 
-        with TaskTimer(tl, f"{cls_name}: Create selected_events."):
+        with TaskTimer(tl, f'{cls_name}: Create selected_events.'):
             # Using an integer indices array for data selection is several
             # factors faster than using a boolean array.
             selected_events_idxs = events.indices[mask]
@@ -1051,14 +1081,19 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
         return (selected_events, (src_idxs, evt_idxs))
 
 
-class AngErrOfPsiEventSelectionMethod(SpatialEventSelectionMethod):
+class AngErrOfPsiEventSelectionMethod(
+        SpatialEventSelectionMethod):
     """This event selection method selects events within a spatial box in
     right-ascention and declination around a list of point-like source
     positions and performs an additional selection of events whose ang_err value
     is larger than the value of the provided function at a given psi value.
     """
-
-    def __init__(self, shg_mgr, func, psi_floor=None, **kwargs):
+    def __init__(
+            self,
+            shg_mgr,
+            func,
+            psi_floor=None,
+            **kwargs):
         """Creates and configures a spatial box and psi func event selection
         method object.
 
@@ -1084,7 +1119,9 @@ class AngErrOfPsiEventSelectionMethod(SpatialEventSelectionMethod):
             The psi func event selection is excluded for events having psi value
             below the ``psi_floor``. If None, set it to default 5 degrees.
         """
-        super().__init__(shg_mgr=shg_mgr, **kwargs)
+        super().__init__(
+            shg_mgr=shg_mgr,
+            **kwargs)
 
         self.func = func
 
@@ -1105,9 +1142,8 @@ class AngErrOfPsiEventSelectionMethod(SpatialEventSelectionMethod):
     def func(self, f):
         if not callable(f):
             raise TypeError(
-                "The func property must be a callable instance! "
-                f"Its current type is {classname(f)}."
-            )
+                'The func property must be a callable instance! '
+                f'Its current type is {classname(f)}.')
         self._func = f
 
     @property
@@ -1120,13 +1156,16 @@ class AngErrOfPsiEventSelectionMethod(SpatialEventSelectionMethod):
     @psi_floor.setter
     def psi_floor(self, psi):
         psi = float_cast(
-            psi, "The psi_floor property must be castable to type float!"
-        )
+            psi,
+            'The psi_floor property must be castable to type float!')
         self._psi_floor = psi
 
     def select_events(
-        self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None
-    ):
+            self,
+            events,
+            src_evt_idxs=None,
+            ret_original_evt_idxs=False,
+            tl=None):
         """Selects the events within the spatial box in right-ascention and
         declination and performs an additional selection of events whose ang_err
         value is larger than the value of the provided function at a given psi
@@ -1180,25 +1219,26 @@ class AngErrOfPsiEventSelectionMethod(SpatialEventSelectionMethod):
             (src_idxs, evt_idxs) = src_evt_idxs
 
         # Perform selection based on psi values.
-        with TaskTimer(tl, "ESM: Calculate psi values."):
+        with TaskTimer(tl, 'ESM: Calculate psi values.'):
             psi = angular_separation(
-                ra1=np.take(self._src_arr["ra"], src_idxs),
-                dec1=np.take(self._src_arr["dec"], src_idxs),
-                ra2=np.take(events["ra"], evt_idxs),
-                dec2=np.take(events["dec"], evt_idxs),
+                ra1=np.take(self._src_arr['ra'], src_idxs),
+                dec1=np.take(self._src_arr['dec'], src_idxs),
+                ra2=np.take(events['ra'], evt_idxs),
+                dec2=np.take(events['dec'], evt_idxs),
             )
 
-        with TaskTimer(tl, "ESM: Create mask_psi."):
-            mask_psi = (events["ang_err"][evt_idxs] >= self._func(psi)) | (
-                psi < self.psi_floor
+        with TaskTimer(tl, 'ESM: Create mask_psi.'):
+            mask_psi = (
+                (events['ang_err'][evt_idxs] >= self._func(psi)) |
+                (psi < self.psi_floor)
             )
 
-        with TaskTimer(tl, "ESM: Create selected_events."):
+        with TaskTimer(tl, 'ESM: Create selected_events.'):
             # Have to define the shape argument in order to not truncate
             # the mask in case last events are not selected.
             mask_sky = scipy.sparse.csr_matrix(
                 (mask_psi, (src_idxs, evt_idxs)),
-                shape=(len(self._src_arr), len(events)),
+                shape=(len(self._src_arr), len(events))
             ).toarray()
             mask = np.any(mask_sky, axis=0)
 

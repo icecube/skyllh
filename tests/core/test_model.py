@@ -9,16 +9,16 @@ import unittest
 
 from skyllh.core.model import (
     Model,
-    ModelCollection,
+    ModelCollection
 )
 
 
 class Model_TestCase(unittest.TestCase):
     def setUp(self):
-        self.model = Model("Model1")
+        self.model = Model('Model1')
 
     def test_name(self):
-        self.assertEqual(self.model.name, "Model1")
+        self.assertEqual(self.model.name, 'Model1')
 
     def test_id(self):
         self.assertTrue(isinstance(self.model.id, int))
@@ -26,8 +26,8 @@ class Model_TestCase(unittest.TestCase):
 
 class ModelCollection_TestCase(unittest.TestCase):
     def setUp(self):
-        self.model1 = Model("Model1")
-        self.model2 = Model("Model2")
+        self.model1 = Model('Model1')
+        self.model2 = Model('Model2')
         self.modelcoll = ModelCollection((self.model1, self.model2))
 
     def test_cast(self):
@@ -55,9 +55,9 @@ class ModelCollection_TestCase(unittest.TestCase):
 
         # Test that non-Model instances raises a TypeError.
         with self.assertRaises(TypeError):
-            modelcoll = ModelCollection.cast("A str instance.")
+            modelcoll = ModelCollection.cast('A str instance.')
         with self.assertRaises(TypeError):
-            modelcoll = ModelCollection.cast(("str1", "str2"))
+            modelcoll = ModelCollection.cast(('str1', 'str2'))
 
     def test_model_type(self):
         self.assertTrue(issubclass(self.modelcoll.model_type, Model))
@@ -68,5 +68,5 @@ class ModelCollection_TestCase(unittest.TestCase):
         self.assertEqual(self.modelcoll.models[1], self.model2)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

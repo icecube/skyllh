@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+
 from scipy import (
     integrate,
     interpolate,
@@ -21,7 +22,12 @@ class FctSpline1D(object):
     The evaluate the spline, use the ``__call__`` method.
     """
 
-    def __init__(self, f, x_binedges, norm=False, **kwargs):
+    def __init__(
+            self,
+            f,
+            x_binedges,
+            norm=False,
+            **kwargs):
         """Creates a new 1D function spline using the PchipInterpolator
         class from scipy.
 
@@ -43,15 +49,24 @@ class FctSpline1D(object):
 
         x = get_bincenters_from_binedges(self.x_binedges)
 
-        self.spl_f = interpolate.PchipInterpolator(x, f, extrapolate=False)
+        self.spl_f = interpolate.PchipInterpolator(
+            x, f, extrapolate=False
+        )
 
         self.norm = None
         if norm:
             self.norm = integrate.quad(
-                self.__call__, self.x_min, self.x_max, limit=200, full_output=1
+                self.__call__,
+                self.x_min,
+                self.x_max,
+                limit=200,
+                full_output=1
             )[0]
 
-    def __call__(self, x, oor_value=0):
+    def __call__(
+            self,
+            x,
+            oor_value=0):
         """Evaluates the spline at the given x values. For x-values
         outside the spline's range, the oor_value is returned.
 
@@ -73,8 +88,12 @@ class FctSpline1D(object):
 
         return f
 
-    def evaluate(self, *args, **kwargs):
-        """Alias for the __call__ method."""
+    def evaluate(
+            self,
+            *args,
+            **kwargs):
+        """Alias for the __call__ method.
+        """
         return self(*args, **kwargs)
 
 
@@ -88,7 +107,12 @@ class FctSpline2D(object):
     The evaluate the spline, use the ``__call__`` method.
     """
 
-    def __init__(self, f, x_binedges, y_binedges, **kwargs):
+    def __init__(
+            self,
+            f,
+            x_binedges,
+            y_binedges,
+            **kwargs):
         """Creates a new 2D function spline using the RectBivariateSpline
         class from scipy.
 
@@ -123,10 +147,13 @@ class FctSpline2D(object):
         z[np.invert(m)] = np.min(z[m]) - 3
 
         self.spl_log10_f = interpolate.RectBivariateSpline(
-            x, y, z, kx=3, ky=3, s=0
-        )
+            x, y, z, kx=3, ky=3, s=0)
 
-    def __call__(self, x, y, oor_value=0):
+    def __call__(
+            self,
+            x,
+            y,
+            oor_value=0):
         """Evaluates the spline at the given coordinates. For coordinates
         outside the spline's range, the oor_value is returned.
 
@@ -149,7 +176,7 @@ class FctSpline2D(object):
         m_x_oor = (x < self.x_min) | (x > self.x_max)
         m_y_oor = (y < self.y_min) | (y > self.y_max)
 
-        (m_xx_oor, m_yy_oor) = np.meshgrid(m_x_oor, m_y_oor, indexing="ij")
+        (m_xx_oor, m_yy_oor) = np.meshgrid(m_x_oor, m_y_oor, indexing='ij')
         m_xy_oor = m_xx_oor | m_yy_oor
 
         f = np.power(10, self.spl_log10_f(x, y))
@@ -173,16 +200,20 @@ def clip_grl_start_times(grl_data):
         stop : float
             The stop time of the run.
     """
-    start = grl_data["start"]
-    stop = grl_data["stop"]
+    start = grl_data['start']
+    stop = grl_data['stop']
 
     m = (start[1:] - stop[:-1]) < 0
     new_start = np.where(m, stop[:-1], start[1:])
 
-    grl_data["start"][1:] = new_start
+    grl_data['start'][1:] = new_start
 
 
-def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
+def psi_to_dec_and_ra(
+        rss,
+        src_dec,
+        src_ra,
+        psi):
     """Generates random declinations and right-ascension coordinates for the
     given source location and opening angle `psi`.
 
@@ -210,73 +241,73 @@ def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
     # Transform everything in radians and convert the source declination
     # to source zenith angle
     a = psi
-    b = np.pi / 2 - src_dec
+    b = np.pi/2 - src_dec
     c = src_ra
     # Random rotation angle for the 2D circle
-    t = rss.random.uniform(0, 2 * np.pi, size=len(psi))
+    t = rss.random.uniform(0, 2*np.pi, size=len(psi))
 
     # Parametrize the circle
     x = (
-        (np.sin(a) * np.cos(b) * np.cos(c)) * np.cos(t)
-        + (np.sin(a) * np.sin(c)) * np.sin(t)
-        - (np.cos(a) * np.sin(b) * np.cos(c))
+        (np.sin(a)*np.cos(b)*np.cos(c)) * np.cos(t) +
+        (np.sin(a)*np.sin(c)) * np.sin(t) -
+        (np.cos(a)*np.sin(b)*np.cos(c))
     )
     y = (
-        -(np.sin(a) * np.cos(b) * np.sin(c)) * np.cos(t)
-        + (np.sin(a) * np.cos(c)) * np.sin(t)
-        + (np.cos(a) * np.sin(b) * np.sin(c))
+        -(np.sin(a)*np.cos(b)*np.sin(c)) * np.cos(t) +
+        (np.sin(a)*np.cos(c)) * np.sin(t) +
+        (np.cos(a)*np.sin(b)*np.sin(c))
     )
-    z = (np.sin(a) * np.sin(b)) * np.cos(t) + (np.cos(a) * np.cos(b))
+    z = (
+        (np.sin(a)*np.sin(b)) * np.cos(t) +
+        (np.cos(a)*np.cos(b))
+    )
 
     # Convert back to right-ascension and declination.
     # This is to distinguish between diametrically opposite directions.
     zen = np.arccos(z)
     azi = np.arctan2(y, x)
 
-    dec = np.pi / 2 - zen
+    dec = np.pi/2 - zen
     ra = np.pi - azi
 
     return (dec, ra)
 
 
-def create_energy_cut_spline(ds, exp_data, spl_smooth):
+def create_energy_cut_spline(
+        ds,
+        exp_data,
+        spl_smooth):
     """Create the spline for the declination-dependent energy cut
     that the signal generator needs for injection in the southern sky
     Some special conditions are needed for IC79 and IC86_I, because
     their experimental dataset shows events that should probably have
     been cut by the IceCube selection.
     """
-    data_exp = exp_data.copy(keep_fields=["sin_dec", "log_energy"])
-    if ds.name == "IC79":
-        m = np.invert(
-            np.logical_and(
-                data_exp["sin_dec"] < -0.75, data_exp["log_energy"] < 4.2
-            )
-        )
+    data_exp = exp_data.copy(keep_fields=['sin_dec', 'log_energy'])
+    if ds.name == 'IC79':
+        m = np.invert(np.logical_and(
+            data_exp['sin_dec'] < -0.75,
+            data_exp['log_energy'] < 4.2))
         data_exp = data_exp[m]
-    if ds.name == "IC86_I":
-        m = np.invert(
-            np.logical_and(
-                data_exp["sin_dec"] < -0.2, data_exp["log_energy"] < 2.5
-            )
-        )
+    if ds.name == 'IC86_I':
+        m = np.invert(np.logical_and(
+            data_exp['sin_dec'] < -0.2,
+            data_exp['log_energy'] < 2.5))
         data_exp = data_exp[m]
 
-    sin_dec_binning = ds.get_binning_definition("sin_dec")
+    sin_dec_binning = ds.get_binning_definition('sin_dec')
     sindec_edges = sin_dec_binning.binedges
-    min_log_e = np.zeros(len(sindec_edges) - 1, dtype=float)
-    for i in range(len(sindec_edges) - 1):
+    min_log_e = np.zeros(len(sindec_edges)-1, dtype=float)
+    for i in range(len(sindec_edges)-1):
         mask = np.logical_and(
-            data_exp["sin_dec"] >= sindec_edges[i],
-            data_exp["sin_dec"] < sindec_edges[i + 1],
-        )
-        min_log_e[i] = np.min(data_exp["log_energy"][mask])
+            data_exp['sin_dec'] >= sindec_edges[i],
+            data_exp['sin_dec'] < sindec_edges[i+1])
+        min_log_e[i] = np.min(data_exp['log_energy'][mask])
     del data_exp
-    sindec_centers = 0.5 * (sindec_edges[1:] + sindec_edges[:-1])
+    sindec_centers = 0.5 * (sindec_edges[1:]+sindec_edges[:-1])
 
     spline = interpolate.UnivariateSpline(
-        sindec_centers, min_log_e, k=2, s=spl_smooth
-    )
+        sindec_centers, min_log_e, k=2, s=spl_smooth)
 
     return spline
 
@@ -297,23 +328,28 @@ def get_tdm_field_func_psi(psi_floor=None):
     tdm_field_func_psi : function
         TrialDataManager (TDM) field function for psi.
     """
-
-    def tdm_field_func_psi(tdm, shg_mgr, pmm):
+    def tdm_field_func_psi(
+            tdm,
+            shg_mgr,
+            pmm):
         """TDM data field function to calculate the opening angle between the
         source positions and the event's reconstructed position.
         """
         (src_idxs, evt_idxs) = tdm.src_evt_idxs
 
-        ra = np.take(tdm.get_data("ra"), evt_idxs)
-        dec = np.take(tdm.get_data("dec"), evt_idxs)
+        ra = np.take(tdm.get_data('ra'), evt_idxs)
+        dec = np.take(tdm.get_data('dec'), evt_idxs)
 
-        src_array = tdm.get_data("src_array")
-        src_ra = np.take(src_array["ra"], src_idxs)
-        src_dec = np.take(src_array["dec"], src_idxs)
+        src_array = tdm.get_data('src_array')
+        src_ra = np.take(src_array['ra'], src_idxs)
+        src_dec = np.take(src_array['dec'], src_idxs)
 
         psi = angular_separation(
-            ra1=ra, dec1=dec, ra2=src_ra, dec2=src_dec, psi_floor=psi_floor
-        )
+            ra1=ra,
+            dec1=dec,
+            ra2=src_ra,
+            dec2=src_dec,
+            psi_floor=psi_floor)
 
         return psi
 

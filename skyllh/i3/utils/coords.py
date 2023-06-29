@@ -29,7 +29,7 @@ def azi_to_ra_transform(azi, mjd):
     _sidereal_offset = 2.54199002505
     sidereal_day_residuals = (mjd / _sidereal_length) % 1
     ra = _sidereal_offset + 2 * np.pi * sidereal_day_residuals - azi
-    ra = np.mod(ra, 2 * np.pi)
+    ra = np.mod(ra, 2*np.pi)
 
     return ra
 

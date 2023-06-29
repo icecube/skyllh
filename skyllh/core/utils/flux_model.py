@@ -13,7 +13,7 @@ from skyllh.core.py import (
 
 
 def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
-    profile,
+        profile,
 ):
     """This function builds a scipy.stats.rv_continuous instance for a given
     :class:`~skyllh.core.flux_model.TimeFluxProfile` instance.
@@ -35,16 +35,17 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
     """
     if not isinstance(profile, TimeFluxProfile):
         raise TypeError(
-            "The profile argument must be an instance of TimeFluxProfile! "
-            f"Its current type is {classname(profile)}!"
-        )
+            'The profile argument must be an instance of TimeFluxProfile! '
+            f'Its current type is {classname(profile)}!')
 
     norm = 0
     tot_integral = profile.get_total_integral()
     if tot_integral != 0:
         norm = 1 / tot_integral
 
-    class rv_continuous_from_TimeFluxProfile(rv_continuous):
+    class rv_continuous_from_TimeFluxProfile(
+            rv_continuous):
+
         def __init__(self, *args, **kwargs):
             """Creates a new instance of the subclass of rv_continuous using
             the time flux profile.
@@ -68,7 +69,7 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
             ``cdf`` method, it will be used. Otherwise the generic ``_cdf``
             method of the ``rv_continuous`` class will be used.
             """
-            if hasattr(self._profile, "cdf") and callable(self._profile.cdf):
+            if hasattr(self._profile, 'cdf') and callable(self._profile.cdf):
                 return self._profile.cdf(t=t)
 
             return super()._cdf(t)

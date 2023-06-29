@@ -7,7 +7,6 @@ import abc
 from copy import (
     deepcopy,
 )
-
 import numpy as np
 
 from skyllh.core.py import (
@@ -18,7 +17,9 @@ from skyllh.core.py import (
 )
 
 
-class MathFunction(object, metaclass=abc.ABCMeta):
+class MathFunction(
+        object,
+        metaclass=abc.ABCMeta):
     """This abstract base class provides an implementation for a mathematical
     function. Such a function has defined parameters, which are implemented as
     class properties. The tuple of parameter names is defined through the
@@ -32,7 +33,8 @@ class MathFunction(object, metaclass=abc.ABCMeta):
 
     @property
     def param_names(self):
-        """The tuple holding the names of the math function's parameters."""
+        """The tuple holding the names of the math function's parameters.
+        """
         return self._param_names
 
     @param_names.setter
@@ -41,8 +43,7 @@ class MathFunction(object, metaclass=abc.ABCMeta):
             names = (names,)
         if not issequenceof(names, str):
             raise TypeError(
-                "The param_names property must be a sequence of str!"
-            )
+                'The param_names property must be a sequence of str!')
         names = tuple(names)
         # Check if all the given names are actual properties of this
         # MathFunction class.
@@ -50,26 +51,28 @@ class MathFunction(object, metaclass=abc.ABCMeta):
             if not hasattr(self, name):
                 raise KeyError(
                     f'The "{classname(self)}" class does not have an attribute '
-                    f'named "{name}"!'
-                )
+                    f'named "{name}"!')
             if not isproperty(self, name):
                 raise TypeError(
                     f'The attribute "{classname(self)}" of "{name}" is not a '
-                    "property!"
-                )
+                    'property!')
         self._param_names = names
 
     @property
     @abc.abstractmethod
     def math_function_str(self):
-        """The string showing the mathematical function of this MathFunction."""
+        """The string showing the mathematical function of this MathFunction.
+        """
         pass
 
     def __str__(self):
-        """Pretty string representation of this MathFunction instance."""
+        """Pretty string representation of this MathFunction instance.
+        """
         return self.math_function_str
 
-    def copy(self, newparams=None):
+    def copy(
+            self,
+            newparams=None):
         """Copies this MathFunction object by calling the copy.deepcopy
         function, and sets new parameters if requested.
 
@@ -88,7 +91,9 @@ class MathFunction(object, metaclass=abc.ABCMeta):
 
         return f
 
-    def get_param(self, name):
+    def get_param(
+            self,
+            name):
         """Retrieves the value of the given parameter. It returns ``np.nan`` if
         the parameter does not exist.
 
@@ -109,7 +114,9 @@ class MathFunction(object, metaclass=abc.ABCMeta):
 
         return value
 
-    def set_params(self, pdict):
+    def set_params(
+            self,
+            pdict):
         """Sets the parameters of the math function to the given parameter
         values.
 
@@ -125,7 +132,8 @@ class MathFunction(object, metaclass=abc.ABCMeta):
             Flag if parameter values were actually updated.
         """
         if not isinstance(pdict, dict):
-            raise TypeError("The pdict argument must be of type dict!")
+            raise TypeError(
+                'The pdict argument must be of type dict!')
 
         updated = False
 
