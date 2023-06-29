@@ -192,7 +192,7 @@ def create_shg_mgr_and_pmm():
     p2 = Parameter('p2', 142, 100, 200)
 
     pmm = ParameterModelMapper(models=sources)
-    pmm.def_param(p1).def_param(p2)
+    pmm.map_param(p1).map_param(p2)
 
     return (shg_mgr, pmm)
 
