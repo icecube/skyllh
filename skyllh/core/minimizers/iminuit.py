@@ -1,5 +1,6 @@
 """
-The minimizers/iminuit module provides a SkyLLH interface to the iminuit minimizer.
+The minimizers/iminuit module provides a SkyLLH interface to the iminuit
+minimizer.
 """
 
 import iminuit
