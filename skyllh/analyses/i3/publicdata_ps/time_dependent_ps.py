@@ -933,8 +933,8 @@ def create_analysis(  # noqa: C901
     # parameters to local source parameters.
     pmm = ParameterModelMapper(
         models=[detector_model, source])
-    pmm.def_param(param_ns, models=detector_model)
-    pmm.def_param(param_gamma, models=source)
+    pmm.map_param(param_ns, models=detector_model)
+    pmm.map_param(param_gamma, models=source)
 
     logger.info(str(pmm))
 
