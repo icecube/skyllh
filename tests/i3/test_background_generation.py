@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-import numpy as np
 
-from skyllh.core.scrambling import DataScrambler, UniformRAScramblingMethod
-from skyllh.i3.background_generation import FixedScrambledExpDataI3BkgGenMethod
+from skyllh.core.scrambling import (
+    DataScrambler,
+    UniformRAScramblingMethod,
+)
+from skyllh.i3.background_generation import (
+    FixedScrambledExpDataI3BkgGenMethod,
+)
 
 
 class TestFixedScrambledExpDataI3BkgGenMethod(unittest.TestCase):
@@ -15,10 +19,9 @@ class TestFixedScrambledExpDataI3BkgGenMethod(unittest.TestCase):
 
         self.assertIsInstance(test_object.data_scrambler, DataScrambler)
 
-
     def test_generate_events(self):
         pass
 
 
-if(__name__ == '__main__'):
+if __name__ == '__main__':
     unittest.main()

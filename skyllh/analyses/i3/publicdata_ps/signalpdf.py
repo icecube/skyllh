@@ -1,56 +1,79 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+
 from scipy import integrate
 
-from skyllh.core.py import module_classname
-from skyllh.core.debugging import get_logger
-from skyllh.core.timing import TaskTimer
-from skyllh.core.binning import get_bincenters_from_binedges
-from skyllh.core.pdf import (
-    PDF,
-    PDFAxis,
-    PDFSet,
-    IsSignalPDF,
+from skyllh.analyses.i3.publicdata_ps.aeff import (
+    PDAeff,
 )
-from skyllh.core.multiproc import (
-    IsParallelizable,
-    parallelize
-)
-from skyllh.core.parameters import (
-    ParameterGrid,
-    ParameterGridSet
-)
-from skyllh.i3.dataset import I3Dataset
-from skyllh.physics.flux import FluxModel
-
-from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
 from skyllh.analyses.i3.publicdata_ps.utils import (
     FctSpline1D,
 )
 from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
-    PDSmearingMatrix
+    PDSmearingMatrix,
+)
+from skyllh.core.binning import (
+    get_bincenters_from_binedges,
+)
+from skyllh.core.debugging import (
+    get_logger,
+)
+from skyllh.core.flux_model import (
+    FactorizedFluxModel,
+)
+from skyllh.core.multiproc import (
+    IsParallelizable,
+    parallelize,
+)
+from skyllh.core.parameters import (
+    ParameterGrid,
+    ParameterGridSet,
+)
+from skyllh.core.pdf import (
+    IsSignalPDF,
+    PDF,
+    PDFAxis,
+    PDFSet,
+)
+from skyllh.core.py import (
+    classname,
+    module_classname,
+)
+from skyllh.core.timing import (
+    TaskTimer,
+)
+from skyllh.i3.dataset import (
+    I3Dataset,
 )
 
 
-class PDSignalEnergyPDF(PDF, IsSignalPDF):
+class PDSignalEnergyPDF(
+        PDF,
+        IsSignalPDF):
     """This class provides a signal energy PDF for a spectrial index value.
     """
     def __init__(
-            self, f_e_spl, **kwargs):
+            self,
+            f_e_spl,
+            **kwargs):
         """Creates a new signal energy PDF instance for a particular spectral
         index value.
 
         Parameters
         ----------
-        f_e_spl : FctSpline1D instance
-            The FctSpline1D instance representing the spline of the energy PDF.
+        f_e_spl : instance of FctSpline1D
+            The instance of FctSpline1D representing the spline of the energy
+            PDF.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            pmm=None,
+            **kwargs)
 
         if not isinstance(f_e_spl, FctSpline1D):
             raise TypeError(
-                'The f_e_spl argument must be an instance of FctSpline1D!')
+                'The f_e_spl argument must be an instance of FctSpline1D! '
+                f'Its current type is {classname(f_e_spl)}!')
 
         self.f_e_spl = f_e_spl
 
@@ -61,11 +84,11 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
         self.log10_reco_e_max = self.log10_reco_e_upper_binedges[-1]
 
         # Add the PDF axes.
-        self.add_axis(PDFAxis(
-            name='log_energy',
-            vmin=self.log10_reco_e_min,
-            vmax=self.log10_reco_e_max)
-        )
+        self.add_axis(
+            PDFAxis(
+                name='log_energy',
+                vmin=self.log10_reco_e_min,
+                vmax=self.log10_reco_e_max))
 
         # Check integrity.
         integral = integrate.quad(
@@ -78,31 +101,39 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
         if not np.isclose(integral, 1):
             raise ValueError(
                 'The integral over log10_reco_e of the energy term must be '
-                'unity! But it is {}!'.format(integral))
+                f'unity! But it is {integral}!')
 
-    def assert_is_valid_for_trial_data(self, tdm):
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None):
         pass
 
-    def get_pd_by_log10_reco_e(self, log10_reco_e, tl=None):
+    def get_pd_by_log10_reco_e(
+            self,
+            log10_reco_e,
+            tl=None):
         """Calculates the probability density for the given log10(E_reco/GeV)
         values using the spline representation of the PDF.
 
         Parameters
         ----------
-        log10_reco_e : (n_log10_reco_e,)-shaped 1D numpy ndarray
-            The numpy ndarray holding the log10(E_reco/GeV) values for which
-            the energy PDF should get evaluated.
-        tl : TimeLord instance | None
-            The optional TimeLord instance that should be used to measure
+        log10_reco_e : instance of ndarray
+            The (n_log10_reco_e,)-shaped numpy ndarray holding the
+            log10(E_reco/GeV) values for which the energy PDF should get
+            evaluated.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : (N_events,)-shaped numpy ndarray
-            The 1D numpy ndarray with the probability density for each event.
+        pd : instance of numpy ndarray
+            The (n_log10_reco_e,)-shaped numpy ndarray with the probability
+            density for each energy value.
         """
-        # Select events that actually have a signal energy PDF.
-        # All other events will get zero signal probability density.
+        # Select energy values that actually have a signal energy PDF.
+        # All other energy values will get zero signal probability density.
         m = (
             (log10_reco_e >= self.log10_reco_e_min) &
             (log10_reco_e < self.log10_reco_e_max)
@@ -114,46 +145,58 @@ class PDSignalEnergyPDF(PDF, IsSignalPDF):
 
         return pd
 
-    def get_prob(self, tdm, params=None, tl=None):
-        """Calculates the probability density for the events given by the
-        TrialDataManager.
+    def get_pd(
+            self,
+            tdm,
+            params_recarray=None,
+            tl=None):
+        """Calculates the probability density for all given trial data events
+        and sources.
 
         Parameters
         ----------
-        tdm : TrialDataManager instance
-            The TrialDataManager instance holding the data events for which the
-            probability should be looked up. The following data fields are
-            required:
-                - 'log_energy'
-                    The log10 of the reconstructed energy.
-        params : dict | None
-            The dictionary containing the parameter names and values for which
-            the probability should get calculated.
-            By definition this PDF does not depend on parameters.
-        tl : TimeLord instance | None
-            The optional TimeLord instance that should be used to measure
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data events for
+            which the probability density should be looked up.
+            The following data fields must be present:
+
+            log_energy : float
+                The base-10 logarithm of the reconstructed energy.
+
+        params_recarray : None
+            Unused interface argument.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : (N_events,)-shaped numpy ndarray
-            The 1D numpy ndarray with the probability density for each event.
-        grads : (N_fitparams,N_events)-shaped ndarray | None
-            The 2D numpy ndarray holding the gradients of the PDF w.r.t.
-            each fit parameter for each event. The order of the gradients
-            is the same as the order of floating parameters specified through
-            the ``param_set`` property.
-            It is ``None``, if this PDF does not depend on any parameters.
+        pd : instance of ndarray
+            The (N_values,)-shaped numpy ndarray holding the probability density
+            for each trial data event and source.
+        grads : dict
+            The dictionary holding the gradient values for each global fit
+            parameter. By definition this PDF does not depend on any fit
+            parameters, hence, this is an empty dictionary.
         """
-        log10_reco_e = tdm.get_data('log_energy')
+        evt_idxs = tdm.src_evt_idxs[1]
 
-        pd = self.get_pd_by_log10_reco_e(log10_reco_e, tl=tl)
+        log10_reco_e = np.take(tdm['log_energy'], evt_idxs)
 
-        return (pd, None)
+        pd = self.get_pd_by_log10_reco_e(
+            log10_reco_e=log10_reco_e,
+            tl=tl)
+
+        grads = dict()
+
+        return (pd, grads)
 
 
-class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
-    """This class provides a signal energy PDF set for the public data.
+class PDSignalEnergyPDFSet(
+        PDFSet,
+        IsSignalPDF,
+        IsParallelizable):
+    """This class provides a signal energy PDF set using the public data.
     It creates a set of PDSignalEnergyPDF instances, one for each spectral
     index value on a grid.
     """
@@ -161,8 +204,8 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             self,
             ds,
             src_dec,
-            flux_model,
-            fitparam_grid_set,
+            fluxmodel,
+            param_grid_set,
             ncpu=None,
             ppbar=None,
             **kwargs):
@@ -170,18 +213,20 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         Parameters
         ----------
-        ds : I3Dataset instance
-            The I3Dataset instance that defines the dataset of the public data.
+        ds : instance of Dataset
+            The instance of Dataset that defines the dataset of the public data.
         src_dec : float
             The declination of the source in radians.
-        flux_model : FluxModel instance
-            The FluxModel instance that defines the source's flux model.
-        fitparam_grid_set : ParameterGrid | ParameterGridSet instance
-            The parameter grid set defining the grids of the fit parameters.
+        fluxmodel : instance of FactorizedFluxModel
+            The instance of FactorizedFluxModel that defines the source's flux
+            model.
+        param_grid_set : instance of ParameterGrid | instance of ParameterGridSet
+            The parameter grid set defining the grids of the parameters this
+            energy PDF set depends on.
         ncpu : int | None
             The number of CPUs to utilize. Global setting will take place if
             not specified, i.e. set to None.
-        ppbar : ProgressBar instance | None
+        ppbar : instance of ProgressBar | None
             The instance of ProgressBar for the optional parent progress bar.
         """
         self._logger = get_logger(module_classname(self))
@@ -191,26 +236,28 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             raise TypeError(
                 'The ds argument must be an instance of I3Dataset!')
 
-        if not isinstance(flux_model, FluxModel):
+        if not isinstance(fluxmodel, FactorizedFluxModel):
             raise TypeError(
-                'The flux_model argument must be an instance of FluxModel!')
+                'The fluxmodel argument must be an instance of '
+                'FactorizedFluxModel! '
+                f'Its current type is {classname(fluxmodel)}')
 
-        if (not isinstance(fitparam_grid_set, ParameterGrid)) and\
-           (not isinstance(fitparam_grid_set, ParameterGridSet)):
+        if (not isinstance(param_grid_set, ParameterGrid)) and\
+           (not isinstance(param_grid_set, ParameterGridSet)):
             raise TypeError(
-                'The fitparam_grid_set argument must be an instance of type '
-                'ParameterGrid or ParameterGridSet!')
+                'The param_grid_set argument must be an instance of type '
+                'ParameterGrid or ParameterGridSet! '
+                f'Its current type is {classname(param_grid_set)}!')
 
-        # Extend the fitparam_grid_set to allow for parameter interpolation
+        # Extend the param_grid_set to allow for parameter interpolation
         # values at the grid edges.
-        fitparam_grid_set = fitparam_grid_set.copy()
-        fitparam_grid_set.add_extra_lower_and_upper_bin()
+        param_grid_set = param_grid_set.copy()
+        param_grid_set.add_extra_lower_and_upper_bin()
 
         super().__init__(
-            pdf_type=PDF,
-            fitparams_grid_set=fitparam_grid_set,
-            ncpu=ncpu
-        )
+            param_grid_set=param_grid_set,
+            ncpu=ncpu,
+            **kwargs)
 
         # Load the smearing matrix.
         sm = PDSmearingMatrix(
@@ -234,11 +281,12 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             10, sm.log10_true_enu_binedges[log_true_e_mask])
         true_enu_binedges_lower = true_enu_binedges[:-1]
         true_enu_binedges_upper = true_enu_binedges[1:]
-        valid_true_e_idxs = [sm.get_log10_true_e_idx(0.5 * (he + le))
-            for he,le in zip(
+        valid_true_e_idxs = [
+            sm.get_log10_true_e_idx(0.5 * (he + le))
+            for (he, le) in zip(
                 sm.log10_true_enu_binedges[log_true_e_mask][1:],
                 sm.log10_true_enu_binedges[log_true_e_mask][:-1])
-            ]
+        ]
 
         xvals_binedges = ds.get_binning_definition('log_energy').binedges
         xvals = get_bincenters_from_binedges(xvals_binedges)
@@ -276,26 +324,24 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         ang_err_bw = sm.ang_err_upper_edges - sm.ang_err_lower_edges
 
         # Create the energy pdf for different gamma values.
-        def create_energy_pdf(sm_pdf, flux_model, gridfitparams):
+        def create_energy_pdf(sm_pdf, fluxmodel, gridparams):
             """Creates an energy pdf for a specific gamma value.
             """
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
-            my_flux_model = flux_model.copy(newprop=gridfitparams)
+            my_fluxmodel = fluxmodel.copy(newparams=gridparams)
 
             self._logger.debug(
-                'Generate signal energy PDF for parameters {} in {} E_nu '
-                'bins.'.format(
-                    gridfitparams, len(valid_true_e_idxs))
-            )
+                f'Generate signal energy PDF for parameters {gridparams} in '
+                f'{len(valid_true_e_idxs)} E_nu bins.')
 
             # Calculate the flux probability p(E_nu|gamma).
             flux_prob = (
-                my_flux_model.get_integral(
+                my_fluxmodel.energy_profile.get_integral(
                     true_enu_binedges_lower,
                     true_enu_binedges_upper
                 ) /
-                my_flux_model.get_integral(
+                my_fluxmodel.energy_profile.get_integral(
                     true_enu_binedges[0],
                     true_enu_binedges[-1]
                 )
@@ -343,10 +389,12 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 return spline(xvals)
 
             # Integrate over the true neutrino energy and spline the output.
-            sum_pdf = np.sum([
-                create_reco_e_pdf_for_true_e(i, true_e_idx)
-                for i,true_e_idx in enumerate(valid_true_e_idxs)
-            ], axis=0)
+            sum_pdf = np.sum(
+                [
+                    create_reco_e_pdf_for_true_e(i, true_e_idx)
+                    for (i, true_e_idx) in enumerate(valid_true_e_idxs)
+                ],
+                axis=0)
 
             spline = FctSpline1D(sum_pdf, xvals_binedges, norm=True)
 
@@ -355,8 +403,8 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             return pdf
 
         args_list = [
-            ((sm_pdf, flux_model, gridfitparams), {})
-            for gridfitparams in self.gridfitparams_list
+            ((sm_pdf, fluxmodel, gridparams), {})
+            for gridparams in self.gridparams_list
         ]
 
         pdf_list = parallelize(
@@ -365,57 +413,9 @@ class PDSignalEnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             ncpu=self.ncpu,
             ppbar=ppbar)
 
-        del(sm_pdf)
+        del sm_pdf
 
         # Save all the energy PDF objects in the PDFSet PDF registry with
         # the hash of the individual parameters as key.
-        for (gridfitparams, pdf) in zip(self.gridfitparams_list, pdf_list):
-            self.add_pdf(pdf, gridfitparams)
-
-    def get_prob(self, tdm, gridfitparams, tl=None):
-        """Calculates the signal probability density of each event for the
-        given set of signal fit parameters on a grid.
-
-        Parameters
-        ----------
-        tdm : instance of TrialDataManager
-            The TrialDataManager instance holding the data events for which the
-            probability should be calculated for. The following data fields must
-            exist:
-
-            - 'log_energy'
-                The log10 of the reconstructed energy.
-            - 'psi'
-                The opening angle from the source to the event in radians.
-            - 'ang_err'
-                The angular error of the event in radians.
-        gridfitparams : dict
-            The dictionary holding the signal parameter values for which the
-            signal energy probability should be calculated. Note, that the
-            parameter values must match a set of parameter grid values for which
-            a PDSignalPDF object has been created at construction time of this
-            PDSignalPDFSet object.
-        tl : TimeLord instance | None
-            The optional TimeLord instance that should be used to measure time.
-
-        Returns
-        -------
-        prob : 1d ndarray
-            The array with the signal energy probability for each event.
-        grads : (N_fitparams,N_events)-shaped ndarray | None
-            The 2D numpy ndarray holding the gradients of the PDF w.r.t.
-            each fit parameter for each event. The order of the gradients
-            is the same as the order of floating parameters specified through
-            the ``param_set`` property.
-            It is ``None``, if this PDF does not depend on any parameters.
-
-        Raises
-        ------
-        KeyError
-            If no energy PDF can be found for the given signal parameter values.
-        """
-        pdf = self.get_pdf(gridfitparams)
-
-        (prob, grads) = pdf.get_prob(tdm, tl=tl)
-
-        return (prob, grads)
+        for (gridparams, pdf) in zip(self.gridparams_list, pdf_list):
+            self.add_pdf(pdf, gridparams)

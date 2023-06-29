@@ -166,7 +166,7 @@ def git_get_keywords(versionfile_abs):
 
 
 @register_vcs_handler("git", "keywords")
-def git_versions_from_keywords(keywords, tag_prefix, verbose):
+def git_versions_from_keywords(keywords, tag_prefix, verbose):  # noqa: C901
     """Get version information from git keywords."""
     if "refnames" not in keywords:
         raise NotThisMethod("Short version file found")
@@ -230,7 +230,7 @@ def git_versions_from_keywords(keywords, tag_prefix, verbose):
 
 
 @register_vcs_handler("git", "pieces_from_vcs")
-def git_pieces_from_vcs(tag_prefix, root, verbose, runner=run_command):
+def git_pieces_from_vcs(tag_prefix, root, verbose, runner=run_command):  # noqa: C901
     """Get version from 'git describe' in the root of the source tree.
 
     This only gets called if the git-archive 'subst' keywords were *not*
@@ -576,7 +576,7 @@ def render_git_describe_long(pieces):
     return rendered
 
 
-def render(pieces, style):
+def render(pieces, style):  # noqa: C901
     """Render the given version pieces into the requested style."""
     if pieces["error"]:
         return {"version": "unknown",
@@ -612,7 +612,7 @@ def render(pieces, style):
             "date": pieces.get("date")}
 
 
-def get_versions():
+def get_versions():  # noqa: C901
     """Get version information or return default if unable to do so."""
     # I am in _version.py, which lives at ROOT/VERSIONFILE_SOURCE. If we have
     # __file__, we can work backwards from there to the root. Some

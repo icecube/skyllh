@@ -2,16 +2,21 @@
 
 import numpy as np
 
-from scipy import interpolate
-from scipy import integrate
-
-from skyllh.core.binning import (
-    get_bincenters_from_binedges,
-    get_bin_indices_from_lower_and_upper_binedges,
+from scipy import (
+    integrate,
+    interpolate,
 )
-from skyllh.core.storage import create_FileLoader
 
-from skyllh.analyses.i3.publicdata_ps.utils import FctSpline2D
+from skyllh.analyses.i3.publicdata_ps.utils import (
+    FctSpline2D,
+)
+from skyllh.core.binning import (
+    get_bin_indices_from_lower_and_upper_binedges,
+    get_bincenters_from_binedges,
+)
+from skyllh.core.storage import (
+    create_FileLoader,
+)
 
 
 def load_effective_area_array(pathfilenames):
@@ -58,12 +63,14 @@ def load_effective_area_array(pathfilenames):
     decnu_binedges_lower = np.unique(data['decnu_min'])
     decnu_binedges_upper = np.unique(data['decnu_max'])
 
-    if(len(log10_enu_binedges_lower) != len(log10_enu_binedges_upper)):
-        raise ValueError('Cannot extract the log10(E/GeV) binning of the '
+    if len(log10_enu_binedges_lower) != len(log10_enu_binedges_upper):
+        raise ValueError(
+            'Cannot extract the log10(E/GeV) binning of the '
             'effective area from data file "{}". The number of lower and upper '
             'bin edges is not equal!'.format(str(loader.pathfilename_list)))
-    if(len(decnu_binedges_lower) != len(decnu_binedges_upper)):
-        raise ValueError('Cannot extract the dec_nu binning of the effective '
+    if len(decnu_binedges_lower) != len(decnu_binedges_upper):
+        raise ValueError(
+            'Cannot extract the dec_nu binning of the effective '
             'area from data file "{}". The number of lower and upper bin edges '
             'is not equal!'.format(str(loader.pathfilename_list)))
 
@@ -140,7 +147,7 @@ class PDAeff(object):
 
         # Cut the energies where all effective areas are zero.
         m = np.sum(self._aeff_decnu_log10enu, axis=0) > 0
-        self._aeff_decnu_log10enu = self._aeff_decnu_log10enu[:,m]
+        self._aeff_decnu_log10enu = self._aeff_decnu_log10enu[:, m]
         self._log10_enu_binedges_lower = self._log10_enu_binedges_lower[m]
         self._log10_enu_binedges_upper = self._log10_enu_binedges_upper[m]
 
@@ -174,15 +181,16 @@ class PDAeff(object):
                 (self.log10_enu_bincenters >= min_log10enu) &
                 (self.log10_enu_bincenters < max_log10enu)
             )
-            bin_centers = self.log10_enu_bincenters[m]
             low_bin_edges = self._log10_enu_binedges_lower[m]
             high_bin_edges = self._log10_enu_binedges_upper[m]
 
             # Get the detection probability P(E_nu | sin(dec)) per bin.
             self.det_prob = self.get_detection_prob_for_decnu(
                 src_dec,
-                10**low_bin_edges, 10**high_bin_edges,
-                10**low_bin_edges[0], 10**high_bin_edges[-1]
+                10**low_bin_edges,
+                10**high_bin_edges,
+                10**low_bin_edges[0],
+                10**high_bin_edges[-1]
             )
 
     @property
@@ -218,6 +226,20 @@ class PDAeff(object):
         axis.
         """
         return self._log10_enu_binedges
+
+    @property
+    def log10_enu_binedges_lower(self):
+        """(read-only) The lower binedges of the log10(E_nu/GeV) neutrino energy
+        axis.
+        """
+        return self._log10_enu_binedges_lower
+
+    @property
+    def log10_enu_binedges_upper(self):
+        """(read-only) The upper binedges of the log10(E_nu/GeV) neutrino energy
+        axis.
+        """
+        return self._log10_enu_binedges_upper
 
     @property
     def log10_enu_bincenters(self):
@@ -358,7 +380,7 @@ class PDAeff(object):
             limit=200,
             full_output=1
         )[0]
-        
+
         enu_min = np.atleast_1d(enu_min)
         enu_max = np.atleast_1d(enu_max)
 
@@ -375,4 +397,3 @@ class PDAeff(object):
             det_prob[i] = integral / norm
 
         return det_prob
-

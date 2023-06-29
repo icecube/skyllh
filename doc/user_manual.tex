@@ -15,12 +15,18 @@
 \newcommand{\psk}{\vec{p}_{\mathrm{s}_k}}
 \newcommand{\hatps}{\vec{\hat{p}}_{\mathrm{s}}}
 \newcommand{\xs}{\vec{x}_{\mathrm{s}}}
-\newcommand{\xsk}{\vec{x}_{\mathrm{s}_k}}
 
 \newcommand{\dPhisdE}{\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}}
 
 
 \begin{document}
+
+\section{SkyLLH and this document}
+
+This document describes the mathematical formalism used within the SkyLLH
+source code. Because SkyLLH is structured around the mathematical objects of the
+log-likelihood ratio function, it should help the user and developer to
+understand SkyLLH's class structure and implementation.
 
 \section{The Hypotheses}
 
@@ -37,18 +43,16 @@ As general source hypothesis one could consider a source flux, $\Phi_{\mathrm{S}
 for instance a neutrino or gamma-ray particle flux from a source. Such a general flux
 can be parameterized as
 \begin{equation}
- \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs, \ps),
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\ps),
  \label{eq:PhiS-general}
 \end{equation}
 which is a function of the celestial coordinates right-ascension, $\alpha$, and
 declination, $\delta$, as well as the energy and time of the signal
-particle, given the source to be at location $\xs$ with source
-parameters $\ps$. At this stage $\xs$ doesn't have to be a single coordinate,
-but could also describe an extended source, e.g. the galactic plane.
+particle, given the source parameters $\ps$.
 
 This flux is a differential flux, thus can be written as
 \begin{equation}
- \frac{\mathrm{d}\Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs, \ps)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t},
+ \frac{\mathrm{d}\Phi_{\mathrm{S}}(\alpha,\delta,E,t|\ps)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t},
  \label{eq:differential-PhiS-general}
 \end{equation}
 where $A$ and $\Omega$ denotes area and solid-angle, respectively.
@@ -71,7 +75,7 @@ provides the flux normalization. It should be noticed that such a
 flux model is already an assumption on the source. Such a factorized flux model
 is of the form
 \begin{equation}
- \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs,\ps) = \Phi_0 \Psi_{\mathrm{S}}(\alpha,\delta|\xs,\ps) \epsilon_{\mathrm{S}}(E|\ps) T_{\mathrm{S}}(t|\ps),
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\ps) = \Phi_0 \Psi_{\mathrm{S}}(\alpha,\delta|\ps) \epsilon_{\mathrm{S}}(E|\ps) T_{\mathrm{S}}(t|\ps),
 \end{equation}
 where $\Phi_0$ is the flux normalization carrying the differential flux units,
 and $\Psi_{\mathrm{S}}$, $\epsilon_{\mathrm{S}}$, and $T_{\mathrm{S}}$ are the
@@ -88,13 +92,13 @@ for neutrino emission from point-like objects in the sky, where a factorized
 flux model has been used as source hypothesis. Thus, the spatial profile is
 given by two delta functions:
 \begin{equation}
- \Psi_{\mathrm{S}}(\alpha,\delta|\xs) = \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}),
+ \Psi_{\mathrm{S}}(\alpha,\delta|\ps) \equiv \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}),
 \end{equation}
-where the source location $\xs$ is given by a single point in the sky in
-equatorial coordinates: $\xs = (\alpha_{\mathrm{s}}, \delta_{\mathrm{s}})$.
-Hence, the flux model can be formulated as:
+where the source location is given by a single point in the sky in
+equatorial coordinates right-ascension $\alpha_{\mathrm{s}}$ and declination
+$\delta_{\mathrm{s}}$. Hence, the flux model can be formulated as:
 \begin{equation}
- \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\xs,\ps) = \Phi_0 \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}) \epsilon_{\mathrm{S}}(E|\ps) T_{\mathrm{S}}(t|\ps).
+ \Phi_{\mathrm{S}}(\alpha,\delta,E,t|\ps) \equiv \Phi_0 \delta(\alpha-\alpha_{\mathrm{s}})\delta(\delta-\delta_{\mathrm{s}}) \epsilon_{\mathrm{S}}(E|\ps) T_{\mathrm{S}}(t|\ps).
 \end{equation}
 
 For such point-like source flux models SkyLLH provides the
@@ -157,9 +161,10 @@ function $\mathcal{L}(n_{\mathrm{s}},\vec{p}_{\mathrm{s}}~|D)$ of the form
 \end{equation}
 where $\ns$ is the number of signal events, hence, $(N-\ns)$ the number of
 background events in the data sample $D$ of $N$ total events.
-The set of source model parameters is denoted as $\ps$. For a point-like source
-model, the source model parameters include the source position $\xs$ and the
-spectral index $\gamma$ of the source flux.
+The set of source model parameters is denoted as $\ps$. For example for a
+point-like source
+model with a power-law energy emission profile, the source model parameters
+include the source position and the spectral index $\gamma$ of the source flux.
 $S_i(\ps)$ and $B_i$ is the value of the signal and background PDF for the $i$th
 data event, respectively.
 
@@ -573,10 +578,11 @@ With equation (\ref{eq:SiStacking}) and the definitions
 (\ref{eq:SourceWeightCoefficient}), and
 (\ref{eq:SumOfSourceWeightCoefficients}), it is given by
 \begin{equation}
-\mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\psk) \frac{\mathcal{S}_{i}(\psk)}{\mathcal{B}_{i}}.
+\mathcal{R}_i(\ps) = \frac{\mathcal{S}_i(\ps)}{\mathcal{B}_i} = \frac{1}{A(\ps)} \sum_{k=1}^{K} a_k(\psk) \mathcal{R}_{i,k}(\psk),
 \label{eq:RiStacking}
 \end{equation}
-The signal over background ratio $\mathcal{S}_{i}(\psk) / \mathcal{B}_{i} \equiv \mathcal{R}_{i,k}(\psk)$
+where the signal over background PDF ratio
+$\mathcal{R}_{i,k}(\psk) \equiv \mathcal{S}_{i}(\psk) / \mathcal{B}_{i}$
 for the source $k$ is then given by equation (\ref{eq:Ri}).
 
 Using the same set of source fit parameters $\ps$ for all sources, the
@@ -597,10 +603,8 @@ with the derivative of equation (\ref{eq:SumOfSourceWeightCoefficients}) given b
 \end{equation}
 with
 \begin{equation}
-\frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}} = W_k \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{k}}(\psk)}{\mathrm{d}{p_s}_k},
+\frac{\mathrm{d} a_k}{\mathrm{d} p_{\mathrm{s}}} = W_k \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{k}}(\psk)}{\mathrm{d}p_{\mathrm{s}}}.
 \end{equation}
-where the local source parameter $p_{\mathrm{s}_{k}}$ maps to the correct global
-parameter $p_{\mathrm{s}}$.
 
 In case one would fit each source individually with its own set of source fit
 parameters, $\psk$, $\ps$ would be a set of $K$ sets
@@ -613,8 +617,8 @@ particular global fit parameter, would contribute.
 
 \subsection{Multiple Datasets}
 
-With SkyLLH a set of $J$ different data samples (datasets), $\mathrm{D}_j$, can be
-analyzed at once. Each data sample has its own detector signal yield,
+With SkyLLH a set of $J$ different data samples (datasets), $\mathrm{D}_j$, can
+be analyzed at once. Each data sample has its own detector signal yield,
 $\mathcal{Y}_{\mathrm{s}_j}$.
 
 The composite likelihood function is the product of the individual dataset
@@ -629,17 +633,17 @@ $n_{\mathrm{s}_j}$ for the individual datasets. The distribution of $\ns$
 along the different datasets is based on the detector signal yield,
 $\mathcal{Y}_{\mathrm{s}_j}$, of each dataset. For a single source it is given by:
 \begin{equation}
- n_{\mathrm{s}_j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)},
+ n_{\mathrm{s}_j}(\ns,\ps) = \ns \frac{\mathcal{Y}_{\mathrm{s}_j}(\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\ps)},
  \label{eq:nsjy}
 \end{equation}
-where $\xs$ and $\ps$ denote the source position and flux fit parameters, e.g.
-the spectral index $\gamma$, respectively. The detector signal yield can be
-calculated via the detector effective area and the source flux (\emph{c.f.} section
-\ref{sec:detsigyield}).
+where $\ps$ denotes the source flux fit parameters, e.g.
+the spectral index $\gamma$. The detector signal yield can be
+calculated via the detector effective area and the source flux (\emph{c.f.}
+section \ref{sec:detsigyield}).
 
 By defining the dataset weight factor
 \begin{equation}
- f_j(\ps) \equiv \frac{\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)}
+ f_j(\ps) \equiv \frac{\mathcal{Y}_{\mathrm{s}_j}(\ps)}{\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\ps)}
  \label{eq:dataset-weight-factor-single-source}
 \end{equation}
 with the property
@@ -668,8 +672,8 @@ Hence,
  \label{eq:logLambdaOfLogLambdaj}
 \end{equation}
 
-For multiple point sources, i.e. a stacking of $K$ point sources with positions
-$\xsk$, the dataset weight factor of each single source needs
+For multiple point sources, i.e. a stacking of $K$ point sources, the dataset
+weight factor of each single source needs
 to be taken into account via Bayes' theorem. Thus, $f_{j}(\ps)$ can be written
 as the sum of the products of the dataset weight factor $f_{j}(\psk)$ for
 source $k$, as given by equation (\ref{eq:dataset-weight-factor-single-source}),
@@ -680,23 +684,48 @@ compared to all the other sources in all datasets:
 \end{equation}
 The relative strength of source $k$ can be written as
 \begin{equation}
- f_{k}(\psk) = \frac{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}{\sum_{\kappa=1}^{K} \sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s}_{j,\kappa}}(\vec{x}_{\mathrm{s}_\kappa},\vec{p}_{\mathrm{s}_\kappa}) }
+ f_{k}(\psk) = \frac{\sum_{j=1}^{J} \mathcal{Y}_{\mathrm{s}_{j,k}}(\psk)}{ \sum_{j=1}^{J} \sum_{k'=1}^{K} \mathcal{Y}_{\mathrm{s}_{j,k'}}(\vec{p}_{\mathrm{s}_{k'}}) }
  \label{eq:fk}
 \end{equation}
-By combining equation \ref{eq:dataset-weight-factor-single-source} with $\xs \equiv \xsk$
-and $\ps \equiv \psk$, and equation \ref{eq:fk}, the expression for
+By combining equation \ref{eq:dataset-weight-factor-single-source} with
+$\ps \equiv \psk$, and equation \ref{eq:fk}, the expression for
 $f_{j}(\ps)$ for multiple sources is given by:
 \begin{equation}
  f_{j}(\ps) = \sum_{k=1}^{K}
-    \frac{\left(\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk)\right) \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}
-         {\left(\sum_{\kappa=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',\kappa}}(\vec{x}_{\mathrm{s}_\kappa},\vec{p}_{\mathrm{s}_\kappa})\right) \left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk) \right)}
+    \frac{\left(\sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\psk)\right) \mathcal{Y}_{\mathrm{s}_{j,k}}(\psk)}
+         {\left(\sum_{k'=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k'}}(\vec{p}_{\mathrm{s}_{k'}})\right) \left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\psk) \right)}
 \end{equation}
 The sum over the datasets of the detector signal yield for source $k$ cancels
 out leaving the simplified equation
 \begin{equation}
- f_{j}(\ps) = \frac{\sum_{k=1}^{K} \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)}
-                   {\sum_{k=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\xsk,\psk)}.
+ f_{j}(\ps) = \frac{\sum_{k=1}^{K} \mathcal{Y}_{\mathrm{s}_{j,k}}(\psk)}
+                   {\sum_{k=1}^{K} \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j',k}}(\psk)}.
  \label{eq:dataset-weight-factor-multiple-sources}
+\end{equation}
+
+Equation \ref{eq:dataset-weight-factor-multiple-sources} assumes an equal
+strength weighting of all sources, \emph{i.e.} $W_k = 1 \forall k$. In the case
+of non-equal source strength weighting, the detector signal yield
+$\mathcal{Y}_{j,k}$ needs to be multiplied with the source strength weight
+$W_k$:
+\begin{equation}
+ f_{j}(\ps) = \frac{\sum_{k=1}^{K} W_k \mathcal{Y}_{\mathrm{s}_{j,k}}(\psk)}
+                   {\sum_{j'=1}^{J} \sum_{k=1}^{K} W_k \mathcal{Y}_{\mathrm{s}_{j',k}}(\psk)}.
+ \label{eq:dataset-weight-factor-multiple-sources-with-source-strength-weight}
+\end{equation}
+
+Using the definition \ref{eq:SourceWeightCoefficient} for the source-weight
+coefficient, \emph{i.e.}
+\begin{equation}
+a_{j,k}(\psk) \equiv W_k \mathcal{Y}_{\mathrm{s}_{j,k}}(\psk),
+\end{equation}
+equation
+\ref{eq:dataset-weight-factor-multiple-sources-with-source-strength-weight}
+reads
+\begin{equation}
+ f_{j}(\ps) = \frac{\sum_{k=1}^{K} a_{j,k}(\psk)}
+                   {\sum_{j'=1}^{J} \sum_{k=1}^{K} a_{j',k}(\psk)}.
+ \label{eq:dataset-weight-factor-multi-sources-with-source-weight-coefficient}
 \end{equation}
 
 \subsection{Gradients of the Multi-Dataset Log-Likelihood Ratio}
@@ -713,7 +742,7 @@ with
 Its second derivative w.r.t. $\ns$ is given by
 \begin{align}
  \frac{\mathrm{d}^2\log\Lambda(\ns,\ps)}{\mathrm{d}\ns^2} &= \sum_{j=1}^{J} \frac{\mathrm{d}}{\mathrm{d}\ns}\left( \frac{\mathrm{d}\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}} \right) \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns}\\
-							  &= \sum_{j=1}^{J} \frac{\mathrm{d}^2\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}^2} \left( \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns} \right)^2.
+&= \sum_{j=1}^{J} \frac{\mathrm{d}^2\log\Lambda_j(n_{\mathrm{s}_j},\ps)}{\mathrm{d}n_{\mathrm{s}_j}^2} \left( \frac{\mathrm{d} n_{\mathrm{s}_j}}{\mathrm{d} \ns} \right)^2.
 \end{align}
 
 The derivative w.r.t. a single source fit parameter, $p_{\mathrm{s}}$, consists
@@ -730,40 +759,45 @@ In case of a single source, the expression for the derivative of the dataset
 weight factor, where $f_j(\ps)$ is given by equation (\ref{eq:dataset-weight-factor-single-source}),
 reads via the quotient rule of differentiation:
 \begin{equation}
-\frac{\mathrm{d}f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_j}(\xs,\ps)}{\mathrm{d}p_{\mathrm{s}}} \sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps) - \mathcal{Y}_{\mathrm{s}_j}(\xs,\ps) \sum_{j'=1}^{J} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps)}{\mathrm{d}p_{\mathrm{s}}} }{\left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\xs,\ps) \right)^2}.
+\frac{\mathrm{d}f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} = \frac{\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_j}(\ps)}{\mathrm{d}p_{\mathrm{s}}} \sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j'}}(\ps) - \mathcal{Y}_{\mathrm{s}_j}(\ps) \sum_{j'=1}^{J} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j'}}(\ps)}{\mathrm{d}p_{\mathrm{s}}} }{\left( \sum_{j'=1}^{J} \mathcal{Y}_{\mathrm{s}_{j'}}(\ps) \right)^2}.
 \end{equation}
 In case of multiple sources (stacking), the expression for the derivative of the
 dataset weight factor, where $f_j(\ps)$ is given by equation
-(\ref{eq:dataset-weight-factor-multiple-sources}) reads via the quotient rule of
-differentiation:
+(\ref{eq:dataset-weight-factor-multi-sources-with-source-weight-coefficient})
+reads via the quotient rule of differentiation:
 \begin{equation}
  \frac{\mathrm{d} f_j(\ps)}{\mathrm{d}p_{\mathrm{s}}} =
-    \frac{\left(\sum_{k=1}^{K} \frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j,k}}}{\mathrm{d}p_{\mathrm{s}}}\right) \left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j',k}}\right) - \left(\sum_{k=1}^{K}\mathcal{Y}_{\mathrm{s}_{j,k}}\right)\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\frac{\mathrm{d}\mathcal{Y}_{\mathrm{s}_{j',k}}}{\mathrm{d}p_{\mathrm{s}}}\right)}
-         {\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\mathcal{Y}_{\mathrm{s}_{j',k}} \right)^2}
+    \frac{\left(\sum_{k=1}^{K} \frac{\mathrm{d}a_{j,k}}{\mathrm{d}p_{\mathrm{s}}}\right) \left(\sum_{k=1}^{K}\sum_{j'=1}^{J}a_{j',k}\right) - \left(\sum_{k=1}^{K} a_{j,k}\right)\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}\frac{\mathrm{d}a_{j',k}}{\mathrm{d}p_{\mathrm{s}}}\right)}
+         {\left(\sum_{k=1}^{K}\sum_{j'=1}^{J}a_{j',k} \right)^2}
 \end{equation}
 
 \section{Detector Signal Yield}
 \label{sec:detsigyield}
 
-The detector signal yield, $\mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk)$,
+The detector signal yield, $\mathcal{Y}_{\mathrm{s}_{j,k}}(\psk)$,
 is the mean number of expected signal events in the detector from a given
 source $k$ in a given data sample $j$. For a differential source flux,
 $\mathrm{d}\Phi_{\mathrm{s}}/(\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t)$,
 it is the integral of the product of the detector effective area and this
 differential flux over the solid-angle, energy, and time of the source:
 \begin{equation}
- \mathcal{Y}_{\mathrm{s}_{j,k}}(\xsk,\psk) \equiv \int_{\Omega_{\mathrm{s}_k}} \mathrm{d}\Omega \int_0^\infty \mathrm{d}E \int_{t_{\mathrm{start}_j}}^{t_{\mathrm{end}_j}}\mathrm{d}t A_{\mathrm{eff}_j}(E,t|\xsk) \frac{\mathrm{d}\Phi_{\mathrm{s}}(E,t|\psk)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t}
+ \mathcal{Y}_{\mathrm{s}_{j,k}}(\psk) \equiv \int_{\Omega_{\mathrm{s}_k}} \mathrm{d}\Omega \int_0^\infty \mathrm{d}E \int_{t_{\mathrm{start}_j}}^{t_{\mathrm{end}_j}}\mathrm{d}t A_{\mathrm{eff}_j}(E,t|\psk) \frac{\mathrm{d}\Phi_{\mathrm{s}}(E,t|\psk)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t}
 \label{eq:Ysj}
 \end{equation}
-In the most-general case, the source position $\xs$ consists of three
-quantities: right-ascension, declination, and observation time, i.e.
-$\xs = (\alpha_{\mathrm{s}},\delta_{\mathrm{s}},t_{\mathrm{obs}})$.
 
-The time-dependent effective area $A_{\mathrm{eff}_j}(E,t|\xsk)$ must account
+In the most-general case, the source position $\xs$ consists of celestrial
+coordinates right-ascension and declination, which might be a function of the
+observation time $t_{\mathrm{obs}}$ for very long data taking periods in the
+order of several tens of years, i.e. due to the movement of the solar system
+w.r.t. the source:
+$\xs = \{\alpha_{\mathrm{s}}(t_{\mathrm{obs}}),\delta_{\mathrm{s}}(t_{\mathrm{obs}})\}$.
+
+
+The time-dependent effective area $A_{\mathrm{eff}_j}(E,t|\psk)$ must account
 for the detector off-time intervals within the data sample $j$. In cases, where
 the effective area is constant within a data sample, it can be written as
 \begin{equation}
- A_{\mathrm{eff}_j}(E,t|\xsk) = A_{\mathrm{eff}_j}(E|\xsk) T_{\mathrm{live}}(t)
+ A_{\mathrm{eff}_j}(E,t|\psk) \equiv A_{\mathrm{eff}_j}(E|\psk) T_{\mathrm{live}}(t)
 \end{equation}
 with $T_{\mathrm{live}}(t)$ is the detector live-time function as given by
 equation (\ref{eq:Tlive}).
@@ -773,9 +807,9 @@ equation (\ref{eq:Tlive}).
 In SkyLLH the effective area $A_{\mathrm{eff},j}$ of a data sample $j$ is not
 calculated separately in order to avoid binning effects. However, the effective
 area can be calculated using the Monte-Carlo weights, \code{mcweight}\footnote{In IceCube
-known as ``OneWeight'', but which already includes the number of used MC files.},
+known as ``OneWeight'', which already includes the number of used MC files.},
 of the simulation events.
-The Monte-Carlo weights have the unit GeV~cm$^2$~sr.
+In IceCube simulation the Monte-Carlo weights have the unit GeV~cm$^2$~sr.
 Using the Monte-Carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$,
 that corresponds to a signal event, i.e. an event that has similar properties as
 a signal event (\emph{e.g.} same true direction), the effective area is given by
@@ -786,99 +820,30 @@ solid angle and the energy range $\Delta E$ of the summed selected events:
 \end{equation}
 
 
-\subsection{The DetSigYield Class}
-
-\class{DetSigYield} provides an abstract base class for a detector signal yield
-class to compute the integral given in equation \eq{eq:Ysj}. The detector signal
-yield depends on the flux model and its source parameters, which might
-change during the likelihood maximization process. It is also dependent on the
-detector effective area, hence is detector dependent. Thus,
-\class{DetSigYield} must be provided with a detector signal
-yield implementation method derived from the \class{DetSigYieldImplMethod}
-class.
-
-Detector signal yield values can be retrieved via the call operator
-\code{\_\_call\_\_(src, src\_flux\_params)}, which takes the celestial source
-position(s), and the additional source flux parameters as arguments.
-
-\subsubsection{The DetSigYieldImplMethod Class}
-
-\class{DetSigYieldImplMethod} is an abstract base class and defines the interface
-between the detector signal yield implementation method and the
-\class{DetSigYield} class.
-
-% List of detector signal yield implementation methods.
-Table \ref{tbl:I3DetSigYieldImplMethod} lists all available IceCube specific
-detector signal yield implementation methods and their description.
-\begin{table}
-\caption{IceCube specific detector signal yield implementation methods.}
-\label{tbl:I3DetSigYieldImplMethod}
-
-\begin{tabular}{p{.95\textwidth}}
-\hline
-Name of Class \& Description \\
-\hline
-\textbf{FixedFluxPointLikeSourceI3DetSigYieldImplMethod}
-
-IceCube detector signal yield
-    implementation method for a fixed flux model and a point-like source.
-    The flux model might contain flux parameters, but these are not fit in the
-    likelihood maximization process.
-    This implementation assumes that the detector effective area depends solely
-    on the declination of the source. This method creates
-    a spline function of given order for the logarithmic values of the
-    $\sin(\delta)$-dependent detector signal yield.
-
-    The constructor of this implementation method requires a $\sin(\delta)$
-    binning definition for the Monte-Carlo events and the order of the spline
-    function.
-
-    This implementation method create a detector signal yield instance of class
-    \class{FixedFluxPointLikeSourceI3DetSigYield}.
-\\
-\hline
-\textbf{PowerLawFluxPointLikeSourceI3DetSigYieldImplMethod}
-
-IceCube detector signal
-    yield implementation method for a
-    power law flux model, implemented by the \class{PowerLawFlux} class, an a
-    point-like source.
-    This method creates a 2D spline function of given orders for the logarithmic
-    values of the $\sin(\delta)$-dependent detector signal yield for a
-    range of $\gamma$ values. This implementation method supports
-    multi-processing.
-\end{tabular}
-\end{table}
-
 \section{The Concept of Source Hypothesis Groups}
 
 The analyses in SkyLLH rely heavily on the calculation of detector signal
-efficiencies. As seen in section \ref{sec:detsigyield}, the detector signal
+yields. As seen in section \ref{sec:detsigyield}, the detector signal
 efficiency depends on the source hypothesis (spatial model and flux model)
 and the detector response (dataset). Hence, the analyses require detector signal
-efficiency instances for each combination of source and dataset.
+yield instances for each combination of source and dataset.
 However, the sources might be of the same kind, i.e. having the same spatial
-model and the same flux model. For such sources detector signal efficiency
+model and the same flux model. For such sources detector signal yield
 instances are needed only for each dataset. Thus, we define a group
-of sources with the same spatial model and flux model as a \emph{source hypothesis group},
-$G_{\mathrm{s}}$.
+of sources with the same spatial model and flux model as a
+\emph{source hypothesis group}.
 
-A source hypothesis group has a list of spatial source models, e.g. point-like source
-locations in case of point-like sources, a flux model, and a detection signal
-efficiency implementation method assigned.
+A source hypothesis group has a list of spatial source models, e.g. point-like
+sources, a flux model, and a detector signal yield builder assigned.
 
 SkyLLH provides the \class{SourceHypoGroupManager} class to define the groups of
 source hypotheses.
 
 \section{Implemented Log-Likelihood Models}
-This section describes the implemented log-likelihood models. \cite{TimeDepPSSearchMethods2010}
+This section describes the implemented log-likelihood models.
+\cite{TimeDepPSSearchMethods2010}
 
-% \subsection{Time Dependent Point-Source Flare}
-%
-% The \class{TimeDepPSFlareLHModel} class provides the likelihood model for searching for a point source with unknown time-dependence.
-% The search is based on the formulism described in \cite{TimeDepPSSearchMethods2010}.
-%
-% The model utilizes a two-component likelihood function with signal and background events.
+
 
 
 \appendix

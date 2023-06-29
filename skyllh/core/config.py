@@ -4,10 +4,19 @@
 convenience utility functions to set different configuration settings.
 """
 
-from astropy import units  # type: ignore
+from astropy import (
+    units,
+)
 import os.path
 import sys
-from typing import Any, Dict, Iterator, KeysView, ItemsView, ValuesView
+from typing import (
+    Any,
+    Dict,
+)
+
+from skyllh.core.py import (
+    issequenceof,
+)
 
 # Try to load the yaml package.
 YAML_LOADED = True
@@ -15,8 +24,6 @@ try:
     import yaml
 except ImportError:
     YAML_LOADED = False
-
-from skyllh.core.py import issequenceof
 
 
 _BASECONFIG = {
@@ -84,48 +91,65 @@ _BASECONFIG = {
 }
 
 
-class CFGClass(dict):
-
-    """
-    This class holds the global config state.
+class CFGClass(
+        dict):
+    """This class holds the global configuration state.
 
     The class behaves like a dict, delegating all methods of the dict
-    interface to the underlying config dictionary.
+    interface to the underlying configuration dictionary.
     """
 
     # Keep track of whether this class has been instantiated.
-
     _is_instantiated = False
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(
+            self,
+            *args,
+            **kwargs) -> None:
+        """Initializes a new CFGClass instance. Such a instance can be
+        initialized only once!
+        """
         if CFGClass._is_instantiated:
-            raise RuntimeError("Can only instantiate CFGClass once")
+            raise RuntimeError(
+                'Can instantiate CFGClass only once!')
 
         super().__init__(*args, **kwargs)
+
         CFGClass._is_instantiated = True
 
-    def from_yaml(self, yaml_file: str) -> None:
+    def from_yaml(
+            self,
+            yaml_file: str) -> None:
+        """Updates the configuration with the configuration items contained in
+        the yaml file. This calls ``dict.update``.
+
+        Parameters
+        ----------
+        yaml_file: str | None
+            Path to yaml file containg the to-be-updated configuration items.
+            If set to ``None``, nothing is done.
         """
-        Update config with yaml file.
+        if yaml_file is None:
+            return
 
-        Parameters:
-            yaml_file: str
-                Path to yaml file.
-        """
-        if(YAML_LOADED):
-            yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
-            self.update(yaml_config)
-        else:
-            raise ImportError(f'Could not import yaml package. Thus can not'
-                              f'import config from yaml file {yaml_file}')
+        if not YAML_LOADED:
+            raise ImportError(
+                f'Could not import yaml package. Thus cannot'
+                f'import config from yaml file {yaml_file}!')
 
-    def from_dict(self, user_dict: Dict[Any, Any]) -> None:
-        """
-        Creates a config from dictionary.
+        yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
+        self.update(yaml_config)
 
-        Parameters:
-            user_dict: dict
+    def from_dict(
+            self,
+            user_dict: Dict[Any, Any]) -> None:
+        """Updates the configuration with the given configuration
+        dictionary. This calls ``dict.update``.
 
+        Parameters
+        ----------
+        user_dict: dict
+            The dictionary containg the to-be-updated configuration items.
         """
         self.update(user_dict)
 
@@ -133,8 +157,54 @@ class CFGClass(dict):
 CFG = CFGClass(_BASECONFIG)
 
 
+def to_internal_time_unit(
+        time_unit,
+):
+    """Calculates the conversion factor from the given time unit to the internal
+    time unit.
+
+    Parameters
+    ----------
+    time_unit : instance of astropy.units.UnitBase
+        The time unit from which to convert to the internal time unit.
+    """
+    internal_time_unit = CFG['internal_units']['time']
+    factor = time_unit.to(internal_time_unit)
+
+    return factor
+
+
+def set_enable_tracing(
+        flag):
+    """Sets the global setting for tracing.
+
+    Parameters
+    ----------
+    flag : bool
+        The flag if tracing should be enabled (``True``) or disabled
+        (``False``).
+    """
+    CFG['debugging']['enable_tracing'] = flag
+
+
+def set_n_cpu(
+        n_cpu):
+    """Sets the global setting for the number of CPUs to use, when
+    parallelization is available.
+
+    Parameters
+    ----------
+    n_cpu : int
+        The number of CPUs.
+    """
+    CFG['multiproc']['ncpu'] = n_cpu
+
+
 def set_internal_units(
-        angle_unit=None, energy_unit=None, length_unit=None, time_unit=None):
+        angle_unit=None,
+        energy_unit=None,
+        length_unit=None,
+        time_unit=None):
     """Sets the units used internally to compute quantities. These units must
     match the units used in the monte-carlo files.
 
@@ -153,36 +223,37 @@ def set_internal_units(
         The internal unit that should be used for time.
         If set to ``None``, the unit is not changed.
     """
-    if(angle_unit is not None):
-        if(not isinstance(angle_unit, units.UnitBase)):
+    if angle_unit is not None:
+        if not isinstance(angle_unit, units.UnitBase):
             raise TypeError(
                 'The angle_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['angle'] = angle_unit
 
-    if(energy_unit is not None):
-        if(not isinstance(energy_unit, units.UnitBase)):
+    if energy_unit is not None:
+        if not isinstance(energy_unit, units.UnitBase):
             raise TypeError(
                 'The energy_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['energy'] = energy_unit
 
-    if(length_unit is not None):
-        if(not isinstance(length_unit, units.UnitBase)):
+    if length_unit is not None:
+        if not isinstance(length_unit, units.UnitBase):
             raise TypeError(
                 'The length_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['length'] = length_unit
 
-    if(time_unit is not None):
-        if(not isinstance(time_unit, units.UnitBase)):
+    if time_unit is not None:
+        if not isinstance(time_unit, units.UnitBase):
             raise TypeError(
                 'The time_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
         CFG['internal_units']['time'] = time_unit
 
 
-def set_wd(path):
+def set_wd(
+        path):
     """Sets the project's working directory configuration variable and adds it
     to the Python path variable.
 
@@ -198,7 +269,7 @@ def set_wd(path):
     wd : str
         The project's working directory.
     """
-    if(CFG['project']['working_directory'] in sys.path):
+    if CFG['project']['working_directory'] in sys.path:
         sys.path.remove(CFG['project']['working_directory'])
 
     wd = os.path.abspath(path)
@@ -208,7 +279,8 @@ def set_wd(path):
     return wd
 
 
-def add_analysis_required_exp_data_field_names(fieldnames):
+def add_analysis_required_exp_data_field_names(
+        fieldnames):
     """Adds the given data field names to the set of data field names of the
     experimental data that are required by the analysis.
 
@@ -218,9 +290,9 @@ def add_analysis_required_exp_data_field_names(fieldnames):
         The field name or sequence of field names that should get added for the
         experimental data.
     """
-    if(isinstance(fieldnames, str)):
+    if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
-    elif(not issequenceof(fieldnames, str)):
+    elif not issequenceof(fieldnames, str):
         raise TypeError(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
@@ -229,7 +301,30 @@ def add_analysis_required_exp_data_field_names(fieldnames):
         CFG['dataset']['analysis_required_exp_field_names'] + fieldnames))
 
 
-def set_analysis_required_exp_data_field_names(fieldnames):
+def add_analysis_required_mc_data_field_names(
+        fieldnames):
+    """Adds the given data field names to the set of data field names of the
+    monte-carlo data that are required by the analysis.
+
+    Parameters
+    ----------
+    fieldnames : str | sequence of str
+        The field name or sequence of field names that should get added for the
+        monto-carlo data.
+    """
+    if isinstance(fieldnames, str):
+        fieldnames = [fieldnames]
+    elif not issequenceof(fieldnames, str):
+        raise TypeError(
+            'The fieldnames argument must be an instance of str '
+            'or a sequence of type str instances!')
+
+    CFG['dataset']['analysis_required_mc_field_names'] = list(set(
+        CFG['dataset']['analysis_required_mc_field_names'] + fieldnames))
+
+
+def set_analysis_required_exp_data_field_names(
+        fieldnames):
     """Sets the data field names of the experimental data that are required by
     the analysis.
 
@@ -238,9 +333,9 @@ def set_analysis_required_exp_data_field_names(fieldnames):
     fieldnames : str | sequence of str
         The field name or sequence of field names for the experimental data.
     """
-    if(isinstance(fieldnames, str)):
+    if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
-    elif(not issequenceof(fieldnames, str)):
+    elif not issequenceof(fieldnames, str):
         raise TypeError(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
@@ -248,7 +343,8 @@ def set_analysis_required_exp_data_field_names(fieldnames):
     CFG['dataset']['analysis_required_exp_field_names'] = list(set(fieldnames))
 
 
-def set_analysis_required_mc_data_field_names(fieldnames):
+def set_analysis_required_mc_data_field_names(
+        fieldnames):
     """Sets the data field names of the monte-carlo data that are required by
     the analysis.
 
@@ -257,9 +353,9 @@ def set_analysis_required_mc_data_field_names(fieldnames):
     fieldnames : str | sequence of str
         The field name or sequence of field names for the monte-carlo data.
     """
-    if(isinstance(fieldnames, str)):
+    if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
-    elif(not issequenceof(fieldnames, str)):
+    elif not issequenceof(fieldnames, str):
         raise TypeError(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')

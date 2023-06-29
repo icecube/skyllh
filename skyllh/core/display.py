@@ -40,4 +40,4 @@ def add_leading_text_line_padding(padwidth, text):
     padded_text : str
         The text where each line is padded with the given number of whitespaces.
     """
-    return '\n'.join([ ' '*padwidth + line for line in text.split('\n') ])
+    return '\n'.join([' '*padwidth + line for line in text.split('\n')])

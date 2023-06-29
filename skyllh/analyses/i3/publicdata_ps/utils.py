@@ -2,10 +2,17 @@
 
 import numpy as np
 
-from scipy import interpolate
-from scipy import integrate
+from scipy import (
+    integrate,
+    interpolate,
+)
 
-from skyllh.core.binning import get_bincenters_from_binedges
+from skyllh.core.binning import (
+    get_bincenters_from_binedges,
+)
+from skyllh.core.utils.coords import (
+    angular_separation,
+)
 
 
 class FctSpline1D(object):
@@ -15,7 +22,12 @@ class FctSpline1D(object):
     The evaluate the spline, use the ``__call__`` method.
     """
 
-    def __init__(self, f, x_binedges, norm=False, **kwargs):
+    def __init__(
+            self,
+            f,
+            x_binedges,
+            norm=False,
+            **kwargs):
         """Creates a new 1D function spline using the PchipInterpolator
         class from scipy.
 
@@ -51,7 +63,10 @@ class FctSpline1D(object):
                 full_output=1
             )[0]
 
-    def __call__(self, x, oor_value=0):
+    def __call__(
+            self,
+            x,
+            oor_value=0):
         """Evaluates the spline at the given x values. For x-values
         outside the spline's range, the oor_value is returned.
 
@@ -69,11 +84,14 @@ class FctSpline1D(object):
             The numpy ndarray holding the evaluated values of the spline.
         """
         f = self.spl_f(x)
-        f = np.nan_to_num(f, nan=oor_value)
+        f = np.where(np.isnan(f), oor_value, f)
 
         return f
 
-    def evaluate(self, *args, **kwargs):
+    def evaluate(
+            self,
+            *args,
+            **kwargs):
         """Alias for the __call__ method.
         """
         return self(*args, **kwargs)
@@ -89,7 +107,12 @@ class FctSpline2D(object):
     The evaluate the spline, use the ``__call__`` method.
     """
 
-    def __init__(self, f, x_binedges, y_binedges, **kwargs):
+    def __init__(
+            self,
+            f,
+            x_binedges,
+            y_binedges,
+            **kwargs):
         """Creates a new 2D function spline using the RectBivariateSpline
         class from scipy.
 
@@ -126,7 +149,11 @@ class FctSpline2D(object):
         self.spl_log10_f = interpolate.RectBivariateSpline(
             x, y, z, kx=3, ky=3, s=0)
 
-    def __call__(self, x, y, oor_value=0):
+    def __call__(
+            self,
+            x,
+            y,
+            oor_value=0):
         """Evaluates the spline at the given coordinates. For coordinates
         outside the spline's range, the oor_value is returned.
 
@@ -158,7 +185,35 @@ class FctSpline2D(object):
         return f
 
 
-def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
+def clip_grl_start_times(grl_data):
+    """Make sure that the start time of a run is not smaller than the stop time
+    of the previous run.
+
+    Parameters
+    ----------
+    grl_data : instance of numpy structured ndarray
+        The numpy structured ndarray of length N_runs, with the following
+        fields:
+
+        start : float
+            The start time of the run.
+        stop : float
+            The stop time of the run.
+    """
+    start = grl_data['start']
+    stop = grl_data['stop']
+
+    m = (start[1:] - stop[:-1]) < 0
+    new_start = np.where(m, stop[:-1], start[1:])
+
+    grl_data['start'][1:] = new_start
+
+
+def psi_to_dec_and_ra(
+        rss,
+        src_dec,
+        src_ra,
+        psi):
     """Generates random declinations and right-ascension coordinates for the
     given source location and opening angle `psi`.
 
@@ -218,8 +273,10 @@ def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
     return (dec, ra)
 
 
-def create_energy_cut_spline(ds, exp_data, spl_smooth):
-
+def create_energy_cut_spline(
+        ds,
+        exp_data,
+        spl_smooth):
     """Create the spline for the declination-dependent energy cut
     that the signal generator needs for injection in the southern sky
     Some special conditions are needed for IC79 and IC86_I, because
@@ -253,3 +310,47 @@ def create_energy_cut_spline(ds, exp_data, spl_smooth):
         sindec_centers, min_log_e, k=2, s=spl_smooth)
 
     return spline
+
+
+def get_tdm_field_func_psi(psi_floor=None):
+    """Returns the TrialDataManager (TDM) field function for psi with an
+    optional psi value floor.
+
+    Parameters
+    ----------
+    psi_floor : float | None
+        The optional floor value for psi. This should be ``None`` for a standard
+        point-source analysis that uses an analytic function for the detector's
+        point-spread-function (PSF).
+
+    Returns
+    -------
+    tdm_field_func_psi : function
+        TrialDataManager (TDM) field function for psi.
+    """
+    def tdm_field_func_psi(
+            tdm,
+            shg_mgr,
+            pmm):
+        """TDM data field function to calculate the opening angle between the
+        source positions and the event's reconstructed position.
+        """
+        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+
+        ra = np.take(tdm.get_data('ra'), evt_idxs)
+        dec = np.take(tdm.get_data('dec'), evt_idxs)
+
+        src_array = tdm.get_data('src_array')
+        src_ra = np.take(src_array['ra'], src_idxs)
+        src_dec = np.take(src_array['dec'], src_idxs)
+
+        psi = angular_separation(
+            ra1=ra,
+            dec1=dec,
+            ra2=src_ra,
+            dec2=src_dec,
+            psi_floor=psi_floor)
+
+        return psi
+
+    return tdm_field_func_psi

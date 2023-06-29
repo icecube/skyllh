@@ -1,3 +1,47 @@
+This file contains a log-book for major changes between releases.
+
+v23.2.0
+=======
+- Complete overhaul of SkyLLH for more generic handling of parameters
+  (fixed & fit parameters) and their mapping to sources.
+
+    - Single class core.parameters.Parameter for fixed and fit parameters.
+    - New class core.parameters.ParameterModelMapper to map global parameters
+      to local model (e.g. source) parameters.
+    - Class method core.pdf.PDF.get_pd takes structured numpy.ndarray as
+      argument, holding local parameter names and values for each source.
+
+- Intrinsic support for multiple sources.
+
+    - New class property core.trialdata.TrialDataManager.src_evt_idxs with
+      source and event indices mapping selected events to the sources.
+
+- Simplification of the class hierarchy & source code structure.
+- New generic flux model function concept.
+- New generic PDF class for time PDFs.
+- Support for Parquet data files via optional pyarrow Python package.
+- Introduce factory concept for detector signal yield construction.
+
+    DetSigYieldBuilder classes can provide a factory function to construct
+    DetSigYield instances efficiently for multiple flux models.
+
+- Speed improvements for analysis creation and trial generation.
+
+    - i3.detsigyield.SingleParamFluxPointLikeSourceI3DetSigYieldBuilder:
+
+        MC events are sorted in sin(true_dec) before histograms are made for
+        each parameter value. Thus, numpy.histogram works faster.
+
+    - core.event_selection.SpatialBoxEventSelectionMethod:
+
+        Improved calculation of right-ascention difference. Thus, speed-up in
+        trial generation when using this event selection method.
+
+- Usage of the tqdm Python package for progress bars.
+- More unit tests.
+- Improved documentation.
+- Following PEP8 coding style standard.
+
 v23.1.1
 =======
 - bugfix of core.pdf.MultiDimGridPDFSet

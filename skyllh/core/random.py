@@ -4,13 +4,19 @@ import numpy as np
 
 from skyllh.core.py import int_cast
 
-class RandomStateService(object):
+
+class RandomStateService(
+        object):
     """The RandomStateService class provides a container for a
     numpy.random.RandomState object, initialized with a given seed. This service
     can then be passed to any function or method within skyllh that requires a
     random number generator.
     """
-    def __init__(self, seed=None):
+    def __init__(
+            self,
+            seed=None,
+            **kwargs,
+    ):
         """Creates a new random state service. The ``random`` property can then
         be used to draw random numbers.
 
@@ -21,8 +27,12 @@ class RandomStateService(object):
             randomly. See the numpy documentation for numpy.random.RandomState
             what that means.
         """
-        self._seed = int_cast(seed, 'The seed argument must be None, or '
-            'castable to type int!', allow_None=True)
+        super().__init__(**kwargs)
+
+        self._seed = int_cast(
+            seed,
+            'The seed argument must be None, or castable to type int!',
+            allow_None=True)
         self.random = np.random.RandomState(self._seed)
 
     @property
@@ -37,10 +47,12 @@ class RandomStateService(object):
         """The numpy.random.RandomState object.
         """
         return self._random
+
     @random.setter
     def random(self, random):
-        if(not isinstance(random, np.random.RandomState)):
-            raise TypeError('The random property must be of type numpy.random.RandomState!')
+        if not isinstance(random, np.random.RandomState):
+            raise TypeError(
+                'The random property must be of type numpy.random.RandomState!')
         self._random = random
 
     def reseed(self, seed):
@@ -53,6 +65,8 @@ class RandomStateService(object):
             randomly. See the numpy documentation for numpy.random.RandomState
             what that means.
         """
-        self._seed = int_cast(seed, 'The seed argument must be None or '
-            'castable to type int!', allow_None=True)
+        self._seed = int_cast(
+            seed,
+            'The seed argument must be None or castable to type int!',
+            allow_None=True)
         self.random.seed(self._seed)
