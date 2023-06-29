@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 # Author: Dr. Martin Wolf <mail@martin-wolf.org>
 
+import matplotlib as mpl
 import numpy as np
 
-import matplotlib as mpl
-from matplotlib import pyplot as plt
-from matplotlib import text as mpl_text
-from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+from matplotlib import (
+    pyplot as plt,
+)
+from mpl_toolkits.axes_grid1.axes_divider import (
+    make_axes_locatable,
+)
 
 
-def plot_ns_fit_vs_mean_ns_inj(
+def plot_ns_fit_vs_mean_ns_inj(  # noqa: C901
         trials,
         mean_n_sig_key='mean_n_sig',
         ns_fit_key='ns',
@@ -23,8 +26,9 @@ def plot_ns_fit_vs_mean_ns_inj(
         xlabel=None,
         ylabel=None,
         ylim=None,
-        ratio_ylim=None):
-    """Creates a 2D histogram plot showing the fit number of signal events vs.
+        ratio_ylim=None,
+):
+    r"""Creates a 2D histogram plot showing the fit number of signal events vs.
     the mean number of injected signal events.
 
     Parameters
@@ -88,15 +92,15 @@ def plot_ns_fit_vs_mean_ns_inj(
         This will only be returned, when the ``rethist`` argument was set to
         ``True``.
     """
-    if(figsize is None):
-        figsize = (12,10)
-    if(line_color is None):
+    if figsize is None:
+        figsize = (12, 10)
+    if line_color is None:
         line_color = '#E37222'
-    if(xlabel is None):
+    if xlabel is None:
         xlabel = r'<n>_{\mathrm{sig,inj}}'
-    if(ylabel is None):
+    if ylabel is None:
         ylabel = r'n_\mathrm{sig,fit}'
-    if(ratio_ylim is None):
+    if ratio_ylim is None:
         ratio_ylim = (-100, 100)
 
     # Create the x-axis binning.
@@ -123,7 +127,7 @@ def plot_ns_fit_vs_mean_ns_inj(
     ns_fit_median = np.empty_like(mean_n_sig, dtype=np.float64)
     ns_fit_uq = np.empty_like(mean_n_sig, dtype=np.float64)
     ns_fit_lq = np.empty_like(mean_n_sig, dtype=np.float64)
-    for (idx, (mean_n_sig_,n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
+    for (idx, (mean_n_sig_, n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
         m = trials[mean_n_sig_key] == mean_n_sig_
         hist_weights[m] /= n_trials_
         ns_fit_median[idx] = np.median(trials[m][ns_fit_key])
@@ -132,7 +136,9 @@ def plot_ns_fit_vs_mean_ns_inj(
 
     # Create two Axes objects, one for the histogram and one for the ratio.
     (fig, ax) = plt.subplots(
-        2, 1, gridspec_kw={'height_ratios': [3,1]}, sharex=True,
+        2, 1,
+        gridspec_kw={'height_ratios': [3, 1]},
+        sharex=True,
         figsize=figsize)
 
     # Add an axes above the main axes for the colorbar.
@@ -152,28 +158,37 @@ def plot_ns_fit_vs_mean_ns_inj(
     # Add the diagonal expectation line.
     ax[0].plot(
         x_bins, x_bins,
-        color='black', alpha=0.4, linestyle='-', linewidth=2)
+        color='black',
+        alpha=0.4,
+        linestyle='-',
+        linewidth=2)
 
     # Plot the lower quantile.
     ax[0].plot(
         mean_n_sig, ns_fit_lq,
-         color=line_color, linestyle='-.', linewidth=2)
+        color=line_color,
+        linestyle='-.',
+        linewidth=2)
 
     # Plot the median fitted ns.
     ax[0].plot(
         mean_n_sig, ns_fit_median,
-        color=line_color, linestyle='-', linewidth=2,
+        color=line_color,
+        linestyle='-',
+        linewidth=2,
         label=r'median')
 
     # Plot the upper quantile.
     ax[0].plot(
         mean_n_sig, ns_fit_uq,
-         color=line_color, linestyle='-.', linewidth=2,
-         label=r'$1\sigma$')
+        color=line_color,
+        linestyle='-.',
+        linewidth=2,
+        label=r'$1\sigma$')
 
     ax[0].legend()
 
-    if(ylim is not None):
+    if ylim is not None:
         ax[0].set_ylim(ylim)
 
     # Create the color bar.
@@ -198,7 +213,7 @@ def plot_ns_fit_vs_mean_ns_inj(
     ax[1].legend()
 
     ax[1].set_xlabel('$'+xlabel+'$', fontsize=axis_fontsize)
-    ratio_ylabel = r'$\frac{%s - %s}{%s}$'%(ylabel, xlabel, xlabel)+' [%]'
+    ratio_ylabel = r'$\frac{%s - %s}{%s}$' % (ylabel, xlabel, xlabel)+' [%]'
     ax[1].set_ylabel(ratio_ylabel, fontsize=axis_fontsize)
     ax[1].set_xlim(x_bins[0], x_bins[-1])
     ax[1].set_ylim(ratio_ylim)
@@ -213,12 +228,13 @@ def plot_ns_fit_vs_mean_ns_inj(
 
     plt.tight_layout()
 
-    if(rethist):
+    if rethist:
         return (fig, hist, xedges, yedges)
 
     return fig
 
-def plot_gamma_fit_vs_mean_ns_inj(
+
+def plot_gamma_fit_vs_mean_ns_inj(  # noqa: C901
         trials,
         gamma_inj=2,
         mean_n_sig_key='mean_n_sig',
@@ -232,8 +248,9 @@ def plot_gamma_fit_vs_mean_ns_inj(
         tick_fontsize=16,
         xlabel=None,
         ylabel=None,
-        ratio_ylim=None):
-    """Creates a 2D histogram plot showing the fit spectral index gamma vs.
+        ratio_ylim=None,
+):
+    r"""Creates a 2D histogram plot showing the fit spectral index gamma vs.
     the mean number of injected signal events.
 
     Parameters
@@ -297,15 +314,15 @@ def plot_gamma_fit_vs_mean_ns_inj(
         This will only be returned, when the ``rethist`` argument was set to
         ``True``.
     """
-    if(figsize is None):
-        figsize = (12,10)
-    if(line_color is None):
+    if figsize is None:
+        figsize = (12, 10)
+    if line_color is None:
         line_color = '#E37222'
-    if(xlabel is None):
+    if xlabel is None:
         xlabel = r'<n>_{\mathrm{sig,inj}}'
-    if(ylabel is None):
+    if ylabel is None:
         ylabel = r'\gamma_\mathrm{fit}'
-    if(ratio_ylim is None):
+    if ratio_ylim is None:
         ratio_ylim = (-100, 100)
 
     # Create the x-axis binning.
@@ -332,7 +349,7 @@ def plot_gamma_fit_vs_mean_ns_inj(
     gamma_fit_median = np.empty_like(mean_n_sig, dtype=np.float64)
     gamma_fit_uq = np.empty_like(mean_n_sig, dtype=np.float64)
     gamma_fit_lq = np.empty_like(mean_n_sig, dtype=np.float64)
-    for (idx, (mean_n_sig_,n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
+    for (idx, (mean_n_sig_, n_trials_)) in enumerate(zip(mean_n_sig, n_trials)):
         m = trials[mean_n_sig_key] == mean_n_sig_
         hist_weights[m] /= n_trials_
         gamma_fit_median[idx] = np.median(trials[m][gamma_fit_key])
@@ -341,7 +358,9 @@ def plot_gamma_fit_vs_mean_ns_inj(
 
     # Create two Axes objects, one for the histogram and one for the ratio.
     (fig, ax) = plt.subplots(
-        2, 1, gridspec_kw={'height_ratios': [3,1]}, sharex=True,
+        2, 1,
+        gridspec_kw={'height_ratios': [3, 1]},
+        sharex=True,
         figsize=figsize)
 
     # Add an axes above the main axes for the colorbar.
@@ -361,29 +380,41 @@ def plot_gamma_fit_vs_mean_ns_inj(
     # Add the horizontal expectation line.
     ax[0].hlines(
         gamma_inj, x_bins[0], x_bins[-1],
-        color='black', alpha=0.4, linestyle='-', linewidth=2)
+        color='black',
+        alpha=0.4,
+        linestyle='-',
+        linewidth=2)
 
     # Plot the upper quantile curve.
     ax[0].plot(
         mean_n_sig, gamma_fit_uq,
-        color=line_color, linestyle='-.', linewidth=2)
+        color=line_color,
+        linestyle='-.',
+        linewidth=2)
 
     # Plot the median fitted gamma.
     ax[0].plot(
         mean_n_sig, gamma_fit_median,
-        color=line_color, linestyle='-', linewidth=2)
+        color=line_color,
+        linestyle='-',
+        linewidth=2)
 
     # Plot the lower quantile curve.
     ax[0].plot(
         mean_n_sig, gamma_fit_lq,
-        color=line_color, linestyle='-.', linewidth=2)
+        color=line_color,
+        linestyle='-.',
+        linewidth=2)
 
     # Create the color bar.
     cb = fig.colorbar(image, cax=cax, orientation='horizontal')
     cb.ax.xaxis.set_ticks_position('top')
     cb.ax.text(
-        0.5, 1, title, horizontalalignment='center', verticalalignment='bottom',
-        transform=fig.transFigure, fontsize=title_fontsize)
+        0.5, 1, title,
+        horizontalalignment='center',
+        verticalalignment='bottom',
+        transform=fig.transFigure,
+        fontsize=title_fontsize)
 
     # Plot the ratio.
     ax[1].hlines(0, x_bins[0], x_bins[-1])
@@ -395,13 +426,15 @@ def plot_gamma_fit_vs_mean_ns_inj(
         mean_n_sig[m],
         (gamma_fit_uq[m]-gamma_inj)/gamma_inj*100,
         (gamma_fit_lq[m]-gamma_inj)/gamma_inj*100,
-        alpha=0.2, color='gray', label=r'$1\sigma$')
+        alpha=0.2,
+        color='gray',
+        label=r'$1\sigma$')
 
     ax[1].legend()
 
     ax[1].set_xlabel('$'+xlabel+'$', fontsize=axis_fontsize)
     gamma_inj_label = r'\gamma_{\mathrm{inj}}'
-    ratio_ylabel = r'$\frac{<%s> - %s}{%s}$'%(
+    ratio_ylabel = r'$\frac{<%s> - %s}{%s}$' % (
         ylabel, gamma_inj_label, gamma_inj_label)+' [%]'
     ax[1].set_ylabel(ratio_ylabel, fontsize=axis_fontsize)
     ax[1].set_xlim(x_bins[0], x_bins[-1])
@@ -417,7 +450,7 @@ def plot_gamma_fit_vs_mean_ns_inj(
 
     plt.tight_layout()
 
-    if(rethist):
+    if rethist:
         return (fig, hist, xedges, yedges)
 
     return fig
