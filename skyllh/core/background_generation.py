@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import abc
-import numpy as np
 
+import numpy as np
 
 from skyllh.core.config import (
     CFG,
@@ -27,20 +27,16 @@ from skyllh.core.timing import (
     TaskTimer,
 )
 
-
 logger = get_logger(__name__)
 
 
-class BackgroundGenerationMethod(
-        object,
-        metaclass=abc.ABCMeta):
+class BackgroundGenerationMethod(object, metaclass=abc.ABCMeta):
     """This is the abstract base class for a detector specific background
     generation method.
     """
 
     def __init__(self, **kwargs):
-        """Constructs a new background generation method instance.
-        """
+        """Constructs a new background generation method instance."""
         super().__init__(**kwargs)
 
     def change_shg_mgr(self, shg_mgr):
@@ -55,14 +51,7 @@ class BackgroundGenerationMethod(
         pass
 
     @abc.abstractmethod
-    def generate_events(
-            self,
-            rss,
-            dataset,
-            data,
-            mean,
-            tl=None,
-            **kwargs):
+    def generate_events(self, rss, dataset, data, mean, tl=None, **kwargs):
         """This method is supposed to generate a `mean` number of background
         events for the given dataset and its data.
 
@@ -101,24 +90,25 @@ class BackgroundGenerationMethod(
         pass
 
 
-class MCDataSamplingBkgGenMethod(
-        BackgroundGenerationMethod):
+class MCDataSamplingBkgGenMethod(BackgroundGenerationMethod):
     """This class implements the method to generate background events from
     monte-carlo (MC) data by sampling events from the MC data set according to a
     probability value given for each event. Functions can be provided to get the
     mean number of background events and the probability of each monte-carlo
     event.
     """
+
     def __init__(
-            self,
-            get_event_prob_func,
-            get_mean_func=None,
-            unique_events=False,
-            data_scrambler=None,
-            mc_inplace_scrambling=False,
-            keep_mc_data_fields=None,
-            pre_event_selection_method=None,
-            **kwargs):
+        self,
+        get_event_prob_func,
+        get_mean_func=None,
+        unique_events=False,
+        data_scrambler=None,
+        mc_inplace_scrambling=False,
+        keep_mc_data_fields=None,
+        pre_event_selection_method=None,
+        **kwargs,
+    ):
         """Creates a new instance of the MCDataSamplingBkgGenMethod class.
 
         Parameters
@@ -184,8 +174,9 @@ class MCDataSamplingBkgGenMethod(
 
         if (pre_event_selection_method is not None) and (get_mean_func is None):
             raise ValueError(
-                'If an event pre-selection method is provided, a '
-                'get_mean_func needs to be provided as well!')
+                "If an event pre-selection method is provided, a "
+                "get_mean_func needs to be provided as well!"
+            )
 
         # Define cache members to cache the background probabilities for each
         # monte-carlo event. The probabilities change only if the data changes.
@@ -206,12 +197,14 @@ class MCDataSamplingBkgGenMethod(
     def get_event_prob_func(self, func):
         if not callable(func):
             raise TypeError(
-                'The get_event_prob_func property must be a callable! '
-                f'Its current type is {classname(func)}.')
+                "The get_event_prob_func property must be a callable! "
+                f"Its current type is {classname(func)}."
+            )
         if not func_has_n_args(func, 3):
             raise TypeError(
-                'The function provided for the get_event_prob_func property '
-                'must have 3 arguments!')
+                "The function provided for the get_event_prob_func property "
+                "must have 3 arguments!"
+            )
         self._get_event_prob_func = func
 
     @property
@@ -231,12 +224,14 @@ class MCDataSamplingBkgGenMethod(
 
         if not callable(func):
             raise TypeError(
-                'The get_mean_func property must be a callable! '
-                f'Its current type is {classname(func)}.')
+                "The get_mean_func property must be a callable! "
+                f"Its current type is {classname(func)}."
+            )
         if not func_has_n_args(func, 3):
             raise TypeError(
-                'The function provided for the get_mean_func property must '
-                'have 3 arguments!')
+                "The function provided for the get_mean_func property must "
+                "have 3 arguments!"
+            )
         self._get_mean_func = func
 
     @property
@@ -250,8 +245,9 @@ class MCDataSamplingBkgGenMethod(
     def unique_events(self, b):
         if not isinstance(b, bool):
             raise TypeError(
-                'The unique_events property must be of type bool! '
-                f'Its current type is {classname(b)}.')
+                "The unique_events property must be of type bool! "
+                f"Its current type is {classname(b)}."
+            )
         self._unique_events = b
 
     @property
@@ -270,9 +266,10 @@ class MCDataSamplingBkgGenMethod(
 
         if not isinstance(scrambler, DataScrambler):
             raise TypeError(
-                'The data_scrambler property must be an instance of '
-                'DataScrambler! '
-                f'Its current type is {classname(scrambler)}.')
+                "The data_scrambler property must be an instance of "
+                "DataScrambler! "
+                f"Its current type is {classname(scrambler)}."
+            )
         self._data_scrambler = scrambler
 
     @property
@@ -286,8 +283,9 @@ class MCDataSamplingBkgGenMethod(
     def mc_inplace_scrambling(self, b):
         if not isinstance(b, bool):
             raise TypeError(
-                'The mc_inplace_scrambling property must be of type bool! '
-                f'Its current type is {classname(b)}.')
+                "The mc_inplace_scrambling property must be of type bool! "
+                f"Its current type is {classname(b)}."
+            )
         self._mc_inplace_scrambling = b
 
     @property
@@ -307,8 +305,9 @@ class MCDataSamplingBkgGenMethod(
             names = [names]
         elif not issequenceof(names, str):
             raise TypeError(
-                'The keep_mc_data_field_names must be None, an instance of '
-                'type str, or a sequence of instances of type str!')
+                "The keep_mc_data_field_names must be None, an instance of "
+                "type str, or a sequence of instances of type str!"
+            )
         self._keep_mc_data_field_names = names
 
     @property
@@ -326,8 +325,9 @@ class MCDataSamplingBkgGenMethod(
 
         if not isinstance(method, EventSelectionMethod):
             raise TypeError(
-                'The pre_event_selection_method property must be None, or an '
-                'instance of EventSelectionMethod!')
+                "The pre_event_selection_method property must be None, or an "
+                "instance of EventSelectionMethod!"
+            )
 
         # If the event selection method selects all events, it's equivalent
         # to have it set to None, because then no operation has to be
@@ -348,20 +348,14 @@ class MCDataSamplingBkgGenMethod(
             The new instance of SourceHypoGroupManager.
         """
         if self._pre_event_selection_method is not None:
-            self._pre_event_selection_method.change_shg_mgr(
-                shg_mgr=shg_mgr)
+            self._pre_event_selection_method.change_shg_mgr(shg_mgr=shg_mgr)
 
         # Invalidate the data cache.
         self._cache_data_id = None
 
     def generate_events(
-            self,
-            rss,
-            dataset,
-            data,
-            mean=None,
-            poisson=True,
-            tl=None):
+        self, rss, dataset, data, mean=None, poisson=True, tl=None
+    ):
         """Generates a ``mean`` number of background events for the given
         dataset and its data.
 
@@ -399,7 +393,7 @@ class MCDataSamplingBkgGenMethod(
             background events. The number of events can be less than `n_bkg`
             if an event selection method is used.
         """
-        tracing = CFG['debugging']['enable_tracing']
+        tracing = CFG["debugging"]["enable_tracing"]
 
         # Create aliases to avoid dot-lookup.
         self__pre_event_selection_method = self._pre_event_selection_method
@@ -412,71 +406,72 @@ class MCDataSamplingBkgGenMethod(
             if tracing:
                 logger.debug(
                     f'DatasetData instance id of dataset "{dataset.name}" '
-                    f'changed from {self._cache_data_id} to {data_id}')
+                    f"changed from {self._cache_data_id} to {data_id}"
+                )
             # Cache the current id of the data.
             self._cache_data_id = data_id
 
             # Create a copy of the MC data with all MC data fields removed,
             # except the specified MC data fields to keep for the
             # ``get_mean_func`` and ``get_event_prob_func`` functions.
-            keep_field_names = list(set(
-                CFG['dataset']['analysis_required_exp_field_names'] +
-                data.exp_field_names +
-                self._keep_mc_data_field_names
-            ))
+            keep_field_names = list(
+                set(
+                    CFG["dataset"]["analysis_required_exp_field_names"]
+                    + data.exp_field_names
+                    + self._keep_mc_data_field_names
+                )
+            )
             data_mc = data.mc.copy(keep_fields=keep_field_names)
 
             if self._get_mean_func is not None:
-                with TaskTimer(
-                        tl,
-                        'Calculate total MC background mean.'):
+                with TaskTimer(tl, "Calculate total MC background mean."):
                     self._cache_mean = self._get_mean_func(
-                        dataset=dataset,
-                        data=data,
-                        events=data_mc)
+                        dataset=dataset, data=data, events=data_mc
+                    )
 
             with TaskTimer(
-                    tl,
-                    'Calculate MC background event probability cache.'):
+                tl, "Calculate MC background event probability cache."
+            ):
                 self._cache_mc_event_bkg_prob = self._get_event_prob_func(
-                    dataset=dataset,
-                    data=data,
-                    events=data_mc)
+                    dataset=dataset, data=data, events=data_mc
+                )
 
             if self__pre_event_selection_method is not None:
-                with TaskTimer(
-                        tl,
-                        'Pre-select MC events.'):
-                    (self._cache_mc_pre_selected,
-                     mc_pre_selected_src_evt_idxs,
-                     mc_pre_selected_idxs) =\
-                        self__pre_event_selection_method.select_events(
-                            events=data_mc,
-                            ret_original_evt_idxs=True,
-                            tl=tl)
+                with TaskTimer(tl, "Pre-select MC events."):
+                    (
+                        self._cache_mc_pre_selected,
+                        mc_pre_selected_src_evt_idxs,
+                        mc_pre_selected_idxs,
+                    ) = self__pre_event_selection_method.select_events(
+                        events=data_mc, ret_original_evt_idxs=True, tl=tl
+                    )
                 self._cache_mc_event_bkg_prob_pre_selected = np.take(
-                    self._cache_mc_event_bkg_prob, mc_pre_selected_idxs)
+                    self._cache_mc_event_bkg_prob, mc_pre_selected_idxs
+                )
             else:
                 self._cache_mc_pre_selected = data_mc
 
         if mean is None:
             if self._cache_mean is None:
                 raise ValueError(
-                    'No mean number of background events and no '
-                    'get_mean_func were specified! One of the two must be '
-                    'specified!')
+                    "No mean number of background events and no "
+                    "get_mean_func were specified! One of the two must be "
+                    "specified!"
+                )
             mean = self._cache_mean
         else:
             mean = float_cast(
                 mean,
-                'The mean number of background events must be castable to type '
-                'float!')
+                "The mean number of background events must be castable to type "
+                "float!",
+            )
 
         # Draw the number of background events from a poisson distribution with
         # the given mean number of background events. This will be the number of
         # background events for this data set.
-        n_bkg = (int(rss.random.poisson(mean)) if poisson else
-                 int(np.round(mean, 0)))
+        n_bkg = (
+            int(rss.random.poisson(mean)) if poisson else int(np.round(mean, 0))
+        )
 
         # Apply only event pre-selection before choosing events.
         data_mc_selected = self._cache_mc_pre_selected
@@ -487,16 +482,15 @@ class MCDataSamplingBkgGenMethod(
             # No selection at all, use the total mean.
             mean_selected = mean
         else:
-            with TaskTimer(tl, 'Calculate selected MC background mean.'):
+            with TaskTimer(tl, "Calculate selected MC background mean."):
                 mean_selected = self._get_mean_func(
-                    dataset=dataset,
-                    data=data,
-                    events=data_mc_selected)
+                    dataset=dataset, data=data, events=data_mc_selected
+                )
 
         # Calculate the actual number of background events for the selected
         # events.
         p_binomial = mean_selected / mean
-        with TaskTimer(tl, 'Get p array.'):
+        with TaskTimer(tl, "Get p array."):
             if self__pre_event_selection_method is None:
                 p = self._cache_mc_event_bkg_prob
             else:
@@ -506,22 +500,22 @@ class MCDataSamplingBkgGenMethod(
 
         # Draw the actual background events from the selected events of the
         # monto-carlo data set.
-        with TaskTimer(tl, 'Draw MC background indices.'):
+        with TaskTimer(tl, "Draw MC background indices."):
             bkg_event_indices = rss.random.choice(
                 data_mc_selected.indices,
                 size=n_bkg_selected,
                 p=p,
-                replace=(not self._unique_events))
-        with TaskTimer(tl, 'Select MC background events from indices.'):
+                replace=(not self._unique_events),
+            )
+        with TaskTimer(tl, "Select MC background events from indices."):
             bkg_events = data_mc_selected[bkg_event_indices]
 
         # Scramble the drawn MC events if requested.
         if self._data_scrambler is not None:
-            with TaskTimer(tl, 'Scramble MC background data.'):
+            with TaskTimer(tl, "Scramble MC background data."):
                 bkg_events = self._data_scrambler.scramble_data(
-                    rss=rss,
-                    data=bkg_events,
-                    copy=False)
+                    rss=rss, data=bkg_events, copy=False
+                )
 
         # Remove MC specific data fields from the background events record
         # array. So the result contains only experimental data fields. The list
@@ -529,10 +523,13 @@ class MCDataSamplingBkgGenMethod(
         # required experimental data fields defined by the data set, and the
         # actual experimental data fields (in case there are additional kept
         # data fields by the user).
-        with TaskTimer(tl, 'Remove MC specific data fields from MC events.'):
-            exp_field_names = list(set(
-                CFG['dataset']['analysis_required_exp_field_names'] +
-                data.exp_field_names))
+        with TaskTimer(tl, "Remove MC specific data fields from MC events."):
+            exp_field_names = list(
+                set(
+                    CFG["dataset"]["analysis_required_exp_field_names"]
+                    + data.exp_field_names
+                )
+            )
             bkg_events.tidy_up(exp_field_names)
 
         return (n_bkg, bkg_events)

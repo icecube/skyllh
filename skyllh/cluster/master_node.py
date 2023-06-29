@@ -5,19 +5,22 @@ import socket
 
 from skyllh.cluster.commands import (
     ACK,
-    Command,
     MSG,
-    ShutdownCN,
+    Command,
     RegisterCN,
-    receive_command_from_socket
+    ShutdownCN,
+    receive_command_from_socket,
 )
-from skyllh.cluster.srvclt import Message
+from skyllh.cluster.srvclt import (
+    Message,
+)
 
 
 class CNRegistryEntry(object):
     """This class provides an registry entry for a compute node. It holds the
     socket to the compute node.
     """
+
     def __init__(self, sock, addr, port, cn_start_time, cn_live_time):
         super(CNRegistryEntry, self).__init__()
 
@@ -32,13 +35,12 @@ class CNRegistryEntry(object):
 
     @property
     def key(self):
-        """(read-only) The CN's identification key.
-        """
-        return '%s:%d'%(self.addr, self.port)
+        """(read-only) The CN's identification key."""
+        return "%s:%d" % (self.addr, self.port)
 
     def send_command(self, cmd):
-        if(not isinstance(cmd, Command)):
-            raise TypeError('The cmd argument must be an instance of Command!')
+        if not isinstance(cmd, Command):
+            raise TypeError("The cmd argument must be an instance of Command!")
         cmd.send(self.sock)
 
 
@@ -48,6 +50,7 @@ class MasterNode(object):
     distribute work to the compute nodes. The work distribution is handled
     through the MasterNode instance.
     """
+
     def __init__(self):
         super(MasterNode, self).__init__()
 
@@ -55,18 +58,18 @@ class MasterNode(object):
 
     @property
     def cn_registry(self):
-        """The dictionary with the registered compute nodes.
-        """
+        """The dictionary with the registered compute nodes."""
         return self._cn_registry
+
     @cn_registry.setter
     def cn_registry(self, d):
-        if(not isinstance(d, dict)):
-            raise TypeError('The cn_registry property must be of type dict!')
+        if not isinstance(d, dict):
+            raise TypeError("The cn_registry property must be of type dict!")
         self._cn_registry = d
 
     def clear_cn_registry(self):
         # Close the sockets to all the CNs.
-        for (cn_key, cn) in self.cn_registry.items():
+        for cn_key, cn in self.cn_registry.items():
             cn.sock.close()
 
         self.cn_registry = dict()
@@ -74,19 +77,20 @@ class MasterNode(object):
     def register_compute_nodes(self, n_cn=10, master_port=9999, blocksize=2048):
         logger = logging.getLogger(__name__)
 
-        logger.debug(
-            'Clearing the CN registry')
+        logger.debug("Clearing the CN registry")
         self.clear_cn_registry()
 
-        logger.debug(
-            'Creating server TCP/IP socket')
+        logger.debug("Creating server TCP/IP socket")
         serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # bind the socket to a public host, and a well-known port
         master_hostname = socket.getfqdn(socket.gethostname())
         logger.debug(
-            'Listening on %s:%d with %d simulanious allowed connections',
-            master_hostname, master_port, n_cn)
+            "Listening on %s:%d with %d simulanious allowed connections",
+            master_hostname,
+            master_port,
+            n_cn,
+        )
         serversock.bind((master_hostname, master_port))
         serversock.listen(n_cn)
 
@@ -95,29 +99,30 @@ class MasterNode(object):
                 # Accept connections from the compute nodes in order to register
                 # them.
                 (clientsock, (addr, port)) = serversock.accept()
-                logger.debug(
-                    'Got inbound connection from %s:%d', addr, port)
+                logger.debug("Got inbound connection from %s:%d", addr, port)
 
                 cmd = receive_command_from_socket(
-                    clientsock, blocksize=blocksize)
-                if(not cmd.is_same_as(RegisterCN)):
-                    raise RuntimeError('The compute node provided an unknown '
-                        'command "%s"!'%(cmd.as_message().msg))
+                    clientsock, blocksize=blocksize
+                )
+                if not cmd.is_same_as(RegisterCN):
+                    raise RuntimeError(
+                        "The compute node provided an unknown "
+                        'command "%s"!' % (cmd.as_message().msg)
+                    )
                 ACK().send(clientsock)
 
                 cn = CNRegistryEntry(
-                    clientsock, addr, port, cmd.cn_start_time, cmd.cn_live_time)
+                    clientsock, addr, port, cmd.cn_start_time, cmd.cn_live_time
+                )
                 self._cn_registry[cn.key] = cn
         finally:
             serversock.close()
 
     def send_request(self, msg):
-        for (cn_key, cn) in self.cn_registry.items():
+        for cn_key, cn in self.cn_registry.items():
             cn.send_command(MSG(msg))
 
     def shutdown_compute_nodes(self):
-        """Sends a stop command to all compute nodes.
-        """
-        for (cn_key, cn) in self._cn_registry.items():
+        """Sends a stop command to all compute nodes."""
+        for cn_key, cn in self._cn_registry.items():
             cn.send_command(ShutdownCN())
-

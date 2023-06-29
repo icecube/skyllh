@@ -17,8 +17,7 @@ from skyllh.core.py import (
 )
 
 
-def get_kde_pdf_sig_spatial_norm_factor_func(
-        log10_psi_name='log10_psi'):
+def get_kde_pdf_sig_spatial_norm_factor_func(log10_psi_name="log10_psi"):
     """Returns the standard normalization factor function for the spatial
     signal MultiDimGridPDF, which is created from KDE PDF values.
     It can be used for the ``norm_factor_func`` argument of the
@@ -30,21 +29,18 @@ def get_kde_pdf_sig_spatial_norm_factor_func(
     log10_psi_name : str
         The name of the event data field for the log10(psi) values.
     """
-    def kde_pdf_sig_spatial_norm_factor_func(
-            pdf,
-            tdm,
-            params_recarray,
-            eventdata,
-            evt_mask=None):
 
+    def kde_pdf_sig_spatial_norm_factor_func(
+        pdf, tdm, params_recarray, eventdata, evt_mask=None
+    ):
         log10_psi_idx = pdf._axes.get_index_by_name(log10_psi_name)
 
         if evt_mask is None:
-            psi = 10**eventdata[:, log10_psi_idx]
+            psi = 10 ** eventdata[:, log10_psi_idx]
         else:
-            psi = 10**eventdata[:, log10_psi_idx][evt_mask]
+            psi = 10 ** eventdata[:, log10_psi_idx][evt_mask]
 
-        norm = 1. / (2 * np.pi * np.log(10) * psi * np.sin(psi))
+        norm = 1.0 / (2 * np.pi * np.log(10) * psi * np.sin(psi))
 
         return norm
 
@@ -58,29 +54,27 @@ def get_kde_pdf_bkg_norm_factor_func():
     ``create_MultiDimGridPDF_from_photosplinetable`` and
     ``create_MultiDimGridPDF_from_kde_pdf`` function.
     """
-    def kde_pdf_bkg_norm_factor_func(
-            pdf,
-            tdm,
-            params_recarray,
-            eventdata,
-            evt_mask=None):
 
-        return 1. / (2 * np.pi)
+    def kde_pdf_bkg_norm_factor_func(
+        pdf, tdm, params_recarray, eventdata, evt_mask=None
+    ):
+        return 1.0 / (2 * np.pi)
 
     return kde_pdf_bkg_norm_factor_func
 
 
 def create_MultiDimGridPDF_from_photosplinetable(
-        multidimgridpdf_cls,
-        pmm,
-        ds,
-        data,
-        info_key,
-        splinetable_key,
-        kde_pdf_axis_name_map_key='KDE_PDF_axis_name_map',
-        norm_factor_func=None,
-        cache_pd_values=False,
-        tl=None):
+    multidimgridpdf_cls,
+    pmm,
+    ds,
+    data,
+    info_key,
+    splinetable_key,
+    kde_pdf_axis_name_map_key="KDE_PDF_axis_name_map",
+    norm_factor_func=None,
+    cache_pd_values=False,
+    tl=None,
+):
     """
     Creates a MultiDimGridPDF instance with pdf values taken from a photospline
     pdf, i.e. a spline interpolation of KDE PDF values stored in a splinetable
@@ -124,60 +118,67 @@ def create_MultiDimGridPDF_from_photosplinetable(
     """
     if not issubclass(multidimgridpdf_cls, MultiDimGridPDF):
         raise TypeError(
-            'The multidimgridpdf_cls argument must be a subclass of '
-            'MultiDimGridPDF! '
-            f'Its current type is {classname(multidimgridpdf_cls)}.')
+            "The multidimgridpdf_cls argument must be a subclass of "
+            "MultiDimGridPDF! "
+            f"Its current type is {classname(multidimgridpdf_cls)}."
+        )
 
     # Load the PDF data from the auxilary files.
     num_dict = ds.load_aux_data(info_key, tl=tl)
 
     kde_pdf_axis_name_map = ds.load_aux_data(kde_pdf_axis_name_map_key, tl=tl)
     kde_pdf_axis_name_map_inv = dict(
-        [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
-    for var in num_dict['vars']:
+        [(v, k) for (k, v) in kde_pdf_axis_name_map.items()]
+    )
+    for var in num_dict["vars"]:
         if var not in kde_pdf_axis_name_map_inv:
             kde_pdf_axis_name_map_inv[var] = var
 
-    if 'bin_centers' in num_dict:
-        bin_centers_key = 'bin_centers'
-    elif 'bins' in num_dict:
-        bin_centers_key = 'bins'
+    if "bin_centers" in num_dict:
+        bin_centers_key = "bin_centers"
+    elif "bins" in num_dict:
+        bin_centers_key = "bins"
     else:
         raise KeyError(
-            'The PDF information file is missing "bin_centers" or "bins" key!')
+            'The PDF information file is missing "bin_centers" or "bins" key!'
+        )
 
     axis_binnings = [
         BinningDefinition(
             name=kde_pdf_axis_name_map_inv[var],
-            binedges=num_dict[bin_centers_key][idx])
-        for (idx, var) in enumerate(num_dict['vars'])
+            binedges=num_dict[bin_centers_key][idx],
+        )
+        for (idx, var) in enumerate(num_dict["vars"])
     ]
 
     # Getting the name of the splinetable file
     splinetable_file = ds.get_abs_pathfilename_list(
-        ds.get_aux_data_definition(splinetable_key))[0]
+        ds.get_aux_data_definition(splinetable_key)
+    )[0]
 
     pdf = multidimgridpdf_cls(
         pmm=pmm,
         axis_binnings=axis_binnings,
         path_to_pdf_splinetable=splinetable_file,
         norm_factor_func=norm_factor_func,
-        cache_pd_values=cache_pd_values)
+        cache_pd_values=cache_pd_values,
+    )
 
     return pdf
 
 
 def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
-        multidimgridpdf_cls,
-        pmm,
-        ds,
-        data,
-        numerator_key,
-        denumerator_key=None,
-        kde_pdf_axis_name_map_key='KDE_PDF_axis_name_map',
-        norm_factor_func=None,
-        cache_pd_values=False,
-        tl=None):
+    multidimgridpdf_cls,
+    pmm,
+    ds,
+    data,
+    numerator_key,
+    denumerator_key=None,
+    kde_pdf_axis_name_map_key="KDE_PDF_axis_name_map",
+    norm_factor_func=None,
+    cache_pd_values=False,
+    tl=None,
+):
     """Creates a MultiDimGridPDF instance with pdf values taken from KDE PDF
     values stored in the dataset's auxiliary data.
 
@@ -219,9 +220,10 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
     """
     if not issubclass(multidimgridpdf_cls, MultiDimGridPDF):
         raise TypeError(
-            'The multidimgridpdf_cls argument must be a subclass of '
-            'MultiDimGridPDF! '
-            f'Its current type is {classname(multidimgridpdf_cls)}.')
+            "The multidimgridpdf_cls argument must be a subclass of "
+            "MultiDimGridPDF! "
+            f"Its current type is {classname(multidimgridpdf_cls)}."
+        )
 
     # Load the PDF data from the auxilary files.
     num_dict = ds.load_aux_data(numerator_key, tl=tl)
@@ -232,26 +234,29 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
 
     kde_pdf_axis_name_map = ds.load_aux_data(kde_pdf_axis_name_map_key, tl=tl)
     kde_pdf_axis_name_map_inv = dict(
-        [(v, k) for (k, v) in kde_pdf_axis_name_map.items()])
-    for var in num_dict['vars']:
+        [(v, k) for (k, v) in kde_pdf_axis_name_map.items()]
+    )
+    for var in num_dict["vars"]:
         if var not in kde_pdf_axis_name_map_inv:
             kde_pdf_axis_name_map_inv[var] = var
 
-    if 'bin_centers' in num_dict:
-        bin_centers_key = 'bin_centers'
-    elif 'bins' in num_dict:
-        bin_centers_key = 'bins'
+    if "bin_centers" in num_dict:
+        bin_centers_key = "bin_centers"
+    elif "bins" in num_dict:
+        bin_centers_key = "bins"
     else:
         raise KeyError(
-            'The PDF information file is missing "bin_centers" or "bins" key!')
+            'The PDF information file is missing "bin_centers" or "bins" key!'
+        )
 
     axis_binnings = [
         BinningDefinition(
-            kde_pdf_axis_name_map_inv[var], num_dict[bin_centers_key][idx])
-        for (idx, var) in enumerate(num_dict['vars'])
+            kde_pdf_axis_name_map_inv[var], num_dict[bin_centers_key][idx]
+        )
+        for (idx, var) in enumerate(num_dict["vars"])
     ]
 
-    vals = num_dict['pdf_vals']
+    vals = num_dict["pdf_vals"]
     if denum_dict is not None:
         # A denumerator is required, so we need to divide the numerator pdf
         # values by the denumerator pdf values, by preserving the correct axis
@@ -259,8 +264,8 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
         # Construct the slicing selector for the denumerator pdf values array to
         # match the axis order of the numerator pdf values array.
         selector = []
-        for var in num_dict['vars']:
-            if var in denum_dict['vars']:
+        for var in num_dict["vars"]:
+            if var in denum_dict["vars"]:
                 # The variable is present in both pdf value arrays. So select
                 # all values of that dimension.
                 selector.append(slice(None, None))
@@ -269,7 +274,7 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
                 # array, so we need to add a dimension for that variable.
                 selector.append(np.newaxis)
 
-        denum = denum_dict['pdf_vals'][tuple(selector)]
+        denum = denum_dict["pdf_vals"][tuple(selector)]
         denum_nonzero_mask = denum != 0
         out = np.zeros_like(vals)
         np.divide(vals, denum, where=denum_nonzero_mask, out=out)
@@ -285,6 +290,7 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
         axis_binnings=axis_binnings,
         pdf_grid_data=vals,
         norm_factor_func=norm_factor_func,
-        cache_pd_values=cache_pd_values)
+        cache_pd_values=cache_pd_values,
+    )
 
     return pdf

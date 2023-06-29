@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from scipy.interpolate import (
+    interp1d,
+)
 
-from scipy.interpolate import interp1d
 
-
-def make_spline_1d(
-        x,
-        y,
-        kind='linear',
-        **kwargs):
+def make_spline_1d(x, y, kind="linear", **kwargs):
     """Creates a 1D spline for the function y(x) using
     :class:`scipy.interpolate.interp1d`.
 
@@ -37,24 +34,16 @@ def make_spline_1d(
     # increasing order and mask out repeating x values.
     xy = np.array(sorted(zip(x, y)), dtype=y.dtype)
     x = xy[:, 0]
-    unique_x_mask = np.concatenate(([True], np.invert(
-        x[1:] <= x[:-1])))
+    unique_x_mask = np.concatenate(([True], np.invert(x[1:] <= x[:-1])))
     x = x[unique_x_mask]
     y = xy[:, 1][unique_x_mask]
 
-    spline = interp1d(
-        x,
-        y,
-        kind=kind,
-        copy=False,
-        assume_sorted=True,
-        **kwargs)
+    spline = interp1d(x, y, kind=kind, copy=False, assume_sorted=True, **kwargs)
 
     return spline
 
 
-class CatmullRomRegular1DSpline(
-        object):
+class CatmullRomRegular1DSpline(object):
     """This class provides a one-dimensional Catmull-Rom spline which is a C^1
     continous spline, where the control points coincide with the data points.
     The x data points need to be equal distant.
@@ -66,10 +55,10 @@ class CatmullRomRegular1DSpline(
     """
 
     def __init__(
-            self,
-            x,
-            y,
-            **kwargs,
+        self,
+        x,
+        y,
+        **kwargs,
     ):
         """Creates a new CatmullRom1DSpline instance.
 
@@ -80,21 +69,21 @@ class CatmullRomRegular1DSpline(
         y : instance of ndarray
             The y values of the data points.
         """
-        super().__init__(
-            **kwargs)
+        super().__init__(**kwargs)
 
         if len(x) != len(y):
             raise ValueError(
-                f'The number of x ({len(x)}) and y ({len(y)}) data values '
-                'need to be equal!')
+                f"The number of x ({len(x)}) and y ({len(y)}) data values "
+                "need to be equal!"
+            )
         if len(x) < 4:
             raise ValueError(
-                f'The number of data points ({len(x)}) must be at least 4!')
+                f"The number of data points ({len(x)}) must be at least 4!"
+            )
 
         unique_delta_x = np.unique(np.diff(x))
         if len(unique_delta_x) != 1:
-            raise ValueError(
-                'The data points must be equal distant in x!')
+            raise ValueError("The data points must be equal distant in x!")
 
         self._delta_x = unique_delta_x[0]
         self._x_start = x[1]
@@ -107,14 +96,13 @@ class CatmullRomRegular1DSpline(
         # Calculate the required data for each segment.
         self._segment_data = []
         for seg_idx in range(self._num_segments):
-            sl = slice(seg_idx, seg_idx+4)
+            sl = slice(seg_idx, seg_idx + 4)
             (t1, t2, t3) = self._calc_segment_coefficients(Px=x[sl], Py=y[sl])
-            self._segment_data.append(
-                (t1, t2, t3, x[sl], y[sl]))
+            self._segment_data.append((t1, t2, t3, x[sl], y[sl]))
 
     def _eval_for_valid_x(
-            self,
-            x,
+        self,
+        x,
     ):
         """Evaluates the spline given valid x-values in data coordinates.
 
@@ -135,9 +123,8 @@ class CatmullRomRegular1DSpline(
         # Determine on which spline segment the data value belongs to.
         seg_idxs = np.empty((len(x),), dtype=np.int64)
         np.floor(
-            (x - self._x_start) / self._delta_x,
-            out=seg_idxs,
-            casting='unsafe')
+            (x - self._x_start) / self._delta_x, out=seg_idxs, casting="unsafe"
+        )
         m = x == self._x_stop
         seg_idxs[m] = self._num_segments - 1
 
@@ -182,9 +169,9 @@ class CatmullRomRegular1DSpline(
         return y
 
     def __call__(
-            self,
-            x,
-            oor_value=np.nan,
+        self,
+        x,
+        oor_value=np.nan,
     ):
         """Evaluates the spline given x-values in data coordinates.
 
@@ -210,12 +197,12 @@ class CatmullRomRegular1DSpline(
         return y
 
     def _calc_tj(
-            self,
-            ti,
-            Pi_x,
-            Pi_y,
-            Pj_x,
-            Pj_y,
+        self,
+        ti,
+        Pi_x,
+        Pi_y,
+        Pj_x,
+        Pj_y,
     ):
         """Calculates the next segment coefficient ``tj`` given the previous
         segment coefficient ``ti`` and the previous and next data point
@@ -241,14 +228,14 @@ class CatmullRomRegular1DSpline(
         """
         dx = Pj_x - Pi_x
         dy = Pj_y - Pi_y
-        tj = ti + np.sqrt(np.sqrt(dx*dx + dy*dy))
+        tj = ti + np.sqrt(np.sqrt(dx * dx + dy * dy))
 
         return tj
 
     def _calc_segment_coefficients(
-            self,
-            Px,
-            Py,
+        self,
+        Px,
+        Py,
     ):
         """Calculates the segment coefficients t1, t2, and t3 given the 4
         data (control) points of the segment. The coefficient t0 is 0 by
@@ -265,10 +252,13 @@ class CatmullRomRegular1DSpline(
         """
         t0 = 0
         t1 = self._calc_tj(
-            ti=t0, Pi_x=Px[0], Pi_y=Py[0], Pj_x=Px[1], Pj_y=Py[1])
+            ti=t0, Pi_x=Px[0], Pi_y=Py[0], Pj_x=Px[1], Pj_y=Py[1]
+        )
         t2 = self._calc_tj(
-            ti=t1, Pi_x=Px[1], Pi_y=Py[1], Pj_x=Px[2], Pj_y=Py[2])
+            ti=t1, Pi_x=Px[1], Pi_y=Py[1], Pj_x=Px[2], Pj_y=Py[2]
+        )
         t3 = self._calc_tj(
-            ti=t2, Pi_x=Px[2], Pi_y=Py[2], Pj_x=Px[3], Pj_y=Py[3])
+            ti=t2, Pi_x=Px[2], Pi_y=Py[2], Pj_x=Px[3], Pj_y=Py[3]
+        )
 
         return (t1, t2, t3)

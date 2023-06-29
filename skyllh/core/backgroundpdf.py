@@ -16,19 +16,14 @@ from skyllh.core.py import (
 )
 
 
-class BackgroundMultiDimGridPDF(
-        MultiDimGridPDF,
-        IsBackgroundPDF):
+class BackgroundMultiDimGridPDF(MultiDimGridPDF, IsBackgroundPDF):
     """This class provides a multi-dimensional background PDF defined on a grid.
     The PDF is created from pre-calculated PDF data on a grid. The grid data is
     interpolated using a :class:`scipy.interpolate.RegularGridInterpolator`
     instance.
     """
 
-    def __init__(
-            self,
-            *args,
-            **kwargs):
+    def __init__(self, *args, **kwargs):
         """Creates a new :class:`~skyllh.core.pdf.MultiDimGridPDF` instance that
         is also derived from :class:`~skyllh.core.pdf.IsBackgroundPDF`.
 
@@ -38,17 +33,10 @@ class BackgroundMultiDimGridPDF(
         super().__init__(*args, **kwargs)
 
 
-class BackgroundTimePDF(
-        TimePDF,
-        IsBackgroundPDF):
-    """This class provides a background time PDF class.
-    """
+class BackgroundTimePDF(TimePDF, IsBackgroundPDF):
+    """This class provides a background time PDF class."""
 
-    def __init__(
-            self,
-            livetime,
-            time_flux_profile,
-            **kwargs):
+    def __init__(self, livetime, time_flux_profile, **kwargs):
         """Creates a new signal time PDF instance for a given time flux profile
         and detector live time.
 
@@ -64,15 +52,12 @@ class BackgroundTimePDF(
             pmm=None,
             livetime=livetime,
             time_flux_profile=time_flux_profile,
-            **kwargs)
+            **kwargs,
+        )
 
         self._pd = None
 
-    def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """Initializes the background time PDF with new trial data. Because this
         PDF does not depend on any parameters, the probability density values
         can be pre-computed here.
@@ -91,7 +76,7 @@ class BackgroundTimePDF(
             The optional TimeLord instance that should be used to measure
             timing information.
         """
-        times = tdm.get_data('time')
+        times = tdm.get_data("time")
 
         self._pd = np.zeros((len(times),), dtype=np.float64)
 
@@ -101,11 +86,7 @@ class BackgroundTimePDF(
 
         self._pd[on] = self._time_flux_profile(t=times[on]) / self._S
 
-    def get_pd(
-            self,
-            tdm,
-            params_recarray=None,
-            tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """
         Parameters
         ----------
@@ -136,7 +117,8 @@ class BackgroundTimePDF(
         """
         if self._pd is None:
             raise RuntimeError(
-                f'The {classname(self)} was not initialized with trial data!')
+                f"The {classname(self)} was not initialized with trial data!"
+            )
 
         grads = dict()
 

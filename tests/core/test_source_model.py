@@ -12,18 +12,17 @@ from skyllh.core.source_model import (
 )
 
 
-class SourceModelTestCase(
-        unittest.TestCase
-):
+class SourceModelTestCase(unittest.TestCase):
     def setUp(self):
-        self.name = 'MySource'
-        self.classification = 'MyClassification'
+        self.name = "MySource"
+        self.classification = "MyClassification"
         self.weight = 1.1
 
         self.source_model = SourceModel(
             name=self.name,
             classification=self.classification,
-            weight=self.weight)
+            weight=self.weight,
+        )
 
     def test_name(self):
         self.assertEqual(self.source_model.name, self.name)
@@ -36,7 +35,7 @@ class SourceModelTestCase(
 
 
 class SourceModelCollectionTestCase(
-        unittest.TestCase,
+    unittest.TestCase,
 ):
     def setUp(self):
         self.ra = 0
@@ -47,11 +46,11 @@ class SourceModelCollectionTestCase(
         source_model2 = SourceModel(self.ra, self.dec)
 
         source_collection_casted = SourceModelCollection.cast(
-            source_model1,
-            "Could not cast SourceModel to SourceCollection")
+            source_model1, "Could not cast SourceModel to SourceCollection"
+        )
         source_collection = SourceModelCollection(
-            source_type=SourceModel,
-            sources=[source_model1, source_model2])
+            source_type=SourceModel, sources=[source_model1, source_model2]
+        )
 
         self.assertIsInstance(source_collection_casted, SourceModelCollection)
         self.assertEqual(source_collection.source_type, SourceModel)
@@ -60,10 +59,10 @@ class SourceModelCollectionTestCase(
 
 
 class SourceCatalogTestCase(
-        unittest.TestCase,
+    unittest.TestCase,
 ):
     def setUp(self):
-        self.name = 'MySourceCatalog'
+        self.name = "MySourceCatalog"
         self.ra = 0.1
         self.dec = 1.1
         self.source1 = SourceModel(self.ra, self.dec)
@@ -72,7 +71,8 @@ class SourceCatalogTestCase(
         self.catalog = SourceCatalog(
             name=self.name,
             sources=[self.source1, self.source2],
-            source_type=SourceModel)
+            source_type=SourceModel,
+        )
 
     def test_name(self):
         self.assertEqual(self.catalog.name, self.name)
@@ -83,16 +83,13 @@ class SourceCatalogTestCase(
 
 
 class PointLikeSourceTestCase(
-        unittest.TestCase,
+    unittest.TestCase,
 ):
     def setUp(self):
-        self.name = 'MyPointLikeSource'
+        self.name = "MyPointLikeSource"
         self.ra = 0.1
         self.dec = 1.1
-        self.source = PointLikeSource(
-            name=self.name,
-            ra=self.ra,
-            dec=self.dec)
+        self.source = PointLikeSource(name=self.name, ra=self.ra, dec=self.dec)
 
     def test_name(self):
         self.assertEqual(self.source.name, self.name)
@@ -104,5 +101,5 @@ class PointLikeSourceTestCase(
         self.assertEqual(self.source.dec, self.dec)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

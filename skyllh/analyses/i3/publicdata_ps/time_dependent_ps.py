@@ -26,7 +26,6 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
     get_tdm_field_func_psi,
 )
-
 from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
@@ -110,13 +109,11 @@ from skyllh.core.trialdata import (
     TrialDataManager,
 )
 from skyllh.core.utils.analysis import (
-    pointlikesource_to_data_field_array
+    pointlikesource_to_data_field_array,
 )
-
 from skyllh.datasets.i3 import (
     data_samples,
 )
-
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
 )
@@ -129,7 +126,6 @@ from skyllh.i3.livetime import (
 from skyllh.i3.scrambling import (
     I3SeasonalVariationTimeScramblingMethod,
 )
-
 from skyllh.scripting.argparser import (
     create_argparser,
 )
@@ -138,16 +134,15 @@ from skyllh.scripting.logging import (
 )
 
 TXS_0506_PLUS056_SOURCE = PointLikeSource(
-    name='TXS 0506+056',
-    ra=np.deg2rad(77.3581851),
-    dec=np.deg2rad(5.69314828))
+    name="TXS 0506+056", ra=np.deg2rad(77.3581851), dec=np.deg2rad(5.69314828)
+)
 TXS_0506_PLUS056_ALERT_TIME = 58018.8711856
 
 
 def create_signal_time_pdf(
-        grl,
-        gauss=None,
-        box=None,
+    grl,
+    gauss=None,
+    box=None,
 ):
     """Creates the signal time PDF, either a gaussian or a box shaped PDF.
 
@@ -166,20 +161,18 @@ def create_signal_time_pdf(
         The created time PDF instance.
     """
     if (gauss is None) and (box is None):
-        raise TypeError(
-            'Either gauss or box have to be specified as time pdf.')
+        raise TypeError("Either gauss or box have to be specified as time pdf.")
 
-    livetime = I3Livetime.from_grl_data(
-        grl_data=grl)
+    livetime = I3Livetime.from_grl_data(grl_data=grl)
 
     if gauss is not None:
         time_flux_profile = GaussianTimeFluxProfile(
-            t0=gauss['mu'],
-            sigma_t=gauss['sigma'])
+            t0=gauss["mu"], sigma_t=gauss["sigma"]
+        )
     elif box is not None:
         time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(
-            start=box['start'],
-            stop=box['stop'])
+            start=box["start"], stop=box["stop"]
+        )
 
     pdf = SignalTimePDF(
         livetime=livetime,
@@ -190,9 +183,9 @@ def create_signal_time_pdf(
 
 
 def change_signal_time_pdf_of_llhratio_function(
-        ana,
-        gauss=None,
-        box=None,
+    ana,
+    gauss=None,
+    box=None,
 ):
     """Changes the signal time PDF of the log-likelihood ratio function.
 
@@ -205,10 +198,7 @@ def change_signal_time_pdf_of_llhratio_function(
     """
     grl = ana.data_list[0].grl
 
-    time_sigpdf = create_signal_time_pdf(
-        grl=grl,
-        gauss=gauss,
-        box=box)
+    time_sigpdf = create_signal_time_pdf(grl=grl, gauss=gauss, box=box)
 
     pdfratio = ana.llhratio.llhratio_list[0].pdfratio
 
@@ -222,9 +212,9 @@ def change_signal_time_pdf_of_llhratio_function(
 
 
 def get_energy_spatial_signal_over_background(
-        ana,
-        fitparam_values,
-        tl=None,
+    ana,
+    fitparam_values,
+    tl=None,
 ):
     """Returns the signal over background ratio for
     (spatial_signal * energy_signal) / (spatial_background * energy_background).
@@ -250,19 +240,19 @@ def get_energy_spatial_signal_over_background(
     pdfratio = pdfratio.pdfratio1
 
     src_params_recarray = ana.pmm.create_src_params_recarray(
-        gflp_values=fitparam_values)
+        gflp_values=fitparam_values
+    )
 
     ratio = pdfratio.get_ratio(
-        tdm=tdm,
-        src_params_recarray=src_params_recarray,
-        tl=tl)
+        tdm=tdm, src_params_recarray=src_params_recarray, tl=tl
+    )
 
     return ratio
 
 
 def change_fluxmodel_gamma(
-        ana,
-        gamma,
+    ana,
+    gamma,
 ):
     """Sets the given gamma value to the flux model of the single source.
 
@@ -273,13 +263,13 @@ def change_fluxmodel_gamma(
     gamma : float
         Spectral index for the flux model.
     """
-    ana.shg_mgr.shg_list[0].fluxmodel.set_params({'gamma': gamma})
+    ana.shg_mgr.shg_list[0].fluxmodel.set_params({"gamma": gamma})
     ana.change_shg_mgr(shg_mgr=ana.shg_mgr)
 
 
 def change_time_flux_profile_params(
-        ana,
-        params,
+    ana,
+    params,
 ):
     """Changes the parameters of the source's time flux profile.
 
@@ -296,9 +286,9 @@ def change_time_flux_profile_params(
 
 
 def calculate_TS(
-        ana,
-        em_results,
-        rss,
+    ana,
+    em_results,
+    rss,
 ):
     """Calculate the best TS value from the expectation maximization gamma scan
     results.
@@ -329,17 +319,16 @@ def calculate_TS(
     best_fitparam_values = None
     for em_result in em_results:
         change_signal_time_pdf_of_llhratio_function(
-            ana=ana,
-            gauss={
-                'mu': em_result['mu'],
-                'sigma': em_result['sigma']})
+            ana=ana, gauss={"mu": em_result["mu"], "sigma": em_result["sigma"]}
+        )
 
         (log_lambda_max, fitparam_values, status) = ana.llhratio.maximize(
-            rss=rss)
+            rss=rss
+        )
 
         TS = ana.calculate_test_statistic(
-            log_lambda=log_lambda_max,
-            fitparam_values=fitparam_values)
+            log_lambda=log_lambda_max, fitparam_values=fitparam_values
+        )
 
         if (max_TS is None) or (TS > max_TS):
             max_TS = TS
@@ -350,12 +339,12 @@ def calculate_TS(
 
 
 def run_gamma_scan_for_single_flare(
-        ana,
-        remove_time=None,
-        gamma_min=1,
-        gamma_max=5,
-        n_gamma=51,
-        ppbar=None,
+    ana,
+    remove_time=None,
+    gamma_min=1,
+    gamma_max=5,
+    n_gamma=51,
+    ppbar=None,
 ):
     """Runs ``em_fit`` for different gamma values in the signal energy PDF.
 
@@ -389,30 +378,31 @@ def run_gamma_scan_for_single_flare(
             The scaling factor of the flare.
     """
     em_results_dt = [
-        ('gamma', np.float64),
-        ('mu', np.float64),
-        ('sigma', np.float64),
-        ('ns_em', np.float64),
+        ("gamma", np.float64),
+        ("mu", np.float64),
+        ("sigma", np.float64),
+        ("ns_em", np.float64),
     ]
     em_results = np.empty(n_gamma, dtype=em_results_dt)
 
-    time = ana._tdm_list[0].get_data('time')
+    time = ana._tdm_list[0].get_data("time")
 
     gamma_values = np.linspace(gamma_min, gamma_max, n_gamma)
 
     pbar = ProgressBar(len(gamma_values), parent=ppbar).start()
-    for (i, gamma) in enumerate(gamma_values):
+    for i, gamma in enumerate(gamma_values):
         fitparam_values = np.array([0, gamma], dtype=np.float64)
         ratio = get_energy_spatial_signal_over_background(ana, fitparam_values)
         (mu, sigma, ns) = em_fit(
             time,
             ratio,
             n=1,
-            tol=1.e-200,
+            tol=1.0e-200,
             iter_max=500,
             weight_thresh=0,
             initial_width=5000,
-            remove_x=remove_time)
+            remove_x=remove_time,
+        )
         em_results[i] = (
             gamma,
             mu[0],
@@ -426,8 +416,8 @@ def run_gamma_scan_for_single_flare(
 
 
 def unblind_single_flare(
-        ana,
-        remove_time=None,
+    ana,
+    remove_time=None,
 ):
     """Run EM for a single flare on unblinded data.
     Similar to the original analysis, remove the alert event.
@@ -453,33 +443,31 @@ def unblind_single_flare(
     """
     rss = RandomStateService(seed=1)
 
-    ana.unblind(
-        rss=rss)
+    ana.unblind(rss=rss)
 
     em_results = run_gamma_scan_for_single_flare(
-        ana=ana,
-        remove_time=remove_time)
+        ana=ana, remove_time=remove_time
+    )
 
     (max_ts, best_em_result, best_fitparam_values) = calculate_TS(
-        ana=ana,
-        em_results=em_results,
-        rss=rss)
+        ana=ana, em_results=em_results, rss=rss
+    )
 
     return (max_ts, best_em_result, best_fitparam_values)
 
 
 def do_trial_with_em(
-        ana,
-        rss,
-        mean_n_sig=0,
-        gamma_src=2,
-        gamma_min=1,
-        gamma_max=5,
-        n_gamma=21,
-        gauss=None,
-        box=None,
-        tl=None,
-        ppbar=None,
+    ana,
+    rss,
+    mean_n_sig=0,
+    gamma_src=2,
+    gamma_min=1,
+    gamma_max=5,
+    n_gamma=21,
+    gauss=None,
+    box=None,
+    tl=None,
+    ppbar=None,
 ):
     """Performs a trial using the expectation maximization algorithm.
     It runs a gamma scan and does the EM for each gamma value.
@@ -549,29 +537,28 @@ def do_trial_with_em(
             The fitted sigma value of the Gaussian time PDF.
     """
     trial_dt = [
-        ('seed', np.int64),
-        ('mean_n_sig', np.float64),
-        ('n_sig', np.int64),
-        ('gamma_src', np.float64),
-        ('mu_sig', np.float64),
-        ('sigma_sig', np.float64),
-        ('start_sig', np.float64),
-        ('stop_sig', np.float64),
-        ('ts', np.float64),
-        ('ns_fit', np.float64),
-        ('ns_em', np.float64),
-        ('gamma_fit', np.float64),
-        ('gamma_em', np.float64),
-        ('mu_fit', np.float64),
-        ('sigma_fit', np.float64)
+        ("seed", np.int64),
+        ("mean_n_sig", np.float64),
+        ("n_sig", np.int64),
+        ("gamma_src", np.float64),
+        ("mu_sig", np.float64),
+        ("sigma_sig", np.float64),
+        ("start_sig", np.float64),
+        ("stop_sig", np.float64),
+        ("ts", np.float64),
+        ("ns_fit", np.float64),
+        ("ns_em", np.float64),
+        ("gamma_fit", np.float64),
+        ("gamma_em", np.float64),
+        ("mu_fit", np.float64),
+        ("sigma_fit", np.float64),
     ]
 
     trial = np.empty((1,), dtype=trial_dt)
 
     (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(
-        rss=rss,
-        mean_n_sig=mean_n_sig,
-        tl=tl)
+        rss=rss, mean_n_sig=mean_n_sig, tl=tl
+    )
     ana.initialize_trial(events_list, n_events_list)
 
     em_results = run_gamma_scan_for_single_flare(
@@ -579,48 +566,48 @@ def do_trial_with_em(
         gamma_min=gamma_min,
         gamma_max=gamma_max,
         n_gamma=n_gamma,
-        ppbar=ppbar)
+        ppbar=ppbar,
+    )
 
     (max_ts, best_em_result, best_fitparams) = calculate_TS(
-        ana=ana,
-        em_results=em_results,
-        rss=rss)
+        ana=ana, em_results=em_results, rss=rss
+    )
 
     trial[0] = (
         rss.seed,
         mean_n_sig,
         n_sig,
         gamma_src,
-        gauss['mu'] if gauss is not None else -1,
-        gauss['sigma'] if gauss is not None else -1,
-        box['start'] if box is not None else -1,
-        box['end'] if box is not None else -1,
+        gauss["mu"] if gauss is not None else -1,
+        gauss["sigma"] if gauss is not None else -1,
+        box["start"] if box is not None else -1,
+        box["end"] if box is not None else -1,
         max_ts,
         best_fitparams[0],
-        best_em_result['ns_em'],
+        best_em_result["ns_em"],
         best_fitparams[1],
-        best_em_result['gamma'],
-        best_em_result['mu'],
-        best_em_result['sigma']
+        best_em_result["gamma"],
+        best_em_result["mu"],
+        best_em_result["sigma"],
     )
 
     return trial
 
 
 def do_trials_with_em(
-        ana,
-        n=1000,
-        ncpu=None,
-        seed=1,
-        mean_n_sig=0,
-        gamma_src=2,
-        gamma_min=1,
-        gamma_max=5,
-        n_gamma=21,
-        gauss=None,
-        box=None,
-        tl=None,
-        ppbar=None,
+    ana,
+    n=1000,
+    ncpu=None,
+    seed=1,
+    mean_n_sig=0,
+    gamma_src=2,
+    gamma_min=1,
+    gamma_max=5,
+    n_gamma=21,
+    gauss=None,
+    box=None,
+    tl=None,
+    ppbar=None,
 ):
     """Performs ``n_trials`` trials using the expectation maximization
     algorithm. For each trial it runs a gamma scan and does the EM for each
@@ -698,9 +685,7 @@ def do_trials_with_em(
     rss = RandomStateService(seed=seed)
 
     if mean_n_sig > 0:
-        change_fluxmodel_gamma(
-            ana=ana,
-            gamma=gamma_src)
+        change_fluxmodel_gamma(ana=ana, gamma=gamma_src)
 
     args_list = [
         (
@@ -715,7 +700,7 @@ def do_trials_with_em(
                 gauss=gauss,
                 box=box,
                 ppbar=False,
-            )
+            ),
         )
         for i in range(n)
     ]
@@ -730,7 +715,7 @@ def do_trials_with_em(
     )
 
     trials = None
-    for (i, result) in enumerate(result_list):
+    for i, result in enumerate(result_list):
         if trials is None:
             trials = np.empty((n,), dtype=result.dtype)
         trials[i] = result[0]
@@ -739,32 +724,33 @@ def do_trials_with_em(
 
 
 def create_analysis(  # noqa: C901
-        datasets,
-        source,
-        box=None,
-        gauss=None,
-        refplflux_Phi0=1,
-        refplflux_E0=1e3,
-        refplflux_gamma=2.0,
-        ns_seed=100.0,
-        ns_min=0.,
-        ns_max=1e3,
-        gamma_seed=3.0,
-        gamma_min=1.,
-        gamma_max=5.,
-        kde_smoothing=False,
-        minimizer_impl="LBFGS",
-        cut_sindec=None,
-        spl_smooth=None,
-        cap_ratio=False,
-        compress_data=False,
-        keep_data_fields=None,
-        evt_sel_delta_angle_deg=10,
-        construct_bkg_generator=True,
-        construct_sig_generator=True,
-        tl=None,
-        ppbar=None,
-        logger_name=None):
+    datasets,
+    source,
+    box=None,
+    gauss=None,
+    refplflux_Phi0=1,
+    refplflux_E0=1e3,
+    refplflux_gamma=2.0,
+    ns_seed=100.0,
+    ns_min=0.0,
+    ns_max=1e3,
+    gamma_seed=3.0,
+    gamma_min=1.0,
+    gamma_max=5.0,
+    kde_smoothing=False,
+    minimizer_impl="LBFGS",
+    cut_sindec=None,
+    spl_smooth=None,
+    cap_ratio=False,
+    compress_data=False,
+    keep_data_fields=None,
+    evt_sel_delta_angle_deg=10,
+    construct_bkg_generator=True,
+    construct_sig_generator=True,
+    tl=None,
+    ppbar=None,
+    logger_name=None,
+):
     """Creates the Analysis instance for this particular analysis.
 
     Parameters
@@ -852,67 +838,66 @@ def create_analysis(  # noqa: C901
 
     if len(datasets) != 1:
         raise RuntimeError(
-            'This analysis supports only analyses with only single datasets '
-            'at the moment!')
+            "This analysis supports only analyses with only single datasets "
+            "at the moment!"
+        )
 
     if (gauss is None) and (box is None):
-        raise ValueError(
-            'No time pdf specified (box or gauss)!')
+        raise ValueError("No time pdf specified (box or gauss)!")
     if (gauss is not None) and (box is not None):
         raise ValueError(
-            'Time PDF cannot be both gaussian and box shaped. '
-            'Please specify only one shape.')
+            "Time PDF cannot be both gaussian and box shaped. "
+            "Please specify only one shape."
+        )
 
     # Create the minimizer instance.
-    if minimizer_impl == 'LBFGS':
+    if minimizer_impl == "LBFGS":
         minimizer = Minimizer(LBFGSMinimizerImpl())
-    elif minimizer_impl == 'minuit':
+    elif minimizer_impl == "minuit":
         minimizer = Minimizer(IMinuitMinimizerImpl(ftol=1e-8))
     else:
         raise NameError(
             f"Minimizer implementation `{minimizer_impl}` is not supported "
-            "Please use `LBFGS` or `minuit`.")
+            "Please use `LBFGS` or `minuit`."
+        )
 
     # Define the flux model.
     fluxmodel = SteadyPointlikeFFM(
         Phi0=refplflux_Phi0,
         energy_profile=PowerLawEnergyFluxProfile(
-            E0=refplflux_E0,
-            gamma=refplflux_gamma))
+            E0=refplflux_E0, gamma=refplflux_gamma
+        ),
+    )
 
     # Define the time flux profile of the source.
     time_flux_profile = None
     if box is not None:
         time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(
-            start=box['start'],
-            stop=box['stop'])
+            start=box["start"], stop=box["stop"]
+        )
     elif gauss is not None:
         time_flux_profile = GaussianTimeFluxProfile(
-            t0=gauss['mu'],
-            sigma_t=gauss['sigma'])
+            t0=gauss["mu"], sigma_t=gauss["sigma"]
+        )
 
     # Define the fit parameter ns.
     param_ns = Parameter(
-        name='ns',
-        initial=ns_seed,
-        valmin=ns_min,
-        valmax=ns_max)
+        name="ns", initial=ns_seed, valmin=ns_min, valmax=ns_max
+    )
 
     # Define the fit parameter gamma.
     param_gamma = Parameter(
-        name='gamma',
-        initial=gamma_seed,
-        valmin=gamma_min,
-        valmax=gamma_max)
+        name="gamma", initial=gamma_seed, valmin=gamma_min, valmax=gamma_max
+    )
 
     # Define the detector signal yield builder for the IceCube detector and this
     # source and flux model.
     # The sin(dec) binning will be taken by the builder automatically from the
     # Dataset instance.
     gamma_grid = param_gamma.as_linear_grid(delta=0.1)
-    detsigyield_builder =\
-        PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
-            param_grid=gamma_grid)
+    detsigyield_builder = PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
+        param_grid=gamma_grid
+    )
 
     # Define the signal generation method.
     sig_gen_method = None
@@ -924,15 +909,16 @@ def create_analysis(  # noqa: C901
             sources=source,
             fluxmodel=fluxmodel,
             detsigyield_builders=detsigyield_builder,
-            sig_gen_method=sig_gen_method))
+            sig_gen_method=sig_gen_method,
+        )
+    )
 
     # Define a detector model for the ns fit parameter.
-    detector_model = DetectorModel('IceCube')
+    detector_model = DetectorModel("IceCube")
 
     # Define the parameter model mapper for the analysis, which will map global
     # parameters to local source parameters.
-    pmm = ParameterModelMapper(
-        models=[detector_model, source])
+    pmm = ParameterModelMapper(models=[detector_model, source])
     pmm.def_param(param_ns, models=detector_model)
     pmm.def_param(param_gamma, models=source)
 
@@ -952,47 +938,47 @@ def create_analysis(  # noqa: C901
     # Define the event selection method for pure optimization purposes.
     # We will use the same method for all datasets.
     event_selection_method = SpatialBoxEventSelectionMethod(
-        shg_mgr=shg_mgr,
-        delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
+        shg_mgr=shg_mgr, delta_angle=np.deg2rad(evt_sel_delta_angle_deg)
+    )
 
     # Prepare the spline parameters for the signal generator.
     if cut_sindec is None:
         cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
     if spl_smooth is None:
-        spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
+        spl_smooth = [0.0, 0.005, 0.05, 0.2, 0.3]
     if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
         raise AssertionError(
-            'The length of the spl_smooth and of the cut_sindec must be equal '
-            f'to the length of datasets: {len(datasets)}.')
+            "The length of the spl_smooth and of the cut_sindec must be equal "
+            f"to the length of datasets: {len(datasets)}."
+        )
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     data_list = []
-    for (ds_idx, ds) in enumerate(datasets):
+    for ds_idx, ds in enumerate(datasets):
         data = ds.load_and_prepare_data(
-            keep_fields=keep_data_fields,
-            compress=compress_data,
-            tl=tl)
+            keep_fields=keep_data_fields, compress=compress_data, tl=tl
+        )
         data_list.append(data)
 
         # Some runs might overlap slightly. So we need to clip those runs.
         clip_grl_start_times(grl_data=data.grl)
 
-        livetime = I3Livetime.from_grl_data(
-            grl_data=data.grl)
+        livetime = I3Livetime.from_grl_data(grl_data=data.grl)
 
-        sin_dec_binning = ds.get_binning_definition('sin_dec')
-        log_energy_binning = ds.get_binning_definition('log_energy')
+        sin_dec_binning = ds.get_binning_definition("sin_dec")
+        log_energy_binning = ds.get_binning_definition("log_energy")
 
         # Create the spatial PDF ratio instance for this dataset.
         spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
-            dec_range=np.arcsin(sin_dec_binning.range))
+            dec_range=np.arcsin(sin_dec_binning.range)
+        )
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(
-            data_exp=data.exp,
-            sin_dec_binning=sin_dec_binning)
+            data_exp=data.exp, sin_dec_binning=sin_dec_binning
+        )
         spatial_pdfratio = SigOverBkgPDFRatio(
-            sig_pdf=spatial_sigpdf,
-            bkg_pdf=spatial_bkgpdf)
+            sig_pdf=spatial_sigpdf, bkg_pdf=spatial_bkgpdf
+        )
 
         # Create the energy PDF ratio instance for this dataset.
         energy_sigpdfset = PDSignalEnergyPDFSet(
@@ -1000,7 +986,7 @@ def create_analysis(  # noqa: C901
             src_dec=source.dec,
             fluxmodel=fluxmodel,
             param_grid_set=gamma_grid,
-            ppbar=ppbar
+            ppbar=ppbar,
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
         energy_bkgpdf = PDDataBackgroundI3EnergyPDF(
@@ -1008,12 +994,14 @@ def create_analysis(  # noqa: C901
             logE_binning=log_energy_binning,
             sinDec_binning=sin_dec_binning,
             smoothing_filter=smoothing_filter,
-            kde_smoothing=kde_smoothing)
+            kde_smoothing=kde_smoothing,
+        )
 
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
             sig_pdf_set=energy_sigpdfset,
             bkg_pdf=energy_bkgpdf,
-            cap_ratio=cap_ratio)
+            cap_ratio=cap_ratio,
+        )
 
         pdfratio = spatial_pdfratio * energy_pdfratio
 
@@ -1022,12 +1010,12 @@ def create_analysis(  # noqa: C901
             time_bkgpdf = BackgroundTimePDF(
                 livetime=livetime,
                 time_flux_profile=BoxTimeFluxProfile.from_start_and_stop_time(
-                    start=livetime.time_start,
-                    stop=livetime.time_stop))
+                    start=livetime.time_start, stop=livetime.time_stop
+                ),
+            )
             time_sigpdf = create_signal_time_pdf(
-                grl=data.grl,
-                gauss=gauss,
-                box=box)
+                grl=data.grl, gauss=gauss, box=box
+            )
             time_pdfratio = SigOverBkgPDFRatio(
                 sig_pdf=time_sigpdf,
                 bkg_pdf=time_bkgpdf,
@@ -1039,18 +1027,18 @@ def create_analysis(  # noqa: C901
         # Create a trial data manager and add the required data fields.
         tdm = TrialDataManager()
         tdm.add_source_data_field(
-            name='src_array',
-            func=pointlikesource_to_data_field_array)
+            name="src_array", func=pointlikesource_to_data_field_array
+        )
         tdm.add_data_field(
-            name='psi',
+            name="psi",
             func=get_tdm_field_func_psi(),
-            dt='dec',
-            is_srcevt_data=True)
+            dt="dec",
+            is_srcevt_data=True,
+        )
 
         energy_cut_spline = create_energy_cut_spline(
-            ds,
-            data.exp,
-            spl_smooth[ds_idx])
+            ds, data.exp, spl_smooth[ds_idx]
+        )
 
         sig_generator = TimeDependentPDDatasetSignalGenerator(
             shg_mgr=shg_mgr,
@@ -1068,25 +1056,23 @@ def create_analysis(  # noqa: C901
             pdfratio=pdfratio,
             tdm=tdm,
             event_selection_method=event_selection_method,
-            sig_generator=sig_generator)
+            sig_generator=sig_generator,
+        )
 
         pbar.increment()
     pbar.finish()
 
-    ana.construct_services(
-        ppbar=ppbar)
+    ana.construct_services(ppbar=ppbar)
 
-    ana.llhratio = ana.construct_llhratio(
-        minimizer=minimizer,
-        ppbar=ppbar)
+    ana.llhratio = ana.construct_llhratio(minimizer=minimizer, ppbar=ppbar)
 
     # Define the data scrambler with its data scrambling method, which is used
     # for background generation.
 
     # FIXME: Support multiple datasets for the DataScrambler.
     data_scrambler = DataScrambler(
-        I3SeasonalVariationTimeScramblingMethod(
-            data_list[0]))
+        I3SeasonalVariationTimeScramblingMethod(data_list[0])
+    )
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
     ana.bkg_gen_method = bkg_gen_method
 
@@ -1099,33 +1085,33 @@ def create_analysis(  # noqa: C901
     return ana
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = create_argparser(
-        description='Calculates TS for a given source location using the '
-                    '10-year public point source sample assuming a signal '
-                    'time PDF.',
+        description="Calculates TS for a given source location using the "
+        "10-year public point source sample assuming a signal "
+        "time PDF.",
     )
 
     parser.add_argument(
-        '--dec',
-        dest='dec',
+        "--dec",
+        dest="dec",
         default=5.7,
         type=float,
-        help='The source declination in degrees.'
+        help="The source declination in degrees.",
     )
     parser.add_argument(
-        '--ra',
-        dest='ra',
+        "--ra",
+        dest="ra",
         default=77.35,
         type=float,
-        help='The source right-ascention in degrees.'
+        help="The source right-ascention in degrees.",
     )
     parser.add_argument(
-        '--gamma-seed',
-        dest='gamma_seed',
+        "--gamma-seed",
+        dest="gamma_seed",
         default=3,
         type=float,
-        help='The seed value of the gamma fit parameter.'
+        help="The seed value of the gamma fit parameter.",
     )
 
     args = parser.parse_args()
@@ -1133,48 +1119,46 @@ if __name__ == '__main__':
     CFG.from_yaml(args.config)
 
     setup_logging(
-        script_logger_name=__name__,
-        debug_pathfilename=args.debug_logfile)
+        script_logger_name=__name__, debug_pathfilename=args.debug_logfile
+    )
 
     set_enable_tracing(args.enable_tracing)
     set_n_cpu(args.n_cpu)
 
     sample_seasons = [
-        ('PublicData_10y_ps', 'IC86_II-VII'),
+        ("PublicData_10y_ps", "IC86_II-VII"),
     ]
 
     datasets = []
-    for (sample, season) in sample_seasons:
+    for sample, season in sample_seasons:
         # Get the dataset from the correct dataset collection.
-        dsc = data_samples[sample].create_dataset_collection(
-            args.data_basepath)
+        dsc = data_samples[sample].create_dataset_collection(args.data_basepath)
         datasets.append(dsc.get_dataset(season))
 
     # Define a random state service.
     rss = RandomStateService(args.seed)
 
     # Define the point source.
-    source = PointLikeSource(
-        ra=np.deg2rad(args.ra),
-        dec=np.deg2rad(args.dec))
-    print(f'source: {source}')
+    source = PointLikeSource(ra=np.deg2rad(args.ra), dec=np.deg2rad(args.dec))
+    print(f"source: {source}")
 
     tl = TimeLord()
 
-    with tl.task_timer('Creating analysis.'):
+    with tl.task_timer("Creating analysis."):
         ana = create_analysis(
             datasets=datasets,
             source=source,
             gamma_seed=args.gamma_seed,
-            gauss={'mu': 57000, 'sigma': 62},
-            tl=tl)
+            gauss={"mu": 57000, "sigma": 62},
+            tl=tl,
+        )
 
-    with tl.task_timer('Unblinding data.'):
+    with tl.task_timer("Unblinding data."):
         (TS, param_dict, status) = ana.unblind(rss)
 
-    print(f'TS = {TS:g}')
+    print(f"TS = {TS:g}")
     print(f'ns_fit = {param_dict["ns"]:g}')
     print(f'gamma_fit = {param_dict["gamma"]:g}')
-    print(f'minimizer status = {status}')
+    print(f"minimizer status = {status}")
 
     print(tl)

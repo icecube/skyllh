@@ -8,6 +8,7 @@ specifies how those bins should get filled.
 """
 
 import abc
+
 import numpy as np
 
 from skyllh.core.py import (
@@ -26,14 +27,15 @@ class PDFRatioFillMethod(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def __call__(
-            self,
-            ratios,
-            sig_pd_h,
-            bkg_pd_h,
-            sig_mask_mc_covered,
-            sig_mask_mc_covered_zero_physics,
-            bkg_mask_mc_covered,
-            bkg_mask_mc_covered_zero_physics):
+        self,
+        ratios,
+        sig_pd_h,
+        bkg_pd_h,
+        sig_mask_mc_covered,
+        sig_mask_mc_covered_zero_physics,
+        bkg_mask_mc_covered,
+        bkg_mask_mc_covered_zero_physics,
+    ):
         """The __call__ method is supposed to fill the ratio bins (array)
         with the signal / background ratio values. For bins (array elements),
         where the division is undefined, e.g. due to zero background, the fill
@@ -86,10 +88,11 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
     it does not distinguish between bins with MC converage and physics model
     contribution, and those with MC coverage and no physics model contribution!
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.signallike_percentile = 99.
+        self.signallike_percentile = 99.0
 
     @property
     def signallike_percentile(self):
@@ -103,23 +106,26 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
     def signallike_percentile(self, value):
         value = float_cast(
             value,
-            'The value for the signallike_percentile property must be castable '
-            'to type float!')
+            "The value for the signallike_percentile property must be castable "
+            "to type float!",
+        )
         if (value < 0) or (value > 100):
             raise ValueError(
                 f'The value "{value}" of the signallike_percentile property '
-                'must be in the range [0, 100]!')
+                "must be in the range [0, 100]!"
+            )
         self._signallike_percentile = value
 
     def __call__(
-            self,
-            ratio,
-            sig_pd_h,
-            bkg_pd_h,
-            sig_mask_mc_covered,
-            sig_mask_mc_covered_zero_physics,
-            bkg_mask_mc_covered,
-            bkg_mask_mc_covered_zero_physics):
+        self,
+        ratio,
+        sig_pd_h,
+        bkg_pd_h,
+        sig_mask_mc_covered,
+        sig_mask_mc_covered_zero_physics,
+        bkg_mask_mc_covered,
+        bkg_mask_mc_covered_zero_physics,
+    ):
         """Fills the ratio array ``ratio``.
         For more information see the documentation of
         :meth:`skyllh.core.pdfratio_fill.PDFRatioFillMethod.__call__`.
@@ -128,8 +134,9 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
         # range.
         if np.any(bkg_mask_mc_covered_zero_physics):
             raise ValueError(
-                'Some of the background bins have MC coverage but no physics '
-                'background prediction. I don\'t know what to do in this case!')
+                "Some of the background bins have MC coverage but no physics "
+                "background prediction. I don't know what to do in this case!"
+            )
 
         sig_domain = sig_pd_h > 0
         bkg_domain = bkg_pd_h > 0
@@ -141,7 +148,8 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
         )
 
         ratio_value = np.percentile(
-            ratio[ratio > 1.], self._signallike_percentile)
+            ratio[ratio > 1.0], self._signallike_percentile
+        )
         np.copyto(ratio, ratio_value, where=sig_domain & ~bkg_domain)
 
         return ratio
@@ -151,7 +159,8 @@ class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
     """PDF ratio fill method to set the PDF ratio to the most signal like PDF
     ratio for bins, where there is signal but no background coverage.
     """
-    def __init__(self, signallike_percentile=99., **kwargs):
+
+    def __init__(self, signallike_percentile=99.0, **kwargs):
         """Creates the PDF ratio fill method object for filling PDF ratio bins,
         where there is signal MC coverage but no background (MC) coverage
         with the most signal-like ratio value.
@@ -178,23 +187,26 @@ class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
     def signallike_percentile(self, value):
         value = float_cast(
             value,
-            'The value for the signallike_percentile property must be castable '
-            'to type float!')
+            "The value for the signallike_percentile property must be castable "
+            "to type float!",
+        )
         if (value < 0) or (value > 100):
             raise ValueError(
                 f'The value "{value}" of the signallike_percentile property '
-                'must be in the range [0, 100]!')
+                "must be in the range [0, 100]!"
+            )
         self._signallike_percentile = value
 
     def __call__(
-            self,
-            ratio,
-            sig_pd_h,
-            bkg_pd_h,
-            sig_mask_mc_covered,
-            sig_mask_mc_covered_zero_physics,
-            bkg_mask_mc_covered,
-            bkg_mask_mc_covered_zero_physics):
+        self,
+        ratio,
+        sig_pd_h,
+        bkg_pd_h,
+        sig_mask_mc_covered,
+        sig_mask_mc_covered_zero_physics,
+        bkg_mask_mc_covered,
+        bkg_mask_mc_covered_zero_physics,
+    ):
         """Fills the ratio array ``ratio``.
         For more information see the documentation of
         :meth:`skyllh.core.pdfratio_fill.PDFRatioFillMethod.__call__`.
@@ -203,20 +215,22 @@ class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
         # range.
         if np.any(bkg_mask_mc_covered_zero_physics):
             raise ValueError(
-                'Some of the background bins have MC coverage but no physics '
-                'background prediction. I don\'t know what to do in this case!')
+                "Some of the background bins have MC coverage but no physics "
+                "background prediction. I don't know what to do in this case!"
+            )
 
         # Fill the bins where we have signal and background MC coverage.
         mask_sig_and_bkg_mc_covered = sig_mask_mc_covered & bkg_mask_mc_covered
         ratio[mask_sig_and_bkg_mc_covered] = (
-            sig_pd_h[mask_sig_and_bkg_mc_covered] /
-            bkg_pd_h[mask_sig_and_bkg_mc_covered]
+            sig_pd_h[mask_sig_and_bkg_mc_covered]
+            / bkg_pd_h[mask_sig_and_bkg_mc_covered]
         )
 
         # Calculate the ratio value, which should be used for ratio bins, where
         # we have signal MC coverage but no background MC coverage.
         ratio_value = np.percentile(
-            ratio[ratio > 1.], self._signallike_percentile)
+            ratio[ratio > 1.0], self._signallike_percentile
+        )
         mask_sig_but_notbkg_mc_covered = (
             sig_mask_mc_covered & ~bkg_mask_mc_covered
         )
@@ -229,6 +243,7 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
     """PDF ratio fill method to set the PDF ratio to the minimal background like
     value for bins, where there is signal but no background coverage.
     """
+
     def __init__(self, **kwargs):
         """Creates the PDF ratio fill method object for filling PDF ratio bins,
         where there is signal MC coverage but no background (MC) coverage
@@ -237,14 +252,15 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
         super().__init__(**kwargs)
 
     def __call__(
-            self,
-            ratio,
-            sig_pd_h,
-            bkg_pd_h,
-            sig_mask_mc_covered,
-            sig_mask_mc_covered_zero_physics,
-            bkg_mask_mc_covered,
-            bkg_mask_mc_covered_zero_physics):
+        self,
+        ratio,
+        sig_pd_h,
+        bkg_pd_h,
+        sig_mask_mc_covered,
+        sig_mask_mc_covered_zero_physics,
+        bkg_mask_mc_covered,
+        bkg_mask_mc_covered_zero_physics,
+    ):
         """Fills the ratio array ``ratio``.
         For more information see the documentation of
         :meth:`skyllh.core.pdfratio_fill.PDFRatioFillMethod.__call__`.
@@ -253,14 +269,15 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
         # range.
         if np.any(bkg_mask_mc_covered_zero_physics):
             raise ValueError(
-                'Some of the background bins have MC coverage but no physics '
-                'background prediction. I don\'t know what to do in this case!')
+                "Some of the background bins have MC coverage but no physics "
+                "background prediction. I don't know what to do in this case!"
+            )
 
         # Fill the bins where we have signal and background MC coverage.
         mask_sig_and_bkg_mc_covered = sig_mask_mc_covered & bkg_mask_mc_covered
         ratio[mask_sig_and_bkg_mc_covered] = (
-            sig_pd_h[mask_sig_and_bkg_mc_covered] /
-            bkg_pd_h[mask_sig_and_bkg_mc_covered]
+            sig_pd_h[mask_sig_and_bkg_mc_covered]
+            / bkg_pd_h[mask_sig_and_bkg_mc_covered]
         )
 
         # Calculate the minimal background-like value.
@@ -271,7 +288,8 @@ class MinBackgroundLikePDFRatioFillMethod(PDFRatioFillMethod):
         mask_sig_but_notbkg_mc_covered = (
             sig_mask_mc_covered & ~bkg_mask_mc_covered
         )
-        ratio[mask_sig_but_notbkg_mc_covered] =\
+        ratio[mask_sig_but_notbkg_mc_covered] = (
             sig_pd_h[mask_sig_but_notbkg_mc_covered] / min_bkg_prob
+        )
 
         return ratio

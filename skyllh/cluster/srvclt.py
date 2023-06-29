@@ -2,7 +2,10 @@
 
 import pickle
 
-from skyllh.core.py import str_cast
+from skyllh.core.py import (
+    str_cast,
+)
+
 
 class Message(object):
     @staticmethod
@@ -25,16 +28,17 @@ class Message(object):
         """
         # Get the first 2 bytes to determine the length of the message.
         msglen = int.from_bytes(
-            read_from_socket(sock, 2, blocksize=blocksize), 'little')
+            read_from_socket(sock, 2, blocksize=blocksize), "little"
+        )
 
         # Read the message of length msglen bytes from the socket. Here, msg is
         # a bytes object.
         msg = read_from_socket(sock, msglen, blocksize=blocksize)
 
-        if(as_bytes):
+        if as_bytes:
             return Message(msg)
 
-        return Message(str(msg, 'utf-8'))
+        return Message(str(msg, "utf-8"))
 
     def __init__(self, msg):
         """Creates a new Message instance.
@@ -52,29 +56,31 @@ class Message(object):
         instance.
         """
         return self._msg
+
     @msg.setter
     def msg(self, m):
-        if(not isinstance(m, bytes)):
-            m = str_cast(m,
-                'The msg property must be of type bytes or castable to type '
-                'str!')
+        if not isinstance(m, bytes):
+            m = str_cast(
+                m,
+                "The msg property must be of type bytes or castable to type "
+                "str!",
+            )
         self._msg = m
 
     @property
     def length(self):
-        """The length of the message in bytes.
-        """
+        """The length of the message in bytes."""
         return len(self.msg)
 
     def as_socket_msg(self):
         """Converts this message to a bytes instance that can be send through a
         socket. The first two bytes hold the length of the message.
         """
-        smsg = len(self.msg).to_bytes(2, 'little')
-        if(isinstance(self.msg, bytes)):
+        smsg = len(self.msg).to_bytes(2, "little")
+        if isinstance(self.msg, bytes):
             smsg += self.msg
         else:
-            smsg += bytes(self.msg, 'utf-8')
+            smsg += bytes(self.msg, "utf-8")
 
         return smsg
 
@@ -87,22 +93,23 @@ def send_to_socket(sock, msg):
     n_bytes_sent = 0
     while n_bytes_sent < msglen:
         sent = sock.send(msg[n_bytes_sent:])
-        if(sent == 0):
-            raise RuntimeError('Socket connection broken!')
+        if sent == 0:
+            raise RuntimeError("Socket connection broken!")
         n_bytes_sent += sent
 
+
 def read_from_socket(sock, size, blocksize=2048):
-    """Reads ``size`` bytes from the socket ``sock``.
-    """
+    """Reads ``size`` bytes from the socket ``sock``."""
     chunks = []
     n_bytes_recd = 0
-    while (n_bytes_recd < size):
+    while n_bytes_recd < size:
         chunk = sock.recv(min(size - n_bytes_recd, blocksize))
-        if(chunk == b''):
-            raise RuntimeError('Socket connection broken!')
+        if chunk == b"":
+            raise RuntimeError("Socket connection broken!")
         chunks.append(chunk)
         n_bytes_recd += len(chunk)
-    return b''.join(chunks)
+    return b"".join(chunks)
+
 
 def receive_object_from_socket(sock, blocksize=2048):
     """Receives a pickled Python object from the given socket.

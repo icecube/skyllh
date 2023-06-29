@@ -1,13 +1,15 @@
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import (
+    norm,
+)
 
 
 def em_expectation_step(
-        ns,
-        mu,
-        sigma,
-        t,
-        sob,
+    ns,
+    mu,
+    sigma,
+    t,
+    sob,
 ):
     """Expectation step of expectation maximization algorithm.
 
@@ -56,8 +58,8 @@ def em_expectation_step(
 
 
 def em_maximization_step(
-        e,
-        t,
+    e,
+    t,
 ):
     """The maximization step of the expectation maximization algorithm.
 
@@ -91,14 +93,14 @@ def em_maximization_step(
 
 
 def em_fit(
-        x,
-        weights,
-        n=1,
-        tol=1.e-200,
-        iter_max=500,
-        weight_thresh=0,
-        initial_width=5000,
-        remove_x=None,
+    x,
+    weights,
+    n=1,
+    tol=1.0e-200,
+    iter_max=500,
+    weight_thresh=0,
+    initial_width=5000,
+    remove_x=None,
 ):
     """Perform the expectation maximization fit.
 
@@ -147,7 +149,7 @@ def em_fit(
         x = x[~mask]
 
     # Do the expectation maximization.
-    mu = np.linspace(x[0], x[-1], n+2)[1:-1]
+    mu = np.linspace(x[0], x[-1], n + 2)[1:-1]
     sigma = np.full((n,), initial_width)
     ns = np.full((n,), 10)
 
@@ -161,11 +163,8 @@ def em_fit(
         iteration += 1
 
         (e, llh_new) = em_expectation_step(
-            ns=ns,
-            mu=mu,
-            sigma=sigma,
-            t=x,
-            sob=weights)
+            ns=ns, mu=mu, sigma=sigma, t=x, sob=weights
+        )
 
         tmp_diff = np.abs(llh_old - llh_new) / llh_new
         llh_diff_list = llh_diff_list[:-1]
@@ -174,8 +173,6 @@ def em_fit(
 
         llh_old = llh_new
 
-        (mu, sigma, ns) = em_maximization_step(
-            e=e,
-            t=x)
+        (mu, sigma, ns) = em_maximization_step(e=e, t=x)
 
     return (mu, sigma, ns)

@@ -7,9 +7,7 @@ script.
 import argparse
 
 
-def create_argparser(
-        description=None,
-        options=True):
+def create_argparser(description=None, options=True):
     """Creates an argparser with the given description and adds common options
     useful for analysis scripts.
 
@@ -25,29 +23,27 @@ def create_argparser(
         Default is ``True``.
     """
     parser = argparse.ArgumentParser(
-        description=description,
-        formatter_class=argparse.RawTextHelpFormatter
+        description=description, formatter_class=argparse.RawTextHelpFormatter
     )
 
     if options is True:
         options = dict()
 
     if isinstance(options, dict):
-        add_argparser_options(
-            parser=parser,
-            **options)
+        add_argparser_options(parser=parser, **options)
 
     return parser
 
 
 def add_argparser_options(
-        parser,
-        config=True,
-        data_basepath=True,
-        debug_logfile=True,
-        enable_tracing=True,
-        n_cpu=True,
-        seed=True):
+    parser,
+    config=True,
+    data_basepath=True,
+    debug_logfile=True,
+    enable_tracing=True,
+    n_cpu=True,
+    seed=True,
+):
     """Adds common argparser options to the given argparser instance, useful for
     analysis scripts.
 
@@ -96,57 +92,60 @@ def add_argparser_options(
     """
     if config:
         parser.add_argument(
-            '--config',
-            dest='config',
+            "--config",
+            dest="config",
             default=None,
             type=str,
-            help='The configuration file. '
-                 '(default=None)')
+            help="The configuration file. " "(default=None)",
+        )
 
     if data_basepath:
         parser.add_argument(
-            '--data-basepath',
-            dest='data_basepath',
+            "--data-basepath",
+            dest="data_basepath",
             default=None,
             type=str,
-            help='The base path to the data samples. '
-                 '(default=None)')
+            help="The base path to the data samples. " "(default=None)",
+        )
 
     if debug_logfile:
         parser.add_argument(
-            '--debug-logfile',
-            dest='debug_logfile',
+            "--debug-logfile",
+            dest="debug_logfile",
             default=None,
             type=str,
-            help='If not None, it specifies the log file for dubug '
-                 'information. '
-                 '(default=None)')
+            help="If not None, it specifies the log file for dubug "
+            "information. "
+            "(default=None)",
+        )
 
     if enable_tracing:
         parser.add_argument(
-            '--enable-tracing',
-            dest='enable_tracing',
+            "--enable-tracing",
+            dest="enable_tracing",
             default=False,
-            action='store_true',
-            help='If specified, enables the logging on the tracing level, i.e. '
-                 'a lot of DEBUG messages. '
-                 '(default=False)')
+            action="store_true",
+            help="If specified, enables the logging on the tracing level, i.e. "
+            "a lot of DEBUG messages. "
+            "(default=False)",
+        )
 
     if n_cpu:
         parser.add_argument(
-            '--n-cpu',
-            dest='n_cpu',
+            "--n-cpu",
+            dest="n_cpu",
             default=1,
             type=int,
-            help='The number of CPUs to utilize where parallelization is '
-                 'possible. '
-                 '(default=1)')
+            help="The number of CPUs to utilize where parallelization is "
+            "possible. "
+            "(default=1)",
+        )
 
     if seed:
         parser.add_argument(
-            '--seed',
-            dest='seed',
+            "--seed",
+            dest="seed",
             default=0,
             type=int,
-            help='The seed for the random number generator. '
-                 '(default=0)')
+            help="The seed for the random number generator. " "(default=0)",
+        )

@@ -14,10 +14,11 @@ from skyllh.core.debugging import (
 
 
 def setup_logging(
-        script_logger_name,
-        log_format=None,
-        log_level=logging.INFO,
-        debug_pathfilename=None):
+    script_logger_name,
+    log_format=None,
+    log_level=logging.INFO,
+    debug_pathfilename=None,
+):
     """Installs console handlers for the ``skyllh`` and ``script_logger_name``
     loggers. If a debug file is specified, file handlers for debug messages
     will be installed as well.
@@ -44,33 +45,30 @@ def setup_logging(
         The logger instance of the script, specified by ``script_logger_name``.
     """
     if log_format is None:
-        log_format = '%(asctime)s %(processName)s %(name)s %(levelname)s: '\
-                     '%(message)s'
+        log_format = (
+            "%(asctime)s %(processName)s %(name)s %(levelname)s: " "%(message)s"
+        )
 
     setup_console_handler(
-        name='skyllh',
-        log_level=log_level,
-        log_format=log_format
+        name="skyllh", log_level=log_level, log_format=log_format
     )
 
     setup_console_handler(
-        name=script_logger_name,
-        log_level=log_level,
-        log_format=log_format
+        name=script_logger_name, log_level=log_level, log_format=log_format
     )
 
     if debug_pathfilename is not None:
         setup_file_handler(
-            name='skyllh',
+            name="skyllh",
             filename=debug_pathfilename,
             log_format=log_format,
-            log_level=logging.DEBUG
+            log_level=logging.DEBUG,
         )
         setup_file_handler(
             name=script_logger_name,
             filename=debug_pathfilename,
             log_format=log_format,
-            log_level=logging.DEBUG
+            log_level=logging.DEBUG,
         )
 
     script_logger = get_logger(script_logger_name)

@@ -13,17 +13,12 @@ from skyllh.core.py import (
 )
 
 
-class BackgroundGeneratorBase(
-        object):
+class BackgroundGeneratorBase(object):
     """This is the abstract base class for all background generator classes in
     SkyLLH. It defines the interface for background generators.
     """
-    def __init__(
-            self,
-            bkg_gen_method,
-            dataset_list,
-            data_list,
-            **kwargs):
+
+    def __init__(self, bkg_gen_method, dataset_list, data_list, **kwargs):
         """Constructs a new background generator base instance.
 
         Parameters
@@ -55,9 +50,10 @@ class BackgroundGeneratorBase(
     def bkg_gen_method(self, method):
         if not isinstance(method, BackgroundGenerationMethod):
             raise TypeError(
-                'The bkg_gen_method property must be an instance of '
-                'BackgroundGenerationMethod! '
-                f'Its current type is {classname(method)}.')
+                "The bkg_gen_method property must be an instance of "
+                "BackgroundGenerationMethod! "
+                f"Its current type is {classname(method)}."
+            )
         self._bkg_gen_method = method
 
     @property
@@ -71,9 +67,10 @@ class BackgroundGeneratorBase(
     def dataset_list(self, datasets):
         if not issequenceof(datasets, Dataset):
             raise TypeError(
-                'The dataset_list property must be a sequence of Dataset '
-                'instances! '
-                f'Its current type is {classname(datasets)}.')
+                "The dataset_list property must be a sequence of Dataset "
+                "instances! "
+                f"Its current type is {classname(datasets)}."
+            )
         self._dataset_list = list(datasets)
 
     @property
@@ -88,9 +85,10 @@ class BackgroundGeneratorBase(
     def data_list(self, datas):
         if not issequenceof(datas, DatasetData):
             raise TypeError(
-                'The data_list property must be a sequence of DatasetData '
-                'instances! '
-                f'Its current type is {classname(datas)}.')
+                "The data_list property must be a sequence of DatasetData "
+                "instances! "
+                f"Its current type is {classname(datas)}."
+            )
         self._data_list = datas
 
     def change_shg_mgr(self, shg_mgr):
@@ -102,15 +100,9 @@ class BackgroundGeneratorBase(
         shg_mgr : instance of SourceHypoGroupManager
             The new instance of SourceHypoGroupManager.
         """
-        self._bkg_gen_method.change_shg_mgr(
-            shg_mgr=shg_mgr)
+        self._bkg_gen_method.change_shg_mgr(shg_mgr=shg_mgr)
 
-    def generate_background_events(
-            self,
-            rss,
-            dataset_idx,
-            tl=None,
-            **kwargs):
+    def generate_background_events(self, rss, dataset_idx, tl=None, **kwargs):
         """Generates a mean number of background events for the given dataset.
 
         Parameters
@@ -145,28 +137,20 @@ class BackgroundGeneratorBase(
         data = self._data_list[dataset_idx]
 
         (n_bkg, bkg_events) = self._bkg_gen_method.generate_events(
-            rss=rss,
-            dataset=ds,
-            data=data,
-            tl=tl,
-            **kwargs)
+            rss=rss, dataset=ds, data=data, tl=tl, **kwargs
+        )
 
         return (n_bkg, bkg_events)
 
 
-class BackgroundGenerator(
-        BackgroundGeneratorBase):
+class BackgroundGenerator(BackgroundGeneratorBase):
     """This is the general background generator class, which provides a method
     to generate background events. It does not depend on the detector or
     background hypothesis. These dependencies are out-sourced to a class derived
     from the BackgroundGenerationMethod class.
     """
-    def __init__(
-            self,
-            bkg_gen_method,
-            dataset_list,
-            data_list,
-            **kwargs):
+
+    def __init__(self, bkg_gen_method, dataset_list, data_list, **kwargs):
         """Constructs a new background generator instance.
 
         Parameters
@@ -185,4 +169,5 @@ class BackgroundGenerator(
             bkg_gen_method=bkg_gen_method,
             dataset_list=dataset_list,
             data_list=data_list,
-            **kwargs)
+            **kwargs,
+        )

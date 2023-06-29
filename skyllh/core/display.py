@@ -15,14 +15,15 @@ class ANSIColors:
     """This class defines the ANSI color codes, which can be used to change
     the text color in a terminal.
     """
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
 
 
 def add_leading_text_line_padding(padwidth, text):
@@ -40,4 +41,4 @@ def add_leading_text_line_padding(padwidth, text):
     padded_text : str
         The text where each line is padded with the given number of whitespaces.
     """
-    return '\n'.join([' '*padwidth + line for line in text.split('\n')])
+    return "\n".join([" " * padwidth + line for line in text.split("\n")])

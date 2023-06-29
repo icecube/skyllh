@@ -78,13 +78,17 @@ def requires(*tools):
     ModuleNotFoundError
         If any of the specified tools is not available.
     """
+
     def decorator(f):
         def wrapper(*args, **kwargs):
             for tool in tools:
                 if not is_available(tool):
                     raise ModuleNotFoundError(
                         f'The Python module "{tool}" is not available, but is '
-                        f'required by "{get_class_of_func(f)}.{f.__name__}"!')
+                        f'required by "{get_class_of_func(f)}.{f.__name__}"!'
+                    )
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-
 import scipy.interpolate
 
 from skyllh.core.binning import (
@@ -28,10 +27,7 @@ from skyllh.i3.pdf import (
 )
 
 
-class BackgroundI3SpatialPDF(
-        SpatialPDF,
-        UsesBinning,
-        IsBackgroundPDF):
+class BackgroundI3SpatialPDF(SpatialPDF, UsesBinning, IsBackgroundPDF):
     """This is the base class for all IceCube specific spatial background PDF
     models. IceCube spatial background PDFs depend solely on the zenith angle,
     and hence, on the declination of the event.
@@ -39,12 +35,10 @@ class BackgroundI3SpatialPDF(
     The IceCube spatial background PDF is modeled as a 1d spline function in
     sin(declination).
     """
+
     def __init__(
-            self,
-            data_sin_dec,
-            data_weights,
-            sin_dec_binning,
-            spline_order_sin_dec):
+        self, data_sin_dec, data_weights, sin_dec_binning, spline_order_sin_dec
+    ):
         """Creates a new IceCube spatial background PDF object.
 
         Parameters
@@ -61,19 +55,22 @@ class BackgroundI3SpatialPDF(
         """
         super().__init__(
             pmm=None,
-            ra_range=(0, 2*np.pi),
+            ra_range=(0, 2 * np.pi),
             dec_range=(
                 np.arcsin(sin_dec_binning.lower_edge),
-                np.arcsin(sin_dec_binning.upper_edge)))
+                np.arcsin(sin_dec_binning.upper_edge),
+            ),
+        )
 
-        self.add_binning(sin_dec_binning, 'sin_dec')
+        self.add_binning(sin_dec_binning, "sin_dec")
         self.spline_order_sin_dec = spline_order_sin_dec
 
         (h, bins) = np.histogram(
             data_sin_dec,
             bins=sin_dec_binning.binedges,
             weights=data_weights,
-            range=sin_dec_binning.range)
+            range=sin_dec_binning.range,
+        )
 
         # Save original histogram.
         self._orig_hist = h
@@ -85,20 +82,23 @@ class BackgroundI3SpatialPDF(
         if np.any(np.isnan(h)):
             nan_bcs = sin_dec_binning.bincenters[np.isnan(h)]
             raise ValueError(
-                'The declination histogram contains NaN values! Check your '
-                'sin(dec) binning! The bins with NaN values are: '
-                f'{nan_bcs}')
+                "The declination histogram contains NaN values! Check your "
+                "sin(dec) binning! The bins with NaN values are: "
+                f"{nan_bcs}"
+            )
 
-        if np.any(h <= 0.):
-            empty_bcs = sin_dec_binning.bincenters[h <= 0.]
+        if np.any(h <= 0.0):
+            empty_bcs = sin_dec_binning.bincenters[h <= 0.0]
             raise ValueError(
-                'Some declination histogram bins for the spatial background '
-                'PDF are empty, this must not happen! The empty bins are: '
-                f'{empty_bcs}')
+                "Some declination histogram bins for the spatial background "
+                "PDF are empty, this must not happen! The empty bins are: "
+                f"{empty_bcs}"
+            )
 
         # Create the logarithmic spline.
         self._log_spline = scipy.interpolate.InterpolatedUnivariateSpline(
-            sin_dec_binning.bincenters, np.log(h), k=self.spline_order_sin_dec)
+            sin_dec_binning.bincenters, np.log(h), k=self.spline_order_sin_dec
+        )
 
         # Save original spline.
         self._orig_log_spline = self._log_spline
@@ -114,7 +114,8 @@ class BackgroundI3SpatialPDF(
     def spline_order_sin_dec(self, order):
         self._spline_order_sin_dec = int_cast(
             order,
-            'The spline_order_sin_dec property must be castable to type int!')
+            "The spline_order_sin_dec property must be castable to type int!",
+        )
 
     def add_events(self, events):
         """Add events to spatial background PDF object and recalculate
@@ -130,14 +131,15 @@ class BackgroundI3SpatialPDF(
                     The sin(declination) value of the event.
 
         """
-        data_sin_dec = events['sin_dec']
+        data_sin_dec = events["sin_dec"]
 
-        sin_dec_binning = self.get_binning('sin_dec')
+        sin_dec_binning = self.get_binning("sin_dec")
 
         (h_upd, bins) = np.histogram(
             data_sin_dec,
             bins=sin_dec_binning.binedges,
-            range=sin_dec_binning.range)
+            range=sin_dec_binning.range,
+        )
 
         # Construct histogram with added events.
         h = self._orig_hist + h_upd
@@ -147,7 +149,8 @@ class BackgroundI3SpatialPDF(
 
         # Create the updated logarithmic spline.
         self._log_spline = scipy.interpolate.InterpolatedUnivariateSpline(
-            sin_dec_binning.bincenters, np.log(h), k=self.spline_order_sin_dec)
+            sin_dec_binning.bincenters, np.log(h), k=self.spline_order_sin_dec
+        )
 
     def reset(self):
         """Reset the logarithmic spline to the original function, which was
@@ -155,24 +158,16 @@ class BackgroundI3SpatialPDF(
         """
         self._log_spline = self._orig_log_spline
 
-    def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """Pre-cumputes the probability density values when new trial data is
         available.
         """
-        with TaskTimer(tl, 'Evaluating bkg log-spline.'):
-            log_spline_val = self._log_spline(tdm.get_data('sin_dec'))
+        with TaskTimer(tl, "Evaluating bkg log-spline."):
+            log_spline_val = self._log_spline(tdm.get_data("sin_dec"))
 
         self._pd = 0.5 / np.pi * np.exp(log_spline_val)
 
-    def get_pd(
-            self,
-            tdm,
-            params_recarray=None,
-            tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """Calculates the spatial background probability on the sphere of each
         event.
 
@@ -205,16 +200,12 @@ class BackgroundI3SpatialPDF(
         return (self._pd, dict())
 
 
-class DataBackgroundI3SpatialPDF(
-        BackgroundI3SpatialPDF):
+class DataBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     experimental data.
     """
-    def __init__(
-            self,
-            data_exp,
-            sin_dec_binning,
-            spline_order_sin_dec=2):
+
+    def __init__(self, data_exp, sin_dec_binning, spline_order_sin_dec=2):
         """Constructs a new IceCube spatial background PDF from experimental
         data.
 
@@ -236,11 +227,12 @@ class DataBackgroundI3SpatialPDF(
         """
         if not isinstance(data_exp, DataFieldRecordArray):
             raise TypeError(
-                'The data_exp argument must be an instance of '
-                'DataFieldRecordArray! '
-                f'It is of type "{classname(data_exp)}"!')
+                "The data_exp argument must be an instance of "
+                "DataFieldRecordArray! "
+                f'It is of type "{classname(data_exp)}"!'
+            )
 
-        data_sin_dec = data_exp['sin_dec']
+        data_sin_dec = data_exp["sin_dec"]
         data_weights = np.ones((len(data_exp),))
 
         # Create the PDF using the base class.
@@ -248,20 +240,22 @@ class DataBackgroundI3SpatialPDF(
             data_sin_dec=data_sin_dec,
             data_weights=data_weights,
             sin_dec_binning=sin_dec_binning,
-            spline_order_sin_dec=spline_order_sin_dec)
+            spline_order_sin_dec=spline_order_sin_dec,
+        )
 
 
-class MCBackgroundI3SpatialPDF(
-        BackgroundI3SpatialPDF):
+class MCBackgroundI3SpatialPDF(BackgroundI3SpatialPDF):
     """This is the IceCube spatial background PDF, which gets constructed from
     monte-carlo data.
     """
+
     def __init__(
-            self,
-            data_mc,
-            physics_weight_field_names,
-            sin_dec_binning,
-            spline_order_sin_dec=2):
+        self,
+        data_mc,
+        physics_weight_field_names,
+        sin_dec_binning,
+        spline_order_sin_dec=2,
+    ):
         """Constructs a new IceCube spatial background PDF from monte-carlo
         data.
 
@@ -288,19 +282,21 @@ class MCBackgroundI3SpatialPDF(
         """
         if not isinstance(data_mc, DataFieldRecordArray):
             raise TypeError(
-                'The data_mc argument must be and instance of '
-                'DataFieldRecordArray! '
-                f'It is of type {classname(data_mc)}')
+                "The data_mc argument must be and instance of "
+                "DataFieldRecordArray! "
+                f"It is of type {classname(data_mc)}"
+            )
 
         if not issequence(physics_weight_field_names):
             physics_weight_field_names = [physics_weight_field_names]
         if not issequenceof(physics_weight_field_names, str):
             raise TypeError(
-                'The physics_weight_field_names argument must be of type str '
-                'or a sequence of type str! It is of type '
-                f'"{classname(physics_weight_field_names)}"!')
+                "The physics_weight_field_names argument must be of type str "
+                "or a sequence of type str! It is of type "
+                f'"{classname(physics_weight_field_names)}"!'
+            )
 
-        data_sin_dec = data_mc['sin_dec']
+        data_sin_dec = data_mc["sin_dec"]
 
         # Calculate the event weights as the sum of all the given data fields
         # for each event.
@@ -308,7 +304,8 @@ class MCBackgroundI3SpatialPDF(
         for name in physics_weight_field_names:
             if name not in data_mc:
                 raise KeyError(
-                    f'The field "{name}" does not exist in the MC data!')
+                    f'The field "{name}" does not exist in the MC data!'
+                )
             data_weights += data_mc[name]
 
         # Create the PDF using the base class.
@@ -316,21 +313,22 @@ class MCBackgroundI3SpatialPDF(
             data_sin_dec=data_sin_dec,
             data_weights=data_weights,
             sin_dec_binning=sin_dec_binning,
-            spline_order_sin_dec=spline_order_sin_dec)
+            spline_order_sin_dec=spline_order_sin_dec,
+        )
 
 
-class DataBackgroundI3EnergyPDF(
-        I3EnergyPDF,
-        IsBackgroundPDF):
+class DataBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     experimental data. This class is derived from I3EnergyPDF.
     """
+
     def __init__(
-            self,
-            data_exp,
-            log10_energy_binning,
-            sin_dec_binning,
-            smoothing_filter=None):
+        self,
+        data_exp,
+        log10_energy_binning,
+        sin_dec_binning,
+        smoothing_filter=None,
+    ):
         """Constructs a new IceCube energy background PDF from experimental
         data.
 
@@ -356,12 +354,13 @@ class DataBackgroundI3EnergyPDF(
         """
         if not isinstance(data_exp, DataFieldRecordArray):
             raise TypeError(
-                'The data_exp argument must be an instance of '
-                'DataFieldRecordArray! '
-                f'It is of type "{classname(data_exp)}"!')
+                "The data_exp argument must be an instance of "
+                "DataFieldRecordArray! "
+                f'It is of type "{classname(data_exp)}"!'
+            )
 
-        data_log10_energy = data_exp['log_energy']
-        data_sin_dec = data_exp['sin_dec']
+        data_log10_energy = data_exp["log_energy"]
+        data_sin_dec = data_exp["sin_dec"]
         # For experimental data, the MC and physics weight are unity.
         data_mcweight = np.ones((len(data_exp),))
         data_physicsweight = data_mcweight
@@ -375,22 +374,23 @@ class DataBackgroundI3EnergyPDF(
             data_physicsweight=data_physicsweight,
             log10_energy_binning=log10_energy_binning,
             sin_dec_binning=sin_dec_binning,
-            smoothing_filter=smoothing_filter)
+            smoothing_filter=smoothing_filter,
+        )
 
 
-class MCBackgroundI3EnergyPDF(
-        I3EnergyPDF,
-        IsBackgroundPDF):
+class MCBackgroundI3EnergyPDF(I3EnergyPDF, IsBackgroundPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     monte-carlo data. This class is derived from I3EnergyPDF.
     """
+
     def __init__(
-            self,
-            data_mc,
-            physics_weight_field_names,
-            log10_energy_binning,
-            sin_dec_binning,
-            smoothing_filter=None):
+        self,
+        data_mc,
+        physics_weight_field_names,
+        log10_energy_binning,
+        sin_dec_binning,
+        smoothing_filter=None,
+    ):
         """Constructs a new IceCube energy background PDF from monte-carlo
         data.
 
@@ -423,21 +423,23 @@ class MCBackgroundI3EnergyPDF(
         """
         if not isinstance(data_mc, DataFieldRecordArray):
             raise TypeError(
-                'The data_mc argument must be an instance of '
-                'DataFieldRecordArray! '
-                f'It is of type "{classname(data_mc)}"!')
+                "The data_mc argument must be an instance of "
+                "DataFieldRecordArray! "
+                f'It is of type "{classname(data_mc)}"!'
+            )
 
         if not issequence(physics_weight_field_names):
             physics_weight_field_names = [physics_weight_field_names]
         if not issequenceof(physics_weight_field_names, str):
             raise TypeError(
-                'The physics_weight_field_names argument must be '
-                'of type str or a sequence of type str! '
-                f'It is of type {classname(physics_weight_field_names)}')
+                "The physics_weight_field_names argument must be "
+                "of type str or a sequence of type str! "
+                f"It is of type {classname(physics_weight_field_names)}"
+            )
 
-        data_log10_energy = data_mc['log_energy']
-        data_sin_dec = data_mc['sin_dec']
-        data_mcweight = data_mc['mcweight']
+        data_log10_energy = data_mc["log_energy"]
+        data_sin_dec = data_mc["sin_dec"]
+        data_mcweight = data_mc["mcweight"]
 
         # Calculate the event weights as the sum of all the given data fields
         # for each event.
@@ -445,7 +447,8 @@ class MCBackgroundI3EnergyPDF(
         for name in physics_weight_field_names:
             if name not in data_mc:
                 raise KeyError(
-                    f'The field "{name}" does not exist in the MC data!')
+                    f'The field "{name}" does not exist in the MC data!'
+                )
             data_physicsweight += data_mc[name]
 
         # Create the PDF using the base class.
@@ -457,4 +460,5 @@ class MCBackgroundI3EnergyPDF(
             data_physicsweight=data_physicsweight,
             log10_energy_binning=log10_energy_binning,
             sin_dec_binning=sin_dec_binning,
-            smoothing_filter=smoothing_filter)
+            smoothing_filter=smoothing_filter,
+        )

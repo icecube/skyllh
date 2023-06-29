@@ -2,11 +2,6 @@
 
 import abc
 
-from skyllh.core.py import (
-    classname,
-    issequence,
-    issequenceof,
-)
 from skyllh.core.dataset import (
     Dataset,
     DatasetData,
@@ -20,14 +15,19 @@ from skyllh.core.livetime import (
 from skyllh.core.progressbar import (
     ProgressBar,
 )
+from skyllh.core.py import (
+    classname,
+    issequence,
+    issequenceof,
+)
 from skyllh.core.types import (
     SourceHypoGroup_t,
 )
 
 
 class DetSigYield(
-        object,
-        metaclass=abc.ABCMeta,
+    object,
+    metaclass=abc.ABCMeta,
 ):
     """This is the abstract base class for a detector signal yield.
 
@@ -44,13 +44,14 @@ class DetSigYield(
     Hence, for a given detector, source, flux model, and dataset, an appropriate
     implementation method needs to be chosen.
     """
+
     def __init__(
-            self,
-            param_names,
-            dataset,
-            fluxmodel,
-            livetime,
-            **kwargs,
+        self,
+        param_names,
+        dataset,
+        fluxmodel,
+        livetime,
+        **kwargs,
     ):
         """Constructs a new detector signal yield object. It takes
         the monte-carlo data events, a flux model of the signal, and the live
@@ -88,9 +89,10 @@ class DetSigYield(
             names = [names]
         if not issequenceof(names, str):
             raise TypeError(
-                'The param_names property must be a sequence of str '
-                'instances! '
-                f'Its current type is {classname(names)}.')
+                "The param_names property must be a sequence of str "
+                "instances! "
+                f"Its current type is {classname(names)}."
+            )
         self._param_names = tuple(names)
 
     @property
@@ -104,8 +106,9 @@ class DetSigYield(
     def dataset(self, ds):
         if not isinstance(ds, Dataset):
             raise TypeError(
-                'The dataset property must be an instance of Dataset! '
-                f'Its current type is {classname(ds)}.')
+                "The dataset property must be an instance of Dataset! "
+                f"Its current type is {classname(ds)}."
+            )
         self._dataset = ds
 
     @property
@@ -119,29 +122,30 @@ class DetSigYield(
     def fluxmodel(self, model):
         if not isinstance(model, FluxModel):
             raise TypeError(
-                'The fluxmodel property must be an instance of FluxModel! '
-                f'Its current type is {classname(model)}.')
+                "The fluxmodel property must be an instance of FluxModel! "
+                f"Its current type is {classname(model)}."
+            )
         self._fluxmodel = model
 
     @property
     def livetime(self):
-        """The live-time in days.
-        """
+        """The live-time in days."""
         return self._livetime
 
     @livetime.setter
     def livetime(self, lt):
         if not (isinstance(lt, float) or isinstance(lt, Livetime)):
             raise TypeError(
-                'The livetime property must be of type float or an instance '
-                'of Livetime! '
-                f'Its current type is {classname(lt)}.')
+                "The livetime property must be of type float or an instance "
+                "of Livetime! "
+                f"Its current type is {classname(lt)}."
+            )
         self._livetime = lt
 
     @abc.abstractmethod
     def sources_to_recarray(
-            self,
-            sources,
+        self,
+        sources,
     ):
         """This method is supposed to convert a (list of) source model(s) into
         a numpy record array that is understood by the detector signal yield
@@ -169,9 +173,9 @@ class DetSigYield(
 
     @abc.abstractmethod
     def __call__(
-            self,
-            src_recarray,
-            src_params_recarray,
+        self,
+        src_recarray,
+        src_params_recarray,
     ):
         """Abstract method to retrieve the detector signal yield for the given
         sources and source parameter values.
@@ -209,8 +213,8 @@ class DetSigYield(
 
 
 class DetSigYieldBuilder(
-        object,
-        metaclass=abc.ABCMeta,
+    object,
+    metaclass=abc.ABCMeta,
 ):
     """Abstract base class for a builder of a detector signal yield. Via the
     ``construct_detsigyield`` method it creates a DetSigYield instance holding
@@ -218,47 +222,49 @@ class DetSigYieldBuilder(
     """
 
     def __init__(
-            self,
-            **kwargs,
+        self,
+        **kwargs,
     ):
-        """Constructor.
-        """
-        super().__init__(
-            **kwargs)
+        """Constructor."""
+        super().__init__(**kwargs)
 
     def assert_types_of_construct_detsigyield_arguments(
-            self,
-            dataset,
-            data,
-            shgs,
-            ppbar,
+        self,
+        dataset,
+        data,
+        shgs,
+        ppbar,
     ):
-
         """Checks the types of the arguments for the ``construct_detsigyield``
         method. It raises errors if the arguments have the wrong type.
         """
         if not isinstance(dataset, Dataset):
             raise TypeError(
-                'The dataset argument must be an instance of Dataset! '
-                f'Its current type is {classname(dataset)}.')
+                "The dataset argument must be an instance of Dataset! "
+                f"Its current type is {classname(dataset)}."
+            )
 
         if not isinstance(data, DatasetData):
             raise TypeError(
-                'The data argument must be an instance of DatasetData! '
-                f'Its current type is {classname(data)}.')
+                "The data argument must be an instance of DatasetData! "
+                f"Its current type is {classname(data)}."
+            )
 
-        if (not isinstance(shgs, SourceHypoGroup_t)) and\
-           (not issequenceof(shgs, SourceHypoGroup_t)):
+        if (not isinstance(shgs, SourceHypoGroup_t)) and (
+            not issequenceof(shgs, SourceHypoGroup_t)
+        ):
             raise TypeError(
-                'The shgs argument must be an instance of SourceHypoGroup '
-                'or a sequence of SourceHypoGroup instances!'
-                f'Its current type is {classname(shgs)}.')
+                "The shgs argument must be an instance of SourceHypoGroup "
+                "or a sequence of SourceHypoGroup instances!"
+                f"Its current type is {classname(shgs)}."
+            )
 
         if ppbar is not None:
             if not isinstance(ppbar, ProgressBar):
                 raise TypeError(
-                    'The ppbar argument must be an instance of ProgressBar! '
-                    f'Its current type is {classname(ppbar)}.')
+                    "The ppbar argument must be an instance of ProgressBar! "
+                    f"Its current type is {classname(ppbar)}."
+                )
 
     def get_detsigyield_construction_factory(self):
         """This method is supposed to return a callable with the call-signature
@@ -285,11 +291,11 @@ class DetSigYieldBuilder(
 
     @abc.abstractmethod
     def construct_detsigyield(
-            self,
-            dataset,
-            data,
-            shg,
-            ppbar=None,
+        self,
+        dataset,
+        data,
+        shg,
+        ppbar=None,
     ):
         """Abstract method to construct the DetSigYield instance.
         This method must be called by the derived class method implementation
@@ -316,26 +322,26 @@ class DetSigYieldBuilder(
         pass
 
 
-class NullDetSigYieldBuilder(
-        DetSigYieldBuilder):
+class NullDetSigYieldBuilder(DetSigYieldBuilder):
     """This class provides a dummy detector signal yield builder, which can
     be used for testing purposes, when an actual builder is not required.
     """
+
     def __init__(
-            self,
-            **kwargs,
+        self,
+        **kwargs,
     ):
-        super().__init__(
-            **kwargs)
+        super().__init__(**kwargs)
 
     def construct_detsigyield(
-            self,
-            *args,
-            **kwargs,
+        self,
+        *args,
+        **kwargs,
     ):
         """Since this is a dummy detector signal yield builder, calling this
         method will raise a NotImplementedError!
         """
         raise NotImplementedError(
-            f'The {classname(self)} detector signal yield builder cannot '
-            'actually build a DetSigYield instance!')
+            f"The {classname(self)} detector signal yield builder cannot "
+            "actually build a DetSigYield instance!"
+        )

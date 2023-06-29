@@ -7,7 +7,7 @@ from skyllh.datasets.i3 import (
 )
 
 data_samples = {
-    'PublicData_10y_ps': PublicData_10y_ps,
-    'PublicData_10y_ps_wMC': PublicData_10y_ps_wMC,
-    'PublicData_10y_ps_wMCEq': PublicData_10y_ps_wMCEq
+    "PublicData_10y_ps": PublicData_10y_ps,
+    "PublicData_10y_ps_wMC": PublicData_10y_ps_wMC,
+    "PublicData_10y_ps_wMCEq": PublicData_10y_ps_wMCEq,
 }

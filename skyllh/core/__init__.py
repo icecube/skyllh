@@ -33,5 +33,5 @@ def wd_filename(filename):
         The generated fully qualified path file name of ``filename`` with the
         project's working directory prefixed.
     """
-    pathfilename = os.path.join(CFG['project']['working_directory'], filename)
+    pathfilename = os.path.join(CFG["project"]["working_directory"], filename)
     return pathfilename

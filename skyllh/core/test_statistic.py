@@ -5,27 +5,19 @@ functions.
 """
 
 import abc
+
 import numpy as np
 
 
-class TestStatistic(
-        object,
-        metaclass=abc.ABCMeta):
-    """This is the abstract base class for a test statistic class.
-    """
+class TestStatistic(object, metaclass=abc.ABCMeta):
+    """This is the abstract base class for a test statistic class."""
 
     def __init__(self, **kwargs):
-        """Constructs the test-statistic function instance.
-        """
+        """Constructs the test-statistic function instance."""
         super().__init__(**kwargs)
 
     @abc.abstractmethod
-    def __call__(
-            self,
-            pmm,
-            log_lambda,
-            fitparam_values,
-            **kwargs):
+    def __call__(self, pmm, log_lambda, fitparam_values, **kwargs):
         """This method is supposed to evaluate the test-statistic function.
 
         Parameters
@@ -49,8 +41,7 @@ class TestStatistic(
         pass
 
 
-class WilksTestStatistic(
-        TestStatistic):
+class WilksTestStatistic(TestStatistic):
     r"""This class implements the standard Wilks theorem test-statistic function:
 
     .. math::
@@ -61,7 +52,8 @@ class WilksTestStatistic(
     where the :math:`\text{sign}(\hat{n}_{\text{s}})` is negative for
     :math:`\hat{n}_{\text{s}} < 0`, and positive otherwise.
     """
-    def __init__(self, ns_param_name='ns', **kwargs):
+
+    def __init__(self, ns_param_name="ns", **kwargs):
         """Constructs the test-statistic function instance.
 
         Parameters
@@ -81,12 +73,7 @@ class WilksTestStatistic(
         """
         return self._ns_param_name
 
-    def __call__(
-            self,
-            pmm,
-            log_lambda,
-            fitparam_values,
-            **kwargs):
+    def __call__(self, pmm, log_lambda, fitparam_values, **kwargs):
         """Evaluates the test-statistic function.
 
         Parameters
@@ -107,22 +94,20 @@ class WilksTestStatistic(
         TS : float
             The calculated test-statistic value.
         """
-        ns_pidx = pmm.get_gflp_idx(
-            name=self._ns_param_name)
+        ns_pidx = pmm.get_gflp_idx(name=self._ns_param_name)
 
         ns = fitparam_values[ns_pidx]
 
         # We need to distinguish between ns=0 and ns!=0, because the np.sign(ns)
         # function returns 0 for ns=0, but we want it to be 1 in such cases.
-        sgn_ns = np.where(ns == 0, 1., np.sign(ns))
+        sgn_ns = np.where(ns == 0, 1.0, np.sign(ns))
 
         TS = 2 * sgn_ns * log_lambda
 
         return TS
 
 
-class LLHRatioZeroNsTaylorWilksTestStatistic(
-        TestStatistic):
+class LLHRatioZeroNsTaylorWilksTestStatistic(TestStatistic):
     r"""Similar to the TestStatisticWilks class, this class implements the
     standard Wilks theorem test-statistic function. But for zero ns values, the
     log-likelihood ratio function is taylored up to second order and the
@@ -156,7 +141,8 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(
 
     being its second derivative w.r.t. ns.
     """
-    def __init__(self, ns_param_name='ns', **kwargs):
+
+    def __init__(self, ns_param_name="ns", **kwargs):
         """Constructs the test-statistic function instance.
 
         Parameters
@@ -177,14 +163,15 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(
         return self._ns_param_name
 
     def __call__(
-            self,
-            pmm,
-            log_lambda,
-            fitparam_values,
-            llhratio,
-            grads,
-            tl=None,
-            **kwargs):
+        self,
+        pmm,
+        log_lambda,
+        fitparam_values,
+        llhratio,
+        grads,
+        tl=None,
+        **kwargs
+    ):
         """Evaluates the test-statistic function.
 
         Parameters
@@ -214,19 +201,17 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(
         TS : float
             The calculated test-statistic value.
         """
-        ns_pidx = pmm.get_gflp_idx(
-            name=self._ns_param_name)
+        ns_pidx = pmm.get_gflp_idx(name=self._ns_param_name)
 
         ns = fitparam_values[ns_pidx]
 
         if ns == 0:
             nsgrad = grads[ns_pidx]
             nsgrad2 = llhratio.calculate_ns_grad2(
-                fitparam_values=fitparam_values,
-                ns_pidx=ns_pidx,
-                tl=tl)
+                fitparam_values=fitparam_values, ns_pidx=ns_pidx, tl=tl
+            )
 
-            TS = -2 * nsgrad**2 / (4*nsgrad2)
+            TS = -2 * nsgrad**2 / (4 * nsgrad2)
 
             return TS
 

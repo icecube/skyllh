@@ -20,7 +20,7 @@ def get_bincenters_from_binedges(edges):
     bincenters : 1D numpy ndarray
         The (n,)-shaped 1D ndarray holding the bin center values.
     """
-    return 0.5*(edges[:-1] + edges[1:])
+    return 0.5 * (edges[:-1] + edges[1:])
 
 
 def get_binedges_from_bincenters(centers):
@@ -39,12 +39,12 @@ def get_binedges_from_bincenters(centers):
     """
     d = np.diff(centers)
     if not np.all(np.isclose(np.diff(d), 0)):
-        raise ValueError('The bin center values are not evenly spaced!')
+        raise ValueError("The bin center values are not evenly spaced!")
     d = d[0]
 
-    edges = np.zeros((len(centers)+1,), dtype=np.double)
-    edges[:-1] = centers - d/2
-    edges[-1] = centers[-1] + d/2
+    edges = np.zeros((len(centers) + 1,), dtype=np.double)
+    edges[:-1] = centers - d / 2
+    edges[-1] = centers[-1] + d / 2
 
     return edges
 
@@ -71,25 +71,26 @@ def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
     """
     if len(le) != len(ue):
         raise ValueError(
-            'The lower {} and upper {} edge arrays must be of the same '
-            'size!'.format(
-                len(le), len(ue)))
+            "The lower {} and upper {} edge arrays must be of the same "
+            "size!".format(len(le), len(ue))
+        )
 
     if np.any(values < le[0]):
         invalid_values = values[values < le[0]]
         raise ValueError(
-            '{} values ({}) are smaller than the lowest bin edge ({})!'.format(
-                len(invalid_values), str(invalid_values), le[0]))
+            "{} values ({}) are smaller than the lowest bin edge ({})!".format(
+                len(invalid_values), str(invalid_values), le[0]
+            )
+        )
     if np.any(values >= ue[-1]):
         invalid_values = values[values >= ue[-1]]
         raise ValueError(
-            '{} values ({}) are larger or equal than the largest bin edge '
-            '({})!'.format(
-                len(invalid_values), str(invalid_values), ue[-1]))
+            "{} values ({}) are larger or equal than the largest bin edge "
+            "({})!".format(len(invalid_values), str(invalid_values), ue[-1])
+        )
 
-    m = (
-        (values[:, np.newaxis] >= le[np.newaxis, :]) &
-        (values[:, np.newaxis] < ue[np.newaxis, :])
+    m = (values[:, np.newaxis] >= le[np.newaxis, :]) & (
+        values[:, np.newaxis] < ue[np.newaxis, :]
     )
     idxs = np.nonzero(m)[1]
 
@@ -100,10 +101,8 @@ class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
     binning definitions for an analyis.
     """
-    def __init__(
-            self,
-            name,
-            binedges):
+
+    def __init__(self, name, binedges):
         """Creates a new binning definition object.
 
         Parameters
@@ -117,20 +116,19 @@ class BinningDefinition(object):
         self.binedges = binedges
 
     def __str__(self):
-        """Pretty string representation.
-        """
-        s = f'{classname(self)}: {self._name}\n'
+        """Pretty string representation."""
+        s = f"{classname(self)}: {self._name}\n"
         s += str(self._binedges)
         return s
 
     def __eq__(self, other):
-        """Checks if object ``other`` is equal to this BinningDefinition object.
-        """
+        """Checks if object ``other`` is equal to this BinningDefinition object."""
         if not isinstance(other, BinningDefinition):
             raise TypeError(
-                'The other object in the equal comparison must be an instance '
-                'of BinningDefinition! '
-                f'Its current type is {classname(other)}.')
+                "The other object in the equal comparison must be an instance "
+                "of BinningDefinition! "
+                f"Its current type is {classname(other)}."
+            )
         if self.name != other.name:
             return False
         if np.any(self.binedges != other.binedges):
@@ -149,14 +147,14 @@ class BinningDefinition(object):
     def name(self, name):
         if not isinstance(name, str):
             raise TypeError(
-                'The name must be of type str! '
-                f'Its current type is {classname(name)}.')
+                "The name must be of type str! "
+                f"Its current type is {classname(name)}."
+            )
         self._name = name
 
     @property
     def binedges(self):
-        """The numpy.ndarray holding the bin edges.
-        """
+        """The numpy.ndarray holding the bin edges."""
         return self._binedges
 
     @binedges.setter
@@ -166,38 +164,32 @@ class BinningDefinition(object):
 
     @property
     def nbins(self):
-        """The number of bins, based on the number of bin edges (minus 1).
-        """
+        """The number of bins, based on the number of bin edges (minus 1)."""
         return self._binedges.size - 1
 
     @property
     def bincenters(self):
-        """The center values of the bins.
-        """
-        return 0.5*(self._binedges[:-1] + self._binedges[1:])
+        """The center values of the bins."""
+        return 0.5 * (self._binedges[:-1] + self._binedges[1:])
 
     @property
     def binwidths(self):
-        """(read-only) The widths of the bins.
-        """
+        """(read-only) The widths of the bins."""
         return np.diff(self._binedges)
 
     @property
     def lower_edge(self):
-        """The lowest bin edge of the binning.
-        """
+        """The lowest bin edge of the binning."""
         return self._binedges[0]
 
     @property
     def upper_edge(self):
-        """The upper most edge of the binning.
-        """
+        """The upper most edge of the binning."""
         return self._binedges[-1]
 
     @property
     def range(self):
-        """The tuple (lower_edge, upper_edge) of the binning.
-        """
+        """The tuple (lower_edge, upper_edge) of the binning."""
         return (self.lower_edge, self.upper_edge)
 
     def any_data_out_of_range(self, data):
@@ -215,13 +207,11 @@ class BinningDefinition(object):
             True if any data value is outside the binning range.
             False otherwise.
         """
-        outofrange = np.any((data < self.lower_edge) |
-                            (data > self.upper_edge))
+        outofrange = np.any((data < self.lower_edge) | (data > self.upper_edge))
         return outofrange
 
     def get_binwidth_from_value(self, value):
-        """Returns the width of the bin the given value falls into.
-        """
+        """Returns the width of the bin the given value falls into."""
         idx = np.digitize(value, self._binedges) - 1
 
         bin_width = self.binwidths[idx]
@@ -259,7 +249,7 @@ class BinningDefinition(object):
         if self._binedges[idx_upper] < upper_edge:
             idx_upper += 1
 
-        new_binedges = self._binedges[idx_lower:idx_upper+1]
+        new_binedges = self._binedges[idx_lower : idx_upper + 1]
 
         return BinningDefinition(self._name, new_binedges)
 
@@ -274,6 +264,7 @@ class UsesBinning(object):
     This class provides the method ``has_same_binning_as(obj)`` to determine if
     a given object (that also uses binning) has the same binning.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -291,8 +282,7 @@ class UsesBinning(object):
 
     @property
     def binning_ndim(self):
-        """(read-only) The number of dimensions that uses binning.
-        """
+        """(read-only) The number of dimensions that uses binning."""
         return len(self._binnings)
 
     def has_same_binning_as(self, obj):
@@ -310,10 +300,11 @@ class UsesBinning(object):
         """
         if not isinstance(obj, UsesBinning):
             raise TypeError(
-                'The obj argument must be an instance of UsesBinning! '
-                f'Its current type is {classname(obj)}.')
+                "The obj argument must be an instance of UsesBinning! "
+                f"Its current type is {classname(obj)}."
+            )
 
-        for (self_binning, obj_binning) in zip(self.binnings, obj.binnings):
+        for self_binning, obj_binning in zip(self.binnings, obj.binnings):
             if self_binning != obj_binning:
                 return False
 
@@ -333,21 +324,23 @@ class UsesBinning(object):
         """
         if not isinstance(binning, BinningDefinition):
             raise TypeError(
-                'The binning argument must be an instance of '
-                'BinningDefinition! '
-                f'Its current type is {classname(binning)}.')
+                "The binning argument must be an instance of "
+                "BinningDefinition! "
+                f"Its current type is {classname(binning)}."
+            )
 
         # Create a copy of the BinningDefinition object if the name differs.
         if name is not None:
             if not isinstance(name, str):
                 raise TypeError(
-                    'The name argument must be of type str! '
-                    f'Its current type is {classname(name)}.')
+                    "The name argument must be of type str! "
+                    f"Its current type is {classname(name)}."
+                )
             if name != binning.name:
                 binning = BinningDefinition(name, binning.binedges)
 
         self._binnings.append(binning)
-        self._binning_name2idx[binning.name] = len(self._binnings)-1
+        self._binning_name2idx[binning.name] = len(self._binnings) - 1
 
     def get_binning(self, name):
         """Retrieves the binning definition of the given name.
@@ -366,13 +359,15 @@ class UsesBinning(object):
         if isinstance(name, str):
             if name not in self._binning_name2idx:
                 raise KeyError(
-                    f'The binning definition "{name}" is not defined!')
+                    f'The binning definition "{name}" is not defined!'
+                )
             binning = self._binnings[self._binning_name2idx[name]]
         elif isinstance(name, int):
             binning = self._binnings[name]
         else:
             raise TypeError(
-                'The name argument must be of type str or int! '
-                f'Its current type is {classname(name)}.')
+                "The name argument must be of type str or int! "
+                f"Its current type is {classname(name)}."
+            )
 
         return binning
