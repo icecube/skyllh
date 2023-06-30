@@ -6,18 +6,25 @@ from skyllh.core.scrambling import (
     DataScramblingMethod,
     TimeScramblingMethod,
 )
+
 from skyllh.i3.utils.coords import (
     azi_to_ra_transform,
     hor_to_equ_transform,
 )
 
 
-class I3TimeScramblingMethod(TimeScramblingMethod):
+class I3TimeScramblingMethod(
+        TimeScramblingMethod,
+):
     """The I3TimeScramblingMethod class provides a data scrambling method to
     perform time scrambling of the data,
     by drawing a MJD time from a given time generator.
     """
-    def __init__(self, timegen):
+    def __init__(
+            self,
+            timegen,
+            **kwargs,
+    ):
         """Initializes a new I3 time scrambling instance.
 
         Parameters
@@ -25,11 +32,19 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
         timegen : TimeGenerator
             The time generator that should be used to generate random MJD times.
         """
-        super(I3TimeScramblingMethod, self).__init__(timegen, hor_to_equ_transform)
+        super().__init__(
+            timegen=timegen,
+            hor_to_equ_transform=hor_to_equ_transform,
+            **kwargs)
 
     # We override the scramble method because for IceCube we only need to change
     # the ``ra`` field.
-    def scramble(self, rss, data):
+    def scramble(
+            self,
+            rss,
+            dataset,
+            data,
+    ):
         """Draws a time from the time generator and calculates the right
         ascention coordinate from the azimuth angle according to the time.
         Sets the values of the ``time`` and ``ra`` keys of data.
@@ -39,6 +54,8 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
         rss : RandomStateService
             The random state service providing the random number
             generator (RNG).
+        dataset : instance of Dataset
+            The instance of Dataset for which the data should get scrambled.
         data : DataFieldRecordArray instance
             The DataFieldRecordArray instance containing the to be scrambled
             data.
@@ -56,12 +73,18 @@ class I3TimeScramblingMethod(TimeScramblingMethod):
         return data
 
 
-class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
+class I3SeasonalVariationTimeScramblingMethod(
+        DataScramblingMethod,
+):
     """The I3SeasonalVariationTimeScramblingMethod class provides a data
     scrambling method to perform data coordinate scrambling based on a generated
     time, which follows seasonal variations within the experimental data.
     """
-    def __init__(self, data, **kwargs):
+    def __init__(
+            self,
+            data,
+            **kwargs,
+    ):
         """Initializes a new seasonal time scrambling instance.
 
         Parameters
@@ -84,7 +107,12 @@ class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
 
         self.grl = data.grl
 
-    def scramble(self, rss, data):
+    def scramble(
+            self,
+            rss,
+            dataset,
+            data,
+    ):
         """Scrambles the given data based on random MJD times, which are
         generated uniformely within the data runs, where the data runs are
         weighted based on their amount of events compared to the total events.
@@ -94,6 +122,8 @@ class I3SeasonalVariationTimeScramblingMethod(DataScramblingMethod):
         rss : instance of RandomStateService
             The random state service providing the random number
             generator (RNG).
+        dataset : instance of Dataset
+            The instance of Dataset for which the data should get scrambled.
         data : instance of DataFieldRecordArray
             The DataFieldRecordArray instance containing the to be scrambled
             data.
