@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import abc
-import numpy as np
 
+import numpy as np
 
 from skyllh.core.config import (
     CFG,
@@ -33,7 +33,8 @@ logger = get_logger(__name__)
 
 class BackgroundGenerationMethod(
         object,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """This is the abstract base class for a detector specific background
     generation method.
     """
@@ -62,7 +63,8 @@ class BackgroundGenerationMethod(
             data,
             mean,
             tl=None,
-            **kwargs):
+            **kwargs,
+    ):
         """This method is supposed to generate a `mean` number of background
         events for the given dataset and its data.
 
@@ -102,7 +104,8 @@ class BackgroundGenerationMethod(
 
 
 class MCDataSamplingBkgGenMethod(
-        BackgroundGenerationMethod):
+        BackgroundGenerationMethod,
+):
     """This class implements the method to generate background events from
     monte-carlo (MC) data by sampling events from the MC data set according to a
     probability value given for each event. Functions can be provided to get the
@@ -118,7 +121,8 @@ class MCDataSamplingBkgGenMethod(
             mc_inplace_scrambling=False,
             keep_mc_data_fields=None,
             pre_event_selection_method=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new instance of the MCDataSamplingBkgGenMethod class.
 
         Parameters
@@ -361,7 +365,8 @@ class MCDataSamplingBkgGenMethod(
             data,
             mean=None,
             poisson=True,
-            tl=None):
+            tl=None,
+    ):
         """Generates a ``mean`` number of background events for the given
         dataset and its data.
 
