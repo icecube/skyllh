@@ -14,17 +14,6 @@ from skyllh.core.config import (
 from skyllh.core.debugging import (
     get_logger,
 )
-from skyllh.core.py import (
-    classname,
-    issequenceof,
-    float_cast,
-)
-from skyllh.core.source_hypo_grouping import (
-    SourceHypoGroupManager,
-)
-from skyllh.core.trialdata import (
-    TrialDataManager,
-)
 from skyllh.core.minimizer import (
     Minimizer,
     NR1dNsMinimizerImpl,
@@ -36,12 +25,23 @@ from skyllh.core.parameters import (
 from skyllh.core.pdfratio import (
     PDFRatio,
 )
+from skyllh.core.py import (
+    classname,
+    issequenceof,
+    float_cast,
+)
 from skyllh.core.services import (
     DatasetSignalWeightFactorsService,
     SrcDetSigYieldWeightsService,
 )
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
 from skyllh.core.timing import (
     TaskTimer,
+)
+from skyllh.core.trialdata import (
+    TrialDataManager,
 )
 
 
