@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import abc
+
 import numpy as np
 
 from skyllh.core.times import (
@@ -10,7 +11,8 @@ from skyllh.core.times import (
 
 class DataScramblingMethod(
         object,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """Base class for implementing a data scrambling method.
     """
 
@@ -22,7 +24,9 @@ class DataScramblingMethod(
     def scramble(
             self,
             rss,
-            data):
+            dataset,
+            data,
+    ):
         """The scramble method implements the actual scrambling of the given
         data, which is method dependent. The scrambling must be performed
         in-place, i.e. it alters the data inside the given data array.
@@ -32,6 +36,8 @@ class DataScramblingMethod(
         rss : instance of RandomStateService
             The random state service providing the random number
             generator (RNG).
+        dataset : instance of Dataset
+            The instance of Dataset for which the data should get scrambled.
         data : instance of DataFieldRecordArray
             The DataFieldRecordArray containing the to be scrambled data.
 
@@ -44,16 +50,21 @@ class DataScramblingMethod(
 
 
 class UniformRAScramblingMethod(
-        DataScramblingMethod):
+        DataScramblingMethod,
+):
     r"""The UniformRAScramblingMethod method performs right-ascention scrambling
     uniformly within a given RA range. By default it's (0, 2\pi).
 
-    Note: This alters only the ``ra`` values of the data!
+    :note::
+
+        This alters only the ``ra`` values of the data!
+
     """
     def __init__(
             self,
             ra_range=None,
-            **kwargs):
+            **kwargs,
+    ):
         r"""Initializes a new RAScramblingMethod instance.
 
         Parameters
@@ -90,7 +101,9 @@ class UniformRAScramblingMethod(
     def scramble(
             self,
             rss,
-            data):
+            dataset,
+            data,
+    ):
         """Scrambles the given data uniformly in right-ascention.
 
         Parameters
@@ -98,6 +111,8 @@ class UniformRAScramblingMethod(
         rss : instance of RandomStateService
             The random state service providing the random number
             generator (RNG).
+        dataset : instance of Dataset
+            The instance of Dataset for which the data should get scrambled.
         data : instance of DataFieldRecordArray
             The DataFieldRecordArray instance containing the to be scrambled
             data.
@@ -127,7 +142,8 @@ class TimeScramblingMethod(
             self,
             timegen,
             hor_to_equ_transform,
-            **kwargs):
+            **kwargs,
+    ):
         """Initializes a new time scramling method instance.
 
         Parameters
@@ -182,7 +198,9 @@ class TimeScramblingMethod(
     def scramble(
             self,
             rss,
-            data):
+            dataset,
+            data,
+    ):
         """Scrambles the given data based on random MJD times, which are
         generated from a TimeGenerator instance. The event's right-ascention and
         declination coordinates are calculated via a horizontal-to-equatorial
@@ -193,6 +211,8 @@ class TimeScramblingMethod(
         rss : instance of RandomStateService
             The random state service providing the random number
             generator (RNG).
+        dataset : instance of Dataset
+            The instance of Dataset for which the data should get scrambled.
         data : instance of DataFieldRecordArray
             The DataFieldRecordArray instance containing the to be scrambled
             data.
@@ -213,10 +233,13 @@ class TimeScramblingMethod(
 
 
 class DataScrambler(
-        object):
+        object,
+):
     def __init__(
             self,
-            method):
+            method,
+            **kwargs,
+    ):
         """Creates a data scrambler instance with a given defined scrambling
         method.
 
@@ -226,6 +249,9 @@ class DataScrambler(
             The instance of DataScramblingMethod that defines the method of
             the data scrambling.
         """
+        super().__init__(
+            **kwargs)
+
         self.method = method
 
     @property
@@ -246,8 +272,10 @@ class DataScrambler(
     def scramble_data(
             self,
             rss,
+            dataset,
             data,
-            copy=False):
+            copy=False,
+    ):
         """Scrambles the given data by calling the scramble method of the
         scrambling method class, that was configured for the data scrambler.
         If the ``inplace_scrambling`` property is set to False, a copy of the
@@ -258,9 +286,11 @@ class DataScrambler(
         rss : instance of RandomStateService
             The random state service providing the random number generator
             (RNG).
+        dataset : instance of Dataset
+            The instance of Dataset for which the data should get scrambled.
         data : instance of DataFieldRecordArray
-            The DataFieldRecordArray instance holding the data, which should get
-            scrambled.
+            The instance of DataFieldRecordArray holding the data, which should
+            get scrambled.
         copy : bool
             Flag if a copy of the given data should be made before scrambling
             the data. The default is False.
@@ -276,6 +306,9 @@ class DataScrambler(
         if copy:
             data = data.copy()
 
-        data = self._method.scramble(rss, data)
+        data = self._method.scramble(
+            rss=rss,
+            dataset=dataset,
+            data=data)
 
         return data

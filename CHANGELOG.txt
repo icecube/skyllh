@@ -41,6 +41,8 @@ v23.2.0
         Improved calculation of right-ascention difference. Thus, speed-up in
         trial generation when using this event selection method.
 
+- core.scrambling.DataScrambler.scramble_data method also takes Dataset instance
+  as argument
 - Usage of the tqdm Python package for progress bars.
 - More unit tests.
 - Improved documentation.
