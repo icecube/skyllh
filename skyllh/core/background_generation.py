@@ -520,6 +520,7 @@ class MCDataSamplingBkgGenMethod(
             with TaskTimer(tl, 'Scramble MC background data.'):
                 bkg_events = self._data_scrambler.scramble_data(
                     rss=rss,
+                    dataset=dataset,
                     data=bkg_events,
                     copy=False)
 
