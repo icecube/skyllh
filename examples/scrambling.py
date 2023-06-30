@@ -78,7 +78,7 @@ def ex2():
 
     rss = RandomStateService(seed=1)
 
-    # Generate some psydo data.
+    # Generate some pseudo data.
     data = gen_data(rss=rss, N=10)
     print(f'before scrambling: data["ra"]={data["ra"]}')
 
