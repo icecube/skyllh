@@ -17,6 +17,10 @@ v23.2.0
       source and event indices mapping selected events to the sources.
 
 - Simplification of the class hierarchy & source code structure.
+
+    - The source_model and flux_model modules of the skyllh.physics module have
+      been moved to the skyllh.core module.
+
 - New generic flux model function concept.
 - New generic PDF class for time PDFs.
 - Support for Parquet data files via optional pyarrow Python package.
