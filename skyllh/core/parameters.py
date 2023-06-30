@@ -1731,11 +1731,10 @@ class ParameterModelMapper(
 
         return src_model_idxs
 
-    def def_param(self, param, models=None, model_param_names=None):
-        """Adds the given Parameter instance to this parameter model mapper and
-        maps the parameter to the given sequence of models this parameter model
-        mapper knows about. Aliases for the given parameters can be specified
-        for each individual model.
+    def map_param(self, param, models=None, model_param_names=None):
+        """Maps the given instance of Parameter to the given sequence of models
+        this parameter model mapper knows about. Aliases for the given parameter
+        can be specified for each individual model.
 
         Parameters
         ----------
@@ -1755,7 +1754,7 @@ class ParameterModelMapper(
         -------
         self : ParameterModelMapper
             The instance of this ParameterModelMapper, so that several
-            `def_param` calls can be concatenated.
+            `map_param` calls can be concatenated.
 
         Raises
         ------
