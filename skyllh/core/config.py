@@ -4,26 +4,24 @@
 convenience utility functions to set different configuration settings.
 """
 
+import os.path
+import sys
+
 from astropy import (
     units,
 )
-import os.path
-import sys
+
 from typing import (
     Any,
     Dict,
 )
 
+from skyllh.core import (
+    tool,
+)
 from skyllh.core.py import (
     issequenceof,
 )
-
-# Try to load the yaml package.
-YAML_LOADED = True
-try:
-    import yaml
-except ImportError:
-    YAML_LOADED = False
 
 
 _BASECONFIG = {
@@ -32,7 +30,7 @@ _BASECONFIG = {
         # If this setting is set to an int value in the range [1, N] this
         # setting will be used if a function's local ncpu setting is not
         # specified.
-        'ncpu': None
+        'ncpu': None,
     },
     'debugging': {
         # The default log format.
@@ -41,32 +39,32 @@ _BASECONFIG = {
             '%(message)s'),
         # Flag if detailed debug log messages, i.e. trace log messages, should
         # get generated. This is good for debugging but bad for performance.
-        'enable_tracing': False
+        'enable_tracing': False,
     },
     'project': {
         # The project's working directory.
-        'working_directory': '.'
+        'working_directory': '.',
     },
     'repository': {
         # A base path of repository datasets.
-        'base_path': None
-    },
-    # Definition of the internal units to use. These must match with the units
-    # from the monto-carlo data files.
-    'internal_units': {
-        'angle': units.radian,
-        'energy': units.GeV,
-        'length': units.cm,
-        'time': units.s
+        'base_path': None,
     },
     'units': {
+        # Definition of the internal units to use. These must match with the
+        # units of the monto-carlo data files.
+        'internal': {
+            'angle': units.radian,
+            'energy': units.GeV,
+            'length': units.cm,
+            'time': units.s,
+        },
         'defaults': {
             # Definition of default units used for fluxes.
             'fluxes': {
                 'angle': units.radian,
                 'energy': units.GeV,
                 'length': units.cm,
-                'time': units.s
+                'time': units.s,
             }
         }
     },
@@ -74,142 +72,188 @@ _BASECONFIG = {
         # Define the data field names of the data set's experimental data,
         # that are required by the analysis.
         'analysis_required_exp_field_names': [
-            'run', 'ra', 'dec', 'ang_err', 'time', 'log_energy'
+            'run',
+            'ra',
+            'dec',
+            'ang_err',
+            'time',
+            'log_energy',
         ],
         # Define the data field names of the data set's monte-carlo data,
         # that are required by the analysis.
         'analysis_required_mc_field_names': [
-            'true_ra', 'true_dec', 'true_energy', 'mcweight'
-        ]
+            'true_ra',
+            'true_dec',
+            'true_energy',
+            'mcweight',
+        ],
     },
     # Flag if specific calculations in the core module can be cached.
     'caching': {
         'pdf': {
-            'MultiDimGridPDF': False
+            'MultiDimGridPDF': False,
         }
     }
 }
 
 
-class CFGClass(
-        dict):
-    """This class holds the global configuration state.
-
-    The class behaves like a dict, delegating all methods of the dict
-    interface to the underlying configuration dictionary.
+class Config(
+        dict,
+):
+    """This class, derived from dict, holds the a local configuration state.
     """
-
-    # Keep track of whether this class has been instantiated.
-    _is_instantiated = False
 
     def __init__(
             self,
-            *args,
-            **kwargs) -> None:
-        """Initializes a new CFGClass instance. Such a instance can be
-        initialized only once!
+    ) -> None:
+        """Initializes a new Config instance holding the base configuration.
         """
-        if CFGClass._is_instantiated:
-            raise RuntimeError(
-                'Can instantiate CFGClass only once!')
+        super().__init__(_BASECONFIG)
 
-        super().__init__(*args, **kwargs)
-
-        CFGClass._is_instantiated = True
-
+    @tool.requires('yaml')
+    @classmethod
     def from_yaml(
-            self,
-            yaml_file: str) -> None:
-        """Updates the configuration with the configuration items contained in
-        the yaml file. This calls ``dict.update``.
+            cls,
+            pathfilename: str,
+    ):
+        """Creates a new instance of Config holding the base configuration and
+        updated by the configuration items contained in the yaml file using the
+        :meth:`dict.update` method.
 
         Parameters
         ----------
-        yaml_file: str | None
-            Path to yaml file containg the to-be-updated configuration items.
+        pathfilename: str | None
+            Path and filename to the yaml file containg the to-be-updated
+            configuration items.
             If set to ``None``, nothing is done.
+
+        Returns
+        -------
+        cfg : instance of Config
+            The instance of Config holding the base configuration and updated by
+            the configuration given in the yaml file.
         """
-        if yaml_file is None:
+        if pathfilename is None:
             return
 
-        if not YAML_LOADED:
-            raise ImportError(
-                f'Could not import yaml package. Thus cannot'
-                f'import config from yaml file {yaml_file}!')
+        yaml = tool.get('yaml')
 
-        yaml_config = yaml.load(open(yaml_file), Loader=yaml.SafeLoader)
-        self.update(yaml_config)
+        user_config_dict = yaml.load(
+            open(pathfilename),
+            Loader=yaml.SafeLoader)
 
+        cfg = cls()
+
+        cfg.update(user_config_dict)
+
+        return cfg
+
+    @classmethod
     def from_dict(
-            self,
-            user_dict: Dict[Any, Any]) -> None:
-        """Updates the configuration with the given configuration
-        dictionary. This calls ``dict.update``.
+            cls,
+            user_dict: Dict[str, Any],
+    ):
+        """Creates a new instance of Config holding the base configuration and
+        updated by the given configuration dictionary using the
+        :meth:`dict.update` method.
 
         Parameters
         ----------
         user_dict: dict
             The dictionary containg the to-be-updated configuration items.
+
+        Returns
+        -------
+        cfg : instance of Config
+            The instance of Config holding the base configuration and updated by
+            the given configuration dictionary.
         """
-        self.update(user_dict)
+        cfg = cls()
+
+        cfg.update(user_dict)
+
+        return cfg
 
 
-CFG = CFGClass(_BASECONFIG)
-
-
-def to_internal_time_unit(
-        time_unit,
+def get_wd(
+        cfg,
 ):
-    """Calculates the conversion factor from the given time unit to the internal
-    time unit.
+    """Retrieves the absolut path to the working directoy as configured in the
+    given configuration.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
+
+    Returns
+    -------
+    wd : str
+        The absolut path to the project's working directory.
+    """
+    wd = os.path.abspath(cfg['project']['working_directory'])
+
+    return wd
+
+
+def to_internal_time_unit(
+        cfg,
+        time_unit,
+):
+    """Calculates the conversion factor from the given time unit to the internal
+    time unit specified by the given local configuration.
+
+    Parameters
+    ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     time_unit : instance of astropy.units.UnitBase
         The time unit from which to convert to the internal time unit.
     """
-    internal_time_unit = CFG['internal_units']['time']
+    internal_time_unit = cfg['units']['internal']['time']
     factor = time_unit.to(internal_time_unit)
 
     return factor
 
 
 def set_enable_tracing(
-        flag):
+        cfg,
+        flag,
+):
     """Sets the global setting for tracing.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     flag : bool
         The flag if tracing should be enabled (``True``) or disabled
         (``False``).
+
+    Returns
+    -------
+    cfg : instance of Config
+        The updated instance of Config.
     """
-    CFG['debugging']['enable_tracing'] = flag
+    cfg['debugging']['enable_tracing'] = flag
 
-
-def set_n_cpu(
-        n_cpu):
-    """Sets the global setting for the number of CPUs to use, when
-    parallelization is available.
-
-    Parameters
-    ----------
-    n_cpu : int
-        The number of CPUs.
-    """
-    CFG['multiproc']['ncpu'] = n_cpu
+    return cfg
 
 
 def set_internal_units(
+        cfg,
         angle_unit=None,
         energy_unit=None,
         length_unit=None,
-        time_unit=None):
+        time_unit=None,
+):
     """Sets the units used internally to compute quantities. These units must
     match the units used in the monte-carlo files.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     angle_unit : instance of astropy.units.UnitBase | None
         The internal unit that should be used for angles.
         If set to ``None``, the unit is not changed.
@@ -222,73 +266,122 @@ def set_internal_units(
     time_unit : instance of astropy.units.UnitBase | None
         The internal unit that should be used for time.
         If set to ``None``, the unit is not changed.
+
+    Returns
+    -------
+    cfg : instance of Config
+        The updated instance of Config.
     """
     if angle_unit is not None:
         if not isinstance(angle_unit, units.UnitBase):
             raise TypeError(
                 'The angle_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
-        CFG['internal_units']['angle'] = angle_unit
+        cfg['units']['internal']['angle'] = angle_unit
 
     if energy_unit is not None:
         if not isinstance(energy_unit, units.UnitBase):
             raise TypeError(
                 'The energy_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
-        CFG['internal_units']['energy'] = energy_unit
+        cfg['units']['internal']['energy'] = energy_unit
 
     if length_unit is not None:
         if not isinstance(length_unit, units.UnitBase):
             raise TypeError(
                 'The length_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
-        CFG['internal_units']['length'] = length_unit
+        cfg['units']['internal']['length'] = length_unit
 
     if time_unit is not None:
         if not isinstance(time_unit, units.UnitBase):
             raise TypeError(
                 'The time_unit argument must be an instance of '
                 'astropy.units.UnitBase!')
-        CFG['internal_units']['time'] = time_unit
+        cfg['units']['internal']['time'] = time_unit
+
+    return cfg
+
+
+def set_ncpu(
+        cfg,
+        ncpu,
+):
+    """Sets the global setting for the number of CPUs to use, when
+    parallelization is available.
+
+    Parameters
+    ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
+    ncpu : int
+        The number of CPUs.
+
+    Returns
+    -------
+    cfg : instance of Config
+        The updated instance of Config.
+    """
+    cfg['multiproc']['ncpu'] = ncpu
+
+    return cfg
 
 
 def set_wd(
-        path):
+        cfg,
+        path=None,
+):
     """Sets the project's working directory configuration variable and adds it
     to the Python path variable.
 
     Parameters
     ----------
-    path : str
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
+    path : str | None
         The path of the project's working directory. This can be a path
         relative to the path given by ``os.path.getcwd``, the current
         working directory of the program.
+        If set to ``None``, the path is taken from the working directory
+        setting of the given configuration.
 
     Returns
     -------
     wd : str
-        The project's working directory.
+        The absolut path to the project's working directory.
     """
-    if CFG['project']['working_directory'] in sys.path:
-        sys.path.remove(CFG['project']['working_directory'])
+    if path is None:
+        path = cfg['project']['working_directory']
+
+    if cfg['project']['working_directory'] in sys.path:
+        sys.path.remove(cfg['project']['working_directory'])
 
     wd = os.path.abspath(path)
-    CFG['project']['working_directory'] = wd
+    cfg['project']['working_directory'] = wd
     sys.path.insert(0, wd)
 
     return wd
 
 
 def add_analysis_required_exp_data_field_names(
-        fieldnames):
+        cfg,
+        fieldnames,
+):
     """Adds the given data field names to the set of data field names of the
     experimental data that are required by the analysis.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     fieldnames : str | sequence of str
         The field name or sequence of field names that should get added for the
         experimental data.
+
+    Returns
+    -------
+    cfg : instance of Config
+        The updated instance of Config.
     """
     if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
@@ -297,20 +390,31 @@ def add_analysis_required_exp_data_field_names(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
 
-    CFG['dataset']['analysis_required_exp_field_names'] = list(set(
-        CFG['dataset']['analysis_required_exp_field_names'] + fieldnames))
+    cfg['dataset']['analysis_required_exp_field_names'] = list(set(
+        cfg['dataset']['analysis_required_exp_field_names'] + fieldnames))
+
+    return cfg
 
 
 def add_analysis_required_mc_data_field_names(
-        fieldnames):
+        cfg,
+        fieldnames,
+):
     """Adds the given data field names to the set of data field names of the
     monte-carlo data that are required by the analysis.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     fieldnames : str | sequence of str
         The field name or sequence of field names that should get added for the
         monto-carlo data.
+
+    Returns
+    -------
+    cfg : instance of Config
+        The updated instance of Config.
     """
     if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
@@ -319,19 +423,30 @@ def add_analysis_required_mc_data_field_names(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
 
-    CFG['dataset']['analysis_required_mc_field_names'] = list(set(
-        CFG['dataset']['analysis_required_mc_field_names'] + fieldnames))
+    cfg['dataset']['analysis_required_mc_field_names'] = list(set(
+        cfg['dataset']['analysis_required_mc_field_names'] + fieldnames))
+
+    return cfg
 
 
 def set_analysis_required_exp_data_field_names(
-        fieldnames):
+        cfg,
+        fieldnames,
+):
     """Sets the data field names of the experimental data that are required by
     the analysis.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     fieldnames : str | sequence of str
         The field name or sequence of field names for the experimental data.
+
+    Returns
+    -------
+    cfg : instance of Config
+        The updated instance of Config.
     """
     if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
@@ -340,18 +455,29 @@ def set_analysis_required_exp_data_field_names(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
 
-    CFG['dataset']['analysis_required_exp_field_names'] = list(set(fieldnames))
+    cfg['dataset']['analysis_required_exp_field_names'] = list(set(fieldnames))
+
+    return cfg
 
 
 def set_analysis_required_mc_data_field_names(
-        fieldnames):
+        cfg,
+        fieldnames,
+):
     """Sets the data field names of the monte-carlo data that are required by
     the analysis.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     fieldnames : str | sequence of str
         The field name or sequence of field names for the monte-carlo data.
+
+    Returns
+    -------
+    cfg : instance of Config
+        The updated instance of Config.
     """
     if isinstance(fieldnames, str):
         fieldnames = [fieldnames]
@@ -360,4 +486,6 @@ def set_analysis_required_mc_data_field_names(
             'The fieldnames argument must be an instance of str '
             'or a sequence of type str instances!')
 
-    CFG['dataset']['analysis_required_mc_field_names'] = list(set(fieldnames))
+    cfg['dataset']['analysis_required_mc_field_names'] = list(set(fieldnames))
+
+    return cfg
