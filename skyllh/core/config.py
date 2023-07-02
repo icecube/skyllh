@@ -480,3 +480,43 @@ class Config(
         pathfilename = os.path.join(self.get_wd(), filename)
 
         return pathfilename
+
+
+class HasConfig(
+        object,
+):
+    """Classifier class defining the cfg property. Classes that derive from
+    this class indicate, that they hold an instance of Config.
+    """
+
+    def __init__(
+            self,
+            cfg,
+            *args,
+            **kwargs,
+    ):
+        """Creates a new instance having the property ``cfg``.
+
+        Parameters
+        ----------
+        cfg : instance of Config
+            The instance of Config holding the local configuration.
+        """
+        super().__init__(
+            *args,
+            **kwargs)
+
+        self.cfg = cfg
+
+    @property
+    def cfg(self):
+        """The instance of Config holding the local configuration.
+        """
+        return self._cfg
+
+    @cfg.setter
+    def cfg(self, c):
+        if not isinstance(c, Config):
+            raise TypeError(
+                'The cfg property must be an instance of Config!')
+        self._cfg = c
