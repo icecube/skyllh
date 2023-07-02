@@ -121,6 +121,9 @@ from skyllh.i3.background_generation import (
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
 )
+from skyllh.i3.config import (
+    add_icecube_specific_analysis_required_data_fields,
+)
 from skyllh.i3.livetime import (
     I3Livetime,
 )
@@ -737,6 +740,7 @@ def do_trials_with_em(
 
 
 def create_analysis(  # noqa: C901
+        cfg,
         datasets,
         source,
         box=None,
@@ -767,6 +771,8 @@ def create_analysis(  # noqa: C901
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     datasets : list of Dataset instances
         The list of Dataset instances, which should be used in the
         analysis.
@@ -844,6 +850,8 @@ def create_analysis(  # noqa: C901
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The Analysis instance for this analysis.
     """
+    add_icecube_specific_analysis_required_data_fields(cfg)
+
     if logger_name is None:
         logger_name = __name__
     logger = get_logger(logger_name)
@@ -1161,6 +1169,7 @@ if __name__ == '__main__':
 
     with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
+            cfg=cfg,
             datasets=datasets,
             source=source,
             gamma_seed=args.gamma_seed,

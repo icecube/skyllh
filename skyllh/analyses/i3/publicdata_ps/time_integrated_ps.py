@@ -110,6 +110,9 @@ from skyllh.i3.background_generation import (
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
 )
+from skyllh.i3.config import (
+    add_icecube_specific_analysis_required_data_fields,
+)
 
 from skyllh.scripting.argparser import (
     create_argparser,
@@ -120,34 +123,37 @@ from skyllh.scripting.logging import (
 
 
 def create_analysis(
-    datasets,
-    source,
-    refplflux_Phi0=1,
-    refplflux_E0=1e3,
-    refplflux_gamma=2.0,
-    ns_seed=100.0,
-    ns_min=0.,
-    ns_max=1e3,
-    gamma_seed=3.0,
-    gamma_min=1.,
-    gamma_max=5.,
-    kde_smoothing=False,
-    minimizer_impl='LBFGS',
-    cut_sindec=None,
-    spl_smooth=None,
-    cap_ratio=False,
-    compress_data=False,
-    keep_data_fields=None,
-    evt_sel_delta_angle_deg=10,
-    construct_sig_generator=True,
-    tl=None,
-    ppbar=None,
-    logger_name=None,
+        cfg,
+        datasets,
+        source,
+        refplflux_Phi0=1,
+        refplflux_E0=1e3,
+        refplflux_gamma=2.0,
+        ns_seed=100.0,
+        ns_min=0.,
+        ns_max=1e3,
+        gamma_seed=3.0,
+        gamma_min=1.,
+        gamma_max=5.,
+        kde_smoothing=False,
+        minimizer_impl='LBFGS',
+        cut_sindec=None,
+        spl_smooth=None,
+        cap_ratio=False,
+        compress_data=False,
+        keep_data_fields=None,
+        evt_sel_delta_angle_deg=10,
+        construct_sig_generator=True,
+        tl=None,
+        ppbar=None,
+        logger_name=None,
 ):
     """Creates the Analysis instance for this particular analysis.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     datasets : list of Dataset instances
         The list of Dataset instances, which should be used in the
         analysis.
@@ -216,6 +222,8 @@ def create_analysis(
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The Analysis instance for this analysis.
     """
+    add_icecube_specific_analysis_required_data_fields(cfg)
+
     if logger_name is None:
         logger_name = __name__
     logger = get_logger(logger_name)
@@ -485,6 +493,7 @@ if __name__ == '__main__':
 
     with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
+            cfg=cfg,
             datasets=datasets,
             source=source,
             gamma_seed=args.gamma_seed,
