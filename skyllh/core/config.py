@@ -174,6 +174,12 @@ class Config(
 
         return cfg
 
+    @property
+    def is_tracing_enabled(self):
+        """``True``, if tracing mode is enabled, ``False`` otherwise.
+        """
+        return self['debugging']['enable_tracing']
+
     def add_analysis_required_exp_data_field_names(
             self,
             fieldnames,
@@ -231,6 +237,34 @@ class Config(
 
         self['dataset']['analysis_required_mc_field_names'] = list(set(
             self['dataset']['analysis_required_mc_field_names'] + fieldnames))
+
+        return self
+
+    def disable_tracing(
+            self,
+    ):
+        """Disables the tracing mode of SkyLLH.
+
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        self['debugging']['enable_tracing'] = False
+
+        return self
+
+    def enable_tracing(
+            self,
+    ):
+        """Enables the tracing mode of SkyLLH.
+
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        self['debugging']['enable_tracing'] = True
 
         return self
 
