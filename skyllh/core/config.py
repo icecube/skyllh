@@ -460,3 +460,23 @@ class Config(
         factor = time_unit.to(internal_time_unit)
 
         return factor
+
+    def wd_filename(self, filename):
+        """Generates the fully qualified file name under the project's working
+        directory of the given file.
+
+        Parameters
+        ----------
+        filename : str
+            The name of the file for which to generate the working directory
+            path file name.
+
+        Returns
+        -------
+        pathfilename : str
+            The generated fully qualified path file name of ``filename`` with
+            the project's working directory prefixed.
+        """
+        pathfilename = os.path.join(self.get_wd(), filename)
+
+        return pathfilename
