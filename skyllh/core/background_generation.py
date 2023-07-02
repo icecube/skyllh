@@ -5,7 +5,7 @@ import abc
 import numpy as np
 
 from skyllh.core.config import (
-    CFG,
+    Config,
 )
 from skyllh.core.debugging import (
     get_logger,
@@ -39,10 +39,34 @@ class BackgroundGenerationMethod(
     generation method.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(
+            self,
+            cfg,
+            **kwargs,
+    ):
         """Constructs a new background generation method instance.
+
+        Parameters
+        ----------
+        cfg : instance of Config
+            The instance of Config holding the local configuration.
         """
         super().__init__(**kwargs)
+
+        self.cfg = cfg
+
+    @property
+    def cfg(self):
+        """The instance of Config holding the local configuration.
+        """
+        return self._cfg
+
+    @cfg.setter
+    def cfg(self, c):
+        if not isinstance(c, Config):
+            raise TypeError(
+                'The cfg property must be an instance of Config!')
+        self._cfg = c
 
     def change_shg_mgr(self, shg_mgr):
         """Notifies the background generation method about an updated
@@ -114,6 +138,7 @@ class MCDataSamplingBkgGenMethod(
     """
     def __init__(
             self,
+            cfg,
             get_event_prob_func,
             get_mean_func=None,
             unique_events=False,
@@ -127,6 +152,8 @@ class MCDataSamplingBkgGenMethod(
 
         Parameters
         ----------
+        cfg : instance of Config
+            The instance of Config holding the local configuration.
         get_event_prob_func : callable
             The function to get the background probability of each monte-carlo
             event. The call signature of this function must be
@@ -176,7 +203,9 @@ class MCDataSamplingBkgGenMethod(
             event generation. Using this pre-selection a large portion of the
             MC data can be reduced prior to background event generation.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            cfg=cfg,
+            **kwargs)
 
         self.get_event_prob_func = get_event_prob_func
         self.get_mean_func = get_mean_func
@@ -404,7 +433,7 @@ class MCDataSamplingBkgGenMethod(
             background events. The number of events can be less than `n_bkg`
             if an event selection method is used.
         """
-        tracing = CFG['debugging']['enable_tracing']
+        tracing = self._cfg['debugging']['enable_tracing']
 
         # Create aliases to avoid dot-lookup.
         self__pre_event_selection_method = self._pre_event_selection_method
@@ -425,7 +454,7 @@ class MCDataSamplingBkgGenMethod(
             # except the specified MC data fields to keep for the
             # ``get_mean_func`` and ``get_event_prob_func`` functions.
             keep_field_names = list(set(
-                CFG['dataset']['analysis_required_exp_field_names'] +
+                self._cfg['dataset']['analysis_required_exp_field_names'] +
                 data.exp_field_names +
                 self._keep_mc_data_field_names
             ))
@@ -537,7 +566,7 @@ class MCDataSamplingBkgGenMethod(
         # data fields by the user).
         with TaskTimer(tl, 'Remove MC specific data fields from MC events.'):
             exp_field_names = list(set(
-                CFG['dataset']['analysis_required_exp_field_names'] +
+                self._cfg['dataset']['analysis_required_exp_field_names'] +
                 data.exp_field_names))
             bkg_events.tidy_up(exp_field_names)
 
