@@ -174,318 +174,289 @@ class Config(
 
         return cfg
 
+    def add_analysis_required_exp_data_field_names(
+            self,
+            fieldnames,
+    ):
+        """Adds the given data field names to the set of data field names of the
+        experimental data that are required by the analysis.
 
-def get_wd(
-        cfg,
-):
-    """Retrieves the absolut path to the working directoy as configured in the
-    given configuration.
+        Parameters
+        ----------
+        fieldnames : str | sequence of str
+            The field name or sequence of field names that should get added for
+            the experimental data.
 
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-
-    Returns
-    -------
-    wd : str
-        The absolut path to the project's working directory.
-    """
-    wd = os.path.abspath(cfg['project']['working_directory'])
-
-    return wd
-
-
-def to_internal_time_unit(
-        cfg,
-        time_unit,
-):
-    """Calculates the conversion factor from the given time unit to the internal
-    time unit specified by the given local configuration.
-
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    time_unit : instance of astropy.units.UnitBase
-        The time unit from which to convert to the internal time unit.
-    """
-    internal_time_unit = cfg['units']['internal']['time']
-    factor = time_unit.to(internal_time_unit)
-
-    return factor
-
-
-def set_enable_tracing(
-        cfg,
-        flag,
-):
-    """Sets the global setting for tracing.
-
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    flag : bool
-        The flag if tracing should be enabled (``True``) or disabled
-        (``False``).
-
-    Returns
-    -------
-    cfg : instance of Config
-        The updated instance of Config.
-    """
-    cfg['debugging']['enable_tracing'] = flag
-
-    return cfg
-
-
-def set_internal_units(
-        cfg,
-        angle_unit=None,
-        energy_unit=None,
-        length_unit=None,
-        time_unit=None,
-):
-    """Sets the units used internally to compute quantities. These units must
-    match the units used in the monte-carlo files.
-
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    angle_unit : instance of astropy.units.UnitBase | None
-        The internal unit that should be used for angles.
-        If set to ``None``, the unit is not changed.
-    energy_unit : instance of astropy.units.UnitBase | None
-        The internal unit that should be used for energy.
-        If set to ``None``, the unit is not changed.
-    length_unit : instance of astropy.units.UnitBase | None
-        The internal unit that should be used for length.
-        If set to ``None``, the unit is not changed.
-    time_unit : instance of astropy.units.UnitBase | None
-        The internal unit that should be used for time.
-        If set to ``None``, the unit is not changed.
-
-    Returns
-    -------
-    cfg : instance of Config
-        The updated instance of Config.
-    """
-    if angle_unit is not None:
-        if not isinstance(angle_unit, units.UnitBase):
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        if isinstance(fieldnames, str):
+            fieldnames = [fieldnames]
+        elif not issequenceof(fieldnames, str):
             raise TypeError(
-                'The angle_unit argument must be an instance of '
-                'astropy.units.UnitBase!')
-        cfg['units']['internal']['angle'] = angle_unit
+                'The fieldnames argument must be an instance of str '
+                'or a sequence of type str instances!')
 
-    if energy_unit is not None:
-        if not isinstance(energy_unit, units.UnitBase):
+        self['dataset']['analysis_required_exp_field_names'] = list(set(
+            self['dataset']['analysis_required_exp_field_names'] + fieldnames))
+
+        return self
+
+    def add_analysis_required_mc_data_field_names(
+            self,
+            fieldnames,
+    ):
+        """Adds the given data field names to the set of data field names of the
+        monte-carlo data that are required by the analysis.
+
+        Parameters
+        ----------
+        fieldnames : str | sequence of str
+            The field name or sequence of field names that should get added for
+            the monto-carlo data.
+
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        if isinstance(fieldnames, str):
+            fieldnames = [fieldnames]
+        elif not issequenceof(fieldnames, str):
             raise TypeError(
-                'The energy_unit argument must be an instance of '
-                'astropy.units.UnitBase!')
-        cfg['units']['internal']['energy'] = energy_unit
+                'The fieldnames argument must be an instance of str '
+                'or a sequence of type str instances!')
 
-    if length_unit is not None:
-        if not isinstance(length_unit, units.UnitBase):
+        self['dataset']['analysis_required_mc_field_names'] = list(set(
+            self['dataset']['analysis_required_mc_field_names'] + fieldnames))
+
+        return self
+
+    def get_wd(
+            self,
+    ):
+        """Retrieves the absolut path to the working directoy as configured in
+        this configuration.
+
+        Returns
+        -------
+        wd : str
+            The absolut path to the project's working directory.
+        """
+        wd = os.path.abspath(self['project']['working_directory'])
+
+        return wd
+
+    def set_analysis_required_exp_data_field_names(
+            self,
+            fieldnames,
+    ):
+        """Sets the data field names of the experimental data that are required
+        by the analysis.
+
+        Parameters
+        ----------
+        fieldnames : str | sequence of str
+            The field name or sequence of field names for the experimental data.
+
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        if isinstance(fieldnames, str):
+            fieldnames = [fieldnames]
+        elif not issequenceof(fieldnames, str):
             raise TypeError(
-                'The length_unit argument must be an instance of '
-                'astropy.units.UnitBase!')
-        cfg['units']['internal']['length'] = length_unit
+                'The fieldnames argument must be an instance of str '
+                'or a sequence of type str instances!')
 
-    if time_unit is not None:
-        if not isinstance(time_unit, units.UnitBase):
+        self['dataset']['analysis_required_exp_field_names'] = list(set(
+            fieldnames))
+
+        return self
+
+    def set_analysis_required_mc_data_field_names(
+            self,
+            fieldnames,
+    ):
+        """Sets the data field names of the monte-carlo data that are required
+        by the analysis.
+
+        Parameters
+        ----------
+        fieldnames : str | sequence of str
+            The field name or sequence of field names for the monte-carlo data.
+
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        if isinstance(fieldnames, str):
+            fieldnames = [fieldnames]
+        elif not issequenceof(fieldnames, str):
             raise TypeError(
-                'The time_unit argument must be an instance of '
-                'astropy.units.UnitBase!')
-        cfg['units']['internal']['time'] = time_unit
+                'The fieldnames argument must be an instance of str '
+                'or a sequence of type str instances!')
 
-    return cfg
+        self['dataset']['analysis_required_mc_field_names'] = list(set(
+            fieldnames))
 
+        return self
 
-def set_ncpu(
-        cfg,
-        ncpu,
-):
-    """Sets the global setting for the number of CPUs to use, when
-    parallelization is available.
+    def set_enable_tracing(
+            self,
+            flag,
+    ):
+        """Sets the setting for tracing.
 
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    ncpu : int
-        The number of CPUs.
+        Parameters
+        ----------
+        flag : bool
+            The flag if tracing should be enabled (``True``) or disabled
+            (``False``).
 
-    Returns
-    -------
-    cfg : instance of Config
-        The updated instance of Config.
-    """
-    cfg['multiproc']['ncpu'] = ncpu
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        self['debugging']['enable_tracing'] = flag
 
-    return cfg
+        return self
 
+    def set_internal_units(
+            self,
+            angle_unit=None,
+            energy_unit=None,
+            length_unit=None,
+            time_unit=None,
+    ):
+        """Sets the units used internally to compute quantities. These units
+        must match the units used in the monte-carlo files.
 
-def set_wd(
-        cfg,
-        path=None,
-):
-    """Sets the project's working directory configuration variable and adds it
-    to the Python path variable.
+        Parameters
+        ----------
+        angle_unit : instance of astropy.units.UnitBase | None
+            The internal unit that should be used for angles.
+            If set to ``None``, the unit is not changed.
+        energy_unit : instance of astropy.units.UnitBase | None
+            The internal unit that should be used for energy.
+            If set to ``None``, the unit is not changed.
+        length_unit : instance of astropy.units.UnitBase | None
+            The internal unit that should be used for length.
+            If set to ``None``, the unit is not changed.
+        time_unit : instance of astropy.units.UnitBase | None
+            The internal unit that should be used for time.
+            If set to ``None``, the unit is not changed.
 
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    path : str | None
-        The path of the project's working directory. This can be a path
-        relative to the path given by ``os.path.getcwd``, the current
-        working directory of the program.
-        If set to ``None``, the path is taken from the working directory
-        setting of the given configuration.
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        if angle_unit is not None:
+            if not isinstance(angle_unit, units.UnitBase):
+                raise TypeError(
+                    'The angle_unit argument must be an instance of '
+                    'astropy.units.UnitBase!')
+            self['units']['internal']['angle'] = angle_unit
 
-    Returns
-    -------
-    wd : str
-        The absolut path to the project's working directory.
-    """
-    if path is None:
-        path = cfg['project']['working_directory']
+        if energy_unit is not None:
+            if not isinstance(energy_unit, units.UnitBase):
+                raise TypeError(
+                    'The energy_unit argument must be an instance of '
+                    'astropy.units.UnitBase!')
+            self['units']['internal']['energy'] = energy_unit
 
-    if cfg['project']['working_directory'] in sys.path:
-        sys.path.remove(cfg['project']['working_directory'])
+        if length_unit is not None:
+            if not isinstance(length_unit, units.UnitBase):
+                raise TypeError(
+                    'The length_unit argument must be an instance of '
+                    'astropy.units.UnitBase!')
+            self['units']['internal']['length'] = length_unit
 
-    wd = os.path.abspath(path)
-    cfg['project']['working_directory'] = wd
-    sys.path.insert(0, wd)
+        if time_unit is not None:
+            if not isinstance(time_unit, units.UnitBase):
+                raise TypeError(
+                    'The time_unit argument must be an instance of '
+                    'astropy.units.UnitBase!')
+            self['units']['internal']['time'] = time_unit
 
-    return wd
+        return self
 
+    def set_ncpu(
+            self,
+            ncpu,
+    ):
+        """Sets the global setting for the number of CPUs to use, when
+        parallelization is available.
 
-def add_analysis_required_exp_data_field_names(
-        cfg,
-        fieldnames,
-):
-    """Adds the given data field names to the set of data field names of the
-    experimental data that are required by the analysis.
+        Parameters
+        ----------
+        ncpu : int
+            The number of CPUs.
 
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    fieldnames : str | sequence of str
-        The field name or sequence of field names that should get added for the
-        experimental data.
+        Returns
+        -------
+        self : instance of Config
+            The updated instance of Config.
+        """
+        self['multiproc']['ncpu'] = ncpu
 
-    Returns
-    -------
-    cfg : instance of Config
-        The updated instance of Config.
-    """
-    if isinstance(fieldnames, str):
-        fieldnames = [fieldnames]
-    elif not issequenceof(fieldnames, str):
-        raise TypeError(
-            'The fieldnames argument must be an instance of str '
-            'or a sequence of type str instances!')
+        return self
 
-    cfg['dataset']['analysis_required_exp_field_names'] = list(set(
-        cfg['dataset']['analysis_required_exp_field_names'] + fieldnames))
+    def set_wd(
+            self,
+            path=None,
+    ):
+        """Sets the project's working directory configuration variable and adds
+        it to the Python path variable.
 
-    return cfg
+        Parameters
+        ----------
+        cfg : instance of Config
+            The instance of Config holding the local configuration.
+        path : str | None
+            The path of the project's working directory. This can be a path
+            relative to the path given by ``os.path.getcwd``, the current
+            working directory of the program.
+            If set to ``None``, the path is taken from the working directory
+            setting of the given configuration.
 
+        Returns
+        -------
+        wd : str
+            The absolut path to the project's working directory.
+        """
+        if path is None:
+            path = self['project']['working_directory']
 
-def add_analysis_required_mc_data_field_names(
-        cfg,
-        fieldnames,
-):
-    """Adds the given data field names to the set of data field names of the
-    monte-carlo data that are required by the analysis.
+        if self['project']['working_directory'] in sys.path:
+            sys.path.remove(self['project']['working_directory'])
 
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    fieldnames : str | sequence of str
-        The field name or sequence of field names that should get added for the
-        monto-carlo data.
+        wd = os.path.abspath(path)
+        self['project']['working_directory'] = wd
+        sys.path.insert(0, wd)
 
-    Returns
-    -------
-    cfg : instance of Config
-        The updated instance of Config.
-    """
-    if isinstance(fieldnames, str):
-        fieldnames = [fieldnames]
-    elif not issequenceof(fieldnames, str):
-        raise TypeError(
-            'The fieldnames argument must be an instance of str '
-            'or a sequence of type str instances!')
+        return wd
 
-    cfg['dataset']['analysis_required_mc_field_names'] = list(set(
-        cfg['dataset']['analysis_required_mc_field_names'] + fieldnames))
+    def to_internal_time_unit(
+            self,
+            time_unit,
+    ):
+        """Calculates the conversion factor from the given time unit to the
+        internal time unit specified by this local configuration.
 
-    return cfg
+        Parameters
+        ----------
+        time_unit : instance of astropy.units.UnitBase
+            The time unit from which to convert to the internal time unit.
+        """
+        internal_time_unit = self['units']['internal']['time']
+        factor = time_unit.to(internal_time_unit)
 
-
-def set_analysis_required_exp_data_field_names(
-        cfg,
-        fieldnames,
-):
-    """Sets the data field names of the experimental data that are required by
-    the analysis.
-
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    fieldnames : str | sequence of str
-        The field name or sequence of field names for the experimental data.
-
-    Returns
-    -------
-    cfg : instance of Config
-        The updated instance of Config.
-    """
-    if isinstance(fieldnames, str):
-        fieldnames = [fieldnames]
-    elif not issequenceof(fieldnames, str):
-        raise TypeError(
-            'The fieldnames argument must be an instance of str '
-            'or a sequence of type str instances!')
-
-    cfg['dataset']['analysis_required_exp_field_names'] = list(set(fieldnames))
-
-    return cfg
-
-
-def set_analysis_required_mc_data_field_names(
-        cfg,
-        fieldnames,
-):
-    """Sets the data field names of the monte-carlo data that are required by
-    the analysis.
-
-    Parameters
-    ----------
-    cfg : instance of Config
-        The instance of Config holding the local configuration.
-    fieldnames : str | sequence of str
-        The field name or sequence of field names for the monte-carlo data.
-
-    Returns
-    -------
-    cfg : instance of Config
-        The updated instance of Config.
-    """
-    if isinstance(fieldnames, str):
-        fieldnames = [fieldnames]
-    elif not issequenceof(fieldnames, str):
-        raise TypeError(
-            'The fieldnames argument must be an instance of str '
-            'or a sequence of type str instances!')
-
-    cfg['dataset']['analysis_required_mc_field_names'] = list(set(fieldnames))
-
-    return cfg
+        return factor
