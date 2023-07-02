@@ -11,7 +11,10 @@ from skyllh.i3.dataset import (
 )
 
 
-def create_dataset_collection(base_path=None, sub_path_fmt=None):
+def create_dataset_collection(
+        base_path=None,
+        sub_path_fmt=None,
+):
     """Defines the dataset collection for IceCube's 10-year
     point-source public data, which is available at
     http://icecube.wisc.edu/data-releases/20210126_PS-IC40-IC86_VII.zip
@@ -21,7 +24,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     base_path : str | None
         The base path of the data files. The actual path of a data file is
         assumed to be of the structure <base_path>/<sub_path>/<file_name>.
-        If None, use the default path CFG['repository']['base_path'].
+        If None, use the default path Config['repository']['base_path'].
     sub_path_fmt : str | None
         The sub path format of the data files of the public data sample.
         If None, use the default sub path format
