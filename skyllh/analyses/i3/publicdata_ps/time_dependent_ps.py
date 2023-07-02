@@ -34,9 +34,7 @@ from skyllh.core.backgroundpdf import (
     BackgroundTimePDF,
 )
 from skyllh.core.config import (
-    CFG,
-    set_enable_tracing,
-    set_n_cpu,
+    Config,
 )
 from skyllh.core.debugging import (
     get_logger,
@@ -1130,14 +1128,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    CFG.from_yaml(args.config)
+    cfg = Config.from_yaml(args.config)
 
     setup_logging(
         script_logger_name=__name__,
         debug_pathfilename=args.debug_logfile)
 
-    set_enable_tracing(args.enable_tracing)
-    set_n_cpu(args.n_cpu)
+    cfg.set_enable_tracing(args.enable_tracing)
+    cfg.set_ncpu(args.n_cpu)
 
     sample_seasons = [
         ('PublicData_10y_ps', 'IC86_II-VII'),
