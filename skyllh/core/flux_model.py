@@ -26,7 +26,7 @@ from skyllh.core import (
     tool,
 )
 from skyllh.core.config import (
-    Config,
+    HasConfig,
 )
 from skyllh.core.math import (
     MathFunction,
@@ -45,37 +45,17 @@ from skyllh.core.source_model import (
 
 class FluxProfile(
         MathFunction,
+        HasConfig,
         metaclass=abc.ABCMeta):
     """The abstract base class for a flux profile math function.
     """
     def __init__(
             self,
-            cfg,
             **kwargs,
     ):
         """Creates a new FluxProfile instance.
-
-        Parameters
-        ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         """
         super().__init__(**kwargs)
-
-        self.cfg = cfg
-
-    @property
-    def cfg(self):
-        """The instance of Config holding the local configuration.
-        """
-        return self._cfg
-
-    @cfg.setter
-    def cfg(self, c):
-        if not isinstance(c, Config):
-            raise TypeError(
-                'The cfg property must be an instance of Config!')
-        self._cfg = c
 
 
 class SpatialFluxProfile(
@@ -85,22 +65,18 @@ class SpatialFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             angle_unit=None,
             **kwargs):
         """Creates a new SpatialFluxProfile instance.
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         angle_unit : instance of astropy.units.UnitBase | None
             The used unit for angles.
             If set to ``Ǹone``, the configured default angle unit for fluxes is
             used.
         """
         super().__init__(
-            cfg=cfg,
             **kwargs)
 
         self.angle_unit = angle_unit
@@ -157,9 +133,9 @@ class UnitySpatialFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             angle_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new UnitySpatialFluxProfile instance.
 
         Parameters
@@ -170,7 +146,6 @@ class UnitySpatialFluxProfile(
             used.
         """
         super().__init__(
-            cfg=cfg,
             angle_unit=angle_unit,
             **kwargs)
 
@@ -218,18 +193,16 @@ class PointSpatialFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             ra,
             dec,
             angle_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new spatial flux profile for a point at equatorial
         coordinate (ra, dec).
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         ra : float | None
             The right-ascention of the point.
             In case it is None, the evaluation of this spatial flux profile will
@@ -244,7 +217,6 @@ class PointSpatialFluxProfile(
             used.
         """
         super().__init__(
-            cfg=cfg,
             angle_unit=angle_unit,
             **kwargs)
 
@@ -350,7 +322,6 @@ class EnergyFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             energy_unit=None,
             **kwargs):
         """Creates a new energy flux profile with a given energy unit to be used
@@ -358,15 +329,12 @@ class EnergyFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         energy_unit : instance of astropy.units.UnitBase | None
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
         """
         super().__init__(
-            cfg=cfg,
             **kwargs)
 
         # Set the energy unit.
@@ -467,22 +435,18 @@ class UnityEnergyFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             energy_unit=None,
             **kwargs):
         """Creates a new UnityEnergyFluxProfile instance.
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         energy_unit : instance of astropy.units.UnitBase | None
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
         """
         super().__init__(
-            cfg=cfg,
             energy_unit=energy_unit,
             **kwargs)
 
@@ -568,7 +532,6 @@ class PowerLawEnergyFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             E0,
             gamma,
             energy_unit=None,
@@ -578,8 +541,6 @@ class PowerLawEnergyFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         E0 : castable to float
             The reference energy.
         gamma : castable to float
@@ -590,7 +551,6 @@ class PowerLawEnergyFluxProfile(
             used.
         """
         super().__init__(
-            cfg=cfg,
             energy_unit=energy_unit,
             **kwargs)
 
@@ -726,7 +686,6 @@ class CutoffPowerLawEnergyFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             E0,
             gamma,
             Ecut,
@@ -738,8 +697,6 @@ class CutoffPowerLawEnergyFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         E0 : castable to float
             The reference energy.
         gamma : castable to float
@@ -752,7 +709,6 @@ class CutoffPowerLawEnergyFluxProfile(
             used.
         """
         super().__init__(
-            cfg=cfg,
             E0=E0,
             gamma=gamma,
             energy_unit=energy_unit,
@@ -829,7 +785,6 @@ class LogParabolaPowerLawEnergyFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             E0,
             alpha,
             beta,
@@ -839,8 +794,6 @@ class LogParabolaPowerLawEnergyFluxProfile(
         """
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         E0 : castable to float
             The reference energy.
         alpha : float
@@ -853,7 +806,6 @@ class LogParabolaPowerLawEnergyFluxProfile(
             used.
         """
         super().__init__(
-            cfg=cfg,
             E0=E0,
             gamma=np.nan,
             energy_unit=energy_unit,
@@ -945,7 +897,6 @@ class PhotosplineEnergyFluxProfile(
     @tool.requires('photospline')
     def __init__(
             self,
-            cfg,
             splinetable,
             crit_log10_energy_lower,
             crit_log10_energy_upper,
@@ -956,8 +907,6 @@ class PhotosplineEnergyFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         splinetable : instance of photospline.SplineTable
             The instance of photospline.SplineTable representing the energy flux
             profile as a spline.
@@ -971,7 +920,6 @@ class PhotosplineEnergyFluxProfile(
             used.
         """
         super().__init__(
-            cfg=cfg,
             energy_unit=energy_unit,
             **kwargs)
 
@@ -1035,7 +983,6 @@ class TimeFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             t_start=-np.inf,
             t_stop=np.inf,
             time_unit=None,
@@ -1044,8 +991,6 @@ class TimeFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         t_start : float
             The start time of the time profile.
             If set to -inf, it means, that the profile starts at the beginning
@@ -1060,7 +1005,6 @@ class TimeFluxProfile(
             used.
         """
         super().__init__(
-            cfg=cfg,
             **kwargs)
 
         self.time_unit = time_unit
@@ -1221,7 +1165,6 @@ class UnityTimeFluxProfile(
     """
     def __init__(
             self,
-            cfg,
             time_unit=None,
             **kwargs,
     ):
@@ -1229,15 +1172,12 @@ class UnityTimeFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         time_unit : instance of astropy.units.UnitBase | None
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
         """
         super().__init__(
-            cfg=cfg,
             time_unit=time_unit,
             **kwargs)
 
@@ -1344,7 +1284,6 @@ class BoxTimeFluxProfile(
     @classmethod
     def from_start_and_stop_time(
             cls,
-            cfg,
             start,
             stop,
             time_unit=None,
@@ -1355,8 +1294,6 @@ class BoxTimeFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         start : float
             The start time of the box profile.
         stop : float
@@ -1375,7 +1312,6 @@ class BoxTimeFluxProfile(
         tw = stop - start
 
         profile = cls(
-            cfg=cfg,
             t0=t0,
             tw=tw,
             time_unit=time_unit,
@@ -1385,7 +1321,6 @@ class BoxTimeFluxProfile(
 
     def __init__(
             self,
-            cfg,
             t0,
             tw,
             time_unit=None,
@@ -1395,8 +1330,6 @@ class BoxTimeFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         t0 : float
             The mid time of the box profile.
         tw : float
@@ -1410,7 +1343,6 @@ class BoxTimeFluxProfile(
         t_stop = t0 + tw/2.
 
         super().__init__(
-            cfg=cfg,
             t_start=t_start,
             t_stop=t_stop,
             time_unit=time_unit,
@@ -1617,7 +1549,6 @@ class GaussianTimeFluxProfile(
 
     def __init__(
             self,
-            cfg,
             t0,
             sigma_t,
             tol=1e-12,
@@ -1627,8 +1558,6 @@ class GaussianTimeFluxProfile(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         t0 : float
             The mid time of the gaussian profile.
         sigma_t : float
@@ -1648,7 +1577,6 @@ class GaussianTimeFluxProfile(
         t_stop = t0 + dt
 
         super().__init__(
-            cfg=cfg,
             t_start=t_start,
             t_stop=t_stop,
             time_unit=time_unit,
@@ -1849,6 +1777,7 @@ class GaussianTimeFluxProfile(
 
 class FluxModel(
         MathFunction,
+        HasConfig,
         Model,
         metaclass=abc.ABCMeta,
 ):
@@ -1882,7 +1811,6 @@ class FluxModel(
 
     def __init__(
             self,
-            cfg,
             angle_unit=None,
             energy_unit=None,
             length_unit=None,
@@ -1892,8 +1820,6 @@ class FluxModel(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         angle_unit : instance of astropy.units.UnitBase | None
             The used unit for angles.
             If set to ``None``, the configured default angle unit for fluxes is
@@ -1914,26 +1840,11 @@ class FluxModel(
         super().__init__(
             **kwargs)
 
-        self.cfg = cfg
-
         # Define the units.
         self.angle_unit = angle_unit
         self.energy_unit = energy_unit
         self.length_unit = length_unit
         self.time_unit = time_unit
-
-    @property
-    def cfg(self):
-        """The instance of Config holding the local configuration.
-        """
-        return self._cfg
-
-    @cfg.setter
-    def cfg(self, c):
-        if not isinstance(c, Config):
-            raise TypeError(
-                'The cfg property must be an instance of Config!')
-        self._cfg = c
 
     @property
     def angle_unit(self):
@@ -2152,19 +2063,17 @@ class FactorizedFluxModel(
     """
     def __init__(
             self,
-            cfg,
             Phi0,
             spatial_profile,
             energy_profile,
             time_profile,
             length_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new factorized flux model.
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         Phi0 : float
             The flux normalization constant.
         spatial_profile : instance of SpatialFluxProfile | None
@@ -2195,12 +2104,11 @@ class FactorizedFluxModel(
         # The base class will set the default (internally used) flux unit, which
         # will be set automatically to the particular profile.
         super().__init__(
-            cfg=cfg,
             angle_unit=self._spatial_profile.angle_unit,
             energy_unit=self._energy_profile.energy_unit,
             time_unit=self._time_profile.time_unit,
             length_unit=length_unit,
-            **kwargs
+            **kwargs,
         )
 
         # Define the parameters which can be set via the `set_params`
@@ -2470,7 +2378,6 @@ class PointlikeFFM(
     """
     def __init__(
             self,
-            cfg,
             Phi0,
             energy_profile,
             time_profile,
@@ -2484,8 +2391,6 @@ class PointlikeFFM(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         Phi0 : float
             The flux normalization constant in unit of flux.
         energy_profile : instance of EnergyFluxProfile | None
@@ -2510,13 +2415,12 @@ class PointlikeFFM(
             If set to ``None``, the configured internal length unit is used.
         """
         spatial_profile = PointSpatialFluxProfile(
-            cfg=cfg,
+            cfg=kwargs.get('cfg'),
             ra=ra,
             dec=dec,
             angle_unit=angle_unit)
 
         super().__init__(
-            cfg=cfg,
             Phi0=Phi0,
             spatial_profile=spatial_profile,
             energy_profile=energy_profile,
@@ -2566,7 +2470,6 @@ class SteadyPointlikeFFM(
     """
     def __init__(
             self,
-            cfg,
             Phi0,
             energy_profile,
             ra=None,
@@ -2581,8 +2484,6 @@ class SteadyPointlikeFFM(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         Phi0 : float
             The flux normalization constant.
         energy_profile : instance of EnergyFluxProfile | None
@@ -2608,11 +2509,10 @@ class SteadyPointlikeFFM(
             is used.
         """
         time_profile = UnityTimeFluxProfile(
-            cfg=cfg,
+            cfg=kwargs.get('cfg'),
             time_unit=time_unit)
 
         super().__init__(
-            cfg=cfg,
             Phi0=Phi0,
             ra=ra,
             dec=dec,
