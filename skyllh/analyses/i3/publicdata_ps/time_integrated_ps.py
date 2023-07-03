@@ -230,9 +230,9 @@ def create_analysis(
 
     # Create the minimizer instance.
     if minimizer_impl == "LBFGS":
-        minimizer = Minimizer(LBFGSMinimizerImpl())
+        minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg))
     elif minimizer_impl == "minuit":
-        minimizer = Minimizer(IMinuitMinimizerImpl(ftol=1e-8))
+        minimizer = Minimizer(IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8))
     else:
         raise NameError(
             f"Minimizer implementation `{minimizer_impl}` is not supported "
@@ -243,7 +243,11 @@ def create_analysis(
         Phi0=refplflux_Phi0,
         energy_profile=PowerLawEnergyFluxProfile(
             E0=refplflux_E0,
-            gamma=refplflux_gamma))
+            gamma=refplflux_gamma,
+            cfg=cfg,
+        ),
+        cfg=cfg,
+    )
 
     # Define the fit parameter ns.
     param_ns = Parameter(
@@ -266,6 +270,7 @@ def create_analysis(
     gamma_grid = param_gamma.as_linear_grid(delta=0.1)
     detsigyield_builder =\
         PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
+            cfg=cfg,
             param_grid=gamma_grid)
 
     # Define the signal generation method.
@@ -300,10 +305,13 @@ def create_analysis(
     data_scrambler = DataScrambler(UniformRAScramblingMethod())
 
     # Create background generation method.
-    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
+    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(
+        cfg=cfg,
+        data_scrambler=data_scrambler)
 
     # Create the Analysis instance.
     ana = Analysis(
+        cfg=cfg,
         shg_mgr=shg_mgr,
         pmm=pmm,
         test_statistic=test_statistic,
@@ -340,8 +348,10 @@ def create_analysis(
 
         # Create the spatial PDF ratio instance for this dataset.
         spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
+            cfg=cfg,
             dec_range=np.arcsin(sin_dec_binning.range))
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(
+            cfg=cfg,
             data_exp=data.exp,
             sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(
@@ -350,6 +360,7 @@ def create_analysis(
 
         # Create the energy PDF ratio instance for this dataset.
         energy_sigpdfset = PDSignalEnergyPDFSet(
+            cfg=cfg,
             ds=ds,
             src_dec=source.dec,
             fluxmodel=fluxmodel,
@@ -358,6 +369,7 @@ def create_analysis(
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
         energy_bkgpdf = PDDataBackgroundI3EnergyPDF(
+            cfg=cfg,
             data_exp=data.exp,
             logE_binning=log_energy_binning,
             sinDec_binning=sin_dec_binning,
@@ -388,6 +400,7 @@ def create_analysis(
             spl_smooth[ds_idx])
 
         sig_generator = PDDatasetSignalGenerator(
+            cfg=cfg,
             shg_mgr=shg_mgr,
             ds=ds,
             ds_idx=ds_idx,
@@ -457,13 +470,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     cfg = Config.from_yaml(args.config)
-
-    setup_logging(
-        script_logger_name=__name__,
-        debug_pathfilename=args.debug_logfile)
-
     cfg.set_enable_tracing(args.enable_tracing)
     cfg.set_ncpu(args.n_cpu)
+
+    setup_logging(
+        cfg=cfg,
+        script_logger_name=__name__,
+        debug_pathfilename=args.debug_logfile)
 
     sample_seasons = [
         ('PublicData_10y_ps', 'IC40'),
@@ -477,7 +490,8 @@ if __name__ == '__main__':
     for (sample, season) in sample_seasons:
         # Get the dataset from the correct dataset collection.
         dsc = data_samples[sample].create_dataset_collection(
-            args.data_basepath)
+            cfg=cfg,
+            base_path=args.data_basepath)
         datasets.append(dsc.get_dataset(season))
 
     # Define a random state service.
