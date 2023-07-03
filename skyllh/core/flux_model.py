@@ -2099,9 +2099,23 @@ class FactorizedFluxModel(
             If set to ``None``, the configured default length unit for fluxes is
             used.
         """
+        cfg = kwargs.get('cfg')
+
         self.Phi0 = Phi0
+
+        if spatial_profile is None:
+            spatial_profile = UnitySpatialFluxProfile(
+                cfg=cfg)
         self.spatial_profile = spatial_profile
+
+        if energy_profile is None:
+            energy_profile = UnityEnergyFluxProfile(
+                cfg=cfg)
         self.energy_profile = energy_profile
+
+        if time_profile is None:
+            time_profile = UnityTimeFluxProfile(
+                cfg=cfg)
         self.time_profile = time_profile
 
         # The base class will set the default (internally used) flux unit, which
@@ -2142,8 +2156,6 @@ class FactorizedFluxModel(
 
     @spatial_profile.setter
     def spatial_profile(self, profile):
-        if profile is None:
-            profile = UnitySpatialFluxProfile()
         if not isinstance(profile, SpatialFluxProfile):
             raise TypeError(
                 'The spatial_profile property must be None, or an '
@@ -2159,8 +2171,6 @@ class FactorizedFluxModel(
 
     @energy_profile.setter
     def energy_profile(self, profile):
-        if profile is None:
-            profile = UnityEnergyFluxProfile()
         if not isinstance(profile, EnergyFluxProfile):
             raise TypeError(
                 'The energy_profile property must be None, or an '
@@ -2175,8 +2185,6 @@ class FactorizedFluxModel(
 
     @time_profile.setter
     def time_profile(self, profile):
-        if profile is None:
-            profile = UnityTimeFluxProfile()
         if not isinstance(profile, TimeFluxProfile):
             raise TypeError(
                 'The time_profile property must be None, or an '
@@ -2260,7 +2268,8 @@ class FactorizedFluxModel(
             t=None,
             angle_unit=None,
             energy_unit=None,
-            time_unit=None):
+            time_unit=None,
+    ):
         """Calculates the flux values for the given celestrial positions,
         energies, and observation times.
 
