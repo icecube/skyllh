@@ -1216,7 +1216,9 @@ class Analysis(
             :py:meth:`~skyllh.core.analysis.Analysis.do_trial` method for the
             list of data fields.
         """
-        ncpu = get_ncpu(ncpu)
+        ncpu = get_ncpu(
+            cfg=self._cfg,
+            local_ncpu=ncpu)
 
         args_list = [((), kwargs) for i in range(n)]
         result_list = parallelize(
