@@ -10,6 +10,9 @@ from skyllh.core import (
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.display import (
     INDENTATION_WIDTH,
 )
@@ -27,7 +30,6 @@ from skyllh.core.py import (
 )
 from skyllh.core.debugging import (
     get_logger,
-    is_tracing_enabled,
 )
 from skyllh.core.flux_model import (
     TimeFluxProfile,
@@ -1475,7 +1477,8 @@ class MultiDimGridPDF(
 
 
 class PDFSet(
-        object):
+        HasConfig,
+):
     """This class describes a set of PDF objects which are related to each other
     via different values of a set of parameters. A signal PDF usually
     consists of multiple same-kind PDFs for different signal parameters.
@@ -1656,7 +1659,7 @@ class PDFSet(
                     f'New axes:\n{str(pdf.axes)}\n'
                     f'Old axes:\n{str(some_pdf.axes)}')
 
-        if is_tracing_enabled():
+        if self._cfg.is_tracing_enabled:
             logger.debug(f'Adding PDF for gridparams {gridparams}.')
 
         self._gridparams_hash_pdf_dict[gridparams_hash] = pdf
