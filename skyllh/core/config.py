@@ -133,17 +133,16 @@ class Config(
             The instance of Config holding the base configuration and updated by
             the configuration given in the yaml file.
         """
+        cfg = cls()
+
         if pathfilename is None:
-            return
+            return cfg
 
         yaml = tool.get('yaml')
 
         user_config_dict = yaml.load(
             open(pathfilename),
             Loader=yaml.SafeLoader)
-
-        cfg = cls()
-
         cfg.update(user_config_dict)
 
         return cfg
