@@ -110,8 +110,8 @@ class Config(
         """
         super().__init__(_BASECONFIG)
 
-    @tool.requires('yaml')
     @classmethod
+    @tool.requires('yaml')
     def from_yaml(
             cls,
             pathfilename: str,
