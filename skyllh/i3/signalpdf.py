@@ -209,7 +209,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         data_true_energy = data_mc['true_energy']
 
         flux_unit_conv_factor =\
-            fluxmodel.get_conversion_factor_to_internal_flux_unit()
+            fluxmodel.to_internal_flux_unit()
 
         args_list = [
             (

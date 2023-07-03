@@ -282,7 +282,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit.
         to_internal_flux_unit =\
-            fluxmodel.get_conversion_factor_to_internal_flux_unit()
+            fluxmodel.to_internal_flux_unit()
 
         # Select the events that belong to a given source.
         ev_idx_arr = np.empty(

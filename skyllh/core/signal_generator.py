@@ -578,7 +578,7 @@ class MCMultiDatasetSignalGenerator(
             # Calculate conversion factor from the flux model unit into the
             # internal flux unit.
             to_internal_flux_unit =\
-                fluxmodel.get_conversion_factor_to_internal_flux_unit()
+                fluxmodel.to_internal_flux_unit()
             for k in range(shg.n_sources):
                 mask = ((self._sig_candidates['shg_idx'] == shg_idx) &
                         (self._sig_candidates['shg_src_idx'] == k))
