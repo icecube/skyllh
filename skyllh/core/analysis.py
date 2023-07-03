@@ -571,6 +571,7 @@ class Analysis(
                 f'defined for this analysis ({classname(self)})!')
 
         self._bkg_generator = self.bkg_generator_cls(
+            cfg=self._cfg,
             bkg_gen_method=self._bkg_gen_method,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
@@ -584,6 +585,7 @@ class Analysis(
         through the source hypothesis group.
         """
         self._sig_generator = self.sig_generator_cls(
+            cfg=self._cfg,
             shg_mgr=self._shg_mgr,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
