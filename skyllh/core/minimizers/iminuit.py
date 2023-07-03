@@ -7,9 +7,11 @@ import iminuit
 
 import numpy as np
 
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.debugging import (
     get_logger,
-    is_tracing_enabled,
 )
 from skyllh.core.minimizer import (
     MinimizerImpl,
@@ -19,15 +21,21 @@ from skyllh.core.minimizer import (
 logger = get_logger(__name__)
 
 
-class FuncWithGradsFunctor(object):
+class FuncWithGradsFunctor(
+        HasConfig,
+):
     """Helper class to evaluate the LLH function that returns the function value
     and its gradients in two seperate calls, one for the LLH function value and
     one for its gradient values.
     """
 
-    def __init__(self, func, func_args=None):
-        """
-        Initializes a new functor instance for the given function ``func``.
+    def __init__(
+            self,
+            func,
+            func_args=None,
+            **kwargs,
+    ):
+        """Initializes a new functor instance for the given function ``func``.
 
         Parameters
         ----------
@@ -40,7 +48,8 @@ class FuncWithGradsFunctor(object):
         func_args : tuple | None
             The optional positional arguments for the function ``func``.
         """
-        super().__init__()
+        super().__init__(
+            **kwargs)
 
         if func_args is None:
             func_args = tuple()
@@ -48,7 +57,7 @@ class FuncWithGradsFunctor(object):
         self._func = func
         self._func_args = func_args
 
-        self._tracing = is_tracing_enabled()
+        self._tracing = self._cfg.is_tracing_enabled
 
         self._cache_x = None
         self._cache_f = None
@@ -107,7 +116,11 @@ class IMinuitMinimizerImpl(
     """The SkyLLH minimizer implementation that utilizes the iminuit minimizer.
     """
 
-    def __init__(self, ftol=1e-6):
+    def __init__(
+            self,
+            ftol=1e-6,
+            **kwargs,
+    ):
         """Creates a new IMinuit minimizer instance to minimize a given
         function.
 
@@ -116,7 +129,7 @@ class IMinuitMinimizerImpl(
         ftol : float
             The function value tolerance as absolute value.
         """
-        super().__init__()
+        super().__init__(**kwargs)
 
         self._ftol = ftol
 
@@ -187,6 +200,7 @@ class IMinuitMinimizerImpl(
             # The function func returns the function value and its gradients,
             # so we need to use the FuncWithGradsFunctor helper class.
             functor = FuncWithGradsFunctor(
+                cfg=self._cfg,
                 func=func,
                 func_args=func_args)
 
