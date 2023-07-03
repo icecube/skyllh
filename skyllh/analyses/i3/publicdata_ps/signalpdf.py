@@ -50,13 +50,15 @@ from skyllh.i3.dataset import (
 
 class PDSignalEnergyPDF(
         PDF,
-        IsSignalPDF):
+        IsSignalPDF,
+):
     """This class provides a signal energy PDF for a spectrial index value.
     """
     def __init__(
             self,
             f_e_spl,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new signal energy PDF instance for a particular spectral
         index value.
 
@@ -208,7 +210,8 @@ class PDSignalEnergyPDFSet(
             param_grid_set,
             ncpu=None,
             ppbar=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new PDSignalEnergyPDFSet instance for the public data.
 
         Parameters
@@ -398,7 +401,7 @@ class PDSignalEnergyPDFSet(
 
             spline = FctSpline1D(sum_pdf, xvals_binedges, norm=True)
 
-            pdf = PDSignalEnergyPDF(spline)
+            pdf = PDSignalEnergyPDF(spline, cfg=self._cfg)
 
             return pdf
 
