@@ -278,8 +278,9 @@ class IsSignalPDF(object):
 
 
 class PDF(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     r"""This is the abstract base class for all probability distribution
     function (PDF) models.
     All PDF model classes must be derived from this class. Mathematically, it
@@ -292,7 +293,8 @@ class PDF(
             self,
             pmm=None,
             param_set=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new PDF instance.
 
         Parameters
