@@ -1302,6 +1302,9 @@ class BoxTimeFluxProfile(
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
+        **kwargs
+            Additional keyword arguments, which are passed to the constructor
+            of the :class:`BoxTimeFluxProfile` class.
 
         Returns
         -------
