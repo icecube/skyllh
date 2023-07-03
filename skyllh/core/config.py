@@ -20,6 +20,7 @@ from skyllh.core import (
     tool,
 )
 from skyllh.core.py import (
+    classname,
     issequenceof,
 )
 
@@ -551,5 +552,6 @@ class HasConfig(
     def cfg(self, c):
         if not isinstance(c, Config):
             raise TypeError(
-                'The cfg property must be an instance of Config!')
+                'The cfg property must be an instance of Config! '
+                f'Currently its type is {classname(c)}!')
         self._cfg = c
