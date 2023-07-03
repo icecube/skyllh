@@ -738,7 +738,7 @@ def do_trials_with_em(
     result_list = parallelize(
         func=do_trial_with_em,
         args_list=args_list,
-        ncpu=get_ncpu(ncpu),
+        ncpu=get_ncpu(cfg=ana.cfg, local_ncpu=ncpu),
         rss=rss,
         tl=tl,
         ppbar=ppbar,
