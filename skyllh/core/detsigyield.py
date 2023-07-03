@@ -2,10 +2,8 @@
 
 import abc
 
-from skyllh.core.py import (
-    classname,
-    issequence,
-    issequenceof,
+from skyllh.core.config import (
+    HasConfig,
 )
 from skyllh.core.dataset import (
     Dataset,
@@ -19,6 +17,11 @@ from skyllh.core.livetime import (
 )
 from skyllh.core.progressbar import (
     ProgressBar,
+)
+from skyllh.core.py import (
+    classname,
+    issequence,
+    issequenceof,
 )
 from skyllh.core.types import (
     SourceHypoGroup_t,
@@ -209,7 +212,7 @@ class DetSigYield(
 
 
 class DetSigYieldBuilder(
-        object,
+        HasConfig,
         metaclass=abc.ABCMeta,
 ):
     """Abstract base class for a builder of a detector signal yield. Via the

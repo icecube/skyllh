@@ -14,9 +14,6 @@ from skyllh.core import (
 from skyllh.core.binning import (
     BinningDefinition,
 )
-from skyllh.core.config import (
-    to_internal_time_unit,
-)
 from skyllh.core.flux_model import (
     FactorizedFluxModel,
 )
@@ -149,7 +146,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         # Get integrated live-time in days.
         livetime_days = Livetime.get_integrated_livetime(data.livetime)
 
-        to_internal_time_unit_factor = to_internal_time_unit(
+        to_internal_time_unit_factor = self._cfg.to_internal_time_unit(
             time_unit=units.day
         )
 
