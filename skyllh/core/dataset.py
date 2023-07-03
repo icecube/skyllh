@@ -14,7 +14,7 @@ from skyllh.core.binning import (
     BinningDefinition,
 )
 from skyllh.core.config import (
-    Config,
+    HasConfig,
 )
 from skyllh.core.display import (
     ANSIColors,
@@ -43,7 +43,7 @@ from skyllh.core.timing import (
 
 
 class Dataset(
-        object,
+        HasConfig,
 ):
     """The Dataset class describes a set of self-consistent experimental and
     simulated detector data. Usually this is for a certain time period, i.e.
@@ -135,7 +135,6 @@ class Dataset(
 
     def __init__(
             self,
-            cfg,
             name,
             exp_pathfilenames,
             mc_pathfilenames,
@@ -145,14 +144,13 @@ class Dataset(
             verqualifiers=None,
             base_path=None,
             sub_path_fmt=None,
+            **kwargs,
     ):
         """Creates a new dataset object that describes a self-consistent set of
         data.
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         name : str
             The name of the dataset.
         exp_pathfilenames : str | sequence of str | None
@@ -185,7 +183,8 @@ class Dataset(
             The user-defined format of the sub path of the data set.
             If set to ``None``, the ``default_sub_path_fmt`` will be used.
         """
-        self.cfg = cfg
+        super().__init__(**kwargs)
+
         self.name = name
         self.exp_pathfilename_list = exp_pathfilenames
         self.mc_pathfilename_list = mc_pathfilenames
@@ -208,19 +207,6 @@ class Dataset(
         self._binning_definitions = dict()
         self._aux_data_definitions = dict()
         self._aux_data = dict()
-
-    @property
-    def cfg(self):
-        """The instance of Config holding the local configuration.
-        """
-        return self._cfg
-
-    @cfg.setter
-    def cfg(self, c):
-        if not isinstance(c, Config):
-            raise TypeError(
-                'The cfg property must be an instance of Config!')
-        self._cfg = c
 
     @property
     def name(self):
