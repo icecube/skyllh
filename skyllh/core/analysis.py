@@ -15,6 +15,9 @@ from skyllh.core.background_generator import (
     BackgroundGenerator,
     BackgroundGeneratorBase,
 )
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.dataset import (
     Dataset,
     DatasetData,
@@ -81,8 +84,9 @@ logger = get_logger(__name__)
 
 
 class Analysis(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     """This is the abstract base class for all analysis classes.
     It contains common properties required by all analyses and defines the
     overall analysis interface how to setup and run an analysis.
@@ -1696,6 +1700,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
         # dataset.
         llhratio_list = [
             ZeroSigH0SingleDatasetTCLLHRatio(
+                cfg=self._cfg,
                 pmm=self._pmm,
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
@@ -1707,6 +1712,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
+            cfg=self._cfg,
             pmm=self._pmm,
             minimizer=minimizer,
             src_detsigyield_weights_service=self.src_detsigyield_weights_service,
@@ -1870,6 +1876,7 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
         # dataset.
         llhratio_list = [
             ZeroSigH0SingleDatasetTCLLHRatio(
+                cfg=self._cfg,
                 pmm=self._pmm,
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
@@ -1885,6 +1892,7 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
+            cfg=self._cfg,
             pmm=self._pmm,
             minimizer=minimizer,
             src_detsigyield_weights_service=self.src_detsigyield_weights_service,
