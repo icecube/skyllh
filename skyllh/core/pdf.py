@@ -223,7 +223,9 @@ class PDFAxes(NamedObjectCollection):
         return True
 
 
-class IsBackgroundPDF(object):
+class IsBackgroundPDF(
+        object,
+):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a background PDF. This is useful for type checking.
     """
@@ -232,6 +234,10 @@ class IsBackgroundPDF(object):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsBackgroundPDF class.
         """
+        if not isinstance(self, PDF):
+            raise TypeError(
+                f'The class "{classname(self)}" is not derived from PDF!')
+
         super().__init__(*args, **kwargs)
 
     def __mul__(self, other):
@@ -247,10 +253,12 @@ class IsBackgroundPDF(object):
             raise TypeError(
                 'The other PDF must be an instance of IsBackgroundPDF!')
 
-        return BackgroundPDFProduct(self, other)
+        return BackgroundPDFProduct(self, other, cfg=self.cfg)
 
 
-class IsSignalPDF(object):
+class IsSignalPDF(
+        object,
+):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a signal PDF.
     """
@@ -259,6 +267,10 @@ class IsSignalPDF(object):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsSignalPDF class.
         """
+        if not isinstance(self, PDF):
+            raise TypeError(
+                f'The class "{classname(self)}" is not derived from PDF!')
+
         super().__init__(*args, **kwargs)
 
     def __mul__(self, other):
@@ -274,7 +286,7 @@ class IsSignalPDF(object):
             raise TypeError(
                 'The other PDF must be an instance of IsSignalPDF!')
 
-        return SignalPDFProduct(self, other)
+        return SignalPDFProduct(self, other, cfg=self.cfg)
 
 
 class PDF(
