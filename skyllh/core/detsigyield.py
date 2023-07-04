@@ -3,6 +3,7 @@
 import abc
 
 from skyllh.core.config import (
+    Config,
     HasConfig,
 )
 from skyllh.core.dataset import (
@@ -326,9 +327,23 @@ class NullDetSigYieldBuilder(
     """
     def __init__(
             self,
+            cfg=None,
             **kwargs,
     ):
+        """Creates a new instance of NullDetSigYieldBuilder.
+
+        Parameters
+        ----------
+        cfg : instance of Config | None
+            The instance of Config holding the local configuration. Since this
+            detector signal yield builder does nothing, this argument is
+            optional. If not provided the default configuration is used.
+        """
+        if cfg is None:
+            cfg = Config()
+
         super().__init__(
+            cfg=cfg,
             **kwargs)
 
     def construct_detsigyield(

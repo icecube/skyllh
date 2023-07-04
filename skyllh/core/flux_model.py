@@ -26,6 +26,7 @@ from skyllh.core import (
     tool,
 )
 from skyllh.core.config import (
+    Config,
     HasConfig,
 )
 from skyllh.core.math import (
@@ -2025,8 +2026,28 @@ class NullFluxModel(
     testing purposes, in cases where an actual flux model is not required but
     the framework interface requires one.
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+            self,
+            *args,
+            cfg=None,
+            **kwargs,
+    ):
+        """Creates a new instance of NullFluxModel.
+
+        Parameters
+        ----------
+        cfg : instance of Config | None
+            The instance of Config holding the local configuration. Since this
+            flux model does nothing, this argument is optional. If not provided
+            the default configuration is used.
+        """
+        if cfg is None:
+            cfg = Config()
+
+        super().__init__(
+            *args,
+            cfg=cfg,
+            **kwargs)
 
     def math_function_str(self):
         """Since this is a dummy flux model, calling this method will raise a
