@@ -611,7 +611,9 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         hists = multiproc.parallelize(
             func=self._create_hist,
             args_list=args_list,
-            ncpu=multiproc.get_ncpu(local_ncpu=self.ncpu),
+            ncpu=multiproc.get_ncpu(
+                cfg=self._cfg,
+                local_ncpu=self.ncpu),
             ppbar=ppbar,
         )
 
