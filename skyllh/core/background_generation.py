@@ -5,7 +5,7 @@ import abc
 import numpy as np
 
 from skyllh.core.config import (
-    Config,
+    HasConfig,
 )
 from skyllh.core.debugging import (
     get_logger,
@@ -32,7 +32,7 @@ logger = get_logger(__name__)
 
 
 class BackgroundGenerationMethod(
-        object,
+        HasConfig,
         metaclass=abc.ABCMeta,
 ):
     """This is the abstract base class for a detector specific background
@@ -41,32 +41,11 @@ class BackgroundGenerationMethod(
 
     def __init__(
             self,
-            cfg,
             **kwargs,
     ):
         """Constructs a new background generation method instance.
-
-        Parameters
-        ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         """
         super().__init__(**kwargs)
-
-        self.cfg = cfg
-
-    @property
-    def cfg(self):
-        """The instance of Config holding the local configuration.
-        """
-        return self._cfg
-
-    @cfg.setter
-    def cfg(self, c):
-        if not isinstance(c, Config):
-            raise TypeError(
-                'The cfg property must be an instance of Config!')
-        self._cfg = c
 
     def change_shg_mgr(self, shg_mgr):
         """Notifies the background generation method about an updated
@@ -138,7 +117,6 @@ class MCDataSamplingBkgGenMethod(
     """
     def __init__(
             self,
-            cfg,
             get_event_prob_func,
             get_mean_func=None,
             unique_events=False,
@@ -152,8 +130,6 @@ class MCDataSamplingBkgGenMethod(
 
         Parameters
         ----------
-        cfg : instance of Config
-            The instance of Config holding the local configuration.
         get_event_prob_func : callable
             The function to get the background probability of each monte-carlo
             event. The call signature of this function must be
@@ -204,7 +180,6 @@ class MCDataSamplingBkgGenMethod(
             MC data can be reduced prior to background event generation.
         """
         super().__init__(
-            cfg=cfg,
             **kwargs)
 
         self.get_event_prob_func = get_event_prob_func
