@@ -1022,6 +1022,7 @@ def create_analysis(  # noqa: C901
             data_exp=data.exp,
             sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(
+            cfg=cfg,
             sig_pdf=spatial_sigpdf,
             bkg_pdf=spatial_bkgpdf)
 
@@ -1044,6 +1045,7 @@ def create_analysis(  # noqa: C901
             kde_smoothing=kde_smoothing)
 
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
+            cfg=cfg,
             sig_pdf_set=energy_sigpdfset,
             bkg_pdf=energy_bkgpdf,
             cap_ratio=cap_ratio)
@@ -1065,6 +1067,7 @@ def create_analysis(  # noqa: C901
                 gauss=gauss,
                 box=box)
             time_pdfratio = SigOverBkgPDFRatio(
+                cfg=cfg,
                 sig_pdf=time_sigpdf,
                 bkg_pdf=time_bkgpdf,
                 same_axes=False,
@@ -1195,6 +1198,7 @@ if __name__ == '__main__':
 
     # Define the point source.
     source = PointLikeSource(
+        name='My Point-Like-Source',
         ra=np.deg2rad(args.ra),
         dec=np.deg2rad(args.dec))
     print(f'source: {source}')

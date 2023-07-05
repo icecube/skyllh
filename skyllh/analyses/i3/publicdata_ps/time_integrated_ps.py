@@ -355,6 +355,7 @@ def create_analysis(
             data_exp=data.exp,
             sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(
+            cfg=cfg,
             sig_pdf=spatial_sigpdf,
             bkg_pdf=spatial_bkgpdf)
 
@@ -377,6 +378,7 @@ def create_analysis(
             kde_smoothing=kde_smoothing)
 
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
+            cfg=cfg,
             sig_pdf_set=energy_sigpdfset,
             bkg_pdf=energy_bkgpdf,
             cap_ratio=cap_ratio)
@@ -499,6 +501,7 @@ if __name__ == '__main__':
 
     # Define the point source.
     source = PointLikeSource(
+        name='My Point-Like-Source',
         ra=np.deg2rad(args.ra),
         dec=np.deg2rad(args.dec))
     print(f'source: {source}')
@@ -529,9 +532,10 @@ if __name__ == '__main__':
     (_, _, _, trials) = create_trial_data_file(
         ana=ana,
         rss=rss,
-        n_trials=1e3,
+        n_trials=10,
         mean_n_sig=0,
         pathfilename=None,
         ncpu=1,
         tl=tl)
+    print(f'trials: {trials}')
     print(tl)
