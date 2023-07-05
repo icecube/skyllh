@@ -1886,6 +1886,7 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
                 shg_mgr=self._shg_mgr,
                 tdm=tdm,
                 pdfratio=SourceWeightedPDFRatio(
+                    cfg=self._cfg,
                     dataset_idx=dataset_idx,
                     src_detsigyield_weights_service=self.src_detsigyield_weights_service,
                     pdfratio=pdfratio)
