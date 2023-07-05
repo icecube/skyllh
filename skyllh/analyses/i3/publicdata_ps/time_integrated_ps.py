@@ -30,6 +30,9 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
+from skyllh.core.background_generator import (
+    DatasetBackgroundGenerator,
+)
 from skyllh.core.config import (
     Config,
 )
@@ -401,6 +404,13 @@ def create_analysis(
             data.exp,
             spl_smooth[ds_idx])
 
+        bkg_generator = DatasetBackgroundGenerator(
+            cfg=cfg,
+            dataset=ds,
+            data=data,
+            bkg_gen_method=bkg_gen_method,
+        )
+
         sig_generator = PDDatasetSignalGenerator(
             cfg=cfg,
             shg_mgr=shg_mgr,
@@ -416,6 +426,7 @@ def create_analysis(
             pdfratio=pdfratio,
             tdm=tdm,
             event_selection_method=event_selection_method,
+            bkg_generator=bkg_generator,
             sig_generator=sig_generator)
 
         pbar.increment()
