@@ -21,6 +21,14 @@ v23.2.0
     - The source_model and flux_model modules of the skyllh.physics module have
       been moved to the skyllh.core module.
 
+- Local configuration for an analysis.
+
+    - The global configuration dictionary skyllh.core.config.CFG has been
+      replaced by a local skyllh.core.config.Config instance, which is passed to
+      an Analysis instance and all other class instances that need access to the
+      configuration. Classes derived from skyllh.core.config.HasConfig provide
+      the cfg property and require the cfg argument in their constructor.
+
 - New generic flux model function concept.
 - New generic PDF class for time PDFs.
 - Support for Parquet data files via optional pyarrow Python package.
