@@ -29,7 +29,10 @@ from skyllh.core.timing import (
 logger = get_logger(__name__)
 
 
-class I3EnergyPDF(EnergyPDF, UsesBinning):
+class I3EnergyPDF(
+        EnergyPDF,
+        UsesBinning,
+):
     """This is the base class for all IceCube specific energy PDF models.
     IceCube energy PDFs depend soley on the energy and the
     zenith angle, and hence, on the declination of the event.
@@ -46,7 +49,9 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             data_physicsweight,
             log10_energy_binning,
             sin_dec_binning,
-            smoothing_filter):
+            smoothing_filter,
+            **kwargs,
+    ):
         """Creates a new IceCube energy PDF object.
 
         Parameters
@@ -76,7 +81,8 @@ class I3EnergyPDF(EnergyPDF, UsesBinning):
             If ``None``, no smoothing will be applied.
         """
         super().__init__(
-            pmm=pmm)
+            pmm=pmm,
+            **kwargs)
 
         # Define the PDF axes.
         self.add_axis(

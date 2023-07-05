@@ -10,9 +10,8 @@ import numpy as np
 
 import scipy.interpolate
 
-from skyllh.core import multiproc
-from skyllh.core.config import (
-    to_internal_time_unit,
+from skyllh.core import (
+    multiproc,
 )
 from skyllh.core.py import (
     classname,
@@ -564,11 +563,11 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         # Calculate conversion factor from the flux model unit into the
         # internal flux unit (usually GeV^-1 cm^-2 s^-1).
         to_internal_flux_unit_factors = [
-            shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
+            shg.fluxmodel.to_internal_flux_unit()
             for shg in shgs
         ]
 
-        to_internal_time_unit_factor = to_internal_time_unit(
+        to_internal_time_unit_factor = self._cfg.to_internal_time_unit(
             time_unit=units.day
         )
 
@@ -612,7 +611,9 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         hists = multiproc.parallelize(
             func=self._create_hist,
             args_list=args_list,
-            ncpu=multiproc.get_ncpu(local_ncpu=self.ncpu),
+            ncpu=multiproc.get_ncpu(
+                cfg=self._cfg,
+                local_ncpu=self.ncpu),
             ppbar=ppbar,
         )
 
@@ -1001,9 +1002,9 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        to_internal_flux_unit_factor = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
+        to_internal_flux_unit_factor = shg.fluxmodel.to_internal_flux_unit()
 
-        to_internal_time_unit_factor = to_internal_time_unit(
+        to_internal_time_unit_factor = self._cfg.to_internal_time_unit(
             time_unit=units.day
         )
 

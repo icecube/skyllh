@@ -3,6 +3,9 @@
 from skyllh.core.background_generation import (
     BackgroundGenerationMethod,
 )
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.dataset import (
     Dataset,
     DatasetData,
@@ -14,7 +17,8 @@ from skyllh.core.py import (
 
 
 class BackgroundGeneratorBase(
-        object):
+        HasConfig,
+):
     """This is the abstract base class for all background generator classes in
     SkyLLH. It defines the interface for background generators.
     """

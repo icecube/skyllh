@@ -14,6 +14,7 @@ from skyllh.core.debugging import (
 
 
 def setup_logging(
+        cfg,
         script_logger_name,
         log_format=None,
         log_level=logging.INFO,
@@ -24,14 +25,13 @@ def setup_logging(
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     script_logger_name : str
         The name of the logger used by the script.
     log_format : str | None
         The format template of the log message. If set to ``Ǹone``, the format
-        will be
-
-            ``'%(asctime)s %(processName)s %(name)s %(levelname)s: %(message)s'``
-
+        will be taken from ``cfg['debugging']['log_format']``.
     log_level : int
         The log level of the loggers. The default is ``logging.INFO``.
     debug_pathfilename : str | None
@@ -44,16 +44,17 @@ def setup_logging(
         The logger instance of the script, specified by ``script_logger_name``.
     """
     if log_format is None:
-        log_format = '%(asctime)s %(processName)s %(name)s %(levelname)s: '\
-                     '%(message)s'
+        log_format = cfg['debugging']['log_format']
 
     setup_console_handler(
+        cfg=cfg,
         name='skyllh',
         log_level=log_level,
         log_format=log_format
     )
 
     setup_console_handler(
+        cfg=cfg,
         name=script_logger_name,
         log_level=log_level,
         log_format=log_format
@@ -61,12 +62,14 @@ def setup_logging(
 
     if debug_pathfilename is not None:
         setup_file_handler(
+            cfg=cfg,
             name='skyllh',
             filename=debug_pathfilename,
             log_format=log_format,
             log_level=logging.DEBUG
         )
         setup_file_handler(
+            cfg=cfg,
             name=script_logger_name,
             filename=debug_pathfilename,
             log_format=log_format,

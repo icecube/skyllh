@@ -37,7 +37,8 @@ Setup
 Using pip
 ---------
 
-The latest `skyllh` release can be installed from `PyPI <https://pypi.org/project/skyllh/>`_ repository:
+The latest `skyllh` release can be installed from the
+`PyPI <https://pypi.org/project/skyllh/>`_ repository:
 
 .. code:: bash
 
@@ -49,7 +50,8 @@ The current development version can be installed using pip:
 
     pip install git+https://github.com/icecube/skyllh.git#egg=skyllh
 
-Optionally, the editable package version with a specified reference can be installed by:
+Optionally, the editable package version with a specified reference can be
+installed by:
 
 .. code:: bash
 
@@ -57,8 +59,9 @@ Optionally, the editable package version with a specified reference can be insta
 
 where
 
-* `-e` is an editable flag
-* `[ref]` is an optional argument containing a specific commit hash, branch name or tag
+* `-e` is the editable flag
+* `[ref]` is an optional argument containing a specific commit hash, branch name
+  or tag
 
 Cloning from GitHub
 -------------------
@@ -67,27 +70,30 @@ The framework is split into two packages:
 
 1. `github.com/icecube/skyllh <https://github.com/icecube/skyllh>`_
 
-  * contains open source code with classes defining detector independent likelihood framework
+  * Contains open source code with classes defining the detector independent
+    likelihood framework.
 
 2. `github.com/icecube/i3skyllh <https://github.com/icecube/i3skyllh>`_
 
-  * contains collections of pre-defined SkyLLH IceCube analyses and pre-defined IceCube datasets
+  * Contains collections of pre-defined SkyLLH IceCube analyses and pre-defined
+    IceCube datasets.
 
-In order to set it up, we have to clone git repositories and add them to the `PYTHONPATH`:
+In order to set it up, we have to clone git repositories and add them to the
+`PYTHONPATH`:
 
 .. code:: bash
 
-    git clone git@github.com:icecube/skyllh.git
-    git clone git@github.com:icecube/i3skyllh.git
+    git clone git@github.com:icecube/skyllh.git /path/to/skyllh
+    git clone git@github.com:icecube/i3skyllh.git /path/to/i3skyllh
     export PYTHONPATH=$PYTHONPATH:/path/to/skyllh
     export PYTHONPATH=$PYTHONPATH:/path/to/i3skyllh
 
-Alternatively, we can add then inside python script:
+Alternatively, we can add them inside the python script:
 
 .. code:: python
 
     import sys
 
-    # Add skyllh and i3skyllh projects to the PYTHONPATH
+    # Add the skyllh and i3skyllh packages to the PYTHONPATH.
     sys.path.insert(0, '/path/to/skyllh')
     sys.path.insert(0, '/path/to/i3skyllh')

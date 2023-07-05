@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
 import os.path
 
-from skyllh.core import display
-from skyllh.core.py import (
-    issequenceof,
-    module_classname,
+import numpy as np
+
+from skyllh.core import (
+    display,
 )
 from skyllh.core.dataset import (
     Dataset,
@@ -15,6 +14,10 @@ from skyllh.core.dataset import (
 from skyllh.core.debugging import (
     get_logger,
 )
+from skyllh.core.py import (
+    issequenceof,
+    module_classname,
+)
 from skyllh.core.storage import (
     DataFieldRecordArray,
     create_FileLoader,
@@ -22,16 +25,6 @@ from skyllh.core.storage import (
 from skyllh.core.timing import (
     TaskTimer,
 )
-
-# Load the IceCube specific config defaults.
-# This will change the skyllh.core.config.CFG dictionary.
-from skyllh.i3.config import (
-    add_icecube_specific_analysis_required_data_fields,
-)
-
-# Add default analysis required data fields for experimental and monte-carlo
-# data that are IceCube specific.
-add_icecube_specific_analysis_required_data_fields()
 
 
 class I3Dataset(
@@ -416,20 +409,26 @@ class I3DatasetData(
     monto-carlo data of a data set. It's the IceCube specific class that also
     holds the good-run-list (GRL) data.
     """
-    def __init__(self, data, data_grl):
+    def __init__(
+            self,
+            data,
+            data_grl,
+    ):
         """Constructs a new I3DatasetData instance.
 
         Parameters
         ----------
-        data : DatasetData instance
-            The DatasetData instance holding the experimental and monte-carlo
+        data : instance of DatasetData
+            The instance of DatasetData holding the experimental and monte-carlo
             data.
-        data_grl : DataFieldRecordArray instance | None
-            The DataFieldRecordArray instance holding the good-run-list data
+        data_grl : instance of DataFieldRecordArray | None
+            The instance of DataFieldRecordArray holding the good-run-list data
             of the dataset. This can be None, if no GRL data is available.
         """
-        super(I3DatasetData, self).__init__(
-            data._exp, data._mc, data._livetime)
+        super().__init__(
+            data_exp=data._exp,
+            data_mc=data._mc,
+            livetime=data._livetime)
 
         self.grl = data_grl
 

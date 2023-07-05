@@ -3,6 +3,9 @@
 import os.path
 import unittest
 
+from skyllh.core.config import (
+    Config,
+)
 from skyllh.core.storage import (
     create_FileLoader,
 )
@@ -20,6 +23,7 @@ class I3LivetimeTestCase(
     """Test I3Livetime class.
     """
     def setUp(self):
+        self.cfg = Config()
         self.path = os.path.abspath(os.path.dirname(__file__))
         self.exp_pathfilenames = os.path.join(self.path, "testdata/exp_testdata.npy")
         self.grl_pathfilenames = os.path.join(self.path, 'testdata/grl_testdata.npy')
@@ -56,6 +60,7 @@ class I3LivetimeTestCase(
             livetime=self.livetime_total,
             default_sub_path_fmt='',
             version=1,
+            cfg=self.cfg,
         )
 
         i3livetime = I3Livetime.from_I3Dataset(i3dataset)

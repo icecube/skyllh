@@ -4,29 +4,9 @@ import logging
 import os.path
 import sys
 
-from skyllh.core.config import CFG
-
 
 # Initialize the root logger.
 logging.root.setLevel(logging.NOTSET)
-
-
-def enable_tracing():
-    """Enables the tracing log debug messages of SkyLLH.
-    """
-    CFG['debugging']['enable_tracing'] = True
-
-
-def disable_tracing():
-    """Disables the tracing log debug messages of SkyLLH.
-    """
-    CFG['debugging']['enable_tracing'] = False
-
-
-def is_tracing_enabled():
-    """Returns True, if tracing is enabled, False otherwise.
-    """
-    return CFG['debugging']['enable_tracing']
 
 
 def get_logger(
@@ -66,6 +46,7 @@ def setup_logger(
 
 
 def setup_console_handler(
+        cfg,
         name,
         log_level=None,
         log_format=None,
@@ -75,6 +56,8 @@ def setup_console_handler(
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     name : str
         Logger name. Loggers hierarchy is defined using dots as separators.
     log_level : int | None
@@ -93,7 +76,7 @@ def setup_console_handler(
         log_level = logger.level
 
     if log_format is None:
-        log_format = CFG['debugging']['log_format']
+        log_format = cfg['debugging']['log_format']
 
     if stream is None:
         stream = sys.stderr
@@ -106,6 +89,7 @@ def setup_console_handler(
 
 
 def setup_file_handler(
+        cfg,
         name,
         filename,
         log_level=None,
@@ -117,6 +101,8 @@ def setup_file_handler(
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     name : str
         Logger name. Loggers hierarchy is defined using dots as separators.
     log_level : int | None
@@ -140,10 +126,10 @@ def setup_file_handler(
         log_level = logger.level
 
     if path is None:
-        path = CFG['project']['working_directory']
+        path = cfg['project']['working_directory']
 
     if log_format is None:
-        log_format = CFG['debugging']['log_format']
+        log_format = cfg['debugging']['log_format']
 
     pathfilename = os.path.join(path, filename)
 

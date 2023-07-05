@@ -3,6 +3,12 @@
 import numpy as np
 import unittest
 
+from skyllh.core import (
+    tool,
+)
+from skyllh.core.config import (
+    Config,
+)
 from skyllh.core.flux_model import (
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
@@ -25,6 +31,10 @@ from skyllh.core.source_hypo_grouping import (
 from skyllh.core.source_model import (
     PointLikeSource,
 )
+
+from skyllh.i3.config import (
+    add_icecube_specific_analysis_required_data_fields,
+)
 from skyllh.i3.detsigyield import (
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
 )
@@ -32,18 +42,12 @@ from skyllh.i3.signal_generation import (
     PointLikeSourceI3SignalGenerationMethod,
 )
 
-DATA_SAMPLES_IMPORTED = True
-try:
-    from i3skyllh.datasets import repository
-    from i3skyllh.datasets import data_samples
-except Exception:
-    DATA_SAMPLES_IMPORTED = False
 
-if DATA_SAMPLES_IMPORTED is True:
-    repository.setup_repository()
+DATA_SAMPLES_IMPORTED = tool.is_available('i3skyllh')
 
 
 def create_signal_generator(
+        cfg,
         sig_generator_cls,
         sig_gen_method,
 ):
@@ -53,6 +57,8 @@ def create_signal_generator(
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     sig_generator_cls : class of SignalGenerator
         The class object of the signal generator.
     sig_gen_method : instance of SignalGenerationMethod
@@ -65,8 +71,12 @@ def create_signal_generator(
         The created instance of ``sig_generator_cls`` which is derived from
         SignalGenerator.
     """
+    add_icecube_specific_analysis_required_data_fields(cfg)
+
+    datasets = tool.get('i3skyllh.datasets')
+
     dataset_name = 'PointSourceTracks_v004p00'
-    dsc = data_samples[dataset_name].create_dataset_collection()
+    dsc = datasets.data_samples[dataset_name].create_dataset_collection(cfg=cfg)
     ds_list = dsc.get_datasets(['IC86, 2018', 'IC86, 2019'])
 
     data_list = [ds.load_and_prepare_data() for ds in ds_list]
@@ -78,12 +88,17 @@ def create_signal_generator(
 
     fluxmodel = SteadyPointlikeFFM(
         Phi0=1,
-        energy_profile=PowerLawEnergyFluxProfile(E0=1000, gamma=2)
+        energy_profile=PowerLawEnergyFluxProfile(
+            E0=1000,
+            gamma=2,
+            cfg=cfg),
+        cfg=cfg,
     )
 
     gamma_grid = ParameterGrid(name='gamma', grid=np.arange(1, 4.1, 0.1))
     detsigyield_builder = SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
-        param_grid=gamma_grid)
+        param_grid=gamma_grid,
+        cfg=cfg)
 
     shg_mgr = SourceHypoGroupManager(
         SourceHypoGroup(
@@ -107,6 +122,7 @@ def create_signal_generator(
     )
 
     sig_gen = sig_generator_cls(
+        cfg=cfg,
         shg_mgr=shg_mgr,
         dataset_list=ds_list,
         data_list=data_list,
@@ -124,7 +140,13 @@ class TestSignalGenerator(unittest.TestCase):
         if not DATA_SAMPLES_IMPORTED:
             return
 
+        cls.cfg = Config()
+
+        repository = tool.get('i3skyllh.datasets.repository')
+        repository.setup_repository(cls.cfg)
+
         cls._sig_gen = create_signal_generator(
+            cfg=cls.cfg,
             sig_generator_cls=MCMultiDatasetSignalGenerator,
             sig_gen_method=PointLikeSourceI3SignalGenerationMethod())
 

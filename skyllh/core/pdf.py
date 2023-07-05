@@ -10,6 +10,9 @@ from skyllh.core import (
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.display import (
     INDENTATION_WIDTH,
 )
@@ -27,7 +30,6 @@ from skyllh.core.py import (
 )
 from skyllh.core.debugging import (
     get_logger,
-    is_tracing_enabled,
 )
 from skyllh.core.flux_model import (
     TimeFluxProfile,
@@ -221,7 +223,9 @@ class PDFAxes(NamedObjectCollection):
         return True
 
 
-class IsBackgroundPDF(object):
+class IsBackgroundPDF(
+        object,
+):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a background PDF. This is useful for type checking.
     """
@@ -230,6 +234,10 @@ class IsBackgroundPDF(object):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsBackgroundPDF class.
         """
+        if not isinstance(self, PDF):
+            raise TypeError(
+                f'The class "{classname(self)}" is not derived from PDF!')
+
         super().__init__(*args, **kwargs)
 
     def __mul__(self, other):
@@ -245,10 +253,12 @@ class IsBackgroundPDF(object):
             raise TypeError(
                 'The other PDF must be an instance of IsBackgroundPDF!')
 
-        return BackgroundPDFProduct(self, other)
+        return BackgroundPDFProduct(self, other, cfg=self.cfg)
 
 
-class IsSignalPDF(object):
+class IsSignalPDF(
+        object,
+):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a signal PDF.
     """
@@ -257,6 +267,10 @@ class IsSignalPDF(object):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsSignalPDF class.
         """
+        if not isinstance(self, PDF):
+            raise TypeError(
+                f'The class "{classname(self)}" is not derived from PDF!')
+
         super().__init__(*args, **kwargs)
 
     def __mul__(self, other):
@@ -272,12 +286,13 @@ class IsSignalPDF(object):
             raise TypeError(
                 'The other PDF must be an instance of IsSignalPDF!')
 
-        return SignalPDFProduct(self, other)
+        return SignalPDFProduct(self, other, cfg=self.cfg)
 
 
 class PDF(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     r"""This is the abstract base class for all probability distribution
     function (PDF) models.
     All PDF model classes must be derived from this class. Mathematically, it
@@ -290,7 +305,8 @@ class PDF(
             self,
             pmm=None,
             param_set=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new PDF instance.
 
         Parameters
@@ -1475,7 +1491,8 @@ class MultiDimGridPDF(
 
 
 class PDFSet(
-        object):
+        HasConfig,
+):
     """This class describes a set of PDF objects which are related to each other
     via different values of a set of parameters. A signal PDF usually
     consists of multiple same-kind PDFs for different signal parameters.
@@ -1656,7 +1673,7 @@ class PDFSet(
                     f'New axes:\n{str(pdf.axes)}\n'
                     f'Old axes:\n{str(some_pdf.axes)}')
 
-        if is_tracing_enabled():
+        if self._cfg.is_tracing_enabled:
             logger.debug(f'Adding PDF for gridparams {gridparams}.')
 
         self._gridparams_hash_pdf_dict[gridparams_hash] = pdf

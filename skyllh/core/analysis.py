@@ -15,6 +15,9 @@ from skyllh.core.background_generator import (
     BackgroundGenerator,
     BackgroundGeneratorBase,
 )
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.dataset import (
     Dataset,
     DatasetData,
@@ -81,8 +84,9 @@ logger = get_logger(__name__)
 
 
 class Analysis(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     """This is the abstract base class for all analysis classes.
     It contains common properties required by all analyses and defines the
     overall analysis interface how to setup and run an analysis.
@@ -567,6 +571,7 @@ class Analysis(
                 f'defined for this analysis ({classname(self)})!')
 
         self._bkg_generator = self.bkg_generator_cls(
+            cfg=self._cfg,
             bkg_gen_method=self._bkg_gen_method,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
@@ -580,6 +585,7 @@ class Analysis(
         through the source hypothesis group.
         """
         self._sig_generator = self.sig_generator_cls(
+            cfg=self._cfg,
             shg_mgr=self._shg_mgr,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
@@ -1210,7 +1216,9 @@ class Analysis(
             :py:meth:`~skyllh.core.analysis.Analysis.do_trial` method for the
             list of data fields.
         """
-        ncpu = get_ncpu(ncpu)
+        ncpu = get_ncpu(
+            cfg=self._cfg,
+            local_ncpu=ncpu)
 
         args_list = [((), kwargs) for i in range(n)]
         result_list = parallelize(
@@ -1696,6 +1704,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
         # dataset.
         llhratio_list = [
             ZeroSigH0SingleDatasetTCLLHRatio(
+                cfg=self._cfg,
                 pmm=self._pmm,
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
@@ -1707,6 +1716,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
+            cfg=self._cfg,
             pmm=self._pmm,
             minimizer=minimizer,
             src_detsigyield_weights_service=self.src_detsigyield_weights_service,
@@ -1870,11 +1880,13 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
         # dataset.
         llhratio_list = [
             ZeroSigH0SingleDatasetTCLLHRatio(
+                cfg=self._cfg,
                 pmm=self._pmm,
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
                 tdm=tdm,
                 pdfratio=SourceWeightedPDFRatio(
+                    cfg=self._cfg,
                     dataset_idx=dataset_idx,
                     src_detsigyield_weights_service=self.src_detsigyield_weights_service,
                     pdfratio=pdfratio)
@@ -1885,6 +1897,7 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
+            cfg=self._cfg,
             pmm=self._pmm,
             minimizer=minimizer,
             src_detsigyield_weights_service=self.src_detsigyield_weights_service,

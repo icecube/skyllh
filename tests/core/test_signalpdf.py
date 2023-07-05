@@ -4,11 +4,17 @@
 module.
 """
 
+import unittest
+
 import numpy as np
 
-import unittest
-from unittest.mock import Mock
+from unittest.mock import (
+    Mock,
+)
 
+from skyllh.core.config import (
+    Config,
+)
 from skyllh.core.flux_model import (
     BoxTimeFluxProfile,
 )
@@ -66,6 +72,8 @@ class SignalTimePDFTestCase(
         unittest.TestCase,
 ):
     def setUp(self):
+        self.cfg = Config()
+
         self.pmm = ParameterModelMapper(
             models=[
                 SourceModel(),
@@ -81,12 +89,14 @@ class SignalTimePDFTestCase(
 
         self.time_flux_profile = BoxTimeFluxProfile(
             t0=5,
-            tw=10)
+            tw=10,
+            cfg=self.cfg)
 
         self.sig_time_pdf = SignalTimePDF(
             pmm=self.pmm,
             livetime=self.livetime,
-            time_flux_profile=self.time_flux_profile)
+            time_flux_profile=self.time_flux_profile,
+            cfg=self.cfg)
 
     def test__str__(self):
         str(self.sig_time_pdf)
