@@ -16,15 +16,16 @@ from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet,
 )
+from skyllh.core.pdf import (
+    PDF,
+    PDFSet,
+    IsSignalPDF,
+)
 from skyllh.core.py import (
     classname,
 )
 from skyllh.core.smoothing import (
     SmoothingFilter,
-)
-from skyllh.core.pdf import (
-    PDFSet,
-    IsSignalPDF,
 )
 from skyllh.i3.pdf import (
     I3EnergyPDF,
@@ -34,6 +35,7 @@ from skyllh.i3.pdf import (
 class SignalI3EnergyPDFSet(
         PDFSet,
         IsSignalPDF,
+        PDF,
         IsParallelizable,
 ):
     """This is the signal energy PDF for IceCube. It creates a set of
