@@ -197,7 +197,9 @@ class PDSignalEnergyPDF(
 class PDSignalEnergyPDFSet(
         PDFSet,
         IsSignalPDF,
-        IsParallelizable):
+        PDF,
+        IsParallelizable,
+):
     """This class provides a signal energy PDF set using the public data.
     It creates a set of PDSignalEnergyPDF instances, one for each spectral
     index value on a grid.

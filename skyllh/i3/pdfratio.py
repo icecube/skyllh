@@ -8,9 +8,6 @@ from numpy.lib.recfunctions import (
     repack_fields,
 )
 
-from skyllh.core.config import (
-    HasConfig,
-)
 from skyllh.core.multiproc import (
     IsParallelizable,
     parallelize,
@@ -29,7 +26,6 @@ from skyllh.core.py import (
 
 class SplinedI3EnergySigSetOverBkgPDFRatio(
         SigSetOverBkgPDFRatio,
-        HasConfig,
         IsParallelizable):
     """This class implements a splined signal over background PDF ratio for
     enegry PDFs of type I3EnergyPDF.

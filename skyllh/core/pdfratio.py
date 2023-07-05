@@ -4,6 +4,9 @@ import abc
 
 import numpy as np
 
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
     Parabola1DGridManifoldInterpolationMethod,
@@ -32,8 +35,9 @@ from skyllh.core.timing import (
 
 
 class PDFRatio(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     """Abstract base class for a signal over background PDF ratio class.
     It defines the interface of a signal over background PDF ratio class.
     """
@@ -42,8 +46,9 @@ class PDFRatio(
             self,
             sig_param_names=None,
             bkg_param_names=None,
-            **kwargs):
-        """Constructor for a PDF ratio class.
+            **kwargs,
+    ):
+        """Creates a new PDFRatio instance.
 
         Parameters
         ----------
@@ -131,7 +136,8 @@ class PDFRatio(
             self,
             tdm,
             tl=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Initializes the PDFRatio instance for a new trial. This method can
         be utilized to pre-calculate PDFRatio values that do not depend on any
         fit parameters.
@@ -150,7 +156,8 @@ class PDFRatio(
             self,
             tdm,
             src_params_recarray,
-            tl=None):
+            tl=None,
+    ):
         """Retrieves the PDF ratio value for each given trial data events (and
         sources), given the given set of parameters.
 
@@ -183,7 +190,8 @@ class PDFRatio(
             tdm,
             src_params_recarray,
             fitparam_id,
-            tl=None):
+            tl=None,
+    ):
         """Retrieves the PDF ratio gradient for the global fit parameter
         ``fitparam_id`` for each trial data event and source, given the given
         set of parameters ``src_params_recarray`` for each source.
@@ -221,11 +229,12 @@ class PDFRatio(
         ``other`` is an instance of PDFRatio. It creates an instance of
         PDFRatioProduct holding the two PDFRatio instances.
         """
-        return PDFRatioProduct(self, other)
+        return PDFRatioProduct(self, other, cfg=self.cfg)
 
 
 class PDFRatioProduct(
-        PDFRatio):
+        PDFRatio,
+):
     """This is the mathematical product of two PDFRatio instances, which is a
     PDFRatio instance again.
     """
@@ -233,7 +242,8 @@ class PDFRatioProduct(
             self,
             pdfratio1,
             pdfratio2,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new PDFRatioProduct instance representing the product of
         two PDFRatio instances.
         """
@@ -293,7 +303,8 @@ class PDFRatioProduct(
             self,
             tdm,
             src_params_recarray,
-            tl=None):
+            tl=None,
+    ):
         """Retrieves the PDF ratio product value for each trial data
         event and source, given the given set of parameters for all sources.
 
@@ -336,7 +347,8 @@ class PDFRatioProduct(
             tdm,
             src_params_recarray,
             fitparam_id,
-            tl=None):
+            tl=None,
+    ):
         """Retrieves the PDF ratio product gradient for the global fit parameter
         with parameter ID ``fitparam_id`` for each trial data event and source,
         given the set of parameters ``src_params_recarray`` for all sources.
