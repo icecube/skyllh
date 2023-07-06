@@ -200,7 +200,7 @@ class EvtProbLLH(
     The probability density functions :math:`\mathcal{S}` and
     :math:`\mathcal{B}` are the signal and background PDFs, respectively.
 
-    The gradient :math:`\mathrm{d}\log(L)/\mathrm{d}p_i` is given as
+    The gradient :math:`\partial \log(L)/\partial p_i` is given as
 
     .. math::
 
@@ -208,7 +208,7 @@ class EvtProbLLH(
         {\mathcal{S}(x_{i}|\gamma) - \mathcal{B}(x_{i})}
         {p_i\mathcal{S}(x_{i}|\gamma) + (1-p_i)\mathcal{B}(x_{i})}
 
-    The gradient :math:`\mathrm{d}\log(L)/\mathrm{d}\gamma` is given as
+    The gradient :math:`\partial \log(L)/\partial \gamma` is given as
 
     .. math::
 
