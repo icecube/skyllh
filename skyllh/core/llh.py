@@ -9,6 +9,9 @@ import abc
 
 import numpy as np
 
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.debugging import (
     get_logger,
 )
@@ -30,7 +33,7 @@ logger = get_logger(__name__)
 
 
 class LLH(
-    object,
+    HasConfig,
     metaclass=abc.ABCMeta,
 ):
     """Abstract base class for a log-likelihood (LLH) function.
