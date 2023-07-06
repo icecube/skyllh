@@ -216,7 +216,7 @@ class Analysis(
         if not issubclass(cls, BackgroundGenerator):
             raise TypeError(
                 'The bkg_generator_cls property must be a subclass of '
-                'BackgroundGeneratorBase! '
+                'BackgroundGenerator! '
                 f'Its current type is {classname(cls)}.')
         self._bkg_generator_cls = cls
 
