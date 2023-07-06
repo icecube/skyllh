@@ -8,9 +8,6 @@ from astropy import units
 import numpy as np
 
 
-from skyllh.core.background_generation import (
-    BackgroundGenerationMethod,
-)
 from skyllh.core.background_generator import (
     BackgroundGenerator,
     MultiDatasetBackgroundGenerator,
@@ -96,7 +93,6 @@ class Analysis(
             shg_mgr,
             pmm,
             test_statistic,
-            bkg_gen_method=None,
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
@@ -114,10 +110,6 @@ class Analysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that should be used to
-            generate background events for pseudo data. This can be set to None,
-            if there is no need to generate background events.
         bkg_generator_cls : class of MultiDatasetBackgroundGenerator | None
             The background generator class used to create the background
             generator instance for multiple datasets.
@@ -137,7 +129,6 @@ class Analysis(
         self.shg_mgr = shg_mgr
         self.pmm = pmm
         self.test_statistic = test_statistic
-        self.bkg_gen_method = bkg_gen_method
         self.bkg_generator_cls = bkg_generator_cls
         self.sig_generator_cls = sig_generator_cls
 
@@ -203,24 +194,6 @@ class Analysis(
                 'TestStatistic! '
                 f'Its current type is {classname(ts)}.')
         self._test_statistic = ts
-
-    @property
-    def bkg_gen_method(self):
-        """The BackgroundGenerationMethod instance that implements the
-        background event generation. This can be None if no background
-        generation method has been defined.
-        """
-        return self._bkg_gen_method
-
-    @bkg_gen_method.setter
-    def bkg_gen_method(self, method):
-        if method is not None:
-            if not isinstance(method, BackgroundGenerationMethod):
-                raise TypeError(
-                    'The bkg_gen_method property must be an instance of '
-                    'BackgroundGenerationMethod! '
-                    f'Its current type is {classname(method)}.')
-        self._bkg_gen_method = method
 
     @property
     def bkg_generator_list(self):
@@ -1264,7 +1237,6 @@ class LLHRatioAnalysis(
             shg_mgr,
             pmm,
             test_statistic,
-            bkg_gen_method=None,
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
@@ -1282,10 +1254,6 @@ class LLHRatioAnalysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that should be used to
-            generate background events for pseudo data. This can be set to None,
-            if there is no need to generate background events.
         bkg_generator_cls : class of BackgroundGeneratorBase | None
             The background generator class used to create the background
             generator instance.
@@ -1303,7 +1271,6 @@ class LLHRatioAnalysis(
             shg_mgr=shg_mgr,
             pmm=pmm,
             test_statistic=test_statistic,
-            bkg_gen_method=bkg_gen_method,
             bkg_generator_cls=bkg_generator_cls,
             sig_generator_cls=sig_generator_cls,
             **kwargs)
@@ -1631,7 +1598,6 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
             shg_mgr,
             pmm,
             test_statistic,
-            bkg_gen_method=None,
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
@@ -1650,10 +1616,6 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial. This can be set
-            to None, if no background events have to get generated.
         bkg_generator_cls : class of BackgroundGeneratorBase | None
             The background generator class used to create the background
             generator instance.
@@ -1670,7 +1632,6 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
             shg_mgr=shg_mgr,
             pmm=pmm,
             test_statistic=test_statistic,
-            bkg_gen_method=bkg_gen_method,
             bkg_generator_cls=bkg_generator_cls,
             sig_generator_cls=sig_generator_cls,
             **kwargs)
@@ -1807,7 +1768,6 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
             shg_mgr,
             pmm,
             test_statistic,
-            bkg_gen_method=None,
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
@@ -1825,10 +1785,6 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that should be used to
-            generate background events for pseudo data. This can be set to None,
-            if there is no need to generate background events.
         bkg_generator_cls : class of BackgroundGeneratorBase | None
             The background generator class used to create the background
             generator instance.
@@ -1846,7 +1802,6 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
             shg_mgr=shg_mgr,
             pmm=pmm,
             test_statistic=test_statistic,
-            bkg_gen_method=bkg_gen_method,
             bkg_generator_cls=bkg_generator_cls,
             sig_generator_cls=sig_generator_cls,
             **kwargs)
