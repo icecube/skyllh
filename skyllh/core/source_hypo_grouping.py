@@ -281,8 +281,7 @@ class SourceHypoGroupManager(
         """
         s = f'{classname(self)}\n'
 
-        s1 = 'Source Hypothesis Groups:\n'
-        s1 += '========================='
+        s1 = 'Source Hypothesis Groups:'
         for (idx, shg) in enumerate(self._shg_list):
             s1 += '\n'
             s1 += add_leading_text_line_padding(INDENTATION_WIDTH, f'{idx}: {shg}')

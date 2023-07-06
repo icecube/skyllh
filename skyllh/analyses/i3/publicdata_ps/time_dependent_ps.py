@@ -30,6 +30,9 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
+from skyllh.core.background_generator import (
+    DatasetBackgroundGenerator,
+)
 from skyllh.core.backgroundpdf import (
     BackgroundTimePDF,
 )
@@ -108,7 +111,8 @@ from skyllh.core.trialdata import (
     TrialDataManager,
 )
 from skyllh.core.utils.analysis import (
-    pointlikesource_to_data_field_array
+    create_trial_data_file,
+    pointlikesource_to_data_field_array,
 )
 
 from skyllh.datasets.i3 import (
@@ -942,9 +946,6 @@ def create_analysis(  # noqa: C901
             cfg=cfg,
             param_grid=gamma_grid)
 
-    # Define the signal generation method.
-    sig_gen_method = None
-
     # Create a source hypothesis group manager with a single source hypothesis
     # group for the single source.
     shg_mgr = SourceHypoGroupManager(
@@ -952,7 +953,8 @@ def create_analysis(  # noqa: C901
             sources=source,
             fluxmodel=fluxmodel,
             detsigyield_builders=detsigyield_builder,
-            sig_gen_method=sig_gen_method))
+        ))
+    logger.info(str(shg_mgr))
 
     # Define a detector model for the ns fit parameter.
     detector_model = DetectorModel('IceCube')
@@ -963,7 +965,6 @@ def create_analysis(  # noqa: C901
         models=[detector_model, source])
     pmm.map_param(param_ns, models=detector_model)
     pmm.map_param(param_gamma, models=source)
-
     logger.info(str(pmm))
 
     # Define the test statistic.
@@ -996,13 +997,11 @@ def create_analysis(  # noqa: C901
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
-    data_list = []
     for (ds_idx, ds) in enumerate(datasets):
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
             compress=compress_data,
             tl=tl)
-        data_list.append(data)
 
         # Some runs might overlap slightly. So we need to clip those runs.
         clip_grl_start_times(grl_data=data.grl)
@@ -1086,6 +1085,20 @@ def create_analysis(  # noqa: C901
             dt='dec',
             is_srcevt_data=True)
 
+        data_scrambler = DataScrambler(
+            I3SeasonalVariationTimeScramblingMethod(
+                data=data))
+        bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(
+            cfg=cfg,
+            data_scrambler=data_scrambler)
+
+        bkg_generator = DatasetBackgroundGenerator(
+            cfg=cfg,
+            dataset=ds,
+            data=data,
+            bkg_gen_method=bkg_gen_method,
+        )
+
         energy_cut_spline = create_energy_cut_spline(
             ds,
             data.exp,
@@ -1108,6 +1121,7 @@ def create_analysis(  # noqa: C901
             pdfratio=pdfratio,
             tdm=tdm,
             event_selection_method=event_selection_method,
+            bkg_generator=bkg_generator,
             sig_generator=sig_generator)
 
         pbar.increment()
@@ -1119,18 +1133,6 @@ def create_analysis(  # noqa: C901
     ana.llhratio = ana.construct_llhratio(
         minimizer=minimizer,
         ppbar=ppbar)
-
-    # Define the data scrambler with its data scrambling method, which is used
-    # for background generation.
-
-    # FIXME: Support multiple datasets for the DataScrambler.
-    data_scrambler = DataScrambler(
-        I3SeasonalVariationTimeScramblingMethod(
-            data_list[0]))
-    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(
-        cfg=cfg,
-        data_scrambler=data_scrambler)
-    ana.bkg_gen_method = bkg_gen_method
 
     if construct_bkg_generator is True:
         ana.construct_background_generator()
@@ -1222,4 +1224,17 @@ if __name__ == '__main__':
     print(f'gamma_fit = {param_dict["gamma"]:g}')
     print(f'minimizer status = {status}')
 
+    print(tl)
+
+    tl = TimeLord()
+    rss = RandomStateService(seed=1)
+    (_, _, _, trials) = create_trial_data_file(
+        ana=ana,
+        rss=rss,
+        n_trials=10,
+        mean_n_sig=0,
+        pathfilename=None,
+        ncpu=1,
+        tl=tl)
+    print(f'trials: {trials}')
     print(tl)
