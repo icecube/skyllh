@@ -204,8 +204,16 @@ class EvtProbLLH(
 
     .. math::
 
-        \frac{\mathrm{d}\log(L)}{\mathrm{d}p_i} = \frac
+        \frac{\partial \log(L)}{\partial p_i} = \frac
         {\mathcal{S}(x_{i}|\gamma) - \mathcal{B}(x_{i})}
+        {p_i\mathcal{S}(x_{i}|\gamma) + (1-p_i)\mathcal{B}(x_{i})}
+
+    The gradient :math:`\mathrm{d}\log(L)/\mathrm{d}\gamma` is given as
+
+    .. math::
+
+        \frac{\partial \log(L)}{\partial \gamma} = \sum_{i=1}^{N} \frac
+        {p_i \frac{\partial \mathcal{S}(x_{i}|\gamma)}{\partial \gamma}}
         {p_i\mathcal{S}(x_{i}|\gamma) + (1-p_i)\mathcal{B}(x_{i})}
 
     .. warning::
