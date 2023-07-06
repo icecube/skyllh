@@ -276,9 +276,6 @@ def create_analysis(
             cfg=cfg,
             param_grid=gamma_grid)
 
-    # Define the signal generation method.
-    sig_gen_method = None
-
     # Create a source hypothesis group manager with a single source hypothesis
     # group for the single source.
     shg_mgr = SourceHypoGroupManager(
@@ -286,7 +283,8 @@ def create_analysis(
             sources=source,
             fluxmodel=fluxmodel,
             detsigyield_builders=detsigyield_builder,
-            sig_gen_method=sig_gen_method))
+        ))
+    logger.info(str(shg_mgr))
 
     # Define a detector model for the ns fit parameter.
     detector_model = DetectorModel('IceCube')
@@ -297,20 +295,10 @@ def create_analysis(
         models=[detector_model, source])
     pmm.map_param(param_ns, models=detector_model)
     pmm.map_param(param_gamma, models=source)
-
     logger.info(str(pmm))
 
     # Define the test statistic.
     test_statistic = WilksTestStatistic()
-
-    # Define the data scrambler with its data scrambling method, which is used
-    # for background generation.
-    data_scrambler = DataScrambler(UniformRAScramblingMethod())
-
-    # Create background generation method.
-    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(
-        cfg=cfg,
-        data_scrambler=data_scrambler)
 
     # Create the Analysis instance.
     ana = Analysis(
@@ -318,9 +306,17 @@ def create_analysis(
         shg_mgr=shg_mgr,
         pmm=pmm,
         test_statistic=test_statistic,
-        bkg_gen_method=bkg_gen_method,
         sig_generator_cls=MultiDatasetSignalGenerator,
     )
+
+    # Define the data scrambler with its data scrambling method, which is used
+    # for background generation.
+    data_scrambler = DataScrambler(UniformRAScramblingMethod())
+
+    # Create background generation method, which will be used for all datasets.
+    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(
+        cfg=cfg,
+        data_scrambler=data_scrambler)
 
     # Define the event selection method for pure optimization purposes.
     # We will use the same method for all datasets.
