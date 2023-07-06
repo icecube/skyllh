@@ -365,14 +365,24 @@ class EvtProbLLH(
 
         N = tdm.n_events
 
-        idx0 = self._pmm.get_gflp_idx(self.evtp_name_fmt.format(i=0))
-        p = fitparam_values[idx0:idx0+N]
+        p_idx0 = self._pmm.get_gflp_idx(self.evtp_name_fmt.format(i=0))
+        p = fitparam_values[p_idx0:p_idx0+N]
 
         log_lh = np.sum(np.log(p*sig_pd + (1 - p)*bkg_pd))
 
         grads = np.zeros_like(fitparam_values)
-        # TODO: Calculate the gradient dL/dgamma.
 
-        grads[idx0:idx0+N] = (sig_pd - bkg_pd) / (p*sig_pd + (1-p)*bkg_pd)
+        denum = (p*sig_pd + (1-p)*bkg_pd)
+
+        grads[p_idx0:p_idx0+N] = (sig_pd - bkg_pd) / denum
+
+        gflp_idxs_S = np.array(sig_grads.keys())
+        gflp_idxs_B = np.array(bkg_grads.keys())
+
+        # Loop over the fit parameters which only the signal PDF depends on.
+        gflp_idxs_S_not_B = gflp_idxs_S[
+            np.invert(np.isin(gflp_idxs_S, gflp_idxs_B))]
+        for gflp_idx in gflp_idxs_S_not_B:
+            grads[gflp_idx] = np.sum(p * sig_grads[gflp_idx] / denum)
 
         return (log_lh, grads)
