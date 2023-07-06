@@ -200,6 +200,14 @@ class EvtProbLLH(
     The probability density functions :math:`\mathcal{S}` and
     :math:`\mathcal{B}` are the signal and background PDFs, respectively.
 
+    The gradient :math:`\mathrm{d}\log(L)/\mathrm{d}p_i` is given as
+
+    .. math::
+
+        \frac{\mathrm{d}\log(L)}{\mathrm{d}p_i} = \frac
+        {\mathcal{S}(x_{i}|\gamma) - \mathcal{B}(x_{i})}
+        {p_i\mathcal{S}(x_{i}|\gamma) + (1-p_i)\mathcal{B}(x_{i})}
+
     .. warning::
 
         This LH function works only for single sources and with no applied event
@@ -347,14 +355,16 @@ class EvtProbLLH(
             params_recarray=None,
             tl=tl)
 
-        N = tdm.n_selected_events
+        N = tdm.n_events
 
         idx0 = self._pmm.get_gflp_idx(self.evtp_name_fmt.format(i=0))
-        evt_p = fitparam_values[idx0:idx0+N]
+        p = fitparam_values[idx0:idx0+N]
 
-        log_lh = np.sum(np.log(evt_p*sig_pd + (1 - evt_p)*bkg_pd))
+        log_lh = np.sum(np.log(p*sig_pd + (1 - p)*bkg_pd))
 
         grads = np.zeros_like(fitparam_values)
         # TODO: Calculate the gradient dL/dgamma.
+
+        grads[idx0:idx0+N] = (sig_pd - bkg_pd) / (p*sig_pd + (1-p)*bkg_pd)
 
         return (log_lh, grads)
