@@ -4,11 +4,12 @@
 Unit tests
 **********
 
->>> import unittest
+When extending SkyLLH with new code and features, the extension needs to be
+covered by unit tests. SkyLLH uses the ``unittest`` package of Python.
 
 .. code-block:: python
 
-    import unittest     
+    import unittest
 
     class SelfDrivingCarTest(TestCase):
         def setUp(self):

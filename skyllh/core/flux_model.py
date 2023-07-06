@@ -26,7 +26,8 @@ from skyllh.core import (
     tool,
 )
 from skyllh.core.config import (
-    CFG,
+    Config,
+    HasConfig,
 )
 from skyllh.core.math import (
     MathFunction,
@@ -45,10 +46,16 @@ from skyllh.core.source_model import (
 
 class FluxProfile(
         MathFunction,
+        HasConfig,
         metaclass=abc.ABCMeta):
     """The abstract base class for a flux profile math function.
     """
-    def __init__(self, **kwargs):
+    def __init__(
+            self,
+            **kwargs,
+    ):
+        """Creates a new FluxProfile instance.
+        """
         super().__init__(**kwargs)
 
 
@@ -85,7 +92,7 @@ class SpatialFluxProfile(
     @angle_unit.setter
     def angle_unit(self, unit):
         if unit is None:
-            unit = CFG['units']['defaults']['fluxes']['angle']
+            unit = self._cfg['units']['defaults']['fluxes']['angle']
         if not isinstance(unit, units.UnitBase):
             raise TypeError(
                 'The property angle_unit must be of type '
@@ -128,7 +135,8 @@ class UnitySpatialFluxProfile(
     def __init__(
             self,
             angle_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new UnitySpatialFluxProfile instance.
 
         Parameters
@@ -189,7 +197,8 @@ class PointSpatialFluxProfile(
             ra,
             dec,
             angle_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new spatial flux profile for a point at equatorial
         coordinate (ra, dec).
 
@@ -341,7 +350,7 @@ class EnergyFluxProfile(
     @energy_unit.setter
     def energy_unit(self, unit):
         if unit is None:
-            unit = CFG['units']['defaults']['fluxes']['energy']
+            unit = self._cfg['units']['defaults']['fluxes']['energy']
         if not isinstance(unit, units.UnitBase):
             raise TypeError(
                 'The property energy_unit must be of type '
@@ -512,7 +521,8 @@ class UnityEnergyFluxProfile(
 
 
 class PowerLawEnergyFluxProfile(
-        EnergyFluxProfile):
+        EnergyFluxProfile,
+):
     r"""Energy flux profile for a power law profile with a reference energy
     ``E0`` and a spectral index ``gamma``.
 
@@ -666,7 +676,7 @@ class PowerLawEnergyFluxProfile(
 
 
 class CutoffPowerLawEnergyFluxProfile(
-        PowerLawEnergyFluxProfile
+        PowerLawEnergyFluxProfile,
 ):
     r"""Cut-off power law energy flux profile of the form
 
@@ -764,7 +774,7 @@ class CutoffPowerLawEnergyFluxProfile(
 
 
 class LogParabolaPowerLawEnergyFluxProfile(
-        PowerLawEnergyFluxProfile
+        PowerLawEnergyFluxProfile,
 ):
     r"""This class provides an energy flux profile for a power-law with a
     spectral index that varies as a log parabola in energy of the form
@@ -782,6 +792,20 @@ class LogParabolaPowerLawEnergyFluxProfile(
             energy_unit=None,
             **kwargs,
     ):
+        """
+        Parameters
+        ----------
+        E0 : castable to float
+            The reference energy.
+        alpha : float
+            The alpha parameter of the log-parabola spectral index.
+        beta : float
+            The beta parameter of the log-parabola spectral index.
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
+        """
         super().__init__(
             E0=E0,
             gamma=np.nan,
@@ -954,7 +978,8 @@ class PhotosplineEnergyFluxProfile(
 
 class TimeFluxProfile(
         FluxProfile,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """The abstract base class for a time flux profile function.
     """
     def __init__(
@@ -1037,7 +1062,7 @@ class TimeFluxProfile(
     @time_unit.setter
     def time_unit(self, unit):
         if unit is None:
-            unit = CFG['units']['defaults']['fluxes']['time']
+            unit = self._cfg['units']['defaults']['fluxes']['time']
         if not isinstance(unit, units.UnitBase):
             raise TypeError(
                 'The property time_unit must be of type '
@@ -1063,7 +1088,8 @@ class TimeFluxProfile(
     def __call__(
             self,
             t,
-            unit=None):
+            unit=None,
+    ):
         """This method is supposed to return the time profile value for the
         given times.
 
@@ -1087,7 +1113,8 @@ class TimeFluxProfile(
     def move(
             self,
             dt,
-            unit=None):
+            unit=None,
+    ):
         """Abstract method to move the time profile by the given amount of time.
 
         Parameters
@@ -1107,7 +1134,8 @@ class TimeFluxProfile(
             self,
             t1,
             t2,
-            unit=None):
+            unit=None,
+    ):
         """This method is supposed to calculate the integral of the time profile
         from time ``t1`` to time ``t2``.
 
@@ -1132,10 +1160,24 @@ class TimeFluxProfile(
 
 
 class UnityTimeFluxProfile(
-        TimeFluxProfile):
+        TimeFluxProfile,
+):
     """Time flux profile for the constant profile function ``1``.
     """
-    def __init__(self, time_unit=None, **kwargs):
+    def __init__(
+            self,
+            time_unit=None,
+            **kwargs,
+    ):
+        """Creates a new instance of UnityTimeFluxProfile.
+
+        Parameters
+        ----------
+        time_unit : instance of astropy.units.UnitBase | None
+            The used unit for time.
+            If set to ``None``, the configured default time unit for fluxes is
+            used.
+        """
         super().__init__(
             time_unit=time_unit,
             **kwargs)
@@ -1144,7 +1186,11 @@ class UnityTimeFluxProfile(
     def math_function_str(self):
         return '1'
 
-    def __call__(self, t, unit=None):
+    def __call__(
+            self,
+            t,
+            unit=None,
+    ):
         """Returns 1 as numpy ndarray in same shape as t.
 
         Parameters
@@ -1166,7 +1212,11 @@ class UnityTimeFluxProfile(
 
         return values
 
-    def move(self, dt, unit=None):
+    def move(
+            self,
+            dt,
+            unit=None,
+    ):
         """Moves the time profile by the given amount of time. By definition
         this method does nothing, because the profile is 1 over the entire
         dataset time range.
@@ -1183,7 +1233,12 @@ class UnityTimeFluxProfile(
         """
         pass
 
-    def get_integral(self, t1, t2, unit=None):
+    def get_integral(
+            self,
+            t1,
+            t2,
+            unit=None,
+    ):
         """Calculates the integral of the time profile from time t1 to time t2.
 
         Parameters
@@ -1214,7 +1269,8 @@ class UnityTimeFluxProfile(
 
 
 class BoxTimeFluxProfile(
-        TimeFluxProfile):
+        TimeFluxProfile,
+):
     """This class describes a box-shaped time flux profile.
     It has the following parameters:
 
@@ -1232,7 +1288,8 @@ class BoxTimeFluxProfile(
             start,
             stop,
             time_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Constructs a BoxTimeFluxProfile instance from the given start and
         stop time.
 
@@ -1246,6 +1303,9 @@ class BoxTimeFluxProfile(
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
+        **kwargs
+            Additional keyword arguments, which are passed to the constructor
+            of the :class:`BoxTimeFluxProfile` class.
 
         Returns
         -------
@@ -1268,7 +1328,8 @@ class BoxTimeFluxProfile(
             t0,
             tw,
             time_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new box-shaped time profile instance.
 
         Parameters
@@ -1336,7 +1397,8 @@ class BoxTimeFluxProfile(
     def __call__(
             self,
             t,
-            unit=None):
+            unit=None,
+    ):
         """Returns 1 for all t within the interval [t0-tw/2; t0+tw/2], and 0
         otherwise.
 
@@ -1368,7 +1430,8 @@ class BoxTimeFluxProfile(
     def cdf(
             self,
             t,
-            unit=None):
+            unit=None,
+    ):
         """Calculates the cumulative distribution function value for the given
         time values ``t``.
 
@@ -1409,7 +1472,8 @@ class BoxTimeFluxProfile(
     def move(
             self,
             dt,
-            unit=None):
+            unit=None,
+    ):
         """Moves the box-shaped time profile by the time difference dt.
 
         Parameters
@@ -1432,7 +1496,8 @@ class BoxTimeFluxProfile(
             self,
             t1,
             t2,
-            unit=None):
+            unit=None,
+    ):
         """Calculates the integral of the box-shaped time flux profile from
         time t1 to time t2.
 
@@ -1475,7 +1540,8 @@ class BoxTimeFluxProfile(
 
 
 class GaussianTimeFluxProfile(
-        TimeFluxProfile):
+        TimeFluxProfile,
+):
     """This class describes a gaussian-shaped time flux profile.
     It has the following parameters:
 
@@ -1566,7 +1632,8 @@ class GaussianTimeFluxProfile(
     def __call__(
             self,
             t,
-            unit=None):
+            unit=None,
+    ):
         """Returns the gaussian profile value for the given time ``t``.
 
         Parameters
@@ -1604,7 +1671,8 @@ class GaussianTimeFluxProfile(
     def cdf(
             self,
             t,
-            unit=None):
+            unit=None,
+    ):
         """Calculates the cumulative distribution function values for the given
         time values ``t``.
 
@@ -1647,7 +1715,8 @@ class GaussianTimeFluxProfile(
     def move(
             self,
             dt,
-            unit=None):
+            unit=None,
+    ):
         """Moves the gaussian time profile by the given amount of time.
 
         Parameters
@@ -1670,7 +1739,8 @@ class GaussianTimeFluxProfile(
             self,
             t1,
             t2,
-            unit=None):
+            unit=None,
+    ):
         """Calculates the integral of the gaussian time profile from time ``t1``
         to time ``t2``.
 
@@ -1711,8 +1781,10 @@ class GaussianTimeFluxProfile(
 
 class FluxModel(
         MathFunction,
+        HasConfig,
         Model,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     r"""Abstract base class for all flux models of the form
 
     .. math::
@@ -1725,8 +1797,13 @@ class FluxModel(
     At this point the functional form of the flux model is not yet defined.
     """
     @staticmethod
-    def get_default_units():
+    def get_default_units(cfg):
         """Returns the configured default units for flux models.
+
+        Parameters
+        ----------
+        cfg : instance of Config
+            The instance of Config holding the local configuration.
 
         Returns
         -------
@@ -1734,7 +1811,7 @@ class FluxModel(
             The dictionary holding the configured default units used for flux
             models.
         """
-        return CFG['units']['defaults']['fluxes']
+        return cfg['units']['defaults']['fluxes']
 
     def __init__(
             self,
@@ -1782,7 +1859,7 @@ class FluxModel(
     @angle_unit.setter
     def angle_unit(self, unit):
         if unit is None:
-            unit = CFG['units']['defaults']['fluxes']['angle']
+            unit = self._cfg['units']['defaults']['fluxes']['angle']
         if not isinstance(unit, units.UnitBase):
             raise TypeError(
                 'The property angle_unit must be of type '
@@ -1798,7 +1875,7 @@ class FluxModel(
     @energy_unit.setter
     def energy_unit(self, unit):
         if unit is None:
-            unit = CFG['units']['defaults']['fluxes']['energy']
+            unit = self._cfg['units']['defaults']['fluxes']['energy']
         if not isinstance(unit, units.UnitBase):
             raise TypeError(
                 'The property energy_unit must be of type '
@@ -1814,7 +1891,7 @@ class FluxModel(
     @length_unit.setter
     def length_unit(self, unit):
         if unit is None:
-            unit = CFG['units']['defaults']['fluxes']['length']
+            unit = self._cfg['units']['defaults']['fluxes']['length']
         if not isinstance(unit, units.UnitBase):
             raise TypeError(
                 'The property length_unit must be of type '
@@ -1830,7 +1907,7 @@ class FluxModel(
     @time_unit.setter
     def time_unit(self, unit):
         if unit is None:
-            unit = CFG['units']['defaults']['fluxes']['time']
+            unit = self._cfg['units']['defaults']['fluxes']['time']
         if not isinstance(unit, units.UnitBase):
             raise TypeError(
                 'The property time_unit must be of type '
@@ -1915,7 +1992,7 @@ class FluxModel(
         """
         pass
 
-    def get_conversion_factor_to_internal_flux_unit(self):
+    def to_internal_flux_unit(self):
         """Calculates the conversion factor to convert the flux unit of this
         flux model instance to the SkyLLH internally used flux unit.
 
@@ -1930,7 +2007,7 @@ class FluxModel(
             self.length_unit**2 *
             self.time_unit)
 
-        internal_units = CFG['internal_units']
+        internal_units = self._cfg['units']['internal']
         internal_flux_unit = 1 / (
             internal_units['angle']**2 *
             internal_units['energy'] *
@@ -1943,13 +2020,34 @@ class FluxModel(
 
 
 class NullFluxModel(
-        FluxModel):
+        FluxModel,
+):
     """This class provides a dummy flux model class, which can be used for
     testing purposes, in cases where an actual flux model is not required but
     the framework interface requires one.
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+            self,
+            *args,
+            cfg=None,
+            **kwargs,
+    ):
+        """Creates a new instance of NullFluxModel.
+
+        Parameters
+        ----------
+        cfg : instance of Config | None
+            The instance of Config holding the local configuration. Since this
+            flux model does nothing, this argument is optional. If not provided
+            the default configuration is used.
+        """
+        if cfg is None:
+            cfg = Config()
+
+        super().__init__(
+            *args,
+            cfg=cfg,
+            **kwargs)
 
     def math_function_str(self):
         """Since this is a dummy flux model, calling this method will raise a
@@ -1969,7 +2067,8 @@ class NullFluxModel(
 
 
 class FactorizedFluxModel(
-        FluxModel):
+        FluxModel,
+):
     r"""This class describes a flux model where the spatial, energy, and time
     profiles of the source factorize. That means the flux can be written as:
 
@@ -1993,7 +2092,8 @@ class FactorizedFluxModel(
             energy_profile,
             time_profile,
             length_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new factorized flux model.
 
         Parameters
@@ -2020,9 +2120,23 @@ class FactorizedFluxModel(
             If set to ``None``, the configured default length unit for fluxes is
             used.
         """
+        cfg = kwargs.get('cfg')
+
         self.Phi0 = Phi0
+
+        if spatial_profile is None:
+            spatial_profile = UnitySpatialFluxProfile(
+                cfg=cfg)
         self.spatial_profile = spatial_profile
+
+        if energy_profile is None:
+            energy_profile = UnityEnergyFluxProfile(
+                cfg=cfg)
         self.energy_profile = energy_profile
+
+        if time_profile is None:
+            time_profile = UnityTimeFluxProfile(
+                cfg=cfg)
         self.time_profile = time_profile
 
         # The base class will set the default (internally used) flux unit, which
@@ -2032,7 +2146,7 @@ class FactorizedFluxModel(
             energy_unit=self._energy_profile.energy_unit,
             time_unit=self._time_profile.time_unit,
             length_unit=length_unit,
-            **kwargs
+            **kwargs,
         )
 
         # Define the parameters which can be set via the `set_params`
@@ -2063,8 +2177,6 @@ class FactorizedFluxModel(
 
     @spatial_profile.setter
     def spatial_profile(self, profile):
-        if profile is None:
-            profile = UnitySpatialFluxProfile()
         if not isinstance(profile, SpatialFluxProfile):
             raise TypeError(
                 'The spatial_profile property must be None, or an '
@@ -2080,8 +2192,6 @@ class FactorizedFluxModel(
 
     @energy_profile.setter
     def energy_profile(self, profile):
-        if profile is None:
-            profile = UnityEnergyFluxProfile()
         if not isinstance(profile, EnergyFluxProfile):
             raise TypeError(
                 'The energy_profile property must be None, or an '
@@ -2096,8 +2206,6 @@ class FactorizedFluxModel(
 
     @time_profile.setter
     def time_profile(self, profile):
-        if profile is None:
-            profile = UnityTimeFluxProfile()
         if not isinstance(profile, TimeFluxProfile):
             raise TypeError(
                 'The time_profile property must be None, or an '
@@ -2181,7 +2289,8 @@ class FactorizedFluxModel(
             t=None,
             angle_unit=None,
             energy_unit=None,
-            time_unit=None):
+            time_unit=None,
+    ):
         """Calculates the flux values for the given celestrial positions,
         energies, and observation times.
 
@@ -2294,7 +2403,8 @@ class FactorizedFluxModel(
 
 class PointlikeFFM(
         FactorizedFluxModel,
-        IsPointlike):
+        IsPointlike,
+):
     """This class describes a factorized flux model (FFM), where the spatial
     profile is modeled as a point. This class provides the base class for a flux
     model of a point-like source.
@@ -2308,7 +2418,8 @@ class PointlikeFFM(
             dec=None,
             angle_unit=None,
             length_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new factorized flux model for a point-like source.
 
         Parameters
@@ -2337,6 +2448,7 @@ class PointlikeFFM(
             If set to ``None``, the configured internal length unit is used.
         """
         spatial_profile = PointSpatialFluxProfile(
+            cfg=kwargs.get('cfg'),
             ra=ra,
             dec=dec,
             angle_unit=angle_unit)
@@ -2353,8 +2465,7 @@ class PointlikeFFM(
             dec_func_instance=spatial_profile,
             get_dec_func=type(spatial_profile).dec.fget,
             set_dec_func=type(spatial_profile).dec.fset,
-            **kwargs
-        )
+            **kwargs)
 
     @property
     def unit_str(self):
@@ -2384,7 +2495,8 @@ class PointlikeFFM(
 
 
 class SteadyPointlikeFFM(
-        PointlikeFFM):
+        PointlikeFFM,
+):
     """This class describes a factorized flux model (FFM), where the spatial
     profile is modeled as a point and the time profile as constant 1. It is
     derived from the ``PointlikeFFM`` class.
@@ -2398,7 +2510,8 @@ class SteadyPointlikeFFM(
             angle_unit=None,
             length_unit=None,
             time_unit=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new factorized flux model for a point-like source with no
         time dependance.
 
@@ -2429,6 +2542,7 @@ class SteadyPointlikeFFM(
             is used.
         """
         time_profile = UnityTimeFluxProfile(
+            cfg=kwargs.get('cfg'),
             time_unit=time_unit)
 
         super().__init__(
@@ -2439,5 +2553,4 @@ class SteadyPointlikeFFM(
             time_profile=time_profile,
             angle_unit=angle_unit,
             length_unit=length_unit,
-            **kwargs
-        )
+            **kwargs)

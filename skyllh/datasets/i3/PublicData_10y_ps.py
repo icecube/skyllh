@@ -11,17 +11,23 @@ from skyllh.i3.dataset import (
 )
 
 
-def create_dataset_collection(base_path=None, sub_path_fmt=None):
+def create_dataset_collection(
+        cfg,
+        base_path=None,
+        sub_path_fmt=None,
+):
     """Defines the dataset collection for IceCube's 10-year
     point-source public data, which is available at
     http://icecube.wisc.edu/data-releases/20210126_PS-IC40-IC86_VII.zip
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     base_path : str | None
         The base path of the data files. The actual path of a data file is
         assumed to be of the structure <base_path>/<sub_path>/<file_name>.
-        If None, use the default path CFG['repository']['base_path'].
+        If None, use the default path ``cfg['repository']['base_path']``.
     sub_path_fmt : str | None
         The sub path format of the data files of the public data sample.
         If None, use the default sub path format
@@ -43,7 +49,7 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     # public data datasets (all of the same version!).
     dsc = DatasetCollection('Public Data 10-year point-source')
 
-    dsc.description = """
+    dsc.description = r"""
     The events contained in this release correspond to the IceCube's
     time-integrated point source search with 10 years of data [2]. Please refer
     to the description of the sample and known changes in the text at [1].
@@ -79,9 +85,9 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     from 2012 and earlier. Events from this release cannot be combined with any
     other releases
 
-    -----------------------------------------
+    --------------------------
     # Experimental data events
-    -----------------------------------------
+    --------------------------
     The "events" folder contains the events observed in the 10 year sample of
     IceCube's point source neutrino selection. Each file corresponds to a single
     season of IceCube datataking, including roughly one year of data. For each
@@ -118,9 +124,9 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     was discovered in the IC86-2015 season. This event has not contributed to
     any significant excesses.
 
-    -----------------------------------------
+    -----------------
     # Detector uptime
-    -----------------------------------------
+    -----------------
     In order to properly account for detector uptime, IceCube maintains
     "good run lists". These contain information about "good runs", periods of
     datataking useful for analysis. Data may be marked unusable for various
@@ -130,9 +136,9 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     - MJD_start[days], MJD_stop[days]: The start and end times for each good run
 
-    -----------------------------------------
+    -------------------------------
     # Instrument response functions
-    -----------------------------------------
+    -------------------------------
     In order to best model the response of the IceCube detector to a given
     signal, Monte Carlo simulations are produced for each detector
     configuration. Events are sampled from these simulations to model the
@@ -141,9 +147,9 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     We provide several binned responses for the detector in the "irfs" folder
     of this data release.
 
-    ------------------
+    -----------------
     # Effective Areas
-    ------------------
+    -----------------
     The effective area is a property of the detector and selection which, when
     convolved with a flux model, gives the expected rate of events in the
     detector. Here we release the muon neutrino effective areas for each season
@@ -175,9 +181,9 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
 
     - A_Eff[cm^2]: The average effective area across a bin.
 
-    ------------------
+    -------------------
     # Smearing Matrices
-    ------------------
+    -------------------
     IceCube has a nontrivial smearing matrix with correlations between the
     directional uncertainty, the point spread function, and the reconstructed
     muon energy. To provide the most complete set of information, we include
@@ -225,9 +231,9 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     - Fractional_Counts: The fraction of simulated events falling within each
     5D bin relative to all events in the (E_nu, Dec_nu) bin.
 
-    -----------------------------------------
+    ------------
     # References
-    -----------------------------------------
+    ------------
     [1] IceCube Data for Neutrino Point-Source Searches: Years 2008-2018,
         [ArXiv link](https://arxiv.org/abs/2101.09836)
     [2] Time-integrated Neutrino Source Searches with 10 years of IceCube Data,
@@ -243,14 +249,15 @@ def create_dataset_collection(base_path=None, sub_path_fmt=None):
     [6] Methods for point source analysis in high energy neutrino telescopes,
         Astropart.Phys.29:299-305,2008
 
-    -----------------------------------------
+    -------------
     # Last Update
-    -----------------------------------------
+    -------------
     28 January 2021
     """
 
     # Define the common keyword arguments for all data sets.
     ds_kwargs = dict(
+        cfg=cfg,
         livetime=None,
         version=version,
         verqualifiers=verqualifiers,

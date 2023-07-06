@@ -4,29 +4,44 @@ a function.
 """
 import abc
 import logging
-import numpy as np
 import scipy.optimize
 
-from skyllh.core.parameters import ParameterSet
-from skyllh.core.py import classname
+import numpy as np
+
+from skyllh.core.config import (
+    HasConfig,
+)
+from skyllh.core.parameters import (
+    ParameterSet,
+)
+from skyllh.core.py import (
+    classname,
+)
 
 
 logger = logging.getLogger(__name__)
 
 
 class MinimizerImpl(
-        object,
-        metaclass=abc.ABCMeta
+        HasConfig,
+        metaclass=abc.ABCMeta,
 ):
     """Abstract base class for a minimizer implementation. It defines the
     interface between the implementation and the Minimizer class.
     """
 
-    def __init__(self):
-        super(MinimizerImpl, self).__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     @abc.abstractmethod
-    def minimize(self, initials, bounds, func, func_args=None, **kwargs):
+    def minimize(
+            self,
+            initials,
+            bounds,
+            func,
+            func_args=None,
+            **kwargs,
+    ):
         """This method is supposed to minimize the given function with the given
         initials.
 
@@ -127,11 +142,33 @@ class ScipyMinimizerImpl(
 ):
     """Wrapper for `scipy.optimize.minimize`"""
 
-    def __init__(self, method: str) -> None:
-        super().__init__()
+    def __init__(
+            self,
+            method: str,
+            **kwargs,
+    ) -> None:
+        """Creates a new instance of ScipyMinimizerImpl.
+
+        Parameters
+        ----------
+        method : str
+            The minimizer method to use. See the documentation for the method
+            argument of the :func:`scipy.optimize.minimize` function for
+            possible values.
+        """
+        super().__init__(
+            **kwargs)
+
         self._method = method
 
-    def minimize(self, initials, bounds, func, func_args=None, **kwargs):
+    def minimize(
+            self,
+            initials,
+            bounds,
+            func,
+            func_args=None,
+            **kwargs,
+    ):
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials``.
 
@@ -172,13 +209,13 @@ class ScipyMinimizerImpl(
 
         Returns
         -------
-        xmin : 1D ndarray
-            The array containing the function arguments at the function's
+        xmin : instance of numpy.ndarray
+            The 1D array containing the function arguments at the function's
             minimum.
         fmin : float
             The function value at its minimum.
-        res : scipy.optimize.OptimizeResult
-            Scipy OptimizeResult
+        res : instance of scipy.optimize.OptimizeResult
+            The scipy OptimizeResult.
         """
 
         method_supports_bounds = False
@@ -206,8 +243,8 @@ class ScipyMinimizerImpl(
 
         if (bounds is not None) and (not method_supports_bounds):
             logger.warn(
-                f'Selected minimization method ({self._method}) does not '
-                'support bounds. Continue at your own risk.')
+                f'Selected minimization method "{self._method}" does not '
+                'support bounds. Continue at your own risk!')
             bounds = None
 
         if func_args is None:

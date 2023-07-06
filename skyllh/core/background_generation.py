@@ -5,7 +5,7 @@ import abc
 import numpy as np
 
 from skyllh.core.config import (
-    CFG,
+    HasConfig,
 )
 from skyllh.core.debugging import (
     get_logger,
@@ -32,14 +32,17 @@ logger = get_logger(__name__)
 
 
 class BackgroundGenerationMethod(
-        object,
+        HasConfig,
         metaclass=abc.ABCMeta,
 ):
     """This is the abstract base class for a detector specific background
     generation method.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(
+            self,
+            **kwargs,
+    ):
         """Constructs a new background generation method instance.
         """
         super().__init__(**kwargs)
@@ -176,7 +179,8 @@ class MCDataSamplingBkgGenMethod(
             event generation. Using this pre-selection a large portion of the
             MC data can be reduced prior to background event generation.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
         self.get_event_prob_func = get_event_prob_func
         self.get_mean_func = get_mean_func
@@ -404,7 +408,7 @@ class MCDataSamplingBkgGenMethod(
             background events. The number of events can be less than `n_bkg`
             if an event selection method is used.
         """
-        tracing = CFG['debugging']['enable_tracing']
+        tracing = self._cfg['debugging']['enable_tracing']
 
         # Create aliases to avoid dot-lookup.
         self__pre_event_selection_method = self._pre_event_selection_method
@@ -425,7 +429,7 @@ class MCDataSamplingBkgGenMethod(
             # except the specified MC data fields to keep for the
             # ``get_mean_func`` and ``get_event_prob_func`` functions.
             keep_field_names = list(set(
-                CFG['dataset']['analysis_required_exp_field_names'] +
+                self._cfg['dataset']['analysis_required_exp_field_names'] +
                 data.exp_field_names +
                 self._keep_mc_data_field_names
             ))
@@ -537,7 +541,7 @@ class MCDataSamplingBkgGenMethod(
         # data fields by the user).
         with TaskTimer(tl, 'Remove MC specific data fields from MC events.'):
             exp_field_names = list(set(
-                CFG['dataset']['analysis_required_exp_field_names'] +
+                self._cfg['dataset']['analysis_required_exp_field_names'] +
                 data.exp_field_names))
             bkg_events.tidy_up(exp_field_names)
 

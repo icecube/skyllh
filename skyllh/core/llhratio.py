@@ -9,21 +9,10 @@ import abc
 import numpy as np
 
 from skyllh.core.config import (
-    CFG,
+    HasConfig,
 )
 from skyllh.core.debugging import (
     get_logger,
-)
-from skyllh.core.py import (
-    classname,
-    issequenceof,
-    float_cast,
-)
-from skyllh.core.source_hypo_grouping import (
-    SourceHypoGroupManager,
-)
-from skyllh.core.trialdata import (
-    TrialDataManager,
 )
 from skyllh.core.minimizer import (
     Minimizer,
@@ -36,12 +25,23 @@ from skyllh.core.parameters import (
 from skyllh.core.pdfratio import (
     PDFRatio,
 )
+from skyllh.core.py import (
+    classname,
+    issequenceof,
+    float_cast,
+)
 from skyllh.core.services import (
     DatasetSignalWeightFactorsService,
     SrcDetSigYieldWeightsService,
 )
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
 from skyllh.core.timing import (
     TaskTimer,
+)
+from skyllh.core.trialdata import (
+    TrialDataManager,
 )
 
 
@@ -49,8 +49,9 @@ logger = get_logger(__name__)
 
 
 class LLHRatio(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     """Abstract base class for a log-likelihood (LLH) ratio function.
     """
 
@@ -184,7 +185,7 @@ class LLHRatio(
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        tracing = CFG['debugging']['enable_tracing']
+        tracing = self._cfg['debugging']['enable_tracing']
 
         # Define the negative llhratio function, that will get minimized.
         self_evaluate = self.evaluate
@@ -661,7 +662,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             The (N_fitparams,)-shaped numpy ndarray holding the gradient value
             of log_lambda for each fit parameter.
         """
-        tracing = CFG['debugging']['enable_tracing']
+        tracing = self._cfg['debugging']['enable_tracing']
 
         # Get the number of selected events.
         Nprime = len(Xi)
@@ -820,7 +821,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             The (N_fitparams,)-shaped 1D numpy ndarray holding the gradient
             value for each global fit parameter.
         """
-        tracing = CFG['debugging']['enable_tracing']
+        tracing = self._cfg['debugging']['enable_tracing']
 
         if src_params_recarray is None:
             src_params_recarray = self._pmm.create_src_params_recarray(
@@ -1109,7 +1110,7 @@ class MultiDatasetTCLLHRatio(
             the composite log-likelihood-ratio function for each global fit
             parameter.
         """
-        tracing = CFG['debugging']['enable_tracing']
+        tracing = self._cfg['debugging']['enable_tracing']
 
         if src_params_recarray is None:
             src_params_recarray = self._pmm.create_src_params_recarray(

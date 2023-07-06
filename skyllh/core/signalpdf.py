@@ -8,7 +8,6 @@ import numpy as np
 
 from skyllh.core.debugging import (
     get_logger,
-    is_tracing_enabled,
 )
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
@@ -216,7 +215,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
 
         # Check if the probability density was pre-calculated.
         if self._pd_event_data_field_name in tdm:
-            if is_tracing_enabled():
+            if self._cfg.is_tracing_enabled:
                 logger.debug(
                     'Retrieve precalculated probability density values from '
                     f'data field "{self._pd_event_data_field_name}"')
@@ -732,7 +731,7 @@ class SignalMultiDimGridPDFSet(
 
         # Check for special case when a single set of parameters are provided.
         if len(gridparams_recarray) == 1:
-            if is_tracing_enabled():
+            if self._cfg.is_tracing_enabled:
                 logger.debug(
                     'Get PDF for '
                     f'interpol_param_values={gridparams_recarray[0]}.')
@@ -850,7 +849,7 @@ class SignalMultiDimGridPDFSet(
                 tl,
                 'Call interpolate method to get probability densities for all '
                 'events.'):
-            if is_tracing_enabled():
+            if self._cfg.is_tracing_enabled:
                 logger.debug(
                     'Call interpol_method with '
                     f'params_recarray={params_recarray} of fields '

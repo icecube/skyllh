@@ -14,9 +14,6 @@ from skyllh.core import (
 from skyllh.core.binning import (
     BinningDefinition,
 )
-from skyllh.core.config import (
-    to_internal_time_unit,
-)
 from skyllh.core.flux_model import (
     FactorizedFluxModel,
 )
@@ -149,13 +146,13 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         # Get integrated live-time in days.
         livetime_days = Livetime.get_integrated_livetime(data.livetime)
 
-        to_internal_time_unit_factor = to_internal_time_unit(
+        to_internal_time_unit_factor = self._cfg.to_internal_time_unit(
             time_unit=units.day
         )
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit GeV^-1 cm^-2 s^-1.
-        to_internal_flux_unit_factor = shg.fluxmodel.get_conversion_factor_to_internal_flux_unit()
+        to_internal_flux_unit_factor = shg.fluxmodel.to_internal_flux_unit()
 
         # Load the effective area data from the public dataset.
         aeff_fnames = dataset.get_abs_pathfilename_list(

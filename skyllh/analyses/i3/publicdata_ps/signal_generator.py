@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+
 from scipy import (
     interpolate,
 )
@@ -41,7 +42,8 @@ from skyllh.core.utils.flux_model import (
 
 
 class PDDatasetSignalGenerator(
-        SignalGenerator):
+        SignalGenerator,
+):
     """This class implements a signal generator for a single public data
     dataset.
     """
@@ -52,7 +54,8 @@ class PDDatasetSignalGenerator(
             ds_idx,
             energy_cut_spline=None,
             cut_sindec=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
 
@@ -548,7 +551,8 @@ class PDDatasetSignalGenerator(
 
 
 class TimeDependentPDDatasetSignalGenerator(
-        PDDatasetSignalGenerator):
+        PDDatasetSignalGenerator,
+):
     """This time dependent signal generator for a public PS dataset generates
     events using the
     :class:`~skyllh.analyses.i3.publicdata_ps.signal_generator.PDDatasetSignalGenerator`
@@ -564,7 +568,8 @@ class TimeDependentPDDatasetSignalGenerator(
             time_flux_profile,
             energy_cut_spline=None,
             cut_sindec=None,
-            **kwargs):
+            **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -632,7 +637,8 @@ class TimeDependentPDDatasetSignalGenerator(
             mean,
             poisson=True,
             src_detsigyield_weights_service=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Generates ``mean`` number of signal events with times.
 
         Parameters

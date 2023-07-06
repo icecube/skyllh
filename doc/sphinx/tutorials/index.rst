@@ -10,5 +10,3 @@ Tutorials
     getting_started
     publicdata_ps
     publicdata_ps_timedep
-    kdepdf_mcbg_ps
-    trad_ps_expbg

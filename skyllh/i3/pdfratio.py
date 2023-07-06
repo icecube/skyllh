@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
-from numpy.lib.recfunctions import repack_fields
 import scipy.interpolate
 
-from skyllh.core.py import (
-    make_dict_hash,
+import numpy as np
+
+from numpy.lib.recfunctions import (
+    repack_fields,
 )
+
 from skyllh.core.multiproc import (
     IsParallelizable,
     parallelize,
@@ -17,6 +18,9 @@ from skyllh.core.pdfratio import (
 from skyllh.core.pdfratio_fill import (
     MostSignalLikePDFRatioFillMethod,
     PDFRatioFillMethod,
+)
+from skyllh.core.py import (
+    make_dict_hash,
 )
 
 
@@ -39,7 +43,9 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             fillmethod=None,
             interpolmethod_cls=None,
             ncpu=None,
-            ppbar=None):
+            ppbar=None,
+            **kwargs,
+    ):
         """Creates a new IceCube signal-over-background energy PDF ratio spline
         instance.
 
@@ -75,7 +81,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             sig_pdf_set=sig_pdf_set,
             bkg_pdf=bkg_pdf,
             interpolmethod_cls=interpolmethod_cls,
-            ncpu=ncpu)
+            ncpu=ncpu,
+            **kwargs)
 
         # Define the default ratio fill method.
         if fillmethod is None:

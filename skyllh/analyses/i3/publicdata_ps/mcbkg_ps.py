@@ -34,7 +34,7 @@ from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
 from skyllh.core.config import (
-    CFG,
+    Config,
 )
 from skyllh.core.debugging import (
     get_logger,
@@ -477,7 +477,8 @@ if __name__ == '__main__':
         log_level=logging.DEBUG,
         log_format=log_format)
 
-    CFG['multiproc']['ncpu'] = args.ncpu
+    cfg = Config()
+    cfg.set_ncpu(args.ncpu)
 
     sample_seasons = [
         # ('PublicData_10y_ps', 'IC40'),

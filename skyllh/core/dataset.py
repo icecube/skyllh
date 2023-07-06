@@ -14,7 +14,7 @@ from skyllh.core.binning import (
     BinningDefinition,
 )
 from skyllh.core.config import (
-    CFG,
+    HasConfig,
 )
 from skyllh.core.display import (
     ANSIColors,
@@ -43,7 +43,8 @@ from skyllh.core.timing import (
 
 
 class Dataset(
-        object):
+        HasConfig,
+):
     """The Dataset class describes a set of self-consistent experimental and
     simulated detector data. Usually this is for a certain time period, i.e.
     a season.
@@ -133,9 +134,18 @@ class Dataset(
         return livetime
 
     def __init__(
-            self, name, exp_pathfilenames, mc_pathfilenames, livetime,
-            default_sub_path_fmt, version, verqualifiers=None,
-            base_path=None, sub_path_fmt=None):
+            self,
+            name,
+            exp_pathfilenames,
+            mc_pathfilenames,
+            livetime,
+            default_sub_path_fmt,
+            version,
+            verqualifiers=None,
+            base_path=None,
+            sub_path_fmt=None,
+            **kwargs,
+    ):
         """Creates a new dataset object that describes a self-consistent set of
         data.
 
@@ -168,11 +178,13 @@ class Dataset(
             The user-defined base path of the data set.
             Usually, this is the path of the location of the data directory.
             If set to ``None`` the configured repository base path
-            ``CFG['repository']['base_path']`` is used.
+            ``Config['repository']['base_path']`` is used.
         sub_path_fmt : str | None
             The user-defined format of the sub path of the data set.
             If set to ``None``, the ``default_sub_path_fmt`` will be used.
         """
+        super().__init__(**kwargs)
+
         self.name = name
         self.exp_pathfilename_list = exp_pathfilenames
         self.mc_pathfilename_list = mc_pathfilenames
@@ -391,7 +403,7 @@ class Dataset(
         function.
         """
         return generate_data_file_root_dir(
-            default_base_path=CFG['repository']['base_path'],
+            default_base_path=self._cfg['repository']['base_path'],
             default_sub_path_fmt=self._default_sub_path_fmt,
             version=self._version,
             verqualifiers=self._verqualifiers,
@@ -783,7 +795,7 @@ class Dataset(
                 # Create the list of field names that should get kept.
                 keep_fields_exp = list(set(
                     _conv_new2orig_field_names(
-                        CFG['dataset']['analysis_required_exp_field_names'] +
+                        self._cfg['dataset']['analysis_required_exp_field_names'] +
                         self._loading_extra_exp_field_name_list +
                         keep_fields,
                         self._exp_field_name_renaming_dict
@@ -811,14 +823,14 @@ class Dataset(
                 # But the renaming dictionary can differ for exp and MC fields.
                 keep_fields_mc = list(set(
                     _conv_new2orig_field_names(
-                        CFG['dataset']['analysis_required_exp_field_names'] +
+                        self._cfg['dataset']['analysis_required_exp_field_names'] +
                         self._loading_extra_exp_field_name_list +
                         keep_fields,
                         self._exp_field_name_renaming_dict) +
                     _conv_new2orig_field_names(
-                        CFG['dataset']['analysis_required_exp_field_names'] +
+                        self._cfg['dataset']['analysis_required_exp_field_names'] +
                         self._loading_extra_exp_field_name_list +
-                        CFG['dataset']['analysis_required_mc_field_names'] +
+                        self._cfg['dataset']['analysis_required_mc_field_names'] +
                         self._loading_extra_mc_field_name_list +
                         keep_fields,
                         self._mc_field_name_renaming_dict)
@@ -1053,7 +1065,7 @@ class Dataset(
         if data.exp is not None:
             with TaskTimer(tl, 'Cleaning exp data.'):
                 keep_fields_exp = (
-                    CFG['dataset']['analysis_required_exp_field_names'] +
+                    self._cfg['dataset']['analysis_required_exp_field_names'] +
                     keep_fields
                 )
                 data.exp.tidy_up(keep_fields=keep_fields_exp)
@@ -1061,8 +1073,8 @@ class Dataset(
         if data.mc is not None:
             with TaskTimer(tl, 'Cleaning MC data.'):
                 keep_fields_mc = (
-                    CFG['dataset']['analysis_required_exp_field_names'] +
-                    CFG['dataset']['analysis_required_mc_field_names'] +
+                    self._cfg['dataset']['analysis_required_exp_field_names'] +
+                    self._cfg['dataset']['analysis_required_mc_field_names'] +
                     keep_fields
                 )
                 data.mc.tidy_up(keep_fields=keep_fields_mc)
@@ -1906,11 +1918,22 @@ def assert_data_format(
 ):
     """Checks the format of the experimental and monte-carlo data.
 
+    Parameters
+    ----------
+    dataset : instance of Dataset
+        The instance of Dataset describing the dataset and holding the local
+        configuration.
+    data : instance of DatasetData
+        The instance of DatasetData holding the actual experimental and
+        simulation data of the data set.
+
     Raises
     ------
     KeyError
         If a required data field is missing.
     """
+    cfg = dataset.cfg
+
     def _get_missing_keys(keys, required_keys):
         missing_keys = []
         for reqkey in required_keys:
@@ -1921,7 +1944,7 @@ def assert_data_format(
     if data.exp is not None:
         missing_exp_keys = _get_missing_keys(
             data.exp.field_name_list,
-            CFG['dataset']['analysis_required_exp_field_names'])
+            cfg['dataset']['analysis_required_exp_field_names'])
         if len(missing_exp_keys) != 0:
             raise KeyError(
                 'The following data fields are missing for the experimental '
@@ -1931,8 +1954,8 @@ def assert_data_format(
     if data.mc is not None:
         missing_mc_keys = _get_missing_keys(
             data.mc.field_name_list,
-            CFG['dataset']['analysis_required_exp_field_names'] +
-            CFG['dataset']['analysis_required_mc_field_names'])
+            cfg['dataset']['analysis_required_exp_field_names'] +
+            cfg['dataset']['analysis_required_mc_field_names'])
         if len(missing_mc_keys) != 0:
             raise KeyError(
                 'The following data fields are missing for the monte-carlo '
