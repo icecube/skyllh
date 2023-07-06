@@ -228,6 +228,29 @@ class BinningDefinition(object):
 
         return bin_width
 
+    def get_out_of_range_data(self, data):
+        """Returns the data values which are outside the range of this binning
+        definition.
+
+        Parameters
+        ----------
+        data : instance of numpy.ndarray
+            The 1D ndarray with the data values to check.
+
+        Returns
+        -------
+        oor_data : instance of numpy.ndarray
+            The 1D ndarray with data outside the range of this binning
+            definition.
+        """
+        oor_mask = (
+            (data < self.lower_edge) |
+            (data > self.upper_edge)
+        )
+        oor_data = data[oor_mask]
+
+        return oor_data
+
     def get_subset(self, lower_edge, upper_edge):
         """Creates a new BinningDefinition instance which contains only a subset
         of the bins of this BinningDefinition instance. The range of the subset
