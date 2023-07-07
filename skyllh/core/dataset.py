@@ -773,9 +773,10 @@ class Dataset(
             if new_field_names is None:
                 return None
 
-            new2orig_renaming_dict = dict()
-            for (k, v) in orig2new_renaming_dict.items():
-                new2orig_renaming_dict[v] = k
+            new2orig_renaming_dict = {
+                v: k
+                for (k, v) in orig2new_renaming_dict.items()
+            }
 
             orig_field_names = [
                 new2orig_renaming_dict.get(new_field_name, new_field_name)
