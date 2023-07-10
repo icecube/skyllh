@@ -1063,7 +1063,7 @@ class Dataset(
                     get_datafields(
                         self._cfg,
                         (
-                            DFS.EXP_ANALYIS,
+                            DFS.EXP_ANALYSIS,
                         )
                     ) +
                     keep_fields
@@ -1076,8 +1076,8 @@ class Dataset(
                     get_datafields(
                         self._cfg,
                         (
-                            DFS.EXP_ANALYIS,
-                            DFS.MC_ANALYIS
+                            DFS.EXP_ANALYSIS,
+                            DFS.MC_ANALYSIS,
                         )
                     ) +
                     keep_fields
@@ -1949,7 +1949,8 @@ def assert_data_format(
     if data.exp is not None:
         missing_exp_keys = _get_missing_keys(
             data.exp.field_name_list,
-            cfg['dataset']['analysis_required_exp_field_names'])
+            get_datafields(cfg, (DFS.EXP_ANALYSIS,))
+        )
         if len(missing_exp_keys) != 0:
             raise KeyError(
                 'The following data fields are missing for the experimental '
@@ -1959,8 +1960,8 @@ def assert_data_format(
     if data.mc is not None:
         missing_mc_keys = _get_missing_keys(
             data.mc.field_name_list,
-            cfg['dataset']['analysis_required_exp_field_names'] +
-            cfg['dataset']['analysis_required_mc_field_names'])
+            get_datafields(cfg, (DFS.EXP_ANALYSIS, DFS.MC_ANALYSIS))
+        )
         if len(missing_mc_keys) != 0:
             raise KeyError(
                 'The following data fields are missing for the monte-carlo '
