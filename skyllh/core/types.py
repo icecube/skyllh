@@ -9,10 +9,13 @@ class DataFieldStages_t(
     object,
 ):
 
+    DATAFILE = 1
     EXP_DATAFILE = 1
     MC_DATAFILE = 2
+    DATAPREPARATION = 4
     EXP_DATAPREPARATION = 4
     MC_DATAPREPARATION = 8
+    ANALYSIS = 16
     EXP_ANALYSIS = 16
     MC_ANALYSIS = 32
 
