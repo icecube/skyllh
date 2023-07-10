@@ -211,9 +211,6 @@ class Dataset(
 
         self.description = ''
 
-        self._loading_extra_exp_field_name_list = list()
-        self._loading_extra_mc_field_name_list = list()
-
         self._exp_field_name_renaming_dict = dict()
         self._mc_field_name_renaming_dict = dict()
 
@@ -423,42 +420,6 @@ class Dataset(
             verqualifiers=self._verqualifiers,
             base_path=self._base_path,
             sub_path_fmt=self._sub_path_fmt)
-
-    @property
-    def loading_extra_exp_field_name_list(self):
-        """The list of extra field names that should get loaded when loading
-        experimental data. These should only be field names that are required
-        during the data preparation of this specific data set.
-        """
-        return self._loading_extra_exp_field_name_list
-
-    @loading_extra_exp_field_name_list.setter
-    def loading_extra_exp_field_name_list(self, fieldnames):
-        if isinstance(fieldnames, str):
-            fieldnames = [fieldnames]
-        elif not issequenceof(fieldnames, str):
-            raise TypeError(
-                'The loading_extra_exp_field_name_list property must be an '
-                'instance of str or a sequence of str type instances!')
-        self._loading_extra_exp_field_name_list = list(fieldnames)
-
-    @property
-    def loading_extra_mc_field_name_list(self):
-        """The list of extra field names that should get loaded when loading
-        monte-carlo data. These should only be field names that are required
-        during the data preparation of this specific data set.
-        """
-        return self._loading_extra_mc_field_name_list
-
-    @loading_extra_mc_field_name_list.setter
-    def loading_extra_mc_field_name_list(self, fieldnames):
-        if isinstance(fieldnames, str):
-            fieldnames = [fieldnames]
-        elif not issequenceof(fieldnames, str):
-            raise TypeError(
-                'The loading_extra_mc_field_name_list property must be an '
-                'instance of str or a sequence of str type instances!')
-        self._loading_extra_mc_field_name_list = list(fieldnames)
 
     @property
     def exp_field_name_renaming_dict(self):
