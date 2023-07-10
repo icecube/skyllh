@@ -40,6 +40,20 @@ from skyllh.core.storage import (
 from skyllh.core.timing import (
     TaskTimer,
 )
+from skyllh.core.types import (
+    DataFieldStages_t as DFS,
+)
+
+
+def get_datafields(cfg, stages):
+    """Returns the list of data field names that match at least one of the given
+    stages.
+    """
+    return [
+        field
+        for (field, stage) in cfg['datafields'].items()
+        if DFS.or_check(stage, stages)
+    ]
 
 
 class Dataset(
@@ -796,8 +810,14 @@ class Dataset(
                 # Create the list of field names that should get kept.
                 keep_fields_exp = list(set(
                     _conv_new2orig_field_names(
-                        self._cfg['dataset']['analysis_required_exp_field_names'] +
-                        self._loading_extra_exp_field_name_list +
+                        get_datafields(
+                            self._cfg,
+                            (
+                                DFS.EXP_DATAFILE,
+                                DFS.EXP_DATAPREPARATION,
+                                DFS.EXP_ANALYSIS,
+                            )
+                        ) +
                         keep_fields,
                         self._exp_field_name_renaming_dict
                     )
@@ -824,15 +844,28 @@ class Dataset(
                 # But the renaming dictionary can differ for exp and MC fields.
                 keep_fields_mc = list(set(
                     _conv_new2orig_field_names(
-                        self._cfg['dataset']['analysis_required_exp_field_names'] +
-                        self._loading_extra_exp_field_name_list +
+                        get_datafields(
+                            self._cfg,
+                            (
+                                DFS.EXP_DATAFILE,
+                                DFS.EXP_DATAPREPARATION,
+                                DFS.EXP_ANALYSIS,
+                            )
+                        ) +
                         keep_fields,
                         self._exp_field_name_renaming_dict) +
                     _conv_new2orig_field_names(
-                        self._cfg['dataset']['analysis_required_exp_field_names'] +
-                        self._loading_extra_exp_field_name_list +
-                        self._cfg['dataset']['analysis_required_mc_field_names'] +
-                        self._loading_extra_mc_field_name_list +
+                        get_datafields(
+                            self._cfg,
+                            (
+                                DFS.EXP_DATAFILE,
+                                DFS.EXP_DATAPREPARATION,
+                                DFS.EXP_ANALYSIS,
+                                DFS.MC_DATAFILE,
+                                DFS.MC_DATAPREPARATION,
+                                DFS.MC_ANALYSIS,
+                            )
+                        ) +
                         keep_fields,
                         self._mc_field_name_renaming_dict)
                 ))
@@ -1066,7 +1099,12 @@ class Dataset(
         if data.exp is not None:
             with TaskTimer(tl, 'Cleaning exp data.'):
                 keep_fields_exp = (
-                    self._cfg['dataset']['analysis_required_exp_field_names'] +
+                    get_datafields(
+                        self._cfg,
+                        (
+                            DFS.EXP_ANALYIS,
+                        )
+                    ) +
                     keep_fields
                 )
                 data.exp.tidy_up(keep_fields=keep_fields_exp)
@@ -1074,8 +1112,13 @@ class Dataset(
         if data.mc is not None:
             with TaskTimer(tl, 'Cleaning MC data.'):
                 keep_fields_mc = (
-                    self._cfg['dataset']['analysis_required_exp_field_names'] +
-                    self._cfg['dataset']['analysis_required_mc_field_names'] +
+                    get_datafields(
+                        self._cfg,
+                        (
+                            DFS.EXP_ANALYIS,
+                            DFS.MC_ANALYIS
+                        )
+                    ) +
                     keep_fields
                 )
                 data.mc.tidy_up(keep_fields=keep_fields_mc)
