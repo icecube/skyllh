@@ -45,17 +45,6 @@ from skyllh.core.types import (
 )
 
 
-def get_datafields(cfg, stages):
-    """Returns the list of data field names that match at least one of the given
-    stages.
-    """
-    return [
-        field
-        for (field, stage) in cfg['datafields'].items()
-        if DFS.or_check(stage, stages)
-    ]
-
-
 class Dataset(
         HasConfig,
 ):
@@ -771,14 +760,11 @@ class Dataset(
                 # Create the list of field names that should get kept.
                 keep_fields_exp = list(set(
                     _conv_new2orig_field_names(
-                        get_datafields(
-                            self._cfg,
-                            (
-                                DFS.DATAFILE_EXP,
-                                DFS.DATAPREPARATION_EXP,
-                                DFS.ANALYSIS_EXP,
-                            )
-                        ) +
+                        self._cfg.get_joint_datafields((
+                            DFS.DATAFILE_EXP,
+                            DFS.DATAPREPARATION_EXP,
+                            DFS.ANALYSIS_EXP,
+                        )) +
                         keep_fields,
                         self._exp_field_name_renaming_dict
                     )
@@ -805,28 +791,22 @@ class Dataset(
                 # But the renaming dictionary can differ for exp and MC fields.
                 keep_fields_mc = list(set(
                     _conv_new2orig_field_names(
-                        get_datafields(
-                            self._cfg,
-                            (
-                                DFS.DATAFILE_EXP,
-                                DFS.DATAPREPARATION_EXP,
-                                DFS.ANALYSIS_EXP,
-                            )
-                        ) +
+                        self._cfg.get_joint_datafields((
+                            DFS.DATAFILE_EXP,
+                            DFS.DATAPREPARATION_EXP,
+                            DFS.ANALYSIS_EXP,
+                        )) +
                         keep_fields,
                         self._exp_field_name_renaming_dict) +
                     _conv_new2orig_field_names(
-                        get_datafields(
-                            self._cfg,
-                            (
-                                DFS.DATAFILE_EXP,
-                                DFS.DATAPREPARATION_EXP,
-                                DFS.ANALYSIS_EXP,
-                                DFS.DATAFILE_MC,
-                                DFS.DATAPREPARATION_MC,
-                                DFS.ANALYSIS_MC,
-                            )
-                        ) +
+                        self._cfg.get_joint_datafields((
+                            DFS.DATAFILE_EXP,
+                            DFS.DATAPREPARATION_EXP,
+                            DFS.ANALYSIS_EXP,
+                            DFS.DATAFILE_MC,
+                            DFS.DATAPREPARATION_MC,
+                            DFS.ANALYSIS_MC,
+                        )) +
                         keep_fields,
                         self._mc_field_name_renaming_dict)
                 ))
@@ -1060,12 +1040,9 @@ class Dataset(
         if data.exp is not None:
             with TaskTimer(tl, 'Cleaning exp data.'):
                 keep_fields_exp = (
-                    get_datafields(
-                        self._cfg,
-                        (
-                            DFS.ANALYSIS_EXP,
-                        )
-                    ) +
+                    self._cfg.get_joint_datafields((
+                        DFS.ANALYSIS_EXP,
+                    )) +
                     keep_fields
                 )
                 data.exp.tidy_up(keep_fields=keep_fields_exp)
@@ -1073,13 +1050,10 @@ class Dataset(
         if data.mc is not None:
             with TaskTimer(tl, 'Cleaning MC data.'):
                 keep_fields_mc = (
-                    get_datafields(
-                        self._cfg,
-                        (
-                            DFS.ANALYSIS_EXP,
-                            DFS.ANALYSIS_MC,
-                        )
-                    ) +
+                    self._cfg.get_joint_datafields((
+                        DFS.ANALYSIS_EXP,
+                        DFS.ANALYSIS_MC,
+                    )) +
                     keep_fields
                 )
                 data.mc.tidy_up(keep_fields=keep_fields_mc)
@@ -1949,7 +1923,7 @@ def assert_data_format(
     if data.exp is not None:
         missing_exp_keys = _get_missing_keys(
             data.exp.field_name_list,
-            get_datafields(cfg, (DFS.ANALYSIS_EXP,))
+            cfg.get_joint_datafields((DFS.ANALYSIS_EXP,))
         )
         if len(missing_exp_keys) != 0:
             raise KeyError(
@@ -1960,7 +1934,7 @@ def assert_data_format(
     if data.mc is not None:
         missing_mc_keys = _get_missing_keys(
             data.mc.field_name_list,
-            get_datafields(cfg, (DFS.ANALYSIS_EXP, DFS.ANALYSIS_MC))
+            cfg.get_joint_datafields((DFS.ANALYSIS_EXP, DFS.ANALYSIS_MC))
         )
         if len(missing_mc_keys) != 0:
             raise KeyError(
