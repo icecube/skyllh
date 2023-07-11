@@ -9,15 +9,12 @@ class DataFieldStages_t(
     object,
 ):
 
-    DATAFILE = 1
-    EXP_DATAFILE = 1
-    MC_DATAFILE = 2
-    DATAPREPARATION = 4
-    EXP_DATAPREPARATION = 4
-    MC_DATAPREPARATION = 8
-    ANALYSIS = 16
-    EXP_ANALYSIS = 16
-    MC_ANALYSIS = 32
+    DATAFILE_EXP = 1
+    DATAFILE_MC = 2
+    DATAPREPARATION_EXP = 4
+    DATAPREPARATION_MC = 8
+    ANALYSIS_EXP = 16
+    ANALYSIS_MC = 32
 
     @staticmethod
     def and_check(stage, stages):
