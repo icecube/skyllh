@@ -443,7 +443,7 @@ class MCDataSamplingBkgGenMethod(
             # except the specified MC data fields to keep for the
             # ``get_mean_func`` and ``get_event_prob_func`` functions.
             keep_field_names = list(set(
-                get_datafields(self._cfg, (DFS.EXP_ANALYSIS,)) +
+                get_datafields(self._cfg, (DFS.ANALYSIS_EXP,)) +
                 data.exp_field_names +
                 self._keep_mc_data_field_names
             ))
@@ -555,7 +555,7 @@ class MCDataSamplingBkgGenMethod(
         # data fields by the user).
         with TaskTimer(tl, 'Remove MC specific data fields from MC events.'):
             exp_field_names = list(set(
-                get_datafields(self._cfg, (DFS.EXP_ANALYSIS,)) +
+                get_datafields(self._cfg, (DFS.ANALYSIS_EXP,)) +
                 data.exp_field_names))
             bkg_events.tidy_up(exp_field_names)
 

@@ -72,16 +72,16 @@ _BASECONFIG = {
         }
     },
     'datafields': {
-        'run': DFS.EXP_ANALYSIS,
-        'ra': DFS.EXP_ANALYSIS,
-        'dec': DFS.EXP_ANALYSIS,
-        'ang_err': DFS.EXP_ANALYSIS,
-        'time': DFS.EXP_ANALYSIS,
-        'log_energy': DFS.EXP_ANALYSIS,
-        'true_ra': DFS.MC_ANALYSIS,
-        'true_dec': DFS.MC_ANALYSIS,
-        'true_energy': DFS.MC_ANALYSIS,
-        'mcweight': DFS.MC_ANALYSIS,
+        'run': DFS.ANALYSIS_EXP,
+        'ra': DFS.ANALYSIS_EXP,
+        'dec': DFS.ANALYSIS_EXP,
+        'ang_err': DFS.ANALYSIS_EXP,
+        'time': DFS.ANALYSIS_EXP,
+        'log_energy': DFS.ANALYSIS_EXP,
+        'true_ra': DFS.ANALYSIS_MC,
+        'true_dec': DFS.ANALYSIS_MC,
+        'true_energy': DFS.ANALYSIS_MC,
+        'mcweight': DFS.ANALYSIS_MC,
     },
     # Flag if specific calculations in the core module can be cached.
     'caching': {

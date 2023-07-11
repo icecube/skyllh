@@ -774,9 +774,9 @@ class Dataset(
                         get_datafields(
                             self._cfg,
                             (
-                                DFS.EXP_DATAFILE,
-                                DFS.EXP_DATAPREPARATION,
-                                DFS.EXP_ANALYSIS,
+                                DFS.DATAFILE_EXP,
+                                DFS.DATAPREPARATION_EXP,
+                                DFS.ANALYSIS_EXP,
                             )
                         ) +
                         keep_fields,
@@ -808,9 +808,9 @@ class Dataset(
                         get_datafields(
                             self._cfg,
                             (
-                                DFS.EXP_DATAFILE,
-                                DFS.EXP_DATAPREPARATION,
-                                DFS.EXP_ANALYSIS,
+                                DFS.DATAFILE_EXP,
+                                DFS.DATAPREPARATION_EXP,
+                                DFS.ANALYSIS_EXP,
                             )
                         ) +
                         keep_fields,
@@ -819,12 +819,12 @@ class Dataset(
                         get_datafields(
                             self._cfg,
                             (
-                                DFS.EXP_DATAFILE,
-                                DFS.EXP_DATAPREPARATION,
-                                DFS.EXP_ANALYSIS,
-                                DFS.MC_DATAFILE,
-                                DFS.MC_DATAPREPARATION,
-                                DFS.MC_ANALYSIS,
+                                DFS.DATAFILE_EXP,
+                                DFS.DATAPREPARATION_EXP,
+                                DFS.ANALYSIS_EXP,
+                                DFS.DATAFILE_MC,
+                                DFS.DATAPREPARATION_MC,
+                                DFS.ANALYSIS_MC,
                             )
                         ) +
                         keep_fields,
@@ -1063,7 +1063,7 @@ class Dataset(
                     get_datafields(
                         self._cfg,
                         (
-                            DFS.EXP_ANALYSIS,
+                            DFS.ANALYSIS_EXP,
                         )
                     ) +
                     keep_fields
@@ -1076,8 +1076,8 @@ class Dataset(
                     get_datafields(
                         self._cfg,
                         (
-                            DFS.EXP_ANALYSIS,
-                            DFS.MC_ANALYSIS,
+                            DFS.ANALYSIS_EXP,
+                            DFS.ANALYSIS_MC,
                         )
                     ) +
                     keep_fields
@@ -1949,7 +1949,7 @@ def assert_data_format(
     if data.exp is not None:
         missing_exp_keys = _get_missing_keys(
             data.exp.field_name_list,
-            get_datafields(cfg, (DFS.EXP_ANALYSIS,))
+            get_datafields(cfg, (DFS.ANALYSIS_EXP,))
         )
         if len(missing_exp_keys) != 0:
             raise KeyError(
@@ -1960,7 +1960,7 @@ def assert_data_format(
     if data.mc is not None:
         missing_mc_keys = _get_missing_keys(
             data.mc.field_name_list,
-            get_datafields(cfg, (DFS.EXP_ANALYSIS, DFS.MC_ANALYSIS))
+            get_datafields(cfg, (DFS.ANALYSIS_EXP, DFS.ANALYSIS_MC))
         )
         if len(missing_mc_keys) != 0:
             raise KeyError(
