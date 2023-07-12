@@ -783,7 +783,6 @@ class Dataset(
                         DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
-                                DFS.DATAFILE_EXP,
                                 DFS.DATAPREPARATION_EXP,
                                 DFS.ANALYSIS_EXP,
                             )
@@ -817,7 +816,6 @@ class Dataset(
                         DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
-                                DFS.DATAFILE_EXP,
                                 DFS.DATAPREPARATION_EXP,
                                 DFS.ANALYSIS_EXP,
                             )
@@ -829,10 +827,8 @@ class Dataset(
                         DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
-                                DFS.DATAFILE_EXP,
                                 DFS.DATAPREPARATION_EXP,
                                 DFS.ANALYSIS_EXP,
-                                DFS.DATAFILE_MC,
                                 DFS.DATAPREPARATION_MC,
                                 DFS.ANALYSIS_MC,
                             )
