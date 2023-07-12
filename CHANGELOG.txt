@@ -29,6 +29,13 @@ v23.2.0
       configuration. Classes derived from skyllh.core.config.HasConfig provide
       the cfg property and require the cfg argument in their constructor.
 
+- Data field specification via stages for data file loading
+
+    - Which data fields of a data file are required by the data preparation or
+      the analysis is now specified via data field stages through the
+      configuration. Data field stages are defined through class members of the
+      skyllh.core.datafields.DataFieldStages class.
+
 - Split the background generator into DatasetBackgroundGenerator and
   MultiDatasetBackgroundGenerator to allow different background generators for
   different datasets / detectors.
