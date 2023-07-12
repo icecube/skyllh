@@ -200,6 +200,8 @@ class Dataset(
 
         self.description = ''
 
+        self._datafields = dict()
+
         self._exp_field_name_renaming_dict = dict()
         self._mc_field_name_renaming_dict = dict()
 
@@ -231,6 +233,21 @@ class Dataset(
             raise TypeError(
                 'The description of the dataset must be of type str!')
         self._description = description
+
+    @property
+    def datafields(self):
+        """The dictionary holding the names and stages of required data fields
+        specific for this dataset.
+        """
+        return self._datafields
+
+    @datafields.setter
+    def datafields(self, fields):
+        if not isinstance(fields, dict):
+            raise TypeError(
+                'The datafields property must be a dictionary! '
+                f'Its current type is "{classname(fields)}"!')
+        self._datafields = fields
 
     @property
     def exp_pathfilename_list(self):
@@ -752,6 +769,8 @@ class Dataset(
         if keep_fields is None:
             keep_fields = []
 
+        datafields = {**self._cfg['datafields'], **self._datafields}
+
         # Load the experimental data if there is any.
         if len(self._exp_pathfilename_list) > 0:
             with TaskTimer(tl, 'Loading exp data from disk.'):
@@ -760,11 +779,14 @@ class Dataset(
                 # Create the list of field names that should get kept.
                 keep_fields_exp = list(set(
                     _conv_new2orig_field_names(
-                        self._cfg.get_joint_datafields((
-                            DFS.DATAFILE_EXP,
-                            DFS.DATAPREPARATION_EXP,
-                            DFS.ANALYSIS_EXP,
-                        )) +
+                        DFS.get_joint_datafields(
+                            datafields=datafields,
+                            stages=(
+                                DFS.DATAFILE_EXP,
+                                DFS.DATAPREPARATION_EXP,
+                                DFS.ANALYSIS_EXP,
+                            )
+                        ) +
                         keep_fields,
                         self._exp_field_name_renaming_dict
                     )
@@ -791,24 +813,32 @@ class Dataset(
                 # But the renaming dictionary can differ for exp and MC fields.
                 keep_fields_mc = list(set(
                     _conv_new2orig_field_names(
-                        self._cfg.get_joint_datafields((
-                            DFS.DATAFILE_EXP,
-                            DFS.DATAPREPARATION_EXP,
-                            DFS.ANALYSIS_EXP,
-                        )) +
+                        DFS.get_joint_datafields(
+                            datafields=datafields,
+                            stages=(
+                                DFS.DATAFILE_EXP,
+                                DFS.DATAPREPARATION_EXP,
+                                DFS.ANALYSIS_EXP,
+                            )
+                        ) +
                         keep_fields,
-                        self._exp_field_name_renaming_dict) +
+                        self._exp_field_name_renaming_dict
+                    ) +
                     _conv_new2orig_field_names(
-                        self._cfg.get_joint_datafields((
-                            DFS.DATAFILE_EXP,
-                            DFS.DATAPREPARATION_EXP,
-                            DFS.ANALYSIS_EXP,
-                            DFS.DATAFILE_MC,
-                            DFS.DATAPREPARATION_MC,
-                            DFS.ANALYSIS_MC,
-                        )) +
+                        DFS.get_joint_datafields(
+                            datafields=datafields,
+                            stages=(
+                                DFS.DATAFILE_EXP,
+                                DFS.DATAPREPARATION_EXP,
+                                DFS.ANALYSIS_EXP,
+                                DFS.DATAFILE_MC,
+                                DFS.DATAPREPARATION_MC,
+                                DFS.ANALYSIS_MC,
+                            )
+                        ) +
                         keep_fields,
-                        self._mc_field_name_renaming_dict)
+                        self._mc_field_name_renaming_dict
+                    )
                 ))
                 data_mc = fileloader_mc.load_data(
                     keep_fields=keep_fields_mc,
@@ -1040,9 +1070,12 @@ class Dataset(
         if data.exp is not None:
             with TaskTimer(tl, 'Cleaning exp data.'):
                 keep_fields_exp = (
-                    self._cfg.get_joint_datafields((
-                        DFS.ANALYSIS_EXP,
-                    )) +
+                    DFS.get_joint_datafields(
+                        datafields=self._cfg['datafields'],
+                        stages=(
+                            DFS.ANALYSIS_EXP,
+                        )
+                    ) +
                     keep_fields
                 )
                 data.exp.tidy_up(keep_fields=keep_fields_exp)
@@ -1050,10 +1083,13 @@ class Dataset(
         if data.mc is not None:
             with TaskTimer(tl, 'Cleaning MC data.'):
                 keep_fields_mc = (
-                    self._cfg.get_joint_datafields((
-                        DFS.ANALYSIS_EXP,
-                        DFS.ANALYSIS_MC,
-                    )) +
+                    DFS.get_joint_datafields(
+                        datafields=self._cfg['datafields'],
+                        stages=(
+                            DFS.ANALYSIS_EXP,
+                            DFS.ANALYSIS_MC,
+                        )
+                    ) +
                     keep_fields
                 )
                 data.mc.tidy_up(keep_fields=keep_fields_mc)
@@ -1923,7 +1959,12 @@ def assert_data_format(
     if data.exp is not None:
         missing_exp_keys = _get_missing_keys(
             data.exp.field_name_list,
-            cfg.get_joint_datafields((DFS.ANALYSIS_EXP,))
+            DFS.get_joint_datafields(
+                datafields=cfg['datafields'],
+                stages=(
+                    DFS.ANALYSIS_EXP,
+                )
+            )
         )
         if len(missing_exp_keys) != 0:
             raise KeyError(
@@ -1934,7 +1975,13 @@ def assert_data_format(
     if data.mc is not None:
         missing_mc_keys = _get_missing_keys(
             data.mc.field_name_list,
-            cfg.get_joint_datafields((DFS.ANALYSIS_EXP, DFS.ANALYSIS_MC))
+            DFS.get_joint_datafields(
+                datafields=cfg['datafields'],
+                stages=(
+                    DFS.ANALYSIS_EXP,
+                    DFS.ANALYSIS_MC,
+                )
+            )
         )
         if len(missing_mc_keys) != 0:
             raise KeyError(

@@ -36,6 +36,31 @@ class DataFieldStages_t(
 
         return False
 
+    @staticmethod
+    def get_joint_datafields(datafields, stages):
+        """Returns the list of data field names that match at least one of the
+        given stages, i.e. the joint set of data fields given the stages.
+
+        Parameters
+        ----------
+        datafields : dict
+            The dictionary of datafield names as keys and stages as values.
+        stages : sequence of int
+            The stages for which data field names should
+
+        Returns
+        -------
+        datafield_names : list of str
+            The list of data field names.
+        """
+        datafield_names = [
+            field
+            for (field, stage) in datafields.items()
+            if DataFieldStages_t.or_check(stage, stages)
+        ]
+
+        return datafield_names
+
 
 class SourceHypoGroup_t(
     object,

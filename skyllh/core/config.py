@@ -202,31 +202,6 @@ class Config(
 
         return self
 
-    def get_joint_datafields(
-            self,
-            stages,
-    ):
-        """Returns the list of data field names that match at least one of the
-        given stages, i.e. the joint set of data fields given the stages.
-
-        Parameters
-        ----------
-        stages : sequence of int
-            The stages for which data field names should
-
-        Returns
-        -------
-        datafields : list of str
-            The list of data field names.
-        """
-        datafields = [
-            field
-            for (field, stage) in self['datafields'].items()
-            if DFS.or_check(stage, stages)
-        ]
-
-        return datafields
-
     def get_wd(
             self,
     ):
