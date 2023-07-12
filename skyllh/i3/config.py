@@ -3,8 +3,8 @@
 """This file defines IceCube specific global configuration.
 """
 
-from skyllh.core.types import (
-    DataFieldStages_t as DFS,
+from skyllh.core.datafields import (
+    DataFieldStages as DFS,
 )
 
 

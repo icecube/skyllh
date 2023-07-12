@@ -16,6 +16,10 @@ from skyllh.core.binning import (
 from skyllh.core.config import (
     HasConfig,
 )
+from skyllh.core.datafields import (
+    DataFields,
+    DataFieldStages as DFS,
+)
 from skyllh.core.display import (
     ANSIColors,
 )
@@ -39,9 +43,6 @@ from skyllh.core.storage import (
 )
 from skyllh.core.timing import (
     TaskTimer,
-)
-from skyllh.core.types import (
-    DataFieldStages_t as DFS,
 )
 
 
@@ -779,7 +780,7 @@ class Dataset(
                 # Create the list of field names that should get kept.
                 keep_fields_exp = list(set(
                     _conv_new2orig_field_names(
-                        DFS.get_joint_datafields(
+                        DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
                                 DFS.DATAFILE_EXP,
@@ -813,7 +814,7 @@ class Dataset(
                 # But the renaming dictionary can differ for exp and MC fields.
                 keep_fields_mc = list(set(
                     _conv_new2orig_field_names(
-                        DFS.get_joint_datafields(
+                        DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
                                 DFS.DATAFILE_EXP,
@@ -825,7 +826,7 @@ class Dataset(
                         self._exp_field_name_renaming_dict
                     ) +
                     _conv_new2orig_field_names(
-                        DFS.get_joint_datafields(
+                        DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
                                 DFS.DATAFILE_EXP,
@@ -1070,7 +1071,7 @@ class Dataset(
         if data.exp is not None:
             with TaskTimer(tl, 'Cleaning exp data.'):
                 keep_fields_exp = (
-                    DFS.get_joint_datafields(
+                    DataFields.get_joint_names(
                         datafields=self._cfg['datafields'],
                         stages=(
                             DFS.ANALYSIS_EXP,
@@ -1083,7 +1084,7 @@ class Dataset(
         if data.mc is not None:
             with TaskTimer(tl, 'Cleaning MC data.'):
                 keep_fields_mc = (
-                    DFS.get_joint_datafields(
+                    DataFields.get_joint_names(
                         datafields=self._cfg['datafields'],
                         stages=(
                             DFS.ANALYSIS_EXP,
@@ -1959,7 +1960,7 @@ def assert_data_format(
     if data.exp is not None:
         missing_exp_keys = _get_missing_keys(
             data.exp.field_name_list,
-            DFS.get_joint_datafields(
+            DataFields.get_joint_names(
                 datafields=cfg['datafields'],
                 stages=(
                     DFS.ANALYSIS_EXP,
@@ -1975,7 +1976,7 @@ def assert_data_format(
     if data.mc is not None:
         missing_mc_keys = _get_missing_keys(
             data.mc.field_name_list,
-            DFS.get_joint_datafields(
+            DataFields.get_joint_names(
                 datafields=cfg['datafields'],
                 stages=(
                     DFS.ANALYSIS_EXP,

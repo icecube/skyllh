@@ -19,11 +19,11 @@ from typing import (
 from skyllh.core import (
     tool,
 )
+from skyllh.core.datafields import (
+    DataFieldStages as DFS,
+)
 from skyllh.core.py import (
     classname,
-)
-from skyllh.core.types import (
-    DataFieldStages_t as DFS,
 )
 
 

@@ -7,6 +7,10 @@ import numpy as np
 from skyllh.core.config import (
     HasConfig,
 )
+from skyllh.core.datafields import (
+    DataFields,
+    DataFieldStages as DFS,
+)
 from skyllh.core.debugging import (
     get_logger,
 )
@@ -25,9 +29,6 @@ from skyllh.core.scrambling import (
 )
 from skyllh.core.timing import (
     TaskTimer,
-)
-from skyllh.core.types import (
-    DataFieldStages_t as DFS,
 )
 
 
@@ -432,7 +433,7 @@ class MCDataSamplingBkgGenMethod(
             # except the specified MC data fields to keep for the
             # ``get_mean_func`` and ``get_event_prob_func`` functions.
             keep_field_names = list(set(
-                DFS.get_joint_datafields(
+                DataFields.get_joint_names(
                     self._cfg['datafields'],
                     (
                         DFS.ANALYSIS_EXP,
@@ -549,7 +550,7 @@ class MCDataSamplingBkgGenMethod(
         # data fields by the user).
         with TaskTimer(tl, 'Remove MC specific data fields from MC events.'):
             exp_field_names = list(set(
-                DFS.get_joint_datafields(
+                DataFields.get_joint_names(
                     self._cfg['datafields'],
                     (
                         DFS.ANALYSIS_EXP,
