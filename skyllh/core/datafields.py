@@ -8,6 +8,9 @@ file is required at what stage.
 class DataFieldStages(
     object,
 ):
+    """This class provides the data field stage values, which are individual
+    bits of an integer value to allow for multiple stages of a data field.
+    """
 
     DATAPREPARATION_EXP = 1
     DATAPREPARATION_MC = 2
@@ -51,7 +54,7 @@ class DataFields(
         datafields : dict
             The dictionary of datafield names as keys and stages as values.
         stages : sequence of int
-            The stages for which data field names should
+            The stages for which data field names should get returned.
 
         Returns
         -------
