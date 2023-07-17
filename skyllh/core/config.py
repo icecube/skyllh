@@ -19,9 +19,11 @@ from typing import (
 from skyllh.core import (
     tool,
 )
+from skyllh.core.datafields import (
+    DataFieldStages as DFS,
+)
 from skyllh.core.py import (
     classname,
-    issequenceof,
 )
 
 
@@ -69,25 +71,17 @@ _BASECONFIG = {
             }
         }
     },
-    'dataset': {
-        # Define the data field names of the data set's experimental data,
-        # that are required by the analysis.
-        'analysis_required_exp_field_names': [
-            'run',
-            'ra',
-            'dec',
-            'ang_err',
-            'time',
-            'log_energy',
-        ],
-        # Define the data field names of the data set's monte-carlo data,
-        # that are required by the analysis.
-        'analysis_required_mc_field_names': [
-            'true_ra',
-            'true_dec',
-            'true_energy',
-            'mcweight',
-        ],
+    'datafields': {
+        'run': DFS.ANALYSIS_EXP,
+        'ra': DFS.ANALYSIS_EXP,
+        'dec': DFS.ANALYSIS_EXP,
+        'ang_err': DFS.ANALYSIS_EXP,
+        'time': DFS.ANALYSIS_EXP,
+        'log_energy': DFS.ANALYSIS_EXP,
+        'true_ra': DFS.ANALYSIS_MC,
+        'true_dec': DFS.ANALYSIS_MC,
+        'true_energy': DFS.ANALYSIS_MC,
+        'mcweight': DFS.ANALYSIS_MC,
     },
     # Flag if specific calculations in the core module can be cached.
     'caching': {
@@ -180,66 +174,6 @@ class Config(
         """
         return self['debugging']['enable_tracing']
 
-    def add_analysis_required_exp_data_field_names(
-            self,
-            fieldnames,
-    ):
-        """Adds the given data field names to the set of data field names of the
-        experimental data that are required by the analysis.
-
-        Parameters
-        ----------
-        fieldnames : str | sequence of str
-            The field name or sequence of field names that should get added for
-            the experimental data.
-
-        Returns
-        -------
-        self : instance of Config
-            The updated instance of Config.
-        """
-        if isinstance(fieldnames, str):
-            fieldnames = [fieldnames]
-        elif not issequenceof(fieldnames, str):
-            raise TypeError(
-                'The fieldnames argument must be an instance of str '
-                'or a sequence of type str instances!')
-
-        self['dataset']['analysis_required_exp_field_names'] = list(set(
-            self['dataset']['analysis_required_exp_field_names'] + fieldnames))
-
-        return self
-
-    def add_analysis_required_mc_data_field_names(
-            self,
-            fieldnames,
-    ):
-        """Adds the given data field names to the set of data field names of the
-        monte-carlo data that are required by the analysis.
-
-        Parameters
-        ----------
-        fieldnames : str | sequence of str
-            The field name or sequence of field names that should get added for
-            the monto-carlo data.
-
-        Returns
-        -------
-        self : instance of Config
-            The updated instance of Config.
-        """
-        if isinstance(fieldnames, str):
-            fieldnames = [fieldnames]
-        elif not issequenceof(fieldnames, str):
-            raise TypeError(
-                'The fieldnames argument must be an instance of str '
-                'or a sequence of type str instances!')
-
-        self['dataset']['analysis_required_mc_field_names'] = list(set(
-            self['dataset']['analysis_required_mc_field_names'] + fieldnames))
-
-        return self
-
     def disable_tracing(
             self,
     ):
@@ -282,64 +216,6 @@ class Config(
         wd = os.path.abspath(self['project']['working_directory'])
 
         return wd
-
-    def set_analysis_required_exp_data_field_names(
-            self,
-            fieldnames,
-    ):
-        """Sets the data field names of the experimental data that are required
-        by the analysis.
-
-        Parameters
-        ----------
-        fieldnames : str | sequence of str
-            The field name or sequence of field names for the experimental data.
-
-        Returns
-        -------
-        self : instance of Config
-            The updated instance of Config.
-        """
-        if isinstance(fieldnames, str):
-            fieldnames = [fieldnames]
-        elif not issequenceof(fieldnames, str):
-            raise TypeError(
-                'The fieldnames argument must be an instance of str '
-                'or a sequence of type str instances!')
-
-        self['dataset']['analysis_required_exp_field_names'] = list(set(
-            fieldnames))
-
-        return self
-
-    def set_analysis_required_mc_data_field_names(
-            self,
-            fieldnames,
-    ):
-        """Sets the data field names of the monte-carlo data that are required
-        by the analysis.
-
-        Parameters
-        ----------
-        fieldnames : str | sequence of str
-            The field name or sequence of field names for the monte-carlo data.
-
-        Returns
-        -------
-        self : instance of Config
-            The updated instance of Config.
-        """
-        if isinstance(fieldnames, str):
-            fieldnames = [fieldnames]
-        elif not issequenceof(fieldnames, str):
-            raise TypeError(
-                'The fieldnames argument must be an instance of str '
-                'or a sequence of type str instances!')
-
-        self['dataset']['analysis_required_mc_field_names'] = list(set(
-            fieldnames))
-
-        return self
 
     def set_enable_tracing(
             self,
