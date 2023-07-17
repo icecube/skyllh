@@ -783,8 +783,8 @@ class Dataset(
                         DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
-                                DFS.DATAPREPARATION_EXP,
-                                DFS.ANALYSIS_EXP,
+                                DFS.DATAPREPARATION_EXP |
+                                DFS.ANALYSIS_EXP
                             )
                         ) +
                         keep_fields,
@@ -816,8 +816,8 @@ class Dataset(
                         DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
-                                DFS.DATAPREPARATION_EXP,
-                                DFS.ANALYSIS_EXP,
+                                DFS.DATAPREPARATION_EXP |
+                                DFS.ANALYSIS_EXP
                             )
                         ) +
                         keep_fields,
@@ -827,10 +827,10 @@ class Dataset(
                         DataFields.get_joint_names(
                             datafields=datafields,
                             stages=(
-                                DFS.DATAPREPARATION_EXP,
-                                DFS.ANALYSIS_EXP,
-                                DFS.DATAPREPARATION_MC,
-                                DFS.ANALYSIS_MC,
+                                DFS.DATAPREPARATION_EXP |
+                                DFS.ANALYSIS_EXP |
+                                DFS.DATAPREPARATION_MC |
+                                DFS.ANALYSIS_MC
                             )
                         ) +
                         keep_fields,
@@ -1070,7 +1070,7 @@ class Dataset(
                     DataFields.get_joint_names(
                         datafields=self._cfg['datafields'],
                         stages=(
-                            DFS.ANALYSIS_EXP,
+                            DFS.ANALYSIS_EXP
                         )
                     ) +
                     keep_fields
@@ -1083,8 +1083,8 @@ class Dataset(
                     DataFields.get_joint_names(
                         datafields=self._cfg['datafields'],
                         stages=(
-                            DFS.ANALYSIS_EXP,
-                            DFS.ANALYSIS_MC,
+                            DFS.ANALYSIS_EXP |
+                            DFS.ANALYSIS_MC
                         )
                     ) +
                     keep_fields
@@ -1959,7 +1959,7 @@ def assert_data_format(
             DataFields.get_joint_names(
                 datafields=cfg['datafields'],
                 stages=(
-                    DFS.ANALYSIS_EXP,
+                    DFS.ANALYSIS_EXP
                 )
             )
         )
@@ -1975,8 +1975,8 @@ def assert_data_format(
             DataFields.get_joint_names(
                 datafields=cfg['datafields'],
                 stages=(
-                    DFS.ANALYSIS_EXP,
-                    DFS.ANALYSIS_MC,
+                    DFS.ANALYSIS_EXP |
+                    DFS.ANALYSIS_MC
                 )
             )
         )

@@ -434,9 +434,9 @@ class MCDataSamplingBkgGenMethod(
             # ``get_mean_func`` and ``get_event_prob_func`` functions.
             keep_field_names = list(set(
                 DataFields.get_joint_names(
-                    self._cfg['datafields'],
-                    (
-                        DFS.ANALYSIS_EXP,
+                    datafields=self._cfg['datafields'],
+                    stages=(
+                        DFS.ANALYSIS_EXP
                     )
                 ) +
                 data.exp_field_names +
@@ -551,9 +551,9 @@ class MCDataSamplingBkgGenMethod(
         with TaskTimer(tl, 'Remove MC specific data fields from MC events.'):
             exp_field_names = list(set(
                 DataFields.get_joint_names(
-                    self._cfg['datafields'],
-                    (
-                        DFS.ANALYSIS_EXP,
+                    datafields=self._cfg['datafields'],
+                    stages=(
+                        DFS.ANALYSIS_EXP
                     )
                 ) +
                 data.exp_field_names))
