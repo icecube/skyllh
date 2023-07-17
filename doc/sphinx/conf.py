@@ -19,14 +19,6 @@ import os
 import sys
 
 
-def get_skyllh_version():
-    import skyllh
-    if skyllh.__version__ == '0+unknown':
-        from skyllh import _version
-        return _version.get_versions()['full-revisionid']
-    return skyllh.__version__
-
-
 sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
@@ -38,7 +30,7 @@ copyright = u'%s, The IceCube Collaboration, T. Kontrimas, M. Wolf' % year
 author = u'The IceCube Collaboration'
 
 # The short X.Y version
-version = get_skyllh_version()
+version = u'23.2.0'
 # The full version, including alpha/beta/rc tags
 release = u''
 
