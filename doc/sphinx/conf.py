@@ -21,6 +21,9 @@ import sys
 
 def get_skyllh_version():
     import skyllh
+    if skyllh.__version__ == '0+unknown':
+        from skyllh import _version
+        return _version.get_versions()['full-revisionid']
     return skyllh.__version__
 
 
