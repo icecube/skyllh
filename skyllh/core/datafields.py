@@ -18,19 +18,57 @@ class DataFieldStages(
     ANALYSIS_MC = 8
 
     @staticmethod
-    def and_check(stage, stages):
+    def and_check(
+            stage,
+            stages,
+    ):
         """Checks if the given stage matches all of the given stages.
+
+        Parameters
+        ----------
+        stage : int
+            The stage value, which should get checked.
+        stages : int | sequence of int
+            The stage(s) to check for.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the given stage contains all of the given stages,
+            ``False`` otherwise.
         """
+        if isinstance(stage, int):
+            return (stage & stages == stages)
+
         for stage_ in stages:
-            if stage & stage_ == 0:
+            if stage & stage_ != stage_:
                 return False
 
         return True
 
     @staticmethod
-    def or_check(stage, stages):
-        """Checks if the given stage matches at least one of the given stages.
+    def or_check(
+            stage,
+            stages,
+    ):
+        """Checks if the given stage matches any of the given stages.
+
+        Parameters
+        ----------
+        stage : int
+            The stage value, which should get checked.
+        stages : int | sequence of int
+            The stage(s) to check for.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the given stage contains any of the given stages,
+            ``False`` otherwise.
         """
+        if isinstance(stage, int):
+            return (stage & stages != 0)
+
         for stage_ in stages:
             if stage & stage_ != 0:
                 return True
