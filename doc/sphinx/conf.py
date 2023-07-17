@@ -18,6 +18,12 @@ from datetime import (
 import os
 import sys
 
+
+def get_skyllh_version():
+    import skyllh
+    return skyllh.__version__
+
+
 sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
@@ -29,7 +35,7 @@ copyright = u'%s, The IceCube Collaboration, T. Kontrimas, M. Wolf' % year
 author = u'The IceCube Collaboration'
 
 # The short X.Y version
-version = u'23.1.1'
+version = get_skyllh_version()
 # The full version, including alpha/beta/rc tags
 release = u''
 
