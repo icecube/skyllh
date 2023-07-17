@@ -267,12 +267,15 @@ class DetSigYieldBuilder(
     def get_detsigyield_construction_factory(self):
         """This method is supposed to return a callable with the call-signature
 
+        .. code::
+
             __call__(
                 dataset,
                 data,
                 shgs,
                 ppbar,
             )
+
 
         to construct several DetSigYield instances, one for each provided
         source hypo group (i.e. sources and fluxmodel).
