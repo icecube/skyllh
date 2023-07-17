@@ -37,7 +37,7 @@ class DataFieldStages(
             ``True`` if the given stage contains all of the given stages,
             ``False`` otherwise.
         """
-        if isinstance(stage, int):
+        if isinstance(stages, int):
             return (stage & stages == stages)
 
         for stage_ in stages:
@@ -66,7 +66,7 @@ class DataFieldStages(
             ``True`` if the given stage contains any of the given stages,
             ``False`` otherwise.
         """
-        if isinstance(stage, int):
+        if isinstance(stages, int):
             return (stage & stages != 0)
 
         for stage_ in stages:
