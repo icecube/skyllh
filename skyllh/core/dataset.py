@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import abc
+import os
+import os.path
+
+import numpy as np
+
 from copy import (
     deepcopy,
 )
-import os
-import os.path
-import numpy as np
 
 from skyllh.core import (
     display,
@@ -20,6 +23,9 @@ from skyllh.core.datafields import (
     DataFields,
     DataFieldStages as DFS,
 )
+from skyllh.core.debugging import (
+    get_logger,
+)
 from skyllh.core.display import (
     ANSIColors,
 )
@@ -32,6 +38,7 @@ from skyllh.core.progressbar import (
 from skyllh.core.py import (
     classname,
     float_cast,
+    get_class_of_func,
     issequence,
     issequenceof,
     list_of_cast,
@@ -44,6 +51,130 @@ from skyllh.core.storage import (
 from skyllh.core.timing import (
     TaskTimer,
 )
+
+
+class DatasetOrigin(
+    object,
+):
+    """The DatasetOrigin class provides information about the origin of a
+    dataset, so the files of a dataset can be downloaded from the origin.
+    """
+    def __init__(
+            self,
+            path,
+            transfer_func,
+            protocol=None,
+            host=None,
+            port=None,
+            user=None,
+            password=None,
+            post_transfer_func=None,
+            **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        self.path = path
+        self.transfer_func = transfer_func
+        self.protocol = protocol
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
+        self.post_transfer_func = post_transfer_func
+
+
+class DatasetTransfer(
+    object,
+    metaclass=abc.ABCMeta,
+):
+    """Base class for a dataset transfer mechanism.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @staticmethod
+    def ensure_dst_path(dst_path):
+        """Ensures the existance of the given destination path.
+
+        Parameters
+        ----------
+        dst_path : str
+            The destination path.
+        """
+        if not os.path.isdir(dst_path):
+            # Throws if dst_path exists as a file.
+            os.makedirs(dst_path)
+
+    @staticmethod
+    @abc.abstractstaticmethod
+    def transfer(ds, dst_path):
+        """This method is supposed to transfer the dataset origin path to the
+        given destination path.
+
+        Parameters
+        ----------
+        ds : instance of Dataset
+            The instance of Dataset having the ``origin`` property defined,
+            specifying the origin of the dataset.
+        dst_path : str
+            The destination path into which the dataset will be transfered.
+        """
+        pass
+
+    @staticmethod
+    def post_transfer_unzip(ds, dst_path):
+        """This is a post-transfer function. It will unzip the transfered file
+        into the dst_path if the origin path was a zip file.
+        """
+        if not ds.origin.path.lower().endswith('.zip'):
+            return
+
+        cls = get_class_of_func(DatasetTransfer.post_transfer_unzip)
+        logger = get_logger(f'{classname(cls)}.post_transfer_unzip')
+
+        fname = os.path.basename(ds.origin.path)
+        # Unzip the dataset file.
+        zip_file = os.path.join(dst_path, fname)
+        cmd = f'unzip "{zip_file}" -d "{dst_path}"'
+        rcode = os.system(cmd)
+        if rcode != 0:
+            raise RuntimeError(
+                f'The post-transfer command "{cmd}" failed with return '
+                f'code {rcode}!')
+        # Remove the zip file.
+        try:
+            os.remove(zip_file)
+        except Exception as exc:
+            logger.warn(str(exc))
+
+
+class WGETDatasetTransfer(
+    DatasetTransfer,
+):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @staticmethod
+    def transfer(ds, dst_path):
+        """Transfers the given dataset to the given destination path.
+
+        Parameters
+        ----------
+        ds : instance of Dataset
+            The instance of Dataset containing the origin property specifying
+            the origin of the dataset.
+        dst_path : str
+            The destination path into which the dataset will be transfered.
+        """
+        protocol = ds.origin.protocol
+        host = ds.origin.host
+        path = ds.origin.path
+        cmd = f'wget {protocol}://{host}/{path} -P {dst_path}'
+        rcode = os.system(cmd)
+        if rcode != 0:
+            raise RuntimeError(
+                f'The transfer command "{cmd}" failed with return code '
+                f'{rcode}!')
 
 
 class Dataset(
@@ -148,6 +279,7 @@ class Dataset(
             verqualifiers=None,
             base_path=None,
             sub_path_fmt=None,
+            origin=None,
             **kwargs,
     ):
         """Creates a new dataset object that describes a self-consistent set of
@@ -186,6 +318,9 @@ class Dataset(
         sub_path_fmt : str | None
             The user-defined format of the sub path of the data set.
             If set to ``None``, the ``default_sub_path_fmt`` will be used.
+        origin : instance of DatasetOrigin | None
+            The instance of DatasetOrigin defining the origin of the dataset,
+            so the dataset can be transfered automatically to the user's device.
         """
         super().__init__(**kwargs)
 
@@ -198,6 +333,7 @@ class Dataset(
         self.verqualifiers = verqualifiers
         self.base_path = base_path
         self.sub_path_fmt = sub_path_fmt
+        self.origin = origin
 
         self.description = ''
 
@@ -412,6 +548,23 @@ class Dataset(
                 'The sub_path_fmt property must be None, or castable to type '
                 'str!')
         self._sub_path_fmt = fmt
+
+    @property
+    def origin(self):
+        """The instance of DatasetOrigin defining the origin of the dataset.
+        This can be ``None`` if the dataset has no origin defined.
+        """
+        return self._origin
+
+    @origin.setter
+    def origin(self, obj):
+        if obj is not None:
+            if not isinstance(obj, DatasetOrigin):
+                raise TypeError(
+                    'The origin property must be None, or an instance of '
+                    'DatasetOrigin! '
+                    f'Its current type is {classname(obj)}!')
+        self._origin = obj
 
     @property
     def root_dir(self):
@@ -690,6 +843,23 @@ class Dataset(
                 'Version qualifier values did not increment and no new version '
                 'qualifiers were added!')
 
+    def download_from_origin(self):
+        """Downloads the dataset from the origin using the transfer and
+        post-transfer function if the root directory of the dataset does not
+        exist.
+        """
+        root_dir = self.root_dir
+        if os.path.exists(root_dir) and os.path.isdir(root_dir):
+            return
+
+        if self.origin is None:
+            return
+
+        self.origin.transfer_func(
+            ds=self,
+            dst_path=root_dir)
+        # if self.origin
+
     def load_data(
             self,
             keep_fields=None,
@@ -701,8 +871,10 @@ class Dataset(
     ):
         """Loads the data, which is described by the dataset.
 
-        Note: This does not call the ``prepare_data`` method! It only loads
-              the data as the method names says.
+        .. note:
+
+            This does not call the ``prepare_data`` method! It only loads the
+            data as the method names says.
 
         Parameters
         ----------
@@ -766,6 +938,9 @@ class Dataset(
             ]
 
             return orig_field_names
+
+        # Download the dataset if necessary.
+        self.download_from_origin()
 
         if keep_fields is None:
             keep_fields = []
@@ -2026,6 +2201,34 @@ def remove_events(
     return data_exp
 
 
+def generate_base_path(
+        default_base_path,
+        base_path=None,
+):
+    """Generates the base path. If base_path is None, default_base_path is used.
+
+    Parameters
+    ----------
+    default_base_path : str
+        The default base path if base_path is None.
+    base_path : str | None
+        The user-specified base path.
+
+    Returns
+    -------
+    base_path : str
+        The generated base path.
+    """
+    if base_path is None:
+        if default_base_path is None:
+            raise ValueError(
+                'The default_base_path argument must not be None, when the '
+                'base_path argument is set to None!')
+        base_path = default_base_path
+
+    return base_path
+
+
 def generate_data_file_root_dir(
         default_base_path,
         default_sub_path_fmt,
@@ -2067,12 +2270,9 @@ def generate_data_file_root_dir(
     root_dir : str
         The generated root directory of the data files.
     """
-    if base_path is None:
-        if default_base_path is None:
-            raise ValueError(
-                'The default_base_path argument must not be None, when the '
-                'base_path argument is set to None!')
-        base_path = default_base_path
+    base_path = generate_base_path(
+        default_base_path=default_base_path,
+        base_path=base_path)
 
     if sub_path_fmt is None:
         sub_path_fmt = default_sub_path_fmt

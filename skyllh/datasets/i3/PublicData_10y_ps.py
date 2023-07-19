@@ -5,6 +5,8 @@ import numpy as np
 
 from skyllh.core.dataset import (
     DatasetCollection,
+    DatasetOrigin,
+    WGETDatasetTransfer,
 )
 from skyllh.i3.dataset import (
     I3Dataset,
@@ -255,6 +257,15 @@ def create_dataset_collection(
     28 January 2021
     """
 
+    # Define the origin of the dataset.
+    origin = DatasetOrigin(
+        path='data-releases/20210126_PS-IC40-IC86_VII.zip',
+        host='icecube.wisc.edu',
+        protocol='http',
+        transfer_func=WGETDatasetTransfer.transfer,
+        post_transfer_func=WGETDatasetTransfer.post_transfer_unzip,
+    )
+
     # Define the common keyword arguments for all data sets.
     ds_kwargs = dict(
         cfg=cfg,
@@ -264,6 +275,7 @@ def create_dataset_collection(
         base_path=base_path,
         default_sub_path_fmt=default_sub_path_fmt,
         sub_path_fmt=sub_path_fmt,
+        origin=origin,
     )
 
     grl_field_name_renaming_dict = {
