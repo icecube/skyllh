@@ -42,6 +42,7 @@ from skyllh.core.py import (
     issequence,
     issequenceof,
     list_of_cast,
+    module_class_method_name,
     str_cast,
 )
 from skyllh.core.storage import (
@@ -81,6 +82,27 @@ class DatasetOrigin(
         self.user = user
         self.password = password
         self.post_transfer_func = post_transfer_func
+
+    def __str__(self):
+        """Pretty string representation of this class.
+        """
+        transfer_cls = get_class_of_func(self.transfer_func)
+
+        s = f'{classname(self)} '+'{\n'
+        s1 = f'path = {self.path}\n'
+        s1 += f'protocol = {self.protocol}\n'
+        s1 += f'user@host:port = {self.user}@{self.host}:{self.port}\n'
+        s1 += 'password = '
+        if self.password is not None:
+            s1 += 'set\n'
+        else:
+            s1 += 'not set\n'
+        s1 += f'transfer class = {classname(transfer_cls)}\n'
+        s += display.add_leading_text_line_padding(
+            display.INDENTATION_WIDTH, s1)
+        s += '}'
+
+        return s
 
 
 class DatasetTransfer(
@@ -136,7 +158,7 @@ class DatasetTransfer(
         # Unzip the dataset file.
         zip_file = os.path.join(dst_path, fname)
         cmd = f'unzip "{zip_file}" -d "{dst_path}"'
-        print(f'post_transfer_unzip: cmd: {cmd}')
+        logger.debug(f'Running command "{cmd}"')
         rcode = os.system(cmd)
         if rcode != 0:
             raise RuntimeError(
@@ -167,11 +189,14 @@ class WGETDatasetTransfer(
         dst_path : str
             The destination path into which the dataset will be transfered.
         """
+        cls = get_class_of_func(WGETDatasetTransfer.transfer)
+        logger = get_logger(f'{classname(cls)}.transfer')
+
         protocol = ds.origin.protocol
         host = ds.origin.host
         path = ds.origin.path
         cmd = f'wget {protocol}://{host}/{path} -P {dst_path}'
-        print(f'Transfer cmd: {cmd}')
+        logger.debug(f'Running command "{cmd}"')
         rcode = os.system(cmd)
         if rcode != 0:
             raise RuntimeError(
@@ -850,17 +875,25 @@ class Dataset(
         post-transfer function if the root directory of the dataset does not
         exist.
         """
+        logger = get_logger(
+            module_class_method_name(self, 'download_from_origin')
+        )
+
         root_dir = self.root_dir
-        print(f'Checking root_dir "{root_dir}"')
         if os.path.exists(root_dir) and os.path.isdir(root_dir):
-            print('The root dir exists.')
+            logger.debug(
+                f'The root dir "{root_dir}" of dataset "{self.name}" exists. '
+                'Not downloading anything.')
             return
 
         if self.origin is None:
-            print('No dataset origin defined!')
+            logger.warn(
+                f'No origin defined for dataset "{self.name}"! '
+                'Cannot download dataset!')
             return
 
-        print(f'Downloading dataset "{self.name}" from orgin.')
+        logger.debug(
+            f'Downloading dataset "{self.name}" from orgin.')
 
         base_path = generate_base_path(
             default_base_path=self._cfg['repository']['base_path'],
@@ -954,7 +987,6 @@ class Dataset(
 
             return orig_field_names
 
-        print(f'download_from_origin = {self._cfg["repository"]["download_from_origin"]}')
         if self._cfg['repository']['download_from_origin'] is True:
             self.download_from_origin()
 
