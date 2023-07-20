@@ -136,6 +136,7 @@ class DatasetTransfer(
         # Unzip the dataset file.
         zip_file = os.path.join(dst_path, fname)
         cmd = f'unzip "{zip_file}" -d "{dst_path}"'
+        print(f'post_transfer_unzip: cmd: {cmd}')
         rcode = os.system(cmd)
         if rcode != 0:
             raise RuntimeError(
@@ -170,6 +171,7 @@ class WGETDatasetTransfer(
         host = ds.origin.host
         path = ds.origin.path
         cmd = f'wget {protocol}://{host}/{path} -P {dst_path}'
+        print(f'Transfer cmd: {cmd}')
         rcode = os.system(cmd)
         if rcode != 0:
             raise RuntimeError(
@@ -849,11 +851,16 @@ class Dataset(
         exist.
         """
         root_dir = self.root_dir
+        print(f'Checking root_dir "{root_dir}"')
         if os.path.exists(root_dir) and os.path.isdir(root_dir):
+            print('The root dir exists.')
             return
 
         if self.origin is None:
+            print('No dataset origin defined!')
             return
+
+        print(f'Downloading dataset "{self.name}" from orgin.')
 
         base_path = generate_base_path(
             default_base_path=self._cfg['repository']['base_path'],
@@ -947,6 +954,7 @@ class Dataset(
 
             return orig_field_names
 
+        print(f'download_from_origin = {self._cfg["repository"]["download_from_origin"]}')
         if self._cfg['repository']['download_from_origin'] is True:
             self.download_from_origin()
 
