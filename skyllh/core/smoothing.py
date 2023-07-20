@@ -96,7 +96,7 @@ class NeighboringBinHistSmoothingMethod(
         # Construct the smoothing kernel k used by the smooth method.
         # k is a N-dimensional ndarray. It defines which neighboring bin values
         # of the histogram will contribute how much to the central bin value.
-        self._k = np.product(
+        self._k = np.prod(
             np.meshgrid(*axis_kernel_arrays, indexing='ij'), axis=0)
 
     @property
