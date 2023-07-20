@@ -275,6 +275,16 @@ class I3Dataset(
             A DatasetData instance holding the experimental and monte-carlo
             data of this data set.
         """
+        # Load the dataset files first. This will ensure the dataset is
+        # downloaded if necessary.
+        data_ = super().load_data(
+            keep_fields=keep_fields,
+            livetime=livetime,
+            dtc_dict=dtc_dict,
+            dtc_except_fields=dtc_except_fields,
+            efficiency_mode=efficiency_mode,
+            tl=tl)
+
         # Load the good-run-list (GRL) data if it is provided for this dataset,
         # and calculate the livetime based on the GRL.
         data_grl = None
@@ -285,14 +295,8 @@ class I3Dataset(
 
         # Load all the defined data.
         data = I3DatasetData(
-            super(I3Dataset, self).load_data(
-                keep_fields=keep_fields,
-                livetime=livetime,
-                dtc_dict=dtc_dict,
-                dtc_except_fields=dtc_except_fields,
-                efficiency_mode=efficiency_mode,
-                tl=tl),
-            data_grl)
+            data=data_,
+            data_grl=data_grl)
 
         return data
 
