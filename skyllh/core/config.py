@@ -51,6 +51,7 @@ _BASECONFIG = {
     'repository': {
         # A base path of repository datasets.
         'base_path': None,
+        'download_from_origin': True,
     },
     'units': {
         # Definition of the internal units to use. These must match with the
