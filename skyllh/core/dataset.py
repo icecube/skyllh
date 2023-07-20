@@ -72,6 +72,37 @@ class DatasetOrigin(
             post_transfer_func=None,
             **kwargs,
     ):
+        """Creates a new instance to define the origin of a dataset.
+
+        Parameters
+        ----------
+        path : str
+            The dataset's root directory at the origin.
+        transfer_func : callable
+            The callable object that should be used to transfer the dataset.
+            This function requires the following call signature::
+
+                __call__(ds, dst_path)
+
+            where ``ds`` is an instance of Dataset, and ``dst_path`` is an
+            instance of str specifying the destination path on the local
+            machine.
+        protocol : str | None
+            The protcol to use for the transfer, e.g. ``"http"`` or ``rsync``.
+        host : str | None
+            The name or IP of the remote host.
+        port : int | None
+            The port number to use when connecting to the remote host.
+        user : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
+        post_transfer_func : callable | None
+            The callable object that should be called after the dataset has been
+            transfered by the ``transfer_func``function. It can be used to
+            extract an archive file.
+        """
         super().__init__(**kwargs)
 
         self.path = path
