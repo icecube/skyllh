@@ -855,10 +855,18 @@ class Dataset(
         if self.origin is None:
             return
 
+        base_path = generate_base_path(
+            default_base_path=self._cfg['repository']['base_path'],
+            base_path=self._base_path)
+
         self.origin.transfer_func(
             ds=self,
-            dst_path=root_dir)
-        # if self.origin
+            dst_path=base_path)
+
+        if self.origin.post_transfer_func is not None:
+            self.origin.post_transfer_func(
+                ds=self,
+                dst_path=base_path)
 
     def load_data(
             self,
@@ -939,8 +947,8 @@ class Dataset(
 
             return orig_field_names
 
-        # Download the dataset if necessary.
-        self.download_from_origin()
+        if self._cfg['repository']['download_from_origin'] is True:
+            self.download_from_origin()
 
         if keep_fields is None:
             keep_fields = []
