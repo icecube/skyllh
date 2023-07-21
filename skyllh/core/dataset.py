@@ -64,6 +64,7 @@ class DatasetOrigin(
             self,
             path,
             transfer_func,
+            is_directory=True,
             protocol=None,
             host=None,
             port=None,
@@ -87,6 +88,9 @@ class DatasetOrigin(
             where ``ds`` is an instance of Dataset, and ``dst_path`` is an
             instance of str specifying the destination path on the local
             machine.
+        is_directory : bool
+            Flag if the remote path refers to a directory (``True``) or not
+            ``False``.
         protocol : str | None
             The protcol to use for the transfer, e.g. ``"http"`` or ``rsync``.
         host : str | None
@@ -107,6 +111,7 @@ class DatasetOrigin(
 
         self.path = path
         self.transfer_func = transfer_func
+        self.is_directory = is_directory
         self.protocol = protocol
         self.host = host
         self.port = port
