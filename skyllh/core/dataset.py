@@ -83,16 +83,18 @@ class DatasetOrigin(
             The callable object that should be used to transfer the dataset.
             This function requires the following call signature::
 
-                __call__(ds, dst_path)
+                __call__(ds, dst_path, user=None, password=None)
 
-            where ``ds`` is an instance of Dataset, and ``dst_path`` is an
-            instance of str specifying the destination path on the local
-            machine.
+            where ``ds`` is an instance of Dataset, ``dst_path`` is an instance
+            of str specifying the destination path on the local machine,
+            ``user`` is the user name required to connect to the remote host,
+            and ``password`` is the password for the user name required to
+            connect to the remote host.
         is_directory : bool
             Flag if the remote path refers to a directory (``True``) or not
             ``False``.
         protocol : str | None
-            The protcol to use for the transfer, e.g. ``"http"`` or ``rsync``.
+            The protocol to use for the transfer, e.g. ``"http"`` or ``"file"``.
         host : str | None
             The name or IP of the remote host.
         port : int | None
@@ -119,6 +121,142 @@ class DatasetOrigin(
         self.password = password
         self.post_transfer_func = post_transfer_func
 
+    @property
+    def path(self):
+        """The dataset's root directory at the origin.
+        """
+        return self._path
+
+    @path.setter
+    def path(self, obj):
+        if not isinstance(obj, str):
+            raise TypeError(
+                'The path property must be an instance of str! '
+                f'Its current type is {classname(obj)}!')
+        self._path = obj
+
+    @property
+    def transfer_func(self):
+        """The callable object that should be used to transfer the dataset.
+        """
+        return self._transfer_func
+
+    @transfer_func.setter
+    def transfer_func(self, obj):
+        if not callable(obj):
+            raise TypeError(
+                'The property transfer_func must be a callable object! '
+                f'Its current type is {classname(obj)}!')
+        self._transfer_func = obj
+
+    @property
+    def is_directory(self):
+        """Flag if the remote path refers to a directory (``True``) or not
+        (``False``).
+        """
+        return self._is_directory
+
+    @is_directory.setter
+    def is_directory(self, obj):
+        if not isinstance(obj, bool):
+            return TypeError(
+                'The is_directory property must be an instance of bool! '
+                f'Its current type is {classname(obj)}!')
+        self._is_directory = obj
+
+    @property
+    def protocol(self):
+        """The protocol to use for the transfer.
+        """
+        return self._protocol
+
+    @protocol.setter
+    def protocol(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property protocol must be None, or an instance of '
+                    'str! '
+                    f'Its current type is {classname(obj)}!')
+        self._protocol = obj
+
+    @property
+    def host(self):
+        """The name or IP of the remote host.
+        """
+        return self._host
+
+    @host.setter
+    def host(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property host must be None, or an instance of str! '
+                    f'Its current type is {classname(obj)}!')
+        self._host = obj
+
+    @property
+    def port(self):
+        """The port number to use when connecting to the remote host.
+        """
+        return self._port
+
+    @port.setter
+    def port(self, obj):
+        if obj is not None:
+            if not isinstance(obj, int):
+                raise TypeError(
+                    'The property port must be None, or an instance of int! '
+                    f'Its current type is {classname(obj)}!')
+        self._port = obj
+
+    @property
+    def user(self):
+        """The user name required to connect to the remote host.
+        """
+        return self._user
+
+    @user.setter
+    def user(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property user must be None, or an instance of str! '
+                    f'Its current type is {classname(obj)}!')
+        self._user = obj
+
+    @property
+    def password(self):
+        """The password for the user name required to connect to the remote
+        host.
+        """
+        return self._password
+
+    @password.setter
+    def password(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property password must be None, or an instance of '
+                    'str! '
+                    f'Its current type is {classname(obj)}!')
+        self._password = obj
+
+    @property
+    def post_transfer_func(self):
+        """The callable object that should be called after the dataset has been
+        transfered by the ``transfer_func`` callable.
+        """
+        return self._post_transfer_func
+
+    @post_transfer_func.setter
+    def post_transfer_func(self, obj):
+        if not callable(obj):
+            raise TypeError(
+                'The property post_transfer_func must be a callable object! '
+                f'Its current type is {classname(obj)}!')
+        self._post_transfer_func = obj
+
     def __str__(self):
         """Pretty string representation of this class.
         """
@@ -126,6 +264,7 @@ class DatasetOrigin(
 
         s = f'{classname(self)} '+'{\n'
         s1 = f'path = {self.path}\n'
+        s1 += f'is_directory = {self.is_directory}\n'
         s1 += f'protocol = {self.protocol}\n'
         s1 += f'user@host:port = {self.user}@{self.host}:{self.port}\n'
         s1 += 'password = '
@@ -151,6 +290,7 @@ class DatasetOrigin(
             path and exists on the local host, ``False`` otherwise.
         """
         if (
+            self.is_directory and
             os.path.abspath(self.path) == self.path and
             os.path.exists(self.path) and
             os.path.isdir(self.path)
