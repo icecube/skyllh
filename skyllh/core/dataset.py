@@ -3,6 +3,7 @@
 import abc
 import os
 import os.path
+import stat
 
 import numpy as np
 
@@ -300,14 +301,37 @@ class DatasetOrigin(
         return False
 
 
-class TemporaryTextFile(object):
-    def __init__(self, pathfilename, text):
+class TemporaryTextFile(
+    object,
+):
+    """This class provides a temporary text file with a given content while
+    being within a with statement. Exiting the with statement will remove the
+    temporary text file.
+
+    Example:
+
+    .. code::
+
+        with TemporaryTextFile('myfile.txt', 'My file content'):
+            # Do something that requires the text file ``myfile.txt``.
+        # At this point the text file is removed again.
+
+    """
+
+    def __init__(
+            self,
+            pathfilename,
+            text,
+            mode=stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH,
+    ):
         self.pathfilename = pathfilename
         self.text = text
+        self.mode = mode
 
     def __enter__(self):
         with open(self.pathfilename, 'w') as fd:
             fd.write(self.text)
+        os.chmod(self.pathfilename, self.mode)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         os.remove(self.pathfilename)
@@ -468,7 +492,8 @@ class RSYNCDatasetTransfer(
             pwdfile = os.path.join(os.getcwd(), f'{id(ds)}.passwd')
             with TemporaryTextFile(
                 pathfilename=pwdfile,
-                text=password
+                text=password,
+                mode=stat.S_IRUSR,
             ):
                 cmd = (
                     f'rsync '
