@@ -135,6 +135,38 @@ class DatasetOrigin(
 
         return s
 
+    def is_locally_available(self):
+        """Checks if the dataset origin is available locally by checking if the
+        given path exists on the local host.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the path specified in this dataset origin is an absolute
+            path and exists on the local host, ``False`` otherwise.
+        """
+        if (
+            os.path.abspath(self.path) == self.path and
+            os.path.exists(self.path) and
+            os.path.isdir(self.path)
+        ):
+            return True
+
+        return False
+
+
+class TemporaryTextFile(object):
+    def __init__(self, pathfilename, text):
+        self.pathfilename = pathfilename
+        self.text = text
+
+    def __enter__(self):
+        with open(self.pathfilename, 'w') as fd:
+            fd.write(self.text)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        os.remove(self.pathfilename)
+
 
 class DatasetTransfer(
     object,
@@ -146,7 +178,38 @@ class DatasetTransfer(
         super().__init__(**kwargs)
 
     @staticmethod
-    def ensure_dst_path(dst_path):
+    def execute_system_command(
+            cmd,
+            logger,
+            success_rcode=0,
+    ):
+        """Executes the given system command via a ``os.system`` call.
+
+        Parameters
+        ----------
+        cmd : str
+            The system command to execute.
+        logger : instance of logging.Logger
+            The logger to use for debug messages.
+        success_rcode : int | None
+            The return code that indicates success of the system command.
+            If set to ``None``, no return code checking is performed.
+
+        Raises
+        ------
+        RuntimeError
+            If the system command did not return ``success_rcode``.
+        """
+        logger.debug(f'Running command "{cmd}"')
+        rcode = os.system(cmd)
+        if (success_rcode is not None) and (rcode != success_rcode):
+            raise RuntimeError(
+                f'The system command "{cmd}" failed with return code {rcode}!')
+
+    @staticmethod
+    def ensure_dst_path(
+            dst_path,
+    ):
         """Ensures the existance of the given destination path.
 
         Parameters
@@ -160,7 +223,12 @@ class DatasetTransfer(
 
     @staticmethod
     @abc.abstractstaticmethod
-    def transfer(ds, dst_path):
+    def transfer(
+            ds,
+            dst_path,
+            user=None,
+            password=None,
+    ):
         """This method is supposed to transfer the dataset origin path to the
         given destination path.
 
@@ -171,6 +239,11 @@ class DatasetTransfer(
             specifying the origin of the dataset.
         dst_path : str
             The destination path into which the dataset will be transfered.
+        user : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
         """
         pass
 
@@ -186,20 +259,89 @@ class DatasetTransfer(
         logger = get_logger(f'{classname(cls)}.post_transfer_unzip')
 
         fname = os.path.basename(ds.origin.path)
+
         # Unzip the dataset file.
         zip_file = os.path.join(dst_path, fname)
         cmd = f'unzip "{zip_file}" -d "{dst_path}"'
-        logger.debug(f'Running command "{cmd}"')
-        rcode = os.system(cmd)
-        if rcode != 0:
-            raise RuntimeError(
-                f'The post-transfer command "{cmd}" failed with return '
-                f'code {rcode}!')
+        DatasetTransfer.execute_system_command(cmd, logger)
+
         # Remove the zip file.
         try:
             os.remove(zip_file)
         except Exception as exc:
             logger.warn(str(exc))
+
+
+class RSYNCDatasetTransfer(
+    DatasetTransfer,
+):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @staticmethod
+    def transfer(
+            ds,
+            dst_path,
+            user=None,
+            password=None,
+    ):
+        """Transfers the given dataset to the given destination path using the
+        ``rsync`` program.
+
+        Parameters
+        ----------
+        ds : instance of Dataset
+            The instance of Dataset containing the origin property specifying
+            the origin of the dataset.
+        dst_path : str
+            The destination path into which the dataset will be transfered.
+        user : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
+        """
+        execute_system_command = DatasetTransfer.execute_system_command
+
+        cls = get_class_of_func(RSYNCDatasetTransfer.transfer)
+        logger = get_logger(f'{classname(cls)}.transfer')
+
+        host = ds.origin.host
+        path = ds.origin.path
+
+        if user is None:
+            # No user name is defined.
+            cmd = (
+                f'rsync '
+                '-avL '
+                '--progress '
+                f'{host}:"{path}" "{dst_path}"'
+            )
+            execute_system_command(cmd, logger)
+        elif password is not None:
+            # User and password is defined.
+            pwdfile = os.path.join(os.getcwd(), f'{id(ds)}.passwd')
+            with TemporaryTextFile(
+                pathfilename=pwdfile,
+                text=password
+            ):
+                cmd = (
+                    f'rsync '
+                    '-avL '
+                    '--progress '
+                    f'--password-file "{pwdfile}" '
+                    f'{user}@{host}:"{path}" "{dst_path}"'
+                )
+                execute_system_command(cmd, logger)
+        else:
+            # Only the user name is defined.
+            cmd = (
+                f'rsync '
+                '-avL '
+                '--progress '
+                f'{user}@{host}:"{path}" "{dst_path}"'
+            )
+            execute_system_command(cmd, logger)
 
 
 class WGETDatasetTransfer(
@@ -209,8 +351,14 @@ class WGETDatasetTransfer(
         super().__init__(**kwargs)
 
     @staticmethod
-    def transfer(ds, dst_path):
-        """Transfers the given dataset to the given destination path.
+    def transfer(
+            ds,
+            dst_path,
+            user=None,
+            password=None,
+    ):
+        """Transfers the given dataset to the given destination path using the
+        ``wget`` program.
 
         Parameters
         ----------
@@ -219,6 +367,11 @@ class WGETDatasetTransfer(
             the origin of the dataset.
         dst_path : str
             The destination path into which the dataset will be transfered.
+        user : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
         """
         cls = get_class_of_func(WGETDatasetTransfer.transfer)
         logger = get_logger(f'{classname(cls)}.transfer')
@@ -227,12 +380,7 @@ class WGETDatasetTransfer(
         host = ds.origin.host
         path = ds.origin.path
         cmd = f'wget {protocol}://{host}/{path} -P {dst_path}'
-        logger.debug(f'Running command "{cmd}"')
-        rcode = os.system(cmd)
-        if rcode != 0:
-            raise RuntimeError(
-                f'The transfer command "{cmd}" failed with return code '
-                f'{rcode}!')
+        DatasetTransfer.execute_system_command(cmd, logger)
 
 
 class Dataset(
@@ -901,30 +1049,69 @@ class Dataset(
                 'Version qualifier values did not increment and no new version '
                 'qualifiers were added!')
 
-    def download_from_origin(self):
-        """Downloads the dataset from the origin using the transfer and
-        post-transfer function if the root directory of the dataset does not
-        exist.
+    def make_data_available(
+            self,
+            user=None,
+            password=None,
+    ):
+        """Makes the data of the dataset available.
+        If the root directory of the dataset does not exist locally, the dataset
+        is transfered from its origin to the local host. If the origin is
+        already available locally, only a symlink is created to the origin path.
+
+        Parameters
+        ----------
+        user : str | None
+            The user name required to connect to the remote host of the origin.
+            If set to ``None``, the
+        password : str | None
+            The password of the user name required to connect to the remote host
+            of the origin.
+
+        Returns
+        -------
+        success : bool
+            ``True`` if the data was made available successfully, ``False``
+            otherwise.
         """
         logger = get_logger(
-            module_class_method_name(self, 'download_from_origin')
+            module_class_method_name(self, 'make_data_available')
         )
 
         root_dir = self.root_dir
         if os.path.exists(root_dir) and os.path.isdir(root_dir):
             logger.debug(
                 f'The root dir "{root_dir}" of dataset "{self.name}" exists. '
-                'Not downloading anything.')
-            return
+                'Nothing to download.')
+            return True
 
         if self.origin is None:
             logger.warn(
                 f'No origin defined for dataset "{self.name}"! '
                 'Cannot download dataset!')
-            return
+            return False
+
+        # Check if the dataset origin is locally available. In that case we
+        # just create a symlink.
+        if self.origin.is_locally_available():
+            cmd = f'ln -s "{self.origin.path}" "{root_dir}"'
+            DatasetTransfer.execute_system_command(cmd, logger)
+            return True
+
+        if self._cfg['repository']['download_from_origin'] is False:
+            logger.warn(
+                f'The data of dataset "{self.name}" is locally not available '
+                'and the download from the origin is disabled through the '
+                'configuration!')
+            return False
+
+        if user is None:
+            user = self.origin.user
+        if password is None:
+            password = self.origin.password
 
         logger.debug(
-            f'Downloading dataset "{self.name}" from orgin.')
+            f'Downloading dataset "{self.name}" from origin. user="{user}".')
 
         base_path = generate_base_path(
             default_base_path=self._cfg['repository']['base_path'],
@@ -932,12 +1119,16 @@ class Dataset(
 
         self.origin.transfer_func(
             ds=self,
-            dst_path=base_path)
+            dst_path=base_path,
+            user=user,
+            password=password)
 
         if self.origin.post_transfer_func is not None:
             self.origin.post_transfer_func(
                 ds=self,
                 dst_path=base_path)
+
+        return True
 
     def load_data(
             self,
@@ -1019,7 +1210,7 @@ class Dataset(
             return orig_field_names
 
         if self._cfg['repository']['download_from_origin'] is True:
-            self.download_from_origin()
+            self.make_data_available()
 
         if keep_fields is None:
             keep_fields = []
