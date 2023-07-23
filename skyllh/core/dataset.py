@@ -325,11 +325,13 @@ class DatasetOrigin(
             ``True`` if the path specified in this dataset origin is an absolute
             path and exists on the local host, ``False`` otherwise.
         """
+        root_dir = self.root_dir
+
         if (
             self.is_directory and
-            os.path.abspath(self.path) == self.path and
-            os.path.exists(self.path) and
-            os.path.isdir(self.path)
+            os.path.abspath(root_dir) == root_dir and
+            os.path.exists(root_dir) and
+            os.path.isdir(root_dir)
         ):
             return True
 
@@ -456,16 +458,18 @@ class DatasetTransfer(
         """This is a post-transfer function. It will unzip the transfered file
         into the dst_path if the origin path was a zip file.
         """
-        if not ds.origin.path.lower().endswith('.zip'):
+        if ds.origin.filename is None:
+            return
+
+        fname = os.path.join(ds.origin.root_dir, ds.origin.filename)
+        if not fname.lower().endswith('.zip'):
             return
 
         cls = get_class_of_func(DatasetTransfer.post_transfer_unzip)
         logger = get_logger(f'{classname(cls)}.post_transfer_unzip')
 
-        fname = os.path.basename(ds.origin.path)
-
         # Unzip the dataset file.
-        zip_file = os.path.join(dst_path, fname)
+        zip_file = os.path.join(dst_path, ds.origin.filename)
         cmd = f'unzip "{zip_file}" -d "{dst_path}"'
         DatasetTransfer.execute_system_command(cmd, logger)
 
@@ -1344,6 +1348,7 @@ class Dataset(
         )
 
         root_dir = self.root_dir
+
         if os.path.exists(root_dir) and os.path.isdir(root_dir):
             logger.debug(
                 f'The root dir "{root_dir}" of dataset "{self.name}" exists. '
@@ -1359,7 +1364,12 @@ class Dataset(
         # Check if the dataset origin is locally available. In that case we
         # just create a symlink.
         if self.origin.is_locally_available():
-            cmd = f'ln -s "{self.origin.path}" "{root_dir}"'
+            # Make sure all directories leading to the symlink exist.
+            dirname = os.path.dirname(root_dir)
+            if dirname != '':
+                os.makedirs(dirname)
+
+            cmd = f'ln -s "{self.origin.root_dir}" "{root_dir}"'
             DatasetTransfer.execute_system_command(cmd, logger)
             return True
 
@@ -2846,7 +2856,8 @@ def generate_data_file_root_dir(
     Returns
     -------
     root_dir : str
-        The generated root directory of the data files.
+        The generated root directory of the data files. This will have no
+        trailing directory seperator.
     """
     base_path = generate_base_path(
         default_base_path=default_base_path,
@@ -2861,6 +2872,10 @@ def generate_data_file_root_dir(
         verqualifiers=verqualifiers)
 
     root_dir = os.path.join(base_path, sub_path)
+
+    len_sep = len(os.path.sep)
+    if root_dir[-len_sep:] == os.path.sep:
+        root_dir = root_dir[:-len_sep]
 
     return root_dir
 
