@@ -259,8 +259,9 @@ def create_dataset_collection(
 
     # Define the origin of the dataset.
     origin = DatasetOrigin(
-        path='data-releases/20210126_PS-IC40-IC86_VII.zip',
-        is_directory=False,
+        base_path='data-releases',
+        sub_path='',
+        filename='20210126_PS-IC40-IC86_VII.zip',
         host='icecube.wisc.edu',
         protocol='http',
         transfer_func=WGETDatasetTransfer.transfer,

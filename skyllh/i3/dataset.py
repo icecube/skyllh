@@ -172,6 +172,26 @@ class I3Dataset(
 
         return s
 
+    def create_transfer_file_list(
+            self,
+    ):
+        """Creates the list of files that need to be transfered from the origin
+        for this dataset. The paths are relative paths starting after the sub
+        path of the dataset.
+
+        Returns
+        -------
+        file_list : list of str
+            The list of files that need to be transfered from the origin for
+            this dataset.
+        """
+        file_list = (
+            super().create_transfer_file_list() +
+            self._grl_pathfilename_list
+        )
+
+        return file_list
+
     def load_grl(self, efficiency_mode=None, tl=None):
         """Loads the good-run-list and returns a DataFieldRecordArray instance
         which should contain the following data fields:

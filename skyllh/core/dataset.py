@@ -63,9 +63,10 @@ class DatasetOrigin(
     """
     def __init__(
             self,
-            path,
+            base_path,
+            sub_path,
             transfer_func,
-            is_directory=True,
+            filename=None,
             protocol=None,
             host=None,
             port=None,
@@ -78,8 +79,10 @@ class DatasetOrigin(
 
         Parameters
         ----------
-        path : str
-            The dataset's root directory at the origin.
+        base_path : str
+            The dataset's base directory at the origin.
+        sub_path : str
+            The dataset's sub directory at the origin.
         transfer_func : callable
             The callable object that should be used to transfer the dataset.
             This function requires the following call signature::
@@ -91,9 +94,9 @@ class DatasetOrigin(
             ``user`` is the user name required to connect to the remote host,
             and ``password`` is the password for the user name required to
             connect to the remote host.
-        is_directory : bool
-            Flag if the remote path refers to a directory (``True``) or not
-            ``False``.
+        filename : str | None
+            If the origin is not a directory but a file, this specifies the
+            filename.
         protocol : str | None
             The protocol to use for the transfer, e.g. ``"http"`` or ``"file"``.
         host : str | None
@@ -112,9 +115,10 @@ class DatasetOrigin(
         """
         super().__init__(**kwargs)
 
-        self.path = path
+        self.base_path = base_path
+        self.sub_path = sub_path
         self.transfer_func = transfer_func
-        self.is_directory = is_directory
+        self.filename = filename
         self.protocol = protocol
         self.host = host
         self.port = port
@@ -123,18 +127,39 @@ class DatasetOrigin(
         self.post_transfer_func = post_transfer_func
 
     @property
-    def path(self):
-        """The dataset's root directory at the origin.
+    def base_path(self):
+        """The dataset's base directory at the origin.
         """
-        return self._path
+        return self._base_path
 
-    @path.setter
-    def path(self, obj):
+    @base_path.setter
+    def base_path(self, obj):
         if not isinstance(obj, str):
             raise TypeError(
-                'The path property must be an instance of str! '
+                'The base_path property must be an instance of str! '
                 f'Its current type is {classname(obj)}!')
-        self._path = obj
+        self._base_path = obj
+
+    @property
+    def sub_path(self):
+        """The dataset's sub directory at the origin.
+        """
+        return self._sub_path
+
+    @sub_path.setter
+    def sub_path(self, obj):
+        if not isinstance(obj, str):
+            raise TypeError(
+                'The sub_path property must be an instance of str! '
+                f'Its current type is {classname(obj)}!')
+        self._sub_path = obj
+
+    @property
+    def root_dir(self):
+        """(read-only) The dataset's root directory at the origin, which is
+        the combination of ``base_path`` and ``sub_path``.
+        """
+        return os.path.join(self._base_path, self._sub_path)
 
     @property
     def transfer_func(self):
@@ -151,19 +176,27 @@ class DatasetOrigin(
         self._transfer_func = obj
 
     @property
-    def is_directory(self):
-        """Flag if the remote path refers to a directory (``True``) or not
-        (``False``).
+    def filename(self):
+        """The file name if the origin is a file instaed of a directory.
         """
-        return self._is_directory
+        return self._filename
 
-    @is_directory.setter
-    def is_directory(self, obj):
-        if not isinstance(obj, bool):
-            return TypeError(
-                'The is_directory property must be an instance of bool! '
-                f'Its current type is {classname(obj)}!')
-        self._is_directory = obj
+    @filename.setter
+    def filename(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property filename must be None, or an instance of '
+                    'str! '
+                    f'Its current type is {classname(obj)}!')
+        self._filename = obj
+
+    @property
+    def is_directory(self):
+        """(read-only) Flag if the origin refers to a directory (``True``) or a
+        file (``False``).
+        """
+        return (self._filename is None)
 
     @property
     def protocol(self):
@@ -264,8 +297,10 @@ class DatasetOrigin(
         transfer_cls = get_class_of_func(self.transfer_func)
 
         s = f'{classname(self)} '+'{\n'
-        s1 = f'path = {self.path}\n'
-        s1 += f'is_directory = {self.is_directory}\n'
+        s1 = f'base_path = "{self.base_path}"\n'
+        s1 += f'sub_path = "{self.sub_path}"\n'
+        if self._filename is not None:
+            s1 += f'filename = {self._filename}\n'
         s1 += f'protocol = {self.protocol}\n'
         s1 += f'user@host:port = {self.user}@{self.host}:{self.port}\n'
         s1 += 'password = '
@@ -449,8 +484,9 @@ class RSYNCDatasetTransfer(
 
     @staticmethod
     def transfer(
-            ds,
-            dst_path,
+            origin,
+            file_list,
+            dst_base_path,
             user=None,
             password=None,
     ):
@@ -462,56 +498,87 @@ class RSYNCDatasetTransfer(
         ds : instance of Dataset
             The instance of Dataset containing the origin property specifying
             the origin of the dataset.
-        dst_path : str
-            The destination path into which the dataset will be transfered.
+        file_list : list of str
+            The list of files, relative to the origin base path, which should be
+            transfered.
+        dst_base_path : str
+            The destination base path into which the dataset files will be
+            transfered.
         user : str | None
             The user name required to connect to the remote host.
         password : str | None
             The password for the user name required to connect to the remote
             host.
         """
-        execute_system_command = DatasetTransfer.execute_system_command
-
         cls = get_class_of_func(RSYNCDatasetTransfer.transfer)
         logger = get_logger(f'{classname(cls)}.transfer')
 
-        host = ds.origin.host
-        path = ds.origin.path
+        host = origin.host
+
+        # Make sure the origin and destination base paths end with a directory
+        # seperator.
+        origin_base_path = origin.base_path
+        if origin_base_path[-len(os.path.sep):] != os.path.sep:
+            origin_base_path += os.path.sep
+        if dst_base_path[-len(os.path.sep):] != os.path.sep:
+            dst_base_path += os.path.sep
+
+        file_list_pathfilename = os.path.join(
+            os.getcwd(),
+            f'.{id(origin)}.rsync_file_list.txt')
 
         if user is None:
             # No user name is defined.
-            cmd = (
-                f'rsync '
-                '-avL '
-                '--progress '
-                f'{host}:"{path}" "{dst_path}"'
-            )
-            execute_system_command(cmd, logger)
+            with TemporaryTextFile(
+                pathfilename=file_list_pathfilename,
+                text='\n'.join(file_list)
+            ):
+                cmd = (
+                    f'rsync '
+                    '-avrRL '
+                    '--progress '
+                    f'--files-from="{file_list_pathfilename}" '
+                    f'{host}:"{origin_base_path}" "{dst_base_path}"'
+                )
+                DatasetTransfer.execute_system_command(cmd, logger)
         elif password is not None:
             # User and password is defined.
-            pwdfile = os.path.join(os.getcwd(), f'{id(ds)}.passwd')
+            pwdfile = os.path.join(
+                os.getcwd(),
+                f'.{id(origin)}.rsync_passwd.txt')
+
             with TemporaryTextFile(
                 pathfilename=pwdfile,
                 text=password,
                 mode=stat.S_IRUSR,
             ):
-                cmd = (
-                    f'rsync '
-                    '-avL '
-                    '--progress '
-                    f'--password-file "{pwdfile}" '
-                    f'{user}@{host}:"{path}" "{dst_path}"'
-                )
-                execute_system_command(cmd, logger)
+                with TemporaryTextFile(
+                    pathfilename=file_list_pathfilename,
+                    text='\n'.join(file_list)
+                ):
+                    cmd = (
+                        f'rsync '
+                        '-avrRL '
+                        '--progress '
+                        f'--password-file "{pwdfile}" '
+                        f'--files-from="{file_list_pathfilename}" '
+                        f'{user}@{host}:"{origin_base_path}" "{dst_base_path}"'
+                    )
+                    DatasetTransfer.execute_system_command(cmd, logger)
         else:
             # Only the user name is defined.
-            cmd = (
-                f'rsync '
-                '-avL '
-                '--progress '
-                f'{user}@{host}:"{path}" "{dst_path}"'
-            )
-            execute_system_command(cmd, logger)
+            with TemporaryTextFile(
+                pathfilename=file_list_pathfilename,
+                text='\n'.join(file_list)
+            ):
+                cmd = (
+                    f'rsync '
+                    '-avrRL '
+                    '--progress '
+                    f'--files-from="{file_list_pathfilename}" '
+                    f'{user}@{host}:"{origin_base_path}" "{dst_base_path}"'
+                )
+                DatasetTransfer.execute_system_command(cmd, logger)
 
 
 class WGETDatasetTransfer(
@@ -522,8 +589,9 @@ class WGETDatasetTransfer(
 
     @staticmethod
     def transfer(
-            ds,
-            dst_path,
+            origin,
+            file_list,
+            dst_base_path,
             user=None,
             password=None,
     ):
@@ -532,11 +600,13 @@ class WGETDatasetTransfer(
 
         Parameters
         ----------
-        ds : instance of Dataset
-            The instance of Dataset containing the origin property specifying
-            the origin of the dataset.
-        dst_path : str
-            The destination path into which the dataset will be transfered.
+        origin : instance of DatasetOrigin
+            The instance of DatasetOrigin defining the origin of the dataset.
+        file_list : list of str
+            The list of files relative to the origin's base path, which
+            should be transfered.
+        dst_base_path : str
+            The destination base path into which the dataset will be transfered.
         user : str | None
             The user name required to connect to the remote host.
         password : str | None
@@ -546,11 +616,13 @@ class WGETDatasetTransfer(
         cls = get_class_of_func(WGETDatasetTransfer.transfer)
         logger = get_logger(f'{classname(cls)}.transfer')
 
-        protocol = ds.origin.protocol
-        host = ds.origin.host
-        path = ds.origin.path
-        cmd = f'wget {protocol}://{host}/{path} -P {dst_path}'
-        DatasetTransfer.execute_system_command(cmd, logger)
+        protocol = origin.protocol
+        host = origin.host
+
+        for file in file_list:
+            path = os.path.join(origin.base_path, file)
+            cmd = f'wget {protocol}://{host}/{path} -P {dst_base_path}'
+            DatasetTransfer.execute_system_command(cmd, logger)
 
 
 class Dataset(
@@ -1219,6 +1291,29 @@ class Dataset(
                 'Version qualifier values did not increment and no new version '
                 'qualifiers were added!')
 
+    def create_transfer_file_list(
+            self,
+    ):
+        """Creates the list of files that need to be transfered from the origin
+        for this dataset. The paths are relative paths starting after the sub
+        path of the dataset.
+
+        Returns
+        -------
+        file_list : list of str
+            The list of files that need to be transfered from the origin for
+            this dataset.
+        """
+        file_list = (
+            self._exp_pathfilename_list +
+            self._mc_pathfilename_list
+        )
+
+        for aux_pathfilename_list in self._aux_data_definitions.values():
+            file_list += aux_pathfilename_list
+
+        return file_list
+
     def make_data_available(
             self,
             user=None,
@@ -1280,16 +1375,30 @@ class Dataset(
         if password is None:
             password = self.origin.password
 
-        logger.debug(
-            f'Downloading dataset "{self.name}" from origin. user="{user}".')
-
         base_path = generate_base_path(
             default_base_path=self._cfg['repository']['base_path'],
             base_path=self._base_path)
 
+        logger.debug(
+            f'Downloading dataset "{self.name}" from origin into base path '
+            f'"{base_path}". user="{user}".')
+
+        # Check if the origin is a directory. If not we just transfer that one
+        # file.
+        if self.origin.is_directory:
+            file_list = [
+                os.path.join(self.origin.sub_path, pathfilename)
+                for pathfilename in self.create_transfer_file_list()
+            ]
+        else:
+            file_list = [
+                os.path.join(self.origin.sub_path, self.origin.filename)
+            ]
+
         self.origin.transfer_func(
-            ds=self,
-            dst_path=base_path,
+            origin=self.origin,
+            file_list=file_list,
+            dst_base_path=base_path,
             user=user,
             password=password)
 
@@ -2669,6 +2778,35 @@ def generate_base_path(
     return base_path
 
 
+def generate_sub_path(
+        sub_path_fmt,
+        version,
+        verqualifiers,
+):
+    """Generates the sub path of the dataset based on the given sub path format.
+
+    Parameters
+    ----------
+    sub_path_fmt : str
+        The format string of the sub path.
+    version : int
+        The version of the dataset.
+    verqualifiers : dict
+        The dictionary holding the version qualifiers of the dataset.
+
+    Returns
+    -------
+    sub_path : str
+        The generated sub path.
+    """
+    fmtdict = dict(
+        [('version', version)] + list(verqualifiers.items())
+    )
+    sub_path = sub_path_fmt.format(**fmtdict)
+
+    return sub_path
+
+
 def generate_data_file_root_dir(
         default_base_path,
         default_sub_path_fmt,
@@ -2717,10 +2855,10 @@ def generate_data_file_root_dir(
     if sub_path_fmt is None:
         sub_path_fmt = default_sub_path_fmt
 
-    fmtdict = dict(
-        [('version', version)] + list(verqualifiers.items())
-    )
-    sub_path = sub_path_fmt.format(**fmtdict)
+    sub_path = generate_sub_path(
+        sub_path_fmt=sub_path_fmt,
+        version=version,
+        verqualifiers=verqualifiers)
 
     root_dir = os.path.join(base_path, sub_path)
 
