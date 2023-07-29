@@ -285,10 +285,12 @@ class DatasetOrigin(
 
     @post_transfer_func.setter
     def post_transfer_func(self, obj):
-        if not callable(obj):
-            raise TypeError(
-                'The property post_transfer_func must be a callable object! '
-                f'Its current type is {classname(obj)}!')
+        if obj is not None:
+            if not callable(obj):
+                raise TypeError(
+                    'The property post_transfer_func must be a callable '
+                    'object! '
+                    f'Its current type is {classname(obj)}!')
         self._post_transfer_func = obj
 
     def __str__(self):
