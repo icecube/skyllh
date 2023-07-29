@@ -70,7 +70,7 @@ class DatasetOrigin(
             protocol=None,
             host=None,
             port=None,
-            user=None,
+            username=None,
             password=None,
             post_transfer_func=None,
             **kwargs,
@@ -103,7 +103,7 @@ class DatasetOrigin(
             The name or IP of the remote host.
         port : int | None
             The port number to use when connecting to the remote host.
-        user : str | None
+        username : str | None
             The user name required to connect to the remote host.
         password : str | None
             The password for the user name required to connect to the remote
@@ -122,7 +122,7 @@ class DatasetOrigin(
         self.protocol = protocol
         self.host = host
         self.port = port
-        self.user = user
+        self.username = username
         self.password = password
         self.post_transfer_func = post_transfer_func
 
@@ -245,19 +245,20 @@ class DatasetOrigin(
         self._port = obj
 
     @property
-    def user(self):
+    def username(self):
         """The user name required to connect to the remote host.
         """
-        return self._user
+        return self._username
 
-    @user.setter
-    def user(self, obj):
+    @username.setter
+    def username(self, obj):
         if obj is not None:
             if not isinstance(obj, str):
                 raise TypeError(
-                    'The property user must be None, or an instance of str! '
+                    'The property username must be None, or an instance of '
+                    'str! '
                     f'Its current type is {classname(obj)}!')
-        self._user = obj
+        self._username = obj
 
     @property
     def password(self):
@@ -304,7 +305,7 @@ class DatasetOrigin(
         if self._filename is not None:
             s1 += f'filename = {self._filename}\n'
         s1 += f'protocol = {self.protocol}\n'
-        s1 += f'user@host:port = {self.user}@{self.host}:{self.port}\n'
+        s1 += f'user@host:port = {self.username}@{self.host}:{self.port}\n'
         s1 += 'password = '
         if self.password is not None:
             s1 += 'set\n'
@@ -434,7 +435,7 @@ class DatasetTransfer(
     def transfer(
             ds,
             dst_path,
-            user=None,
+            username=None,
             password=None,
     ):
         """This method is supposed to transfer the dataset origin path to the
@@ -447,7 +448,7 @@ class DatasetTransfer(
             specifying the origin of the dataset.
         dst_path : str
             The destination path into which the dataset will be transfered.
-        user : str | None
+        username : str | None
             The user name required to connect to the remote host.
         password : str | None
             The password for the user name required to connect to the remote
@@ -456,7 +457,10 @@ class DatasetTransfer(
         pass
 
     @staticmethod
-    def post_transfer_unzip(ds, dst_path):
+    def post_transfer_unzip(
+            ds,
+            dst_path,
+    ):
         """This is a post-transfer function. It will unzip the transfered file
         into the dst_path if the origin path was a zip file.
         """
@@ -493,7 +497,7 @@ class RSYNCDatasetTransfer(
             origin,
             file_list,
             dst_base_path,
-            user=None,
+            username=None,
             password=None,
     ):
         """Transfers the given dataset to the given destination path using the
@@ -510,7 +514,7 @@ class RSYNCDatasetTransfer(
         dst_base_path : str
             The destination base path into which the dataset files will be
             transfered.
-        user : str | None
+        username : str | None
             The user name required to connect to the remote host.
         password : str | None
             The password for the user name required to connect to the remote
@@ -533,7 +537,7 @@ class RSYNCDatasetTransfer(
             os.getcwd(),
             f'.{id(origin)}.rsync_file_list.txt')
 
-        if user is None:
+        if username is None:
             # No user name is defined.
             with TemporaryTextFile(
                 pathfilename=file_list_pathfilename,
@@ -568,7 +572,7 @@ class RSYNCDatasetTransfer(
                         '--progress '
                         f'--password-file "{pwdfile}" '
                         f'--files-from="{file_list_pathfilename}" '
-                        f'{user}@{host}:"{origin_base_path}" "{dst_base_path}"'
+                        f'{username}@{host}:"{origin_base_path}" "{dst_base_path}"'
                     )
                     DatasetTransfer.execute_system_command(cmd, logger)
         else:
@@ -582,7 +586,7 @@ class RSYNCDatasetTransfer(
                     '-avrRL '
                     '--progress '
                     f'--files-from="{file_list_pathfilename}" '
-                    f'{user}@{host}:"{origin_base_path}" "{dst_base_path}"'
+                    f'{username}@{host}:"{origin_base_path}" "{dst_base_path}"'
                 )
                 DatasetTransfer.execute_system_command(cmd, logger)
 
@@ -598,7 +602,7 @@ class WGETDatasetTransfer(
             origin,
             file_list,
             dst_base_path,
-            user=None,
+            username=None,
             password=None,
     ):
         """Transfers the given dataset to the given destination path using the
@@ -613,7 +617,7 @@ class WGETDatasetTransfer(
             should be transfered.
         dst_base_path : str
             The destination base path into which the dataset will be transfered.
-        user : str | None
+        username : str | None
             The user name required to connect to the remote host.
         password : str | None
             The password for the user name required to connect to the remote
@@ -627,7 +631,23 @@ class WGETDatasetTransfer(
 
         for file in file_list:
             path = os.path.join(origin.base_path, file)
-            cmd = f'wget {protocol}://{host}/{path} -P {dst_base_path}'
+
+            cmd = 'wget '
+            if username is None:
+                # No user name is specified.
+                pass
+            elif password is not None:
+                # A user name and password is specified.
+                cmd += (
+                    f'--user="{username}" '
+                    f'--password="{password}" '
+                )
+            else:
+                # Only a user name is specified.
+                cmd += (
+                    f'--user={username} '
+                )
+            cmd += f'{protocol}://{host}/{path} -P {dst_base_path}'
             DatasetTransfer.execute_system_command(cmd, logger)
 
 
@@ -1322,7 +1342,7 @@ class Dataset(
 
     def make_data_available(
             self,
-            user=None,
+            username=None,
             password=None,
     ):
         """Makes the data of the dataset available.
@@ -1332,7 +1352,7 @@ class Dataset(
 
         Parameters
         ----------
-        user : str | None
+        username : str | None
             The user name required to connect to the remote host of the origin.
             If set to ``None``, the
         password : str | None
@@ -1382,8 +1402,8 @@ class Dataset(
                 'configuration!')
             return False
 
-        if user is None:
-            user = self.origin.user
+        if username is None:
+            username = self.origin.username
         if password is None:
             password = self.origin.password
 
@@ -1393,7 +1413,7 @@ class Dataset(
 
         logger.debug(
             f'Downloading dataset "{self.name}" from origin into base path '
-            f'"{base_path}". user="{user}".')
+            f'"{base_path}". username="{username}".')
 
         # Check if the origin is a directory. If not we just transfer that one
         # file.
@@ -1411,7 +1431,7 @@ class Dataset(
             origin=self.origin,
             file_list=file_list,
             dst_base_path=base_path,
-            user=user,
+            username=username,
             password=password)
 
         if self.origin.post_transfer_func is not None:
