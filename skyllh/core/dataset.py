@@ -2099,7 +2099,7 @@ class Dataset(
         Parameters
         ----------
         name : str
-            The name of the dataset that should get removed.
+            The name of the data definition that should get removed.
         """
         if name not in self._aux_data_definitions:
             raise KeyError(
@@ -2107,6 +2107,21 @@ class Dataset(
                 f'dataset "{self.name}", nothing to remove!')
 
         self._aux_data_definitions.pop(name)
+
+    def remove_aux_data_definitions(
+            self,
+            names,
+    ):
+        """Removes the auxiliary data definition from the dataset.
+
+        Parameters
+        ----------
+        names : sequence of str
+            The names of the data definitions that should get removed.
+        """
+        for name in names:
+            self.remove_aux_data_definition(
+                name=name)
 
     def add_aux_data(
             self,
