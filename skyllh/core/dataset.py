@@ -628,6 +628,7 @@ class WGETDatasetTransfer(
 
         protocol = origin.protocol
         host = origin.host
+        port = origin.port
 
         for file in file_list:
             path = os.path.join(origin.base_path, file)
@@ -647,7 +648,12 @@ class WGETDatasetTransfer(
                 cmd += (
                     f'--user={username} '
                 )
-            cmd += f'{protocol}://{host}/{path} -P {dst_base_path}'
+            cmd += f'{protocol}://{host}'
+            if port is not None:
+                cmd += f':{port}'
+            if path[0:1] != '/':
+                cmd += '/'
+            cmd += f'{path} -P {dst_base_path}'
             DatasetTransfer.execute_system_command(cmd, logger)
 
 
