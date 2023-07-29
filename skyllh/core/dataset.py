@@ -633,6 +633,13 @@ class WGETDatasetTransfer(
         for file in file_list:
             path = os.path.join(origin.base_path, file)
 
+            dst_sub_path = os.path.dirname(file)
+            if dst_sub_path == '':
+                dst_path = dst_base_path
+            else:
+                dst_path = os.path.join(dst_base_path, dst_sub_path)
+            DatasetTransfer.ensure_dst_path(dst_path)
+
             cmd = 'wget '
             if username is None:
                 # No user name is specified.
@@ -653,7 +660,7 @@ class WGETDatasetTransfer(
                 cmd += f':{port}'
             if path[0:1] != '/':
                 cmd += '/'
-            cmd += f'{path} -P {dst_base_path}'
+            cmd += f'{path} -P {dst_path}'
             DatasetTransfer.execute_system_command(cmd, logger)
 
 
