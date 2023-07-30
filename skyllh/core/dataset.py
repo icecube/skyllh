@@ -631,6 +631,12 @@ class WGETDatasetTransfer(
         port = origin.port
 
         for file in file_list:
+            dst_pathfilename = os.path.join(dst_base_path, file)
+            if os.path.exists(dst_pathfilename):
+                logger.debug(
+                    f'File "{dst_pathfilename}" already exists. Skipping.')
+                continue
+
             path = os.path.join(origin.base_path, file)
 
             dst_sub_path = os.path.dirname(file)
