@@ -4,6 +4,7 @@
 convenience utility functions to set different configuration settings.
 """
 
+import copy
 import os.path
 import sys
 
@@ -103,7 +104,7 @@ class Config(
     ) -> None:
         """Initializes a new Config instance holding the base configuration.
         """
-        super().__init__(_BASECONFIG)
+        super().__init__(copy.deepcopy(_BASECONFIG))
 
     @classmethod
     @tool.requires('yaml')
