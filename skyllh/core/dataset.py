@@ -537,11 +537,19 @@ class RSYNCDatasetTransfer(
             os.getcwd(),
             f'.{id(origin)}.rsync_file_list.txt')
 
+        # Create file list file content.
+        # Skip files which already exists.
+        file_list_filecontent = ''
+        for file in file_list:
+            dst_pathfilename = os.path.join(dst_base_path, file)
+            if not os.path.exists(dst_pathfilename):
+                file_list_filecontent += f'{file}\n'
+
         if username is None:
             # No user name is defined.
             with TemporaryTextFile(
                 pathfilename=file_list_pathfilename,
-                text='\n'.join(file_list)
+                text=file_list_filecontent,
             ):
                 cmd = (
                     f'rsync '
@@ -564,7 +572,7 @@ class RSYNCDatasetTransfer(
             ):
                 with TemporaryTextFile(
                     pathfilename=file_list_pathfilename,
-                    text='\n'.join(file_list)
+                    text=file_list_filecontent,
                 ):
                     cmd = (
                         f'rsync '
@@ -579,7 +587,7 @@ class RSYNCDatasetTransfer(
             # Only the user name is defined.
             with TemporaryTextFile(
                 pathfilename=file_list_pathfilename,
-                text='\n'.join(file_list)
+                text=file_list_filecontent,
             ):
                 cmd = (
                     f'rsync '
