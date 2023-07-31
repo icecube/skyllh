@@ -172,21 +172,19 @@ class I3Dataset(
 
         return s
 
-    def create_transfer_file_list(
+    def create_file_list(
             self,
     ):
-        """Creates the list of files that need to be transfered from the origin
-        for this dataset. The paths are relative paths starting after the sub
-        path of the dataset.
+        """Creates the list of files of this dataset.
+        The file paths are relative to the dataset's root directory.
 
         Returns
         -------
         file_list : list of str
-            The list of files that need to be transfered from the origin for
-            this dataset.
+            The list of files of this dataset.
         """
         file_list = (
-            super().create_transfer_file_list() +
+            super().create_file_list() +
             self._grl_pathfilename_list
         )
 
