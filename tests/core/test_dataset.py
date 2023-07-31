@@ -4,9 +4,15 @@ import numpy as np
 import os.path
 import unittest
 
+from skyllh.core.config import (
+    Config,
+)
 from skyllh.core.dataset import (
     get_data_subset,
     DatasetData,
+    DatasetOrigin,
+    DatasetTransferError,
+    RSYNCDatasetTransfer,
 )
 from skyllh.core.livetime import (
     Livetime,
@@ -14,6 +20,46 @@ from skyllh.core.livetime import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
+from skyllh.datasets.i3 import (
+    TestData,
+)
+
+
+class TestRSYNCDatasetTransfer(
+    unittest.TestCase,
+):
+    def setUp(self):
+        self.cfg = Config()
+        self.ds = TestData.create_dataset_collection(
+            cfg=self.cfg,
+            base_path=os.path.join(os.getcwd(), '.repository')).get_dataset(
+                'TestData')
+
+        # Remove the dataset if it already exists.
+        if self.ds.exists:
+            self.ds.remove_data()
+
+        # Define the origin and transfer method of this dataset.
+        self.ds.origin = DatasetOrigin(
+            base_path='/data/user/mwolf/skyllh',
+            sub_path='testdata',
+            host='cobalt',
+            transfer_func=RSYNCDatasetTransfer.transfer,
+        )
+
+    def test_transfer(self):
+        try:
+            if not self.ds.make_data_available():
+                raise RuntimeError(
+                    f'The data of dataset {self.ds.name} could not be made '
+                    'available!')
+        except DatasetTransferError:
+            self.skipTest(
+                f'The data of dataset {self.ds.name} could not be transfered.')
+
+        # Check that there are no missing files.
+        missing_files = self.ds.get_missing_files()
+        self.assertEqual(len(missing_files), 0)
 
 
 class TestDatasetFunctions(unittest.TestCase):
