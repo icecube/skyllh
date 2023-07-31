@@ -3,6 +3,7 @@
 import abc
 import os
 import os.path
+import shutil
 import stat
 
 import numpy as np
@@ -377,6 +378,23 @@ class TemporaryTextFile(
         os.remove(self.pathfilename)
 
 
+class SystemCommandError(
+    Exception,
+):
+    """This custom exception will be raised when a system command failed.
+    """
+    pass
+
+
+class DatasetTransferError(
+    Exception,
+):
+    """This custom exception defines an error that should be raised when the
+    actual transfer of the dataset files failed.
+    """
+    pass
+
+
 class DatasetTransfer(
     object,
     metaclass=abc.ABCMeta,
@@ -406,13 +424,13 @@ class DatasetTransfer(
 
         Raises
         ------
-        RuntimeError
+        SystemCommandError
             If the system command did not return ``success_rcode``.
         """
         logger.debug(f'Running command "{cmd}"')
         rcode = os.system(cmd)
         if (success_rcode is not None) and (rcode != success_rcode):
-            raise RuntimeError(
+            raise SystemCommandError(
                 f'The system command "{cmd}" failed with return code {rcode}!')
 
     @staticmethod
@@ -453,6 +471,11 @@ class DatasetTransfer(
         password : str | None
             The password for the user name required to connect to the remote
             host.
+
+        Raises
+        ------
+        DatasetTransferError
+            If the actual transfer of the dataset files failed.
         """
         pass
 
@@ -493,7 +516,7 @@ class RSYNCDatasetTransfer(
         super().__init__(**kwargs)
 
     @staticmethod
-    def transfer(
+    def transfer(  # noqa: C901
             origin,
             file_list,
             dst_base_path,
@@ -558,7 +581,11 @@ class RSYNCDatasetTransfer(
                     f'--files-from="{file_list_pathfilename}" '
                     f'{host}:"{origin_base_path}" "{dst_base_path}"'
                 )
-                DatasetTransfer.execute_system_command(cmd, logger)
+                try:
+                    DatasetTransfer.execute_system_command(cmd, logger)
+                except SystemCommandError as err:
+                    raise DatasetTransferError(str(err))
+
         elif password is not None:
             # User and password is defined.
             pwdfile = os.path.join(
@@ -582,7 +609,10 @@ class RSYNCDatasetTransfer(
                         f'--files-from="{file_list_pathfilename}" '
                         f'{username}@{host}:"{origin_base_path}" "{dst_base_path}"'
                     )
-                    DatasetTransfer.execute_system_command(cmd, logger)
+                    try:
+                        DatasetTransfer.execute_system_command(cmd, logger)
+                    except SystemCommandError as err:
+                        raise DatasetTransferError(str(err))
         else:
             # Only the user name is defined.
             with TemporaryTextFile(
@@ -596,7 +626,10 @@ class RSYNCDatasetTransfer(
                     f'--files-from="{file_list_pathfilename}" '
                     f'{username}@{host}:"{origin_base_path}" "{dst_base_path}"'
                 )
-                DatasetTransfer.execute_system_command(cmd, logger)
+                try:
+                    DatasetTransfer.execute_system_command(cmd, logger)
+                except SystemCommandError as err:
+                    raise DatasetTransferError(str(err))
 
 
 class WGETDatasetTransfer(
@@ -675,7 +708,10 @@ class WGETDatasetTransfer(
             if path[0:1] != '/':
                 cmd += '/'
             cmd += f'{path} -P {dst_path}'
-            DatasetTransfer.execute_system_command(cmd, logger)
+            try:
+                DatasetTransfer.execute_system_command(cmd, logger)
+            except SystemCommandError as err:
+                raise DatasetTransferError(str(err))
 
 
 class Dataset(
@@ -1116,12 +1152,13 @@ class Dataset(
 
     @property
     def exists(self):
-        """(read-only) Flag if all the data files of this data set exists. It is
+        """(read-only) Flag if all the data files of this dataset exists. It is
         ``True`` if all data files exist and ``False`` otherwise.
         """
-        for pathfilename in (self.exp_abs_pathfilename_list +
-                             self.mc_abs_pathfilename_list):
-            if not os.path.exists(pathfilename):
+        file_list = self.create_file_list()
+        abs_file_list = self.get_abs_pathfilename_list(file_list)
+        for abs_file in abs_file_list:
+            if not os.path.exists(abs_file):
                 return False
         return True
 
@@ -1270,6 +1307,31 @@ class Dataset(
 
         return s
 
+    def remove_data(self):
+        """Removes the data of this dataset by removing the dataset's root
+        directory and everything in it. If the root directory is a symbolic
+        link, only this link will be removed.
+
+        Raises
+        ------
+        RuntimeError
+            If the dataset's root directory is neither a symlink nor a
+            directory.
+        """
+        root_dir = self.root_dir
+
+        if os.path.islink(root_dir):
+            os.remove(root_dir)
+            return
+
+        if os.path.isdir(root_dir):
+            shutil.rmtree(root_dir)
+            return
+
+        raise RuntimeError(
+            f'The root directory "{root_dir}" of dataset {self.name} is '
+            'neither a symlink nor a directory!')
+
     def get_abs_pathfilename_list(
             self,
             pathfilename_list,
@@ -1300,6 +1362,29 @@ class Dataset(
                     os.path.join(root_dir, pathfilename))
 
         return abs_pathfilename_list
+
+    def get_missing_files(
+            self,
+    ):
+        """Determines which files of the dataset are missing and returns the
+        list of files.
+
+        Returns
+        -------
+        missing_files : list of str
+            The list of files that are missing. The files are relative to the
+            dataset's root directory.
+        """
+        file_list = self.create_file_list()
+        abs_file_list = self.get_abs_pathfilename_list(file_list)
+
+        missing_files = [
+            file
+            for (file, abs_file) in zip(file_list, abs_file_list)
+            if not os.path.exists(abs_file)
+        ]
+
+        return missing_files
 
     def update_version_qualifiers(
             self,
@@ -1344,18 +1429,16 @@ class Dataset(
                 'Version qualifier values did not increment and no new version '
                 'qualifiers were added!')
 
-    def create_transfer_file_list(
+    def create_file_list(
             self,
     ):
-        """Creates the list of files that need to be transfered from the origin
-        for this dataset. The paths are relative paths starting after the sub
-        path of the dataset.
+        """Creates the list of files that are linked to this dataset.
+        The file paths are relative to the dataset's root directory.
 
         Returns
         -------
         file_list : list of str
-            The list of files that need to be transfered from the origin for
-            this dataset.
+            The list of files of this dataset.
         """
         file_list = (
             self._exp_pathfilename_list +
@@ -1396,11 +1479,9 @@ class Dataset(
             module_class_method_name(self, 'make_data_available')
         )
 
-        root_dir = self.root_dir
-
-        if os.path.exists(root_dir) and os.path.isdir(root_dir):
+        if len(self.get_missing_files()) == 0:
             logger.debug(
-                f'The root dir "{root_dir}" of dataset "{self.name}" exists. '
+                f'All files of dataset "{self.name}" already exist. '
                 'Nothing to download.')
             return True
 
@@ -1413,6 +1494,7 @@ class Dataset(
         # Check if the dataset origin is locally available. In that case we
         # just create a symlink.
         if self.origin.is_locally_available():
+            root_dir = self.root_dir
             # Make sure all directories leading to the symlink exist.
             dirname = os.path.dirname(root_dir)
             if dirname != '':
@@ -1447,7 +1529,7 @@ class Dataset(
         if self.origin.is_directory:
             file_list = [
                 os.path.join(self.origin.sub_path, pathfilename)
-                for pathfilename in self.create_transfer_file_list()
+                for pathfilename in self.create_file_list()
             ]
         else:
             file_list = [
