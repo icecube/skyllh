@@ -263,8 +263,7 @@ def create_dataset_collection(
         sub_path='',
         filename='20210126_PS-IC40-IC86_VII.zip',
         host='icecube.wisc.edu',
-        protocol='http',
-        transfer_func=WGETDatasetTransfer.transfer,
+        transfer_func=WGETDatasetTransfer(protocol='http').transfer,
         post_transfer_func=WGETDatasetTransfer.post_transfer_unzip,
     )
 

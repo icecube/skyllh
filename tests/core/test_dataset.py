@@ -45,7 +45,7 @@ class TestRSYNCDatasetTransfer(
             base_path='/data/user/mwolf/skyllh',
             sub_path='testdata',
             host='cobalt',
-            transfer_func=RSYNCDatasetTransfer.transfer,
+            transfer_func=RSYNCDatasetTransfer().transfer,
         )
 
     def test_transfer(self):
@@ -82,20 +82,18 @@ class TestWGETDatasetTransfer(
             base_path='/data/user/mwolf/skyllh',
             sub_path='testdata',
             host='convey.icecube.wisc.edu',
-            protocol='https',
-            transfer_func=WGETDatasetTransfer.transfer,
+            username='icecube',
+            transfer_func=WGETDatasetTransfer(protocol='https').transfer,
         )
 
     def test_transfer(self):
-        username = 'icecube'
         password = os.environ.get('ICECUBE_PASSWORD', None)
         if password is None:
             self.skipTest(
-                f'No password for username "{username}" provided via the '
-                'environment!')
+                f'No password for username "{self.ds.origin.username}" '
+                'provided via the environment!')
 
         if not self.ds.make_data_available(
-            username=username,
             password=password,
         ):
             raise RuntimeError(
@@ -107,7 +105,9 @@ class TestWGETDatasetTransfer(
         self.assertEqual(len(missing_files), 0)
 
 
-class TestDatasetFunctions(unittest.TestCase):
+class TestDatasetFunctions(
+    unittest.TestCase,
+):
     def setUp(self):
         path = os.path.abspath(os.path.dirname(__file__))
         self.exp_data = DataFieldRecordArray(

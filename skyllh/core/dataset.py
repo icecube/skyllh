@@ -200,22 +200,6 @@ class DatasetOrigin(
         return (self._filename is None)
 
     @property
-    def protocol(self):
-        """The protocol to use for the transfer.
-        """
-        return self._protocol
-
-    @protocol.setter
-    def protocol(self, obj):
-        if obj is not None:
-            if not isinstance(obj, str):
-                raise TypeError(
-                    'The property protocol must be None, or an instance of '
-                    'str! '
-                    f'Its current type is {classname(obj)}!')
-        self._protocol = obj
-
-    @property
     def host(self):
         """The name or IP of the remote host.
         """
@@ -448,11 +432,11 @@ class DatasetTransfer(
             # Throws if dst_path exists as a file.
             os.makedirs(dst_path)
 
-    @staticmethod
-    @abc.abstractstaticmethod
+    @abc.abstractmethod
     def transfer(
-            ds,
-            dst_path,
+            self,
+            origin,
+            dst_base_path,
             username=None,
             password=None,
     ):
@@ -461,11 +445,14 @@ class DatasetTransfer(
 
         Parameters
         ----------
-        ds : instance of Dataset
-            The instance of Dataset having the ``origin`` property defined,
-            specifying the origin of the dataset.
-        dst_path : str
-            The destination path into which the dataset will be transfered.
+        origin : instance of DatasetOrigin
+            The instance of DatasetOrigin defining the origin of the dataset.
+        file_list : list of str
+            The list of files, relative to the origin base path, which should be
+            transfered.
+        dst_base_path : str
+            The destination base path into which the dataset files will be
+            transfered.
         username : str | None
             The user name required to connect to the remote host.
         password : str | None
@@ -513,10 +500,11 @@ class RSYNCDatasetTransfer(
     DatasetTransfer,
 ):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs)
 
-    @staticmethod
     def transfer(  # noqa: C901
+            self,
             origin,
             file_list,
             dst_base_path,
@@ -543,7 +531,7 @@ class RSYNCDatasetTransfer(
             The password for the user name required to connect to the remote
             host.
         """
-        cls = get_class_of_func(RSYNCDatasetTransfer.transfer)
+        cls = get_class_of_func(self.transfer)
         logger = get_logger(f'{classname(cls)}.transfer')
 
         host = origin.host
@@ -635,11 +623,28 @@ class RSYNCDatasetTransfer(
 class WGETDatasetTransfer(
     DatasetTransfer,
 ):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, protocol, **kwargs):
+        super().__init__(
+            **kwargs)
 
-    @staticmethod
+        self.protocol = protocol
+
+    @property
+    def protocol(self):
+        """The protocol to use for the transfer.
+        """
+        return self._protocol
+
+    @protocol.setter
+    def protocol(self, obj):
+        if not isinstance(obj, str):
+            raise TypeError(
+                'The property protocol must be an instance of str! '
+                f'Its current type is {classname(obj)}!')
+        self._protocol = obj
+
     def transfer(
+            self,
             origin,
             file_list,
             dst_base_path,
@@ -664,10 +669,9 @@ class WGETDatasetTransfer(
             The password for the user name required to connect to the remote
             host.
         """
-        cls = get_class_of_func(WGETDatasetTransfer.transfer)
+        cls = get_class_of_func(self.transfer)
         logger = get_logger(f'{classname(cls)}.transfer')
 
-        protocol = origin.protocol
         host = origin.host
         port = origin.port
 
@@ -702,7 +706,7 @@ class WGETDatasetTransfer(
                 cmd += (
                     f'--user={username} '
                 )
-            cmd += f'{protocol}://{host}'
+            cmd += f'{self.protocol}://{host}'
             if port is not None:
                 cmd += f':{port}'
             if path[0:1] != '/':
