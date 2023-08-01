@@ -82,6 +82,7 @@ class TestWGETDatasetTransfer(
             base_path='/data/user/mwolf/skyllh',
             sub_path='testdata',
             host='convey.icecube.wisc.edu',
+            protocol='https',
             transfer_func=WGETDatasetTransfer.transfer,
         )
 
