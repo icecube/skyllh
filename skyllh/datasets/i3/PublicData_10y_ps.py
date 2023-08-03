@@ -551,7 +551,7 @@ def create_dataset_collection(
         'Zenith[deg]':  'zen',
     })
 
-    def add_run_number(data):
+    def add_run_number_exp(data):
         exp = data.exp
         exp.append_field('run', np.repeat(0, len(exp)))
 
@@ -563,7 +563,7 @@ def create_dataset_collection(
         exp['azi'] = np.deg2rad(exp['azi'])
         exp['zen'] = np.deg2rad(exp['zen'])
 
-    dsc.add_data_preparation(add_run_number)
+    dsc.add_data_preparation(add_run_number_exp)
     dsc.add_data_preparation(convert_deg2rad)
 
     return dsc
