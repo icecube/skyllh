@@ -68,7 +68,6 @@ class DatasetOrigin(
             sub_path,
             transfer_func,
             filename=None,
-            protocol=None,
             host=None,
             port=None,
             username=None,
@@ -98,8 +97,6 @@ class DatasetOrigin(
         filename : str | None
             If the origin is not a directory but a file, this specifies the
             filename.
-        protocol : str | None
-            The protocol to use for the transfer, e.g. ``"http"`` or ``"file"``.
         host : str | None
             The name or IP of the remote host.
         port : int | None
@@ -120,7 +117,6 @@ class DatasetOrigin(
         self.sub_path = sub_path
         self.transfer_func = transfer_func
         self.filename = filename
-        self.protocol = protocol
         self.host = host
         self.port = port
         self.username = username
@@ -289,7 +285,6 @@ class DatasetOrigin(
         s1 += f'sub_path = "{self.sub_path}"\n'
         if self._filename is not None:
             s1 += f'filename = {self._filename}\n'
-        s1 += f'protocol = {self.protocol}\n'
         s1 += f'user@host:port = {self.username}@{self.host}:{self.port}\n'
         s1 += 'password = '
         if self.password is not None:
