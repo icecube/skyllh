@@ -85,10 +85,6 @@ def create_dataset_collection(
     IC86_VII.mc_pathfilename_list = IC86_II.mc_pathfilename_list
     IC86_II_VII.mc_pathfilename_list = IC86_II.mc_pathfilename_list
 
-    def add_run_number_mc(data):
-        mc = data.mc
-        mc.append_field('run', np.repeat(0, len(mc)))
-
     def add_time(data):
         mc = data.mc
         mc.append_field('time', np.repeat(0, len(mc)))
@@ -98,7 +94,6 @@ def create_dataset_collection(
         mc.append_field('azi', np.repeat(0, len(mc)))
         mc.append_field('zen', np.repeat(0, len(mc)))
 
-    dsc.add_data_preparation(add_run_number_mc)
     dsc.add_data_preparation(add_time)
     dsc.add_data_preparation(add_azimuth_and_zenith)
 
