@@ -1,5 +1,18 @@
 This file contains a log-book for major changes between releases.
 
+v23.2.1
+=======
+- Allow the definition of an origin of a dataset via the
+  core.dataset.DatasetOrigin class and download the dataset automatically from
+  the origin to the local host. The following transfer methods are provided:
+
+    - wget
+    - rsync
+
+  Unit tests for these transfer methods are added.
+
+- The iminuit package is an optional tool now.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
