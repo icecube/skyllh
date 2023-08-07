@@ -18,6 +18,7 @@ from datetime import (
 import os
 import sys
 
+
 sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
@@ -29,7 +30,7 @@ copyright = u'%s, The IceCube Collaboration, T. Kontrimas, M. Wolf' % year
 author = u'The IceCube Collaboration'
 
 # The short X.Y version
-version = u'23.1.1'
+version = u'23.2.0'
 # The full version, including alpha/beta/rc tags
 release = u''
 
