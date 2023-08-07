@@ -871,6 +871,9 @@ def create_analysis(  # noqa: C901
     """
     add_icecube_specific_analysis_required_data_fields(cfg)
 
+    # Remove run number from the dataset data field requirements.
+    cfg['datafields'].pop('run', None)
+
     if logger_name is None:
         logger_name = __name__
     logger = get_logger(logger_name)
