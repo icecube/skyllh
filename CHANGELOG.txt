@@ -1,5 +1,12 @@
 This file contains a log-book for major changes between releases.
 
+v23.2.1
+=======
+- Add access operator support for core.dataset.DatasetCollection.
+
+    - Individual datasets of a dataset collection (``dsc``) can now be accessed
+      via ``dsc[name]`` or ``dsc[name1, name2, ...]``.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters

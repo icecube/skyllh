@@ -1496,6 +1496,39 @@ class DatasetCollection(
         ds_name = list(self._datasets.keys())[0]
         return self._datasets[ds_name].verqualifiers
 
+    def __getitem__(
+            self,
+            key,
+    ):
+        """Implementation of the access operator ``[key]``.
+
+        Parameters
+        ----------
+        key : str | sequence of str
+            The name or names of the dataset(s) that should get retrieved from
+            this dataset collection.
+
+        Returns
+        -------
+        datasets : instance of Dataset | list of instance of Dataset
+            The dataset instance or the list of dataset instances corresponding
+            to the given key.
+        """
+        if not issequence(key):
+            return self.get_dataset(key)
+
+        if not issequenceof(key, str):
+            raise TypeError(
+                'The key for the access operator must be an instance of str or '
+                'a sequence of str instances!')
+
+        datasets = [
+            self.get_dataset(name)
+            for name in key
+        ]
+
+        return datasets
+
     def __iadd__(self, ds):
         """Implementation of the ``self += dataset`` operation to add a
         Dataset object to this dataset collection.
