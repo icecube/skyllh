@@ -60,7 +60,7 @@ def create_dataset_collection(
         IC86_VI,
         IC86_VII,
         IC86_II_VII,
-    ) = dsc.get_datasets((
+    ) = dsc[
         'IC40',
         'IC59',
         'IC79',
@@ -72,7 +72,7 @@ def create_dataset_collection(
         'IC86_VI',
         'IC86_VII',
         'IC86_II-VII',
-    ))
+    ]
     IC40.mc_pathfilename_list = 'sim/IC40_MC.npy'
     IC59.mc_pathfilename_list = 'sim/IC59_MC.npy'
     IC79.mc_pathfilename_list = 'sim/IC79_MC.npy'

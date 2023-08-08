@@ -9,6 +9,7 @@ from skyllh.core.config import (
 )
 from skyllh.core.dataset import (
     get_data_subset,
+    Dataset,
     DatasetData,
     DatasetOrigin,
     DatasetTransferError,
@@ -21,8 +22,12 @@ from skyllh.core.livetime import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
+
 from skyllh.datasets.i3 import (
     TestData,
+)
+from skyllh.datasets.i3.PublicData_10y_ps import (
+    create_dataset_collection,
 )
 
 
@@ -189,6 +194,28 @@ class TestDatasetFunctions(
         self.assertEqual(len(dataset_data_subset.exp), 3)
         self.assertEqual(len(dataset_data_subset.mc), 3)
         self.assertAlmostEqual(livetime_subset.livetime, 0.75)
+
+
+class TestDatasetCollection(
+    unittest.TestCase,
+):
+    def setUp(self) -> None:
+        self.cfg = Config()
+        self.dsc = create_dataset_collection(cfg=self.cfg)
+
+    def test__getitem__single(self):
+        ds = self.dsc['IC40']
+        self.assertIsInstance(ds, Dataset)
+        self.assertEqual(ds.name, 'IC40')
+
+    def test__getitem__multi(self):
+        ds_list = self.dsc['IC59', 'IC40']
+        self.assertIsInstance(ds_list, list)
+        self.assertEqual(len(ds_list), 2)
+        self.assertIsInstance(ds_list[0], Dataset)
+        self.assertIsInstance(ds_list[1], Dataset)
+        self.assertEqual(ds_list[0].name, 'IC59')
+        self.assertEqual(ds_list[1].name, 'IC40')
 
 
 if __name__ == '__main__':
