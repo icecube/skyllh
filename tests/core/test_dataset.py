@@ -118,12 +118,6 @@ class TestDatasetFunctions(
             os.path.join(path, 'testdata/livetime_testdata.npy'))
         self.livetime = 100
 
-    def tearDown(self):
-        # self.exp_data.close()
-        # self.mc_data.close()
-        # self.livetime_datafile.close()
-        pass
-
     def test_get_data_subset(self):
         # Whole interval.
         t_start = 58442.0
