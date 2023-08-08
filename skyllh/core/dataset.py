@@ -87,12 +87,13 @@ class DatasetOrigin(
             The callable object that should be used to transfer the dataset.
             This function requires the following call signature::
 
-                __call__(ds, dst_path, user=None, password=None)
+                __call__(origin, file_list, dst_base_path, user=None, password=None)
 
-            where ``ds`` is an instance of Dataset, ``dst_path`` is an instance
-            of str specifying the destination path on the local machine,
-            ``user`` is the user name required to connect to the remote host,
-            and ``password`` is the password for the user name required to
+            where ``origin`` is an instance of DatasetOrigin, ``file_list`` is
+            a list of str specifying the files to transfer, ``dst_base_path`` is
+            an instance of str specifying the destination base path on the local
+            machine, ``user`` is the user name required to connect to the remote
+            host, and ``password`` is the password for the user name required to
             connect to the remote host.
         filename : str | None
             If the origin is not a directory but a file, this specifies the
@@ -110,6 +111,12 @@ class DatasetOrigin(
             The callable object that should be called after the dataset has been
             transfered by the ``transfer_func``function. It can be used to
             extract an archive file.
+            This function requires the following call signature::
+
+                __call__(ds, dst_path)
+
+            where ``ds`` is an instance of ``Dataset``, and ``dst_path`` is the
+            destination path.
         """
         super().__init__(**kwargs)
 
@@ -431,6 +438,7 @@ class DatasetTransfer(
     def transfer(
             self,
             origin,
+            file_list,
             dst_base_path,
             username=None,
             password=None,
@@ -472,8 +480,7 @@ class DatasetTransfer(
         if ds.origin.filename is None:
             return
 
-        fname = os.path.join(ds.origin.root_dir, ds.origin.filename)
-        if not fname.lower().endswith('.zip'):
+        if not ds.origin.filename.lower().endswith('.zip'):
             return
 
         cls = get_class_of_func(DatasetTransfer.post_transfer_unzip)
