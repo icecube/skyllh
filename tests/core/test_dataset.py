@@ -4,9 +4,16 @@ import numpy as np
 import os.path
 import unittest
 
+from skyllh.core.config import (
+    Config,
+)
 from skyllh.core.dataset import (
     get_data_subset,
     DatasetData,
+    DatasetOrigin,
+    DatasetTransferError,
+    RSYNCDatasetTransfer,
+    WGETDatasetTransfer,
 )
 from skyllh.core.livetime import (
     Livetime,
@@ -14,9 +21,93 @@ from skyllh.core.livetime import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
+from skyllh.datasets.i3 import (
+    TestData,
+)
 
 
-class TestDatasetFunctions(unittest.TestCase):
+class TestRSYNCDatasetTransfer(
+    unittest.TestCase,
+):
+    def setUp(self):
+        self.cfg = Config()
+        self.ds = TestData.create_dataset_collection(
+            cfg=self.cfg,
+            base_path=os.path.join(os.getcwd(), '.repository')).get_dataset(
+                'TestData')
+
+        # Remove the dataset if it already exists.
+        if self.ds.exists:
+            self.ds.remove_data()
+
+        # Define the origin and transfer method of this dataset.
+        self.ds.origin = DatasetOrigin(
+            base_path='/data/user/mwolf/skyllh',
+            sub_path='testdata',
+            host='cobalt',
+            transfer_func=RSYNCDatasetTransfer().transfer,
+        )
+
+    def test_transfer(self):
+        try:
+            if not self.ds.make_data_available():
+                raise RuntimeError(
+                    f'The data of dataset {self.ds.name} could not be made '
+                    'available!')
+        except DatasetTransferError:
+            self.skipTest(
+                f'The data of dataset {self.ds.name} could not be transfered.')
+
+        # Check that there are no missing files.
+        missing_files = self.ds.get_missing_files()
+        self.assertEqual(len(missing_files), 0)
+
+
+class TestWGETDatasetTransfer(
+    unittest.TestCase,
+):
+    def setUp(self):
+        self.cfg = Config()
+        self.ds = TestData.create_dataset_collection(
+            cfg=self.cfg,
+            base_path=os.path.join(os.getcwd(), '.repository')).get_dataset(
+                'TestData')
+
+        # Remove the dataset if it already exists.
+        if self.ds.exists:
+            self.ds.remove_data()
+
+        # Define the origin and transfer method of this dataset.
+        self.ds.origin = DatasetOrigin(
+            base_path='/data/user/mwolf/skyllh',
+            sub_path='testdata',
+            host='convey.icecube.wisc.edu',
+            username='icecube',
+            transfer_func=WGETDatasetTransfer(protocol='https').transfer,
+        )
+
+    def test_transfer(self):
+        password = os.environ.get('ICECUBE_PASSWORD', None)
+        if password is None:
+            self.skipTest(
+                f'No password for username "{self.ds.origin.username}" '
+                'provided via the environment!')
+
+        if not self.ds.make_data_available(
+            password=password,
+        ):
+            raise RuntimeError(
+                f'The data of dataset {self.ds.name} could not be made '
+                'available!')
+
+        # Check that there are no missing files.
+        missing_files = self.ds.get_missing_files()
+        self.assertEqual(len(missing_files), 0)
+
+
+class TestDatasetFunctions(
+    unittest.TestCase,
+):
     def setUp(self):
         path = os.path.abspath(os.path.dirname(__file__))
         self.exp_data = DataFieldRecordArray(
@@ -26,12 +117,6 @@ class TestDatasetFunctions(unittest.TestCase):
         self.livetime_datafile = np.load(
             os.path.join(path, 'testdata/livetime_testdata.npy'))
         self.livetime = 100
-
-    def tearDown(self):
-        # self.exp_data.close()
-        # self.mc_data.close()
-        # self.livetime_datafile.close()
-        pass
 
     def test_get_data_subset(self):
         # Whole interval.
