@@ -137,8 +137,7 @@ class I3DetSigYieldBuilder(
 
     def get_sin_dec_binning(self, dataset):
         """Gets the sin(dec) binning definition either as setting from this
-        detector signal yield implementation method itself, or from the
-        given dataset.
+        detector signal yield builder itself, or from the given dataset.
         """
         sin_dec_binning = self.sin_dec_binning
         if sin_dec_binning is None:
@@ -698,8 +697,8 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
 class SingleParamFluxPointLikeSourceI3DetSigYield(
         PointLikeSourceI3DetSigYield):
-    """The detector signal yield class for a flux that depends on a single
-    source parameter.
+    """The detector signal yield class for a point-like source with a flux model
+    that depends on a single parameter, tailored for the IceCube detector.
     """
     def __init__(
             self,
@@ -716,18 +715,19 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(
         ----------
         param_name : str
             The parameter name this detector signal yield depends
-            on. These are either fixed or floating parameter.
-        dataset : Dataset instance
-            The Dataset instance holding the monte-carlo event data.
-        fluxmodel : FluxModel
-            The flux model instance. Must be an instance of FluxModel.
+            on. This is either a fixed or floating parameter.
+        dataset : instance of Dataset
+            The instance of Dataset holding the monte-carlo event data.
+        fluxmodel : instance of FluxModel
+            The instance of FluxModel for which the detector signal yield is
+            constructed.
         livetime : float | Livetime instance
-            The live-time.
-        sin_dec_binning : BinningDefinition instance
-            The BinningDefinition instance defining the sin(dec) binning.
-        log_spl_sinDec_param : scipy.interpolate.RectBivariateSpline instance
-            The 2D spline in sin(dec) and the parameter this detector signal
-            yield depends on.
+            The live-time of the dataset.
+        sin_dec_binning : instance of BinningDefinition
+            The instance of BinningDefinition defining the sin(dec) binning.
+        log_spl_sinDec_param : instance of scipy.interpolate.RectBivariateSpline
+            The 2D spline in sin(dec) and the flux model's parameter this
+            detector signal yield depends on.
         """
         super().__init__(
             param_names=[param_name],
@@ -743,7 +743,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(
     def log_spl_sinDec_param(self):
         """The :class:`scipy.interpolate.RectBivariateSpline` instance
         representing the spline for the log value of the detector signal
-        yield as a function of sin(dec) and the floating parameter.
+        yield as a function of sin(dec) and the flux model's parameter.
         """
         return self._log_spl_sinDec_param
 
@@ -885,13 +885,13 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             The order of the spline function for the logarithmic values of the
             detector signal yield along the sin(dec) axis.
             The default is 2.
-        spline_order_gamma : int
+        spline_order_param : int
             The order of the spline function for the logarithmic values of the
-            detector signal yield along the gamma axis.
+            detector signal yield along the flux model's parameter axis.
             The default is 2.
         ncpu : int | None
-            The number of CPUs to utilize. If set to ``None``, global setting
-            will take place.
+            The number of CPUs to utilize. If set to ``None``, configuration
+            setting will take place.
         """
         super().__init__(
             sin_dec_binning,
@@ -997,7 +997,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         livetime_days = Livetime.get_integrated_livetime(data.livetime)
 
         # Get the sin(dec) binning definition either as setting from this
-        # implementation method, or from the dataset.
+        # builder, or from the dataset.
         sin_dec_binning = self.get_sin_dec_binning(dataset)
 
         # Calculate conversion factor from the flux model unit into the internal
@@ -1009,8 +1009,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         )
 
         # Define a function that creates a detector signal yield histogram
-        # along sin(dec) for a given flux model, i.e. for given spectral index,
-        # gamma.
+        # along sin(dec) for a given flux model, i.e. for a given parameter
+        # value.
         def _create_hist(
                 data_sin_true_dec,
                 data_true_energy,
