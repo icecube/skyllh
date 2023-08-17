@@ -558,8 +558,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         """
         local_param_name = self.param_names[0]
 
-        src_dec = np.atleast_1d(src_recarray['dec'])
-        src_ra = np.atleast_1d(src_recarray['ra'])
+        # src_dec = np.atleast_1d(src_recarray['dec'])
+        # src_ra = np.atleast_1d(src_recarray['ra'])
         src_param = src_params_recarray[local_param_name]
         src_param_gp_idxs = src_params_recarray[f'{local_param_name}:gpidx']
 
@@ -576,25 +576,11 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         # Integrate over the live-time of the dataset.
         # Construct a time binning which will preserve the angular resolution
         # of the detector.
-        dangle = 0.1  # deg
-        sidereal_day_in_hours = 23.9344696
-        ang_vel = 360/(sidereal_day_in_hours*60*60)  # deg/sec
-        dt = dangle / ang_vel / (24*60*60)  # days
 
-        # Construct the "mjd_times" array holding the MJD times of the detector
-        # uptime bins with the time resolution of dt.
-        uptime_mjd_arr = self._livetime.uptime_mjd_intervals_arr
-        n_bins_arr = np.ceil(np.diff(uptime_mjd_arr) / dt, dtype=np.float32)
-        mjd_times = np.zeros((np.sum(n_bins_arr),), dtype=np.float32)
-        i = 0
-        for (idx, mjd_start, mjd_stop) in enumerate(
-                zip(uptime_mjd_arr[:, 0], uptime_mjd_arr[:, 1])):
-            n_bins = n_bins_arr[idx]
-            mjd_times[i:i+n_bins] = np.maximum(
-                mjd_start + np.arange(n_bins, dtype=np.int32) * dt,
-                mjd_stop
-            )
-            i += n_bins
+        (st_hist, st_bin_edges) = self._livetime.create_sidereal_time_histogram(
+            dangle=0.1,  # deg
+            longitude=None,  # FIXME: Replace with detector location.
+        )
 
         # TODO: Do the integration / sum over the mjd time bins for each source.
 
