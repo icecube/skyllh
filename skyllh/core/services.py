@@ -9,6 +9,9 @@ from skyllh.core.dataset import (
     Dataset,
     DatasetData,
 )
+from skyllh.core.model import (
+    DetectorModel,
+)
 from skyllh.core.progressbar import (
     ProgressBar,
 )
@@ -30,17 +33,35 @@ class DetSigYieldService(
     def __init__(
             self,
             shg_mgr,
+            detector_model_list,
             dataset_list,
             data_list,
             ppbar=None,
             **kwargs):
         """Creates a new DetSigYieldService instance.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager defining the source
+            hypothesis groups.
+        detector_model_list : sequence of instance of DetectorModel
+            The sequence of instance of DetectorModel that define the detectors,
+            one for each dataset.
+        dataset_list : sequence of Dataset
+            The sequence of instance of Dataset defining the datasets.
+        data_list : sequence of DatasetData
+            The sequence of instance of DatasetData holding the experimental and
+            monte-carlo data events, one for each dataset.
+        ppbar : instance of ProgressBar | None
+            The optional parent instance of ProgressBar.
         """
         super().__init__(
             **kwargs)
 
         self._set_shg_mgr(shg_mgr)
 
+        self.detector_model_list = detector_model_list
         self.dataset_list = dataset_list
         self.data_list = data_list
 
@@ -85,6 +106,22 @@ class DetSigYieldService(
                 'instances! '
                 f'Its current type is {classname(datas)}!')
         self._data_list = list(datas)
+
+    @property
+    def detector_model_list(self):
+        """The list of instance of DetectorModel for which the detector signal
+        yields should be built.
+        """
+        return self._detector_model_list
+
+    @detector_model_list.setter
+    def detector_model_list(self, models):
+        if not issequenceof(models, DetectorModel):
+            raise TypeError(
+                'The detector_model_list property must be a sequence of '
+                'DetectorModel instances! '
+                f'Its current type is {classname(models)}!')
+        self._detector_model_list = list(models)
 
     @property
     def arr(self):
@@ -216,8 +253,10 @@ class DetSigYieldService(
 
         shg_list = self.shg_mgr.shg_list
 
-        for (j, (dataset, data)) in enumerate(zip(self._dataset_list,
-                                                  self._data_list)):
+        for (j, (detector_model, dataset, data)) in enumerate(
+                zip(self._detector_model_list,
+                    self._dataset_list,
+                    self._data_list)):
 
             builder_to_shgidxs_dict = self.get_builder_to_shgidxs_dict(ds_idx=j)
 
@@ -231,6 +270,7 @@ class DetSigYieldService(
                         shg = shg_list[g]
 
                         detsigyield = builder.construct_detsigyield(
+                            detector_model=detector_model,
                             dataset=dataset,
                             data=data,
                             shg=shg,
@@ -249,6 +289,7 @@ class DetSigYieldService(
                     ]
 
                     detsigyields = factory(
+                        detector_model=detector_model,
                         dataset=dataset,
                         data=data,
                         shgs=shgs,

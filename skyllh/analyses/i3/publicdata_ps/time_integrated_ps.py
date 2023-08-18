@@ -290,13 +290,13 @@ def create_analysis(
     logger.info(str(shg_mgr))
 
     # Define a detector model for the ns fit parameter.
-    detector_model = DetectorModel('IceCube')
+    icecube_detector = DetectorModel('IceCube')
 
     # Define the parameter model mapper for the analysis, which will map global
     # parameters to local source parameters.
     pmm = ParameterModelMapper(
-        models=[detector_model, source])
-    pmm.map_param(param_ns, models=detector_model)
+        models=[icecube_detector, source])
+    pmm.map_param(param_ns, models=icecube_detector)
     pmm.map_param(param_gamma, models=source)
     logger.info(str(pmm))
 
@@ -420,6 +420,7 @@ def create_analysis(
         )
 
         ana.add_dataset(
+            detector_model=icecube_detector,
             dataset=ds,
             data=data,
             pdfratio=pdfratio,

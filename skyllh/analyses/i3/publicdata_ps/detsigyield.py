@@ -109,6 +109,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
     def construct_detsigyield(
             self,
+            detector_model,
             dataset,
             data,
             shg,
@@ -118,6 +119,9 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for the
+            detector signal yield.
         dataset : instance of Dataset
             The Dataset instance holding the sin(dec) binning definition.
         data : instance of DatasetData
@@ -137,6 +141,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             of a single parameter.
         """
         self.assert_types_of_construct_detsigyield_arguments(
+            detector_model=detector_model,
             dataset=dataset,
             data=data,
             shgs=shg,
@@ -248,6 +253,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         detsigyield = SingleParamFluxPointLikeSourceI3DetSigYield(
             param_name=param_grid.name,
+            detector_model=detector_model,
             dataset=dataset,
             fluxmodel=shg.fluxmodel,
             livetime=data.livetime,

@@ -37,7 +37,8 @@ from skyllh.core.source_model import (
 
 class I3DetSigYield(
         DetSigYield,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """Abstract base class for all IceCube specific detector signal yield
     classes. It assumes that sin(dec) binning is required for calculating the
     detector effective area and hence the detector signal yield.
@@ -46,11 +47,13 @@ class I3DetSigYield(
     def __init__(
             self,
             param_names,
+            detector_model,
             dataset,
             fluxmodel,
             livetime,
             sin_dec_binning,
-            **kwargs):
+            **kwargs,
+    ):
         """Constructor of the IceCube specific detector signal yield base
         class.
 
@@ -59,6 +62,9 @@ class I3DetSigYield(
         param_names : sequence of str
             The sequence of parameter names this detector signal yield depends
             on. These are either fixed or floating parameters.
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            detector signal yield.
         dataset : Dataset instance
             The Dataset instance holding the monte-carlo event data.
         fluxmodel : FluxModel
@@ -70,6 +76,7 @@ class I3DetSigYield(
         """
         super().__init__(
             param_names=param_names,
+            detector_model=detector_model,
             dataset=dataset,
             fluxmodel=fluxmodel,
             livetime=livetime,
@@ -94,7 +101,8 @@ class I3DetSigYield(
 
 class I3DetSigYieldBuilder(
         DetSigYieldBuilder,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """Abstract base class for an IceCube specific detector signal yield
     builder class.
     """
@@ -152,7 +160,8 @@ class I3DetSigYieldBuilder(
 
 
 class PointLikeSourceI3DetSigYield(
-        I3DetSigYield):
+        I3DetSigYield,
+):
     """Abstract base class for all IceCube specific detector signal yield
     classes for point-like sources.
     """
@@ -160,6 +169,7 @@ class PointLikeSourceI3DetSigYield(
     def __init__(
             self,
             param_names,
+            detector_model,
             dataset,
             fluxmodel,
             livetime,
@@ -173,19 +183,19 @@ class PointLikeSourceI3DetSigYield(
         param_names : sequence of str
             The sequence of parameter names this detector signal yield depends
             on. These are either fixed or floating parameters.
-        implmethod : instance of DetSigYieldImplMethod
-            The implementation method to use for constructing and receiving
-            the detector signal yield. The appropriate method depends on
-            the used flux model.
-        dataset : Dataset instance
-            The Dataset instance holding the monte-carlo event data.
-        fluxmodel : FluxModel
-            The flux model instance. Must be an instance of FluxModel.
-        sin_dec_binning : BinningDefinition instance
-            The BinningDefinition instance defining the sin(dec) binning.
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            detector signal yield.
+        dataset : instance of Dataset
+            The instance of Dataset holding the monte-carlo event data.
+        fluxmodel : instance of FluxModel
+            The instance of FluxModel defining the source's flux model.
+        sin_dec_binning : instance of BinningDefinition
+            The instance of BinningDefinition defining the sin(dec) binning.
         """
         super().__init__(
             param_names=param_names,
+            detector_model=detector_model,
             dataset=dataset,
             fluxmodel=fluxmodel,
             livetime=livetime,
@@ -255,12 +265,14 @@ class PointLikeSourceI3DetSigYieldBuilder(
 
 
 class FixedFluxPointLikeSourceI3DetSigYield(
-        PointLikeSourceI3DetSigYield):
+        PointLikeSourceI3DetSigYield,
+):
     """The detector signal yield class for a point-source with a fixed flux.
     """
     def __init__(
             self,
             param_names,
+            detector_model,
             dataset,
             fluxmodel,
             livetime,
@@ -275,6 +287,9 @@ class FixedFluxPointLikeSourceI3DetSigYield(
         param_names : sequence of str
             The sequence of parameter names this detector signal yield depends
             on. These are either fixed or floating parameters.
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            detector signal yield.
         dataset : Dataset instance
             The instance of Dataset holding the monte-carlo data this detector
             signal yield is made for.
@@ -291,6 +306,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(
         """
         super().__init__(
             param_names=param_names,
+            detector_model=detector_model,
             dataset=dataset,
             fluxmodel=fluxmodel,
             livetime=livetime,
@@ -514,6 +530,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
     def construct_detsigyields(
             self,
+            detector_model,
             dataset,
             data,
             shgs,
@@ -524,6 +541,9 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for the
+            detector signal yield.
         dataset : instance of Dataset
             The instance of Dataset holding meta information about the data.
         data : instance of DatasetData
@@ -554,6 +574,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             with each of the given fixed flux models.
         """
         self.assert_types_of_construct_detsigyield_arguments(
+            detector_model=detector_model,
             dataset=dataset,
             data=data,
             shgs=shgs,
@@ -620,6 +641,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             self._create_detsigyield_from_hist(
                 hist=hist,
                 sin_dec_binning=sin_dec_binning,
+                detector_model=detector_model,
                 dataset=dataset,
                 livetime=data.livetime,
                 fluxmodel=shg.fluxmodel,
@@ -631,6 +653,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
     def construct_detsigyield(
             self,
+            detector_model,
             dataset,
             data,
             shg,
@@ -644,6 +667,9 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for the
+            detector signal yield.
         dataset : instance of Dataset
             The instance of Dataset holding meta information about the data.
         data : instance of DatasetData
@@ -673,6 +699,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
             fixed flux.
         """
         detsigyield = self.construct_detsigyields(
+            detector_model=detector_model,
             dataset=dataset,
             data=data,
             shgs=[shg],
@@ -703,6 +730,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(
     def __init__(
             self,
             param_name,
+            detector_model,
             dataset,
             fluxmodel,
             livetime,
@@ -716,6 +744,9 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(
         param_name : str
             The parameter name this detector signal yield depends
             on. This is either a fixed or floating parameter.
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            detector signal yield.
         dataset : instance of Dataset
             The instance of Dataset holding the monte-carlo event data.
         fluxmodel : instance of FluxModel
@@ -731,6 +762,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(
         """
         super().__init__(
             param_names=[param_name],
+            detector_model=detector_model,
             dataset=dataset,
             fluxmodel=fluxmodel,
             livetime=livetime,
@@ -950,6 +982,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
     def construct_detsigyield(
             self,
+            detector_model,
             dataset,
             data,
             shg,
@@ -960,6 +993,9 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for the
+            detector signal yield.
         dataset : instance of Dataset
             The instance of Dataset holding the sin(dec) binning definition.
         data : instance of DatasetData
@@ -988,6 +1024,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             of a single parameter.
         """
         self.assert_types_of_construct_detsigyield_arguments(
+            detector_model=detector_model,
             dataset=dataset,
             data=data,
             shgs=shg,
@@ -1116,6 +1153,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         detsigyield = SingleParamFluxPointLikeSourceI3DetSigYield(
             param_name=self._param_grid.name,
+            detector_model=detector_model,
             dataset=dataset,
             fluxmodel=shg.fluxmodel,
             livetime=data.livetime,

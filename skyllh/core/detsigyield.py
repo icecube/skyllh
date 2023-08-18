@@ -23,6 +23,9 @@ from skyllh.core.flux_model import (
 from skyllh.core.livetime import (
     Livetime,
 )
+from skyllh.core.model import (
+    DetectorModel,
+)
 from skyllh.core.multiproc import (
     IsParallelizable,
     parallelize,
@@ -69,6 +72,7 @@ class DetSigYield(
     def __init__(
             self,
             param_names,
+            detector_model,
             dataset,
             fluxmodel,
             livetime,
@@ -83,6 +87,9 @@ class DetSigYield(
         param_names : sequence of str
             The sequence of parameter names this detector signal yield depends
             on. These are either fixed or floating parameters.
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            detector signal yield.
         dataset : Dataset instance
             The Dataset instance holding the monte-carlo event data.
         fluxmodel : FluxModel
@@ -93,6 +100,7 @@ class DetSigYield(
         super().__init__(**kwargs)
 
         self.param_names = param_names
+        self.detector_model = detector_model
         self.dataset = dataset
         self.fluxmodel = fluxmodel
         self.livetime = livetime
@@ -114,6 +122,22 @@ class DetSigYield(
                 'instances! '
                 f'Its current type is {classname(names)}.')
         self._param_names = tuple(names)
+
+    @property
+    def detector_model(self):
+        """The instance of DetectorModel, for which this detector signal yield
+        is made for.
+        """
+        return self._detector_model
+
+    @detector_model.setter
+    def detector_model(self, model):
+        if not isinstance(model, DetectorModel):
+            raise TypeError(
+                'The detector_model property must be an instance of '
+                'DetectorModel! '
+                f'Its current type is {classname(model)}!')
+        self._detector_model = model
 
     @property
     def dataset(self):
@@ -250,6 +274,7 @@ class DetSigYieldBuilder(
 
     def assert_types_of_construct_detsigyield_arguments(
             self,
+            detector_model,
             dataset,
             data,
             shgs,
@@ -259,6 +284,12 @@ class DetSigYieldBuilder(
         """Checks the types of the arguments for the ``construct_detsigyield``
         method. It raises errors if the arguments have the wrong type.
         """
+        if not isinstance(detector_model, DetectorModel):
+            raise TypeError(
+                'The detector_model argument must be an instance of '
+                'DetectorModel! '
+                f'Its current type is {classname(detector_model)}.')
+
         if not isinstance(dataset, Dataset):
             raise TypeError(
                 'The dataset argument must be an instance of Dataset! '
@@ -311,6 +342,7 @@ class DetSigYieldBuilder(
     @abc.abstractmethod
     def construct_detsigyield(
             self,
+            detector_model,
             dataset,
             data,
             shg,
@@ -323,6 +355,9 @@ class DetSigYieldBuilder(
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for the
+            detector signal yield.
         dataset : instance of Dataset
             The instance of Dataset holding possible dataset specific settings.
         data : instance of DatasetData
@@ -750,6 +785,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
 
     def construct_detsigyield(
         self,
+        detector_model,
         dataset,
         data,
         shg,
@@ -760,6 +796,9 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            detector signal yield.
         dataset : instance of Dataset
             The instance of Dataset holding the cos(true_zenith) binning
             definition.
@@ -910,6 +949,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
 
         detsigyield = SingleParamFluxPointLikeSourceDetSigYield(
             param_name=self._param_grid.name,
+            detector_model=detector_model,
             dataset=dataset,
             fluxmodel=shg.fluxmodel,
             livetime=data.livetime,

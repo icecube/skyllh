@@ -30,6 +30,9 @@ from skyllh.core.llhratio import (
     MultiDatasetTCLLHRatio,
     ZeroSigH0SingleDatasetTCLLHRatio,
 )
+from skyllh.core.model import (
+    DetectorModel,
+)
 from skyllh.core.multiproc import (
     get_ncpu,
     parallelize,
@@ -132,6 +135,7 @@ class Analysis(
         self.bkg_generator_cls = bkg_generator_cls
         self.sig_generator_cls = sig_generator_cls
 
+        self._detector_model_list = []
         self._dataset_list = []
         self._data_list = []
         self._tdm_list = []
@@ -219,6 +223,22 @@ class Analysis(
                 'BackgroundGenerator! '
                 f'Its current type is {classname(cls)}.')
         self._bkg_generator_cls = cls
+
+    @property
+    def detector_model_list(self):
+        """The list of instance of DetectorModel, defining the detector for each
+        dataset.
+        """
+        return self._detector_model_list
+
+    @detector_model_list.setter
+    def detector_model_list(self, models):
+        if not issequenceof(models, DetectorModel):
+            raise TypeError(
+                'The detector_model_list property must be a sequence of '
+                'DetectorModel instances! '
+                f'Its current type is {classname(models)}.')
+        self._detector_model_list = list(models)
 
     @property
     def dataset_list(self):
@@ -384,6 +404,7 @@ class Analysis(
         """
         self.detsigyield_service = DetSigYieldService(
             shg_mgr=self._shg_mgr,
+            detector_model_list=self._detector_model_list,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
             ppbar=ppbar,
@@ -399,6 +420,7 @@ class Analysis(
 
     def add_dataset(  # noqa: C901
             self,
+            detector_model,
             dataset,
             data,
             tdm=None,
@@ -410,6 +432,8 @@ class Analysis(
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for the dataset.
         dataset : instance of Dataset
             The Dataset instance that should get added.
         data : instance of DatasetData
@@ -432,13 +456,21 @@ class Analysis(
             The optional instance of SignalGenerator, which should be used
             to generate signal events for this particular dataset.
         """
+        if not isinstance(detector_model, DetectorModel):
+            raise TypeError(
+                'The detector_model argument must be an instance of '
+                'DetectorModel! '
+                f'Its current type is {classname(detector_model)}!')
+
         if not isinstance(dataset, Dataset):
             raise TypeError(
-                'The dataset argument must be an instance of Dataset!')
+                'The dataset argument must be an instance of Dataset! '
+                f'Its current type is {classname(dataset)}!')
 
         if not isinstance(data, DatasetData):
             raise TypeError(
-                'The data argument must be an instance of DatasetData!')
+                'The data argument must be an instance of DatasetData! '
+                f'Its current type is {classname(data)}!')
 
         if tdm is None:
             tdm = TrialDataManager()
@@ -469,6 +501,7 @@ class Analysis(
                     'SignalGenerator! '
                     f'Its current type is {classname(sig_generator)}!')
 
+        self._detector_model_list.append(detector_model)
         self._dataset_list.append(dataset)
         self._data_list.append(data)
         self._tdm_list.append(tdm)
@@ -1317,6 +1350,7 @@ class LLHRatioAnalysis(
 
     def add_dataset(
             self,
+            detector_model,
             dataset,
             data,
             pdfratio,
@@ -1328,6 +1362,9 @@ class LLHRatioAnalysis(
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            dataset.
         dataset : instance of Dataset
             The instance of Dataset that should get added.
         data : instance of DatasetData
@@ -1352,6 +1389,7 @@ class LLHRatioAnalysis(
             to generate signal events for this particular dataset.
         """
         super().add_dataset(
+            detector_model=detector_model,
             dataset=dataset,
             data=data,
             tdm=tdm,
