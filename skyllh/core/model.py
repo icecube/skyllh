@@ -4,8 +4,13 @@
 """This module defines the base class for any model class used in SkyLLH.
 """
 
+from astropy.coordinates import (
+    EarthLocation,
+)
+
 from skyllh.core.py import (
     NamedObjectCollection,
+    classname,
     issequenceof,
     str_cast,
     typename,
@@ -162,7 +167,7 @@ class DetectorModel(Model):
     """This class provides a base class for a detector model. It can be used
     in combination with the ParameterModelMapper class.
     """
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, location, **kwargs):
         """Creates a new DetectorModel instance.
 
         Parameters
@@ -173,3 +178,21 @@ class DetectorModel(Model):
         super().__init__(
             name=name,
             **kwargs)
+
+        self.location = location
+
+    @property
+    def location(self):
+        """The instance of astropy.coordinates.EarthLocation defining the
+        location of the detector.
+        """
+        return self._location
+
+    @location.setter
+    def location(self, loc):
+        if not isinstance(loc, EarthLocation):
+            raise TypeError(
+                'The location property must be an instance of '
+                'astropy.coordinates.EarthLocation! '
+                f'Its current type is {classname(loc)}!')
+        self._location = loc

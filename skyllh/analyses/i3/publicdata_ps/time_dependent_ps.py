@@ -61,9 +61,6 @@ from skyllh.core.minimizer import (
 from skyllh.core.minimizers.iminuit import (
     IMinuitMinimizerImpl,
 )
-from skyllh.core.model import (
-    DetectorModel,
-)
 from skyllh.core.multiproc import (
     get_ncpu,
     parallelize,
@@ -127,6 +124,9 @@ from skyllh.i3.backgroundpdf import (
 )
 from skyllh.i3.config import (
     add_icecube_specific_analysis_required_data_fields,
+)
+from skyllh.i3.detector_model import (
+    IceCubeDetectorModel,
 )
 from skyllh.i3.livetime import (
     I3Livetime,
@@ -960,7 +960,7 @@ def create_analysis(  # noqa: C901
     logger.info(str(shg_mgr))
 
     # Define a detector model for the ns fit parameter.
-    icecube_detector = DetectorModel('IceCube')
+    icecube_detector = IceCubeDetectorModel()
 
     # Define the parameter model mapper for the analysis, which will map global
     # parameters to local source parameters.
