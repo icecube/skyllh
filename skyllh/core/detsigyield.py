@@ -6,6 +6,18 @@ import numpy as np
 
 import scipy.interpolate
 
+from astropy import (
+    units,
+)
+from astropy.coordinates import (
+    AltAz,
+    SkyCoord,
+)
+from astropy.time import (
+    Time,
+    TimeDelta,
+)
+
 from skyllh.core.binning import (
     BinningDefinition,
 )
@@ -280,7 +292,6 @@ class DetSigYieldBuilder(
             shgs,
             ppbar,
     ):
-
         """Checks the types of the arguments for the ``construct_detsigyield``
         method. It raises errors if the arguments have the wrong type.
         """
@@ -478,6 +489,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
     def __init__(
             self,
             param_name,
+            detector_model,
             dataset,
             fluxmodel,
             livetime,
@@ -492,6 +504,9 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         param_name : str
             The parameter name this detector signal yield depends
             on. This is either a fixed or floating parameter.
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            detector signal yield.
         dataset : instance of Dataset
             The instance of Dataset holding the monte-carlo event data.
         fluxmodel : instance of FluxModel
@@ -508,6 +523,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         """
         super().__init__(
             param_names=[param_name],
+            detector_model=detector_model,
             dataset=dataset,
             fluxmodel=fluxmodel,
             livetime=livetime,
@@ -593,8 +609,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         """
         local_param_name = self.param_names[0]
 
-        # src_dec = np.atleast_1d(src_recarray['dec'])
-        # src_ra = np.atleast_1d(src_recarray['ra'])
+        src_dec = np.atleast_1d(src_recarray['dec'])
+        src_ra = np.atleast_1d(src_recarray['ra'])
         src_param = src_params_recarray[local_param_name]
         src_param_gp_idxs = src_params_recarray[f'{local_param_name}:gpidx']
 
@@ -608,19 +624,71 @@ class SingleParamFluxPointLikeSourceDetSigYield(
                 f'source parameter "{local_param_name}" does not match the '
                 f'number of sources ({n_sources})!')
 
+        sec2fluxtimeunit = units.second.to(self.fluxmodel.time_unit)
+
         # Integrate over the live-time of the dataset.
-        # Construct a time binning which will preserve the angular resolution
-        # of the detector.
+        # Construct a sidereal time histogram which will preserve the angular
+        # resolution of the detector.
 
         (st_hist, st_bin_edges) = self._livetime.create_sidereal_time_histogram(
             dangle=0.1,  # deg
-            longitude=None,  # FIXME: Replace with detector location.
+            longitude=self._detector_model.location,
         )
 
-        # TODO: Do the integration / sum over the mjd time bins for each source.
+        # Calculate a reference time which we will take as the midpoint of the
+        # dataset's livetime.
+        ref_time_mjd = 0.5*(self._livetime.time_start + self._livetime.time_stop)
 
+        ref_time = Time(ref_time_mjd, format='mjd', scale='utc')
+        ref_st = ref_time.sidereal_time(
+            kind='apparent',
+            longitude=self._detector_model.location).value
+
+        sidereal_day = 23.9344696  # hours
+
+        # TODO: Do the integration / sum over the mjd time bins for each source.
         values = np.zeros((n_sources,), dtype=np.float64)
+
+        src_skycoord = SkyCoord(
+            ra=src_ra*units.radian,
+            dec=src_dec*units.radian,
+            frame='icrs')
+
+        # Do the time integration by summing the sidereal time intervals. The
+        # total time period for a single sidereal time interval is simply the
+        # number of on-times falling into the sidereal time interval multiplied
+        # by the time span of that interval.
+        for st_bin_idx in range(len(st_hist)):
+            st_bc = 0.5*(st_bin_edges[st_bin_idx] + st_bin_edges[st_bin_idx+1])
+
+            delta_st = st_bc - ref_st
+            dt_sec = delta_st / 24 * sidereal_day * 3600
+            obstime = ref_time + TimeDelta(dt_sec, format='sec')
+
+            # Transform the source location from dec,ra into alt,az.
+            src_altaz = src_skycoord.transform_to(AltAz(
+                obstime=obstime,
+                location=self._detector_model.location))
+
+            src_zen = src_altaz.zen.to(units.radian).value
+
+            dt_fluxtimeunit = st_hist[st_bin_idx] * dt_sec * sec2fluxtimeunit
+
+            values += (
+                np.exp(self._log_spl_costruezen_param(
+                    np.cos(src_zen), src_param, grid=False)
+                ) *
+                dt_fluxtimeunit
+            )
+
+        # Determine the number of global fit parameters the local parameter
+        # is made of.
+        gfp_idxs = np.unique(src_param_gp_idxs)
+        gfp_idxs = gfp_idxs[gfp_idxs > 0] - 1
+
         grads = dict()
+        # TODO: Add gradient calculation.
+        #  for gfp_idx in gfp_idxs:
 
         return (values, grads)
 
