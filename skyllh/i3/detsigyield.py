@@ -844,8 +844,8 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(
         values[src_mask] = np.exp(self._log_spl_sinDec_param(
             np.sin(src_dec[src_mask]), src_param[src_mask], grid=False))
 
-        # Determine the number of global parameters the local parameter is
-        # made of.
+        # Determine the number of global fit parameters the local parameter
+        # is made of.
         gfp_idxs = np.unique(src_param_gp_idxs)
         gfp_idxs = gfp_idxs[gfp_idxs > 0] - 1
 
