@@ -658,6 +658,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         # total time period for a single sidereal time interval is simply the
         # number of on-times falling into the sidereal time interval multiplied
         # by the time span of that interval.
+        src_zen_arr = np.empty((len(st_hist),), dtype=np.float64)
+        values_t_arr = np.empty((len(st_hist), n_sources), dtype=np.float64)
         for st_bin_idx in range(len(st_hist)):
             st_bc = 0.5*(st_bin_edges[st_bin_idx] + st_bin_edges[st_bin_idx+1])
 
@@ -674,12 +676,17 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
             dt_fluxtimeunit = st_hist[st_bin_idx] * dt_sec * sec2fluxtimeunit
 
-            values += (
+            src_zen_arr[st_bin_idx] = src_zen
+
+            values_t = (
                 np.exp(self._log_spl_costruezen_param(
                     np.cos(src_zen), src_param, grid=False)
                 ) *
                 dt_fluxtimeunit
             )
+
+            values_t_arr[st_bin_idx] = values_t
+            values += values_t
 
         # Determine the number of global fit parameters the local parameter
         # is made of.
@@ -687,8 +694,23 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         gfp_idxs = gfp_idxs[gfp_idxs > 0] - 1
 
         grads = dict()
-        # TODO: Add gradient calculation.
-        #  for gfp_idx in gfp_idxs:
+        for gfp_idx in gfp_idxs:
+            # Create the gradient array of shape (n_sources,). This could be
+            # a masked array to save memory, when there are many sources and
+            # global fit parameters.
+            grads[gfp_idx] = np.zeros((n_sources,), dtype=np.float64)
+
+            # Create a mask to select the sources that depend on the global
+            # fit parameter with index gfp_idx.
+            m = (src_param_gp_idxs == gfp_idx+1)
+
+            for st_bin_idx in range(len(st_hist)):
+                src_zen = src_zen_arr[st_bin_idx]
+                values_t = values_t_arr[st_bin_idx]
+
+                grads[gfp_idx][m] += values_t[m] * self._log_spl_costruezen_param(
+                    np.cos(src_zen[m]), src_param[m], grid=False, dy=1
+                )
 
         return (values, grads)
 
