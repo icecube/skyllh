@@ -538,6 +538,11 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         self.cos_true_zen_binning = cos_true_zen_binning
         self.log_spl_costruezen_param = log_spl_costruezen_param
 
+        (self.st_hist, self.st_bin_edges) = self._livetime.create_sidereal_time_histogram(
+            dangle=0.1,  # deg
+            longitude=self._detector_model.location,
+        )
+
     @property
     def cos_true_zen_binning(self):
         """The instance of BinningDefinition defining the cos(true_zenith)
@@ -630,11 +635,6 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         # Construct a sidereal time histogram which will preserve the angular
         # resolution of the detector.
 
-        (st_hist, st_bin_edges) = self._livetime.create_sidereal_time_histogram(
-            dangle=0.1,  # deg
-            longitude=self._detector_model.location,
-        )
-
         # Calculate a reference time which we will take as the midpoint of the
         # dataset's livetime.
         ref_time_mjd = 0.5*(self._livetime.time_start + self._livetime.time_stop)
@@ -646,7 +646,6 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
         sidereal_day = 23.9344696  # hours
 
-        # TODO: Do the integration / sum over the mjd time bins for each source.
         values = np.zeros((n_sources,), dtype=np.float64)
 
         src_skycoord = SkyCoord(
@@ -658,10 +657,14 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         # total time period for a single sidereal time interval is simply the
         # number of on-times falling into the sidereal time interval multiplied
         # by the time span of that interval.
-        src_zen_arr = np.empty((len(st_hist),), dtype=np.float64)
-        values_t_arr = np.empty((len(st_hist), n_sources), dtype=np.float64)
-        for st_bin_idx in range(len(st_hist)):
-            st_bc = 0.5*(st_bin_edges[st_bin_idx] + st_bin_edges[st_bin_idx+1])
+        dt_st_bin_sec = (
+            (self.st_bin_edges[1] - self.st_bin_edges[0]) / 24 * sidereal_day * 3600
+        )
+
+        src_zen_arr = np.empty((len(self.st_hist), n_sources), dtype=np.float64)
+        values_t_arr = np.empty((len(self.st_hist), n_sources), dtype=np.float64)
+        for st_bin_idx in range(len(self.st_hist)):
+            st_bc = 0.5*(self.st_bin_edges[st_bin_idx] + self.st_bin_edges[st_bin_idx+1])
 
             delta_st = st_bc - ref_st
             dt_sec = delta_st / 24 * sidereal_day * 3600
@@ -674,7 +677,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
             src_zen = src_altaz.zen.to(units.radian).value
 
-            dt_fluxtimeunit = st_hist[st_bin_idx] * dt_sec * sec2fluxtimeunit
+            dt_fluxtimeunit = self.st_hist[st_bin_idx] * dt_st_bin_sec * sec2fluxtimeunit
 
             src_zen_arr[st_bin_idx] = src_zen
 
@@ -704,7 +707,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             # fit parameter with index gfp_idx.
             m = (src_param_gp_idxs == gfp_idx+1)
 
-            for st_bin_idx in range(len(st_hist)):
+            for st_bin_idx in range(len(self.st_hist)):
                 src_zen = src_zen_arr[st_bin_idx]
                 values_t = values_t_arr[st_bin_idx]
 
@@ -734,6 +737,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
 
     def __init__(
             self,
+            livetime,
             param_grid,
             cos_true_zen_binning=None,
             spline_order_cos_true_zen=2,
@@ -749,6 +753,9 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
 
         Parameters
         ----------
+        livetime : instance of Livetime
+            The instance of Livetime that should be used to get the detector's
+            on-time intervals.
         param_grid : instance of ParameterGrid
             The instance of ParameterGrid which defines the grid of the
             parameter values. The name of the parameter is defined via the name
@@ -774,10 +781,26 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             **kwargs,
         )
 
+        self.livetime = livetime
         self.param_grid = param_grid
         self.cos_true_zen_binning = cos_true_zen_binning
         self.spline_order_cos_true_zen = spline_order_cos_true_zen
         self.spline_order_param = spline_order_param
+
+    @property
+    def livetime(self):
+        """The instance of Livetime that is used to get the detector's on-time
+        intervals.
+        """
+        return self._livetime
+
+    @livetime.setter
+    def livetime(self, lt):
+        if not isinstance(lt, Livetime):
+            raise TypeError(
+                'The livetime property must be an instance of Livetime! '
+                f'Its current type is {classname(lt)}!')
+        self._livetime = lt
 
     @property
     def param_grid(self):
@@ -918,6 +941,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             of a single parameter.
         """
         self.assert_types_of_construct_detsigyield_arguments(
+            detector_model=detector_model,
             dataset=dataset,
             data=data,
             shgs=shg,
@@ -978,7 +1002,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
                 to_internal_flux_unit_factor
             )
 
-            (h, edges) = np.histogram(
+            (h, _) = np.histogram(
                 data_cos_true_zen,
                 bins=cos_true_zen_binning.binedges,
                 weights=weights,
@@ -1042,7 +1066,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             detector_model=detector_model,
             dataset=dataset,
             fluxmodel=shg.fluxmodel,
-            livetime=data.livetime,
+            livetime=self._livetime,
             cos_true_zen_binning=cos_true_zen_binning,
             log_spl_costruezen_param=log_spl_costruezen_param)
 
