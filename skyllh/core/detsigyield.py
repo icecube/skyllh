@@ -57,6 +57,9 @@ from skyllh.core.py import (
 from skyllh.core.source_model import (
     PointLikeSource,
 )
+from skyllh.core.timing import (
+    TimeLord,
+)
 from skyllh.core.types import (
     SourceHypoGroup_t,
 )
@@ -661,6 +664,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             (self.st_bin_edges[1] - self.st_bin_edges[0]) / 24 * sidereal_day * 3600
         )
 
+        tl = TimeLord()
+
         src_zen_arr = np.empty((len(self.st_hist), n_sources), dtype=np.float64)
         values_t_arr = np.empty((len(self.st_hist), n_sources), dtype=np.float64)
         for st_bin_idx in range(len(self.st_hist)):
@@ -671,9 +676,10 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             obstime = ref_time + TimeDelta(dt_sec, format='sec')
 
             # Transform the source location from dec,ra into alt,az.
-            src_altaz = src_skycoord.transform_to(AltAz(
-                obstime=obstime,
-                location=self._detector_model.location))
+            with tl.task_timer('Transform to AltAz'):
+                src_altaz = src_skycoord.transform_to(AltAz(
+                    obstime=obstime,
+                    location=self._detector_model.location))
 
             src_zen = src_altaz.zen.to(units.radian).value
 
@@ -681,12 +687,13 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
             src_zen_arr[st_bin_idx] = src_zen
 
-            values_t = (
-                np.exp(self._log_spl_costruezen_param(
-                    np.cos(src_zen), src_param, grid=False)
-                ) *
-                dt_fluxtimeunit
-            )
+            with tl.task_timer('Calc values_t'):
+                values_t = (
+                    np.exp(self._log_spl_costruezen_param(
+                        np.cos(src_zen), src_param, grid=False)
+                    ) *
+                    dt_fluxtimeunit
+                )
 
             values_t_arr[st_bin_idx] = values_t
             values += values_t
@@ -714,6 +721,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
                 grads[gfp_idx][m] += values_t[m] * self._log_spl_costruezen_param(
                     np.cos(src_zen[m]), src_param[m], grid=False, dy=1
                 )
+
+        print(tl)
 
         return (values, grads)
 
