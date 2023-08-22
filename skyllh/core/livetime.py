@@ -263,14 +263,17 @@ class Livetime(
         n_st_bins = int(np.ceil(360 / dangle))
         bin_edges = np.linspace(0, 24, num=n_st_bins+1, endpoint=True)
 
+        sidereal_day = 23.9344696  # hours
+        dt_st_bin_sec = (bin_edges[1] - bin_edges[0]) / 24 * sidereal_day * 3600
+
         hist = None
         for (mjd_start, mjd_stop) in zip(
                 self._uptime_mjd_intervals_arr[:, 0],
                 self._uptime_mjd_intervals_arr[:, 1]):
 
-            n_times = int(np.ceil((mjd_stop - mjd_start) * n_st_bins))
-            dt = (mjd_stop - mjd_start) / n_st_bins
-            mjd_times = np.maximum(
+            n_times = int(np.ceil((mjd_stop - mjd_start) / dt_st_bin_sec * 24*3600))
+            dt = (mjd_stop - mjd_start) / n_times
+            mjd_times = np.minimum(
                 mjd_start + np.arange(n_times, dtype=np.int32) * dt,
                 mjd_stop
             )
@@ -281,7 +284,10 @@ class Livetime(
                 kind='apparent', longitude=longitude).value
 
             (hist_, _) = np.histogram(
-                st_times, bins=bin_edges, density=False)
+                st_times,
+                bins=bin_edges,
+                density=False,
+            )
             if hist is None:
                 hist = hist_
             else:
