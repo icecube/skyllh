@@ -23,9 +23,15 @@ from skyllh.core.config import (
 from skyllh.core.datafields import (
     DataFieldStages,
 )
+from skyllh.core.detsigyield import (
+    SingleParamFluxPointLikeSourceDetSigYieldBuilder,
+)
 from skyllh.core.flux_model import (
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
+)
+from skyllh.core.model import (
+    DetectorModel,
 )
 from skyllh.core.parameters import (
     ParameterGrid,
@@ -36,11 +42,8 @@ from skyllh.core.source_hypo_grouping import (
 from skyllh.core.source_model import (
     PointLikeSource,
 )
-from skyllh.core.model import (
-    DetectorModel,
-)
-from skyllh.core.detsigyield import (
-    SingleParamFluxPointLikeSourceDetSigYieldBuilder,
+from skyllh.core.timing import (
+    TimeLord,
 )
 from skyllh.i3.livetime import (
     I3Livetime,
@@ -127,12 +130,15 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
                 height=0*units.m,
             )
         )
-        cls.detsigyield = builder.construct_detsigyield(
-            detector_model=detector_model,
-            dataset=ds,
-            data=data,
-            shg=shg,
-        )
+        tl = TimeLord()
+        with tl.task_timer('Construct detsigyield'):
+            cls.detsigyield = builder.construct_detsigyield(
+                detector_model=detector_model,
+                dataset=ds,
+                data=data,
+                shg=shg,
+            )
+        print(tl)
 
     @unittest.skipIf(not DATA_SAMPLES_IMPORTED, 'Data samples not imported!')
     def test__call__(self):
@@ -142,10 +148,16 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
                 ('gamma', np.float64),
                 ('gamma:gpidx', np.int32)
             ])
-        (Y, Ygrad) = self.detsigyield(
-            src_recarray=self.detsigyield.sources_to_recarray(self.sources),
-            src_params_recarray=src_params_recarray,
-        )
+
+        tl = TimeLord()
+
+        with tl.task_timer('Call detsigyield'):
+            (Y, Ygrad) = self.detsigyield(
+                src_recarray=self.detsigyield.sources_to_recarray(self.sources),
+                src_params_recarray=src_params_recarray,
+            )
+
+        print(tl)
 
         np.testing.assert_allclose(Y, [1.09241272e+15], rtol=0.01)
         self.assertIsInstance(Ygrad, dict)
