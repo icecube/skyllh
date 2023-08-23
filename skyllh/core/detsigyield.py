@@ -493,7 +493,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             dataset,
             fluxmodel,
             livetime,
-            sources,
+            source_list,
             cos_true_zen_binning,
             log_spl_costruezen_param,
             **kwargs,
@@ -515,8 +515,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             constructed.
         livetime : instance of Livetime
             The instance of Livetime defining the live-time of the dataset.
-        sources : sequence of instance of PointLikeSource
-            The sequence of instance of PointLikeSource defining the sources
+        source_list : list of instance of PointLikeSource
+            The list of instance of PointLikeSource defining the sources
             for this detector signal yield.
         cos_true_zen_binning : instance of BinningDefinition
             The instance of BinningDefinition defining the cos(true_zenith)
@@ -539,7 +539,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
                 'The livetime argument must be an instance of Livetime! '
                 f'Its current type is {classname(livetime)}!')
 
-        self.sources = sources
+        self.src_recarray = self.sources_to_recarray(source_list)
         self.cos_true_zen_binning = cos_true_zen_binning
         self.log_spl_costruezen_param = log_spl_costruezen_param
 
@@ -551,6 +551,40 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             longitude=self._detector_model.location,
         )
 
+        (self.src_zen_arr,
+         self.dt_fluxtimeunit_arr) = self._create_src_zen_arr_and_dt_fluxtimeunit_arr(
+            src_recarray=self.src_recarray,
+        )
+
+    def _create_src_zen_arr_and_dt_fluxtimeunit_arr(
+            self,
+            src_recarray,
+    ):
+        """Creates the src_zen_arr and the dt_fluxtimeunit_arr for the given
+        sources.
+
+        Parameters
+        ----------
+        src_recarray : instance of numpy.ndarray
+            The structured numpy.ndarray holding the declination and
+            right-ascention of the sources. The following data fields need to
+            exist::
+
+                dec : float
+                    The declination of the source.
+                ra : float
+                    The right-ascention of the source.
+
+        Returns
+        -------
+        src_zen_arr : instance of numpy.ndarray
+            The (N_st_hist_bins, N_sources)-shaped numpy.ndarray holding the
+            local zenith coordinate of the source for the different sidereal
+            times.
+        dt_fluxtimeunit_arr : instance of numpy.ndarray
+            The (N_st_hist_bins,)-shaped numpy.ndarray holding the time
+            intervals in flux time unit needed for the live-time integration.
+        """
         # Calculate a reference time which we will take as the midpoint of the
         # dataset's livetime.
         ref_time_mjd = 0.5*(
@@ -564,7 +598,6 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
         sidereal_day = 23.9344696  # hours
 
-        src_recarray = self.sources_to_recarray(self.sources)
         src_dec = np.atleast_1d(src_recarray['dec'])
         src_ra = np.atleast_1d(src_recarray['ra'])
         src_skycoord = SkyCoord(
@@ -579,11 +612,11 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
         sec2fluxtimeunit = units.second.to(self._fluxmodel.time_unit)
 
-        self.src_zen_arr = np.empty(
-            (len(self.st_hist), len(self.sources)),
+        src_zen_arr = np.empty(
+            (len(self.st_hist), len(src_recarray)),
             dtype=np.float32,
         )
-        self.dt_fluxtimeunit_arr = np.empty(
+        dt_fluxtimeunit_arr = np.empty(
             (len(self.st_hist),),
             dtype=np.float64,
         )
@@ -605,11 +638,12 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
             src_zen = src_altaz.zen.to(units.radian).value
 
-            self.dt_fluxtimeunit_arr[st_bin_idx] = (
+            src_zen_arr[st_bin_idx] = src_zen
+            dt_fluxtimeunit_arr[st_bin_idx] = (
                 self.st_hist[st_bin_idx] * dt_st_bin_sec * sec2fluxtimeunit
             )
 
-            self.src_zen_arr[st_bin_idx] = src_zen
+        return (src_zen_arr, dt_fluxtimeunit_arr)
 
     @property
     def cos_true_zen_binning(self):
@@ -1095,12 +1129,12 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             s=0)
 
         detsigyield = SingleParamFluxPointLikeSourceDetSigYield(
-            sources=shg.source_list,
             param_name=self._param_grid.name,
             detector_model=detector_model,
             dataset=dataset,
             fluxmodel=shg.fluxmodel,
             livetime=self._livetime,
+            source_list=shg.source_list,
             cos_true_zen_binning=cos_true_zen_binning,
             log_spl_costruezen_param=log_spl_costruezen_param)
 
