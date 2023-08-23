@@ -714,8 +714,11 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             value is the (N_sources,)-shaped numpy ndarray holding the gradient
             value dY_k/dp_s.
         """
-        # TODO: Check if src_recarray is same as self.src_recarray, if not
-        # recompute the local src coordinates.
+        if np.any(src_recarray != self.src_recarray):
+            (self.src_zen_arr,
+             self.dt_fluxtimeunit_arr) = self._create_src_zen_arr_and_dt_fluxtimeunit_arr(
+                src_recarray=self.src_recarray,
+            )
 
         local_param_name = self.param_names[0]
         src_param = src_params_recarray[local_param_name]
