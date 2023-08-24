@@ -18,6 +18,9 @@ v23.2.1
 
 - The iminuit package is an optional tool now.
 
+- Automatically create an I3Livetime instance for the I3DatasetData.livetime
+  property if good-run-list information are available.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
