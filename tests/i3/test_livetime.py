@@ -9,9 +9,6 @@ from skyllh.core.config import (
 from skyllh.core.storage import (
     create_FileLoader,
 )
-from skyllh.i3.dataset import (
-    I3Dataset,
-)
 from skyllh.i3.livetime import (
     I3Livetime,
 )
@@ -44,26 +41,6 @@ class I3LivetimeTestCase(
 
     def test_from_grl_files(self):
         i3livetime = I3Livetime.from_grl_files(self.grl_pathfilenames)
-
-        self.assertEqual(
-            i3livetime.livetime, self.livetime_total)
-        self.assertEqual(
-            i3livetime.n_uptime_mjd_intervals, self.n_uptime_mjd_intervals)
-
-    def test_from_I3Dataset(self):
-        # Create a test data set.
-        i3dataset = I3Dataset(
-            name='test_dataset',
-            exp_pathfilenames=self.exp_pathfilenames,
-            mc_pathfilenames=self.mc_pathfilenames,
-            grl_pathfilenames=self.grl_pathfilenames,
-            livetime=self.livetime_total,
-            default_sub_path_fmt='',
-            version=1,
-            cfg=self.cfg,
-        )
-
-        i3livetime = I3Livetime.from_I3Dataset(i3dataset)
 
         self.assertEqual(
             i3livetime.livetime, self.livetime_total)

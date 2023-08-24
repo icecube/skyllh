@@ -8,9 +8,6 @@ from skyllh.core.livetime import (
 from skyllh.core.storage import (
     create_FileLoader,
 )
-from skyllh.i3.dataset import (
-    I3Dataset,
-)
 
 
 class I3Livetime(
@@ -80,35 +77,6 @@ class I3Livetime(
 
         livetime = I3Livetime(
             uptime_mjd_intervals_arr=uptime_mjd_intervals_arr)
-
-        return livetime
-
-    @staticmethod
-    def from_I3Dataset(ds):
-        """Loads an I3Livetime instance from a given I3Dataset instance, which
-        must have a good-run-list (GRL) files defined.
-
-        Parameters
-        ----------
-        ds : I3Dataset instance
-            The instance of I3Dataset which defined the good-run-list (GRL)
-            files for the dataset.
-
-        Returns
-        -------
-        livetime : instance of I3Livetime
-            The created instance of I3Livetime for the GRL data from the
-            provided dataset.
-        """
-        if not isinstance(ds, I3Dataset):
-            raise TypeError(
-                'The ds argument must be an instance of I3Dataset!')
-        if len(ds.grl_pathfilename_list) == 0:
-            raise ValueError(
-                'No GRL files have been defined for the given dataset!')
-
-        livetime = I3Livetime.from_grl_files(
-            pathfilenames=ds.grl_pathfilename_list)
 
         return livetime
 
