@@ -25,6 +25,9 @@ from skyllh.core.storage import (
 from skyllh.core.timing import (
     TaskTimer,
 )
+from skyllh.i3.livetime import (
+    I3Livetime,
+)
 
 
 class I3Dataset(
@@ -190,7 +193,11 @@ class I3Dataset(
 
         return file_list
 
-    def load_grl(self, efficiency_mode=None, tl=None):
+    def load_grl(
+            self,
+            efficiency_mode=None,
+            tl=None,
+    ):
         """Loads the good-run-list and returns a DataFieldRecordArray instance
         which should contain the following data fields:
 
@@ -238,14 +245,29 @@ class I3Dataset(
                 efficiency_mode=efficiency_mode)
             grl_data.rename_fields(self._grl_field_name_renaming_dict)
 
+        if 'start' not in grl_data:
+            raise KeyError(
+                f'The GRL data for dataset "{self.name}" has no data '
+                'field named "start"!')
+        if 'stop' not in grl_data:
+            raise KeyError(
+                f'The GRL data for dataset "{self.name}" has no data '
+                'field named "stop"!')
+
         with TaskTimer(tl, 'Sort grl data according to start time'):
             grl_data.sort_by_field(name='start')
 
         return grl_data
 
     def load_data(
-            self, keep_fields=None, livetime=None, dtc_dict=None,
-            dtc_except_fields=None, efficiency_mode=None, tl=None):
+            self,
+            keep_fields=None,
+            livetime=None,
+            dtc_dict=None,
+            dtc_except_fields=None,
+            efficiency_mode=None,
+            tl=None,
+    ):
         """Loads the data, which is described by the dataset. If a good-run-list
         (GRL) is provided for this dataset, only experimental data will be
         selected which matches the GRL.
@@ -255,10 +277,10 @@ class I3Dataset(
         keep_fields : list of str | None
             The list of user-defined data fields that should get loaded and kept
             in addition to the analysis required data fields.
-        livetime : float | None
-            If not None, uses this livetime (in days) as livetime for the
-            DatasetData instance, otherwise uses the live time from the Dataset
-            instance or, if available, the livetime from the good-run-list
+        livetime : instance of Livetime | float | None
+            If not None, uses this livetime as live-time for the DatasetData
+            instance, otherwise uses the live-time from the Dataset
+            instance or, if available, the live-time from the good-run-list
             (GRL).
         dtc_dict : dict | None
             This dictionary defines how data fields of specific
@@ -293,6 +315,16 @@ class I3Dataset(
             A DatasetData instance holding the experimental and monte-carlo
             data of this data set.
         """
+        # Load the good-run-list (GRL) data if it is provided for this dataset,
+        # and calculate the livetime based on the GRL.
+        grl_data = None
+        if len(self._grl_pathfilename_list) > 0:
+            grl_data = self.load_grl(
+                efficiency_mode=efficiency_mode,
+                tl=tl)
+            if livetime is None:
+                livetime = I3Livetime.from_grl_data(grl_data=grl_data)
+
         # Load the dataset files first. This will ensure the dataset is
         # downloaded if necessary.
         data_ = super().load_data(
@@ -303,18 +335,10 @@ class I3Dataset(
             efficiency_mode=efficiency_mode,
             tl=tl)
 
-        # Load the good-run-list (GRL) data if it is provided for this dataset,
-        # and calculate the livetime based on the GRL.
-        data_grl = None
-        if len(self._grl_pathfilename_list) > 0:
-            data_grl = self.load_grl(
-                efficiency_mode=efficiency_mode,
-                tl=tl)
-
         # Load all the defined data.
         data = I3DatasetData(
             data=data_,
-            data_grl=data_grl)
+            grl_data=grl_data)
 
         return data
 
@@ -342,19 +366,6 @@ class I3Dataset(
             The TimeLord instance that should be used to time the data
             preparation.
         """
-        # Set the livetime of the dataset from the GRL data when no livetime
-        # was specified previously.
-        if data.livetime is None and data.grl is not None:
-            if 'start' not in data.grl:
-                raise KeyError(
-                    f'The GRL data for dataset "{self.name}" has no data '
-                    'field named "start"!')
-            if 'stop' not in data.grl:
-                raise KeyError(
-                    f'The GRL data for dataset "{self.name}" has no data '
-                    'field named "stop"!')
-            data.livetime = np.sum(data.grl['stop'] - data.grl['start'])
-
         # Execute all the data preparation functions for this dataset.
         super().prepare_data(
             data=data,
@@ -434,7 +445,7 @@ class I3DatasetData(
     def __init__(
             self,
             data,
-            data_grl,
+            grl_data,
     ):
         """Constructs a new I3DatasetData instance.
 
@@ -443,7 +454,7 @@ class I3DatasetData(
         data : instance of DatasetData
             The instance of DatasetData holding the experimental and monte-carlo
             data.
-        data_grl : instance of DataFieldRecordArray | None
+        grl_data : instance of DataFieldRecordArray | None
             The instance of DataFieldRecordArray holding the good-run-list data
             of the dataset. This can be None, if no GRL data is available.
         """
@@ -452,7 +463,7 @@ class I3DatasetData(
             data_mc=data._mc,
             livetime=data._livetime)
 
-        self.grl = data_grl
+        self.grl = grl_data
 
     @property
     def grl(self):

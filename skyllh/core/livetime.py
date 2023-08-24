@@ -28,13 +28,14 @@ class Livetime(
 
         Parameters
         ----------
-        livetime : float | Livetime instance
+        livetime : float | Livetime instance | None
             The live-time in days as float, or an instance of Livetime.
 
         Returns
         -------
-        intgrated_livetime : float
-            The integrated live-time.
+        intgrated_livetime : float | None
+            The integrated live-time. Returns ``None`` if the livetime argument
+            was ``None``.
         """
         intgrated_livetime = livetime
 

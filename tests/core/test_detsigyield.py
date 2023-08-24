@@ -42,9 +42,6 @@ from skyllh.core.source_hypo_grouping import (
 from skyllh.core.source_model import (
     PointLikeSource,
 )
-from skyllh.i3.livetime import (
-    I3Livetime,
-)
 
 DATA_SAMPLES_IMPORTED = tool.is_available('i3skyllh')
 
@@ -78,7 +75,6 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
         data = ds.load_and_prepare_data()
 
         # Create a Livetime instance.
-        livetime = I3Livetime.from_grl_data(data.grl)
         param_grid = ParameterGrid(
             name='gamma',
             grid=np.linspace(1, 4, num=int((4-1)/0.2)+1))
@@ -94,7 +90,7 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
         )
         builder = SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             cfg=cls.cfg,
-            livetime=livetime,
+            livetime=data.livetime,
             param_grid=param_grid,
             cos_true_zen_binning=cos_true_zen_binning,
         )

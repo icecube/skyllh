@@ -1577,10 +1577,10 @@ class Dataset(
         keep_fields : list of str | None
             The list of user-defined data fields that should get loaded and kept
             in addition to the analysis required data fields.
-        livetime : float | None
-            If not None, uses this livetime (in days) for the DatasetData
-            instance, otherwise uses the Dataset livetime property value for
-            the DatasetData instance.
+        livetime : instance of Livetime | float | None
+            If not None, uses this livetime for the DatasetData instance,
+            otherwise uses the Dataset livetime property value for the
+            DatasetData instance.
         dtc_dict : dict | None
             This dictionary defines how data fields of specific
             data types should get converted into other data types.
@@ -2751,7 +2751,8 @@ class DatasetCollection(
 
 
 class DatasetData(
-        object):
+        object,
+):
     """This class provides the container for the actual experimental and
     monto-carlo data.
     """
@@ -2771,8 +2772,9 @@ class DatasetData(
             This can be None for a MC-only study.
         data_mc : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the monto-carlo data.
-        livetime : float
-            The integrated livetime in days of the data.
+        livetime : instance of Livetime | float | None
+            The instance of Livetime or the integrated livetime of the data.
+            This can be ``None`` if no livetime is defined for this data.
         """
         super().__init__(**kwargs)
 
@@ -2814,18 +2816,30 @@ class DatasetData(
 
     @property
     def livetime(self):
-        """The integrated livetime in days of the data.
-        This is None, if there is no live-time provided.
+        """The live-time of the data.
+        This is either an instance of Livetime or an instance of float
+        specifying the integrated live-time.
+        This can be ``None``, indicating that no live-time was defined.
         """
         return self._livetime
 
     @livetime.setter
     def livetime(self, lt):
-        if lt is not None:
+        if (lt is not None) and (not isinstance(lt, Livetime)):
             lt = float_cast(
                 lt,
-                'The livetime property must be castable to type float!')
+                'The livetime property must be an instance of Livetime or must '
+                'be castable to type float! '
+                f'Its current type is {classname(lt)}')
         self._livetime = lt
+
+    @property
+    def integrated_livetime(self):
+        """(read-only) The integrated live-time of the data. It is
+        ``None`` if the ``livetime`` property of this class instance is set to
+        ``None``.
+        """
+        return Livetime.get_integrated_livetime(self._livetime)
 
     @property
     def exp_field_names(self):
