@@ -42,9 +42,6 @@ from skyllh.core.source_hypo_grouping import (
 from skyllh.core.source_model import (
     PointLikeSource,
 )
-from skyllh.core.timing import (
-    TimeLord,
-)
 from skyllh.i3.livetime import (
     I3Livetime,
 )
@@ -130,15 +127,13 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
                 height=0*units.m,
             )
         )
-        tl = TimeLord()
-        with tl.task_timer('Construct detsigyield'):
-            cls.detsigyield = builder.construct_detsigyield(
-                detector_model=detector_model,
-                dataset=ds,
-                data=data,
-                shg=shg,
-            )
-        print(tl)
+
+        cls.detsigyield = builder.construct_detsigyield(
+            detector_model=detector_model,
+            dataset=ds,
+            data=data,
+            shg=shg,
+        )
 
     @unittest.skipIf(not DATA_SAMPLES_IMPORTED, 'Data samples not imported!')
     def test__call__(self):
@@ -149,15 +144,10 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
                 ('gamma:gpidx', np.int32)
             ])
 
-        tl = TimeLord()
-
-        with tl.task_timer('Call detsigyield'):
-            (Y, Ygrad) = self.detsigyield(
-                src_recarray=self.detsigyield.sources_to_recarray(self.sources),
-                src_params_recarray=src_params_recarray,
-            )
-
-        print(tl)
+        (Y, Ygrad) = self.detsigyield(
+            src_recarray=self.detsigyield.sources_to_recarray(self.sources),
+            src_params_recarray=src_params_recarray,
+        )
 
         np.testing.assert_allclose(Y, [1.09241272e+15], rtol=0.01)
         self.assertIsInstance(Ygrad, dict)
