@@ -9,14 +9,6 @@ import scipy.interpolate
 from astropy import (
     units,
 )
-from astropy.coordinates import (
-    AltAz,
-    SkyCoord,
-)
-from astropy.time import (
-    Time,
-    TimeDelta,
-)
 
 from skyllh.core.binning import (
     BinningDefinition,
@@ -558,82 +550,9 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             livetime=self._livetime,
             st_bin_width_deg=st_bin_width_deg)
 
-        self.src_zen_arr = self._create_src_zen_arr(
-            src_recarray=self.src_recarray,
+        self.src_st_zen_arr = self.st_service.create_src_st_zen_array(
+            src_array=self.src_recarray,
         )
-
-    def _create_src_zen_arr(
-            self,
-            src_recarray,
-    ):
-        """Creates the src_zen_arr for the given sources.
-
-        Parameters
-        ----------
-        src_recarray : instance of numpy.ndarray
-            The structured numpy.ndarray holding the declination and
-            right-ascention of the sources. The following data fields need to
-            exist::
-
-                dec : float
-                    The declination of the source.
-                ra : float
-                    The right-ascention of the source.
-
-        Returns
-        -------
-        src_zen_arr : instance of numpy.ndarray
-            The (N_st_hist_bins, N_sources)-shaped numpy.ndarray holding the
-            local zenith coordinate of the source for the different sidereal
-            times.
-        """
-        st_hist_binedges = self.st_service.st_hist_binedges
-
-        # Calculate a reference time which we will take as the midpoint of the
-        # dataset's livetime.
-        ref_time_mjd = 0.5*(
-            self._livetime.time_start +
-            self._livetime.time_stop)
-
-        ref_time = Time(ref_time_mjd, format='mjd', scale='utc')
-        ref_st = ref_time.sidereal_time(
-            kind='apparent',
-            longitude=self._detector_model.location).value
-
-        st_hour2sec = 1/24 * self.st_service.SIDEREAL_DAY * 3600
-
-        src_dec = np.atleast_1d(src_recarray['dec'])
-        src_ra = np.atleast_1d(src_recarray['ra'])
-        src_skycoord = SkyCoord(
-            ra=src_ra*units.radian,
-            dec=src_dec*units.radian,
-            frame='icrs')
-
-        src_zen_arr = np.empty(
-            (len(self.st_service.st_hist), len(src_recarray)),
-            dtype=np.float32,
-        )
-
-        for st_bin_idx in range(len(self.st_service.st_hist)):
-            st_bc = 0.5*(
-                st_hist_binedges[st_bin_idx] +
-                st_hist_binedges[st_bin_idx+1])
-
-            delta_st = st_bc - ref_st
-            dt_sec = delta_st * st_hour2sec
-            obstime = ref_time + TimeDelta(dt_sec, format='sec')
-
-            # Transform the source location from dec,ra into alt,az.
-            src_altaz = src_skycoord.transform_to(AltAz(
-                obstime=obstime,
-                location=self._detector_model.location,
-            ))
-
-            src_zen = src_altaz.zen.to(units.radian).value
-
-            src_zen_arr[st_bin_idx] = src_zen
-
-        return src_zen_arr
 
     @property
     def cos_true_zen_binning(self):
@@ -705,9 +624,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             value dY_k/dp_s.
         """
         if np.any(src_recarray != self.src_recarray):
-            (self.src_zen_arr,
-             self.dt_fluxtimeunit_arr) = self._create_src_zen_arr_and_dt_fluxtimeunit_arr(
-                src_recarray=self.src_recarray,
+            self.src_st_zen_arr = self.st_service.create_src_st_zen_array(
+                src_array=self.src_recarray,
             )
 
         local_param_name = self.param_names[0]
@@ -741,7 +659,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         )
         st_livetime_sec_arr = self.st_service.st_livetime_sec_arr
         for st_bin_idx in range(n_st_hist_bins):
-            src_zen = self.src_zen_arr[st_bin_idx]
+            src_zen = self.src_st_zen_arr[st_bin_idx]
             dt_fluxtimeunit = st_livetime_sec_arr[st_bin_idx] * sec2fluxtimeunit
 
             values_t = (
@@ -771,7 +689,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             m = (src_param_gp_idxs == gfp_idx+1)
 
             for st_bin_idx in range(n_st_hist_bins):
-                src_zen = self.src_zen_arr[st_bin_idx]
+                src_zen = self.src_st_zen_arr[st_bin_idx]
                 values_t = values_t_arr[st_bin_idx]
 
                 grads[gfp_idx][m] += (

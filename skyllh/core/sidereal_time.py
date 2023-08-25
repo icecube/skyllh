@@ -2,8 +2,16 @@
 
 import numpy as np
 
+from astropy import (
+    units,
+)
+from astropy.coordinates import (
+    AltAz,
+    SkyCoord,
+)
 from astropy.time import (
     Time,
+    TimeDelta,
 )
 
 from skyllh.core.livetime import (
@@ -56,6 +64,9 @@ class SiderealTimeService(
                 'The livetime argument must be an instance of '
                 'Livetime! '
                 f'Its current type is {classname(livetime)}!')
+
+        self._detector_model = detector_model
+        self._livetime = livetime
 
         (self._st_hist,
          self._st_hist_binedges) = self.create_sidereal_time_histogram(
@@ -158,3 +169,73 @@ class SiderealTimeService(
                 hist += hist_
 
         return (hist, bin_edges)
+
+    def create_src_st_zen_array(
+            self,
+            src_array,
+    ):
+        """Creates a source sidereal time zenith array for the given sources.
+
+        Parameters
+        ----------
+        src_array : instance of numpy.ndarray
+            The structured numpy.ndarray holding the declination and
+            right-ascention of the sources. The following data fields need to
+            exist::
+
+                dec : float
+                    The declination of the source.
+                ra : float
+                    The right-ascention of the source.
+
+        Returns
+        -------
+        src_st_zen_arr : instance of numpy.ndarray
+            The (N_st_hist_bins, N_sources)-shaped numpy.ndarray holding the
+            local zenith coordinate of the source for the different sidereal
+            times.
+        """
+        # Calculate a reference time which we will take as the midpoint of the
+        # dataset's livetime.
+        ref_time_mjd = 0.5*(
+            self._livetime.time_start +
+            self._livetime.time_stop)
+
+        ref_time = Time(ref_time_mjd, format='mjd', scale='utc')
+        ref_st = ref_time.sidereal_time(
+            kind='apparent',
+            longitude=self._detector_model.location).value
+
+        st_hour2sec = 1/24 * self.SIDEREAL_DAY * 3600
+
+        src_dec = np.atleast_1d(src_array['dec'])
+        src_ra = np.atleast_1d(src_array['ra'])
+        src_skycoord = SkyCoord(
+            ra=src_ra*units.radian,
+            dec=src_dec*units.radian,
+            frame='icrs')
+
+        src_st_zen_arr = np.empty(
+            (len(self.st_hist), len(src_array)),
+            dtype=np.float32,
+        )
+
+        for st_bin_idx in range(len(self.st_hist)):
+            st_bc = 0.5*(
+                self.st_hist_binedges[st_bin_idx] +
+                self.st_hist_binedges[st_bin_idx+1])
+
+            delta_st = st_bc - ref_st
+            dt_sec = delta_st * st_hour2sec
+            obstime = ref_time + TimeDelta(dt_sec, format='sec')
+
+            src_altaz = src_skycoord.transform_to(AltAz(
+                obstime=obstime,
+                location=self._detector_model.location,
+            ))
+
+            src_zen = src_altaz.zen.to(units.radian).value
+
+            src_st_zen_arr[st_bin_idx] = src_zen
+
+        return src_st_zen_arr
