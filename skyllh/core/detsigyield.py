@@ -642,8 +642,6 @@ class SingleParamFluxPointLikeSourceDetSigYield(
                 f'source parameter "{local_param_name}" does not match the '
                 f'number of sources ({n_sources})!')
 
-        values = np.zeros((n_sources,), dtype=np.float64)
-
         # Do the time integration by summing the sidereal time intervals. The
         # total time period for a single sidereal time interval is simply the
         # number of on-times falling into the sidereal time interval multiplied
@@ -653,24 +651,15 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
         n_st_hist_bins = len(self.st_service.st_hist)
 
-        values_t_arr = np.empty(
-            (n_st_hist_bins, n_sources),
-            dtype=np.float64,
-        )
         st_livetime_sec_arr = self.st_service.st_livetime_sec_arr
-        for st_bin_idx in range(n_st_hist_bins):
-            src_zen = self.src_st_zen_arr[st_bin_idx]
-            dt_fluxtimeunit = st_livetime_sec_arr[st_bin_idx] * sec2fluxtimeunit
 
-            values_t = (
-                np.exp(self._log_spl_costruezen_param(
-                    np.cos(src_zen), src_param, grid=False)
-                ) *
-                dt_fluxtimeunit
-            )
-
-            values_t_arr[st_bin_idx] = values_t
-            values += values_t
+        values_st_arr = (
+            np.exp(self._log_spl_costruezen_param(
+                np.cos(self.src_st_zen_arr), src_param[np.newaxis, :], grid=False)
+            ) *
+            st_livetime_sec_arr[:, np.newaxis] * sec2fluxtimeunit
+        )
+        values = np.sum(values_st_arr, axis=0)
 
         # Determine the number of global fit parameters the local parameter
         # is made of.
@@ -690,10 +679,10 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
             for st_bin_idx in range(n_st_hist_bins):
                 src_zen = self.src_st_zen_arr[st_bin_idx]
-                values_t = values_t_arr[st_bin_idx]
+                values_st = values_st_arr[st_bin_idx]
 
                 grads[gfp_idx][m] += (
-                    values_t[m] *
+                    values_st[m] *
                     self._log_spl_costruezen_param(
                         np.cos(src_zen[m]), src_param[m], grid=False, dy=1)
                 )
