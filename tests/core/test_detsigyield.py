@@ -105,10 +105,15 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
         )
         cls.sources = [
             PointLikeSource(
-                name='TXS',
+                name='TXS 506+056',
                 ra=np.deg2rad(77),
                 dec=np.deg2rad(-5),
-            )
+            ),
+            PointLikeSource(
+                name='NGC1068',
+                ra=np.deg2rad(40.67),
+                dec=np.deg2rad(-0.01),
+            ),
         ]
         shg = SourceHypoGroup(
             sources=cls.sources,
@@ -134,7 +139,7 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
     @unittest.skipIf(not DATA_SAMPLES_IMPORTED, 'Data samples not imported!')
     def test__call__(self):
         src_params_recarray = np.array(
-            [(2, 1)],
+            [(2, 1), (2, 1)],
             dtype=[
                 ('gamma', np.float64),
                 ('gamma:gpidx', np.int32)
@@ -145,11 +150,21 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
             src_params_recarray=src_params_recarray,
         )
 
-        np.testing.assert_allclose(Y, [1.09241272e+15], rtol=0.01)
+        self.assertEqual(len(Y), len(self.sources))
+        np.testing.assert_allclose(
+            Y,
+            [1.09241272e+15, 1.91678617e+15],
+            rtol=0.01
+        )
         self.assertIsInstance(Ygrad, dict)
         self.assertEqual(len(Ygrad), 1)
         self.assertTrue(0 in Ygrad)
-        np.testing.assert_allclose(Ygrad[0], [-6.03707843e+15], rtol=0.01)
+        self.assertEqual(len(Ygrad[0]), len(self.sources))
+        np.testing.assert_allclose(
+            Ygrad[0],
+            [-6.03707843e+15, -9.24027244e+15],
+            rtol=0.01
+        )
 
 
 if __name__ == '__main__':
