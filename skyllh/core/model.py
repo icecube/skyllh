@@ -174,6 +174,8 @@ class DetectorModel(Model):
         ----------
         name : str
             The name of the detector model.
+        location : instance of astropy.coordinates.EarthLocation
+            The Earth location of the detector.
         """
         super().__init__(
             name=name,
