@@ -23,6 +23,9 @@ class SiderealTimeService(
     """This class provides a sidereal time distribution service for a given
     live-time, i.e. dataset.
     """
+
+    SIDEREAL_DAY = 23.9344696  # hours
+
     def __init__(
             self,
             detector_model,
@@ -61,6 +64,12 @@ class SiderealTimeService(
             longitude=detector_model.location,
         )
 
+        dt_st_bin_sec = (
+            (self._st_hist_binedges[1] - self._st_hist_binedges[0]) / 24 *
+            self.SIDEREAL_DAY * 3600
+        )
+        self._st_livetime_sec_arr = self._st_hist * dt_st_bin_sec
+
     @property
     def st_hist(self):
         """(read-only) The (N_sidereal_time_bins,)-shaped numpy.ndarray holding
@@ -74,6 +83,13 @@ class SiderealTimeService(
         holding the bin edges of the sidereal time histogram.
         """
         return self._st_hist_binedges
+
+    @property
+    def st_livetime_sec_arr(self):
+        """(read-only) The (N_sidereal_time_bins,)-shaped numpy.ndarray holding
+        the integrated live-time in seconds for each sidereal time bin.
+        """
+        return self._st_livetime_sec_arr
 
     def create_sidereal_time_histogram(
             self,

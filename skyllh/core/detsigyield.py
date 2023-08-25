@@ -558,17 +558,15 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             livetime=self._livetime,
             st_bin_width_deg=st_bin_width_deg)
 
-        (self.src_zen_arr,
-         self.dt_fluxtimeunit_arr) = self._create_src_zen_arr_and_dt_fluxtimeunit_arr(
+        self.src_zen_arr = self._create_src_zen_arr(
             src_recarray=self.src_recarray,
         )
 
-    def _create_src_zen_arr_and_dt_fluxtimeunit_arr(
+    def _create_src_zen_arr(
             self,
             src_recarray,
     ):
-        """Creates the src_zen_arr and the dt_fluxtimeunit_arr for the given
-        sources.
+        """Creates the src_zen_arr for the given sources.
 
         Parameters
         ----------
@@ -588,12 +586,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             The (N_st_hist_bins, N_sources)-shaped numpy.ndarray holding the
             local zenith coordinate of the source for the different sidereal
             times.
-        dt_fluxtimeunit_arr : instance of numpy.ndarray
-            The (N_st_hist_bins,)-shaped numpy.ndarray holding the time
-            intervals in flux time unit needed for the live-time integration.
         """
         st_hist_binedges = self.st_service.st_hist_binedges
-        st_hist = self.st_service.st_hist
 
         # Calculate a reference time which we will take as the midpoint of the
         # dataset's livetime.
@@ -606,7 +600,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             kind='apparent',
             longitude=self._detector_model.location).value
 
-        sidereal_day = 23.9344696  # hours
+        st_hour2sec = 1/24 * self.st_service.SIDEREAL_DAY * 3600
 
         src_dec = np.atleast_1d(src_recarray['dec'])
         src_ra = np.atleast_1d(src_recarray['ra'])
@@ -615,29 +609,18 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             dec=src_dec*units.radian,
             frame='icrs')
 
-        dt_st_bin_sec = (
-            (st_hist_binedges[1] - st_hist_binedges[0]) / 24 *
-            sidereal_day * 3600
-        )
-
-        sec2fluxtimeunit = units.second.to(self._fluxmodel.time_unit)
-
         src_zen_arr = np.empty(
             (len(self.st_service.st_hist), len(src_recarray)),
             dtype=np.float32,
         )
-        dt_fluxtimeunit_arr = np.empty(
-            (len(self.st_service.st_hist),),
-            dtype=np.float64,
-        )
 
-        for st_bin_idx in range(len(st_hist)):
+        for st_bin_idx in range(len(self.st_service.st_hist)):
             st_bc = 0.5*(
                 st_hist_binedges[st_bin_idx] +
                 st_hist_binedges[st_bin_idx+1])
 
             delta_st = st_bc - ref_st
-            dt_sec = delta_st / 24 * sidereal_day * 3600
+            dt_sec = delta_st * st_hour2sec
             obstime = ref_time + TimeDelta(dt_sec, format='sec')
 
             # Transform the source location from dec,ra into alt,az.
@@ -649,11 +632,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             src_zen = src_altaz.zen.to(units.radian).value
 
             src_zen_arr[st_bin_idx] = src_zen
-            dt_fluxtimeunit_arr[st_bin_idx] = (
-                st_hist[st_bin_idx] * dt_st_bin_sec * sec2fluxtimeunit
-            )
 
-        return (src_zen_arr, dt_fluxtimeunit_arr)
+        return src_zen_arr
 
     @property
     def cos_true_zen_binning(self):
@@ -751,15 +731,18 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         # number of on-times falling into the sidereal time interval multiplied
         # by the time span of that interval.
 
+        sec2fluxtimeunit = units.second.to(self._fluxmodel.time_unit)
+
         n_st_hist_bins = len(self.st_service.st_hist)
 
         values_t_arr = np.empty(
             (n_st_hist_bins, n_sources),
             dtype=np.float64,
         )
+        st_livetime_sec_arr = self.st_service.st_livetime_sec_arr
         for st_bin_idx in range(n_st_hist_bins):
             src_zen = self.src_zen_arr[st_bin_idx]
-            dt_fluxtimeunit = self.dt_fluxtimeunit_arr[st_bin_idx]
+            dt_fluxtimeunit = st_livetime_sec_arr[st_bin_idx] * sec2fluxtimeunit
 
             values_t = (
                 np.exp(self._log_spl_costruezen_param(
