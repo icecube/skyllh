@@ -7,6 +7,9 @@ analysis.
 
 import numpy as np
 
+from skyllh.core.detsigyield import (
+    DetSigYieldBuilder,
+)
 from skyllh.core.display import (
     add_leading_text_line_padding,
     INDENTATION_WIDTH,
@@ -14,9 +17,6 @@ from skyllh.core.display import (
 from skyllh.core.py import (
     classname,
     issequenceof,
-)
-from skyllh.core.detsigyield import (
-    DetSigYieldBuilder,
 )
 from skyllh.core.flux_model import (
     FluxModel,
