@@ -649,14 +649,13 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
         sec2fluxtimeunit = units.second.to(self._fluxmodel.time_unit)
 
-        n_st_hist_bins = len(self.st_service.st_hist)
-
         st_livetime_sec_arr = self.st_service.st_livetime_sec_arr
 
         values_st_arr = (
             np.exp(self._log_spl_costruezen_param(
-                np.cos(self.src_st_zen_arr), src_param[np.newaxis, :], grid=False)
-            ) *
+                np.cos(self.src_st_zen_arr), src_param[np.newaxis, :],
+                grid=False,
+            )) *
             st_livetime_sec_arr[:, np.newaxis] * sec2fluxtimeunit
         )
         values = np.sum(values_st_arr, axis=0)
@@ -677,15 +676,15 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             # fit parameter with index gfp_idx.
             m = (src_param_gp_idxs == gfp_idx+1)
 
-            for st_bin_idx in range(n_st_hist_bins):
-                src_zen = self.src_st_zen_arr[st_bin_idx]
-                values_st = values_st_arr[st_bin_idx]
-
-                grads[gfp_idx][m] += (
-                    values_st[m] *
-                    self._log_spl_costruezen_param(
-                        np.cos(src_zen[m]), src_param[m], grid=False, dy=1)
+            grad_st_src = (
+                values_st_arr[:, m] *
+                self._log_spl_costruezen_param(
+                    np.cos(self.src_st_zen_arr[:, m]), src_param[np.newaxis, m],
+                    grid=False,
+                    dy=1,
                 )
+            )
+            grads[gfp_idx][m] = np.sum(grad_st_src, axis=0)
 
         return (values, grads)
 
