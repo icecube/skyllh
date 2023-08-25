@@ -5,10 +5,6 @@
 
 import numpy as np
 
-from astropy.time import (
-    Time,
-)
-
 from skyllh.core.py import (
     classname,
     issequence,
@@ -16,7 +12,8 @@ from skyllh.core.py import (
 
 
 class Livetime(
-        object):
+        object,
+):
     """The ``Livetime`` class defines an interface to query the up-time of the
     detector.
     """
@@ -227,74 +224,6 @@ class Livetime(
         idxs = np.digitize(mjds, self._get_onoff_intervals())
 
         return idxs
-
-    def create_sidereal_time_histogram(
-            self,
-            dangle,
-            longitude=None,
-    ):
-        """Creates a histogram which counts how often a sidereal time interval
-        has been covered by the on-time live-time intervals. The number of
-        sidereal time intervals is specified through a delta angle between
-        0 and 360 degree.
-
-        Parameters
-        ----------
-        dangle : float
-            The delta angle in degree defining the number of sidereal time
-            intervals. This must be a value in the range [0, 360].
-        longitude : astropy.coordinates.EarthLocation | None
-            The longitude to which the sidereal times should be calculated.
-            This should be the detector's location on Earth.
-            If set to ``None``, the location will be Greenwich.
-
-        Returns
-        -------
-        hist : instance of numpy.ndarray
-            The (N_sidereal_time_bins,)-shaped numpy ndarray holding the counts
-            of the sidereal time intervals which are covered by the on-time
-            intervals.
-        bin_edges : instance of numpy.ndarray
-            The (N_sidereal_time_bins+1,)-shaped numpy ndarray holding the
-            sidereal time bin edges.
-        """
-        if longitude is None:
-            longitude = 'greenwich'
-
-        n_st_bins = int(np.ceil(360 / dangle))
-        bin_edges = np.linspace(0, 24, num=n_st_bins+1, endpoint=True)
-
-        sidereal_day = 23.9344696  # hours
-        dt_st_bin_sec = (bin_edges[1] - bin_edges[0]) / 24 * sidereal_day * 3600
-
-        hist = None
-        for (mjd_start, mjd_stop) in zip(
-                self._uptime_mjd_intervals_arr[:, 0],
-                self._uptime_mjd_intervals_arr[:, 1]):
-
-            n_times = int(np.ceil((mjd_stop - mjd_start) / dt_st_bin_sec * 24*3600))
-            dt = (mjd_stop - mjd_start) / n_times
-            mjd_times = np.minimum(
-                mjd_start + np.arange(n_times, dtype=np.int32) * dt,
-                mjd_stop
-            )
-
-            # Transform MJD times into sidereal times.
-            t = Time(mjd_times, format='mjd', scale='utc')
-            st_times = t.sidereal_time(
-                kind='apparent', longitude=longitude).value
-
-            (hist_, _) = np.histogram(
-                st_times,
-                bins=bin_edges,
-                density=False,
-            )
-            if hist is None:
-                hist = hist_
-            else:
-                hist += hist_
-
-        return (hist, bin_edges)
 
     def get_uptime_intervals_between(
             self,
