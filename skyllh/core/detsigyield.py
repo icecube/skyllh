@@ -666,6 +666,12 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         gfp_idxs = gfp_idxs[gfp_idxs > 0] - 1
 
         grads = dict()
+
+        if len(gfp_idxs) == 0:
+            return (values, grads)
+
+        cos_src_st_zen_arr = np.cos(self.src_st_zen_arr)
+
         for gfp_idx in gfp_idxs:
             # Create the gradient array of shape (n_sources,). This could be
             # a masked array to save memory, when there are many sources and
@@ -679,7 +685,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             grad_st_src = (
                 values_st_arr[:, m] *
                 self._log_spl_costruezen_param(
-                    np.cos(self.src_st_zen_arr[:, m]), src_param[np.newaxis, m],
+                    cos_src_st_zen_arr[:, m], src_param[np.newaxis, m],
                     grid=False,
                     dy=1,
                 )
