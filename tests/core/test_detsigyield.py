@@ -66,11 +66,11 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
             cfg=cls.cfg)
         ds = dsc['IC86, 2019']
 
-        # Add true_zen data field to the dataset.
-        def add_true_zen(data):
-            data.mc['true_zen'] = np.pi/2 + data.mc['true_dec']
-        ds.add_data_preparation(add_true_zen)
-        cls.cfg['datafields']['true_zen'] = DataFieldStages.ANALYSIS_MC
+        # Add true_alt data field to the dataset.
+        def add_true_alt(data):
+            data.mc['true_alt'] = -data.mc['true_dec']
+        ds.add_data_preparation(add_true_alt)
+        cls.cfg['datafields']['true_alt'] = DataFieldStages.ANALYSIS_MC
 
         data = ds.load_and_prepare_data()
 
@@ -78,21 +78,21 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
         param_grid = ParameterGrid(
             name='gamma',
             grid=np.linspace(1, 4, num=int((4-1)/0.2)+1))
-        # Transform sin(true_dec) into cos(true_zen) for a detector at
+        # Transform sin(true_dec) into sin(true_alt) for a detector at
         # South Pole and sort the binning in ascending order.
         sin_dec_binning = ds.get_binning_definition('sin_dec')
         true_dec = np.arcsin(sin_dec_binning.binedges)
-        true_zen = np.pi/2 + true_dec
-        cos_true_zen = np.sort(np.cos(true_zen))
-        cos_true_zen_binning = BinningDefinition(
-            name='cos_true_zen',
-            binedges=cos_true_zen,
+        true_alt = -true_dec
+        sin_true_alt = np.sort(np.sin(true_alt))
+        sin_true_alt_binning = BinningDefinition(
+            name='sin_true_alt',
+            binedges=sin_true_alt,
         )
         builder = SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             cfg=cls.cfg,
             livetime=data.livetime,
             param_grid=param_grid,
-            cos_true_zen_binning=cos_true_zen_binning,
+            sin_true_alt_binning=sin_true_alt_binning,
         )
         fluxmodel = SteadyPointlikeFFM(
             cfg=cls.cfg,

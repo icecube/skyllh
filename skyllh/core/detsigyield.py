@@ -491,8 +491,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             livetime,
             st_bin_width_deg,
             source_list,
-            cos_true_zen_binning,
-            log_spl_costruezen_param,
+            sin_true_alt_binning,
+            log_spl_sintruealt_param,
             **kwargs,
     ):
         """Constructs the detector signal yield instance.
@@ -518,11 +518,11 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         source_list : list of instance of PointLikeSource
             The list of instance of PointLikeSource defining the sources
             for this detector signal yield.
-        cos_true_zen_binning : instance of BinningDefinition
-            The instance of BinningDefinition defining the cos(true_zenith)
+        sin_true_alt_binning : instance of BinningDefinition
+            The instance of BinningDefinition defining the sin(true_altitude)
             binning.
-        log_spl_costruezen_param : instance of scipy.interpolate.RectBivariateSpline
-            The 2D spline in cos(true_zenith) and the flux model's parameter
+        log_spl_sintruealt_param : instance of scipy.interpolate.RectBivariateSpline
+            The 2D spline in sin(true_altitute) and the flux model's parameter
             this detector signal yield depends on.
         """
         super().__init__(
@@ -540,8 +540,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
                 f'Its current type is {classname(livetime)}!')
 
         self.src_recarray = self.sources_to_recarray(source_list)
-        self.cos_true_zen_binning = cos_true_zen_binning
-        self.log_spl_costruezen_param = log_spl_costruezen_param
+        self.sin_true_alt_binning = sin_true_alt_binning
+        self.log_spl_sintruealt_param = log_spl_sintruealt_param
 
         # Construct a sidereal time histogram which will preserve the angular
         # resolution of the detector.
@@ -550,42 +550,43 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             livetime=self._livetime,
             st_bin_width_deg=st_bin_width_deg)
 
-        self.src_st_zen_arr = self.st_service.create_src_st_zen_array(
+        self.src_st_alt_arr = self.st_service.create_src_st_alt_array(
             src_array=self.src_recarray,
         )
 
     @property
-    def cos_true_zen_binning(self):
-        """The instance of BinningDefinition defining the cos(true_zenith)
+    def sin_true_alt_binning(self):
+        """The instance of BinningDefinition defining the sin(true_altitude)
         binning.
         """
-        return self._cos_true_zen_binning
+        return self._sin_true_alt_binning
 
-    @cos_true_zen_binning.setter
-    def cos_true_zen_binning(self, bd):
+    @sin_true_alt_binning.setter
+    def sin_true_alt_binning(self, bd):
         if not isinstance(bd, BinningDefinition):
             raise TypeError(
-                'The cos_true_zen_binning property must be an instance of '
+                'The sin_true_alt_binning property must be an instance of '
                 'BinningDefinition! '
                 f'Its current type is {classname(bd)}.')
-        self._cos_true_zen_binning = bd
+        self._sin_true_alt_binning = bd
 
     @property
-    def log_spl_costruezen_param(self):
+    def log_spl_sintruealt_param(self):
         """The :class:`scipy.interpolate.RectBivariateSpline` instance
         representing the spline for the log value of the detector signal
-        yield as a function of cos(true_zenith) and the flux model's parameter.
+        yield as a function of sin(true_altitude) and the flux model's
+        parameter.
         """
-        return self._log_spl_costruezen_param
+        return self._log_spl_sintruealt_param
 
-    @log_spl_costruezen_param.setter
-    def log_spl_costruezen_param(self, spl):
+    @log_spl_sintruealt_param.setter
+    def log_spl_sintruealt_param(self, spl):
         if not isinstance(spl, scipy.interpolate.RectBivariateSpline):
             raise TypeError(
-                'The log_spl_costruezen_param property must be an instance of '
+                'The log_spl_sintruealt_param property must be an instance of '
                 'scipy.interpolate.RectBivariateSpline! '
                 f'Its current type is {classname(spl)}.')
-        self._log_spl_costruezen_param = spl
+        self._log_spl_sintruealt_param = spl
 
     def __call__(
             self,
@@ -652,8 +653,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         st_livetime_sec_arr = self.st_service.st_livetime_sec_arr
 
         values_st_arr = (
-            np.exp(self._log_spl_costruezen_param(
-                np.cos(self.src_st_zen_arr), src_param[np.newaxis, :],
+            np.exp(self._log_spl_sintruealt_param(
+                np.sin(self.src_st_alt_arr), src_param[np.newaxis, :],
                 grid=False,
             )) *
             st_livetime_sec_arr[:, np.newaxis] * sec2fluxtimeunit
@@ -670,7 +671,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         if len(gfp_idxs) == 0:
             return (values, grads)
 
-        cos_src_st_zen_arr = np.cos(self.src_st_zen_arr)
+        sin_src_st_alt_arr = np.sin(self.src_st_alt_arr)
 
         for gfp_idx in gfp_idxs:
             # Create the gradient array of shape (n_sources,). This could be
@@ -684,8 +685,8 @@ class SingleParamFluxPointLikeSourceDetSigYield(
 
             grad_st_src = (
                 values_st_arr[:, m] *
-                self._log_spl_costruezen_param(
-                    cos_src_st_zen_arr[:, m], src_param[np.newaxis, m],
+                self._log_spl_sintruealt_param(
+                    sin_src_st_alt_arr[:, m], src_param[np.newaxis, m],
                     grid=False,
                     dy=1,
                 )
@@ -703,8 +704,8 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
     for a variable flux model of a single parameter, assuming a point-like
     source.
 
-    It constructs a two-dimensional spline function in cos(true_zenith) and the
-    parameter, using a :class:`scipy.interpolate.RectBivariateSpline`.
+    It constructs a two-dimensional spline function in sin(true_altitude) and
+    the parameter, using a :class:`scipy.interpolate.RectBivariateSpline`.
     Hence, the detector signal yield can vary with the zenith angle and the
     parameter of the flux model.
 
@@ -717,17 +718,18 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             livetime,
             param_grid,
             st_bin_width_deg=0.1,
-            cos_true_zen_binning=None,
-            spline_order_cos_true_zen=2,
+            sin_true_alt_binning=None,
+            spline_order_sin_true_alt=2,
             spline_order_param=2,
             ncpu=None,
             **kwargs,
     ):
         """Creates a new detector signal yield builder instance for a point-like
         source with a flux model of a single parameter.
-        It requires a cosZen binning definition to compute the cos(true_zenith)
-        dependency of the detector effective area, and a parameter grid to
-        compute the parameter dependency of the detector signal yield.
+        It requires a sin_true_alt binning definition to compute the
+        sin(true_altitude) dependency of the detector effective area, and a
+        parameter grid to compute the parameter dependency of the detector
+        signal yield.
 
         Parameters
         ----------
@@ -741,13 +743,13 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
         st_bin_width_deg : float
             The sidereal time bin width in degree. This value must be in the
             range [0, 360].
-        cos_true_zen_binning : instance of BinningDefinition | None
-            The instance of BinningDefinition which defines the cos(true_zenith)
-            binning. If set to None, the cos(true_zenith) binning will be taken
-            from the dataset's binning definitions.
-        spline_order_cos_true_zen : int
+        sin_true_alt_binning : instance of BinningDefinition | None
+            The instance of BinningDefinition which defines the
+            sin(true_altitude) binning. If set to None, the sin(true_altitude)
+            binning will be taken from the dataset's binning definitions.
+        spline_order_sin_true_alt : int
             The order of the spline function for the logarithmic values of the
-            detector signal yield along the cos(true_zenith) axis.
+            detector signal yield along the sin(true_altitude) axis.
             The default is 2.
         spline_order_param : int
             The order of the spline function for the logarithmic values of the
@@ -765,8 +767,8 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
         self.livetime = livetime
         self.param_grid = param_grid
         self.st_bin_width_deg = st_bin_width_deg
-        self.cos_true_zen_binning = cos_true_zen_binning
-        self.spline_order_cos_true_zen = spline_order_cos_true_zen
+        self.sin_true_alt_binning = sin_true_alt_binning
+        self.spline_order_sin_true_alt = spline_order_sin_true_alt
         self.spline_order_param = spline_order_param
 
     @property
@@ -816,39 +818,39 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
         self._st_bin_width_deg = bw
 
     @property
-    def cos_true_zen_binning(self):
-        """The instance of BinningDefinition for the cos(true_zenith) binning
-        that should be used for computing the cos(true_zenith) dependency of the
-        detector signal yield. If None, the binning is supposed to be taken from
-        the Dataset's binning definitions.
+    def sin_true_alt_binning(self):
+        """The instance of BinningDefinition for the sin(true_altitude) binning
+        that should be used for computing the sin(true_altitude) dependency of
+        the detector signal yield. If None, the binning is supposed to be taken
+        from the Dataset's binning definitions.
         """
-        return self._cos_true_zen_binning
+        return self._sin_true_alt_binning
 
-    @cos_true_zen_binning.setter
-    def cos_true_zen_binning(self, binning):
+    @sin_true_alt_binning.setter
+    def sin_true_alt_binning(self, binning):
         if (binning is not None) and\
            (not isinstance(binning, BinningDefinition)):
             raise TypeError(
-                'The cos_true_zen_binning property must be None, or an '
+                'The sin_true_alt_binning property must be None, or an '
                 'instance of BinningDefinition! '
                 f'Its current type is "{classname(binning)}".')
-        self._cos_true_zen_binning = binning
+        self._sin_true_alt_binning = binning
 
     @property
-    def spline_order_cos_true_zen(self):
+    def spline_order_sin_true_alt(self):
         """The order (int) of the logarithmic spline function, that splines the
-        detector signal yield, along the cos(true_zenith) axis.
+        detector signal yield, along the sin(true_altitude) axis.
         """
-        return self._spline_order_cos_true_zen
+        return self._spline_order_sin_true_alt
 
-    @spline_order_cos_true_zen.setter
-    def spline_order_cos_true_zen(self, order):
+    @spline_order_sin_true_alt.setter
+    def spline_order_sin_true_alt(self, order):
         order = int_cast(
             order,
-            'The spline_order_cos_true_zen property must be castable to type '
+            'The spline_order_sin_true_alt property must be castable to type '
             'int! '
             f'Its current type is {classname(order)}.')
-        self._spline_order_cos_true_zen = order
+        self._spline_order_sin_true_alt = order
 
     @property
     def spline_order_param(self):
@@ -865,32 +867,32 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             f'Its current type is {classname(order)}.')
         self._spline_order_param = order
 
-    def get_cos_true_zen_binning(self, dataset):
-        """Gets the cos(true_zenith) binning definition either as setting from
+    def get_sin_true_alt_binning(self, dataset):
+        """Gets the sin(true_altitude) binning definition either as setting from
         this detector signal yield builder itself, or from the given dataset.
 
         Parameters
         ----------
         dataset : instance of Dataset
             The instance of Dataset that defines the binning for
-            cos(true_zenith).
+            sin(true_altitude).
 
         Returns
         -------
-        cos_true_zen_binning : instance of BinningDefinition
-            The binning definition for the cos(true_zenith) binning.
+        sin_true_alt_binning : instance of BinningDefinition
+            The binning definition for the sin(true_altitude) binning.
         """
-        cos_true_zen_binning = self.cos_true_zen_binning
-        if cos_true_zen_binning is None:
-            if not dataset.has_binning_definition('cos_true_zen'):
+        sin_true_alt_binning = self.sin_true_alt_binning
+        if sin_true_alt_binning is None:
+            if not dataset.has_binning_definition('sin_true_alt'):
                 raise KeyError(
-                    'No binning definition named "cos_true_zen" is defined in '
+                    'No binning definition named "sin_true_alt" is defined in '
                     f'the dataset "{dataset.name}" and no user defined binning '
                     'definition was provided to the detector signal yield '
                     f'builder "{classname(self)}"!')
-            cos_true_zen_binning = dataset.get_binning_definition(
-                'cos_true_zen')
-        return cos_true_zen_binning
+            sin_true_alt_binning = dataset.get_binning_definition(
+                'sin_true_alt')
+        return sin_true_alt_binning
 
     def construct_detsigyield(
         self,
@@ -909,15 +911,15 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             The instance of DetectorModel defining the detector for this
             detector signal yield.
         dataset : instance of Dataset
-            The instance of Dataset holding the cos(true_zenith) binning
+            The instance of Dataset holding the sin(true_altitude) binning
             definition.
         data : instance of DatasetData
             The instance of DatasetData holding the monte-carlo event data.
             The DataFieldRecordArray for the monte-carlo data of the dataset
             must contain the following data fields:
 
-            ``'true_zen'`` : float
-                The true zenith of the MC event.
+            ``'true_alt'`` : float
+                The true altitude of the MC event.
             ``'mcweight'`` : float
                 The monte-carlo weight of the MC event in the unit
                 GeV cm^2 sr.
@@ -943,38 +945,38 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             shgs=shg,
             ppbar=ppbar)
 
-        # Get the cos(true_zenith) binning definition either as setting from
+        # Get the sin(true_altitude) binning definition either as setting from
         # this builder, or from the dataset.
-        cos_true_zen_binning = self.get_cos_true_zen_binning(dataset)
+        sin_true_alt_binning = self.get_sin_true_alt_binning(dataset)
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit.
         to_internal_flux_unit_factor = shg.fluxmodel.to_internal_flux_unit()
 
         # Define a function that creates a detector signal yield histogram
-        # along cos(true_zenith) for a given flux model, i.e. for a given
+        # along sin(true_altitude) for a given flux model, i.e. for a given
         # parameter value.
         def _create_hist(
-                data_cos_true_zen,
+                data_sin_true_alt,
                 data_true_energy,
-                cos_true_zen_binning,
+                sin_true_alt_binning,
                 weights,
                 fluxmodel,
                 to_internal_flux_unit_factor,
         ):
             """Creates a histogram of the detector signal yield with the
-            given cos(true_zenith) binning.
+            given sin(true_altitude) binning.
 
             Parameters
             ----------
-            data_cos_true_zen : instance of numpy.ndarray
-                The 1d numpy.ndarray holding the cos(true_zenith) values of the
-                monte-carlo events.
+            data_sin_true_alt : instance of numpy.ndarray
+                The 1d numpy.ndarray holding the sin(true_altitude) values of
+                the monte-carlo events.
             data_true_energy : instance of numpy.ndarray
                 The 1d numpy.ndarray holding the true energy values of the
                 monte-carlo events.
-            cos_true_zen_binning : instance of BinningDefinition
-                The cos(true_zenith) binning definition to use for the
+            sin_true_alt_binning : instance of BinningDefinition
+                The sin(true_altitude) binning definition to use for the
                 histogram.
             weights : instance of numpy.ndarray
                 The 1d numpy.ndarray holding the weight factors of each
@@ -999,22 +1001,22 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             )
 
             (h, _) = np.histogram(
-                data_cos_true_zen,
-                bins=cos_true_zen_binning.binedges,
+                data_sin_true_alt,
+                bins=sin_true_alt_binning.binedges,
                 weights=weights,
                 density=False)
 
             return h
 
-        data_cos_true_zen = np.cos(data.mc['true_zen'])
+        data_sin_true_alt = np.sin(data.mc['true_alt'])
 
         # Generate a list of indices that would sort the data according to the
-        # cos(true_zenith) values. We will sort the MC data according to it,
+        # sin(true_altitude) values. We will sort the MC data according to it,
         # because the histogram creation is much faster (2x) when the
         # to-be-histogrammed values are already sorted.
-        sorted_idxs = np.argsort(data_cos_true_zen)
+        sorted_idxs = np.argsort(data_sin_true_alt)
 
-        data_cos_true_zen = np.take(data_cos_true_zen, sorted_idxs)
+        data_sin_true_alt = np.take(data_sin_true_alt, sorted_idxs)
         data_true_energy = np.take(data.mc['true_energy'], sorted_idxs)
         weights = np.take(data.mc['mcweight'], sorted_idxs)
 
@@ -1028,9 +1030,9 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
         args_list = [
             (
                 (
-                    data_cos_true_zen,
+                    data_sin_true_alt,
                     data_true_energy,
-                    cos_true_zen_binning,
+                    sin_true_alt_binning,
                     weights,
                     shg.fluxmodel.copy({param_grid.name: param_val}),
                     to_internal_flux_unit_factor,
@@ -1043,17 +1045,17 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             parallelize(
                 _create_hist, args_list, self.ncpu, ppbar=ppbar)).T
 
-        # Normalize by solid angle of each bin along the cos(true_zenith) axis.
-        # The solid angle is given by 2*\pi*(\Delta cos(\theta)).
-        h /= (2.*np.pi * np.diff(cos_true_zen_binning.binedges)).reshape(
-            (cos_true_zen_binning.nbins, 1))
+        # Normalize by solid angle of each bin along the sin(true_altitude)
+        # axis. The solid angle is given by 2*\pi*(\Delta sin(\phi)).
+        h /= (2.*np.pi * np.diff(sin_true_alt_binning.binedges)).reshape(
+            (sin_true_alt_binning.nbins, 1))
 
         # Create the 2D spline.
-        log_spl_costruezen_param = scipy.interpolate.RectBivariateSpline(
-            cos_true_zen_binning.bincenters,
+        log_spl_sintruealt_param = scipy.interpolate.RectBivariateSpline(
+            sin_true_alt_binning.bincenters,
             param_grid.grid,
             np.log(h),
-            kx=self.spline_order_cos_true_zen,
+            kx=self.spline_order_sin_true_alt,
             ky=self.spline_order_param,
             s=0,
         )
@@ -1066,8 +1068,8 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             livetime=self._livetime,
             st_bin_width_deg=self.st_bin_width_deg,
             source_list=shg.source_list,
-            cos_true_zen_binning=cos_true_zen_binning,
-            log_spl_costruezen_param=log_spl_costruezen_param,
+            sin_true_alt_binning=sin_true_alt_binning,
+            log_spl_sintruealt_param=log_spl_sintruealt_param,
         )
 
         return detsigyield

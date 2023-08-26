@@ -170,11 +170,11 @@ class SiderealTimeService(
 
         return (hist, bin_edges)
 
-    def create_src_st_zen_array(
+    def create_src_st_alt_array(
             self,
             src_array,
     ):
-        """Creates a source sidereal time zenith array for the given sources.
+        """Creates a source sidereal time altitude array for the given sources.
 
         Parameters
         ----------
@@ -190,9 +190,9 @@ class SiderealTimeService(
 
         Returns
         -------
-        src_st_zen_arr : instance of numpy.ndarray
+        src_st_alt_arr : instance of numpy.ndarray
             The (N_st_hist_bins, N_sources)-shaped numpy.ndarray holding the
-            local zenith coordinate of the source for the different sidereal
+            local altitude coordinate of the source for the different sidereal
             times.
         """
         # Calculate a reference time which we will take as the midpoint of the
@@ -215,7 +215,7 @@ class SiderealTimeService(
             dec=src_dec*units.radian,
             frame='icrs')
 
-        src_st_zen_arr = np.empty(
+        src_st_alt_arr = np.empty(
             (len(self.st_hist), len(src_array)),
             dtype=np.float32,
         )
@@ -234,8 +234,8 @@ class SiderealTimeService(
                 location=self._detector_model.location,
             ))
 
-            src_zen = src_altaz.zen.to(units.radian).value
+            src_alt = src_altaz.alt.to(units.radian).value
 
-            src_st_zen_arr[st_bin_idx] = src_zen
+            src_st_alt_arr[st_bin_idx] = src_alt
 
-        return src_st_zen_arr
+        return src_st_alt_arr
