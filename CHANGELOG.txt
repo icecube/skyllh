@@ -24,6 +24,9 @@ v23.2.1
 - A ``DetectorModel`` instance needs to be specified for each dataset of an
   ``Analysis`` instance via the ``Analysis.add_dataset`` method.
 
+- GRL start times of an IceCube dataset (``I3Dataset``) will be clipped
+  automatically to the stop times of previous runs if runs overlap.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters

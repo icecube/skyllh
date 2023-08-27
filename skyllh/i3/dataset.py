@@ -263,8 +263,13 @@ class I3Dataset(
             start = grl_data['start']
             stop = grl_data['stop']
             m = (start[1:] - stop[:-1]) < 0
-            new_start = np.where(m, stop[:-1], start[1:])
-            grl_data['start'][1:] = new_start
+            if np.any(m):
+                self._logger.info(
+                    f'{np.count_nonzero(m)} runs overlap in their GRL time '
+                    f'periods in dataset "{self.name}". Clipping run start '
+                    'times to stop times of their previous runs automatically.')
+                new_start = np.where(m, stop[:-1], start[1:])
+                grl_data['start'][1:] = new_start
 
         return grl_data
 
