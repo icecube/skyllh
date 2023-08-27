@@ -22,7 +22,6 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
     PDSignalEnergyPDFSet,
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
-    clip_grl_start_times,
     create_energy_cut_spline,
     get_tdm_field_func_psi,
 )
@@ -1006,12 +1005,6 @@ def create_analysis(  # noqa: C901
             compress=compress_data,
             tl=tl)
 
-        # Some runs might overlap slightly. So we need to clip those runs.
-        clip_grl_start_times(grl_data=data.grl)
-
-        livetime = I3Livetime.from_grl_data(
-            grl_data=data.grl)
-
         sin_dec_binning = ds.get_binning_definition('sin_dec')
         log_energy_binning = ds.get_binning_definition('log_energy')
 
@@ -1058,10 +1051,10 @@ def create_analysis(  # noqa: C901
         if (gauss is not None) or (box is not None):
             time_bkgpdf = BackgroundTimePDF(
                 cfg=cfg,
-                livetime=livetime,
+                livetime=data.livetime,
                 time_flux_profile=BoxTimeFluxProfile.from_start_and_stop_time(
-                    start=livetime.time_start,
-                    stop=livetime.time_stop,
+                    start=data.livetime.time_start,
+                    stop=data.livetime.time_stop,
                     cfg=cfg))
             time_sigpdf = create_signal_time_pdf(
                 cfg=cfg,
@@ -1112,7 +1105,7 @@ def create_analysis(  # noqa: C901
             shg_mgr=shg_mgr,
             ds=ds,
             ds_idx=ds_idx,
-            livetime=livetime,
+            livetime=data.livetime,
             time_flux_profile=time_flux_profile,
             energy_cut_spline=energy_cut_spline,
             cut_sindec=cut_sindec[ds_idx],

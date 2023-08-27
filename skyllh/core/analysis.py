@@ -529,7 +529,10 @@ class Analysis(
             ``None``, ``astropy.units.day`` will be used.
         """
         if dataset_key is None:
-            livetime = np.sum([data.livetime for data in self._data_list])
+            livetime = np.sum([
+                data.integrated_livetime
+                for data in self._data_list
+            ])
         else:
             if isinstance(dataset_key, int):
                 dataset_idx = dataset_key
@@ -547,7 +550,7 @@ class Analysis(
                     'The dataset_key argument must be an instance of int, str, '
                     'or None! '
                     f'Its current type is {classname(dataset_key)}.')
-            livetime = self._data_list[dataset_idx].livetime
+            livetime = self._data_list[dataset_idx].integrated_livetime
 
         if isinstance(unit, units.Unit):
             livetime *= units.day.to(unit)

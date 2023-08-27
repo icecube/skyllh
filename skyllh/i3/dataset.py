@@ -254,8 +254,17 @@ class I3Dataset(
                 f'The GRL data for dataset "{self.name}" has no data '
                 'field named "stop"!')
 
-        with TaskTimer(tl, 'Sort grl data according to start time'):
+        with TaskTimer(tl, 'Sort grl data according to start time.'):
             grl_data.sort_by_field(name='start')
+
+        # Make sure that the start time of a run is not smaller than the stop
+        # time of the previous run.
+        with TaskTimer(tl, 'Clip GRL start times.'):
+            start = grl_data['start']
+            stop = grl_data['stop']
+            m = (start[1:] - stop[:-1]) < 0
+            new_start = np.where(m, stop[:-1], start[1:])
+            grl_data['start'][1:] = new_start
 
         return grl_data
 
