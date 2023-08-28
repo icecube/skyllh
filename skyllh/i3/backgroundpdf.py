@@ -285,18 +285,18 @@ class MCBackgroundI3SpatialPDF(
             must exist:
 
                 sin_dec : float
-                    The sine of the reconstructed declination of the data event.
+                    The sin(reco_dec) of the trial data event.
 
         physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
             should be used as event weights. If a list is given, the weight
             values of all the fields will be summed to construct the final event
             weight.
-        sin_dec_binning : BinningDefinition
-            The binning definition for the sin(declination).
+        sin_dec_binning : instance of BinningDefinition
+            The binning definition for the sin(reco_dec).
         spline_order_sin_dec : int
             The order of the spline function for the logarithmic values of the
-            spatial background PDF along the sin(dec) axis.
+            spatial background PDF along the sin(reco_dec) axis.
             The default is 2.
         """
         if not isinstance(data_mc, DataFieldRecordArray):
