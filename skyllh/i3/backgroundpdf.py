@@ -64,8 +64,10 @@ class BackgroundI3SpatialPDF(
         """
         super().__init__(
             pmm=None,
-            ra_range=(0, 2*np.pi),
-            dec_range=(
+            dim1_name='ra',
+            dim1_range=(0, 2*np.pi),
+            dim2_name='dec',
+            dim2_range=(
                 np.arcsin(sin_dec_binning.lower_edge),
                 np.arcsin(sin_dec_binning.upper_edge)),
             **kwargs)

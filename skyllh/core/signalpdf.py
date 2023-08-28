@@ -85,8 +85,10 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
 
         super().__init__(
             pmm=None,
-            ra_range=ra_range,
-            dec_range=dec_range,
+            dim1_name='ra',
+            dim1_range=ra_range,
+            dim2_name='dec',
+            dim2_range=dec_range,
             **kwargs)
 
         self.pd_event_data_field_name = pd_event_data_field_name
@@ -273,8 +275,10 @@ class RayleighPSFPointSourceSignalSpatialPDF(
 
         super().__init__(
             pmm=None,
-            ra_range=ra_range,
-            dec_range=dec_range,
+            dim1_name='ra',
+            dim1_range=ra_range,
+            dim2_name='dec',
+            dim2_range=dec_range,
             **kwargs
         )
 

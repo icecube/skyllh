@@ -720,44 +720,60 @@ class BackgroundPDFProduct(
 
 class SpatialPDF(
         PDF,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """This is the abstract base class for a spatial PDF model. A spatial PDF
-    has two axes, right-ascention (ra) and declination (dec).
+    has two dimensions, dim1 (e.g. right-ascention), and dim2
+    (e.g. declination).
     """
 
-    def __init__(self, ra_range, dec_range, **kwargs):
-        """Constructor of a spatial PDF. It adds the PDF axes "ra" and "dec"
-        with the specified ranges of coverage.
+    def __init__(
+            self,
+            dim1_name,
+            dim1_range,
+            dim2_name,
+            dim2_range,
+            **kwargs,
+    ):
+        """Constructor of a spatial PDF. It adds the PDF axes ``dim1_name`` and
+        ``dim2_name`` with the specified ranges of coverage.
 
         Parameters
         ----------
-        ra_range : 2-element tuple
-            The tuple specifying the right-ascention range this PDF covers.
-        dec_range : 2-element tuple
-            The tuple specifying the declination range this PDF covers.
+        dim1_name : str
+            The name of the first dimension. This must match the data field name
+            for this dimension.
+        dim1_range : 2-element tuple
+            The tuple specifying the range of the first dimension this PDF
+            covers.
+        dim2_name : str
+            The name of the second dimension. This must match the data field
+            name for this dimension.
+        dim2_range : 2-element tuple
+            The tuple specifying the range of the second dimension this PDF
+            covers.
         """
         super().__init__(**kwargs)
 
         self.add_axis(
             PDFAxis(
-                name='ra',
-                vmin=ra_range[0],
-                vmax=ra_range[1]))
+                name=dim1_name,
+                vmin=dim1_range[0],
+                vmax=dim1_range[1]))
         self.add_axis(
             PDFAxis(
-                name='dec',
-                vmin=dec_range[0],
-                vmax=dec_range[1]))
+                name=dim2_name,
+                vmin=dim2_range[0],
+                vmax=dim2_range[1]))
 
     def assert_is_valid_for_trial_data(
             self,
             tdm,
             tl=None,
-            **kwargs):
-        """Checks if this spatial PDF is valid for all the given experimental
-        data.
-        It checks if all the data is within the right-ascention and declination
-        range.
+            **kwargs,
+    ):
+        """Checks if this spatial PDF is valid for all the given trial data.
+        It checks if all the data is within the ranges of the its dimensions.
 
         Parameters
         ----------
@@ -765,36 +781,24 @@ class SpatialPDF(
             The instance of TrialDataManager holding the trial data.
             The following data fields must exist:
 
-            - 'ra' : float
-                The right-ascention of the data event.
-            - 'dec' : float
-                The declination of the data event.
+            - ``dim1_name`` : float
+                The trial event data value of the first dimension.
+            - ``dim2_name`` : float
+                The trial event data value of the second dimension.
         tl : instance of TimeLord | None
             The optional instance of TimeLord for measuring timing information.
 
         Raises
         ------
         ValueError
-            If some of the data is outside the right-ascention or declination
-            range.
+            If some of the data is outside the ranges of its dimensions.
         """
-        ra_axis = self.axes['ra']
-        dec_axis = self.axes['dec']
-
-        ra = tdm.get_data('ra')
-        dec = tdm.get_data('dec')
-
-        # Check if all the data is within the right-ascention range.
-        if np.any((ra < ra_axis.vmin) | (ra > ra_axis.vmax)):
-            raise ValueError(
-                'Some data is outside the right-ascention range '
-                f'({ra_axis.vmin:.3f}, {ra_axis.vmax:.3f})!')
-
-        # Check if all the data is within the declination range.
-        if np.any((dec < dec_axis.vmin) | (dec > dec_axis.vmax)):
-            raise ValueError(
-                'Some data is outside the declination range '
-                f'({dec_axis.vmin:.3f}, {dec_axis.vmax:.3f})!')
+        for dim_axis in (self.axes[0], self.axes[1]):
+            dim = tdm.get_data(dim_axis.name)
+            if np.any((dim < dim_axis.vmin) | (dim > dim_axis.vmax)):
+                raise ValueError(
+                    f'Some data is outside the {dim_axis.name} range '
+                    f'({dim_axis.vmin:.3f}, {dim_axis.vmax:.3f})!')
 
 
 class EnergyPDF(
