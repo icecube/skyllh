@@ -236,7 +236,7 @@ class DataBackgroundI3SpatialPDF(
                 sin_dec : float
                     The sin(declination) of the data event.
 
-        sin_dec_binning : BinningDefinition
+        sin_dec_binning : instance of BinningDefinition
             The binning definition for the sin(declination).
         spline_order_sin_dec : int
             The order of the spline function for the logarithmic values of the
@@ -250,7 +250,7 @@ class DataBackgroundI3SpatialPDF(
                 f'It is of type "{classname(data_exp)}"!')
 
         data_sin_dec = data_exp['sin_dec']
-        data_weights = np.ones((len(data_exp),))
+        data_weights = None
 
         # Create the PDF using the base class.
         super().__init__(
