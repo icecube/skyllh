@@ -9,6 +9,7 @@ from skyllh.core import (
 )
 from skyllh.core.binning import (
     BinningDefinition,
+    UsesBinning,
 )
 from skyllh.core.config import (
     HasConfig,
@@ -39,6 +40,13 @@ from skyllh.core.parameters import (
     ParameterGridSet,
     ParameterModelMapper,
     ParameterSet,
+)
+from skyllh.core.smoothing import (
+    HistSmoothingMethod,
+    NeighboringBinHistSmoothingMethod,
+    NoHistSmoothingMethod,
+    SmoothingFilter,
+    UNSMOOTH_AXIS,
 )
 from skyllh.core.timing import (
     TaskTimer,
@@ -959,6 +967,302 @@ class TimePDF(
             raise ValueError(
                 'Some trial data is outside the time range '
                 f'[{time_axis.vmin:.3f}, {time_axis.vmax:.3f}]!')
+
+
+class SingleConditionalEnergyPDF(
+        EnergyPDF,
+        UsesBinning,
+):
+    """This class provides a base class for a conditional energy PDF with a
+    single parameter.
+
+    The energy PDF is modeled as a 1d histogram in log10(reco_energy), but for
+    different parameter bin values, hence, stored as a 2d histogram.
+    """
+
+    def __init__(
+            self,
+            pmm,
+            data_log10_energy,
+            data_param,
+            data_mcweight,
+            data_physicsweight,
+            log10_energy_binning,
+            param_binning,
+            smoothing_filter,
+            **kwargs,
+    ):
+        """Creates a new energy PDF in log10(reco_energy) conditional on a
+        single parameter.
+
+        Parameters
+        ----------
+        pmm : instance of ParameterModelMapper | None
+            The instance of ParameterModelMapper defining the global parameters
+            and their mapping to local model/source parameters.
+            It can be ``None``, if the PDF does not depend on any parameters.
+        data_log10_energy : instance of numpy.ndarray
+            The (N_events,)-shaped numpy.ndarray holding the log10(E_reco)
+            values of the events.
+        data_param : instance of numpy.ndarray
+            The (N_events,)-shaped numpy.ndarray holding the parameter values
+            of the events.
+        data_mcweight : instance of numpy.ndarray
+            The (N_events,)-shaped numpy.ndarray holding the monte-carlo weights
+            of the events. The final data weight will be the product of
+            ``data_mcweight`` and ``data_physicsweight``.
+        data_physicsweight : instance of numpy.ndarray
+            The (N_events,)-shaped numpy.ndarray holding the physics weights of
+            the events. The final data weight will be the product of
+            ``data_mcweight`` and ``data_physicsweight``.
+        log10_energy_binning : instance of BinningDefinition
+            The binning definition for the log10(E_reco) axis. The name of the
+            data field is defined through the name of this binning definition.
+        param_binning : instance of BinningDefinition
+            The binning definition for the single parameter this energy PDF is
+            conditional on. The name of the data field is defined through the
+            name of this binning definition.
+        smoothing_filter : instance of SmoothingFilter | None
+            The smoothing filter to use for smoothing the energy histogram.
+            If ``None``, no smoothing will be applied.
+        """
+        super().__init__(
+            pmm=pmm,
+            **kwargs)
+
+        self.add_axis(
+            PDFAxis(
+                name=log10_energy_binning.name,
+                vmin=log10_energy_binning.lower_edge,
+                vmax=log10_energy_binning.upper_edge))
+        self.add_axis(
+            PDFAxis(
+                name=param_binning.name,
+                vmin=param_binning.lower_edge,
+                vmax=param_binning.upper_edge))
+
+        self.add_binning(log10_energy_binning, log10_energy_binning.name)
+        self.add_binning(param_binning, param_binning.name)
+
+        # Create the smoothing method instance tailored to the energy PDF.
+        # We will smooth only the first axis (log10(E)).
+        if (smoothing_filter is not None) and\
+           (not isinstance(smoothing_filter, SmoothingFilter)):
+            raise TypeError(
+                'The smoothing_filter argument must be None or an instance of '
+                'SmoothingFilter! '
+                f'Its current type is {classname(smoothing_filter)}!')
+        if smoothing_filter is None:
+            self.hist_smoothing_method = NoHistSmoothingMethod()
+        else:
+            self.hist_smoothing_method = NeighboringBinHistSmoothingMethod(
+                (smoothing_filter.axis_kernel_array, UNSMOOTH_AXIS))
+
+        # We have to figure out, which histogram bins are zero due to no
+        # monte-carlo coverage, and which due to zero physics model
+        # contribution.
+
+        # Create a 2D histogram with only the MC events to determine the MC
+        # coverage.
+        (h, _, _) = np.histogram2d(
+            data_log10_energy,
+            data_param,
+            bins=[log10_energy_binning.binedges, param_binning.binedges],
+            range=[log10_energy_binning.range, param_binning.range],
+            density=False)
+        h = self._hist_smoothing_method.smooth(h)
+        self._hist_mask_mc_covered = h > 0
+
+        # Select the events which have MC coverage but zero physics
+        # contribution, i.e. the physics model predicts zero contribution.
+        mask = data_physicsweight == 0.
+
+        # Create a 2D histogram with only the MC events that have zero physics
+        # contribution. Note: By construction the zero physics contribution bins
+        # are a subset of the MC covered bins.
+        (h, _, _) = np.histogram2d(
+            data_log10_energy[mask],
+            data_param[mask],
+            bins=[log10_energy_binning.binedges, param_binning.binedges],
+            range=[log10_energy_binning.range, param_binning.range],
+            density=False)
+        h = self._hist_smoothing_method.smooth(h)
+        self._hist_mask_mc_covered_zero_physics = h > 0
+
+        # Create a 2D histogram with only the data which has physics
+        # contribution. We will do the normalization along the logE
+        # axis manually.
+        data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
+        (h, _, _) = np.histogram2d(
+            data_log10_energy[~mask],
+            data_param[~mask],
+            bins=[log10_energy_binning.binedges, param_binning.binedges],
+            weights=data_weights,
+            range=[log10_energy_binning.range, param_binning.range],
+            density=False)
+
+        # Calculate the normalization for each log10E bin. Hence we need to sum
+        # over the log10E bins (axis 0) for each param bin and need to divide
+        # by the log10E bin widths along the param bins. The result array norm
+        # is a 2D array of the same shape as h.
+        norms = np.sum(h, axis=(0,))[np.newaxis, ...] *\
+            np.diff(log10_energy_binning.binedges)[..., np.newaxis]
+        h /= norms
+        h = self._hist_smoothing_method.smooth(h)
+
+        self._hist_log10_energy_param = h
+
+    @property
+    def hist_smoothing_method(self):
+        """The HistSmoothingMethod instance defining the smoothing filter of the
+        energy PDF histogram.
+        """
+        return self._hist_smoothing_method
+
+    @hist_smoothing_method.setter
+    def hist_smoothing_method(self, method):
+        if not isinstance(method, HistSmoothingMethod):
+            raise TypeError(
+                'The hist_smoothing_method property must be an instance of '
+                f'HistSmoothingMethod! It is of type {classname(method)}')
+        self._hist_smoothing_method = method
+
+    @property
+    def hist(self):
+        """(read-only) The 2D log10(E_reco)-param histogram array.
+        """
+        return self._hist_log10_energy_param
+
+    @property
+    def hist_mask_mc_covered(self):
+        """(read-only) The boolean ndarray holding the mask of the 2D histogram
+        bins for which there is monte-carlo coverage.
+        """
+        return self._hist_mask_mc_covered
+
+    @property
+    def hist_mask_mc_covered_zero_physics(self):
+        """(read-only) The boolean ndarray holding the mask of the 2D histogram
+        bins for which there is monte-carlo coverage but zero physics
+        contribution.
+        """
+        return self._hist_mask_mc_covered_zero_physics
+
+    @property
+    def hist_mask_mc_covered_with_physics(self):
+        """(read-only) The boolean ndarray holding the mask of the 2D histogram
+        bins for which there is monte-carlo coverage and has physics
+        contribution.
+        """
+        mask = (
+            self._hist_mask_mc_covered & ~self._hist_mask_mc_covered_zero_physics
+        )
+        return mask
+
+    def assert_is_valid_for_trial_data(
+            self,
+            tdm,
+            tl=None,
+            **kwargs,
+    ):
+        """Checks if this energy PDF is valid for all the given trial events.
+        It checks if all the data is within the log10(E) and the single
+        parameter binning range.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the trial data events.
+            The following data fields must exist:
+
+            ``log10_energy_binning.name`` : float
+                The base-10 logarithm of the reconstructed energy value of the
+                data event.
+            ``param_binning.name`` : float
+                The parameter value of the data event.
+
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
+
+        Raises
+        ------
+        ValueError
+            If some of the data is outside the log10(E) or parameter binning
+            range.
+        """
+        log10_energy_name = self.axes[0].name
+        param_name = self.axes[1].name
+
+        log10_energy_binning = self.get_binning(log10_energy_name)
+        param_binning = self.get_binning(param_name)
+
+        data_log10_energy = tdm[log10_energy_name]
+        data_param = tdm[param_name]
+
+        for (binning, data) in zip((log10_energy_binning, param_binning),
+                                   (data_log10_energy, data_param)):
+            if binning.any_data_out_of_range(data):
+                oor_data = binning.get_out_of_range_data(data)
+                raise ValueError(
+                    f'Some data is outside the "{binning.name}" range '
+                    f'({binning.lower_edge:.3f},'
+                    f' {binning.upper_edge:.3f})! '
+                    f'The following data values are out of range: {oor_data}')
+
+    def get_pd(
+            self,
+            tdm,
+            params_recarray=None,
+            tl=None,
+    ):
+        """Calculates the energy probability density of each event.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The TrialDataManager instance holding the data events for which the
+            probability density should be calculated.
+            The following data fields must exist:
+
+            ``log10_energy_binning.name`` : float
+                The base-10 logarithm of the reconstructed energy value of the
+                event.
+            ``param_binning.name`` : float
+                The value of the conditional parameter for the event.
+
+        params_recarray : None
+            Unused interface parameter.
+        tl : TimeLord instance | None
+            The optional TimeLord instance that should be used to measure
+            timing information.
+
+        Returns
+        -------
+        pd : instance of ndarray
+            The 1D (N_events,)-shaped numpy ndarray with the energy probability
+            density for each event.
+        grads : dict
+            The dictionary holding the gradients of the probability density
+            w.r.t. each fit parameter. The key of the dictionary is the id
+            of the global fit parameter. Because this energy PDF does not depend
+            on any fit parameters, an empty dictionary is returned.
+        """
+        log10_energy_name = self.axes[0].name
+        param_name = self.axes[1].name
+
+        log10_energy_binning = self.get_binning(log10_energy_name)
+        param_binning = self.get_binning(param_name)
+
+        log10_energy_idx = np.digitize(
+            tdm[log10_energy_name], log10_energy_binning.binedges) - 1
+        param_idx = np.digitize(
+            tdm[param_name], param_binning.binedges) - 1
+
+        with TaskTimer(tl, 'Evaluating log10(E_reco)-param histogram.'):
+            pd = self._hist_log10_energy_param[
+                (log10_energy_idx, param_idx)]
+
+        return (pd, dict())
 
 
 class MultiDimGridPDF(
