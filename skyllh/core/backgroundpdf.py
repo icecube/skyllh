@@ -32,14 +32,14 @@ from skyllh.core.timing import (
 )
 
 
-class BackgroundAltUniformAziSpatialPDF(
+class BackgroundSinAltUniformAziSpatialPDF(
         SpatialPDF,
         UsesBinning,
         IsBackgroundPDF,
 ):
     """This is the base class for a spatial background PDF in the
-    altitude-azimuth coordinate system. It is modeled as a 1d spline function in
-    sin(reco_altitude). The reco_azimuth dimension is assumed to be uniform.
+    sin(altitude)-azimuth space. It is modeled as a 1d spline function in
+    sin(altitude_reco). The azimuth_reco dimension is assumed to be uniform.
     """
 
     def __init__(
@@ -62,14 +62,15 @@ class BackgroundAltUniformAziSpatialPDF(
             The 1d numpy.ndarray holding the weight of each event used for
             histogramming.
         sin_alt_binning : instance of BinningDefinition
-            The binning definition for the sin(reco_altitude) axis.
+            The binning definition for the sin(altitude_reco) axis. The name of
+            this binning definition defines the field name in the trial data.
         spline_order_sin_alt : int
             The order of the spline function for the logarithmic values of the
             spatial background PDF along the sin(reco_altitude) axis.
         """
         super().__init__(
             pmm=None,
-            dim1_name='alt',
+            dim1_name=sin_alt_binning.name,
             dim1_range=(
                 np.arcsin(sin_alt_binning.lower_edge),
                 np.arcsin(sin_alt_binning.upper_edge),
@@ -132,12 +133,12 @@ class BackgroundAltUniformAziSpatialPDF(
         available. The following data fields need to be present in the trial
         data:
 
-            sin_alt : float
-                The sin(reco_altitude) value of the trial data event.
+            ``axes[0].name`` : float
+                The sin(altitude_reco) value of the trial data event.
 
         """
         with TaskTimer(tl, 'Evaluating bkg log-spline.'):
-            log_spline_val = self._log_spline(tdm.get_data('sin_alt'))
+            log_spline_val = self._log_spline(tdm.get_data(self.axes[0].name))
 
         self._pd = 0.5 / np.pi * np.exp(log_spline_val)
 
@@ -155,8 +156,8 @@ class BackgroundAltUniformAziSpatialPDF(
             The TrialDataManager instance holding the trial event data for which
             to calculate the PDF values. The following data fields must exist:
 
-                sin_alt : float
-                    The sin(reco_altitude) value of the trial data event.
+                ``axes[0].name`` : float
+                    The sin(altitude_reco) value of the trial data event.
 
         params_recarray : None
             Unused interface parameter.
@@ -178,11 +179,11 @@ class BackgroundAltUniformAziSpatialPDF(
         return (self._pd, dict())
 
 
-class DataBackgroundAltUniformAziSpatialPDF(
-        BackgroundAltUniformAziSpatialPDF,
+class DataBackgroundSinAltUniformAziSpatialPDF(
+        BackgroundSinAltUniformAziSpatialPDF,
 ):
-    """This class provides a spatial background PDF in the altitude-azimuth
-    coordinate system, constructed from the experimental data.
+    """This class provides a spatial background PDF in the sin(altitude)-azimuth
+    space, constructed from the experimental data.
     """
 
     def __init__(
@@ -201,11 +202,13 @@ class DataBackgroundAltUniformAziSpatialPDF(
             The instance of DataFieldRecordArray holding the experimental data.
             The following data fields must exist:
 
-                sin_alt : float
-                    The sin(reco_altitude) of the trial data event.
+                ``sin_alt_binning.name`` : float
+                    The sin(altitude_reco) of the trial data event.
 
         sin_alt_binning : instance of BinningDefinition
-            The binning definition for the sin(reco_altitude).
+            The binning definition for the sin(altitude_reco) values of the
+            events. The name of this binning definition defines the field name
+            in the experimental and trial data.
         spline_order_sin_dec : int
             The order of the spline function for the logarithmic values of the
             spatial background PDF along the sin(reco_altitude) axis.
@@ -217,7 +220,7 @@ class DataBackgroundAltUniformAziSpatialPDF(
                 'DataFieldRecordArray! '
                 f'Its current type is "{classname(data_exp)}"!')
 
-        data_sin_alt = data_exp['sin_alt']
+        data_sin_alt = data_exp[sin_alt_binning.name]
         data_weights = None
 
         super().__init__(
@@ -228,8 +231,8 @@ class DataBackgroundAltUniformAziSpatialPDF(
             **kwargs)
 
 
-class MCBackgroundAltUniformAziSpatialPDF(
-        BackgroundAltUniformAziSpatialPDF,
+class MCBackgroundSinAltUniformAziSpatialPDF(
+        BackgroundSinAltUniformAziSpatialPDF,
 ):
     """This class provides a spatial background PDF in the altitude-azimuth
     coordinate system, constructed from the monte-carlo data.
@@ -252,8 +255,8 @@ class MCBackgroundAltUniformAziSpatialPDF(
             The array holding the monte-carlo data. The following data fields
             must exist:
 
-                sin_alt : float
-                    The sin(reco_altitude) value of the trial data event.
+                ``sin_alt_binning.name`` : float
+                    The sin(altitude_reco) value of the MC and trial data event.
 
         physics_weight_field_names : str | list of str
             The name or the list of names of the monte-carlo data fields, which
@@ -261,7 +264,8 @@ class MCBackgroundAltUniformAziSpatialPDF(
             values of all the fields will be summed to construct the final event
             weight.
         sin_alt_binning : instance of BinningDefinition
-            The binning definition for the sin(reco_altitude).
+            The binning definition for the sin(altitude_reco). The name of this
+            binning definition defines the field name in the MC and trial data.
         spline_order_sin_alt : int
             The order of the spline function for the logarithmic values of the
             spatial background PDF along the sin(reco_altitude) axis.
@@ -281,7 +285,7 @@ class MCBackgroundAltUniformAziSpatialPDF(
                 'or a sequence of type str! Its current type is '
                 f'"{classname(physics_weight_field_names)}"!')
 
-        data_sin_alt = data_mc['sin_alt']
+        data_sin_alt = data_mc[sin_alt_binning.name]
 
         # Calculate the event weights as the sum of all the given data fields
         # for each event.
