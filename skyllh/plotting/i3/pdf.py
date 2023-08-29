@@ -14,6 +14,9 @@ from matplotlib.colors import (
     LogNorm,
 )
 
+from skyllh.core.pdf import (
+    SingleConditionalEnergyPDF,
+)
 from skyllh.core.py import (
     classname,
 )
@@ -26,23 +29,23 @@ from skyllh.core.storage import (
 from skyllh.core.trialdata import (
     TrialDataManager,
 )
-from skyllh.i3.pdf import (
-    I3EnergyPDF,
-)
 
 
-class I3EnergyPDFPlotter(object):
-    """Plotter class to plot an I3EnergyPDF object.
+class SingleConditionalEnergyPDFPlotter(
+        object,
+):
+    """Plotter class to plot an SingleConditionalEnergyPDF object.
     """
     def __init__(self, tdm, pdf):
-        """Creates a new plotter object for plotting an I3EnergyPDF object.
+        """Creates a new plotter object for plotting a
+        SingleConditionalEnergyPDF instance.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
             The instance of TrialDataManager that provides the data for the
             PDF evaluation.
-        pdf : I3EnergyPDF
+        pdf : instance of SingleConditionalEnergyPDF
             The PDF object to plot.
         """
         self.tdm = tdm
@@ -56,9 +59,10 @@ class I3EnergyPDFPlotter(object):
 
     @pdf.setter
     def pdf(self, obj):
-        if not isinstance(obj, I3EnergyPDF):
+        if not isinstance(obj, SingleConditionalEnergyPDF):
             raise TypeError(
-                'The pdf property must be an object of instance I3EnergyPDF!')
+                'The pdf property must be an object of instance '
+                'SingleConditionalEnergyPDF!')
         self._pdf = obj
 
     @property
@@ -74,19 +78,22 @@ class I3EnergyPDFPlotter(object):
                 'The tdm property must be an instance of TrialDataManager!')
         self._tdm = obj
 
-    def plot(self, src_hypo_group_manager, axes, **kwargs):
+    def plot(
+            self,
+            shg_mgr,
+            axes,
+            **kwargs,
+    ):
         """Plots the PDF object.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        shg_mgr : instance of SourceHypoGroupManager
             The instance of SourceHypoGroupManager that defines the source
             hypotheses.
         axes : mpl.axes.Axes
             The matplotlib Axes object on which the PDF ratio should get drawn
             to.
-        fitparams : dict
-            The dictionary with the set of fit paramater values.
 
         Additional Keyword Arguments
         ----------------------------
@@ -98,16 +105,17 @@ class I3EnergyPDFPlotter(object):
         img : instance of mpl.AxesImage
             The AxesImage instance showing the PDF ratio image.
         """
-        if not isinstance(src_hypo_group_manager, SourceHypoGroupManager):
+        if not isinstance(shg_mgr, SourceHypoGroupManager):
             raise TypeError(
-                'The src_hypo_group_manager argument must be an instance of '
+                'The shg_mgr argument must be an instance of '
                 'SourceHypoGroupManager!')
         if not isinstance(axes, Axes):
             raise TypeError(
                 'The axes argument must be an instance of '
                 'matplotlib.axes.Axes!')
 
-        # The I3EnergyPDF object has two axes, one for log10_energy and sin_dec.
+        # The SingleConditionalEnergyPDF instance has two axes, one for
+        # log10_energy and param.
         (xbinning, ybinning) = self._pdf.binnings
 
         pdf_values = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float64)
@@ -123,7 +131,7 @@ class I3EnergyPDFPlotter(object):
             events['iy'][i] = iy
             events[ybinning.name][i] = y
 
-        self._tdm.initialize_for_new_trial(src_hypo_group_manager, events)
+        self._tdm.initialize_for_new_trial(shg_mgr, events)
 
         event_pdf_values = self._pdf.get_prob(self._tdm)
         pdf_values[events['ix'], events['iy']] = event_pdf_values
