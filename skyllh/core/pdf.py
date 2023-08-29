@@ -1007,14 +1007,16 @@ class SingleConditionalEnergyPDF(
         data_param : instance of numpy.ndarray
             The (N_events,)-shaped numpy.ndarray holding the parameter values
             of the events.
-        data_mcweight : instance of numpy.ndarray
+        data_mcweight : instance of numpy.ndarray | None
             The (N_events,)-shaped numpy.ndarray holding the monte-carlo weights
             of the events. The final data weight will be the product of
             ``data_mcweight`` and ``data_physicsweight``.
-        data_physicsweight : instance of numpy.ndarray
+            If set to ``None``, the value 1 will be assumed for all events.
+        data_physicsweight : instance of numpy.ndarray | None
             The (N_events,)-shaped numpy.ndarray holding the physics weights of
             the events. The final data weight will be the product of
             ``data_mcweight`` and ``data_physicsweight``.
+            If set to ``None``, the value 1 will be assumed for all events.
         log10_energy_binning : instance of BinningDefinition
             The binning definition for the log10(E_reco) axis. The name of the
             data field is defined through the name of this binning definition.
@@ -1075,7 +1077,10 @@ class SingleConditionalEnergyPDF(
 
         # Select the events which have MC coverage but zero physics
         # contribution, i.e. the physics model predicts zero contribution.
-        mask = data_physicsweight == 0.
+        if data_physicsweight is None:
+            mask = np.zeros((len(data_log10_energy),), dtype=np.bool_)
+        else:
+            mask = data_physicsweight == 0.
 
         # Create a 2D histogram with only the MC events that have zero physics
         # contribution. Note: By construction the zero physics contribution bins
@@ -1092,7 +1097,14 @@ class SingleConditionalEnergyPDF(
         # Create a 2D histogram with only the data which has physics
         # contribution. We will do the normalization along the logE
         # axis manually.
-        data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
+        if (data_mcweight is None) and (data_physicsweight is None):
+            data_weights = None
+        elif data_mcweight is None:
+            data_weights = data_physicsweight[~mask]
+        elif data_physicsweight is None:
+            data_weights = data_mcweight[~mask]
+        else:
+            data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
         (h, _, _) = np.histogram2d(
             data_log10_energy[~mask],
             data_param[~mask],
