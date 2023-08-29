@@ -368,7 +368,7 @@ class DataBackgroundI3EnergyPDF(
             The binning definition for the sin(declination).
         smoothing_filter : instance of SmoothingFilter | None
             The smoothing filter to use for smoothing the energy histogram.
-            If None, no smoothing will be applied.
+            If ``None``, no smoothing will be applied.
         """
         if not isinstance(data_exp, DataFieldRecordArray):
             raise TypeError(
