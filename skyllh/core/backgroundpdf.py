@@ -14,6 +14,7 @@ from skyllh.core.binning import (
 from skyllh.core.pdf import (
     IsBackgroundPDF,
     MultiDimGridPDF,
+    SingleConditionalEnergyPDF,
     SpatialPDF,
     TimePDF,
 )
@@ -296,6 +297,165 @@ class MCBackgroundAltUniformAziSpatialPDF(
             data_weights=data_weights,
             sin_alt_binning=sin_alt_binning,
             spline_order_sin_alt=spline_order_sin_alt,
+            **kwargs)
+
+
+class DataBackgroundSinAltEnergyPDF(
+        SingleConditionalEnergyPDF,
+        IsBackgroundPDF,
+):
+    """This class provides an energy background PDF in log10(E_reco) conditional
+    on sin(altitude_reco), constructed from experimental data.
+    """
+
+    def __init__(
+            self,
+            data_exp,
+            log10_energy_binning,
+            sin_alt_binning,
+            smoothing_filter=None,
+            **kwargs,
+    ):
+        """Constructs a new energy background PDF in log10(E_reco), conditional
+        on sin(altitude_reco) from experimental data.
+
+        Parameters
+        ----------
+        data_exp : instance of DataFieldRecordArray
+            The array holding the experimental data. The following data fields
+            must exist:
+
+                ``log10_energy_binning.name`` : float
+                    The logarithm of the reconstructed energy value of the data
+                    event.
+                ``sin_alt_binning.name`` : float
+                    The sine of the reconstructed altitude of the data event.
+
+        log10_energy_binning : instance of BinningDefinition
+            The binning definition for the binning in log10(E_reco). The name
+            of this binning definition defines the field name in the
+            experimental and trial data.
+        sin_dec_binning : instance of BinningDefinition
+            The binning definition for the sin(declination_reco). The name
+            of this binning definition defines the field name in the
+            experimental and trial data.
+        smoothing_filter : instance of SmoothingFilter | None
+            The smoothing filter to use for smoothing the energy histogram.
+            If ``None``, no smoothing will be applied.
+        """
+        if not isinstance(data_exp, DataFieldRecordArray):
+            raise TypeError(
+                'The data_exp argument must be an instance of '
+                'DataFieldRecordArray! '
+                f'Its current type is "{classname(data_exp)}"!')
+
+        data_log10_energy = data_exp[log10_energy_binning.name]
+        data_sin_alt = data_exp[sin_alt_binning.name]
+
+        # For experimental data, the MC and physics weight are unity and we can
+        # use None.
+        data_mcweight = None
+        data_physicsweight = None
+
+        super().__init__(
+            pmm=None,
+            data_log10_energy=data_log10_energy,
+            data_param=data_sin_alt,
+            data_mcweight=data_mcweight,
+            data_physicsweight=data_physicsweight,
+            log10_energy_binning=log10_energy_binning,
+            param_binning=sin_alt_binning,
+            smoothing_filter=smoothing_filter,
+            **kwargs)
+
+
+class MCBackgroundSinAltEnergyPDF(
+        SingleConditionalEnergyPDF,
+        IsBackgroundPDF,
+):
+    """This class provides an energy background PDF in log10(E_reco) conditional
+    on sin(altitude_reco), constructed from monte-carlo data.
+    """
+
+    def __init__(
+            self,
+            data_mc,
+            physics_weight_field_names,
+            log10_energy_binning,
+            sin_alt_binning,
+            smoothing_filter=None,
+            **kwargs,
+    ):
+        """Constructs a new energy background PDF in log10(E_reco), conditional
+        on sin(altitude_reco) from monte-carlo data.
+
+        Parameters
+        ----------
+        data_mc : instance of DataFieldRecordArray
+            The array holding the monte-carlo data. The following data fields
+            must exist:
+
+                ``log10_energy_binning.name`` : float
+                    The logarithm of the reconstructed energy value of the data
+                    event.
+                ``sin_alt_binning.name`` : float
+                    The sine of the reconstructed altitude of the data event.
+                mcweight: float
+                    The monte-carlo weight of the event.
+
+        physics_weight_field_names : str | list of str
+            The name or the list of names of the monte-carlo data fields, which
+            should be used as physics event weights. If a list is given, the
+            weight values of all the fields will be summed to construct the
+            final event physics weight.
+        log10_energy_binning : instance of BinningDefinition
+            The binning definition for the binning in log10(E_reco).
+            The name of this binning definition defines the field name in the
+            MC and trial data.
+        sin_alt_binning : instance of BinningDefinition
+            The binning definition for the sin(altitude_reco).
+            The name of this binning definition defines the field name in the
+            MC and trial data.
+        smoothing_filter : instance of SmoothingFilter | None
+            The smoothing filter to use for smoothing the energy histogram.
+            If None, no smoothing will be applied.
+        """
+        if not isinstance(data_mc, DataFieldRecordArray):
+            raise TypeError(
+                'The data_mc argument must be an instance of '
+                'DataFieldRecordArray! '
+                f'Its current type is "{classname(data_mc)}"!')
+
+        if not issequence(physics_weight_field_names):
+            physics_weight_field_names = [physics_weight_field_names]
+        if not issequenceof(physics_weight_field_names, str):
+            raise TypeError(
+                'The physics_weight_field_names argument must be '
+                'of type str or a sequence of type str! Its current type is'
+                f'"{classname(physics_weight_field_names)}"!')
+
+        data_log10_energy = data_mc[log10_energy_binning.name]
+        data_sin_alt = data_mc[sin_alt_binning.name]
+        data_mcweight = data_mc['mcweight']
+
+        # Calculate the event weights as the sum of all the given data fields
+        # for each event.
+        data_physicsweight = np.zeros(len(data_mc), dtype=np.float64)
+        for name in physics_weight_field_names:
+            if name not in data_mc:
+                raise KeyError(
+                    f'The field "{name}" does not exist in the MC data!')
+            data_physicsweight += data_mc[name]
+
+        super().__init__(
+            pmm=None,
+            data_log10_energy=data_log10_energy,
+            data_param=data_sin_alt,
+            data_mcweight=data_mcweight,
+            data_physicsweight=data_physicsweight,
+            log10_energy_binning=log10_energy_binning,
+            param_binning=sin_alt_binning,
+            smoothing_filter=smoothing_filter,
             **kwargs)
 
 
