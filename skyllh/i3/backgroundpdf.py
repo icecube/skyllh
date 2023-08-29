@@ -435,15 +435,15 @@ class MCBackgroundI3EnergyPDF(
             should be used as physics event weights. If a list is given, the
             weight values of all the fields will be summed to construct the
             final event physics weight.
-        log10_energy_binning : BinningDefinition
+        log10_energy_binning : instance of BinningDefinition
             The binning definition for the binning in log10(E_reco).
             The name of this binning definition defines the field name in the
             MC and trial data.
-        sin_dec_binning : BinningDefinition
+        sin_dec_binning : instance of BinningDefinition
             The binning definition for the sin(declination).
             The name of this binning definition defines the field name in the
             MC and trial data.
-        smoothing_filter : SmoothingFilter instance | None
+        smoothing_filter : instance of SmoothingFilter | None
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         """
