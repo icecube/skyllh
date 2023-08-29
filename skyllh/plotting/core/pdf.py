@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Plotting module to plot IceCube specific PDF objects.
+"""Plotting module to plot PDF objects.
 """
 
 import itertools
