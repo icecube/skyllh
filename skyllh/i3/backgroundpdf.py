@@ -356,10 +356,10 @@ class DataBackgroundI3EnergyPDF(
             The array holding the experimental data. The following data fields
             must exist:
 
-                log_energy : float
+                ``log10_energy_binning.name`` : float
                     The logarithm of the reconstructed energy value of the data
                     event.
-                sin_dec : float
+                ``sin_dec_binning.name`` : float
                     The sine of the reconstructed declination of the data event.
 
         log10_energy_binning : instance of BinningDefinition
