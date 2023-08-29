@@ -26,15 +26,16 @@ from skyllh.core.py import (
 
 class SplinedI3EnergySigSetOverBkgPDFRatio(
         SigSetOverBkgPDFRatio,
-        IsParallelizable):
+        IsParallelizable,
+):
     """This class implements a splined signal over background PDF ratio for
-    enegry PDFs of type I3EnergyPDF.
+    enegry PDFs of type SingleConditionalEnergyPDF.
     It takes an instance, which is derived from PDFSet, and which is derived
     from IsSignalPDF, as signal PDF. Furthermore, it takes an instance, which
-    is derived from I3EnergyPDF and IsBackgroundPDF, as background PDF, and
-    creates a spline for the ratio of the signal and background PDFs for a grid
-    of different discrete energy signal parameters, which are defined by the
-    signal PDF set.
+    is derived from SingleConditionalEnergyPDF and IsBackgroundPDF, as
+    background PDF, and creates a spline for the ratio of the signal and
+    background PDFs for a grid of different discrete energy signal parameters,
+    which are defined by the signal PDF set.
     """
     def __init__(
             self,
@@ -51,13 +52,11 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
 
         Parameters
         ----------
-        sig_pdf_set : class instance derived from PDFSet (for PDF type
-                       I3EnergyPDF), IsSignalPDF, and UsesBinning
+        sig_pdf_set : instance of SignalI3EnergyPDFSet
             The PDF set, which provides signal energy PDFs for a set of
             discrete signal parameters.
-        bkg_pdf : class instance derived from I3EnergyPDF, and
-                        IsBackgroundPDF
-            The background energy PDF object.
+        bkg_pdf : instance of DataBackgroundI3EnergyPDF | instance of MCBackgroundI3EnergyPDF
+            The background energy PDF instance.
         fillmethod : instance of PDFRatioFillMethod | None
             An instance of class derived from PDFRatioFillMethod that implements
             the desired ratio fill method.
@@ -100,7 +99,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
                 sig_pdf_set,
                 bkg_pdf,
                 fillmethod,
-                gridparams):
+                gridparams,
+        ):
             """Creates the signal/background ratio spline for the given signal
             parameters.
 

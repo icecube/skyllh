@@ -20,15 +20,13 @@ from skyllh.core.pdf import (
     PDF,
     PDFSet,
     IsSignalPDF,
+    SingleConditionalEnergyPDF,
 )
 from skyllh.core.py import (
     classname,
 )
 from skyllh.core.smoothing import (
     SmoothingFilter,
-)
-from skyllh.i3.pdf import (
-    I3EnergyPDF,
 )
 
 
@@ -39,8 +37,8 @@ class SignalI3EnergyPDFSet(
         IsParallelizable,
 ):
     """This is the signal energy PDF for IceCube. It creates a set of
-    I3EnergyPDF objects for a discrete set of energy signal parameters. Energy
-    signal parameters influence the source's flux model.
+    SingleConditionalEnergyPDF objects for a discrete set of energy signal
+    parameters. Energy signal parameters influence the source's flux model.
     """
     def __init__(
             self,
@@ -57,9 +55,9 @@ class SignalI3EnergyPDFSet(
     ):
         """Creates a new IceCube energy signal PDF for a given flux model and
         a set of parameter grids for the flux model.
-        It creates a set of I3EnergyPDF objects for each signal parameter value
-        permutation and stores it in an internal dictionary, where the hash of
-        the parameters dictionary is the key.
+        It creates a set of SingleConditionalEnergyPDF objects for each signal
+        parameter value permutation and stores it in an internal dictionary,
+        where the hash of the parameters dictionary is the key.
 
         Parameters
         ----------
@@ -71,10 +69,10 @@ class SignalI3EnergyPDFSet(
 
             true_energy : float
                 The true energy value of the data event.
-            log_energy : float
+            ``log10_energy_binning.name`` : float
                 The base10-logarithm of the reconstructed energy value of the
                 data event.
-            sin_dec : float
+            ``sin_dec_binning.name`` : float
                 The declination of the data event.
             mcweight : float
                 The monte-carlo weight value of the data events in unit
@@ -82,24 +80,27 @@ class SignalI3EnergyPDFSet(
 
         log10_energy_binning : instance of BinningDefinition
             The binning definition for the reconstructed energy binning in
-            log10(E).
+            log10(E_reco). The name of this binning definition defines the field
+            name in the MC and trial data.
         sin_dec_binning : instance of BinningDefinition
             The binning definition for the binning in sin(declination).
+            The name of this binning definition defines the field name in the MC
+            and trial data.
         fluxmodel : instance of FluxModel
             The flux model to use to create the signal energy PDF.
         param_grid_set : instance of ParameterGridSet |
                          instance of ParameterGrid
             The set of parameter grids. A ParameterGrid instance for each
-            energy parameter, for which an I3EnergyPDF object needs to be
-            created.
+            energy parameter, for which an SingleConditionalEnergyPDF object
+            needs to be created.
         smoothing_filter : instance of SmoothingFilter | None
             The smoothing filter to use for smoothing the energy histogram.
             If ``None``, no smoothing will be applied.
         ncpu : int | None
-            The number of CPUs to use to create the different I3EnergyPDF
-            instances for the different parameter grid values.
-            If set to ``None``, the configured default number of CPUs will be
-            used.
+            The number of CPUs to use to create the different
+            SingleConditionalEnergyPDF instances for the different parameter
+            grid values. If set to ``None``, the configured default number of
+            CPUs will be used.
         ppbar : instance of ProgressBar | None
             The instance of ProgressBar of the optional parent progress bar.
         """
@@ -144,9 +145,9 @@ class SignalI3EnergyPDFSet(
                 'an instance of SmoothingFilter! '
                 f'Its type is {classname(smoothing_filter)}!')
 
-        # Create I3EnergyPDF objects for all permutations of the parameter
-        # grid values.
-        def create_I3EnergyPDF(
+        # Create SingleConditionalEnergyPDF objects for all permutations of the
+        # parameter grid values.
+        def create_SingleConditionalEnergyPDF(
                 cfg,
                 data_log10_energy,
                 data_sin_dec,
@@ -159,8 +160,8 @@ class SignalI3EnergyPDFSet(
                 flux_unit_conv_factor,
                 gridparams,
         ):
-            """Creates an I3EnergyPDF object for the given flux model and flux
-            parameters.
+            """Creates a SingleConditionalEnergyPDF instance for the given flux
+            model and flux parameters.
 
             Parameters
             ----------
@@ -191,9 +192,9 @@ class SignalI3EnergyPDFSet(
 
             Returns
             -------
-            i3energypdf : instance of I3EnergyPDF
-                The created I3EnergyPDF instance for the given flux model and
-                flux parameters.
+            energypdf : instance of SingleConditionalEnergyPDF
+                The created SingleConditionalEnergyPDF instance for the given
+                flux model and flux parameters.
             """
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
@@ -206,21 +207,21 @@ class SignalI3EnergyPDFSet(
             data_physicsweight = np.squeeze(myfluxmodel(E=data_true_energy))
             data_physicsweight *= flux_unit_conv_factor
 
-            i3energypdf = I3EnergyPDF(
+            energypdf = SingleConditionalEnergyPDF(
                 cfg=cfg,
                 pmm=None,
                 data_log10_energy=data_log10_energy,
-                data_sin_dec=data_sin_dec,
+                data_param=data_sin_dec,
                 data_mcweight=data_mcweight,
                 data_physicsweight=data_physicsweight,
                 log10_energy_binning=log10_energy_binning,
-                sin_dec_binning=sin_dec_binning,
+                param_binning=sin_dec_binning,
                 smoothing_filter=smoothing_filter)
 
-            return i3energypdf
+            return energypdf
 
-        data_log10_energy = data_mc['log_energy']
-        data_sin_dec = data_mc['sin_dec']
+        data_log10_energy = data_mc[log10_energy_binning.name]
+        data_sin_dec = data_mc[sin_dec_binning.name]
         data_mcweight = data_mc['mcweight']
         data_true_energy = data_mc['true_energy']
 
@@ -245,14 +246,14 @@ class SignalI3EnergyPDFSet(
             for gridparams in self.gridparams_list
         ]
 
-        i3energypdf_list = parallelize(
-            func=create_I3EnergyPDF,
+        energypdf_list = parallelize(
+            func=create_SingleConditionalEnergyPDF,
             args_list=args_list,
             ncpu=self.ncpu,
             ppbar=ppbar)
 
-        # Save all the I3EnergyPDF instances in the PDFSet registry with
-        # the hash of the individual parameters as key.
-        for (gridparams, i3energypdf) in zip(self.gridparams_list,
-                                             i3energypdf_list):
-            self.add_pdf(i3energypdf, gridparams)
+        # Save all the SingleConditionalEnergyPDF instances in the PDFSet
+        # registry with the hash of the individual parameters as key.
+        for (gridparams, energypdf) in zip(self.gridparams_list,
+                                           energypdf_list):
+            self.add_pdf(energypdf, gridparams)

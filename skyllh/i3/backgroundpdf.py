@@ -9,6 +9,7 @@ from skyllh.core.binning import (
 )
 from skyllh.core.pdf import (
     IsBackgroundPDF,
+    SingleConditionalEnergyPDF,
     SpatialPDF,
 )
 from skyllh.core.py import (
@@ -22,9 +23,6 @@ from skyllh.core.storage import (
 )
 from skyllh.core.timing import (
     TaskTimer,
-)
-from skyllh.i3.pdf import (
-    I3EnergyPDF,
 )
 
 
@@ -334,11 +332,12 @@ class MCBackgroundI3SpatialPDF(
 
 
 class DataBackgroundI3EnergyPDF(
-        I3EnergyPDF,
+        SingleConditionalEnergyPDF,
         IsBackgroundPDF,
 ):
     """This is the IceCube energy background PDF, which gets constructed from
-    experimental data. This class is derived from I3EnergyPDF.
+    experimental data. This class is derived from
+    ``core.pdf.SingleConditionalEnergyPDF``.
     """
     def __init__(
             self,
@@ -377,31 +376,33 @@ class DataBackgroundI3EnergyPDF(
                 'DataFieldRecordArray! '
                 f'It is of type "{classname(data_exp)}"!')
 
-        data_log10_energy = data_exp['log_energy']
-        data_sin_dec = data_exp['sin_dec']
-        # For experimental data, the MC and physics weight are unity.
-        data_mcweight = np.ones((len(data_exp),))
-        data_physicsweight = data_mcweight
+        data_log10_energy = data_exp[log10_energy_binning.name]
+        data_sin_dec = data_exp[sin_dec_binning.name]
+
+        # For experimental data, the MC and physics weight are unity and we can
+        # use None.
+        data_mcweight = None
+        data_physicsweight = None
 
         # Create the PDF using the base class.
         super().__init__(
             pmm=None,
             data_log10_energy=data_log10_energy,
-            data_sin_dec=data_sin_dec,
+            data_param=data_sin_dec,
             data_mcweight=data_mcweight,
             data_physicsweight=data_physicsweight,
             log10_energy_binning=log10_energy_binning,
-            sin_dec_binning=sin_dec_binning,
+            param_binning=sin_dec_binning,
             smoothing_filter=smoothing_filter,
             **kwargs)
 
 
 class MCBackgroundI3EnergyPDF(
-        I3EnergyPDF,
+        SingleConditionalEnergyPDF,
         IsBackgroundPDF,
 ):
     """This is the IceCube energy background PDF, which gets constructed from
-    monte-carlo data. This class is derived from I3EnergyPDF.
+    monte-carlo data. This class is derived from SingleConditionalEnergyPDF.
     """
     def __init__(
             self,
@@ -421,10 +422,10 @@ class MCBackgroundI3EnergyPDF(
             The array holding the monte-carlo data. The following data fields
             must exist:
 
-                log_energy : float
+                ``log10_energy_binning.name`` : float
                     The logarithm of the reconstructed energy value of the data
                     event.
-                sin_dec : float
+                ``sin_dec_binning.name`` : float
                     The sine of the reconstructed declination of the data event.
                 mcweight: float
                     The monte-carlo weight of the event.
@@ -435,9 +436,13 @@ class MCBackgroundI3EnergyPDF(
             weight values of all the fields will be summed to construct the
             final event physics weight.
         log10_energy_binning : BinningDefinition
-            The binning definition for the binning in log10(E).
+            The binning definition for the binning in log10(E_reco).
+            The name of this binning definition defines the field name in the
+            MC and trial data.
         sin_dec_binning : BinningDefinition
             The binning definition for the sin(declination).
+            The name of this binning definition defines the field name in the
+            MC and trial data.
         smoothing_filter : SmoothingFilter instance | None
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
@@ -456,8 +461,8 @@ class MCBackgroundI3EnergyPDF(
                 'of type str or a sequence of type str! '
                 f'It is of type {classname(physics_weight_field_names)}')
 
-        data_log10_energy = data_mc['log_energy']
-        data_sin_dec = data_mc['sin_dec']
+        data_log10_energy = data_mc[log10_energy_binning.name]
+        data_sin_dec = data_mc[sin_dec_binning.name]
         data_mcweight = data_mc['mcweight']
 
         # Calculate the event weights as the sum of all the given data fields
@@ -473,10 +478,10 @@ class MCBackgroundI3EnergyPDF(
         super().__init__(
             pmm=None,
             data_log10_energy=data_log10_energy,
-            data_sin_dec=data_sin_dec,
+            data_param=data_sin_dec,
             data_mcweight=data_mcweight,
             data_physicsweight=data_physicsweight,
             log10_energy_binning=log10_energy_binning,
-            sin_dec_binning=sin_dec_binning,
+            param_binning=sin_dec_binning,
             smoothing_filter=smoothing_filter,
             **kwargs)
