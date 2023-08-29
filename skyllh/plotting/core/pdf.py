@@ -118,7 +118,9 @@ class SingleConditionalEnergyPDFPlotter(
         # log10_energy and param.
         (xbinning, ybinning) = self._pdf.binnings
 
-        pdf_values = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float64)
+        pdf_values = np.zeros(
+            (xbinning.nbins, ybinning.nbins),
+            dtype=np.float64)
         events = DataFieldRecordArray(np.zeros(
             (pdf_values.size,),
             dtype=[('ix', np.int64), (xbinning.name, np.float64),
