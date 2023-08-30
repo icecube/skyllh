@@ -51,6 +51,76 @@ from skyllh.core.utils.spline import (
 """
 
 
+def get_bkg_event_prob_func(
+        bkg_event_rate_field_names,
+):
+    """Returns a function with call signature::
+
+        __call__(dataset, data, events)
+
+    that calculates the background event probabilities given a sequence of data
+    field names which contain different background data rates. All rates will be
+    added.
+
+    The returned function can be used for example for the
+    :class:`skyllh.core.background_generation.MCDataSamplingBkgGenMethod` class.
+
+    Parameters
+    ----------
+    bkg_event_rate_field_names : sequence of str
+        The sequence of data field names containing background event rates.
+
+    Returns
+    -------
+    bkg_event_prob_func : callable
+        The function that calculates the background event probabilities.
+    """
+    def bkg_event_prob_func(dataset, data, events):
+        p = np.copy(events[bkg_event_rate_field_names[0]])
+        for k in bkg_event_rate_field_names[1:]:
+            p += events[k]
+        p /= np.sum(p)
+        return p
+    return bkg_event_prob_func
+
+
+def get_bkg_mean_func(
+        bkg_event_rate_field_names,
+):
+    """Returns a function with call signature::
+
+        __call__(dataset, data, events)
+
+    that calculates the mean number of background events for a dataset given a
+    sequence of data field names which contain different background data rates
+    in Hz. All rates will be added.
+
+    The returned function can be used for example for the
+    :class:`skyllh.core.background_generation.MCDataSamplingBkgGenMethod` class.
+
+    Parameters
+    ----------
+    bkg_event_rate_field_names : sequence of str
+        The sequence of data field names containing background event rates in
+        Hz.
+
+    Returns
+    -------
+    bkg_mean_func : callable
+        The function that calculates the mean number of background events.
+    """
+    def bkg_mean_func(dataset, data, events):
+        """Function for calculating the mean number of background events
+        for the given data set.
+        """
+        mean = 0
+        for k in bkg_event_rate_field_names:
+            mean += np.sum(events[k])
+        mean *= data.integrated_livetime*24*60*60
+        return mean
+    return bkg_mean_func
+
+
 def pointlikesource_to_data_field_array(
         tdm, shg_mgr, pmm):
     """Function to transform a list of PointLikeSource sources into a numpy
