@@ -27,6 +27,15 @@ v23.2.1
 - GRL start times of an IceCube dataset (``I3Dataset``) will be clipped
   automatically to the stop times of previous runs if runs overlap.
 
+- Introduce energy PDF class core.pdf.SingleConditionalEnergyPDF for an energy
+  PDF in log10(E_reco) conditional on a single parameter. It is used as base
+  class for the IceCube background and signal energy PDFs in sin(dec_reco), as
+  well as for the generic background energy PDF in sin(altitude_reco) space.
+
+- Introduce PDF ratio class
+  core.pdfratio.SplinedSingleConditionalEnergySigSetOverBkgPDFRatio as generic
+  PDF ratio for core.pdf.SingleConditionalEnergyPDF energy PDFs.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
