@@ -90,7 +90,6 @@ class SingleParamFluxPointLikeSourceDetSigYield_TestCase(
         )
         builder = SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             cfg=cls.cfg,
-            livetime=data.livetime,
             param_grid=param_grid,
             sin_true_alt_binning=sin_true_alt_binning,
         )

@@ -715,7 +715,6 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
 
     def __init__(
             self,
-            livetime,
             param_grid,
             st_bin_width_deg=0.1,
             sin_true_alt_binning=None,
@@ -733,9 +732,6 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
 
         Parameters
         ----------
-        livetime : instance of Livetime
-            The instance of Livetime that should be used to get the detector's
-            on-time intervals.
         param_grid : instance of ParameterGrid
             The instance of ParameterGrid which defines the grid of the
             parameter values. The name of the parameter is defined via the name
@@ -764,27 +760,11 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             **kwargs,
         )
 
-        self.livetime = livetime
         self.param_grid = param_grid
         self.st_bin_width_deg = st_bin_width_deg
         self.sin_true_alt_binning = sin_true_alt_binning
         self.spline_order_sin_true_alt = spline_order_sin_true_alt
         self.spline_order_param = spline_order_param
-
-    @property
-    def livetime(self):
-        """The instance of Livetime that is used to get the detector's on-time
-        intervals.
-        """
-        return self._livetime
-
-    @livetime.setter
-    def livetime(self, lt):
-        if not isinstance(lt, Livetime):
-            raise TypeError(
-                'The livetime property must be an instance of Livetime! '
-                f'Its current type is {classname(lt)}!')
-        self._livetime = lt
 
     @property
     def param_grid(self):
@@ -1065,7 +1045,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
             detector_model=detector_model,
             dataset=dataset,
             fluxmodel=shg.fluxmodel,
-            livetime=self._livetime,
+            livetime=data.livetime,
             st_bin_width_deg=self.st_bin_width_deg,
             source_list=shg.source_list,
             sin_true_alt_binning=sin_true_alt_binning,
