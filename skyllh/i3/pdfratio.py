@@ -24,7 +24,7 @@ from skyllh.core.py import (
 )
 
 
-class SplinedI3EnergySigSetOverBkgPDFRatio(
+class SplinedSingleConditionalEnergySigSetOverBkgPDFRatio(
         SigSetOverBkgPDFRatio,
         IsParallelizable,
 ):
@@ -52,10 +52,10 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
 
         Parameters
         ----------
-        sig_pdf_set : instance of SignalI3EnergyPDFSet
+        sig_pdf_set : instance of PDFSet of SingleConditionalEnergyPDF and IsSignalPDF
             The PDF set, which provides signal energy PDFs for a set of
             discrete signal parameters.
-        bkg_pdf : instance of DataBackgroundI3EnergyPDF | instance of MCBackgroundI3EnergyPDF
+        bkg_pdf : instance of SingleConditionalEnergyPDF and IsBackgroundPDF
             The background energy PDF instance.
         fillmethod : instance of PDFRatioFillMethod | None
             An instance of class derived from PDFRatioFillMethod that implements
