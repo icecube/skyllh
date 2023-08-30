@@ -1,21 +1,36 @@
 # -*- coding: utf-8 -*-
 
-"""Plotting module for core PDF ratio objects.
+"""Plotting module for core.pdfratio objects.
 """
 
-import numpy as np
 import itertools
+
+import numpy as np
 
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
-from skyllh.core.py import classname
-from skyllh.core.storage import DataFieldRecordArray
-from skyllh.core.trialdata import TrialDataManager
-from skyllh.core.pdfratio import SigOverBkgPDFRatio
+from skyllh.core.py import (
+    classname,
+)
+from skyllh.core.storage import (
+    DataFieldRecordArray,
+)
+from skyllh.core.trialdata import (
+    TrialDataManager,
+)
+from skyllh.core.pdfratio import (
+    SigOverBkgPDFRatio,
+    SplinedSingleConditionalEnergySigSetOverBkgPDFRatio,
+)
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroupManager,
+)
 
 
-class SigOverBkgPDFRatioPlotter(object):
+class SigOverBkgPDFRatioPlotter(
+        object,
+):
     """Plotter class to plot a SigOverBkgPDFRatio object.
     """
     def __init__(self, tdm, pdfratio):
@@ -165,6 +180,150 @@ class SigOverBkgPDFRatioPlotter(object):
             interpolation='none', **kwargs)
         axes.set_xlabel(raaxis.name)
         axes.set_ylabel(decaxis.name)
+        axes.set_title(classname(self._pdfratio))
+
+        return img
+
+
+class SplinedSingleConditionalEnergySigSetOverBkgPDFRatioPlotter(
+        object,
+):
+    """Plotter class to plot an instance of
+    SplinedSingleConditionalEnergySigSetOverBkgPDFRatio.
+    """
+    def __init__(
+            self,
+            tdm,
+            pdfratio,
+    ):
+        """Creates a new plotter object for plotting an instance of
+        SplinedSingleConditionalEnergySigSetOverBkgPDFRatio.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager that provides the data for the
+            PDF ratio evaluation.
+        pdfratio : instance of SplinedSingleConditionalEnergySigSetOverBkgPDFRatio
+            The PDF ratio object to plot.
+        """
+        self.tdm = tdm
+        self.pdfratio = pdfratio
+
+    @property
+    def pdfratio(self):
+        """The PDF ratio object to plot.
+        """
+        return self._pdfratio
+
+    @pdfratio.setter
+    def pdfratio(self, pdfratio):
+        if not isinstance(
+                pdfratio,
+                SplinedSingleConditionalEnergySigSetOverBkgPDFRatio):
+            raise TypeError(
+                'The pdfratio property must be an instance of '
+                'SplinedSingleConditionalEnergySigSetOverBkgPDFRatio!')
+        self._pdfratio = pdfratio
+
+    @property
+    def tdm(self):
+        """The TrialDataManager that provides the data for the PDF evaluation.
+        """
+        return self._tdm
+
+    @tdm.setter
+    def tdm(self, obj):
+        if not isinstance(obj, TrialDataManager):
+            raise TypeError(
+                'The tdm property must be an instance of TrialDataManager!')
+        self._tdm = obj
+
+    def plot(
+            self,
+            shg_mgr,
+            axes,
+            src_params_recarray,
+            **kwargs,
+    ):
+        """Plots the PDF ratio for the given set of fit paramater values.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The instance of SourceHypoGroupManager that defines the source
+            hypotheses.
+        axes : mpl.axes.Axes
+            The matplotlib Axes object on which the PDF ratio should get drawn
+            to.
+        src_params_recarray : instance of numpy record ndarray | None
+            The (N_sources,)-shaped numpy record ndarray holding the parameter
+            names and values of the sources. See the
+            :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+            for more information.
+
+        Additional Keyword Arguments
+        ----------------------------
+        Any additional keyword arguments will be passed to the `mpl.imshow`
+        function.
+
+        Returns
+        -------
+        img : instance of mpl.AxesImage
+            The AxesImage instance showing the PDF ratio image.
+        """
+        if not isinstance(shg_mgr, SourceHypoGroupManager):
+            raise TypeError(
+                'The src_hypo_group_manager argument must be an '
+                'instance of SourceHypoGroupManager!')
+        if not isinstance(axes, Axes):
+            raise TypeError(
+                'The axes argument must be an instance of '
+                'matplotlib.axes.Axes!')
+        if not isinstance(src_params_recarray, np.ndarray):
+            raise TypeError(
+                'The src_params_recarray argument must be an instance of '
+                'numpy.ndarray!')
+
+        # Get the binning for the axes. We use the background PDF to get it
+        # from. By construction, all PDFs use the same binning. We know that
+        # the PDFs are 2-dimensional.
+        (xbinning, ybinning) = self._pdfratio.backgroundpdf.binnings
+
+        # Create a 2D array with the ratio values. We put one event into each
+        # bin.
+        ratios = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float64)
+        events = DataFieldRecordArray(np.zeros(
+            (ratios.size,),
+            dtype=[('ix', np.int64), (xbinning.name, np.float64),
+                   ('iy', np.int64), (ybinning.name, np.float64)]))
+        for (i, ((ix, x), (iy, y))) in enumerate(itertools.product(
+                enumerate(xbinning.bincenters),
+                enumerate(ybinning.bincenters))):
+            events['ix'][i] = ix
+            events[xbinning.name][i] = x
+            events['iy'][i] = iy
+            events[ybinning.name][i] = y
+
+        self._tdm.initialize_for_new_trial(shg_mgr, events)
+
+        event_ratios = self.pdfratio.get_ratio(
+            tdm=self._tdm,
+            src_params_recarray=src_params_recarray)
+        for i in range(len(events)):
+            ratios[events['ix'][i], events['iy'][i]] = event_ratios[i]
+
+        (left, right, bottom, top) = (xbinning.lower_edge, xbinning.upper_edge,
+                                      ybinning.lower_edge, ybinning.upper_edge)
+        img = axes.imshow(
+            ratios.T,
+            extent=(left, right, bottom, top),
+            origin='lower',
+            norm=LogNorm(),
+            interpolation='none',
+            **kwargs)
+        axes.set_xlabel(xbinning.name)
+        axes.set_ylabel(ybinning.name)
         axes.set_title(classname(self._pdfratio))
 
         return img
