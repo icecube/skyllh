@@ -1308,7 +1308,7 @@ class MultiDimGridPDF(
             parameter names and values of the models.
             By definition, this PDF does not depend on any parameters.
         eventdata : instance of numpy ndarray
-            The (N_values,V)-shaped numpy ndarray holding the V data attributes
+            The (V,N_values)-shaped numpy ndarray holding the V data attributes
             for each of the N_values events needed for the evaluation of the
             PDF.
         evt_mask : instance of numpy ndarray | None
@@ -1341,18 +1341,18 @@ class MultiDimGridPDF(
         if isinstance(self._pdf, RegularGridInterpolator):
             with TaskTimer(tl, 'Get pd from RegularGridInterpolator.'):
                 if evt_mask is None:
-                    pd = self._pdf(eventdata)
+                    pd = self._pdf(eventdata.T)
                 else:
-                    pd = self._pdf(eventdata[evt_mask])
+                    pd = self._pdf(eventdata.T[evt_mask])
         else:
             with TaskTimer(tl, 'Get pd from photospline fit.'):
-                V = eventdata.shape[1]
+                V = eventdata.shape[0]
                 if evt_mask is None:
                     pd = self._pdf.evaluate_simple(
-                        [eventdata[:, i] for i in range(0, V)])
+                        [eventdata[i] for i in range(0, V)])
                 else:
                     pd = self._pdf.evaluate_simple(
-                        [eventdata[:, i][evt_mask] for i in range(0, V)])
+                        [eventdata[i][evt_mask] for i in range(0, V)])
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(
@@ -1375,7 +1375,8 @@ class MultiDimGridPDF(
     @staticmethod
     def create_eventdata_for_sigpdf(
             tdm,
-            axes):
+            axes,
+    ):
         """Creates the (N_values,V)-shaped eventdata ndarray necessary for
         evaluating the signal PDF.
 
@@ -1402,14 +1403,15 @@ class MultiDimGridPDF(
                 TypeError(
                     f'Unable to determine the type of the data field {name}!')
 
-        eventdata = np.array(eventdata_fields).T
+        eventdata = np.array(eventdata_fields)
 
         return eventdata
 
     @staticmethod
     def create_eventdata_for_bkgpdf(
             tdm,
-            axes):
+            axes,
+    ):
         """Creates the (N_values,V)-shaped eventdata ndarray necessary for
         evaluating the background PDF.
 
@@ -1425,7 +1427,7 @@ class MultiDimGridPDF(
         for axis in axes:
             eventdata_fields.append(tdm.get_data(axis.name))
 
-        eventdata = np.array(eventdata_fields).T
+        eventdata = np.array(eventdata_fields)
 
         return eventdata
 
@@ -1433,7 +1435,8 @@ class MultiDimGridPDF(
             self,
             tdm,
             params_recarray=None,
-            tl=None):
+            tl=None,
+    ):
         """Calculates the probability density for the given trial events given
         the specified local parameters.
 
