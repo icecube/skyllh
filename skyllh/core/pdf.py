@@ -1017,7 +1017,7 @@ class MultiDimGridPDF(
             TrialDataManager holding the event data for which to calculate the
             PDF values, ``params_recarray`` is a numpy structured ndarray
             holding the local parameter names and values, ``eventdata`` is
-            is a (N_values,V)-shaped numpy ndarray holding the event data
+            is a (V,N_values)-shaped numpy ndarray holding the event data
             necessary for this PDF, and ``evt_mask`` is an optional
             (N_values,)-shaped numpy ndarray holding the mask for the events,
             i.e. rows in ``eventdata``, which should be considered. If ``None``,
@@ -1129,7 +1129,7 @@ class MultiDimGridPDF(
         where ``pdf`` is this PDF instance, ``tdm`` is an instance of
         TrialDataManager holding the events for which to calculate the PDF
         values, ``params_recarray`` is a numpy structured ndarray holding the
-        local parameter names and values, ``eventdata`` is a (N_values,V)-shaped
+        local parameter names and values, ``eventdata`` is a (V,N_values)-shaped
         numpy ndarray holding the event data necessary for this PDF, and
         ``evt_mask`` is an optional (N_values,)-shaped numpy ndarray holding the
         mask for the events, i.e. rows in ``eventdata``, which should be
@@ -1146,7 +1146,7 @@ class MultiDimGridPDF(
             # event.
             def func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
                 if evt_mask is None:
-                    n_values = eventdata.shape[0]
+                    n_values = eventdata.shape[1]
                 else:
                     n_values = np.count_nonzero(evt_mask)
                 return np.ones((n_values,), dtype=np.float64)
@@ -1377,7 +1377,7 @@ class MultiDimGridPDF(
             tdm,
             axes,
     ):
-        """Creates the (N_values,V)-shaped eventdata ndarray necessary for
+        """Creates the (V,N_values)-shaped eventdata ndarray necessary for
         evaluating the signal PDF.
 
         Parameters
@@ -1412,7 +1412,7 @@ class MultiDimGridPDF(
             tdm,
             axes,
     ):
-        """Creates the (N_values,V)-shaped eventdata ndarray necessary for
+        """Creates the (V,N_values)-shaped eventdata ndarray necessary for
         evaluating the background PDF.
 
         Parameters
