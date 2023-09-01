@@ -189,6 +189,10 @@ class RandomChoice(
             raise ValueError(
                 'The probabilities must be greater or equal zero!')
 
+        if p.dtype is not np.dtype(np.float64):
+            raise TypeError(
+                'The probabilities must be of type numpy.float64!')
+
         p_sum = np.sum(p)
         if abs(p_sum - 1.) > atol:
             raise ValueError(
