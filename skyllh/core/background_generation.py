@@ -157,7 +157,7 @@ class MCDataSamplingBkgGenMethod(
             of events, for which the mean number of background events should get
             calculated. This argument can be `None`, which means that the mean
             number of background events to generate needs to get specified
-            through the ``generate_events`` method. However, if an event
+            through the ``generate_events`` method. However, if a pre event
             selection method is provided, this argument cannot be ``None``!
         unique_events : bool
             Flag if unique events should be drawn from the monte-carlo
@@ -202,10 +202,10 @@ class MCDataSamplingBkgGenMethod(
         # Define cache members to cache the background probabilities for each
         # monte-carlo event. The probabilities change only if the data changes.
         self._cache_data_id = None
-        self._cache_mc_pre_selected = None
+        self._cache_mc = None
         self._cache_mc_event_bkg_prob = None
-        self._cache_mc_event_bkg_prob_pre_selected = None
         self._cache_mean = None
+        self._cache_mean_pre_selected = None
 
     @property
     def get_event_prob_func(self):
@@ -453,29 +453,31 @@ class MCDataSamplingBkgGenMethod(
                         data=data,
                         events=data_mc)
 
+            if self__pre_event_selection_method is not None:
+                with TaskTimer(
+                        tl,
+                        'Pre-select MC events.'):
+                    (self._cache_mc, _) =\
+                        self__pre_event_selection_method.select_events(
+                            events=data_mc,
+                            ret_original_evt_idxs=False,
+                            tl=tl)
+
+                with TaskTimer(tl, 'Calculate selected MC background mean.'):
+                    self._cache_mean_pre_selected = self._get_mean_func(
+                        dataset=dataset,
+                        data=data,
+                        events=self._cache_mc)
+            else:
+                self._cache_mc = data_mc
+
             with TaskTimer(
                     tl,
                     'Calculate MC background event probability cache.'):
                 self._cache_mc_event_bkg_prob = self._get_event_prob_func(
                     dataset=dataset,
                     data=data,
-                    events=data_mc)
-
-            if self__pre_event_selection_method is not None:
-                with TaskTimer(
-                        tl,
-                        'Pre-select MC events.'):
-                    (self._cache_mc_pre_selected,
-                     mc_pre_selected_src_evt_idxs,
-                     mc_pre_selected_idxs) =\
-                        self__pre_event_selection_method.select_events(
-                            events=data_mc,
-                            ret_original_evt_idxs=True,
-                            tl=tl)
-                self._cache_mc_event_bkg_prob_pre_selected = np.take(
-                    self._cache_mc_event_bkg_prob, mc_pre_selected_idxs)
-            else:
-                self._cache_mc_pre_selected = data_mc
+                    events=self._cache_mc)
 
         if mean is None:
             if self._cache_mean is None:
@@ -496,42 +498,29 @@ class MCDataSamplingBkgGenMethod(
         n_bkg = (int(rss.random.poisson(mean)) if poisson else
                  int(np.round(mean, 0)))
 
-        # Apply only event pre-selection before choosing events.
-        data_mc_selected = self._cache_mc_pre_selected
-
         # Calculate the mean number of background events for the pre-selected
         # MC events.
         if self__pre_event_selection_method is None:
             # No selection at all, use the total mean.
-            mean_selected = mean
+            mean_pre_selected = mean
         else:
-            with TaskTimer(tl, 'Calculate selected MC background mean.'):
-                mean_selected = self._get_mean_func(
-                    dataset=dataset,
-                    data=data,
-                    events=data_mc_selected)
+            mean_pre_selected = self._cache_mean_pre_selected
 
         # Calculate the actual number of background events for the selected
         # events.
-        p_binomial = mean_selected / mean
-        with TaskTimer(tl, 'Get p array.'):
-            if self__pre_event_selection_method is None:
-                p = self._cache_mc_event_bkg_prob
-            else:
-                # Pre-selection.
-                p = self._cache_mc_event_bkg_prob_pre_selected / p_binomial
+        p_binomial = mean_pre_selected / mean
         n_bkg_selected = int(np.around(n_bkg * p_binomial, 0))
 
         # Draw the actual background events from the selected events of the
         # monto-carlo data set.
         with TaskTimer(tl, 'Draw MC background indices.'):
             bkg_event_indices = rss.random.choice(
-                data_mc_selected.indices,
+                self._cache_mc.indices,
                 size=n_bkg_selected,
-                p=p,
+                p=self._cache_mc_event_bkg_prob,
                 replace=(not self._unique_events))
         with TaskTimer(tl, 'Select MC background events from indices.'):
-            bkg_events = data_mc_selected[bkg_event_indices]
+            bkg_events = self._cache_mc[bkg_event_indices]
 
         # Scramble the drawn MC events if requested.
         if self._data_scrambler is not None:
