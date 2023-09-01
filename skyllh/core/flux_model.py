@@ -511,6 +511,7 @@ class UnityEnergyFluxProfile(
         return integral
 
 
+
 class PowerLawEnergyFluxProfile(
         EnergyFluxProfile):
     r"""Energy flux profile for a power law profile with a reference energy
@@ -950,6 +951,140 @@ class PhotosplineEnergyFluxProfile(
             'The property crit_log10_energy_upper must be castable to type '
             'float!')
         self._crit_log10_energy_upper = v
+
+
+class FunctionEnergyFluxProfile(
+        EnergyFluxProfile):
+    r"""Energy flux profile for a callable function with energy as argument.
+
+    """
+    def __init__(
+            self,
+            function,
+            energy_unit=None,
+            **kwargs):
+        """Creates a new power law flux profile with the reference energy ``E0``
+        and spectral index ``gamma``.
+
+        Parameters
+        ----------
+        function : callable function, takes energy as argument 
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
+        """
+        super().__init__(
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.function = function
+
+    def __call__(
+            self,
+            E,
+            unit=None):
+        """Returns the power law values for the given energies as numpy ndarray
+        in same shape as E.
+
+        Parameters
+        ----------
+        E : float | 1D numpy ndarray of float
+            The energy value for which to retrieve the energy profile value.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        values : 1D numpy ndarray of float
+            The energy profile values for the given energies.
+        """
+        E = np.atleast_1d(E)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            E = E * unit.to(self._energy_unit)
+
+        value = self.function(E)
+
+        return value
+
+
+class EpeakFunctionEnergyProfile(
+    FunctionEnergyFluxProfile):
+    r"""Energy flux profile for a callable function with energy as argument where 
+    Epeak will be optimized.
+
+    """
+    def __init__(
+            self,
+            function,
+            e_peak,
+            energy_unit=None,
+            **kwargs):
+        """Creates a new power law flux profile with the reference energy ``E0``
+        and spectral index ``gamma``.
+
+        Parameters
+        ----------
+        function : callable function, takes energy as argument 
+        e_peak : energy for which the flux reaches its peak value
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
+        """
+        super().__init__(
+            function,
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.e_peak_orig = e_peak
+        self.e_peak = e_peak
+
+        # Define the parameters which can be set via the `set_params`
+        # method.
+        self.param_names = ('e_peak')
+
+    def __call__(
+            self,
+            E,
+            unit=None):
+        """Returns the power law values for the given energies as numpy ndarray
+        in same shape as E.
+
+        Parameters
+        ----------
+        E : float | 1D numpy ndarray of float
+            The energy value for which to retrieve the energy profile value.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        values : 1D numpy ndarray of float
+            The energy profile values for the given energies.
+        """
+        E = np.atleast_1d(E)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            E = E * unit.to(self._energy_unit)
+
+     #   energy_offset = self.e_peak - self.e_peak_orig
+
+        value = self.function(E)
+
+        return value
+
+    @property
+    def math_function_str(self):
+        """(read-only) The string representation of the mathematical function of
+        this spatial flux profile instance.
+        """
+        return 'spline of histogram'
 
 
 class TimeFluxProfile(
