@@ -24,6 +24,9 @@ from skyllh.core.py import (
     func_has_n_args,
     issequenceof,
 )
+from skyllh.core.random import (
+    RandomChoice,
+)
 from skyllh.core.scrambling import (
     DataScrambler,
 )
@@ -206,6 +209,7 @@ class MCDataSamplingBkgGenMethod(
         self._cache_mc_event_bkg_prob = None
         self._cache_mean = None
         self._cache_mean_pre_selected = None
+        self._cache_random_choice = None
 
     @property
     def get_event_prob_func(self):
@@ -479,6 +483,13 @@ class MCDataSamplingBkgGenMethod(
                     data=data,
                     events=self._cache_mc)
 
+            with TaskTimer(
+                    tl,
+                    'Create RandomChoice for MC background events.'):
+                self._cache_random_choice = RandomChoice(
+                    items=self._cache_mc.indices,
+                    probabilities=self._cache_mc_event_bkg_prob)
+
         if mean is None:
             if self._cache_mean is None:
                 raise ValueError(
@@ -508,17 +519,15 @@ class MCDataSamplingBkgGenMethod(
 
         # Calculate the actual number of background events for the selected
         # events.
-        p_binomial = mean_pre_selected / mean
-        n_bkg_selected = int(np.around(n_bkg * p_binomial, 0))
+        n_bkg_selected = int(np.around(n_bkg * mean_pre_selected / mean, 0))
 
         # Draw the actual background events from the selected events of the
         # monto-carlo data set.
         with TaskTimer(tl, 'Draw MC background indices.'):
-            bkg_event_indices = rss.random.choice(
-                self._cache_mc.indices,
-                size=n_bkg_selected,
-                p=self._cache_mc_event_bkg_prob,
-                replace=(not self._unique_events))
+            bkg_event_indices = self._cache_random_choice(
+                rss=rss,
+                size=n_bkg_selected)
+
         with TaskTimer(tl, 'Select MC background events from indices.'):
             bkg_events = self._cache_mc[bkg_event_indices]
 
