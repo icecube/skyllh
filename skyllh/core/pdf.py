@@ -1017,7 +1017,7 @@ class MultiDimGridPDF(
             TrialDataManager holding the event data for which to calculate the
             PDF values, ``params_recarray`` is a numpy structured ndarray
             holding the local parameter names and values, ``eventdata`` is
-            is a (N_values,V)-shaped numpy ndarray holding the event data
+            is a (V,N_values)-shaped numpy ndarray holding the event data
             necessary for this PDF, and ``evt_mask`` is an optional
             (N_values,)-shaped numpy ndarray holding the mask for the events,
             i.e. rows in ``eventdata``, which should be considered. If ``None``,
@@ -1129,7 +1129,7 @@ class MultiDimGridPDF(
         where ``pdf`` is this PDF instance, ``tdm`` is an instance of
         TrialDataManager holding the events for which to calculate the PDF
         values, ``params_recarray`` is a numpy structured ndarray holding the
-        local parameter names and values, ``eventdata`` is a (N_values,V)-shaped
+        local parameter names and values, ``eventdata`` is a (V,N_values)-shaped
         numpy ndarray holding the event data necessary for this PDF, and
         ``evt_mask`` is an optional (N_values,)-shaped numpy ndarray holding the
         mask for the events, i.e. rows in ``eventdata``, which should be
@@ -1146,7 +1146,7 @@ class MultiDimGridPDF(
             # event.
             def func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
                 if evt_mask is None:
-                    n_values = eventdata.shape[0]
+                    n_values = eventdata.shape[1]
                 else:
                     n_values = np.count_nonzero(evt_mask)
                 return np.ones((n_values,), dtype=np.float64)
@@ -1308,7 +1308,7 @@ class MultiDimGridPDF(
             parameter names and values of the models.
             By definition, this PDF does not depend on any parameters.
         eventdata : instance of numpy ndarray
-            The (N_values,V)-shaped numpy ndarray holding the V data attributes
+            The (V,N_values)-shaped numpy ndarray holding the V data attributes
             for each of the N_values events needed for the evaluation of the
             PDF.
         evt_mask : instance of numpy ndarray | None
@@ -1341,18 +1341,18 @@ class MultiDimGridPDF(
         if isinstance(self._pdf, RegularGridInterpolator):
             with TaskTimer(tl, 'Get pd from RegularGridInterpolator.'):
                 if evt_mask is None:
-                    pd = self._pdf(eventdata)
+                    pd = self._pdf(eventdata.T)
                 else:
-                    pd = self._pdf(eventdata[evt_mask])
+                    pd = self._pdf(eventdata.T[evt_mask])
         else:
             with TaskTimer(tl, 'Get pd from photospline fit.'):
-                V = eventdata.shape[1]
+                V = eventdata.shape[0]
                 if evt_mask is None:
                     pd = self._pdf.evaluate_simple(
-                        [eventdata[:, i] for i in range(0, V)])
+                        [eventdata[i] for i in range(0, V)])
                 else:
                     pd = self._pdf.evaluate_simple(
-                        [eventdata[:, i][evt_mask] for i in range(0, V)])
+                        [eventdata[i][evt_mask] for i in range(0, V)])
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(
@@ -1375,8 +1375,9 @@ class MultiDimGridPDF(
     @staticmethod
     def create_eventdata_for_sigpdf(
             tdm,
-            axes):
-        """Creates the (N_values,V)-shaped eventdata ndarray necessary for
+            axes,
+    ):
+        """Creates the (V,N_values)-shaped eventdata ndarray necessary for
         evaluating the signal PDF.
 
         Parameters
@@ -1402,15 +1403,16 @@ class MultiDimGridPDF(
                 TypeError(
                     f'Unable to determine the type of the data field {name}!')
 
-        eventdata = np.array(eventdata_fields).T
+        eventdata = np.array(eventdata_fields)
 
         return eventdata
 
     @staticmethod
     def create_eventdata_for_bkgpdf(
             tdm,
-            axes):
-        """Creates the (N_values,V)-shaped eventdata ndarray necessary for
+            axes,
+    ):
+        """Creates the (V,N_values)-shaped eventdata ndarray necessary for
         evaluating the background PDF.
 
         Parameters
@@ -1425,7 +1427,7 @@ class MultiDimGridPDF(
         for axis in axes:
             eventdata_fields.append(tdm.get_data(axis.name))
 
-        eventdata = np.array(eventdata_fields).T
+        eventdata = np.array(eventdata_fields)
 
         return eventdata
 
@@ -1433,7 +1435,8 @@ class MultiDimGridPDF(
             self,
             tdm,
             params_recarray=None,
-            tl=None):
+            tl=None,
+    ):
         """Calculates the probability density for the given trial events given
         the specified local parameters.
 

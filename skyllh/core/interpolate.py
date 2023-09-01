@@ -46,7 +46,7 @@ class GridManifoldInterpolationMethod(
                 tdm : instance of TrialDataManager
                     The TrialDataManager instance holding the trial event data.
                 eventdata : instance of numpy ndarray
-                    A two-dimensional (N_events,V)-shaped numpy ndarray holding
+                    A two-dimensional (V,N_events)-shaped numpy ndarray holding
                     the event data, where N_events is the number of trial
                     events, and V the dimensionality of the event data.
                 gridparams_recarray : instance of numpy record ndarray
@@ -118,7 +118,7 @@ class GridManifoldInterpolationMethod(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
         eventdata : numpy ndarray
-            The 2D (N_events,V)-shaped numpy ndarray holding the event data,
+            The 2D (V,N_events)-shaped numpy ndarray holding the event data,
             where N_events is the number of trial events, and V the
             dimensionality of the event data.
         params_recarray : instance of numpy record ndarray
@@ -184,7 +184,7 @@ class NullGridManifoldInterpolationMethod(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
         eventdata : instance of numpy.ndarray
-            The (N_events,V)-shaped numpy ndarray holding the event data,
+            The (V,N_events)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
         params_recarray : instance of numpy.ndarray
@@ -331,7 +331,7 @@ class Linear1DGridManifoldInterpolationMethod(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
         eventdata : instance of numpy ndarray
-            The (N_events,V)-shaped numpy ndarray holding the event data,
+            The (V,N_events)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
         params_recarray : numpy record ndarray
@@ -530,7 +530,7 @@ class Parabola1DGridManifoldInterpolationMethod(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
         eventdata : instance of numpy ndarray
-            The (N_events,V)-shaped numpy ndarray holding the event data,
+            The (V,N_events)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
         params_recarray : numpy record ndarray

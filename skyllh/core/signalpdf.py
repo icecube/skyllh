@@ -655,7 +655,7 @@ class SignalMultiDimGridPDFSet(
         Returns
         -------
         eventdata : instance of numpy ndarray
-            The (N_values,V)-shaped eventdata ndarray.
+            The (V,N_values)-shaped eventdata ndarray.
         """
         if (self._cache_tdm_trial_data_state_id is None) or\
            (self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id):
@@ -711,7 +711,7 @@ class SignalMultiDimGridPDFSet(
         tdm : instance of TrialDataManager
             The instance of TrialDataManager holding the trial event data.
         eventdata : instance of numpy ndarray
-            The (N_values,V)-shaped numpy ndarray holding the event data for
+            The (V,N_values)-shaped numpy ndarray holding the event data for
             the PDF evaluation.
         gridparams_recarray : instance of numpy structured ndarray
             The numpy structured ndarray of length N_sources with the
@@ -976,7 +976,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
         Returns
         -------
         eventdata : instance of numpy ndarray
-            The (N_values,V)-shaped eventdata ndarray.
+            The (V,N_values)-shaped eventdata ndarray.
         """
         if (self._cache_tdm_trial_data_state_id is None) or\
            (self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id):
