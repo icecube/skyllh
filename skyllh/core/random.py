@@ -221,6 +221,7 @@ class RandomChoice(
             from ``self.items``.
         """
         uniform_samples = rss.random.random(size)
+        uniform_samples.sort()
         idxs = np.searchsorted(self._cdf, uniform_samples, side='right')
         random_items = self._items[idxs]
 
