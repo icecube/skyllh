@@ -220,9 +220,17 @@ class RandomChoice(
             The (size,)-shaped numpy.ndarray holding the randomly selected items
             from ``self.items``.
         """
-        uniform_samples = rss.random.random(size)
-        uniform_samples.sort()
-        idxs = np.searchsorted(self._cdf, uniform_samples, side='right')
+        uniform_values = rss.random.random(size)
+
+        # The np.searchsorted function is much faster when the values are
+        # sorted. But we want to keep the randomness of the returned items.
+        idxs_of_sort = np.argsort(uniform_values)
+        sorted_idxs = np.searchsorted(
+            self._cdf,
+            uniform_values[idxs_of_sort],
+            side='right')
+        idxs = np.empty_like(sorted_idxs)
+        idxs[idxs_of_sort] = sorted_idxs
         random_items = self._items[idxs]
 
         return random_items
