@@ -25,6 +25,9 @@ from skyllh.core.py import (
     int_cast,
     get_smallest_numpy_int_type,
 )
+from skyllh.core.random import (
+    RandomChoice,
+)
 from skyllh.core.services import (
     DatasetSignalWeightFactorsService,
 )
@@ -521,6 +524,11 @@ class MCMultiDatasetSignalGenerator(
         self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
 
+        # Create new RandomChoice instance for the signal candidates.
+        self._sig_candidates_random_choice = RandomChoice(
+            items=self._sig_candidates,
+            probabilities=self._sig_candidates['weight'])
+
     def change_shg_mgr(
             self,
             shg_mgr):
@@ -642,11 +650,11 @@ class MCMultiDatasetSignalGenerator(
             'The mean argument must be castable to type of int!')
 
         # Draw n_signal signal candidates according to their weight.
-        sig_events_meta = rss.random.choice(
-            self._sig_candidates,
+        sig_events_meta = self._sig_candidates_random_choice(
+            rss=rss,
             size=n_signal,
-            p=self._sig_candidates['weight']
         )
+
         # Get the list of unique dataset and source hypothesis group indices of
         # the drawn signal events.
         # Note: This code does not assume the same format for each of the
