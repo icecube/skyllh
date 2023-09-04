@@ -126,7 +126,6 @@ class MCDataSamplingBkgGenMethod(
             self,
             get_event_prob_func,
             get_mean_func=None,
-            unique_events=False,
             data_scrambler=None,
             mc_inplace_scrambling=False,
             keep_mc_data_fields=None,
@@ -162,10 +161,6 @@ class MCDataSamplingBkgGenMethod(
             number of background events to generate needs to get specified
             through the ``generate_events`` method. However, if a pre event
             selection method is provided, this argument cannot be ``None``!
-        unique_events : bool
-            Flag if unique events should be drawn from the monte-carlo
-            (``True``), or if events can be drawn several times (``False``).
-            Default is ``False``.
         data_scrambler : instance of DataScrambler | None
             If set to an instance of DataScrambler, the drawn monte-carlo
             background events will get scrambled. This can ensure more
@@ -191,7 +186,6 @@ class MCDataSamplingBkgGenMethod(
 
         self.get_event_prob_func = get_event_prob_func
         self.get_mean_func = get_mean_func
-        self.unique_events = unique_events
         self.data_scrambler = data_scrambler
         self.mc_inplace_scrambling = mc_inplace_scrambling
         self.keep_mc_data_field_names = keep_mc_data_fields
@@ -254,21 +248,6 @@ class MCDataSamplingBkgGenMethod(
                 'The function provided for the get_mean_func property must '
                 'have 3 arguments!')
         self._get_mean_func = func
-
-    @property
-    def unique_events(self):
-        """Flag if unique events should be drawn from the monto-carlo (True),
-        or if the same event can be drawn multiple times from the monte-carlo.
-        """
-        return self._unique_events
-
-    @unique_events.setter
-    def unique_events(self, b):
-        if not isinstance(b, bool):
-            raise TypeError(
-                'The unique_events property must be of type bool! '
-                f'Its current type is {classname(b)}.')
-        self._unique_events = b
 
     @property
     def data_scrambler(self):
