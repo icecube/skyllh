@@ -41,7 +41,7 @@ def line_manifold_func(
 
     p = gridparams_recarray['p']
 
-    n_selected_events = eventdata.shape[0]
+    n_selected_events = eventdata.shape[1]
 
     values = np.repeat(line(m=2, p=p, b=1), n_selected_events)
 
@@ -69,7 +69,7 @@ def param_product_func(
     p1 = gridparams_recarray['p1']
     p2 = gridparams_recarray['p2']
 
-    n_selected_events = eventdata.shape[0]
+    n_selected_events = eventdata.shape[1]
 
     values = np.repeat(product(p1, p2), n_selected_events)
 
@@ -144,7 +144,7 @@ class NullGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
         self.tdm = create_tdm(n_sources=3, n_selected_events=2)
 
         self.eventdata = np.zeros(
-            (self.tdm.n_selected_events, 1), dtype=np.float64)
+            (1, self.tdm.n_selected_events), dtype=np.float64)
 
     def test__call__with_different_source_values(self):
         """Test for when the interpolation parameters have different values for
@@ -249,7 +249,7 @@ class Linear1DGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
         self.tdm = create_tdm(n_sources=3, n_selected_events=2)
 
         self.eventdata = np.zeros(
-            (self.tdm.n_selected_events, 1), dtype=np.float64)
+            (1, self.tdm.n_selected_events), dtype=np.float64)
 
     def test__call__with_different_source_values(self):
         """Test for when the interpolation parameter has different values for
@@ -341,7 +341,7 @@ class Parabola1DGridManifoldInterpolationMethod_TestCase(unittest.TestCase):
         self.tdm = create_tdm(n_sources=3, n_selected_events=2)
 
         self.eventdata = np.zeros(
-            (self.tdm.n_selected_events, 1), dtype=np.float64)
+            (1, self.tdm.n_selected_events), dtype=np.float64)
 
     def test__call__with_different_source_values(self):
         """Test for when the interpolation parameter has different values for
