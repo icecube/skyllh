@@ -18,6 +18,13 @@ v23.2.1
 
 - The iminuit package is an optional tool now.
 
+- Introduce class core.random.RandomChoice to replace numpy.random.choice with a
+  faster implementation avoiding the recalculation of the cumulative
+  distribution function (CDF) when called several times (trials) for the same
+  probabilities (dataset). This new class is used in background and signal
+  event generation from MC, resulting in a great performance increase when
+  generating many trials with many events.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
