@@ -1558,8 +1558,8 @@ class Dataset(
 
     def load_data(
             self,
-            keep_fields=None,
             livetime=None,
+            keep_fields=None,
             dtc_dict=None,
             dtc_except_fields=None,
             efficiency_mode=None,
@@ -1574,16 +1574,16 @@ class Dataset(
 
         Parameters
         ----------
+        livetime : instance of Livetime | float | None
+            If not None, uses this livetime (if float, livetime in days) for the
+            DatasetData instance, otherwise uses the Dataset livetime property
+            value for the DatasetData instance.
         keep_fields : list of str | None
             The list of user-defined data fields that should get loaded and kept
             in addition to the analysis required data fields.
-        livetime : float | None
-            If not None, uses this livetime (in days) for the DatasetData
-            instance, otherwise uses the Dataset livetime property value for
-            the DatasetData instance.
         dtc_dict : dict | None
-            This dictionary defines how data fields of specific
-            data types should get converted into other data types.
+            This dictionary defines how data fields of specific data types (key)
+            should get converted into other data types (value).
             This can be used to use less memory. If set to None, no data
             convertion is performed.
         dtc_except_fields : str | sequence of str | None
@@ -1859,7 +1859,8 @@ class Dataset(
             self,
             livetime=None,
             keep_fields=None,
-            compress=False,
+            dtc_dict=None,
+            dtc_except_fields=None,
             efficiency_mode=None,
             tl=None,
     ):
@@ -1879,13 +1880,14 @@ class Dataset(
         keep_fields : sequence of str | None
             The list of additional data fields that should get kept.
             By default only the required data fields are kept.
-        compress : bool
-            Flag if the float64 data fields of the data should get converted,
-            i.e. compressed, into float32 data fields, in order to save main
-            memory.
-            The only field, which will not get converted is the 'mcweight'
-            field, in order to ensure reliable calculations.
-            Default is False.
+        dtc_dict : dict | None
+            This dictionary defines how data fields of specific data types (key)
+            should get converted into other data types (value).
+            This can be used to use less memory. If set to None, no data
+            convertion is performed.
+        dtc_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
         efficiency_mode : str | None
             The efficiency mode the data should get loaded with. Possible values
             are:
@@ -1917,12 +1919,6 @@ class Dataset(
             raise TypeError(
                 'The keep_fields argument must be None, or a sequence of str!')
         keep_fields = list(keep_fields)
-
-        dtc_dict = None
-        dtc_except_fields = None
-        if compress:
-            dtc_dict = {np.dtype(np.float64): np.dtype(np.float32)}
-            dtc_except_fields = ['mcweight']
 
         data = self.load_data(
             keep_fields=keep_fields,

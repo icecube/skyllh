@@ -190,7 +190,11 @@ class I3Dataset(
 
         return file_list
 
-    def load_grl(self, efficiency_mode=None, tl=None):
+    def load_grl(
+            self,
+            efficiency_mode=None,
+            tl=None,
+    ):
         """Loads the good-run-list and returns a DataFieldRecordArray instance
         which should contain the following data fields:
 
@@ -244,22 +248,28 @@ class I3Dataset(
         return grl_data
 
     def load_data(
-            self, keep_fields=None, livetime=None, dtc_dict=None,
-            dtc_except_fields=None, efficiency_mode=None, tl=None):
+            self,
+            livetime=None,
+            keep_fields=None,
+            dtc_dict=None,
+            dtc_except_fields=None,
+            efficiency_mode=None,
+            tl=None,
+    ):
         """Loads the data, which is described by the dataset. If a good-run-list
         (GRL) is provided for this dataset, only experimental data will be
         selected which matches the GRL.
 
         Parameters
         ----------
+        livetime : instance of Livetime | float | None
+            If not None, uses this livetime (if float livetime in days) as
+            livetime for the DatasetData instance, otherwise uses the live time
+            from the Dataset instance or, if available, the livetime from the
+            good-run-list (GRL).
         keep_fields : list of str | None
             The list of user-defined data fields that should get loaded and kept
             in addition to the analysis required data fields.
-        livetime : float | None
-            If not None, uses this livetime (in days) as livetime for the
-            DatasetData instance, otherwise uses the live time from the Dataset
-            instance or, if available, the livetime from the good-run-list
-            (GRL).
         dtc_dict : dict | None
             This dictionary defines how data fields of specific
             data types should get converted into other data types.
@@ -296,8 +306,8 @@ class I3Dataset(
         # Load the dataset files first. This will ensure the dataset is
         # downloaded if necessary.
         data_ = super().load_data(
-            keep_fields=keep_fields,
             livetime=livetime,
+            keep_fields=keep_fields,
             dtc_dict=dtc_dict,
             dtc_except_fields=dtc_except_fields,
             efficiency_mode=efficiency_mode,
@@ -321,7 +331,7 @@ class I3Dataset(
     def prepare_data(  # noqa: C901
             self,
             data,
-            tl=None
+            tl=None,
     ):
         """Prepares the data for IceCube by pre-calculating the following
         experimental data fields:
