@@ -153,7 +153,7 @@ class RandomChoice(
             raise ValueError(
                 'The items must be a 1-dimensional numpy.ndarray!')
 
-    def _assert_probabilitie(
+    def _assert_probabilities(
             self,
             p,
             n_items,
