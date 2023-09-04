@@ -105,7 +105,7 @@ class RandomChoice(
         self._assert_items(items)
         self._items = items
 
-        self._assert_probabilitie(probabilities, self._items.size)
+        self._assert_probabilities(probabilities, self._items.size)
         self._probabilities = probabilities
 
         # Create the cumulative distribution function (CDF).
