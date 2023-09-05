@@ -329,7 +329,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             spline = self._get_spline_for_param_values(gridparams_recarray[0])
 
             eventdata = np.take(eventdata, evt_idxs, axis=1)
-            values = spline(eventdata)
+            values = spline(eventdata.T)
 
             return values
 
@@ -345,7 +345,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
 
             n = src_eventdata.shape[1]
             sl = slice(v_start, v_start+n)
-            values[sl] = spline(src_eventdata)
+            values[sl] = spline(src_eventdata.T)
 
             v_start += n
 

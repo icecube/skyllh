@@ -244,6 +244,12 @@ def create_analysis(
             f"Minimizer implementation `{minimizer_impl}` is not supported "
             "Please use `LBFGS` or `minuit`.")
 
+    dtc_dict = None
+    dtc_except_fields = None
+    if compress_data is True:
+        dtc_dict = {np.dtype(np.float64): np.dtype(np.float32)}
+        dtc_except_fields = ['mcweight']
+
     # Define the flux model.
     fluxmodel = SteadyPointlikeFFM(
         Phi0=refplflux_Phi0,
@@ -342,7 +348,8 @@ def create_analysis(
     for (ds_idx, ds) in enumerate(datasets):
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
-            compress=compress_data,
+            dtc_dict=dtc_dict,
+            dtc_except_fields=dtc_except_fields,
             tl=tl)
 
         sin_dec_binning = ds.get_binning_definition('sin_dec')
