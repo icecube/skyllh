@@ -34,7 +34,7 @@ class RandomStateService(
 
         self._seed = int_cast(
             seed,
-            'The seed argument must be None, or castable to type int!',
+            'The seed argument must be None, or cast-able to type int!',
             allow_None=True)
         self.random = np.random.RandomState(self._seed)
 
@@ -70,7 +70,7 @@ class RandomStateService(
         """
         self._seed = int_cast(
             seed,
-            'The seed argument must be None or castable to type int!',
+            'The seed argument must be None or cast-able to type int!',
             allow_None=True)
         self.random.seed(self._seed)
 
@@ -108,8 +108,9 @@ class RandomChoice(
         self._assert_probabilities(probabilities, self._items.size)
         self._probabilities = probabilities
 
-        # Create the cumulative distribution function (CDF).
-        self._cdf = self._probabilities.cumsum()
+        # Create the cumulative distribution function (CDF). We use float64 for
+        # highest accuracy.
+        self._cdf = np.cumsum(self._probabilities, dtype=np.float64)
         self._cdf /= self._cdf[-1]
 
     @property
@@ -121,7 +122,7 @@ class RandomChoice(
 
     @property
     def probabilities(self):
-        """(read-only) The (N,)-shaped numpy.ndarray holding the propability
+        """(read-only) The (N,)-shaped numpy.ndarray holding the probability
         for each item.
         """
         return self._probabilities
