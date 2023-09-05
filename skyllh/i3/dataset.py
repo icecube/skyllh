@@ -271,8 +271,8 @@ class I3Dataset(
             The list of user-defined data fields that should get loaded and kept
             in addition to the analysis required data fields.
         dtc_dict : dict | None
-            This dictionary defines how data fields of specific
-            data types should get converted into other data types.
+            This dictionary defines how data fields of specific data types (key)
+            should get converted into other data types (value).
             This can be used to use less memory. If set to None, no data
             convertion is performed.
         dtc_except_fields : str | sequence of str | None
