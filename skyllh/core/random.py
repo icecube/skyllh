@@ -108,8 +108,8 @@ class RandomChoice(
         self._assert_probabilities(probabilities, self._items.size)
         self._probabilities = probabilities
 
-        # Create the cumulative distribution function (CDF). We use float64 for
-        # highest accuracy.
+        # Create the cumulative distribution function (CDF). We use float64 to
+        # avoid a possible overflow when doing the summation.
         self._cdf = np.cumsum(self._probabilities, dtype=np.float64)
         self._cdf /= self._cdf[-1]
 
