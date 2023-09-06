@@ -1205,7 +1205,8 @@ class MultiDimGridPDF(
 
     def _initialize_cache(
             self,
-            tdm):
+            tdm,
+    ):
         """Initializes the cache variables.
 
         Parameters
@@ -1214,15 +1215,17 @@ class MultiDimGridPDF(
             The instance of TrialDataManager that hold the trial data events.
         """
         self._cache_tdm_trial_data_state_id = None
-        self._cache_pd = np.repeat(
-            np.array([np.nan], dtype=np.float64),
-            tdm.get_n_values())
+        self._cache_pd = np.full(
+            (tdm.get_n_values(),),
+            np.nan,
+            dtype=np.float64)
 
     def _store_pd_values_to_cache(
             self,
             tdm,
             pd,
-            evt_mask=None):
+            evt_mask=None,
+    ):
         """Stores the given pd values into the pd array cache.
 
         Parameters
@@ -1268,21 +1271,20 @@ class MultiDimGridPDF(
             Otherwise the (N,)-shaped numpy ndarray holding the pd values where
             evt_mask evaluates to True.
         """
-        if self._cache_tdm_trial_data_state_id is None:
+        if self._cache_tdm_trial_data_state_id is None or\
+           self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id:
             self._initialize_cache(tdm=tdm)
             return None
 
-        if self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id:
-            return None
-
         if evt_mask is None:
-            if np.any(np.isnan(self._cache_pd)):
-                return None
             pd = self._cache_pd
         else:
-            if np.any(np.isnan(self._cache_pd[evt_mask])):
-                return None
             pd = self._cache_pd[evt_mask]
+            # If this PDF is evaluated for different sources, i.e. a subset of
+            # pd values, those values could still be NaN and still need to be
+            # calculated.
+            if np.any(np.isnan(pd)):
+                return None
 
         return pd
 
@@ -1292,10 +1294,11 @@ class MultiDimGridPDF(
             params_recarray,
             eventdata,
             evt_mask=None,
-            tl=None):
+            tl=None,
+    ):
         """Calculates the probability density value for the given ``eventdata``.
 
-        This method is usefull when PDF values for the same trial data need to
+        This method is useful when PDF values for the same trial data need to
         be evaluated.
 
         Parameters
@@ -1327,7 +1330,7 @@ class MultiDimGridPDF(
             value for each model and event. The length of this array depends on
             the ``evt_mask`` argument. Only values are returned where
             ``evt_mask`` evaluates to ``True``.
-            If ``evt_mask`` is set to ``Ǹone``, the length is N_values.
+            If ``evt_mask`` is set to ``None``, the length is N_values.
         """
         if self._cache_pd_values:
             pd = self._get_cached_pd_values(
