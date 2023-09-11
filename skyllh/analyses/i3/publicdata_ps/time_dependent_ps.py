@@ -30,13 +30,14 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
+from skyllh.core.background_generator import (
+    DatasetBackgroundGenerator,
+)
 from skyllh.core.backgroundpdf import (
     BackgroundTimePDF,
 )
 from skyllh.core.config import (
-    CFG,
-    set_enable_tracing,
-    set_n_cpu,
+    Config,
 )
 from skyllh.core.debugging import (
     get_logger,
@@ -110,7 +111,8 @@ from skyllh.core.trialdata import (
     TrialDataManager,
 )
 from skyllh.core.utils.analysis import (
-    pointlikesource_to_data_field_array
+    create_trial_data_file,
+    pointlikesource_to_data_field_array,
 )
 
 from skyllh.datasets.i3 import (
@@ -122,6 +124,9 @@ from skyllh.i3.background_generation import (
 )
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
+)
+from skyllh.i3.config import (
+    add_icecube_specific_analysis_required_data_fields,
 )
 from skyllh.i3.livetime import (
     I3Livetime,
@@ -145,6 +150,7 @@ TXS_0506_PLUS056_ALERT_TIME = 58018.8711856
 
 
 def create_signal_time_pdf(
+        cfg,
         grl,
         gauss=None,
         box=None,
@@ -153,6 +159,8 @@ def create_signal_time_pdf(
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     grl : instance of numpy structured ndarray
         The structured numpy ndarray holding the good-run-list data.
     gauss : dict | None
@@ -175,13 +183,16 @@ def create_signal_time_pdf(
     if gauss is not None:
         time_flux_profile = GaussianTimeFluxProfile(
             t0=gauss['mu'],
-            sigma_t=gauss['sigma'])
+            sigma_t=gauss['sigma'],
+            cfg=cfg)
     elif box is not None:
         time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(
             start=box['start'],
-            stop=box['stop'])
+            stop=box['stop'],
+            cfg=cfg)
 
     pdf = SignalTimePDF(
+        cfg=cfg,
         livetime=livetime,
         time_flux_profile=time_flux_profile,
     )
@@ -198,14 +209,18 @@ def change_signal_time_pdf_of_llhratio_function(
 
     Parameters
     ----------
+    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+        The analysis instance.
     gauss : dict | None
         None or dictionary with {"mu": float, "sigma": float}.
     box : dict | None
         None or dictionary with {"start": float, "stop": float}.
     """
+    cfg = ana.cfg
     grl = ana.data_list[0].grl
 
     time_sigpdf = create_signal_time_pdf(
+        cfg=cfg,
         grl=grl,
         gauss=gauss,
         box=box)
@@ -231,9 +246,13 @@ def get_energy_spatial_signal_over_background(
 
     Parameters
     ----------
+    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+        The analysis instance.
     fitparam_values : instance of ndarray
         The (N_fitparams,)-shaped numpy ndarray holding the values of the global
         fit parameters, e.g. ns and gamma.
+    tl : instance of TimeLord | None
+        The optional instance of TimeLord for measuring timing behavior.
 
     Returns
     -------
@@ -723,7 +742,7 @@ def do_trials_with_em(
     result_list = parallelize(
         func=do_trial_with_em,
         args_list=args_list,
-        ncpu=get_ncpu(ncpu),
+        ncpu=get_ncpu(cfg=ana.cfg, local_ncpu=ncpu),
         rss=rss,
         tl=tl,
         ppbar=ppbar,
@@ -739,6 +758,7 @@ def do_trials_with_em(
 
 
 def create_analysis(  # noqa: C901
+        cfg,
         datasets,
         source,
         box=None,
@@ -764,11 +784,14 @@ def create_analysis(  # noqa: C901
         construct_sig_generator=True,
         tl=None,
         ppbar=None,
-        logger_name=None):
+        logger_name=None,
+):
     """Creates the Analysis instance for this particular analysis.
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     datasets : list of Dataset instances
         The list of Dataset instances, which should be used in the
         analysis.
@@ -846,6 +869,11 @@ def create_analysis(  # noqa: C901
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
         The Analysis instance for this analysis.
     """
+    add_icecube_specific_analysis_required_data_fields(cfg)
+
+    # Remove run number from the dataset data field requirements.
+    cfg['datafields'].pop('run', None)
+
     if logger_name is None:
         logger_name = __name__
     logger = get_logger(logger_name)
@@ -865,31 +893,43 @@ def create_analysis(  # noqa: C901
 
     # Create the minimizer instance.
     if minimizer_impl == 'LBFGS':
-        minimizer = Minimizer(LBFGSMinimizerImpl())
+        minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg))
     elif minimizer_impl == 'minuit':
-        minimizer = Minimizer(IMinuitMinimizerImpl(ftol=1e-8))
+        minimizer = Minimizer(IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8))
     else:
         raise NameError(
             f"Minimizer implementation `{minimizer_impl}` is not supported "
             "Please use `LBFGS` or `minuit`.")
+
+    dtc_dict = None
+    dtc_except_fields = None
+    if compress_data is True:
+        dtc_dict = {np.dtype(np.float64): np.dtype(np.float32)}
+        dtc_except_fields = ['mcweight']
 
     # Define the flux model.
     fluxmodel = SteadyPointlikeFFM(
         Phi0=refplflux_Phi0,
         energy_profile=PowerLawEnergyFluxProfile(
             E0=refplflux_E0,
-            gamma=refplflux_gamma))
+            gamma=refplflux_gamma,
+            cfg=cfg,
+        ),
+        cfg=cfg,
+    )
 
     # Define the time flux profile of the source.
     time_flux_profile = None
     if box is not None:
         time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(
             start=box['start'],
-            stop=box['stop'])
+            stop=box['stop'],
+            cfg=cfg)
     elif gauss is not None:
         time_flux_profile = GaussianTimeFluxProfile(
             t0=gauss['mu'],
-            sigma_t=gauss['sigma'])
+            sigma_t=gauss['sigma'],
+            cfg=cfg)
 
     # Define the fit parameter ns.
     param_ns = Parameter(
@@ -912,10 +952,8 @@ def create_analysis(  # noqa: C901
     gamma_grid = param_gamma.as_linear_grid(delta=0.1)
     detsigyield_builder =\
         PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
+            cfg=cfg,
             param_grid=gamma_grid)
-
-    # Define the signal generation method.
-    sig_gen_method = None
 
     # Create a source hypothesis group manager with a single source hypothesis
     # group for the single source.
@@ -924,7 +962,8 @@ def create_analysis(  # noqa: C901
             sources=source,
             fluxmodel=fluxmodel,
             detsigyield_builders=detsigyield_builder,
-            sig_gen_method=sig_gen_method))
+        ))
+    logger.info(str(shg_mgr))
 
     # Define a detector model for the ns fit parameter.
     detector_model = DetectorModel('IceCube')
@@ -935,7 +974,6 @@ def create_analysis(  # noqa: C901
         models=[detector_model, source])
     pmm.map_param(param_ns, models=detector_model)
     pmm.map_param(param_gamma, models=source)
-
     logger.info(str(pmm))
 
     # Define the test statistic.
@@ -943,6 +981,7 @@ def create_analysis(  # noqa: C901
 
     # Create the Analysis instance.
     ana = Analysis(
+        cfg=cfg,
         shg_mgr=shg_mgr,
         pmm=pmm,
         test_statistic=test_statistic,
@@ -967,13 +1006,12 @@ def create_analysis(  # noqa: C901
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
-    data_list = []
     for (ds_idx, ds) in enumerate(datasets):
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
-            compress=compress_data,
+            dtc_dict=dtc_dict,
+            dtc_except_fields=dtc_except_fields,
             tl=tl)
-        data_list.append(data)
 
         # Some runs might overlap slightly. So we need to clip those runs.
         clip_grl_start_times(grl_data=data.grl)
@@ -986,16 +1024,20 @@ def create_analysis(  # noqa: C901
 
         # Create the spatial PDF ratio instance for this dataset.
         spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
+            cfg=cfg,
             dec_range=np.arcsin(sin_dec_binning.range))
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(
+            cfg=cfg,
             data_exp=data.exp,
             sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(
+            cfg=cfg,
             sig_pdf=spatial_sigpdf,
             bkg_pdf=spatial_bkgpdf)
 
         # Create the energy PDF ratio instance for this dataset.
         energy_sigpdfset = PDSignalEnergyPDFSet(
+            cfg=cfg,
             ds=ds,
             src_dec=source.dec,
             fluxmodel=fluxmodel,
@@ -1004,6 +1046,7 @@ def create_analysis(  # noqa: C901
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
         energy_bkgpdf = PDDataBackgroundI3EnergyPDF(
+            cfg=cfg,
             data_exp=data.exp,
             logE_binning=log_energy_binning,
             sinDec_binning=sin_dec_binning,
@@ -1011,6 +1054,7 @@ def create_analysis(  # noqa: C901
             kde_smoothing=kde_smoothing)
 
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
+            cfg=cfg,
             sig_pdf_set=energy_sigpdfset,
             bkg_pdf=energy_bkgpdf,
             cap_ratio=cap_ratio)
@@ -1020,15 +1064,19 @@ def create_analysis(  # noqa: C901
         # Create the time PDF ratio instance for this dataset.
         if (gauss is not None) or (box is not None):
             time_bkgpdf = BackgroundTimePDF(
+                cfg=cfg,
                 livetime=livetime,
                 time_flux_profile=BoxTimeFluxProfile.from_start_and_stop_time(
                     start=livetime.time_start,
-                    stop=livetime.time_stop))
+                    stop=livetime.time_stop,
+                    cfg=cfg))
             time_sigpdf = create_signal_time_pdf(
+                cfg=cfg,
                 grl=data.grl,
                 gauss=gauss,
                 box=box)
             time_pdfratio = SigOverBkgPDFRatio(
+                cfg=cfg,
                 sig_pdf=time_sigpdf,
                 bkg_pdf=time_bkgpdf,
                 same_axes=False,
@@ -1047,12 +1095,27 @@ def create_analysis(  # noqa: C901
             dt='dec',
             is_srcevt_data=True)
 
+        data_scrambler = DataScrambler(
+            I3SeasonalVariationTimeScramblingMethod(
+                data=data))
+        bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(
+            cfg=cfg,
+            data_scrambler=data_scrambler)
+
+        bkg_generator = DatasetBackgroundGenerator(
+            cfg=cfg,
+            dataset=ds,
+            data=data,
+            bkg_gen_method=bkg_gen_method,
+        )
+
         energy_cut_spline = create_energy_cut_spline(
             ds,
             data.exp,
             spl_smooth[ds_idx])
 
         sig_generator = TimeDependentPDDatasetSignalGenerator(
+            cfg=cfg,
             shg_mgr=shg_mgr,
             ds=ds,
             ds_idx=ds_idx,
@@ -1068,6 +1131,7 @@ def create_analysis(  # noqa: C901
             pdfratio=pdfratio,
             tdm=tdm,
             event_selection_method=event_selection_method,
+            bkg_generator=bkg_generator,
             sig_generator=sig_generator)
 
         pbar.increment()
@@ -1079,16 +1143,6 @@ def create_analysis(  # noqa: C901
     ana.llhratio = ana.construct_llhratio(
         minimizer=minimizer,
         ppbar=ppbar)
-
-    # Define the data scrambler with its data scrambling method, which is used
-    # for background generation.
-
-    # FIXME: Support multiple datasets for the DataScrambler.
-    data_scrambler = DataScrambler(
-        I3SeasonalVariationTimeScramblingMethod(
-            data_list[0]))
-    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
-    ana.bkg_gen_method = bkg_gen_method
 
     if construct_bkg_generator is True:
         ana.construct_background_generator()
@@ -1130,14 +1184,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    CFG.from_yaml(args.config)
+    cfg = Config.from_yaml(args.config)
+    cfg.set_enable_tracing(args.enable_tracing)
+    cfg.set_ncpu(args.n_cpu)
 
     setup_logging(
+        cfg=cfg,
         script_logger_name=__name__,
         debug_pathfilename=args.debug_logfile)
-
-    set_enable_tracing(args.enable_tracing)
-    set_n_cpu(args.n_cpu)
 
     sample_seasons = [
         ('PublicData_10y_ps', 'IC86_II-VII'),
@@ -1147,7 +1201,8 @@ if __name__ == '__main__':
     for (sample, season) in sample_seasons:
         # Get the dataset from the correct dataset collection.
         dsc = data_samples[sample].create_dataset_collection(
-            args.data_basepath)
+            cfg=cfg,
+            base_path=args.data_basepath)
         datasets.append(dsc.get_dataset(season))
 
     # Define a random state service.
@@ -1155,6 +1210,7 @@ if __name__ == '__main__':
 
     # Define the point source.
     source = PointLikeSource(
+        name='My Point-Like-Source',
         ra=np.deg2rad(args.ra),
         dec=np.deg2rad(args.dec))
     print(f'source: {source}')
@@ -1163,6 +1219,7 @@ if __name__ == '__main__':
 
     with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
+            cfg=cfg,
             datasets=datasets,
             source=source,
             gamma_seed=args.gamma_seed,
@@ -1177,4 +1234,17 @@ if __name__ == '__main__':
     print(f'gamma_fit = {param_dict["gamma"]:g}')
     print(f'minimizer status = {status}')
 
+    print(tl)
+
+    tl = TimeLord()
+    rss = RandomStateService(seed=1)
+    (_, _, _, trials) = create_trial_data_file(
+        ana=ana,
+        rss=rss,
+        n_trials=10,
+        mean_n_sig=0,
+        pathfilename=None,
+        ncpu=1,
+        tl=tl)
+    print(f'trials: {trials}')
     print(tl)

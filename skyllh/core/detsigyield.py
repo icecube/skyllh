@@ -2,10 +2,9 @@
 
 import abc
 
-from skyllh.core.py import (
-    classname,
-    issequence,
-    issequenceof,
+from skyllh.core.config import (
+    Config,
+    HasConfig,
 )
 from skyllh.core.dataset import (
     Dataset,
@@ -19,6 +18,11 @@ from skyllh.core.livetime import (
 )
 from skyllh.core.progressbar import (
     ProgressBar,
+)
+from skyllh.core.py import (
+    classname,
+    issequence,
+    issequenceof,
 )
 from skyllh.core.types import (
     SourceHypoGroup_t,
@@ -209,7 +213,7 @@ class DetSigYield(
 
 
 class DetSigYieldBuilder(
-        object,
+        HasConfig,
         metaclass=abc.ABCMeta,
 ):
     """Abstract base class for a builder of a detector signal yield. Via the
@@ -263,12 +267,15 @@ class DetSigYieldBuilder(
     def get_detsigyield_construction_factory(self):
         """This method is supposed to return a callable with the call-signature
 
+        .. code::
+
             __call__(
                 dataset,
                 data,
                 shgs,
                 ppbar,
             )
+
 
         to construct several DetSigYield instances, one for each provided
         source hypo group (i.e. sources and fluxmodel).
@@ -323,9 +330,23 @@ class NullDetSigYieldBuilder(
     """
     def __init__(
             self,
+            cfg=None,
             **kwargs,
     ):
+        """Creates a new instance of NullDetSigYieldBuilder.
+
+        Parameters
+        ----------
+        cfg : instance of Config | None
+            The instance of Config holding the local configuration. Since this
+            detector signal yield builder does nothing, this argument is
+            optional. If not provided the default configuration is used.
+        """
+        if cfg is None:
+            cfg = Config()
+
         super().__init__(
+            cfg=cfg,
             **kwargs)
 
     def construct_detsigyield(

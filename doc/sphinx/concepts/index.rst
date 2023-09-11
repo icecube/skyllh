@@ -7,8 +7,10 @@ This section covers a few concepts SkyLLH is persuing.
 
 .. toctree::
     :maxdepth: 1
-    :caption: SkyLLH concepts
 
+    config
+    dataset
+    datafields
     source_definition
     flux_definition
     parameters

@@ -16,28 +16,35 @@ from skyllh.core.parameters import (
     ParameterGrid,
     ParameterGridSet,
 )
+from skyllh.core.pdf import (
+    PDF,
+    PDFSet,
+    IsSignalPDF,
+)
 from skyllh.core.py import (
     classname,
 )
 from skyllh.core.smoothing import (
     SmoothingFilter,
 )
-from skyllh.core.pdf import (
-    PDFSet,
-    IsSignalPDF,
-)
 from skyllh.i3.pdf import (
     I3EnergyPDF,
 )
 
 
-class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
+class SignalI3EnergyPDFSet(
+        PDFSet,
+        IsSignalPDF,
+        PDF,
+        IsParallelizable,
+):
     """This is the signal energy PDF for IceCube. It creates a set of
     I3EnergyPDF objects for a discrete set of energy signal parameters. Energy
     signal parameters influence the source's flux model.
     """
     def __init__(
             self,
+            cfg,
             data_mc,
             log10_energy_binning,
             sin_dec_binning,
@@ -46,7 +53,8 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             smoothing_filter=None,
             ncpu=None,
             ppbar=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new IceCube energy signal PDF for a given flux model and
         a set of parameter grids for the flux model.
         It creates a set of I3EnergyPDF objects for each signal parameter value
@@ -55,6 +63,8 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
 
         Parameters
         ----------
+        cfg : instance of Config
+            The instance of Config holding the local configuration.
         data_mc : instance of DataFieldRecordArray
             The instance of DataFieldRecordArray holding the monte-carlo data.
             The following data fields must exist:
@@ -108,6 +118,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         param_grid_set.add_extra_lower_and_upper_bin()
 
         super().__init__(
+            cfg=cfg,
             param_grid_set=param_grid_set,
             ncpu=ncpu,
             **kwargs)
@@ -136,6 +147,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         # Create I3EnergyPDF objects for all permutations of the parameter
         # grid values.
         def create_I3EnergyPDF(
+                cfg,
                 data_log10_energy,
                 data_sin_dec,
                 data_mcweight,
@@ -145,12 +157,15 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
                 smoothing_filter,
                 fluxmodel,
                 flux_unit_conv_factor,
-                gridparams):
+                gridparams,
+        ):
             """Creates an I3EnergyPDF object for the given flux model and flux
             parameters.
 
             Parameters
             ----------
+            cfg : instance of Config
+                The instance of Config holding the local configuration.
             data_log10_energy : 1d ndarray
                 The base-10 logarithm of the reconstructed energy value of the
                 data events.
@@ -192,6 +207,7 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
             data_physicsweight *= flux_unit_conv_factor
 
             i3energypdf = I3EnergyPDF(
+                cfg=cfg,
                 pmm=None,
                 data_log10_energy=data_log10_energy,
                 data_sin_dec=data_sin_dec,
@@ -209,11 +225,12 @@ class SignalI3EnergyPDFSet(PDFSet, IsSignalPDF, IsParallelizable):
         data_true_energy = data_mc['true_energy']
 
         flux_unit_conv_factor =\
-            fluxmodel.get_conversion_factor_to_internal_flux_unit()
+            fluxmodel.to_internal_flux_unit()
 
         args_list = [
             (
-                (data_log10_energy,
+                (cfg,
+                 data_log10_energy,
                  data_sin_dec,
                  data_mcweight,
                  data_true_energy,

@@ -1,21 +1,35 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from logging.handlers import (
-    QueueHandler,
-)
-import multiprocessing as mp
-import numpy as np
 import queue
 import time
 
-from skyllh.core.config import CFG
-from skyllh.core.progressbar import ProgressBar
-from skyllh.core.random import RandomStateService
-from skyllh.core.timing import TimeLord
+import multiprocessing as mp
+import numpy as np
+
+from logging.handlers import (
+    QueueHandler,
+)
+
+from skyllh.core.config import (
+    HasConfig,
+)
+from skyllh.core.progressbar import (
+    ProgressBar,
+)
+from skyllh.core.py import (
+    classname,
+)
+from skyllh.core.random import (
+    RandomStateService,
+)
+from skyllh.core.timing import (
+    TimeLord,
+)
 
 
 def get_ncpu(
+        cfg,
         local_ncpu,
 ):
     """Determines the number of CPUs to use for functions that support
@@ -23,6 +37,8 @@ def get_ncpu(
 
     Parameters
     ----------
+    cfg : instance of Config
+        The instance of Config holding the local configuration.
     local_ncpu : int | None
         The local setting of the number of CPUs to use.
 
@@ -36,7 +52,7 @@ def get_ncpu(
     """
     ncpu = local_ncpu
     if ncpu is None:
-        ncpu = CFG['multiproc']['ncpu']
+        ncpu = cfg['multiproc']['ncpu']
     if ncpu is None:
         ncpu = 1
 
@@ -380,6 +396,7 @@ class IsParallelizable(
     this class indicate, that they can make use of multi-processing on several
     CPUs at the same time.
     """
+
     def __init__(
             self,
             *args,
@@ -387,6 +404,11 @@ class IsParallelizable(
             **kwargs,
     ):
         super().__init__(*args, **kwargs)
+
+        if not isinstance(self, HasConfig):
+            raise TypeError(
+                f'The class "{classname(self)}" is not derived from '
+                'skyllh.core.config.HasConfig!')
 
         self.ncpu = ncpu
 
@@ -396,7 +418,7 @@ class IsParallelizable(
         utility function with this property as argument. Hence, if this property
         is set to None, the global NCPU setting will take precedence.
         """
-        return get_ncpu(self._ncpu)
+        return get_ncpu(self._cfg, self._ncpu)
 
     @ncpu.setter
     def ncpu(self, n):

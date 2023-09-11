@@ -1,5 +1,30 @@
 This file contains a log-book for major changes between releases.
 
+v23.2.1
+=======
+- Add access operator support for core.dataset.DatasetCollection.
+
+    - Individual datasets of a dataset collection (``dsc``) can now be accessed
+      via ``dsc[name]`` or ``dsc[name1, name2, ...]``.
+
+- Allow the definition of an origin of a dataset via the
+  core.dataset.DatasetOrigin class and download the dataset automatically from
+  the origin to the local host. The following transfer methods are provided:
+
+    - wget
+    - rsync
+
+  Unit tests for these transfer methods are added.
+
+- The iminuit package is an optional tool now.
+
+- Introduce class core.random.RandomChoice to replace numpy.random.choice with a
+  faster implementation avoiding the recalculation of the cumulative
+  distribution function (CDF) when called several times (trials) for the same
+  probabilities (dataset). This new class is used in background and signal
+  event generation from MC, resulting in a great performance increase when
+  generating many trials with many events.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
@@ -17,6 +42,33 @@ v23.2.0
       source and event indices mapping selected events to the sources.
 
 - Simplification of the class hierarchy & source code structure.
+
+    - The source_model and flux_model modules of the skyllh.physics module have
+      been moved to the skyllh.core module.
+
+- Local configuration for an analysis.
+
+    - The global configuration dictionary skyllh.core.config.CFG has been
+      replaced by a local skyllh.core.config.Config instance, which is passed to
+      an Analysis instance and all other class instances that need access to the
+      configuration. Classes derived from skyllh.core.config.HasConfig provide
+      the cfg property and require the cfg argument in their constructor.
+
+- Data field specification via stages for data file loading
+
+    - Which data fields of a data file are required by the data preparation or
+      the analysis is now specified via data field stages through the
+      configuration. Data field stages are defined through class members of the
+      skyllh.core.datafields.DataFieldStages class.
+
+- Split the background generator into DatasetBackgroundGenerator and
+  MultiDatasetBackgroundGenerator to allow different background generators for
+  different datasets / detectors.
+
+  - This removes the background generation method argument of the Analysis
+    class. The BackgroundGenerationMethod instance is now passed to the
+    DatasetBackgroundGenerator constructor.
+
 - New generic flux model function concept.
 - New generic PDF class for time PDFs.
 - Support for Parquet data files via optional pyarrow Python package.
@@ -37,6 +89,8 @@ v23.2.0
         Improved calculation of right-ascention difference. Thus, speed-up in
         trial generation when using this event selection method.
 
+- core.scrambling.DataScrambler.scramble_data method also takes Dataset instance
+  as argument
 - Usage of the tqdm Python package for progress bars.
 - More unit tests.
 - Improved documentation.

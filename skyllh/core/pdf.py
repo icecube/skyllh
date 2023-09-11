@@ -10,6 +10,9 @@ from skyllh.core import (
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.display import (
     INDENTATION_WIDTH,
 )
@@ -27,7 +30,6 @@ from skyllh.core.py import (
 )
 from skyllh.core.debugging import (
     get_logger,
-    is_tracing_enabled,
 )
 from skyllh.core.flux_model import (
     TimeFluxProfile,
@@ -221,7 +223,9 @@ class PDFAxes(NamedObjectCollection):
         return True
 
 
-class IsBackgroundPDF(object):
+class IsBackgroundPDF(
+        object,
+):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a background PDF. This is useful for type checking.
     """
@@ -230,6 +234,10 @@ class IsBackgroundPDF(object):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsBackgroundPDF class.
         """
+        if not isinstance(self, PDF):
+            raise TypeError(
+                f'The class "{classname(self)}" is not derived from PDF!')
+
         super().__init__(*args, **kwargs)
 
     def __mul__(self, other):
@@ -245,10 +253,12 @@ class IsBackgroundPDF(object):
             raise TypeError(
                 'The other PDF must be an instance of IsBackgroundPDF!')
 
-        return BackgroundPDFProduct(self, other)
+        return BackgroundPDFProduct(self, other, cfg=self.cfg)
 
 
-class IsSignalPDF(object):
+class IsSignalPDF(
+        object,
+):
     """This is a classifier class that can be used by other classes to indicate
     that the class describes a signal PDF.
     """
@@ -257,6 +267,10 @@ class IsSignalPDF(object):
         """Constructor method. Gets called when the an instance of a class is
         created which derives from this IsSignalPDF class.
         """
+        if not isinstance(self, PDF):
+            raise TypeError(
+                f'The class "{classname(self)}" is not derived from PDF!')
+
         super().__init__(*args, **kwargs)
 
     def __mul__(self, other):
@@ -272,12 +286,13 @@ class IsSignalPDF(object):
             raise TypeError(
                 'The other PDF must be an instance of IsSignalPDF!')
 
-        return SignalPDFProduct(self, other)
+        return SignalPDFProduct(self, other, cfg=self.cfg)
 
 
 class PDF(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     r"""This is the abstract base class for all probability distribution
     function (PDF) models.
     All PDF model classes must be derived from this class. Mathematically, it
@@ -290,7 +305,8 @@ class PDF(
             self,
             pmm=None,
             param_set=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new PDF instance.
 
         Parameters
@@ -1001,7 +1017,7 @@ class MultiDimGridPDF(
             TrialDataManager holding the event data for which to calculate the
             PDF values, ``params_recarray`` is a numpy structured ndarray
             holding the local parameter names and values, ``eventdata`` is
-            is a (N_values,V)-shaped numpy ndarray holding the event data
+            is a (V,N_values)-shaped numpy ndarray holding the event data
             necessary for this PDF, and ``evt_mask`` is an optional
             (N_values,)-shaped numpy ndarray holding the mask for the events,
             i.e. rows in ``eventdata``, which should be considered. If ``None``,
@@ -1113,7 +1129,7 @@ class MultiDimGridPDF(
         where ``pdf`` is this PDF instance, ``tdm`` is an instance of
         TrialDataManager holding the events for which to calculate the PDF
         values, ``params_recarray`` is a numpy structured ndarray holding the
-        local parameter names and values, ``eventdata`` is a (N_values,V)-shaped
+        local parameter names and values, ``eventdata`` is a (V,N_values)-shaped
         numpy ndarray holding the event data necessary for this PDF, and
         ``evt_mask`` is an optional (N_values,)-shaped numpy ndarray holding the
         mask for the events, i.e. rows in ``eventdata``, which should be
@@ -1130,7 +1146,7 @@ class MultiDimGridPDF(
             # event.
             def func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
                 if evt_mask is None:
-                    n_values = eventdata.shape[0]
+                    n_values = eventdata.shape[1]
                 else:
                     n_values = np.count_nonzero(evt_mask)
                 return np.ones((n_values,), dtype=np.float64)
@@ -1189,7 +1205,8 @@ class MultiDimGridPDF(
 
     def _initialize_cache(
             self,
-            tdm):
+            tdm,
+    ):
         """Initializes the cache variables.
 
         Parameters
@@ -1198,15 +1215,17 @@ class MultiDimGridPDF(
             The instance of TrialDataManager that hold the trial data events.
         """
         self._cache_tdm_trial_data_state_id = None
-        self._cache_pd = np.repeat(
-            np.array([np.nan], dtype=np.float64),
-            tdm.get_n_values())
+        self._cache_pd = np.full(
+            (tdm.get_n_values(),),
+            np.nan,
+            dtype=np.float64)
 
     def _store_pd_values_to_cache(
             self,
             tdm,
             pd,
-            evt_mask=None):
+            evt_mask=None,
+    ):
         """Stores the given pd values into the pd array cache.
 
         Parameters
@@ -1252,21 +1271,20 @@ class MultiDimGridPDF(
             Otherwise the (N,)-shaped numpy ndarray holding the pd values where
             evt_mask evaluates to True.
         """
-        if self._cache_tdm_trial_data_state_id is None:
+        if self._cache_tdm_trial_data_state_id is None or\
+           self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id:
             self._initialize_cache(tdm=tdm)
             return None
 
-        if self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id:
-            return None
-
         if evt_mask is None:
-            if np.any(np.isnan(self._cache_pd)):
-                return None
             pd = self._cache_pd
         else:
-            if np.any(np.isnan(self._cache_pd[evt_mask])):
-                return None
             pd = self._cache_pd[evt_mask]
+            # If this PDF is evaluated for different sources, i.e. a subset of
+            # pd values, those values could still be NaN and still need to be
+            # calculated.
+            if np.any(np.isnan(pd)):
+                return None
 
         return pd
 
@@ -1276,10 +1294,11 @@ class MultiDimGridPDF(
             params_recarray,
             eventdata,
             evt_mask=None,
-            tl=None):
+            tl=None,
+    ):
         """Calculates the probability density value for the given ``eventdata``.
 
-        This method is usefull when PDF values for the same trial data need to
+        This method is useful when PDF values for the same trial data need to
         be evaluated.
 
         Parameters
@@ -1292,7 +1311,7 @@ class MultiDimGridPDF(
             parameter names and values of the models.
             By definition, this PDF does not depend on any parameters.
         eventdata : instance of numpy ndarray
-            The (N_values,V)-shaped numpy ndarray holding the V data attributes
+            The (V,N_values)-shaped numpy ndarray holding the V data attributes
             for each of the N_values events needed for the evaluation of the
             PDF.
         evt_mask : instance of numpy ndarray | None
@@ -1311,7 +1330,7 @@ class MultiDimGridPDF(
             value for each model and event. The length of this array depends on
             the ``evt_mask`` argument. Only values are returned where
             ``evt_mask`` evaluates to ``True``.
-            If ``evt_mask`` is set to ``Ǹone``, the length is N_values.
+            If ``evt_mask`` is set to ``None``, the length is N_values.
         """
         if self._cache_pd_values:
             pd = self._get_cached_pd_values(
@@ -1325,18 +1344,18 @@ class MultiDimGridPDF(
         if isinstance(self._pdf, RegularGridInterpolator):
             with TaskTimer(tl, 'Get pd from RegularGridInterpolator.'):
                 if evt_mask is None:
-                    pd = self._pdf(eventdata)
+                    pd = self._pdf(eventdata.T)
                 else:
-                    pd = self._pdf(eventdata[evt_mask])
+                    pd = self._pdf(eventdata.T[evt_mask])
         else:
             with TaskTimer(tl, 'Get pd from photospline fit.'):
-                V = eventdata.shape[1]
+                V = eventdata.shape[0]
                 if evt_mask is None:
                     pd = self._pdf.evaluate_simple(
-                        [eventdata[:, i] for i in range(0, V)])
+                        [eventdata[i] for i in range(0, V)])
                 else:
                     pd = self._pdf.evaluate_simple(
-                        [eventdata[:, i][evt_mask] for i in range(0, V)])
+                        [eventdata[i][evt_mask] for i in range(0, V)])
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(
@@ -1359,8 +1378,9 @@ class MultiDimGridPDF(
     @staticmethod
     def create_eventdata_for_sigpdf(
             tdm,
-            axes):
-        """Creates the (N_values,V)-shaped eventdata ndarray necessary for
+            axes,
+    ):
+        """Creates the (V,N_values)-shaped eventdata ndarray necessary for
         evaluating the signal PDF.
 
         Parameters
@@ -1386,15 +1406,16 @@ class MultiDimGridPDF(
                 TypeError(
                     f'Unable to determine the type of the data field {name}!')
 
-        eventdata = np.array(eventdata_fields).T
+        eventdata = np.array(eventdata_fields)
 
         return eventdata
 
     @staticmethod
     def create_eventdata_for_bkgpdf(
             tdm,
-            axes):
-        """Creates the (N_values,V)-shaped eventdata ndarray necessary for
+            axes,
+    ):
+        """Creates the (V,N_values)-shaped eventdata ndarray necessary for
         evaluating the background PDF.
 
         Parameters
@@ -1409,7 +1430,7 @@ class MultiDimGridPDF(
         for axis in axes:
             eventdata_fields.append(tdm.get_data(axis.name))
 
-        eventdata = np.array(eventdata_fields).T
+        eventdata = np.array(eventdata_fields)
 
         return eventdata
 
@@ -1417,7 +1438,8 @@ class MultiDimGridPDF(
             self,
             tdm,
             params_recarray=None,
-            tl=None):
+            tl=None,
+    ):
         """Calculates the probability density for the given trial events given
         the specified local parameters.
 
@@ -1475,7 +1497,8 @@ class MultiDimGridPDF(
 
 
 class PDFSet(
-        object):
+        HasConfig,
+):
     """This class describes a set of PDF objects which are related to each other
     via different values of a set of parameters. A signal PDF usually
     consists of multiple same-kind PDFs for different signal parameters.
@@ -1656,7 +1679,7 @@ class PDFSet(
                     f'New axes:\n{str(pdf.axes)}\n'
                     f'Old axes:\n{str(some_pdf.axes)}')
 
-        if is_tracing_enabled():
+        if self._cfg.is_tracing_enabled:
             logger.debug(f'Adding PDF for gridparams {gridparams}.')
 
         self._gridparams_hash_pdf_dict[gridparams_hash] = pdf

@@ -3,12 +3,17 @@
 """The unit tests in this module test classes of the skyllh.core.weights module.
 """
 
-import numpy as np
 import unittest
+
+import numpy as np
+
 from unittest.mock import (
     Mock,
 )
 
+from skyllh.core.config import (
+    Config,
+)
 from skyllh.core.detsigyield import (
     DetSigYield,
     DetSigYieldBuilder,
@@ -168,7 +173,7 @@ class NoDetSigYieldBuilder(
         pass
 
 
-def create_shg_mgr_and_pmm():
+def create_shg_mgr_and_pmm(cfg):
     """Creates a SourceHypoGroupManager and a ParameterModelMapper instance.
     """
     sources = [
@@ -179,20 +184,20 @@ def create_shg_mgr_and_pmm():
         PointLikeSource(
             name='PS3', ra=0, dec=np.deg2rad(30), weight=3),
     ]
-    fluxmodel = SteadyPointlikeFFM(Phi0=1, energy_profile=None)
+    fluxmodel = SteadyPointlikeFFM(Phi0=1, energy_profile=None, cfg=cfg)
 
     shg_mgr = SourceHypoGroupManager(
         SourceHypoGroup(
             sources=sources,
             fluxmodel=fluxmodel,
-            detsigyield_builders=NoDetSigYieldBuilder(),
+            detsigyield_builders=NoDetSigYieldBuilder(cfg=cfg),
             sig_gen_method=None))
 
     p1 = Parameter('p1', 141, 99, 199)
     p2 = Parameter('p2', 142, 100, 200)
 
     pmm = ParameterModelMapper(models=sources)
-    pmm.def_param(p1).def_param(p2)
+    pmm.map_param(p1).map_param(p2)
 
     return (shg_mgr, pmm)
 
@@ -223,7 +228,8 @@ class TestSourceDetectorWeights(unittest.TestCase):
     def setUpClass(cls):
         """This class method will run only once for this TestCase.
         """
-        (cls._shg_mgr, cls._pmm) = create_shg_mgr_and_pmm()
+        cls.cfg = Config()
+        (cls._shg_mgr, cls._pmm) = create_shg_mgr_and_pmm(cfg=cls.cfg)
 
     def test_without_grads(self):
         """Tests the __call__ method of the SourceDetectorWeights class
@@ -396,7 +402,8 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
     def setUpClass(cls):
         """This class method will run only once for this TestCase.
         """
-        (cls._shg_mgr, cls._pmm) = create_shg_mgr_and_pmm()
+        cls.cfg = Config()
+        (cls._shg_mgr, cls._pmm) = create_shg_mgr_and_pmm(cfg=cls.cfg)
 
     def test_without_grads(self):
         """Tests the __call__ method of the DatasetSignalWeightFactors class

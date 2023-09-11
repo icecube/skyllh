@@ -544,35 +544,35 @@ class ParameterModelMapperTestCase(unittest.TestCase):
 
     def test_str(self):
         # Add some parameters.
-        self.test_def_param()
+        self.test_map_param()
 
         # Ensure that __str__ does not raise an exception.
         str(self.pmm)
 
     def test_unique_model_param_names(self):
-        self.pmm.def_param(
+        self.pmm.map_param(
             param=self.fixed_param0,
             models=(self.model0,),
             model_param_names='p')
-        self.pmm.def_param(
+        self.pmm.map_param(
             param=self.floating_param0,
             models=(self.model1,),
             model_param_names='p')
-        self.pmm.def_param(
+        self.pmm.map_param(
             param=self.floating_param1)
         names = self.pmm.unique_model_param_names
         self.assertEqual(len(names), 2)
         np.testing.assert_equal(names, ['p', 'p2'])
 
-    def test_def_param(self):
-        self.pmm.def_param(
+    def test_map_param(self):
+        self.pmm.map_param(
             param=self.fixed_param0,
             models=(self.model1,))
-        self.pmm.def_param(
+        self.pmm.map_param(
             param=self.floating_param0,
             models=(self.model0, self.model1),
             model_param_names='fp')
-        self.pmm.def_param(
+        self.pmm.map_param(
             param=self.floating_param1,
             models=(self.model1,))
         self.assertEqual(self.pmm.n_global_params, 3)
@@ -581,20 +581,20 @@ class ParameterModelMapperTestCase(unittest.TestCase):
 
         # The models cannot be an empty set.
         with self.assertRaises(ValueError):
-            self.pmm.def_param(
+            self.pmm.map_param(
                 param=self.fixed_param0,
                 models=(),
                 model_param_names='fp')
         # A model parameter can only be defined once for a given model.
         with self.assertRaises(KeyError):
-            self.pmm.def_param(
+            self.pmm.map_param(
                 param=self.fixed_param0,
                 models=(self.model0,),
                 model_param_names='fp')
 
     def test_create_model_params_dict(self):
         # Add some parameters to the model parameter mapper.
-        self.test_def_param()
+        self.test_map_param()
 
         m0_param_dict = self.pmm.create_model_params_dict(
             np.array([2.4, 11.1]), model=0)
@@ -614,7 +614,7 @@ class ParameterModelMapperTestCase(unittest.TestCase):
 
     def test_get_local_param_is_global_floating_param_mask(self):
         # Add some parameters to the model parameter mapper.
-        self.test_def_param()
+        self.test_map_param()
 
         mask = self.pmm.get_local_param_is_global_floating_param_mask(
             ['p0', 'fp', 'p2'])

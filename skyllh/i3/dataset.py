@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
 import os.path
 
-from skyllh.core import display
-from skyllh.core.py import (
-    issequenceof,
-    module_classname,
+import numpy as np
+
+from skyllh.core import (
+    display,
 )
 from skyllh.core.dataset import (
     Dataset,
@@ -15,6 +14,10 @@ from skyllh.core.dataset import (
 from skyllh.core.debugging import (
     get_logger,
 )
+from skyllh.core.py import (
+    issequenceof,
+    module_classname,
+)
 from skyllh.core.storage import (
     DataFieldRecordArray,
     create_FileLoader,
@@ -22,16 +25,6 @@ from skyllh.core.storage import (
 from skyllh.core.timing import (
     TaskTimer,
 )
-
-# Load the IceCube specific config defaults.
-# This will change the skyllh.core.config.CFG dictionary.
-from skyllh.i3.config import (
-    add_icecube_specific_analysis_required_data_fields,
-)
-
-# Add default analysis required data fields for experimental and monte-carlo
-# data that are IceCube specific.
-add_icecube_specific_analysis_required_data_fields()
 
 
 class I3Dataset(
@@ -179,7 +172,29 @@ class I3Dataset(
 
         return s
 
-    def load_grl(self, efficiency_mode=None, tl=None):
+    def create_file_list(
+            self,
+    ):
+        """Creates the list of files of this dataset.
+        The file paths are relative to the dataset's root directory.
+
+        Returns
+        -------
+        file_list : list of str
+            The list of files of this dataset.
+        """
+        file_list = (
+            super().create_file_list() +
+            self._grl_pathfilename_list
+        )
+
+        return file_list
+
+    def load_grl(
+            self,
+            efficiency_mode=None,
+            tl=None,
+    ):
         """Loads the good-run-list and returns a DataFieldRecordArray instance
         which should contain the following data fields:
 
@@ -233,25 +248,31 @@ class I3Dataset(
         return grl_data
 
     def load_data(
-            self, keep_fields=None, livetime=None, dtc_dict=None,
-            dtc_except_fields=None, efficiency_mode=None, tl=None):
+            self,
+            livetime=None,
+            keep_fields=None,
+            dtc_dict=None,
+            dtc_except_fields=None,
+            efficiency_mode=None,
+            tl=None,
+    ):
         """Loads the data, which is described by the dataset. If a good-run-list
         (GRL) is provided for this dataset, only experimental data will be
         selected which matches the GRL.
 
         Parameters
         ----------
+        livetime : instance of Livetime | float | None
+            If not None, uses this livetime (if float livetime in days) as
+            livetime for the DatasetData instance, otherwise uses the live time
+            from the Dataset instance or, if available, the livetime from the
+            good-run-list (GRL).
         keep_fields : list of str | None
             The list of user-defined data fields that should get loaded and kept
             in addition to the analysis required data fields.
-        livetime : float | None
-            If not None, uses this livetime (in days) as livetime for the
-            DatasetData instance, otherwise uses the live time from the Dataset
-            instance or, if available, the livetime from the good-run-list
-            (GRL).
         dtc_dict : dict | None
-            This dictionary defines how data fields of specific
-            data types should get converted into other data types.
+            This dictionary defines how data fields of specific data types (key)
+            should get converted into other data types (value).
             This can be used to use less memory. If set to None, no data
             convertion is performed.
         dtc_except_fields : str | sequence of str | None
@@ -282,6 +303,16 @@ class I3Dataset(
             A DatasetData instance holding the experimental and monte-carlo
             data of this data set.
         """
+        # Load the dataset files first. This will ensure the dataset is
+        # downloaded if necessary.
+        data_ = super().load_data(
+            livetime=livetime,
+            keep_fields=keep_fields,
+            dtc_dict=dtc_dict,
+            dtc_except_fields=dtc_except_fields,
+            efficiency_mode=efficiency_mode,
+            tl=tl)
+
         # Load the good-run-list (GRL) data if it is provided for this dataset,
         # and calculate the livetime based on the GRL.
         data_grl = None
@@ -292,21 +323,15 @@ class I3Dataset(
 
         # Load all the defined data.
         data = I3DatasetData(
-            super(I3Dataset, self).load_data(
-                keep_fields=keep_fields,
-                livetime=livetime,
-                dtc_dict=dtc_dict,
-                dtc_except_fields=dtc_except_fields,
-                efficiency_mode=efficiency_mode,
-                tl=tl),
-            data_grl)
+            data=data_,
+            data_grl=data_grl)
 
         return data
 
     def prepare_data(  # noqa: C901
             self,
             data,
-            tl=None
+            tl=None,
     ):
         """Prepares the data for IceCube by pre-calculating the following
         experimental data fields:
@@ -416,20 +441,26 @@ class I3DatasetData(
     monto-carlo data of a data set. It's the IceCube specific class that also
     holds the good-run-list (GRL) data.
     """
-    def __init__(self, data, data_grl):
+    def __init__(
+            self,
+            data,
+            data_grl,
+    ):
         """Constructs a new I3DatasetData instance.
 
         Parameters
         ----------
-        data : DatasetData instance
-            The DatasetData instance holding the experimental and monte-carlo
+        data : instance of DatasetData
+            The instance of DatasetData holding the experimental and monte-carlo
             data.
-        data_grl : DataFieldRecordArray instance | None
-            The DataFieldRecordArray instance holding the good-run-list data
+        data_grl : instance of DataFieldRecordArray | None
+            The instance of DataFieldRecordArray holding the good-run-list data
             of the dataset. This can be None, if no GRL data is available.
         """
-        super(I3DatasetData, self).__init__(
-            data._exp, data._mc, data._livetime)
+        super().__init__(
+            data_exp=data._exp,
+            data_mc=data._mc,
+            livetime=data._livetime)
 
         self.grl = data_grl
 

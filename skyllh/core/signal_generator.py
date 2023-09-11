@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import abc
-from astropy import units
 import itertools
+
 import numpy as np
 
+from astropy import (
+    units,
+)
 
 from skyllh.core.config import (
-    to_internal_time_unit,
+    HasConfig,
 )
 from skyllh.core.dataset import (
     Dataset,
@@ -22,6 +25,9 @@ from skyllh.core.py import (
     int_cast,
     get_smallest_numpy_int_type,
 )
+from skyllh.core.random import (
+    RandomChoice,
+)
 from skyllh.core.services import (
     DatasetSignalWeightFactorsService,
 )
@@ -34,15 +40,17 @@ from skyllh.core.storage import (
 
 
 class SignalGenerator(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     """This is the abstract base class for all signal generator classes in
     SkyLLH. It defines the interface for a signal generator.
     """
     def __init__(
             self,
             shg_mgr,
-            **kwargs):
+            **kwargs,
+    ):
         """Constructs a new signal generator instance.
 
         Parameters
@@ -180,7 +188,8 @@ class SignalGenerator(
 
 
 class MultiDatasetSignalGenerator(
-        SignalGenerator):
+        SignalGenerator,
+):
     """This is a signal generator class handling multiple datasets by using the
     individual signal generator instances for each dataset. This is the most
     general way to support multiple datasets of different formats and signal
@@ -407,7 +416,8 @@ class MultiDatasetSignalGenerator(
 
 
 class MCMultiDatasetSignalGenerator(
-        MultiDatasetSignalGenerator):
+        MultiDatasetSignalGenerator,
+):
     """This is a signal generator class, which handles multiple datasets with
     monte-carlo (MC). It uses the MC events of all datasets to determine the
     possible signal events for a source.
@@ -421,7 +431,8 @@ class MCMultiDatasetSignalGenerator(
             shg_mgr,
             dataset_list,
             data_list,
-            **kwargs):
+            **kwargs,
+    ):
         """Constructs a new signal generator instance.
 
         Parameters
@@ -465,7 +476,7 @@ class MCMultiDatasetSignalGenerator(
         self._sig_candidates = np.empty(
             (0,), dtype=sig_candidates_dtype, order='F')
 
-        to_internal_time_unit_factor = to_internal_time_unit(
+        to_internal_time_unit_factor = self._cfg.to_internal_time_unit(
             time_unit=units.day
         )
 
@@ -512,6 +523,11 @@ class MCMultiDatasetSignalGenerator(
         # Normalize the signal candidate weights.
         self._sig_candidates_weight_sum = np.sum(self._sig_candidates['weight'])
         self._sig_candidates['weight'] /= self._sig_candidates_weight_sum
+
+        # Create new RandomChoice instance for the signal candidates.
+        self._sig_candidates_random_choice = RandomChoice(
+            items=self._sig_candidates,
+            probabilities=self._sig_candidates['weight'])
 
     def change_shg_mgr(
             self,
@@ -570,7 +586,7 @@ class MCMultiDatasetSignalGenerator(
             # Calculate conversion factor from the flux model unit into the
             # internal flux unit.
             to_internal_flux_unit =\
-                fluxmodel.get_conversion_factor_to_internal_flux_unit()
+                fluxmodel.to_internal_flux_unit()
             for k in range(shg.n_sources):
                 mask = ((self._sig_candidates['shg_idx'] == shg_idx) &
                         (self._sig_candidates['shg_src_idx'] == k))
@@ -634,11 +650,11 @@ class MCMultiDatasetSignalGenerator(
             'The mean argument must be castable to type of int!')
 
         # Draw n_signal signal candidates according to their weight.
-        sig_events_meta = rss.random.choice(
-            self._sig_candidates,
+        sig_events_meta = self._sig_candidates_random_choice(
+            rss=rss,
             size=n_signal,
-            p=self._sig_candidates['weight']
         )
+
         # Get the list of unique dataset and source hypothesis group indices of
         # the drawn signal events.
         # Note: This code does not assume the same format for each of the

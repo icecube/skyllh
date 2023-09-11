@@ -40,9 +40,9 @@ def get_kde_pdf_sig_spatial_norm_factor_func(
         log10_psi_idx = pdf._axes.get_index_by_name(log10_psi_name)
 
         if evt_mask is None:
-            psi = 10**eventdata[:, log10_psi_idx]
+            psi = 10**eventdata[log10_psi_idx]
         else:
-            psi = 10**eventdata[:, log10_psi_idx][evt_mask]
+            psi = 10**eventdata[log10_psi_idx][evt_mask]
 
         norm = 1. / (2 * np.pi * np.log(10) * psi * np.sin(psi))
 
@@ -80,7 +80,9 @@ def create_MultiDimGridPDF_from_photosplinetable(
         kde_pdf_axis_name_map_key='KDE_PDF_axis_name_map',
         norm_factor_func=None,
         cache_pd_values=False,
-        tl=None):
+        tl=None,
+        **kwargs,
+):
     """
     Creates a MultiDimGridPDF instance with pdf values taken from a photospline
     pdf, i.e. a spline interpolation of KDE PDF values stored in a splinetable
@@ -162,7 +164,8 @@ def create_MultiDimGridPDF_from_photosplinetable(
         axis_binnings=axis_binnings,
         path_to_pdf_splinetable=splinetable_file,
         norm_factor_func=norm_factor_func,
-        cache_pd_values=cache_pd_values)
+        cache_pd_values=cache_pd_values,
+        **kwargs)
 
     return pdf
 
@@ -177,7 +180,9 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
         kde_pdf_axis_name_map_key='KDE_PDF_axis_name_map',
         norm_factor_func=None,
         cache_pd_values=False,
-        tl=None):
+        tl=None,
+        **kwargs,
+):
     """Creates a MultiDimGridPDF instance with pdf values taken from KDE PDF
     values stored in the dataset's auxiliary data.
 
@@ -285,6 +290,7 @@ def create_MultiDimGridPDF_from_kde_pdf(  # noqa: C901
         axis_binnings=axis_binnings,
         pdf_grid_data=vals,
         norm_factor_func=norm_factor_func,
-        cache_pd_values=cache_pd_values)
+        cache_pd_values=cache_pd_values,
+        **kwargs)
 
     return pdf

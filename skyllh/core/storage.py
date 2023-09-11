@@ -4,9 +4,14 @@ import abc
 import copy
 import pickle
 import os.path
-import numpy as np
 import sys
 
+import numpy as np
+
+from skyllh.core import (
+    display as dsp,
+    tool,
+)
 from skyllh.core.py import (
     classname,
     get_byte_size_prefix,
@@ -14,10 +19,6 @@ from skyllh.core.py import (
     issequence,
     issequenceof,
 )
-from skyllh.core import (
-    tool,
-)
-from skyllh.core import display as dsp
 
 
 # Define a file loader registry that holds the FileLoader classes for different

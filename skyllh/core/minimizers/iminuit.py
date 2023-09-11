@@ -1,29 +1,42 @@
 """
-The minimizers/iminuit module provides a SkyLLH interface to the iminuit minimizer.
+The minimizers/iminuit module provides a SkyLLH interface to the iminuit
+minimizer.
 """
+
 import numpy as np
 
-import iminuit
-
+from skyllh.core import (
+    tool,
+)
+from skyllh.core.config import (
+    HasConfig,
+)
 from skyllh.core.debugging import (
     get_logger,
-    is_tracing_enabled
 )
-from skyllh.core.minimizer import MinimizerImpl
+from skyllh.core.minimizer import (
+    MinimizerImpl,
+)
 
 
 logger = get_logger(__name__)
 
 
-class FuncWithGradsFunctor(object):
+class FuncWithGradsFunctor(
+        HasConfig,
+):
     """Helper class to evaluate the LLH function that returns the function value
     and its gradients in two seperate calls, one for the LLH function value and
     one for its gradient values.
     """
 
-    def __init__(self, func, func_args=None):
-        """
-        Initializes a new functor instance for the given function ``func``.
+    def __init__(
+            self,
+            func,
+            func_args=None,
+            **kwargs,
+    ):
+        """Initializes a new functor instance for the given function ``func``.
 
         Parameters
         ----------
@@ -36,15 +49,16 @@ class FuncWithGradsFunctor(object):
         func_args : tuple | None
             The optional positional arguments for the function ``func``.
         """
-        super().__init__()
+        super().__init__(
+            **kwargs)
 
-        if(func_args is None):
+        if func_args is None:
             func_args = tuple()
 
         self._func = func
         self._func_args = func_args
 
-        self._tracing = is_tracing_enabled()
+        self._tracing = self._cfg.is_tracing_enabled
 
         self._cache_x = None
         self._cache_f = None
@@ -53,11 +67,11 @@ class FuncWithGradsFunctor(object):
     def get_f(self, x):
         tracing = self._tracing
 
-        if(self._cache_x is None):
+        if self._cache_x is None:
             self._cache_x = np.copy(x)
         else:
-            if(np.all(x == self._cache_x)):
-                if(tracing):
+            if np.all(x == self._cache_x):
+                if tracing:
                     logger.debug(
                         f'call_func(x={x}): Return cached f={self._cache_f}')
                 return self._cache_f
@@ -67,7 +81,7 @@ class FuncWithGradsFunctor(object):
         (self._cache_f, self._cache_grads) = self._func(
             x, *self._func_args)
 
-        if(tracing):
+        if tracing:
             logger.debug(
                 f'call_func(x={x}): Return calculated f={self._cache_f}')
         return self._cache_f
@@ -75,11 +89,11 @@ class FuncWithGradsFunctor(object):
     def get_grads(self, x):
         tracing = self._tracing
 
-        if(self._cache_x is None):
+        if self._cache_x is None:
             self._cache_x = np.copy(x)
         else:
-            if(np.all(x == self._cache_x)):
-                if(tracing):
+            if np.all(x == self._cache_x):
+                if tracing:
                     logger.debug(
                         f'call_grads(x={x}): Return cached '
                         f'grads={self._cache_grads}')
@@ -90,18 +104,25 @@ class FuncWithGradsFunctor(object):
         (self._cache_f, self._cache_grads) = self._func(
             x, *self._func_args)
 
-        if(tracing):
+        if tracing:
             logger.debug(
                 f'call_grads(x={x}): Return calculated '
                 f'grads={self._cache_grads}')
         return self._cache_grads
 
 
-class IMinuitMinimizerImpl(MinimizerImpl):
+class IMinuitMinimizerImpl(
+        MinimizerImpl,
+):
     """The SkyLLH minimizer implementation that utilizes the iminuit minimizer.
     """
 
-    def __init__(self, ftol=1e-6):
+    @tool.requires('iminuit')
+    def __init__(
+            self,
+            ftol=1e-6,
+            **kwargs,
+    ):
         """Creates a new IMinuit minimizer instance to minimize a given
         function.
 
@@ -110,11 +131,18 @@ class IMinuitMinimizerImpl(MinimizerImpl):
         ftol : float
             The function value tolerance as absolute value.
         """
-        super().__init__()
+        super().__init__(**kwargs)
 
         self._ftol = ftol
 
-    def minimize(self, initials, bounds, func, func_args=None, **kwargs):
+    def minimize(
+            self,
+            initials,
+            bounds,
+            func,
+            func_args=None,
+            **kwargs,
+    ):
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials`` and within the given parameter bounds
         ``bounds``.
@@ -163,17 +191,20 @@ class IMinuitMinimizerImpl(MinimizerImpl):
         res : iminuit.OptimizeResult
             The iminuit OptimizeResult dictionary with additional information.
         """
-        if(func_args is None):
+        if func_args is None:
             func_args = tuple()
-        if(kwargs is None):
+        if kwargs is None:
             kwargs = dict()
+
+        iminuit = tool.get('iminuit')
 
         func_provides_grads = kwargs.pop('func_provides_grads', True)
 
-        if(func_provides_grads):
+        if func_provides_grads:
             # The function func returns the function value and its gradients,
             # so we need to use the FuncWithGradsFunctor helper class.
             functor = FuncWithGradsFunctor(
+                cfg=self._cfg,
                 func=func,
                 func_args=func_args)
 

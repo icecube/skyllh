@@ -2,6 +2,9 @@
 
 import unittest
 
+from skyllh.core.config import (
+    Config,
+)
 from skyllh.core.scrambling import (
     DataScrambler,
     UniformRAScramblingMethod,
@@ -13,9 +16,12 @@ from skyllh.i3.background_generation import (
 
 class TestFixedScrambledExpDataI3BkgGenMethod(unittest.TestCase):
     def test_data_scrambler(self):
+        cfg = Config()
         data_scrambling_method = UniformRAScramblingMethod()
         data_scrambler = DataScrambler(data_scrambling_method)
-        test_object = FixedScrambledExpDataI3BkgGenMethod(data_scrambler)
+        test_object = FixedScrambledExpDataI3BkgGenMethod(
+            data_scrambler=data_scrambler,
+            cfg=cfg)
 
         self.assertIsInstance(test_object.data_scrambler, DataScrambler)
 

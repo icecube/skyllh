@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 
+import abc
+import os
+import os.path
+import shutil
+import stat
+
+import numpy as np
+
 from copy import (
     deepcopy,
 )
-import os
-import os.path
-import numpy as np
 
 from skyllh.core import (
     display,
@@ -14,7 +19,14 @@ from skyllh.core.binning import (
     BinningDefinition,
 )
 from skyllh.core.config import (
-    CFG,
+    HasConfig,
+)
+from skyllh.core.datafields import (
+    DataFields,
+    DataFieldStages as DFS,
+)
+from skyllh.core.debugging import (
+    get_logger,
 )
 from skyllh.core.display import (
     ANSIColors,
@@ -28,9 +40,11 @@ from skyllh.core.progressbar import (
 from skyllh.core.py import (
     classname,
     float_cast,
+    get_class_of_func,
     issequence,
     issequenceof,
     list_of_cast,
+    module_class_method_name,
     str_cast,
 )
 from skyllh.core.storage import (
@@ -42,8 +56,673 @@ from skyllh.core.timing import (
 )
 
 
+class DatasetOrigin(
+    object,
+):
+    """The DatasetOrigin class provides information about the origin of a
+    dataset, so the files of a dataset can be downloaded from the origin.
+    """
+    def __init__(
+            self,
+            base_path,
+            sub_path,
+            transfer_func,
+            filename=None,
+            host=None,
+            port=None,
+            username=None,
+            password=None,
+            post_transfer_func=None,
+            **kwargs,
+    ):
+        """Creates a new instance to define the origin of a dataset.
+
+        Parameters
+        ----------
+        base_path : str
+            The dataset's base directory at the origin.
+        sub_path : str
+            The dataset's sub directory at the origin.
+        transfer_func : callable
+            The callable object that should be used to transfer the dataset.
+            This function requires the following call signature::
+
+                __call__(origin, file_list, dst_base_path, user=None, password=None)
+
+            where ``origin`` is an instance of DatasetOrigin, ``file_list`` is
+            a list of str specifying the files to transfer, ``dst_base_path`` is
+            an instance of str specifying the destination base path on the local
+            machine, ``user`` is the user name required to connect to the remote
+            host, and ``password`` is the password for the user name required to
+            connect to the remote host.
+        filename : str | None
+            If the origin is not a directory but a file, this specifies the
+            filename.
+        host : str | None
+            The name or IP of the remote host.
+        port : int | None
+            The port number to use when connecting to the remote host.
+        username : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
+        post_transfer_func : callable | None
+            The callable object that should be called after the dataset has been
+            transfered by the ``transfer_func``function. It can be used to
+            extract an archive file.
+            This function requires the following call signature::
+
+                __call__(ds, dst_path)
+
+            where ``ds`` is an instance of ``Dataset``, and ``dst_path`` is the
+            destination path.
+        """
+        super().__init__(**kwargs)
+
+        self.base_path = base_path
+        self.sub_path = sub_path
+        self.transfer_func = transfer_func
+        self.filename = filename
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.post_transfer_func = post_transfer_func
+
+    @property
+    def base_path(self):
+        """The dataset's base directory at the origin.
+        """
+        return self._base_path
+
+    @base_path.setter
+    def base_path(self, obj):
+        if not isinstance(obj, str):
+            raise TypeError(
+                'The base_path property must be an instance of str! '
+                f'Its current type is {classname(obj)}!')
+        self._base_path = obj
+
+    @property
+    def sub_path(self):
+        """The dataset's sub directory at the origin.
+        """
+        return self._sub_path
+
+    @sub_path.setter
+    def sub_path(self, obj):
+        if not isinstance(obj, str):
+            raise TypeError(
+                'The sub_path property must be an instance of str! '
+                f'Its current type is {classname(obj)}!')
+        self._sub_path = obj
+
+    @property
+    def root_dir(self):
+        """(read-only) The dataset's root directory at the origin, which is
+        the combination of ``base_path`` and ``sub_path``.
+        """
+        return os.path.join(self._base_path, self._sub_path)
+
+    @property
+    def transfer_func(self):
+        """The callable object that should be used to transfer the dataset.
+        """
+        return self._transfer_func
+
+    @transfer_func.setter
+    def transfer_func(self, obj):
+        if not callable(obj):
+            raise TypeError(
+                'The property transfer_func must be a callable object! '
+                f'Its current type is {classname(obj)}!')
+        self._transfer_func = obj
+
+    @property
+    def filename(self):
+        """The file name if the origin is a file instaed of a directory.
+        """
+        return self._filename
+
+    @filename.setter
+    def filename(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property filename must be None, or an instance of '
+                    'str! '
+                    f'Its current type is {classname(obj)}!')
+        self._filename = obj
+
+    @property
+    def is_directory(self):
+        """(read-only) Flag if the origin refers to a directory (``True``) or a
+        file (``False``).
+        """
+        return (self._filename is None)
+
+    @property
+    def host(self):
+        """The name or IP of the remote host.
+        """
+        return self._host
+
+    @host.setter
+    def host(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property host must be None, or an instance of str! '
+                    f'Its current type is {classname(obj)}!')
+        self._host = obj
+
+    @property
+    def port(self):
+        """The port number to use when connecting to the remote host.
+        """
+        return self._port
+
+    @port.setter
+    def port(self, obj):
+        if obj is not None:
+            if not isinstance(obj, int):
+                raise TypeError(
+                    'The property port must be None, or an instance of int! '
+                    f'Its current type is {classname(obj)}!')
+        self._port = obj
+
+    @property
+    def username(self):
+        """The user name required to connect to the remote host.
+        """
+        return self._username
+
+    @username.setter
+    def username(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property username must be None, or an instance of '
+                    'str! '
+                    f'Its current type is {classname(obj)}!')
+        self._username = obj
+
+    @property
+    def password(self):
+        """The password for the user name required to connect to the remote
+        host.
+        """
+        return self._password
+
+    @password.setter
+    def password(self, obj):
+        if obj is not None:
+            if not isinstance(obj, str):
+                raise TypeError(
+                    'The property password must be None, or an instance of '
+                    'str! '
+                    f'Its current type is {classname(obj)}!')
+        self._password = obj
+
+    @property
+    def post_transfer_func(self):
+        """The callable object that should be called after the dataset has been
+        transfered by the ``transfer_func`` callable.
+        """
+        return self._post_transfer_func
+
+    @post_transfer_func.setter
+    def post_transfer_func(self, obj):
+        if obj is not None:
+            if not callable(obj):
+                raise TypeError(
+                    'The property post_transfer_func must be a callable '
+                    'object! '
+                    f'Its current type is {classname(obj)}!')
+        self._post_transfer_func = obj
+
+    def __str__(self):
+        """Pretty string representation of this class.
+        """
+        transfer_cls = get_class_of_func(self.transfer_func)
+
+        s = f'{classname(self)} '+'{\n'
+        s1 = f'base_path = "{self.base_path}"\n'
+        s1 += f'sub_path = "{self.sub_path}"\n'
+        if self._filename is not None:
+            s1 += f'filename = {self._filename}\n'
+        s1 += f'user@host:port = {self.username}@{self.host}:{self.port}\n'
+        s1 += 'password = '
+        if self.password is not None:
+            s1 += 'set\n'
+        else:
+            s1 += 'not set\n'
+        s1 += f'transfer class = {classname(transfer_cls)}\n'
+        s += display.add_leading_text_line_padding(
+            display.INDENTATION_WIDTH, s1)
+        s += '}'
+
+        return s
+
+    def is_locally_available(self):
+        """Checks if the dataset origin is available locally by checking if the
+        given path exists on the local host.
+
+        Returns
+        -------
+        check : bool
+            ``True`` if the path specified in this dataset origin is an absolute
+            path and exists on the local host, ``False`` otherwise.
+        """
+        root_dir = self.root_dir
+
+        if (
+            self.is_directory and
+            os.path.abspath(root_dir) == root_dir and
+            os.path.exists(root_dir) and
+            os.path.isdir(root_dir)
+        ):
+            return True
+
+        return False
+
+
+class TemporaryTextFile(
+    object,
+):
+    """This class provides a temporary text file with a given content while
+    being within a with statement. Exiting the with statement will remove the
+    temporary text file.
+
+    Example:
+
+    .. code::
+
+        with TemporaryTextFile('myfile.txt', 'My file content'):
+            # Do something that requires the text file ``myfile.txt``.
+        # At this point the text file is removed again.
+
+    """
+
+    def __init__(
+            self,
+            pathfilename,
+            text,
+            mode=stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH,
+    ):
+        self.pathfilename = pathfilename
+        self.text = text
+        self.mode = mode
+
+    def __enter__(self):
+        with open(self.pathfilename, 'w') as fd:
+            fd.write(self.text)
+        os.chmod(self.pathfilename, self.mode)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        os.remove(self.pathfilename)
+
+
+class SystemCommandError(
+    Exception,
+):
+    """This custom exception will be raised when a system command failed.
+    """
+    pass
+
+
+class DatasetTransferError(
+    Exception,
+):
+    """This custom exception defines an error that should be raised when the
+    actual transfer of the dataset files failed.
+    """
+    pass
+
+
+class DatasetTransfer(
+    object,
+    metaclass=abc.ABCMeta,
+):
+    """Base class for a dataset transfer mechanism.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @staticmethod
+    def execute_system_command(
+            cmd,
+            logger,
+            success_rcode=0,
+    ):
+        """Executes the given system command via a ``os.system`` call.
+
+        Parameters
+        ----------
+        cmd : str
+            The system command to execute.
+        logger : instance of logging.Logger
+            The logger to use for debug messages.
+        success_rcode : int | None
+            The return code that indicates success of the system command.
+            If set to ``None``, no return code checking is performed.
+
+        Raises
+        ------
+        SystemCommandError
+            If the system command did not return ``success_rcode``.
+        """
+        logger.debug(f'Running command "{cmd}"')
+        rcode = os.system(cmd)
+        if (success_rcode is not None) and (rcode != success_rcode):
+            raise SystemCommandError(
+                f'The system command "{cmd}" failed with return code {rcode}!')
+
+    @staticmethod
+    def ensure_dst_path(
+            dst_path,
+    ):
+        """Ensures the existance of the given destination path.
+
+        Parameters
+        ----------
+        dst_path : str
+            The destination path.
+        """
+        if not os.path.isdir(dst_path):
+            # Throws if dst_path exists as a file.
+            os.makedirs(dst_path)
+
+    @abc.abstractmethod
+    def transfer(
+            self,
+            origin,
+            file_list,
+            dst_base_path,
+            username=None,
+            password=None,
+    ):
+        """This method is supposed to transfer the dataset origin path to the
+        given destination path.
+
+        Parameters
+        ----------
+        origin : instance of DatasetOrigin
+            The instance of DatasetOrigin defining the origin of the dataset.
+        file_list : list of str
+            The list of files, relative to the origin base path, which should be
+            transfered.
+        dst_base_path : str
+            The destination base path into which the dataset files will be
+            transfered.
+        username : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
+
+        Raises
+        ------
+        DatasetTransferError
+            If the actual transfer of the dataset files failed.
+        """
+        pass
+
+    @staticmethod
+    def post_transfer_unzip(
+            ds,
+            dst_path,
+    ):
+        """This is a post-transfer function. It will unzip the transfered file
+        into the dst_path if the origin path was a zip file.
+        """
+        if ds.origin.filename is None:
+            return
+
+        if not ds.origin.filename.lower().endswith('.zip'):
+            return
+
+        cls = get_class_of_func(DatasetTransfer.post_transfer_unzip)
+        logger = get_logger(f'{classname(cls)}.post_transfer_unzip')
+
+        # Unzip the dataset file.
+        zip_file = os.path.join(dst_path, ds.origin.filename)
+        cmd = f'unzip "{zip_file}" -d "{dst_path}"'
+        DatasetTransfer.execute_system_command(cmd, logger)
+
+        # Remove the zip file.
+        try:
+            os.remove(zip_file)
+        except Exception as exc:
+            logger.warn(str(exc))
+
+
+class RSYNCDatasetTransfer(
+    DatasetTransfer,
+):
+    def __init__(self, **kwargs):
+        super().__init__(
+            **kwargs)
+
+    def transfer(  # noqa: C901
+            self,
+            origin,
+            file_list,
+            dst_base_path,
+            username=None,
+            password=None,
+    ):
+        """Transfers the given dataset to the given destination path using the
+        ``rsync`` program.
+
+        Parameters
+        ----------
+        ds : instance of Dataset
+            The instance of Dataset containing the origin property specifying
+            the origin of the dataset.
+        file_list : list of str
+            The list of files, relative to the origin base path, which should be
+            transfered.
+        dst_base_path : str
+            The destination base path into which the dataset files will be
+            transfered.
+        username : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
+        """
+        cls = get_class_of_func(self.transfer)
+        logger = get_logger(f'{classname(cls)}.transfer')
+
+        host = origin.host
+
+        # Make sure the origin and destination base paths end with a directory
+        # seperator.
+        origin_base_path = origin.base_path
+        if origin_base_path[-len(os.path.sep):] != os.path.sep:
+            origin_base_path += os.path.sep
+        if dst_base_path[-len(os.path.sep):] != os.path.sep:
+            dst_base_path += os.path.sep
+
+        file_list_pathfilename = os.path.join(
+            os.getcwd(),
+            f'.{id(origin)}.rsync_file_list.txt')
+
+        # Create file list file content.
+        # Skip files which already exists.
+        file_list_filecontent = ''
+        for file in file_list:
+            dst_pathfilename = os.path.join(dst_base_path, file)
+            if not os.path.exists(dst_pathfilename):
+                file_list_filecontent += f'{file}\n'
+
+        if username is None:
+            # No user name is defined.
+            with TemporaryTextFile(
+                pathfilename=file_list_pathfilename,
+                text=file_list_filecontent,
+            ):
+                cmd = (
+                    f'rsync '
+                    '-avrRL '
+                    '--progress '
+                    f'--files-from="{file_list_pathfilename}" '
+                    f'{host}:"{origin_base_path}" "{dst_base_path}"'
+                )
+                try:
+                    DatasetTransfer.execute_system_command(cmd, logger)
+                except SystemCommandError as err:
+                    raise DatasetTransferError(str(err))
+
+        elif password is not None:
+            # User and password is defined.
+            pwdfile = os.path.join(
+                os.getcwd(),
+                f'.{id(origin)}.rsync_passwd.txt')
+
+            with TemporaryTextFile(
+                pathfilename=pwdfile,
+                text=password,
+                mode=stat.S_IRUSR,
+            ):
+                with TemporaryTextFile(
+                    pathfilename=file_list_pathfilename,
+                    text=file_list_filecontent,
+                ):
+                    cmd = (
+                        f'rsync '
+                        '-avrRL '
+                        '--progress '
+                        f'--password-file "{pwdfile}" '
+                        f'--files-from="{file_list_pathfilename}" '
+                        f'{username}@{host}:"{origin_base_path}" "{dst_base_path}"'
+                    )
+                    try:
+                        DatasetTransfer.execute_system_command(cmd, logger)
+                    except SystemCommandError as err:
+                        raise DatasetTransferError(str(err))
+        else:
+            # Only the user name is defined.
+            with TemporaryTextFile(
+                pathfilename=file_list_pathfilename,
+                text=file_list_filecontent,
+            ):
+                cmd = (
+                    f'rsync '
+                    '-avrRL '
+                    '--progress '
+                    f'--files-from="{file_list_pathfilename}" '
+                    f'{username}@{host}:"{origin_base_path}" "{dst_base_path}"'
+                )
+                try:
+                    DatasetTransfer.execute_system_command(cmd, logger)
+                except SystemCommandError as err:
+                    raise DatasetTransferError(str(err))
+
+
+class WGETDatasetTransfer(
+    DatasetTransfer,
+):
+    def __init__(self, protocol, **kwargs):
+        super().__init__(
+            **kwargs)
+
+        self.protocol = protocol
+
+    @property
+    def protocol(self):
+        """The protocol to use for the transfer.
+        """
+        return self._protocol
+
+    @protocol.setter
+    def protocol(self, obj):
+        if not isinstance(obj, str):
+            raise TypeError(
+                'The property protocol must be an instance of str! '
+                f'Its current type is {classname(obj)}!')
+        self._protocol = obj
+
+    def transfer(
+            self,
+            origin,
+            file_list,
+            dst_base_path,
+            username=None,
+            password=None,
+    ):
+        """Transfers the given dataset to the given destination path using the
+        ``wget`` program.
+
+        Parameters
+        ----------
+        origin : instance of DatasetOrigin
+            The instance of DatasetOrigin defining the origin of the dataset.
+        file_list : list of str
+            The list of files relative to the origin's base path, which
+            should be transfered.
+        dst_base_path : str
+            The destination base path into which the dataset will be transfered.
+        username : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
+        """
+        cls = get_class_of_func(self.transfer)
+        logger = get_logger(f'{classname(cls)}.transfer')
+
+        host = origin.host
+        port = origin.port
+
+        for file in file_list:
+            dst_pathfilename = os.path.join(dst_base_path, file)
+            if os.path.exists(dst_pathfilename):
+                logger.debug(
+                    f'File "{dst_pathfilename}" already exists. Skipping.')
+                continue
+
+            path = os.path.join(origin.base_path, file)
+
+            dst_sub_path = os.path.dirname(file)
+            if dst_sub_path == '':
+                dst_path = dst_base_path
+            else:
+                dst_path = os.path.join(dst_base_path, dst_sub_path)
+            DatasetTransfer.ensure_dst_path(dst_path)
+
+            cmd = 'wget '
+            if username is None:
+                # No user name is specified.
+                pass
+            elif password is not None:
+                # A user name and password is specified.
+                cmd += (
+                    f'--user="{username}" '
+                    f'--password="{password}" '
+                )
+            else:
+                # Only a user name is specified.
+                cmd += (
+                    f'--user={username} '
+                )
+            cmd += f'{self.protocol}://{host}'
+            if port is not None:
+                cmd += f':{port}'
+            if path[0:1] != '/':
+                cmd += '/'
+            cmd += f'{path} -P {dst_path}'
+            try:
+                DatasetTransfer.execute_system_command(cmd, logger)
+            except SystemCommandError as err:
+                raise DatasetTransferError(str(err))
+
+
 class Dataset(
-        object):
+        HasConfig,
+):
     """The Dataset class describes a set of self-consistent experimental and
     simulated detector data. Usually this is for a certain time period, i.e.
     a season.
@@ -133,9 +812,19 @@ class Dataset(
         return livetime
 
     def __init__(
-            self, name, exp_pathfilenames, mc_pathfilenames, livetime,
-            default_sub_path_fmt, version, verqualifiers=None,
-            base_path=None, sub_path_fmt=None):
+            self,
+            name,
+            exp_pathfilenames,
+            mc_pathfilenames,
+            livetime,
+            default_sub_path_fmt,
+            version,
+            verqualifiers=None,
+            base_path=None,
+            sub_path_fmt=None,
+            origin=None,
+            **kwargs,
+    ):
         """Creates a new dataset object that describes a self-consistent set of
         data.
 
@@ -168,11 +857,16 @@ class Dataset(
             The user-defined base path of the data set.
             Usually, this is the path of the location of the data directory.
             If set to ``None`` the configured repository base path
-            ``CFG['repository']['base_path']`` is used.
+            ``Config['repository']['base_path']`` is used.
         sub_path_fmt : str | None
             The user-defined format of the sub path of the data set.
             If set to ``None``, the ``default_sub_path_fmt`` will be used.
+        origin : instance of DatasetOrigin | None
+            The instance of DatasetOrigin defining the origin of the dataset,
+            so the dataset can be transfered automatically to the user's device.
         """
+        super().__init__(**kwargs)
+
         self.name = name
         self.exp_pathfilename_list = exp_pathfilenames
         self.mc_pathfilename_list = mc_pathfilenames
@@ -182,11 +876,11 @@ class Dataset(
         self.verqualifiers = verqualifiers
         self.base_path = base_path
         self.sub_path_fmt = sub_path_fmt
+        self.origin = origin
 
         self.description = ''
 
-        self._loading_extra_exp_field_name_list = list()
-        self._loading_extra_mc_field_name_list = list()
+        self._datafields = dict()
 
         self._exp_field_name_renaming_dict = dict()
         self._mc_field_name_renaming_dict = dict()
@@ -219,6 +913,21 @@ class Dataset(
             raise TypeError(
                 'The description of the dataset must be of type str!')
         self._description = description
+
+    @property
+    def datafields(self):
+        """The dictionary holding the names and stages of required data fields
+        specific for this dataset.
+        """
+        return self._datafields
+
+    @datafields.setter
+    def datafields(self, fields):
+        if not isinstance(fields, dict):
+            raise TypeError(
+                'The datafields property must be a dictionary! '
+                f'Its current type is "{classname(fields)}"!')
+        self._datafields = fields
 
     @property
     def exp_pathfilename_list(self):
@@ -384,6 +1093,23 @@ class Dataset(
         self._sub_path_fmt = fmt
 
     @property
+    def origin(self):
+        """The instance of DatasetOrigin defining the origin of the dataset.
+        This can be ``None`` if the dataset has no origin defined.
+        """
+        return self._origin
+
+    @origin.setter
+    def origin(self, obj):
+        if obj is not None:
+            if not isinstance(obj, DatasetOrigin):
+                raise TypeError(
+                    'The origin property must be None, or an instance of '
+                    'DatasetOrigin! '
+                    f'Its current type is {classname(obj)}!')
+        self._origin = obj
+
+    @property
     def root_dir(self):
         """(read-only) The root directory to use when data files are specified
         with relative paths. It is constructed from the ``base_path`` and the
@@ -391,48 +1117,12 @@ class Dataset(
         function.
         """
         return generate_data_file_root_dir(
-            default_base_path=CFG['repository']['base_path'],
+            default_base_path=self._cfg['repository']['base_path'],
             default_sub_path_fmt=self._default_sub_path_fmt,
             version=self._version,
             verqualifiers=self._verqualifiers,
             base_path=self._base_path,
             sub_path_fmt=self._sub_path_fmt)
-
-    @property
-    def loading_extra_exp_field_name_list(self):
-        """The list of extra field names that should get loaded when loading
-        experimental data. These should only be field names that are required
-        during the data preparation of this specific data set.
-        """
-        return self._loading_extra_exp_field_name_list
-
-    @loading_extra_exp_field_name_list.setter
-    def loading_extra_exp_field_name_list(self, fieldnames):
-        if isinstance(fieldnames, str):
-            fieldnames = [fieldnames]
-        elif not issequenceof(fieldnames, str):
-            raise TypeError(
-                'The loading_extra_exp_field_name_list property must be an '
-                'instance of str or a sequence of str type instances!')
-        self._loading_extra_exp_field_name_list = list(fieldnames)
-
-    @property
-    def loading_extra_mc_field_name_list(self):
-        """The list of extra field names that should get loaded when loading
-        monte-carlo data. These should only be field names that are required
-        during the data preparation of this specific data set.
-        """
-        return self._loading_extra_mc_field_name_list
-
-    @loading_extra_mc_field_name_list.setter
-    def loading_extra_mc_field_name_list(self, fieldnames):
-        if isinstance(fieldnames, str):
-            fieldnames = [fieldnames]
-        elif not issequenceof(fieldnames, str):
-            raise TypeError(
-                'The loading_extra_mc_field_name_list property must be an '
-                'instance of str or a sequence of str type instances!')
-        self._loading_extra_mc_field_name_list = list(fieldnames)
 
     @property
     def exp_field_name_renaming_dict(self):
@@ -468,12 +1158,13 @@ class Dataset(
 
     @property
     def exists(self):
-        """(read-only) Flag if all the data files of this data set exists. It is
+        """(read-only) Flag if all the data files of this dataset exists. It is
         ``True`` if all data files exist and ``False`` otherwise.
         """
-        for pathfilename in (self.exp_abs_pathfilename_list +
-                             self.mc_abs_pathfilename_list):
-            if not os.path.exists(pathfilename):
+        file_list = self.create_file_list()
+        abs_file_list = self.get_abs_pathfilename_list(file_list)
+        for abs_file in abs_file_list:
+            if not os.path.exists(abs_file):
                 return False
         return True
 
@@ -622,6 +1313,31 @@ class Dataset(
 
         return s
 
+    def remove_data(self):
+        """Removes the data of this dataset by removing the dataset's root
+        directory and everything in it. If the root directory is a symbolic
+        link, only this link will be removed.
+
+        Raises
+        ------
+        RuntimeError
+            If the dataset's root directory is neither a symlink nor a
+            directory.
+        """
+        root_dir = self.root_dir
+
+        if os.path.islink(root_dir):
+            os.remove(root_dir)
+            return
+
+        if os.path.isdir(root_dir):
+            shutil.rmtree(root_dir)
+            return
+
+        raise RuntimeError(
+            f'The root directory "{root_dir}" of dataset {self.name} is '
+            'neither a symlink nor a directory!')
+
     def get_abs_pathfilename_list(
             self,
             pathfilename_list,
@@ -652,6 +1368,29 @@ class Dataset(
                     os.path.join(root_dir, pathfilename))
 
         return abs_pathfilename_list
+
+    def get_missing_files(
+            self,
+    ):
+        """Determines which files of the dataset are missing and returns the
+        list of files.
+
+        Returns
+        -------
+        missing_files : list of str
+            The list of files that are missing. The files are relative to the
+            dataset's root directory.
+        """
+        file_list = self.create_file_list()
+        abs_file_list = self.get_abs_pathfilename_list(file_list)
+
+        missing_files = [
+            file
+            for (file, abs_file) in zip(file_list, abs_file_list)
+            if not os.path.exists(abs_file)
+        ]
+
+        return missing_files
 
     def update_version_qualifiers(
             self,
@@ -696,10 +1435,131 @@ class Dataset(
                 'Version qualifier values did not increment and no new version '
                 'qualifiers were added!')
 
+    def create_file_list(
+            self,
+    ):
+        """Creates the list of files that are linked to this dataset.
+        The file paths are relative to the dataset's root directory.
+
+        Returns
+        -------
+        file_list : list of str
+            The list of files of this dataset.
+        """
+        file_list = (
+            self._exp_pathfilename_list +
+            self._mc_pathfilename_list
+        )
+
+        for aux_pathfilename_list in self._aux_data_definitions.values():
+            file_list += aux_pathfilename_list
+
+        return file_list
+
+    def make_data_available(
+            self,
+            username=None,
+            password=None,
+    ):
+        """Makes the data of the dataset available.
+        If the root directory of the dataset does not exist locally, the dataset
+        is transfered from its origin to the local host. If the origin is
+        already available locally, only a symlink is created to the origin path.
+
+        Parameters
+        ----------
+        username : str | None
+            The user name required to connect to the remote host of the origin.
+            If set to ``None``, the
+        password : str | None
+            The password of the user name required to connect to the remote host
+            of the origin.
+
+        Returns
+        -------
+        success : bool
+            ``True`` if the data was made available successfully, ``False``
+            otherwise.
+        """
+        logger = get_logger(
+            module_class_method_name(self, 'make_data_available')
+        )
+
+        if len(self.get_missing_files()) == 0:
+            logger.debug(
+                f'All files of dataset "{self.name}" already exist. '
+                'Nothing to download.')
+            return True
+
+        if self.origin is None:
+            logger.warn(
+                f'No origin defined for dataset "{self.name}"! '
+                'Cannot download dataset!')
+            return False
+
+        # Check if the dataset origin is locally available. In that case we
+        # just create a symlink.
+        if self.origin.is_locally_available():
+            root_dir = self.root_dir
+            # Make sure all directories leading to the symlink exist.
+            dirname = os.path.dirname(root_dir)
+            if dirname != '':
+                os.makedirs(dirname)
+
+            cmd = f'ln -s "{self.origin.root_dir}" "{root_dir}"'
+            DatasetTransfer.execute_system_command(cmd, logger)
+            return True
+
+        if self._cfg['repository']['download_from_origin'] is False:
+            logger.warn(
+                f'The data of dataset "{self.name}" is locally not available '
+                'and the download from the origin is disabled through the '
+                'configuration!')
+            return False
+
+        if username is None:
+            username = self.origin.username
+        if password is None:
+            password = self.origin.password
+
+        base_path = generate_base_path(
+            default_base_path=self._cfg['repository']['base_path'],
+            base_path=self._base_path)
+
+        logger.debug(
+            f'Downloading dataset "{self.name}" from origin into base path '
+            f'"{base_path}". username="{username}".')
+
+        # Check if the origin is a directory. If not we just transfer that one
+        # file.
+        if self.origin.is_directory:
+            file_list = [
+                os.path.join(self.origin.sub_path, pathfilename)
+                for pathfilename in self.create_file_list()
+            ]
+        else:
+            file_list = [
+                os.path.join(self.origin.sub_path, self.origin.filename)
+            ]
+
+        self.origin.transfer_func(
+            origin=self.origin,
+            file_list=file_list,
+            dst_base_path=base_path,
+            username=username,
+            password=password)
+
+        if self.origin.post_transfer_func is not None:
+            self.origin.post_transfer_func(
+                ds=self,
+                dst_path=base_path)
+
+        return True
+
     def load_data(
             self,
-            keep_fields=None,
             livetime=None,
+            keep_fields=None,
             dtc_dict=None,
             dtc_except_fields=None,
             efficiency_mode=None,
@@ -707,21 +1567,23 @@ class Dataset(
     ):
         """Loads the data, which is described by the dataset.
 
-        Note: This does not call the ``prepare_data`` method! It only loads
-              the data as the method names says.
+        .. note:
+
+            This does not call the ``prepare_data`` method! It only loads the
+            data as the method names says.
 
         Parameters
         ----------
+        livetime : instance of Livetime | float | None
+            If not None, uses this livetime (if float, livetime in days) for the
+            DatasetData instance, otherwise uses the Dataset livetime property
+            value for the DatasetData instance.
         keep_fields : list of str | None
             The list of user-defined data fields that should get loaded and kept
             in addition to the analysis required data fields.
-        livetime : float | None
-            If not None, uses this livetime (in days) for the DatasetData
-            instance, otherwise uses the Dataset livetime property value for
-            the DatasetData instance.
         dtc_dict : dict | None
-            This dictionary defines how data fields of specific
-            data types should get converted into other data types.
+            This dictionary defines how data fields of specific data types (key)
+            should get converted into other data types (value).
             This can be used to use less memory. If set to None, no data
             convertion is performed.
         dtc_except_fields : str | sequence of str | None
@@ -761,9 +1623,10 @@ class Dataset(
             if new_field_names is None:
                 return None
 
-            new2orig_renaming_dict = dict()
-            for (k, v) in orig2new_renaming_dict.items():
-                new2orig_renaming_dict[v] = k
+            new2orig_renaming_dict = {
+                v: k
+                for (k, v) in orig2new_renaming_dict.items()
+            }
 
             orig_field_names = [
                 new2orig_renaming_dict.get(new_field_name, new_field_name)
@@ -772,8 +1635,13 @@ class Dataset(
 
             return orig_field_names
 
+        if self._cfg['repository']['download_from_origin'] is True:
+            self.make_data_available()
+
         if keep_fields is None:
             keep_fields = []
+
+        datafields = {**self._cfg['datafields'], **self._datafields}
 
         # Load the experimental data if there is any.
         if len(self._exp_pathfilename_list) > 0:
@@ -783,8 +1651,13 @@ class Dataset(
                 # Create the list of field names that should get kept.
                 keep_fields_exp = list(set(
                     _conv_new2orig_field_names(
-                        CFG['dataset']['analysis_required_exp_field_names'] +
-                        self._loading_extra_exp_field_name_list +
+                        DataFields.get_joint_names(
+                            datafields=datafields,
+                            stages=(
+                                DFS.DATAPREPARATION_EXP |
+                                DFS.ANALYSIS_EXP
+                            )
+                        ) +
                         keep_fields,
                         self._exp_field_name_renaming_dict
                     )
@@ -811,17 +1684,29 @@ class Dataset(
                 # But the renaming dictionary can differ for exp and MC fields.
                 keep_fields_mc = list(set(
                     _conv_new2orig_field_names(
-                        CFG['dataset']['analysis_required_exp_field_names'] +
-                        self._loading_extra_exp_field_name_list +
+                        DataFields.get_joint_names(
+                            datafields=datafields,
+                            stages=(
+                                DFS.DATAPREPARATION_EXP |
+                                DFS.ANALYSIS_EXP
+                            )
+                        ) +
                         keep_fields,
-                        self._exp_field_name_renaming_dict) +
+                        self._exp_field_name_renaming_dict
+                    ) +
                     _conv_new2orig_field_names(
-                        CFG['dataset']['analysis_required_exp_field_names'] +
-                        self._loading_extra_exp_field_name_list +
-                        CFG['dataset']['analysis_required_mc_field_names'] +
-                        self._loading_extra_mc_field_name_list +
+                        DataFields.get_joint_names(
+                            datafields=datafields,
+                            stages=(
+                                DFS.DATAPREPARATION_EXP |
+                                DFS.ANALYSIS_EXP |
+                                DFS.DATAPREPARATION_MC |
+                                DFS.ANALYSIS_MC
+                            )
+                        ) +
                         keep_fields,
-                        self._mc_field_name_renaming_dict)
+                        self._mc_field_name_renaming_dict
+                    )
                 ))
                 data_mc = fileloader_mc.load_data(
                     keep_fields=keep_fields_mc,
@@ -974,7 +1859,8 @@ class Dataset(
             self,
             livetime=None,
             keep_fields=None,
-            compress=False,
+            dtc_dict=None,
+            dtc_except_fields=None,
             efficiency_mode=None,
             tl=None,
     ):
@@ -994,13 +1880,14 @@ class Dataset(
         keep_fields : sequence of str | None
             The list of additional data fields that should get kept.
             By default only the required data fields are kept.
-        compress : bool
-            Flag if the float64 data fields of the data should get converted,
-            i.e. compressed, into float32 data fields, in order to save main
-            memory.
-            The only field, which will not get converted is the 'mcweight'
-            field, in order to ensure reliable calculations.
-            Default is False.
+        dtc_dict : dict | None
+            This dictionary defines how data fields of specific data types (key)
+            should get converted into other data types (value).
+            This can be used to use less memory. If set to None, no data
+            convertion is performed.
+        dtc_except_fields : str | sequence of str | None
+            The sequence of field names whose data type should not get
+            converted.
         efficiency_mode : str | None
             The efficiency mode the data should get loaded with. Possible values
             are:
@@ -1033,12 +1920,6 @@ class Dataset(
                 'The keep_fields argument must be None, or a sequence of str!')
         keep_fields = list(keep_fields)
 
-        dtc_dict = None
-        dtc_except_fields = None
-        if compress:
-            dtc_dict = {np.dtype(np.float64): np.dtype(np.float32)}
-            dtc_except_fields = ['mcweight']
-
         data = self.load_data(
             keep_fields=keep_fields,
             livetime=livetime,
@@ -1053,7 +1934,12 @@ class Dataset(
         if data.exp is not None:
             with TaskTimer(tl, 'Cleaning exp data.'):
                 keep_fields_exp = (
-                    CFG['dataset']['analysis_required_exp_field_names'] +
+                    DataFields.get_joint_names(
+                        datafields=self._cfg['datafields'],
+                        stages=(
+                            DFS.ANALYSIS_EXP
+                        )
+                    ) +
                     keep_fields
                 )
                 data.exp.tidy_up(keep_fields=keep_fields_exp)
@@ -1061,8 +1947,13 @@ class Dataset(
         if data.mc is not None:
             with TaskTimer(tl, 'Cleaning MC data.'):
                 keep_fields_mc = (
-                    CFG['dataset']['analysis_required_exp_field_names'] +
-                    CFG['dataset']['analysis_required_mc_field_names'] +
+                    DataFields.get_joint_names(
+                        datafields=self._cfg['datafields'],
+                        stages=(
+                            DFS.ANALYSIS_EXP |
+                            DFS.ANALYSIS_MC
+                        )
+                    ) +
                     keep_fields
                 )
                 data.mc.tidy_up(keep_fields=keep_fields_mc)
@@ -1306,7 +2197,7 @@ class Dataset(
         Parameters
         ----------
         name : str
-            The name of the dataset that should get removed.
+            The name of the data definition that should get removed.
         """
         if name not in self._aux_data_definitions:
             raise KeyError(
@@ -1314,6 +2205,21 @@ class Dataset(
                 f'dataset "{self.name}", nothing to remove!')
 
         self._aux_data_definitions.pop(name)
+
+    def remove_aux_data_definitions(
+            self,
+            names,
+    ):
+        """Removes the auxiliary data definition from the dataset.
+
+        Parameters
+        ----------
+        names : sequence of str
+            The names of the data definitions that should get removed.
+        """
+        for name in names:
+            self.remove_aux_data_definition(
+                name=name)
 
     def add_aux_data(
             self,
@@ -1471,6 +2377,39 @@ class DatasetCollection(
         """
         ds_name = list(self._datasets.keys())[0]
         return self._datasets[ds_name].verqualifiers
+
+    def __getitem__(
+            self,
+            key,
+    ):
+        """Implementation of the access operator ``[key]``.
+
+        Parameters
+        ----------
+        key : str | sequence of str
+            The name or names of the dataset(s) that should get retrieved from
+            this dataset collection.
+
+        Returns
+        -------
+        datasets : instance of Dataset | list of instance of Dataset
+            The dataset instance or the list of dataset instances corresponding
+            to the given key.
+        """
+        if not issequence(key):
+            return self.get_dataset(key)
+
+        if not issequenceof(key, str):
+            raise TypeError(
+                'The key for the access operator must be an instance of str or '
+                'a sequence of str instances!')
+
+        datasets = [
+            self.get_dataset(name)
+            for name in key
+        ]
+
+        return datasets
 
     def __iadd__(self, ds):
         """Implementation of the ``self += dataset`` operation to add a
@@ -1906,11 +2845,22 @@ def assert_data_format(
 ):
     """Checks the format of the experimental and monte-carlo data.
 
+    Parameters
+    ----------
+    dataset : instance of Dataset
+        The instance of Dataset describing the dataset and holding the local
+        configuration.
+    data : instance of DatasetData
+        The instance of DatasetData holding the actual experimental and
+        simulation data of the data set.
+
     Raises
     ------
     KeyError
         If a required data field is missing.
     """
+    cfg = dataset.cfg
+
     def _get_missing_keys(keys, required_keys):
         missing_keys = []
         for reqkey in required_keys:
@@ -1921,7 +2871,13 @@ def assert_data_format(
     if data.exp is not None:
         missing_exp_keys = _get_missing_keys(
             data.exp.field_name_list,
-            CFG['dataset']['analysis_required_exp_field_names'])
+            DataFields.get_joint_names(
+                datafields=cfg['datafields'],
+                stages=(
+                    DFS.ANALYSIS_EXP
+                )
+            )
+        )
         if len(missing_exp_keys) != 0:
             raise KeyError(
                 'The following data fields are missing for the experimental '
@@ -1931,8 +2887,14 @@ def assert_data_format(
     if data.mc is not None:
         missing_mc_keys = _get_missing_keys(
             data.mc.field_name_list,
-            CFG['dataset']['analysis_required_exp_field_names'] +
-            CFG['dataset']['analysis_required_mc_field_names'])
+            DataFields.get_joint_names(
+                datafields=cfg['datafields'],
+                stages=(
+                    DFS.ANALYSIS_EXP |
+                    DFS.ANALYSIS_MC
+                )
+            )
+        )
         if len(missing_mc_keys) != 0:
             raise KeyError(
                 'The following data fields are missing for the monte-carlo '
@@ -1979,6 +2941,63 @@ def remove_events(
     return data_exp
 
 
+def generate_base_path(
+        default_base_path,
+        base_path=None,
+):
+    """Generates the base path. If base_path is None, default_base_path is used.
+
+    Parameters
+    ----------
+    default_base_path : str
+        The default base path if base_path is None.
+    base_path : str | None
+        The user-specified base path.
+
+    Returns
+    -------
+    base_path : str
+        The generated base path.
+    """
+    if base_path is None:
+        if default_base_path is None:
+            raise ValueError(
+                'The default_base_path argument must not be None, when the '
+                'base_path argument is set to None!')
+        base_path = default_base_path
+
+    return base_path
+
+
+def generate_sub_path(
+        sub_path_fmt,
+        version,
+        verqualifiers,
+):
+    """Generates the sub path of the dataset based on the given sub path format.
+
+    Parameters
+    ----------
+    sub_path_fmt : str
+        The format string of the sub path.
+    version : int
+        The version of the dataset.
+    verqualifiers : dict
+        The dictionary holding the version qualifiers of the dataset.
+
+    Returns
+    -------
+    sub_path : str
+        The generated sub path.
+    """
+    fmtdict = dict(
+        [('version', version)] + list(verqualifiers.items())
+    )
+    sub_path = sub_path_fmt.format(**fmtdict)
+
+    return sub_path
+
+
 def generate_data_file_root_dir(
         default_base_path,
         default_sub_path_fmt,
@@ -2018,24 +3037,26 @@ def generate_data_file_root_dir(
     Returns
     -------
     root_dir : str
-        The generated root directory of the data files.
+        The generated root directory of the data files. This will have no
+        trailing directory seperator.
     """
-    if base_path is None:
-        if default_base_path is None:
-            raise ValueError(
-                'The default_base_path argument must not be None, when the '
-                'base_path argument is set to None!')
-        base_path = default_base_path
+    base_path = generate_base_path(
+        default_base_path=default_base_path,
+        base_path=base_path)
 
     if sub_path_fmt is None:
         sub_path_fmt = default_sub_path_fmt
 
-    fmtdict = dict(
-        [('version', version)] + list(verqualifiers.items())
-    )
-    sub_path = sub_path_fmt.format(**fmtdict)
+    sub_path = generate_sub_path(
+        sub_path_fmt=sub_path_fmt,
+        version=version,
+        verqualifiers=verqualifiers)
 
     root_dir = os.path.join(base_path, sub_path)
+
+    len_sep = len(os.path.sep)
+    if root_dir[-len_sep:] == os.path.sep:
+        root_dir = root_dir[:-len_sep]
 
     return root_dir
 

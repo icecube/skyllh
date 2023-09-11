@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
-from numpy.lib.recfunctions import repack_fields
 import scipy.interpolate
 
-from skyllh.core.py import (
-    make_dict_hash,
+import numpy as np
+
+from numpy.lib.recfunctions import (
+    repack_fields,
 )
+
 from skyllh.core.multiproc import (
     IsParallelizable,
     parallelize,
@@ -17,6 +18,9 @@ from skyllh.core.pdfratio import (
 from skyllh.core.pdfratio_fill import (
     MostSignalLikePDFRatioFillMethod,
     PDFRatioFillMethod,
+)
+from skyllh.core.py import (
+    make_dict_hash,
 )
 
 
@@ -39,7 +43,9 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             fillmethod=None,
             interpolmethod_cls=None,
             ncpu=None,
-            ppbar=None):
+            ppbar=None,
+            **kwargs,
+    ):
         """Creates a new IceCube signal-over-background energy PDF ratio spline
         instance.
 
@@ -75,7 +81,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             sig_pdf_set=sig_pdf_set,
             bkg_pdf=bkg_pdf,
             interpolmethod_cls=interpolmethod_cls,
-            ncpu=ncpu)
+            ncpu=ncpu,
+            **kwargs)
 
         # Define the default ratio fill method.
         if fillmethod is None:
@@ -294,7 +301,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             The TrialDataManager instance holding the trial data and the event
             mapping to the sources via the ``src_evt_idx`` property.
         eventdata : instance of numpy ndarray
-            The (N_events,V)-shaped numpy ndarray holding the event data, where
+            The (V,N_events)-shaped numpy ndarray holding the event data, where
             N_events is the number of events, and V the dimensionality of the
             event data.
         gridparams_recarray : instance of numpy structured ndarray
@@ -321,8 +328,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             # We got a single parameter set. We will use it for all sources.
             spline = self._get_spline_for_param_values(gridparams_recarray[0])
 
-            eventdata = np.take(eventdata, evt_idxs, axis=0)
-            values = spline(eventdata)
+            eventdata = np.take(eventdata, evt_idxs, axis=1)
+            values = spline(eventdata.T)
 
             return values
 
@@ -334,11 +341,11 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
 
             # Select the eventdata that belongs to the current source.
             m = src_idxs == sidx
-            src_eventdata = np.take(eventdata, evt_idxs[m], axis=0)
+            src_eventdata = np.take(eventdata, evt_idxs[m], axis=1)
 
-            n = src_eventdata.shape[0]
+            n = src_eventdata.shape[1]
             sl = slice(v_start, v_start+n)
-            values[sl] = spline(src_eventdata)
+            values[sl] = spline(src_eventdata.T)
 
             v_start += n
 
@@ -395,7 +402,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         """
         # Create a 2D event data array holding only the needed event data fields
         # for the PDF ratio spline evaluation.
-        eventdata = np.vstack([tdm[fn] for fn in self._data_field_names]).T
+        eventdata = np.vstack([tdm[fn] for fn in self._data_field_names])
 
         (ratio, grads) = self._interpolmethod(
             tdm=tdm,

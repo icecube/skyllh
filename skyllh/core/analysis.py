@@ -8,12 +8,12 @@ from astropy import units
 import numpy as np
 
 
-from skyllh.core.background_generation import (
-    BackgroundGenerationMethod,
-)
 from skyllh.core.background_generator import (
     BackgroundGenerator,
-    BackgroundGeneratorBase,
+    MultiDatasetBackgroundGenerator,
+)
+from skyllh.core.config import (
+    HasConfig,
 )
 from skyllh.core.dataset import (
     Dataset,
@@ -81,8 +81,9 @@ logger = get_logger(__name__)
 
 
 class Analysis(
-        object,
-        metaclass=abc.ABCMeta):
+        HasConfig,
+        metaclass=abc.ABCMeta,
+):
     """This is the abstract base class for all analysis classes.
     It contains common properties required by all analyses and defines the
     overall analysis interface how to setup and run an analysis.
@@ -92,7 +93,6 @@ class Analysis(
             shg_mgr,
             pmm,
             test_statistic,
-            bkg_gen_method=None,
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
@@ -110,16 +110,12 @@ class Analysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that should be used to
-            generate background events for pseudo data. This can be set to None,
-            if there is no need to generate background events.
-        bkg_generator_cls : class of BackgroundGeneratorBase | None
+        bkg_generator_cls : class of MultiDatasetBackgroundGenerator | None
             The background generator class used to create the background
-            generator instance.
+            generator instance for multiple datasets.
             If set to ``None``, the
-            :class:`skyllh.core.background_generator.BackgroundGenerator` class
-            is used.
+            :class:`skyllh.core.background_generator.MultiDatasetBackgroundGenerator`
+            class is used.
         sig_generator_cls : class of MultiDatasetSignalGenerator | None
             The signal generator class used to create the signal generator
             instance for multiple datasets.
@@ -133,7 +129,6 @@ class Analysis(
         self.shg_mgr = shg_mgr
         self.pmm = pmm
         self.test_statistic = test_statistic
-        self.bkg_gen_method = bkg_gen_method
         self.bkg_generator_cls = bkg_generator_cls
         self.sig_generator_cls = sig_generator_cls
 
@@ -146,6 +141,7 @@ class Analysis(
         self._src_detsigyield_weights_service = None
         self._ds_sig_weight_factors_service = None
 
+        self._bkg_generator_list = []
         self._bkg_generator = None
         self._sig_generator_list = []
         self._sig_generator = None
@@ -200,22 +196,11 @@ class Analysis(
         self._test_statistic = ts
 
     @property
-    def bkg_gen_method(self):
-        """The BackgroundGenerationMethod instance that implements the
-        background event generation. This can be None if no background
-        generation method has been defined.
+    def bkg_generator_list(self):
+        """(read-only) The list of instance of BackgroundGenerator, one for each
+        dataset.
         """
-        return self._bkg_gen_method
-
-    @bkg_gen_method.setter
-    def bkg_gen_method(self, method):
-        if method is not None:
-            if not isinstance(method, BackgroundGenerationMethod):
-                raise TypeError(
-                    'The bkg_gen_method property must be an instance of '
-                    'BackgroundGenerationMethod! '
-                    f'Its current type is {classname(method)}.')
-        self._bkg_gen_method = method
+        return self._bkg_generator_list
 
     @property
     def bkg_generator_cls(self):
@@ -227,11 +212,11 @@ class Analysis(
     @bkg_generator_cls.setter
     def bkg_generator_cls(self, cls):
         if cls is None:
-            cls = BackgroundGenerator
-        if not issubclass(cls, BackgroundGeneratorBase):
+            cls = MultiDatasetBackgroundGenerator
+        if not issubclass(cls, BackgroundGenerator):
             raise TypeError(
                 'The bkg_generator_cls property must be a subclass of '
-                'BackgroundGeneratorBase! '
+                'BackgroundGenerator! '
                 f'Its current type is {classname(cls)}.')
         self._bkg_generator_cls = cls
 
@@ -384,7 +369,8 @@ class Analysis(
 
     def construct_services(
             self,
-            ppbar=None):
+            ppbar=None,
+    ):
         """Constructs the following services:
 
             - detector signal yield service
@@ -411,13 +397,15 @@ class Analysis(
             src_detsigyield_weights_service=self.src_detsigyield_weights_service,
         )
 
-    def add_dataset(
+    def add_dataset(  # noqa: C901
             self,
             dataset,
             data,
             tdm=None,
             event_selection_method=None,
-            sig_generator=None):
+            bkg_generator=None,
+            sig_generator=None,
+    ):
         """Adds the given dataset to the list of datasets for this analysis.
 
         Parameters
@@ -437,6 +425,9 @@ class Analysis(
             will be treated as pure background events. This reduces the amount
             of log-likelihood-ratio function evaluations. If set to None, all
             events will be evaluated.
+        bkg_generator : instance of BackgroundGenerator | None
+            The optional instance of BackgroundGenerator, which should be used
+            to generate background events for this particular dataset.
         sig_generator : instance of SignalGenerator | None
             The optional instance of SignalGenerator, which should be used
             to generate signal events for this particular dataset.
@@ -464,6 +455,13 @@ class Analysis(
                     'instance of EventSelectionMethod! '
                     f'Its current type is {classname(event_selection_method)}!')
 
+        if bkg_generator is not None:
+            if not isinstance(bkg_generator, BackgroundGenerator):
+                raise TypeError(
+                    'The bkg_generator argument must be None or an instance of'
+                    'BackgroundGenerator! '
+                    f'Its current type is {classname(bkg_generator)}!')
+
         if sig_generator is not None:
             if not isinstance(sig_generator, SignalGenerator):
                 raise TypeError(
@@ -475,6 +473,7 @@ class Analysis(
         self._data_list.append(data)
         self._tdm_list.append(tdm)
         self._event_selection_method_list.append(event_selection_method)
+        self._bkg_generator_list.append(bkg_generator)
         self._sig_generator_list.append(sig_generator)
 
     def get_livetime(
@@ -561,15 +560,11 @@ class Analysis(
         add_dataset method. It sets the `bkg_generator` property of this
         Analysis class instance.
         """
-        if self._bkg_gen_method is None:
-            raise RuntimeError(
-                'No background generation method has been '
-                f'defined for this analysis ({classname(self)})!')
-
         self._bkg_generator = self.bkg_generator_cls(
-            bkg_gen_method=self._bkg_gen_method,
+            cfg=self._cfg,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
+            bkg_generator_list=self._bkg_generator_list,
             **kwargs)
 
     def construct_signal_generator(self, **kwargs):
@@ -580,6 +575,7 @@ class Analysis(
         through the source hypothesis group.
         """
         self._sig_generator = self.sig_generator_cls(
+            cfg=self._cfg,
             shg_mgr=self._shg_mgr,
             dataset_list=self._dataset_list,
             data_list=self._data_list,
@@ -829,7 +825,8 @@ class Analysis(
             rss,
             mean_n_bkg_list=None,
             bkg_kwargs=None,
-            tl=None):
+            tl=None,
+    ):
         """Generates background events utilizing the background generator.
 
         Parameters
@@ -860,44 +857,19 @@ class Analysis(
             ``n_events_list`` if an event selection method was already utilized
             when generating background events.
         """
-        n_datasets = self.n_datasets
-
-        if not isinstance(rss, RandomStateService):
-            raise TypeError(
-                'The rss argument must be an instance of RandomStateService! '
-                f'Its current type is {classname(rss)}.')
-
-        if mean_n_bkg_list is None:
-            mean_n_bkg_list = [None] * n_datasets
-        if not issequenceof(mean_n_bkg_list, (type(None), float)):
-            raise TypeError(
-                'The mean_n_bkg_list argument must be a sequence of None '
-                'and/or floats! '
-                f'Its current type is {classname(mean_n_bkg_list)}.')
-
         if bkg_kwargs is None:
             bkg_kwargs = dict()
 
-        # Construct the background event generator in case it's not constructed
-        # yet.
         if self._bkg_generator is None:
             self.construct_background_generator()
 
-        n_events_list = []
-        events_list = []
-        for ds_idx in range(n_datasets):
-            bkg_kwargs.update(mean=mean_n_bkg_list[ds_idx])
-            with TaskTimer(
-                    tl,
-                    f'Generating background events for data set {ds_idx}.'):
-                (n_bkg, bkg_events) =\
-                    self._bkg_generator.generate_background_events(
-                        rss=rss,
-                        dataset_idx=ds_idx,
-                        tl=tl,
-                        **bkg_kwargs)
-            n_events_list.append(n_bkg)
-            events_list.append(bkg_events)
+        (n_events_list, events_list) =\
+            self._bkg_generator.generate_background_events(
+                rss=rss,
+                mean_n_bkg_list=mean_n_bkg_list,
+                tl=tl,
+                **bkg_kwargs,
+            )
 
         return (n_events_list, events_list)
 
@@ -1210,7 +1182,9 @@ class Analysis(
             :py:meth:`~skyllh.core.analysis.Analysis.do_trial` method for the
             list of data fields.
         """
-        ncpu = get_ncpu(ncpu)
+        ncpu = get_ncpu(
+            cfg=self._cfg,
+            local_ncpu=ncpu)
 
         args_list = [((), kwargs) for i in range(n)]
         result_list = parallelize(
@@ -1263,7 +1237,6 @@ class LLHRatioAnalysis(
             shg_mgr,
             pmm,
             test_statistic,
-            bkg_gen_method=None,
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
@@ -1281,10 +1254,6 @@ class LLHRatioAnalysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that should be used to
-            generate background events for pseudo data. This can be set to None,
-            if there is no need to generate background events.
         bkg_generator_cls : class of BackgroundGeneratorBase | None
             The background generator class used to create the background
             generator instance.
@@ -1302,7 +1271,6 @@ class LLHRatioAnalysis(
             shg_mgr=shg_mgr,
             pmm=pmm,
             test_statistic=test_statistic,
-            bkg_gen_method=bkg_gen_method,
             bkg_generator_cls=bkg_generator_cls,
             sig_generator_cls=sig_generator_cls,
             **kwargs)
@@ -1354,6 +1322,7 @@ class LLHRatioAnalysis(
             pdfratio,
             tdm=None,
             event_selection_method=None,
+            bkg_generator=None,
             sig_generator=None):
         """Adds a dataset with its PDF ratio instances to the analysis.
 
@@ -1375,6 +1344,9 @@ class LLHRatioAnalysis(
             will be treated as pure background events. This reduces the amount
             of log-likelihood-ratio function evaluations. If set to None, all
             events will be evaluated.
+        bkg_generator : instance of BackgroundGenerator | None
+            The optional instance of BackgroundGenerator, which should be used
+            to generate background events for this particular dataset.
         sig_generator : instance of SignalGenerator | None
             The optional instance of SignalGenerator, which should be used
             to generate signal events for this particular dataset.
@@ -1384,6 +1356,7 @@ class LLHRatioAnalysis(
             data=data,
             tdm=tdm,
             event_selection_method=event_selection_method,
+            bkg_generator=bkg_generator,
             sig_generator=sig_generator)
 
         if not isinstance(pdfratio, PDFRatio):
@@ -1625,7 +1598,6 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
             shg_mgr,
             pmm,
             test_statistic,
-            bkg_gen_method=None,
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
@@ -1644,10 +1616,6 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that will be used to
-            generate background events for a new analysis trial. This can be set
-            to None, if no background events have to get generated.
         bkg_generator_cls : class of BackgroundGeneratorBase | None
             The background generator class used to create the background
             generator instance.
@@ -1664,7 +1632,6 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
             shg_mgr=shg_mgr,
             pmm=pmm,
             test_statistic=test_statistic,
-            bkg_gen_method=bkg_gen_method,
             bkg_generator_cls=bkg_generator_cls,
             sig_generator_cls=sig_generator_cls,
             **kwargs)
@@ -1696,6 +1663,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
         # dataset.
         llhratio_list = [
             ZeroSigH0SingleDatasetTCLLHRatio(
+                cfg=self._cfg,
                 pmm=self._pmm,
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
@@ -1707,6 +1675,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
+            cfg=self._cfg,
             pmm=self._pmm,
             minimizer=minimizer,
             src_detsigyield_weights_service=self.src_detsigyield_weights_service,
@@ -1799,7 +1768,6 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
             shg_mgr,
             pmm,
             test_statistic,
-            bkg_gen_method=None,
             bkg_generator_cls=None,
             sig_generator_cls=None,
             **kwargs):
@@ -1817,10 +1785,6 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
         test_statistic : TestStatistic instance
             The TestStatistic instance that defines the test statistic function
             of the analysis.
-        bkg_gen_method : instance of BackgroundGenerationMethod | None
-            The instance of BackgroundGenerationMethod that should be used to
-            generate background events for pseudo data. This can be set to None,
-            if there is no need to generate background events.
         bkg_generator_cls : class of BackgroundGeneratorBase | None
             The background generator class used to create the background
             generator instance.
@@ -1838,7 +1802,6 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
             shg_mgr=shg_mgr,
             pmm=pmm,
             test_statistic=test_statistic,
-            bkg_gen_method=bkg_gen_method,
             bkg_generator_cls=bkg_generator_cls,
             sig_generator_cls=sig_generator_cls,
             **kwargs)
@@ -1870,11 +1833,13 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
         # dataset.
         llhratio_list = [
             ZeroSigH0SingleDatasetTCLLHRatio(
+                cfg=self._cfg,
                 pmm=self._pmm,
                 minimizer=minimizer,
                 shg_mgr=self._shg_mgr,
                 tdm=tdm,
                 pdfratio=SourceWeightedPDFRatio(
+                    cfg=self._cfg,
                     dataset_idx=dataset_idx,
                     src_detsigyield_weights_service=self.src_detsigyield_weights_service,
                     pdfratio=pdfratio)
@@ -1885,6 +1850,7 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
 
         # Create the final multi-dataset log-likelihood ratio function.
         llhratio = MultiDatasetTCLLHRatio(
+            cfg=self._cfg,
             pmm=self._pmm,
             minimizer=minimizer,
             src_detsigyield_weights_service=self.src_detsigyield_weights_service,

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
-
 import scipy.interpolate
+
+import numpy as np
 
 from skyllh.core.binning import (
     UsesBinning,
@@ -31,7 +31,8 @@ from skyllh.i3.pdf import (
 class BackgroundI3SpatialPDF(
         SpatialPDF,
         UsesBinning,
-        IsBackgroundPDF):
+        IsBackgroundPDF,
+):
     """This is the base class for all IceCube specific spatial background PDF
     models. IceCube spatial background PDFs depend solely on the zenith angle,
     and hence, on the declination of the event.
@@ -44,7 +45,9 @@ class BackgroundI3SpatialPDF(
             data_sin_dec,
             data_weights,
             sin_dec_binning,
-            spline_order_sin_dec):
+            spline_order_sin_dec,
+            **kwargs,
+    ):
         """Creates a new IceCube spatial background PDF object.
 
         Parameters
@@ -64,7 +67,8 @@ class BackgroundI3SpatialPDF(
             ra_range=(0, 2*np.pi),
             dec_range=(
                 np.arcsin(sin_dec_binning.lower_edge),
-                np.arcsin(sin_dec_binning.upper_edge)))
+                np.arcsin(sin_dec_binning.upper_edge)),
+            **kwargs)
 
         self.add_binning(sin_dec_binning, 'sin_dec')
         self.spline_order_sin_dec = spline_order_sin_dec
@@ -206,7 +210,8 @@ class BackgroundI3SpatialPDF(
 
 
 class DataBackgroundI3SpatialPDF(
-        BackgroundI3SpatialPDF):
+        BackgroundI3SpatialPDF,
+):
     """This is the IceCube spatial background PDF, which gets constructed from
     experimental data.
     """
@@ -214,7 +219,9 @@ class DataBackgroundI3SpatialPDF(
             self,
             data_exp,
             sin_dec_binning,
-            spline_order_sin_dec=2):
+            spline_order_sin_dec=2,
+            **kwargs,
+    ):
         """Constructs a new IceCube spatial background PDF from experimental
         data.
 
@@ -248,11 +255,13 @@ class DataBackgroundI3SpatialPDF(
             data_sin_dec=data_sin_dec,
             data_weights=data_weights,
             sin_dec_binning=sin_dec_binning,
-            spline_order_sin_dec=spline_order_sin_dec)
+            spline_order_sin_dec=spline_order_sin_dec,
+            **kwargs)
 
 
 class MCBackgroundI3SpatialPDF(
-        BackgroundI3SpatialPDF):
+        BackgroundI3SpatialPDF,
+):
     """This is the IceCube spatial background PDF, which gets constructed from
     monte-carlo data.
     """
@@ -261,7 +270,9 @@ class MCBackgroundI3SpatialPDF(
             data_mc,
             physics_weight_field_names,
             sin_dec_binning,
-            spline_order_sin_dec=2):
+            spline_order_sin_dec=2,
+            **kwargs,
+    ):
         """Constructs a new IceCube spatial background PDF from monte-carlo
         data.
 
@@ -316,12 +327,14 @@ class MCBackgroundI3SpatialPDF(
             data_sin_dec=data_sin_dec,
             data_weights=data_weights,
             sin_dec_binning=sin_dec_binning,
-            spline_order_sin_dec=spline_order_sin_dec)
+            spline_order_sin_dec=spline_order_sin_dec,
+            **kwargs)
 
 
 class DataBackgroundI3EnergyPDF(
         I3EnergyPDF,
-        IsBackgroundPDF):
+        IsBackgroundPDF,
+):
     """This is the IceCube energy background PDF, which gets constructed from
     experimental data. This class is derived from I3EnergyPDF.
     """
@@ -330,7 +343,9 @@ class DataBackgroundI3EnergyPDF(
             data_exp,
             log10_energy_binning,
             sin_dec_binning,
-            smoothing_filter=None):
+            smoothing_filter=None,
+            **kwargs,
+    ):
         """Constructs a new IceCube energy background PDF from experimental
         data.
 
@@ -375,12 +390,14 @@ class DataBackgroundI3EnergyPDF(
             data_physicsweight=data_physicsweight,
             log10_energy_binning=log10_energy_binning,
             sin_dec_binning=sin_dec_binning,
-            smoothing_filter=smoothing_filter)
+            smoothing_filter=smoothing_filter,
+            **kwargs)
 
 
 class MCBackgroundI3EnergyPDF(
         I3EnergyPDF,
-        IsBackgroundPDF):
+        IsBackgroundPDF,
+):
     """This is the IceCube energy background PDF, which gets constructed from
     monte-carlo data. This class is derived from I3EnergyPDF.
     """
@@ -390,7 +407,9 @@ class MCBackgroundI3EnergyPDF(
             physics_weight_field_names,
             log10_energy_binning,
             sin_dec_binning,
-            smoothing_filter=None):
+            smoothing_filter=None,
+            **kwargs,
+    ):
         """Constructs a new IceCube energy background PDF from monte-carlo
         data.
 
@@ -457,4 +476,5 @@ class MCBackgroundI3EnergyPDF(
             data_physicsweight=data_physicsweight,
             log10_energy_binning=log10_energy_binning,
             sin_dec_binning=sin_dec_binning,
-            smoothing_filter=smoothing_filter)
+            smoothing_filter=smoothing_filter,
+            **kwargs)
