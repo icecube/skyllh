@@ -953,6 +953,12 @@ class PhotosplineEnergyFluxProfile(
         self._crit_log10_energy_upper = v
 
 
+# take the array
+# evaluate it
+# shift and scale it for the pdfs. 
+
+
+
 class FunctionEnergyFluxProfile(
         EnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument.
@@ -963,8 +969,7 @@ class FunctionEnergyFluxProfile(
             function,
             energy_unit=None,
             **kwargs):
-        """Creates a new power law flux profile with the reference energy ``E0``
-        and spectral index ``gamma``.
+        """Creates a new flux profile following a given function.
 
         Parameters
         ----------
@@ -984,7 +989,7 @@ class FunctionEnergyFluxProfile(
             self,
             E,
             unit=None):
-        """Returns the power law values for the given energies as numpy ndarray
+        """Returns the function values for the given energies as numpy ndarray
         in same shape as E.
 
         Parameters
@@ -1014,7 +1019,8 @@ class FunctionEnergyFluxProfile(
 class EpeakFunctionEnergyProfile(
     FunctionEnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument where 
-    Epeak will be optimized.
+    Epeak and the scaling will be optimized. The function itself will return energies 
+    (E^2 dN/dE: such that energy is conserved) and we divide by E^2 when defining __call__()
 
     """
     def __init__(
@@ -1023,8 +1029,7 @@ class EpeakFunctionEnergyProfile(
             e_peak,
             energy_unit=None,
             **kwargs):
-        """Creates a new power law flux profile with the reference energy ``E0``
-        and spectral index ``gamma``.
+        """Creates a new  flux profile with the peak energy ``E0``.
 
         Parameters
         ----------
@@ -1047,11 +1052,42 @@ class EpeakFunctionEnergyProfile(
         # method.
         self.param_names = ('e_peak')
 
+
+    @property
+    def e_peak(self):
+        """The e_peak parameter of the function.
+        """
+        return self._e_peak
+
+
+    @e_peak.setter
+    def e_peak(self, e):
+        e = float_cast(
+            e,
+            'Property e must be castable to type float!')
+        self._e_peak = e
+
+
+    @property
+    def e_peak_orig(self):
+        """The original peak energy of the original distribution. The shift will be relative to this energy
+        """
+        return self._e_peak_orig
+
+
+    @e_peak_orig.setter
+    def e_peak_orig(self, e):
+        e = float_cast(
+            e,
+            'Property e must be castable to type float!')
+        self._e_peak_orig = e
+
+
     def __call__(
             self,
             E,
             unit=None):
-        """Returns the power law values for the given energies as numpy ndarray
+        """Returns the function values for the given energies as numpy ndarray
         in same shape as E.
 
         Parameters
@@ -1073,9 +1109,9 @@ class EpeakFunctionEnergyProfile(
         if (unit is not None) and (unit != self._energy_unit):
             E = E * unit.to(self._energy_unit)
 
-     #   energy_offset = self.e_peak - self.e_peak_orig
+        energy_offset = self.e_peak_orig / self.e_peak
 
-        value = self.function(E)
+        value = self.function(E * energy_offset) / E / E
 
         return value
 

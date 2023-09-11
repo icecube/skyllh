@@ -55,6 +55,37 @@ def make_linear_parameter_grid_1d(
     return ParameterGrid(name, grid, delta)
 
 
+def make_logarithmic_parameter_grid_1d(
+        name,
+        low,
+        high,
+        delta):
+    """Utility function to create a ParameterGrid object for a 1-dimensional
+    logarithmic parameter grid.
+
+    Parameters
+    ----------
+    name : str
+        The name of the parameter.
+    low : float
+        The lowest value of the parameter.
+    high : float
+        The highest value of the parameter.
+    delta : float
+        The logarithmic distance between the grid values. By definition this
+        defines also the precision of the parameter values.
+
+    Returns
+    -------
+    obj : ParameterGrid
+        The ParameterGrid object holding the discrete parameter grid values.
+    """
+    low = np.log10(low)
+    high =  np.log10(high)
+    grid = np.logspace(low,high, round((high - low) / delta))
+    return ParameterGrid(name, grid, delta)
+
+
 class Parameter(object):
     """This class describes a parameter of a mathematical function, like a PDF,
     or source flux function. A parameter has a name, a value range, and an
@@ -269,6 +300,44 @@ class Parameter(object):
             'The delta argument must be castable to type float!')
 
         grid = make_linear_parameter_grid_1d(
+            name=self._name,
+            low=self._valmin,
+            high=self._valmax,
+            delta=delta)
+
+        return grid
+
+
+    def as_logarithmic_grid(self, delta):
+        """Creates a ParameterGrid instance with a linear grid with constant
+        grid value distances delta.
+
+        Parameters
+        ----------
+        delta : float
+            The constant distance between the grid values. By definition this
+            defines also the precision of the parameter values.
+
+        Returns
+        -------
+        grid : ParameterGrid instance
+            The ParameterGrid instance holding the grid values.
+
+        Raises
+        ------
+        ValueError
+            If this Parameter instance represents a fixed parameter.
+        """
+        if self.isfixed:
+            raise ValueError(
+                'Cannot create a linear grid from the fixed '
+                f'parameter "{self._name}". The parameter must be floating!')
+
+        delta = float_cast(
+            delta,
+            'The delta argument must be castable to type float!')
+
+        grid = make_logarithmic_parameter_grid_1d(
             name=self._name,
             low=self._valmin,
             high=self._valmax,
