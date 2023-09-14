@@ -958,7 +958,8 @@ class TimePDF(
 
 
 class MultiDimGridPDF(
-        PDF):
+        PDF,
+):
     """This class provides a multi-dimensional PDF. The PDF is created from
     pre-calculated PDF data on a grid. The grid data is either interpolated
     using a :class:`scipy.interpolate.RegularGridInterpolator` instance, or is
@@ -973,7 +974,8 @@ class MultiDimGridPDF(
             pdf_grid_data=None,
             norm_factor_func=None,
             cache_pd_values=False,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid or as PDF values stored in a photospline table.
 
@@ -1089,6 +1091,10 @@ class MultiDimGridPDF(
             self._pdf = tool.get('photospline').SplineTable(
                 path_to_pdf_splinetable)
 
+        # The basis function indices (centers) is a (V,N_values)-shaped numpy
+        # ndarray holding the spline table indices for the eventdata.
+        self.basis_function_indices = None
+
         # Because this PDF does not depend on any fit parameters, the PDF values
         # can be cached as long as the trial data state ID of the trial data
         # manager has not changed.
@@ -1176,7 +1182,8 @@ class MultiDimGridPDF(
             self,
             tdm,
             tl=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Checks if the PDF is valid for all values of the given evaluation
         data. The evaluation data values must be within the ranges of the PDF
         axes.
@@ -1202,6 +1209,18 @@ class MultiDimGridPDF(
                     f'Some of the trial data for PDF axis "{axis.name}" is out'
                     f'of range ({axis.vmin:g},{axis.vmax:g})! '
                     f'Data values out of range: {data[m]}')
+
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs,
+    ):
+        """This method is called whenever a new trial is initialized.
+        """
+        # We need to recalculate the the basis function indices for the
+        # photospline table.
+        self.basis_function_indices = None
 
     def _initialize_cache(
             self,
@@ -1310,7 +1329,7 @@ class MultiDimGridPDF(
             The (N_models,)-shaped numpy structured ndarray holding the local
             parameter names and values of the models.
             By definition, this PDF does not depend on any parameters.
-        eventdata : instance of numpy ndarray
+        eventdata : instance of numpy.ndarray
             The (V,N_values)-shaped numpy ndarray holding the V data attributes
             for each of the N_values events needed for the evaluation of the
             PDF.
@@ -1348,14 +1367,24 @@ class MultiDimGridPDF(
                 else:
                     pd = self._pdf(eventdata.T[evt_mask])
         else:
+            V = eventdata.shape[0]
+
+            if self.basis_function_indices is None:
+                self.basis_function_indices = self._pdf.search_centers(
+                    [eventdata[i] for i in range(0, V)]
+                )
+
             with TaskTimer(tl, 'Get pd from photospline fit.'):
-                V = eventdata.shape[0]
                 if evt_mask is None:
-                    pd = self._pdf.evaluate_simple(
-                        [eventdata[i] for i in range(0, V)])
+                    pd = self._pdf.evaluate(
+                        [eventdata[i] for i in range(0, V)],
+                        [self.basis_function_indices[i] for i in range(0, V)],
+                    )
                 else:
-                    pd = self._pdf.evaluate_simple(
-                        [eventdata[i][evt_mask] for i in range(0, V)])
+                    pd = self._pdf.evaluate(
+                        [eventdata[i][evt_mask] for i in range(0, V)],
+                        [self.basis_function_indices[i][evt_mask] for i in range(0, V)],
+                    )
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(
@@ -1389,6 +1418,12 @@ class MultiDimGridPDF(
             The instance of TrialDataManager holding the trial event data.
         axes : instance of PDFAxes
             The instance of PDFAxes defining the data field names for the PDF.
+
+        Returns
+        -------
+        eventdata : instance of numpy.ndarray
+            The (V,N_values)-shaped numpy ndarray holding the event data for
+            evaluating the signal PDF.
         """
         eventdata_fields = []
 
