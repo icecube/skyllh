@@ -576,7 +576,8 @@ class SignalMultiDimGridPDFSet(
             param_grid_set,
             gridparams_pdfs,
             interpol_method_cls=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new MultiDimGridPDFSet instance, which holds a set of
         MultiDimGridPDF instances, one for each point of a parameter grid set.
 
@@ -663,19 +664,20 @@ class SignalMultiDimGridPDFSet(
             with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
                 # All PDFs of this PDFSet should have the same axes, so we use
                 # the axes from the first PDF in this PDF set.
-                pdf = next(iter(self.items()))[1]
+                axes = next(iter(self.items()))[1].axes
 
                 self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
                 self._cache_eventdata =\
                     MultiDimGridPDF.create_eventdata_for_sigpdf(
                         tdm=tdm,
-                        axes=pdf.axes)
+                        axes=axes)
 
         return self._cache_eventdata
 
     def _get_pdf_for_interpol_param_values(
             self,
-            interpol_param_values):
+            interpol_param_values,
+    ):
         """Retrieves the PDF for the given set of interpolation parameter
         values.
 
@@ -702,9 +704,11 @@ class SignalMultiDimGridPDFSet(
             tdm,
             eventdata,
             gridparams_recarray,
-            n_values):
+            n_values,
+    ):
         """Evaluates the PDFs for the given event data. The particular PDF is
         selected based on the grid parameter values for each model.
+        This method is called by the interpolation method.
 
         Parameters
         ----------
@@ -773,7 +777,8 @@ class SignalMultiDimGridPDFSet(
             self,
             tdm,
             tl=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Checks if the PDFs of this PDFSet instance are valid for all the
         given trial data events.
         Since all PDFs should have the same axes, only the first PDF will be
@@ -804,7 +809,8 @@ class SignalMultiDimGridPDFSet(
             self,
             tdm,
             params_recarray,
-            tl=None):
+            tl=None,
+    ):
         """Calculates the probability density for each event, given the given
         parameter values.
 
@@ -857,7 +863,8 @@ class SignalMultiDimGridPDFSet(
             (pd, grads_arr) = self._interpol_method(
                 tdm=tdm,
                 eventdata=eventdata,
-                params_recarray=params_recarray)
+                params_recarray=params_recarray,
+            )
 
         # Construct the gradients dictionary with all the fit parameters, that
         # contribute to the local interpolation parameters.
