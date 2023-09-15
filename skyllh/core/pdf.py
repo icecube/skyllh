@@ -500,7 +500,8 @@ class PDF(
 
 
 class PDFProduct(
-        PDF):
+        PDF,
+):
     """The PDFProduct class represents the product of two PDF instances, i.e.
     ``pdf1 * pdf2``. It is derived from the PDF class and hence is a PDF itself.
     """
@@ -598,6 +599,26 @@ class PDFProduct(
             tl=tl,
             **kwargs)
 
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs,
+    ):
+        """Calls the ``initialize_for_new_trial`` method of the two PDF
+        instances of this PDF product.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the new trial event data.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
+            information.
+        """
+        self._pdf1.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        self._pdf2.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+
     def get_pd(
             self,
             tdm,
@@ -614,18 +635,18 @@ class PDFProduct(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial event data for which
             the PDF values should get calculated.
-        params_recarray : numpy record ndarray | None
-            The (N_models,)-shaped numpy record ndarray holding the parameter
-            values of the models. The the documentation of the
+        params_recarray : instance of numpy.ndarray | None
+            The (N_models,)-shaped structured numpy ndarray holding the
+            parameter values of the models. The the documentation of the
             :meth:`~skyllh.core.pdf.PDF.get_pd` method of the
             :class:`~skyllh.core.pdf.PDF` class for further information.
-        tl : TimeLord instance | None
-            The optional TimeLord instance to use for measuring timing
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
             information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd : instance of numpy.ndarray
             The (N_events,)-shaped numpy ndarray holding the probability density
             for each event. In case of a signal PDF product the shape will be
             (N_sources,N_events).
@@ -665,8 +686,8 @@ class PDFProduct(
             #        calculated through the product rule of differentiation.
             #     2. Only PDF1 depends on this fit parameter.
             #     3. Only PDF2 depends on this fit parameter.
-            #     4. Both PDFs are independ of this fit parameter, the gradient
-            #        is 0.
+            #     4. Both PDFs are independent of this fit parameter, the
+            #        gradient is 0.
             pdf1_has_fitparam = gpid in grads1
             pdf2_has_fitparam = gpid in grads2
             if pdf1_has_fitparam and pdf2_has_fitparam:
