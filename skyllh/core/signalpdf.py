@@ -705,6 +705,7 @@ class SignalMultiDimGridPDFSet(
             eventdata,
             gridparams_recarray,
             n_values,
+            tl=None,
     ):
         """Evaluates the PDFs for the given event data. The particular PDF is
         selected based on the grid parameter values for each model.
@@ -745,7 +746,8 @@ class SignalMultiDimGridPDFSet(
             pd = pdf.get_pd_with_eventdata(
                 tdm=tdm,
                 params_recarray=None,
-                eventdata=eventdata)
+                eventdata=eventdata,
+                tl=tl)
 
             return pd
 
@@ -767,7 +769,8 @@ class SignalMultiDimGridPDFSet(
                 tdm=tdm,
                 params_recarray=None,
                 eventdata=eventdata,
-                evt_mask=evt_mask)
+                evt_mask=evt_mask,
+                tl=tl)
 
             v_start += n
 
@@ -864,6 +867,7 @@ class SignalMultiDimGridPDFSet(
                 tdm=tdm,
                 eventdata=eventdata,
                 params_recarray=params_recarray,
+                tl=tl,
             )
 
         # Construct the gradients dictionary with all the fit parameters, that
