@@ -6,6 +6,9 @@ likelihood function.
 
 import numpy as np
 
+from skyllh.core import (
+    tool,
+)
 from skyllh.core.debugging import (
     get_logger,
 )
@@ -576,6 +579,7 @@ class SignalMultiDimGridPDFSet(
             param_grid_set,
             gridparams_pdfs,
             interpol_method_cls=None,
+            use_same_photospline_bfi_for_all_pdfs=False,
             **kwargs,
     ):
         """Creates a new MultiDimGridPDFSet instance, which holds a set of
@@ -599,6 +603,9 @@ class SignalMultiDimGridPDFSet(
             subclass of ``GridManifoldInterpolationMethod``.
             If set to None, the default grid manifold interpolation method
             ``Linear1DGridManifoldInterpolationMethod`` will be used.
+        use_same_photospline_bfi_for_all_pdfs : bool
+            Flag if the same basis function indices (bfi) should be used for
+            all PDFs when photospline tables are used. Default is ``False``.
         """
         super().__init__(
             pmm=pmm,
@@ -609,6 +616,9 @@ class SignalMultiDimGridPDFSet(
         if interpol_method_cls is None:
             interpol_method_cls = Linear1DGridManifoldInterpolationMethod
         self.interpol_method_cls = interpol_method_cls
+
+        self.use_same_photospline_bfi_for_all_pdfs =\
+            use_same_photospline_bfi_for_all_pdfs
 
         # Add the given MultiDimGridPDF instances to the PDF set.
         for (gridparams, pdf) in gridparams_pdfs:
@@ -626,6 +636,14 @@ class SignalMultiDimGridPDFSet(
         self._cache_tdm_trial_data_state_id = None
         self._cache_eventdata = None
 
+        # Determine if the PDFs are internally represented as
+        # photospline.SplineTable instances.
+        self.uses_photospline_SplineTable = False
+        pdf = next(iter(self.items()))[1]
+        if tool.is_available('photospline') and\
+           isinstance(pdf.pdf, tool.get('photospline').SplineTable):
+            self.uses_photospline_SplineTable = True
+
     @property
     def interpol_method_cls(self):
         """The class derived from GridManifoldInterpolationMethod
@@ -641,7 +659,11 @@ class SignalMultiDimGridPDFSet(
                 'GridManifoldInterpolationMethod!')
         self._interpol_method_cls = cls
 
-    def _get_eventdata(self, tdm, tl=None):
+    def _get_eventdata(
+            self,
+            tdm,
+            tl=None,
+    ):
         """Creates and caches the event data for this PDFSet. If the
         TrialDataManager's trail data state id changed, the eventdata will be
         recreated.
@@ -661,16 +683,29 @@ class SignalMultiDimGridPDFSet(
         if (self._cache_tdm_trial_data_state_id is None) or\
            (self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id):
 
+            # Get the first PDF of this PDFSet.
+            pdf = next(iter(self.items()))[1]
+
             with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
                 # All PDFs of this PDFSet should have the same axes, so we use
                 # the axes from the first PDF in this PDF set.
-                axes = next(iter(self.items()))[1].axes
-
                 self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
                 self._cache_eventdata =\
                     MultiDimGridPDF.create_eventdata_for_sigpdf(
                         tdm=tdm,
-                        axes=axes)
+                        axes=pdf.axes)
+
+            if self.use_same_photospline_bfi_for_all_pdfs and\
+               self.uses_photospline_SplineTable:
+                with TaskTimer(
+                        tl,
+                        'Get and set basis function indices for all PDFs.'):
+                    V = self._cache_eventdata.shape[0]
+                    bfi = pdf.pdf.search_centers(
+                        [self._cache_eventdata[i] for i in range(0, V)]
+                    )
+                    for (_, pdf) in self.items():
+                        pdf.basis_function_indices = bfi
 
         return self._cache_eventdata
 

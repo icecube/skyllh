@@ -95,7 +95,7 @@ class PDFAxis(object):
     def vmin(self, v):
         self._vmin = float_cast(
             v,
-            'The value for the vmin property must be castable to type float!')
+            'The value for the vmin property must be cast-able to type float!')
 
     @property
     def vmax(self):
@@ -107,7 +107,7 @@ class PDFAxis(object):
     def vmax(self, v):
         self._vmax = float_cast(
             v,
-            'The value for the vmax property must be castable to type float!')
+            'The value for the vmax property must be cast-able to type float!')
 
     @property
     def range(self):
@@ -475,7 +475,7 @@ class PDF(
             <name:gpidx> holding the global parameter index plus one for each
             source value. For values mapping to non-fit parameters, the index
             should be negative.
-            This can be ``Ǹone`` for PDFs that do not depend on any parameters.
+            This can be ``None`` for PDFs that do not depend on any parameters.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to measure
             timing information.
@@ -743,7 +743,7 @@ class SpatialPDF(
         PDF,
         metaclass=abc.ABCMeta):
     """This is the abstract base class for a spatial PDF model. A spatial PDF
-    has two axes, right-ascention (ra) and declination (dec).
+    has two axes, right-ascension (ra) and declination (dec).
     """
 
     def __init__(self, ra_range, dec_range, **kwargs):
@@ -753,7 +753,7 @@ class SpatialPDF(
         Parameters
         ----------
         ra_range : 2-element tuple
-            The tuple specifying the right-ascention range this PDF covers.
+            The tuple specifying the right-ascension range this PDF covers.
         dec_range : 2-element tuple
             The tuple specifying the declination range this PDF covers.
         """
@@ -777,7 +777,7 @@ class SpatialPDF(
             **kwargs):
         """Checks if this spatial PDF is valid for all the given experimental
         data.
-        It checks if all the data is within the right-ascention and declination
+        It checks if all the data is within the right-ascension and declination
         range.
 
         Parameters
@@ -787,7 +787,7 @@ class SpatialPDF(
             The following data fields must exist:
 
             - 'ra' : float
-                The right-ascention of the data event.
+                The right-ascension of the data event.
             - 'dec' : float
                 The declination of the data event.
         tl : instance of TimeLord | None
@@ -796,7 +796,7 @@ class SpatialPDF(
         Raises
         ------
         ValueError
-            If some of the data is outside the right-ascention or declination
+            If some of the data is outside the right-ascension or declination
             range.
         """
         ra_axis = self.axes['ra']
@@ -805,10 +805,10 @@ class SpatialPDF(
         ra = tdm.get_data('ra')
         dec = tdm.get_data('dec')
 
-        # Check if all the data is within the right-ascention range.
+        # Check if all the data is within the right-ascension range.
         if np.any((ra < ra_axis.vmin) | (ra > ra_axis.vmax)):
             raise ValueError(
-                'Some data is outside the right-ascention range '
+                'Some data is outside the right-ascension range '
                 f'({ra_axis.vmin:.3f}, {ra_axis.vmax:.3f})!')
 
         # Check if all the data is within the declination range.
@@ -1093,7 +1093,7 @@ class MultiDimGridPDF(
         self.cache_pd_values = cache_pd_values
 
         # Define the PDF axes.
-        for axis_binning in self._axis_binnning_list:
+        for axis_binning in self._axis_binning_list:
             self.add_axis(PDFAxis(
                 name=axis_binning.name,
                 vmin=axis_binning.lower_edge,
@@ -1103,7 +1103,7 @@ class MultiDimGridPDF(
         # Create the internal PDF object.
         if path_to_pdf_splinetable is None:
             self._pdf = RegularGridInterpolator(
-                tuple([binning.binedges for binning in self._axis_binnning_list]),
+                tuple([binning.binedges for binning in self._axis_binning_list]),
                 pdf_grid_data,
                 method='linear',
                 bounds_error=False,
@@ -1132,7 +1132,7 @@ class MultiDimGridPDF(
         The name of each BinningDefinition instance defines the event field
         name that should be used for querying the PDF.
         """
-        return self._axis_binnning_list
+        return self._axis_binning_list
 
     @axis_binning_list.setter
     def axis_binning_list(self, binnings):
@@ -1144,7 +1144,29 @@ class MultiDimGridPDF(
                 'BinningDefinition or a sequence of BinningDefinition '
                 'instances! '
                 f'Its current type is {classname(binnings)}.')
-        self._axis_binnning_list = list(binnings)
+        self._axis_binning_list = list(binnings)
+
+    @property
+    def basis_function_indices(self):
+        """The (V,N_values)-shaped numpy.ndarray of int holding the basis
+        function indices of the photospline table for the current trial
+        eventdata.
+        """
+        return self._basis_function_indices
+
+    @basis_function_indices.setter
+    def basis_function_indices(self, bfi):
+        if bfi is not None:
+            if not isinstance(bfi, np.ndarray):
+                raise TypeError(
+                    'The basis_function_indices property must be None, or an '
+                    'instance of numpy.ndarray! '
+                    f'It\'s current type is {classname(bfi)}!')
+            if bfi.ndim != 2:
+                raise ValueError(
+                    'The ndarray dimensionality of the basis_function_indices '
+                    f'property must be 2! Currently it is {bfi.ndim}!')
+        self._basis_function_indices = bfi
 
     @property
     def norm_factor_func(self):
@@ -1197,7 +1219,14 @@ class MultiDimGridPDF(
     def cache_pd_values(self, b):
         self._cache_pd_values = bool_cast(
             b,
-            'The cache_pd_values property must be castable to type bool!')
+            'The cache_pd_values property must be cast-able to type bool!')
+
+    @property
+    def pdf(self):
+        """(read-only) The instance of RegularGridInterpolator or instance of
+        photospline.SplineTable that represents the internal PDF object.
+        """
+        return self._pdf
 
     def assert_is_valid_for_trial_data(
             self,
@@ -1578,7 +1607,7 @@ class PDFSet(
         param_grid_set : instance of ParameterGrid |
                          instance of ParameterGridSet
             The instance of ParameterGridSet with the parameter grids defining
-            the descrete parameter values for which the PDFs of this PDF set
+            the discrete parameter values for which the PDFs of this PDF set
             are made for.
         """
         # Call super to support multiple class inheritance.
