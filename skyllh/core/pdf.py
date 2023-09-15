@@ -1391,9 +1391,10 @@ class MultiDimGridPDF(
             V = eventdata.shape[0]
 
             if self.basis_function_indices is None:
-                self.basis_function_indices = self._pdf.search_centers(
-                    [eventdata[i] for i in range(0, V)]
-                )
+                with TaskTimer(tl, 'Get basis function indices from photospline.'):
+                    self.basis_function_indices = self._pdf.search_centers(
+                        [eventdata[i] for i in range(0, V)]
+                    )
 
             with TaskTimer(tl, 'Get pd from photospline fit.'):
                 if evt_mask is None:
