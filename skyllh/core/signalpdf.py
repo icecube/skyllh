@@ -55,7 +55,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
     the distance on the sphere between the source and the data event.
 
     This PDF requires the `src_array` data field, that is numpy record ndarray
-    with the data fields `ra` and `dec` holding the right-ascention and
+    with the data fields `ra` and `dec` holding the right-ascension and
     declination of the point-like sources, respectively.
     """
 
@@ -71,7 +71,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
         Parameters
         ----------
         ra_range : 2-element tuple | None
-            The range in right-ascention this spatial PDF is valid for.
+            The range in right-ascension this spatial PDF is valid for.
             If set to None, the range (0, 2pi) is used.
         dec_range : 2-element tuple | None
             The range in declination this spatial PDF is valid for.
@@ -105,7 +105,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
     def pd_event_data_field_name(self, name):
         name = str_cast(
             name,
-            'The pd_event_data_field_name property must be castable to type '
+            'The pd_event_data_field_name property must be cast-able to type '
             f'str! Its current type is {classname(name)}!')
         self._pd_event_data_field_name = name
 
@@ -124,12 +124,12 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
                 The numpy record ndarray with the following data fields:
 
                 ra : float
-                    The right-ascention of the point-like source.
+                    The right-ascension of the point-like source.
                 dec : float
                     The declination of the point-like source.
 
             ra : float
-                The right-ascention in radian of the data event.
+                The right-ascension in radian of the data event.
             dec : float
                 The declination in radian of the data event.
             ang_err: float
@@ -183,12 +183,12 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
                 The numpy record ndarray with the following data fields:
 
                 ra : float
-                    The right-ascention of the point-like source.
+                    The right-ascension of the point-like source.
                 dec : float
                     The declination of the point-like source.
 
             ra : float
-                The right-ascention in radian of the data event.
+                The right-ascension in radian of the data event.
             dec : float
                 The declination in radian of the data event.
             ang_err: float
@@ -250,7 +250,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(
 
     This PDF requires the ``src_array`` source data field, that is numpy
     structured ndarray with the data fields ``ra`` and ``dec`` holding the
-    right-ascention and declination of the point-like sources, respectively.
+    right-ascension and declination of the point-like sources, respectively.
     """
     def __init__(
             self,
@@ -263,7 +263,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(
         Parameters
         ----------
         ra_range : 2-element tuple | None
-            The range in right-ascention this spatial PDF is valid for.
+            The range in right-ascension this spatial PDF is valid for.
             If set to None, the range (0, 2pi) is used.
         dec_range : 2-element tuple | None
             The range in declination this spatial PDF is valid for.
