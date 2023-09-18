@@ -30,7 +30,7 @@ class SourceCatalog(
         name : str
             The name of the catalog.
         sources : sequence of source_type | None
-            The sequence of sources this catalog should be initalized with.
+            The sequence of sources this catalog should be initialized with.
         source_type : type | None
             The type of the source class. If set to None (default), the
             default type defined by SourceCollection will be used.
@@ -52,7 +52,7 @@ class SourceCatalog(
     def name(self, name):
         name = str_cast(
             name,
-            'The name property must be castable to type str!')
+            'The name property must be cast-able to type str!')
         self._name = name
 
     def __str__(self):
