@@ -1043,14 +1043,14 @@ class FunctionEnergyFluxProfile(
 class EpeakFunctionEnergyProfile(
     FunctionEnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument where 
-    Epeak and the scaling will be optimized. The function itself will return energies 
-    (E^2 dN/dE: such that energy is conserved) and we divide by E^2 when defining __call__()
+    Epeak and the scaling will be optimized.  
 
     """
     def __init__(
             self,
             function,
-            e_peak,
+            e_peak_orig,
+            e_peak_offset,
             energy_unit=None,
             **kwargs):
         """Creates a new  flux profile with the peak energy ``E0``.
@@ -1058,7 +1058,8 @@ class EpeakFunctionEnergyProfile(
         Parameters
         ----------
         function : callable function, takes energy as argument 
-        e_peak : energy for which the flux reaches its peak value
+        e_peak_orig : log10(energy) for which the original flux reaches its peak value
+        e_peak_offset : log10(energy) to which the flux should be shifted
         energy_unit : instance of astropy.units.UnitBase | None
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
@@ -1069,8 +1070,8 @@ class EpeakFunctionEnergyProfile(
             energy_unit=energy_unit,
             **kwargs)
 
-        self.e_peak_orig = e_peak
-        self.e_peak = e_peak
+        self.e_peak_orig = e_peak_orig
+        self.e_peak = e_peak_offset
 
         # Define the parameters which can be set via the `set_params`
         # method.
@@ -1133,11 +1134,73 @@ class EpeakFunctionEnergyProfile(
         if (unit is not None) and (unit != self._energy_unit):
             E = E * unit.to(self._energy_unit)
 
-        energy_offset = self.e_peak_orig / self.e_peak
+        energy_offset = 10**self.e_peak_orig / 10**self.e_peak
 
-        value = self.function(E * energy_offset) / E / E
+        value = self.function(E * energy_offset) * (energy_offset**2) # / E / E
 
-        return value
+        return np.where(value >= max(value)*1e-100, value, max(value)*1e-100)
+
+        # return 1e-20
+
+
+    def get_integral(
+            self,
+            E1,
+            E2,
+            unit=None,
+    ):
+        """This is the default implementation for calculating the integral value
+        of this energy flux profile in the range ``[E1, E2]``.
+
+        .. note::
+
+            This implementation utilizes the ``scipy.integrate.quad`` function
+            to perform a generic numeric integration. Hence, this implementation
+            is slow and should be reimplemented by the derived class if an
+            analytic integral form is available.
+
+        Parameters
+        ----------
+        E1 : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E2 : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral : instance of ndarray
+            The (n,)-shaped numpy ndarray holding the integral values of the
+            given integral ranges.
+        """
+        E1 = np.atleast_1d(E1)
+        E2 = np.atleast_1d(E2)
+
+
+        energy_offset = 10**self.e_peak_orig / 10**self.e_peak
+
+        if (unit is not None) and (unit != self._energy_unit):
+            time_unit_conv_factor = unit.to(self._energy_unit)
+            E1 = E1 * time_unit_conv_factor
+            E2 = E2 * time_unit_conv_factor
+
+        integral = np.empty((len(E1),), dtype=np.float64)
+
+        for (i, (E1_i, E2_i)) in enumerate(zip(E1, E2)):
+
+            tmp_e = np.linspace(np.log10(E1_i), np.log10(E2_i))
+            tmp_int = np.trapz(np.log(10) * self(10**tmp_e) * 10**tmp_e, tmp_e) 
+
+            # make sure it is always positive (probably not an issue any more with np.trapz. 
+            # used to be an issue using the spline integrate self.function.integrate)
+            integral[i] = tmp_int if tmp_int >= 0. else 0.
+
+
+        return integral
+
 
     @property
     def math_function_str(self):

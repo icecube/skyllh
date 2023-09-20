@@ -45,7 +45,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
     effective area depends solely on the zenith angle, and hence on the
     declination, of the source.
 
-    It takes the effective area for the detector signal yield from the auxilary
+    It takes the effective area for the detector signal yield from the auxiliary
     detector effective area data file given by the public data.
     """
 
@@ -200,7 +200,9 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             # Sum over the enegry bins for each sin_dec row.
             h = np.sum(aeff*h_phi, axis=1)
 
-            return h
+            # make sure h is greater than 0 everywhere
+            min_h = np.min(h[h>0])
+            return np.where(h==0, min_h*1e-10, h)
 
         energy_bin_edges_lower = np.power(10, log_true_e_binedges_lower)
         energy_bin_edges_upper = np.power(10, log_true_e_binedges_upper)
