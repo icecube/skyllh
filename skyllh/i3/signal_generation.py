@@ -8,7 +8,7 @@ from skyllh.core.py import (
     int_cast,
 )
 from skyllh.core.utils.coords import (
-    rotate_spherical_vector,
+    rotate_signal_events,
 )
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
@@ -382,7 +382,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             n_sig = len(shg_src_sig_events)
 
             # Rotate the signal events to the source location.
-            (ra, dec) = rotate_spherical_vector(
+            (ra, dec) = rotate_signal_events(
                 shg_src_sig_events['true_ra'], shg_src_sig_events['true_dec'],
                 source.ra*np.ones(n_sig), source.dec*np.ones(n_sig),
                 shg_src_sig_events['ra'], shg_src_sig_events['dec']
