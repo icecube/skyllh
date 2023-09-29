@@ -1136,11 +1136,14 @@ class EpeakFunctionEnergyProfile(
 
         energy_offset = 10**self.e_peak_orig / 10**self.e_peak
 
-        value = self.function(E * energy_offset) * (energy_offset**2) # / E / E
+        # we want to conserve energy, so the peak value should stay the same for E^2 dN/dE. 
 
+        value = self.function(E * energy_offset) * (energy_offset**2)
+
+        # avoid really small values
+        # return np.where(value >= max(value)*1e-100, value, max(value)*1e-100)
+    
         return np.where(value >= max(value)*1e-100, value, max(value)*1e-100)
-
-        # return 1e-20
 
 
     def get_integral(
@@ -1190,6 +1193,8 @@ class EpeakFunctionEnergyProfile(
         integral = np.empty((len(E1),), dtype=np.float64)
 
         for (i, (E1_i, E2_i)) in enumerate(zip(E1, E2)):
+
+            # integration for log(energy) for hopefully better numerical stability
 
             tmp_e = np.linspace(np.log10(E1_i), np.log10(E2_i))
             tmp_int = np.trapz(np.log(10) * self(10**tmp_e) * 10**tmp_e, tmp_e) 
