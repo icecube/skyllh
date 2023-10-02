@@ -141,7 +141,7 @@ def set_epeak(analysis, e_peak):
     e_peak : float
         Peak energy of the flux model (this defines the reference flux)
     """
-    ana.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile.e_peak = x['e_peak']
+    ana.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile.e_peak = e_peak
     ana.sig_generator.change_shg_mgr(ana.shg_mgr)
 
 
