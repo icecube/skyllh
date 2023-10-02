@@ -142,7 +142,7 @@ def set_epeak(analysis, e_peak):
         Peak energy of the flux model (this defines the reference flux)
     """
     analysis.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile.e_peak = e_peak
-    analysis.sig_generator.change_shg_mgr(ana.shg_mgr)
+    analysis.sig_generator.change_shg_mgr(analysis.shg_mgr)
 
 
 def flux_from_ns(analysis, e_peak, ns):
