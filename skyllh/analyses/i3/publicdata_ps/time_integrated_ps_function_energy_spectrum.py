@@ -141,8 +141,8 @@ def set_epeak(analysis, e_peak):
     e_peak : float
         Peak energy of the flux model (this defines the reference flux)
     """
-    ana.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile.e_peak = e_peak
-    ana.sig_generator.change_shg_mgr(ana.shg_mgr)
+    analysis.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile.e_peak = e_peak
+    analysis.sig_generator.change_shg_mgr(ana.shg_mgr)
 
 
 def flux_from_ns(analysis, e_peak, ns):
@@ -165,9 +165,9 @@ def flux_from_ns(analysis, e_peak, ns):
     #set the fluxmodel to e_peak
     set_epeak(analysis, e_peak)
 
-    scaling_factor = ana.calculate_model_scaling_factor(ns, [ns, e_peak])
+    scaling_factor = analysis.calculate_model_scaling_factor(ns, [ns, e_peak])
 
-    return ana.shg_mgr.get_fluxmodel_by_src_idx(0)(E=10**e_peak).squeeze() * scaling_factor
+    return analysis.shg_mgr.get_fluxmodel_by_src_idx(0)(E=10**e_peak).squeeze() * scaling_factor
 
 
 def ns_from_flux(analysis, e_peak, flux):
@@ -192,11 +192,11 @@ def ns_from_flux(analysis, e_peak, flux):
     set_epeak(analysis, e_peak)
 
     # reference flux at e_peak
-    reference_flux = ana.shg_mgr.get_fluxmodel_by_src_idx(0)(E=10**e_peak).squeeze()
+    reference_flux = analysis.shg_mgr.get_fluxmodel_by_src_idx(0)(E=10**e_peak).squeeze()
 
     scaling_factor = flux / reference_flux
 
-    scaling_factor_norm = ana.calculate_model_scaling_factor(1, [1, e_peak])
+    scaling_factor_norm = analysis.calculate_model_scaling_factor(1, [1, e_peak])
  
     return scaling_factor / scaling_factor_norm
 
