@@ -6,6 +6,9 @@ likelihood function.
 
 import numpy as np
 
+from skyllh.core import (
+    tool,
+)
 from skyllh.core.debugging import (
     get_logger,
 )
@@ -52,7 +55,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
     the distance on the sphere between the source and the data event.
 
     This PDF requires the `src_array` data field, that is numpy record ndarray
-    with the data fields `ra` and `dec` holding the right-ascention and
+    with the data fields `ra` and `dec` holding the right-ascension and
     declination of the point-like sources, respectively.
     """
 
@@ -68,7 +71,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
         Parameters
         ----------
         ra_range : 2-element tuple | None
-            The range in right-ascention this spatial PDF is valid for.
+            The range in right-ascension this spatial PDF is valid for.
             If set to None, the range (0, 2pi) is used.
         dec_range : 2-element tuple | None
             The range in declination this spatial PDF is valid for.
@@ -102,7 +105,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
     def pd_event_data_field_name(self, name):
         name = str_cast(
             name,
-            'The pd_event_data_field_name property must be castable to type '
+            'The pd_event_data_field_name property must be cast-able to type '
             f'str! Its current type is {classname(name)}!')
         self._pd_event_data_field_name = name
 
@@ -121,12 +124,12 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
                 The numpy record ndarray with the following data fields:
 
                 ra : float
-                    The right-ascention of the point-like source.
+                    The right-ascension of the point-like source.
                 dec : float
                     The declination of the point-like source.
 
             ra : float
-                The right-ascention in radian of the data event.
+                The right-ascension in radian of the data event.
             dec : float
                 The declination in radian of the data event.
             ang_err: float
@@ -180,12 +183,12 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
                 The numpy record ndarray with the following data fields:
 
                 ra : float
-                    The right-ascention of the point-like source.
+                    The right-ascension of the point-like source.
                 dec : float
                     The declination of the point-like source.
 
             ra : float
-                The right-ascention in radian of the data event.
+                The right-ascension in radian of the data event.
             dec : float
                 The declination in radian of the data event.
             ang_err: float
@@ -247,7 +250,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(
 
     This PDF requires the ``src_array`` source data field, that is numpy
     structured ndarray with the data fields ``ra`` and ``dec`` holding the
-    right-ascention and declination of the point-like sources, respectively.
+    right-ascension and declination of the point-like sources, respectively.
     """
     def __init__(
             self,
@@ -260,7 +263,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(
         Parameters
         ----------
         ra_range : 2-element tuple | None
-            The range in right-ascention this spatial PDF is valid for.
+            The range in right-ascension this spatial PDF is valid for.
             If set to None, the range (0, 2pi) is used.
         dec_range : 2-element tuple | None
             The range in declination this spatial PDF is valid for.
@@ -576,7 +579,9 @@ class SignalMultiDimGridPDFSet(
             param_grid_set,
             gridparams_pdfs,
             interpol_method_cls=None,
-            **kwargs):
+            use_same_photospline_bfi_for_all_pdfs=False,
+            **kwargs,
+    ):
         """Creates a new MultiDimGridPDFSet instance, which holds a set of
         MultiDimGridPDF instances, one for each point of a parameter grid set.
 
@@ -598,6 +603,11 @@ class SignalMultiDimGridPDFSet(
             subclass of ``GridManifoldInterpolationMethod``.
             If set to None, the default grid manifold interpolation method
             ``Linear1DGridManifoldInterpolationMethod`` will be used.
+        use_same_photospline_bfi_for_all_pdfs : bool
+            Flag if the same basis function indices (bfi) should be used for
+            all PDFs when photospline tables are used. Default is ``False``.
+            This should be set to ``True`` if all photospline tables share the
+            same binning. In that case the PDF evaluation will be accelerated.
         """
         super().__init__(
             pmm=pmm,
@@ -608,6 +618,9 @@ class SignalMultiDimGridPDFSet(
         if interpol_method_cls is None:
             interpol_method_cls = Linear1DGridManifoldInterpolationMethod
         self.interpol_method_cls = interpol_method_cls
+
+        self.use_same_photospline_bfi_for_all_pdfs =\
+            use_same_photospline_bfi_for_all_pdfs
 
         # Add the given MultiDimGridPDF instances to the PDF set.
         for (gridparams, pdf) in gridparams_pdfs:
@@ -622,8 +635,15 @@ class SignalMultiDimGridPDFSet(
         self._interpol_param_names =\
             self.param_grid_set.params_name_list
 
-        self._cache_tdm_trial_data_state_id = None
         self._cache_eventdata = None
+
+        # Determine if the PDFs are internally represented as
+        # photospline.SplineTable instances.
+        self.uses_photospline_SplineTable = False
+        pdf = next(iter(self.items()))[1]
+        if tool.is_available('photospline') and\
+           isinstance(pdf.pdf, tool.get('photospline').SplineTable):
+            self.uses_photospline_SplineTable = True
 
     @property
     def interpol_method_cls(self):
@@ -640,42 +660,10 @@ class SignalMultiDimGridPDFSet(
                 'GridManifoldInterpolationMethod!')
         self._interpol_method_cls = cls
 
-    def _get_eventdata(self, tdm, tl=None):
-        """Creates and caches the event data for this PDFSet. If the
-        TrialDataManager's trail data state id changed, the eventdata will be
-        recreated.
-
-        Parameters
-        ----------
-        tdm : instance of TrialDataManager
-            The instance of TrialDataManager holding the trial data.
-        tl : instance of TimeLord | None
-            The optional instance of TimeLord to measure task timing.
-
-        Returns
-        -------
-        eventdata : instance of numpy ndarray
-            The (V,N_values)-shaped eventdata ndarray.
-        """
-        if (self._cache_tdm_trial_data_state_id is None) or\
-           (self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id):
-
-            with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
-                # All PDFs of this PDFSet should have the same axes, so we use
-                # the axes from the first PDF in this PDF set.
-                pdf = next(iter(self.items()))[1]
-
-                self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
-                self._cache_eventdata =\
-                    MultiDimGridPDF.create_eventdata_for_sigpdf(
-                        tdm=tdm,
-                        axes=pdf.axes)
-
-        return self._cache_eventdata
-
     def _get_pdf_for_interpol_param_values(
             self,
-            interpol_param_values):
+            interpol_param_values,
+    ):
         """Retrieves the PDF for the given set of interpolation parameter
         values.
 
@@ -702,9 +690,12 @@ class SignalMultiDimGridPDFSet(
             tdm,
             eventdata,
             gridparams_recarray,
-            n_values):
+            n_values,
+            tl=None,
+    ):
         """Evaluates the PDFs for the given event data. The particular PDF is
         selected based on the grid parameter values for each model.
+        This method is called by the interpolation method.
 
         Parameters
         ----------
@@ -741,7 +732,8 @@ class SignalMultiDimGridPDFSet(
             pd = pdf.get_pd_with_eventdata(
                 tdm=tdm,
                 params_recarray=None,
-                eventdata=eventdata)
+                eventdata=eventdata,
+                tl=tl)
 
             return pd
 
@@ -763,7 +755,8 @@ class SignalMultiDimGridPDFSet(
                 tdm=tdm,
                 params_recarray=None,
                 eventdata=eventdata,
-                evt_mask=evt_mask)
+                evt_mask=evt_mask,
+                tl=tl)
 
             v_start += n
 
@@ -773,7 +766,8 @@ class SignalMultiDimGridPDFSet(
             self,
             tdm,
             tl=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Checks if the PDFs of this PDFSet instance are valid for all the
         given trial data events.
         Since all PDFs should have the same axes, only the first PDF will be
@@ -800,11 +794,57 @@ class SignalMultiDimGridPDFSet(
             tl=tl,
             **kwargs)
 
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs,
+    ):
+        """This method is called whenever a new trial data is initialized. It
+        calls the :meth:`~skyllh.core.pdf.PDFSet.initialize_for_new_trial`
+        method. Furthermore, it creates the two-dimensional (V,N_events)-shaped
+        ndarray holding the event data and stores it to
+        ``self._cache_eventdata``.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the new trial data events.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord for measuring timing information.
+        """
+        super().initialize_for_new_trial(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
+
+        # Get the first PDF of this PDFSet.
+        pdf = next(iter(self.items()))[1]
+
+        with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
+            self._cache_eventdata =\
+                MultiDimGridPDF.create_eventdata_for_sigpdf(
+                    tdm=tdm,
+                    axes=pdf.axes)
+
+        if self.use_same_photospline_bfi_for_all_pdfs and\
+           self.uses_photospline_SplineTable:
+            with TaskTimer(
+                    tl,
+                    'Get and set basis function indices for all PDFs.'):
+                V = self._cache_eventdata.shape[0]
+                bfi = pdf.pdf.search_centers(
+                    [self._cache_eventdata[i] for i in range(0, V)]
+                )
+                for (_, pdf) in self.items():
+                    pdf.basis_function_indices = bfi
+
     def get_pd(
             self,
             tdm,
             params_recarray,
-            tl=None):
+            tl=None,
+    ):
         """Calculates the probability density for each event, given the given
         parameter values.
 
@@ -834,12 +874,6 @@ class SignalMultiDimGridPDFSet(
         """
         logger = get_logger(f'{__name__}.{classname(self)}.get_pd')
 
-        # Create the ndarray for the event data that is needed for the
-        # ``MultiDimGridPDF.get_pd_with_eventdata`` method.
-        eventdata = self._get_eventdata(
-            tdm=tdm,
-            tl=tl)
-
         # Get the interpolated PDF values for the arbitrary parameter values.
         # The (D,N_events)-shaped grads_arr ndarray contains the gradient of the
         # probability density w.r.t. each of the D parameters, which are defined
@@ -856,8 +890,10 @@ class SignalMultiDimGridPDFSet(
                     f'{list(params_recarray.dtype.fields.keys())}.')
             (pd, grads_arr) = self._interpol_method(
                 tdm=tdm,
-                eventdata=eventdata,
-                params_recarray=params_recarray)
+                eventdata=self._cache_eventdata,
+                params_recarray=params_recarray,
+                tl=tl,
+            )
 
         # Construct the gradients dictionary with all the fit parameters, that
         # contribute to the local interpolation parameters.
@@ -913,6 +949,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
             shg_mgr,
             pmm,
             shgidxs_pdf_list,
+            use_same_photospline_bfi_for_all_pdfs=False,
             **kwargs,
     ):
         """Creates a new SignalSHGMappedMultiDimGridPDFSet instance, which holds
@@ -930,6 +967,11 @@ class SignalSHGMappedMultiDimGridPDFSet(
         shgidxs_pdf_list : sequence of (shg_idxs, MultiDimGridPDF) tuples
             The sequence of 2-element tuples which define the mapping of the
             source hypothesis groups to a PDF instance.
+        use_same_photospline_bfi_for_all_pdfs : bool
+            Flag if the same basis function indices (bfi) should be used for
+            all PDFs when photospline tables are used. Default is ``False``.
+            This should be set to ``True`` if all photospline tables share the
+            same binning. In that case the PDF evaluation will be accelerated.
         """
         super().__init__(
             pmm=pmm,
@@ -951,8 +993,18 @@ class SignalSHGMappedMultiDimGridPDFSet(
                 pdf=pdf,
                 gridparams={'shg_idxs': shg_idxs})
 
-        self._cache_tdm_trial_data_state_id = None
+        self.use_same_photospline_bfi_for_all_pdfs =\
+            use_same_photospline_bfi_for_all_pdfs
+
         self._cache_eventdata = None
+
+        # Determine if the PDFs are internally represented as
+        # photospline.SplineTable instances.
+        self.uses_photospline_SplineTable = False
+        pdf = next(iter(self.items()))[1]
+        if tool.is_available('photospline') and\
+           isinstance(pdf.pdf, tool.get('photospline').SplineTable):
+            self.uses_photospline_SplineTable = True
 
     @property
     def shg_mgr(self):
@@ -961,44 +1013,59 @@ class SignalSHGMappedMultiDimGridPDFSet(
         """
         return self._shg_mgr
 
-    def _get_eventdata(self, tdm, tl=None):
-        """Creates and caches the event data for this PDFSet. If the
-        TrialDataManager's trail data state id changed, the eventdata will be
-        recreated.
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs,
+    ):
+        """This method is called whenever a new trial data is initialized. It
+        calls the :meth:`~skyllh.core.pdf.PDFSet.initialize_for_new_trial`
+        method. Furthermore, it creates the two-dimensional (V,N_events)-shaped
+        ndarray holding the event data and stores it to
+        ``self._cache_eventdata``.
 
         Parameters
         ----------
         tdm : instance of TrialDataManager
-            The instance of TrialDataManager holding the trial data.
+            The instance of TrialDataManager holding the new trial data events.
         tl : instance of TimeLord | None
-            The optional instance of TimeLord to measure task timing.
-
-        Returns
-        -------
-        eventdata : instance of numpy ndarray
-            The (V,N_values)-shaped eventdata ndarray.
+            The optional instance of TimeLord for measuring timing information.
         """
-        if (self._cache_tdm_trial_data_state_id is None) or\
-           (self._cache_tdm_trial_data_state_id != tdm.trial_data_state_id):
+        super().initialize_for_new_trial(
+            tdm=tdm,
+            tl=tl,
+            **kwargs)
 
-            with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
-                # All PDFs of this PDFSet should have the same axes, so we use
-                # the axes from the first PDF in this PDF set.
-                pdf = next(iter(self.items()))[1]
+        # Get the first PDF of this PDFSet.
+        pdf = next(iter(self.items()))[1]
 
-                self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
-                self._cache_eventdata =\
-                    MultiDimGridPDF.create_eventdata_for_sigpdf(
-                        tdm=tdm,
-                        axes=pdf.axes)
+        with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
+            # All PDFs of this PDFSet should have the same axes, so we use
+            # the axes from the first PDF in this PDF set.
+            self._cache_eventdata =\
+                MultiDimGridPDF.create_eventdata_for_sigpdf(
+                    tdm=tdm,
+                    axes=pdf.axes)
 
-        return self._cache_eventdata
+        if self.use_same_photospline_bfi_for_all_pdfs and\
+           self.uses_photospline_SplineTable:
+            with TaskTimer(
+                    tl,
+                    'Get and set basis function indices for all PDFs.'):
+                V = self._cache_eventdata.shape[0]
+                bfi = pdf.pdf.search_centers(
+                    [self._cache_eventdata[i] for i in range(0, V)]
+                )
+                for (_, pdf) in self.items():
+                    pdf.basis_function_indices = bfi
 
     def get_pd(
             self,
             tdm,
             params_recarray,
-            tl=None):
+            tl=None,
+    ):
         """Calculates the probability density for each event, given the given
         parameter values.
 
@@ -1028,12 +1095,6 @@ class SignalSHGMappedMultiDimGridPDFSet(
             By definition this PDF set does not depend on any fit parameters,
             hence, this dictionary is empty.
         """
-        # Create the ndarray for the event data that is needed for the
-        # ``MultiDimGridPDF.get_pd_with_eventdata`` method.
-        eventdata = self._get_eventdata(
-            tdm=tdm,
-            tl=tl)
-
         pd = np.zeros((tdm.get_n_values(),), dtype=np.float64)
 
         src_idxs = tdm.src_evt_idxs[0]
@@ -1055,7 +1116,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
                 pd_pdf = pdf.get_pd_with_eventdata(
                     tdm=tdm,
                     params_recarray=params_recarray,
-                    eventdata=eventdata,
+                    eventdata=self._cache_eventdata,
                     evt_mask=values_mask)
 
             pd[values_mask] = pd_pdf

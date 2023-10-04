@@ -1882,7 +1882,7 @@ class MultiSourceMultiDatasetLLHRatioAnalysis(
         -------
         factors : instance of numpy ndarray
             The (N_sources,)-shaped numpy ndarray of float holding the factors
-            the fluxmodels of the sources need to be scaled in order to obtain
+            the flux models of the sources need to be scaled in order to obtain
             the given mean number of signal events in the detector.
         """
         src_params_recarray =\

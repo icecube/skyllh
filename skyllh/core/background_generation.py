@@ -174,7 +174,7 @@ class MCDataSamplingBkgGenMethod(
             The MC data field names that should be kept in order to be able to
             calculate the background events rates by the functions
             ``get_event_prob_func`` and ``get_mean_func``. All other MC fields
-            will get droped due to computational efficiency reasons.
+            will get dropped due to computational efficiency reasons.
         pre_event_selection_method : instance of EventSelectionMethod | None
             If set to an instance of EventSelectionMethod, this method will
             pre-select the MC events that will be used for later background
@@ -290,7 +290,7 @@ class MCDataSamplingBkgGenMethod(
         """The MC data field names that should be kept in order to be able to
         calculate the background events rates by the functions
         ``get_event_prob_func`` and ``get_mean_func``. All other MC fields
-        will get droped due to computational efficiency reasons.
+        will get dropped due to computational efficiency reasons.
         """
         return self._keep_mc_data_field_names
 
@@ -479,8 +479,8 @@ class MCDataSamplingBkgGenMethod(
         else:
             mean = float_cast(
                 mean,
-                'The mean number of background events must be castable to type '
-                'float!')
+                'The mean number of background events must be cast-able to '
+                'type float!')
 
         # Draw the number of background events from a poisson distribution with
         # the given mean number of background events. This will be the number of
@@ -501,7 +501,7 @@ class MCDataSamplingBkgGenMethod(
         n_bkg_selected = int(np.around(n_bkg * mean_pre_selected / mean, 0))
 
         # Draw the actual background events from the selected events of the
-        # monto-carlo data set.
+        # monte-carlo data set.
         with TaskTimer(tl, 'Draw MC background indices.'):
             bkg_event_indices = self._cache_random_choice(
                 rss=rss,
