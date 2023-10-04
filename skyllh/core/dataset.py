@@ -2256,6 +2256,7 @@ class Dataset(
     def get_aux_data(
             self,
             name,
+            default=None,
     ):
         """Retrieves the auxiliary data that is stored in this data set under
         the given name.
@@ -2264,6 +2265,9 @@ class Dataset(
         ----------
         name : str
             The name under which the auxiliary data is stored.
+        default : any | None
+            The not ``None``, it specifies the returned default value if the
+            auxiliary data does not exists.
 
         Returns
         -------
@@ -2273,13 +2277,16 @@ class Dataset(
         Raises
         ------
         KeyError
-            If no auxiliary data is stored with the given name.
+            If no auxiliary data is stored with the given name and no default
+            value was specified.
         """
         name = str_cast(
             name,
             'The name argument must be cast-able to type str!')
 
         if name not in self._aux_data:
+            if default is not None:
+                return default
             raise KeyError(
                 f'The auxiliary data "{name}" is not defined for dataset '
                 f'"{self.name}"!')
