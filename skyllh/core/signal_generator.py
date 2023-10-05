@@ -600,6 +600,11 @@ class MCMultiDatasetSignalGenerator(
             The dictionary holding the data field names (key) and their valid
             value ranges (value).
 
+        Raises
+        ------
+        KeyError
+            If one of the event field does not exist in ``events``.
+
         Returns
         -------
         mask : instance of numpy.ndarray
@@ -610,7 +615,10 @@ class MCMultiDatasetSignalGenerator(
 
         for (field_name, min_max) in valid_event_field_ranges_dict.items():
             if field_name not in events:
-                continue
+                raise KeyError(
+                    f'The event data field "{field_name}" specified in the '
+                    'valid_event_field_ranges_dict does not exist in the event '
+                    'data!')
             field_values = events[field_name]
             mask |= (field_values < min_max[0]) | (field_values > min_max[1])
 
