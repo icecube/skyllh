@@ -2266,7 +2266,7 @@ class Dataset(
         name : str
             The name under which the auxiliary data is stored.
         default : any | None
-            The not ``None``, it specifies the returned default value if the
+            If not ``None``, it specifies the returned default value when the
             auxiliary data does not exists.
 
         Returns
