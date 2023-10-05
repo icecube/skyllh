@@ -30,6 +30,16 @@ v23.2.1
   spline table's basis function indices has been separated from the spline table
   evaluation which provides an accelerated PDF evaluation.
 
+- The core.dataset.Dataset.get_aux_data method got the new optional argument
+  "default" to specify a default return value if the auxiliary data is not
+  defined for that dataset.
+
+- The core.signal_generator.MCMultiDatasetSignalGenerator get the new optional
+  constructor argument "valid_event_field_ranges_dict_list=None" to specify
+  valid event field ranges, e.g. for the declination. If generated signal events
+  do not match these valid event field ranges, those signal events will be
+  redrawn.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
