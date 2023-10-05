@@ -56,7 +56,7 @@ _BASECONFIG = {
     },
     'units': {
         # Definition of the internal units to use. These must match with the
-        # units of the monto-carlo data files.
+        # units of the monte-carlo data files.
         'internal': {
             'angle': units.radian,
             'energy': units.GeV,
@@ -120,7 +120,7 @@ class Config(
         Parameters
         ----------
         pathfilename: str | None
-            Path and filename to the yaml file containg the to-be-updated
+            Path and filename to the yaml file containing the to-be-updated
             configuration items.
             If set to ``None``, nothing is done.
 
@@ -156,7 +156,7 @@ class Config(
         Parameters
         ----------
         user_dict: dict
-            The dictionary containg the to-be-updated configuration items.
+            The dictionary containing the to-be-updated configuration items.
 
         Returns
         -------
@@ -207,13 +207,13 @@ class Config(
     def get_wd(
             self,
     ):
-        """Retrieves the absolut path to the working directoy as configured in
+        """Retrieves the absolute path to the working directory as configured in
         this configuration.
 
         Returns
         -------
         wd : str
-            The absolut path to the project's working directory.
+            The absolute path to the project's working directory.
         """
         wd = os.path.abspath(self['project']['working_directory'])
 
@@ -342,7 +342,7 @@ class Config(
         Returns
         -------
         wd : str
-            The absolut path to the project's working directory.
+            The absolute path to the project's working directory.
         """
         if path is None:
             path = self['project']['working_directory']

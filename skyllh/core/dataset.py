@@ -109,7 +109,7 @@ class DatasetOrigin(
             host.
         post_transfer_func : callable | None
             The callable object that should be called after the dataset has been
-            transfered by the ``transfer_func``function. It can be used to
+            transferred by the ``transfer_func``function. It can be used to
             extract an archive file.
             This function requires the following call signature::
 
@@ -181,7 +181,7 @@ class DatasetOrigin(
 
     @property
     def filename(self):
-        """The file name if the origin is a file instaed of a directory.
+        """The file name if the origin is a file instead of a directory.
         """
         return self._filename
 
@@ -268,7 +268,7 @@ class DatasetOrigin(
     @property
     def post_transfer_func(self):
         """The callable object that should be called after the dataset has been
-        transfered by the ``transfer_func`` callable.
+        transferred by the ``transfer_func`` callable.
         """
         return self._post_transfer_func
 
@@ -423,7 +423,7 @@ class DatasetTransfer(
     def ensure_dst_path(
             dst_path,
     ):
-        """Ensures the existance of the given destination path.
+        """Ensures the existence of the given destination path.
 
         Parameters
         ----------
@@ -452,10 +452,10 @@ class DatasetTransfer(
             The instance of DatasetOrigin defining the origin of the dataset.
         file_list : list of str
             The list of files, relative to the origin base path, which should be
-            transfered.
+            transferred.
         dst_base_path : str
             The destination base path into which the dataset files will be
-            transfered.
+            transferred.
         username : str | None
             The user name required to connect to the remote host.
         password : str | None
@@ -474,7 +474,7 @@ class DatasetTransfer(
             ds,
             dst_path,
     ):
-        """This is a post-transfer function. It will unzip the transfered file
+        """This is a post-transfer function. It will unzip the transferred file
         into the dst_path if the origin path was a zip file.
         """
         if ds.origin.filename is None:
@@ -523,10 +523,10 @@ class RSYNCDatasetTransfer(
             the origin of the dataset.
         file_list : list of str
             The list of files, relative to the origin base path, which should be
-            transfered.
+            transferred.
         dst_base_path : str
             The destination base path into which the dataset files will be
-            transfered.
+            transferred.
         username : str | None
             The user name required to connect to the remote host.
         password : str | None
@@ -539,7 +539,7 @@ class RSYNCDatasetTransfer(
         host = origin.host
 
         # Make sure the origin and destination base paths end with a directory
-        # seperator.
+        # separator.
         origin_base_path = origin.base_path
         if origin_base_path[-len(os.path.sep):] != os.path.sep:
             origin_base_path += os.path.sep
@@ -662,9 +662,10 @@ class WGETDatasetTransfer(
             The instance of DatasetOrigin defining the origin of the dataset.
         file_list : list of str
             The list of files relative to the origin's base path, which
-            should be transfered.
+            should be transferred.
         dst_base_path : str
-            The destination base path into which the dataset will be transfered.
+            The destination base path into which the dataset will be
+            transferred.
         username : str | None
             The user name required to connect to the remote host.
         password : str | None
@@ -727,7 +728,7 @@ class Dataset(
     simulated detector data. Usually this is for a certain time period, i.e.
     a season.
 
-    Independet data sets of the same kind, e.g. event selection, can be joined
+    Independent data sets of the same kind, e.g. event selection, can be joined
     through a DatasetCollection object.
     """
     @staticmethod
@@ -841,7 +842,7 @@ class Dataset(
         livetime : float | None
             The integrated live-time in days of the dataset. It can be None for
             cases where the live-time is retrieved directly from the data files
-            uppon data loading.
+            upon data loading.
         default_sub_path_fmt : str
             The default format of the sub path of the data set.
             This must be a string that can be formatted via the ``format``
@@ -863,7 +864,8 @@ class Dataset(
             If set to ``None``, the ``default_sub_path_fmt`` will be used.
         origin : instance of DatasetOrigin | None
             The instance of DatasetOrigin defining the origin of the dataset,
-            so the dataset can be transfered automatically to the user's device.
+            so the dataset can be transferred automatically to the user's
+            device.
         """
         super().__init__(**kwargs)
 
@@ -997,7 +999,7 @@ class Dataset(
         if lt is not None:
             lt = float_cast(
                 lt,
-                'The lifetime property of the dataset must be castable to '
+                'The lifetime property of the dataset must be cast-able to '
                 'type float!')
         self._lifetime = lt
 
@@ -1051,7 +1053,7 @@ class Dataset(
         if path is not None:
             path = str_cast(
                 path,
-                'The base_path property must be castable to type str!')
+                'The base_path property must be cast-able to type str!')
             if not os.path.isabs(path):
                 raise ValueError(
                     'The base_path property must be an absolute path!')
@@ -1069,7 +1071,7 @@ class Dataset(
     def default_sub_path_fmt(self, fmt):
         fmt = str_cast(
             fmt,
-            'The default_sub_path_fmt property must be castable to type str!')
+            'The default_sub_path_fmt property must be cast-able to type str!')
         self._default_sub_path_fmt = fmt
 
     @property
@@ -1088,7 +1090,7 @@ class Dataset(
         if fmt is not None:
             fmt = str_cast(
                 fmt,
-                'The sub_path_fmt property must be None, or castable to type '
+                'The sub_path_fmt property must be None, or cast-able to type '
                 'str!')
         self._sub_path_fmt = fmt
 
@@ -1463,7 +1465,7 @@ class Dataset(
     ):
         """Makes the data of the dataset available.
         If the root directory of the dataset does not exist locally, the dataset
-        is transfered from its origin to the local host. If the origin is
+        is transferred from its origin to the local host. If the origin is
         already available locally, only a symlink is created to the origin path.
 
         Parameters
@@ -1585,7 +1587,7 @@ class Dataset(
             This dictionary defines how data fields of specific data types (key)
             should get converted into other data types (value).
             This can be used to use less memory. If set to None, no data
-            convertion is performed.
+            conversion is performed.
         dtc_except_fields : str | sequence of str | None
             The sequence of field names whose data type should not get
             converted.
@@ -1665,8 +1667,8 @@ class Dataset(
 
                 data_exp = fileloader_exp.load_data(
                     keep_fields=keep_fields_exp,
-                    dtype_convertions=dtc_dict,
-                    dtype_convertion_except_fields=_conv_new2orig_field_names(
+                    dtype_conversions=dtc_dict,
+                    dtype_conversion_except_fields=_conv_new2orig_field_names(
                         dtc_except_fields,
                         self._exp_field_name_renaming_dict),
                     efficiency_mode=efficiency_mode)
@@ -1710,8 +1712,8 @@ class Dataset(
                 ))
                 data_mc = fileloader_mc.load_data(
                     keep_fields=keep_fields_mc,
-                    dtype_convertions=dtc_dict,
-                    dtype_convertion_except_fields=_conv_new2orig_field_names(
+                    dtype_conversions=dtc_dict,
+                    dtype_conversion_except_fields=_conv_new2orig_field_names(
                         dtc_except_fields,
                         self._mc_field_name_renaming_dict),
                     efficiency_mode=efficiency_mode)
@@ -1750,7 +1752,7 @@ class Dataset(
         """
         name = str_cast(
             name,
-            'The name argument must be castable to type str!')
+            'The name argument must be cast-able to type str!')
 
         # Check if the data was defined in memory.
         if name in self._aux_data:
@@ -1884,7 +1886,7 @@ class Dataset(
             This dictionary defines how data fields of specific data types (key)
             should get converted into other data types (value).
             This can be used to use less memory. If set to None, no data
-            convertion is performed.
+            conversion is performed.
         dtc_except_fields : str | sequence of str | None
             The sequence of field names whose data type should not get
             converted.
@@ -1930,7 +1932,7 @@ class Dataset(
 
         self.prepare_data(data, tl=tl)
 
-        # Drop unrequired data fields.
+        # Drop non-required data fields.
         if data.exp is not None:
             with TaskTimer(tl, 'Cleaning exp data.'):
                 keep_fields_exp = (
@@ -2109,7 +2111,7 @@ class Dataset(
         """
         name = str_cast(
             name,
-            'The name argument must be castable to type str! '
+            'The name argument must be cast-able to type str! '
             f'Its current type is {classname(name)}.')
 
         pathfilenames = list_of_cast(
@@ -2171,7 +2173,7 @@ class Dataset(
         """
         name = str_cast(
             name,
-            'The name argument must be castable to type str! '
+            'The name argument must be cast-able to type str! '
             f'Its current type is {classname(name)}.')
 
         pathfilenames = list_of_cast(
@@ -2242,7 +2244,7 @@ class Dataset(
         """
         name = str_cast(
             name,
-            'The name argument must be castable to type str!')
+            'The name argument must be cast-able to type str!')
 
         if name in self._aux_data:
             raise KeyError(
@@ -2275,7 +2277,7 @@ class Dataset(
         """
         name = str_cast(
             name,
-            'The name argument must be castable to type str!')
+            'The name argument must be cast-able to type str!')
 
         if name not in self._aux_data:
             raise KeyError(
@@ -2749,7 +2751,7 @@ class DatasetCollection(
 class DatasetData(
         object):
     """This class provides the container for the actual experimental and
-    monto-carlo data.
+    monte-carlo data.
     """
     def __init__(
             self,
@@ -2766,7 +2768,7 @@ class DatasetData(
             The instance of DataFieldRecordArray holding the experimental data.
             This can be None for a MC-only study.
         data_mc : instance of DataFieldRecordArray
-            The instance of DataFieldRecordArray holding the monto-carlo data.
+            The instance of DataFieldRecordArray holding the monte-carlo data.
         livetime : float
             The integrated livetime in days of the data.
         """
@@ -2820,7 +2822,7 @@ class DatasetData(
         if lt is not None:
             lt = float_cast(
                 lt,
-                'The livetime property must be castable to type float!')
+                'The livetime property must be cast-able to type float!')
         self._livetime = lt
 
     @property
@@ -2990,10 +2992,10 @@ def generate_sub_path(
     sub_path : str
         The generated sub path.
     """
-    fmtdict = dict(
+    fmt_dict = dict(
         [('version', version)] + list(verqualifiers.items())
     )
-    sub_path = sub_path_fmt.format(**fmtdict)
+    sub_path = sub_path_fmt.format(**fmt_dict)
 
     return sub_path
 
@@ -3038,7 +3040,7 @@ def generate_data_file_root_dir(
     -------
     root_dir : str
         The generated root directory of the data files. This will have no
-        trailing directory seperator.
+        trailing directory separator.
     """
     base_path = generate_base_path(
         default_base_path=default_base_path,

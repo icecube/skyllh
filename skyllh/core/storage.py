@@ -78,7 +78,7 @@ def create_FileLoader(
     Returns
     -------
     fileloader : FileLoader
-        The appropiate FileLoader instance for the given type of data files.
+        The appropriate FileLoader instance for the given type of data files.
     """
     if isinstance(pathfilenames, str):
         pathfilenames = [pathfilenames]
@@ -182,8 +182,8 @@ class NPYFileLoader(
             self,
             pathfilename,
             keep_fields,
-            dtype_convertions,
-            dtype_convertion_except_fields):
+            dtype_conversions,
+            dtype_conversion_except_fields):
         """Loads a single file in a memory efficient way.
 
         Parameters
@@ -222,9 +222,9 @@ class NPYFileLoader(
             # Get the original data type of the field.
             dt = dt_fields[fname][0]
             # Convert the data type if requested.
-            if (fname not in dtype_convertion_except_fields) and\
-               (dt in dtype_convertions):
-                dt = dtype_convertions[dt]
+            if (fname not in dtype_conversion_except_fields) and\
+               (dt in dtype_conversions):
+                dt = dtype_conversions[dt]
 
             data[fname] = np.empty((n_rows,), dtype=dt)
 
@@ -253,8 +253,8 @@ class NPYFileLoader(
             self,
             pathfilename,
             keep_fields,
-            dtype_convertions,
-            dtype_convertion_except_fields):
+            dtype_conversions,
+            dtype_conversion_except_fields):
         """Loads a single file in a time efficient way. This will load the data
         column-wise.
         """
@@ -269,8 +269,8 @@ class NPYFileLoader(
         data = DataFieldRecordArray(
             mmap_ndarray,
             keep_fields=keep_fields,
-            dtype_convertions=dtype_convertions,
-            dtype_convertion_except_fields=dtype_convertion_except_fields,
+            dtype_conversions=dtype_conversions,
+            dtype_conversion_except_fields=dtype_conversion_except_fields,
             copy=True)
 
         # Close the memory map file.
@@ -281,8 +281,8 @@ class NPYFileLoader(
     def load_data(  # noqa: C901
             self,
             keep_fields=None,
-            dtype_convertions=None,
-            dtype_convertion_except_fields=None,
+            dtype_conversions=None,
+            dtype_conversion_except_fields=None,
             efficiency_mode=None):
         """Loads the data from the files specified through their fully qualified
         file names.
@@ -292,11 +292,11 @@ class NPYFileLoader(
         keep_fields : str | sequence of str | None
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
-        dtype_convertions : dict | None
+        dtype_conversions : dict | None
             If not None, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_convertion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields : str | sequence of str | None
             The sequence of field names whose data type should not get
             converted.
         efficiency_mode : str | None
@@ -332,20 +332,20 @@ class NPYFileLoader(
                     'The keep_fields argument must be None, an instance of '
                     'type str, or a sequence of instances of type str!')
 
-        if dtype_convertions is None:
-            dtype_convertions = dict()
-        elif not isinstance(dtype_convertions, dict):
+        if dtype_conversions is None:
+            dtype_conversions = dict()
+        elif not isinstance(dtype_conversions, dict):
             raise TypeError(
-                'The dtype_convertions argument must be None, or an instance '
+                'The dtype_conversions argument must be None, or an instance '
                 'of dict!')
 
-        if dtype_convertion_except_fields is None:
-            dtype_convertion_except_fields = []
-        elif isinstance(dtype_convertion_except_fields, str):
-            dtype_convertion_except_fields = [dtype_convertion_except_fields]
-        elif not issequenceof(dtype_convertion_except_fields, str):
+        if dtype_conversion_except_fields is None:
+            dtype_conversion_except_fields = []
+        elif isinstance(dtype_conversion_except_fields, str):
+            dtype_conversion_except_fields = [dtype_conversion_except_fields]
+        elif not issequenceof(dtype_conversion_except_fields, str):
             raise TypeError(
-                'The dtype_convertion_except_fields argument must be a '
+                'The dtype_conversion_except_fields argument must be a '
                 'sequence of str instances.')
 
         efficiency_mode2func = {
@@ -367,8 +367,8 @@ class NPYFileLoader(
         data = load_file_func(
             self._pathfilename_list[0],
             keep_fields=keep_fields,
-            dtype_convertions=dtype_convertions,
-            dtype_convertion_except_fields=dtype_convertion_except_fields
+            dtype_conversions=dtype_conversions,
+            dtype_conversion_except_fields=dtype_conversion_except_fields
         )
 
         # Load possible subsequent data files by appending to the first data.
@@ -376,8 +376,8 @@ class NPYFileLoader(
             data.append(load_file_func(
                 self._pathfilename_list[i],
                 keep_fields=keep_fields,
-                dtype_convertions=dtype_convertions,
-                dtype_convertion_except_fields=dtype_convertion_except_fields
+                dtype_conversions=dtype_conversions,
+                dtype_conversion_except_fields=dtype_conversion_except_fields
             ))
 
         return data
@@ -413,8 +413,8 @@ class ParquetFileLoader(
     def load_data(
             self,
             keep_fields=None,
-            dtype_convertions=None,
-            dtype_convertion_except_fields=None,
+            dtype_conversions=None,
+            dtype_conversion_except_fields=None,
             copy=False,
             **kwargs,
     ):
@@ -426,11 +426,11 @@ class ParquetFileLoader(
         keep_fields : str | sequence of str | None
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
-        dtype_convertions : dict | None
+        dtype_conversions : dict | None
             If not ``None``, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_convertion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields : str | sequence of str | None
             The sequence of field names whose data type should not get
             converted.
         copy : bool
@@ -454,8 +454,8 @@ class ParquetFileLoader(
             data=table,
             data_table_accessor=ParquetDataTableAccessor(),
             keep_fields=keep_fields,
-            dtype_convertions=dtype_convertions,
-            dtype_convertion_except_fields=dtype_convertion_except_fields,
+            dtype_conversions=dtype_conversions,
+            dtype_conversion_except_fields=dtype_conversion_except_fields,
             copy=copy)
 
         return data
@@ -657,8 +657,8 @@ class TextFileLoader(
             self,
             pathfilename,
             keep_fields,
-            dtype_convertions,
-            dtype_convertion_except_fields):
+            dtype_conversions,
+            dtype_conversion_except_fields):
         """Loads the given file.
 
         Parameters
@@ -669,11 +669,11 @@ class TextFileLoader(
         keep_fields : str | sequence of str | None
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
-        dtype_convertions : dict | None
+        dtype_conversions : dict | None
             If not None, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_convertion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields : str | sequence of str | None
             The sequence of field names whose data type should not get
             converted.
 
@@ -715,8 +715,8 @@ class TextFileLoader(
         data = DataFieldRecordArray(
             data_ndarray,
             keep_fields=keep_fields,
-            dtype_convertions=dtype_convertions,
-            dtype_convertion_except_fields=dtype_convertion_except_fields,
+            dtype_conversions=dtype_conversions,
+            dtype_conversion_except_fields=dtype_conversion_except_fields,
             copy=False)
 
         return data
@@ -724,8 +724,8 @@ class TextFileLoader(
     def load_data(
             self,
             keep_fields=None,
-            dtype_convertions=None,
-            dtype_convertion_except_fields=None,
+            dtype_conversions=None,
+            dtype_conversion_except_fields=None,
             **kwargs):
         """Loads the data from the data files specified through their fully
         qualified file names.
@@ -735,11 +735,11 @@ class TextFileLoader(
         keep_fields : str | sequence of str | None
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
-        dtype_convertions : dict | None
+        dtype_conversions : dict | None
             If not None, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_convertion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields : str | sequence of str | None
             The sequence of field names whose data type should not get
             converted.
 
@@ -763,28 +763,28 @@ class TextFileLoader(
                     'The keep_fields argument must be None, an instance of '
                     'type str, or a sequence of instances of type str!')
 
-        if dtype_convertions is None:
-            dtype_convertions = dict()
-        elif not isinstance(dtype_convertions, dict):
+        if dtype_conversions is None:
+            dtype_conversions = dict()
+        elif not isinstance(dtype_conversions, dict):
             raise TypeError(
-                'The dtype_convertions argument must be None, or an instance '
+                'The dtype_conversions argument must be None, or an instance '
                 'of dict!')
 
-        if dtype_convertion_except_fields is None:
-            dtype_convertion_except_fields = []
-        elif isinstance(dtype_convertion_except_fields, str):
-            dtype_convertion_except_fields = [dtype_convertion_except_fields]
-        elif not issequenceof(dtype_convertion_except_fields, str):
+        if dtype_conversion_except_fields is None:
+            dtype_conversion_except_fields = []
+        elif isinstance(dtype_conversion_except_fields, str):
+            dtype_conversion_except_fields = [dtype_conversion_except_fields]
+        elif not issequenceof(dtype_conversion_except_fields, str):
             raise TypeError(
-                'The dtype_convertion_except_fields argument must be a '
+                'The dtype_conversion_except_fields argument must be a '
                 'sequence of str instances.')
 
         # Load the first data file.
         data = self._load_file(
             self._pathfilename_list[0],
             keep_fields=keep_fields,
-            dtype_convertions=dtype_convertions,
-            dtype_convertion_except_fields=dtype_convertion_except_fields
+            dtype_conversions=dtype_conversions,
+            dtype_conversion_except_fields=dtype_conversion_except_fields
         )
 
         # Load possible subsequent data files by appending to the first data.
@@ -792,8 +792,8 @@ class TextFileLoader(
             data.append(self._load_file(
                 self._pathfilename_list[i],
                 keep_fields=keep_fields,
-                dtype_convertions=dtype_convertions,
-                dtype_convertion_except_fields=dtype_convertion_except_fields
+                dtype_conversions=dtype_conversions,
+                dtype_conversion_except_fields=dtype_conversion_except_fields
             ))
 
         return data
@@ -1019,8 +1019,8 @@ class DataFieldRecordArray(
             data,
             data_table_accessor=None,
             keep_fields=None,
-            dtype_convertions=None,
-            dtype_convertion_except_fields=None,
+            dtype_conversions=None,
+            dtype_conversion_except_fields=None,
             copy=True,
     ):
         """Creates a DataFieldRecordArray from the given data.
@@ -1036,7 +1036,7 @@ class DataFieldRecordArray(
                     A structured numpy ndarray.
                 dict
                     A Python dictionary with field names as keys and
-                    one-dimensional numpy ndarrays as values.
+                    one-dimensional numpy.ndarrays as values.
                 pyarrow.Table
                     An instance of pyarrow.Table.
                 DataFieldRecordArray
@@ -1051,11 +1051,11 @@ class DataFieldRecordArray(
         keep_fields : str | sequence of str | None
             If not None (default), this specifies the data fields that should
             get kept from the given data. Otherwise all data fields get kept.
-        dtype_convertions : dict | None
+        dtype_conversions : dict | None
             If not None, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_convertion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields : str | sequence of str | None
             The sequence of field names whose data type should not get
             converted.
         copy : bool
@@ -1077,20 +1077,20 @@ class DataFieldRecordArray(
                     'The keep_fields argument must be None, an instance of '
                     'type str, or a sequence of instances of type str!')
 
-        if dtype_convertions is None:
-            dtype_convertions = dict()
-        elif not isinstance(dtype_convertions, dict):
+        if dtype_conversions is None:
+            dtype_conversions = dict()
+        elif not isinstance(dtype_conversions, dict):
             raise TypeError(
-                'The dtype_convertions argument must be None, or an instance '
+                'The dtype_conversions argument must be None, or an instance '
                 'of dict!')
 
-        if dtype_convertion_except_fields is None:
-            dtype_convertion_except_fields = []
-        elif isinstance(dtype_convertion_except_fields, str):
-            dtype_convertion_except_fields = [dtype_convertion_except_fields]
-        elif not issequenceof(dtype_convertion_except_fields, str):
+        if dtype_conversion_except_fields is None:
+            dtype_conversion_except_fields = []
+        elif isinstance(dtype_conversion_except_fields, str):
+            dtype_conversion_except_fields = [dtype_conversion_except_fields]
+        elif not issequenceof(dtype_conversion_except_fields, str):
             raise TypeError(
-                'The dtype_convertion_except_fields argument must be a '
+                'The dtype_conversion_except_fields argument must be a '
                 'sequence of str instances.')
 
         # Select an appropriate data table accessor for the type of data.
@@ -1120,10 +1120,10 @@ class DataFieldRecordArray(
 
             copy_field = copy
             dt = fname2dtype[fname]
-            if (fname not in dtype_convertion_except_fields) and\
-               (dt in dtype_convertions):
-                dt = dtype_convertions[dt]
-                # If a data type convertion is needed, the data of the field
+            if (fname not in dtype_conversion_except_fields) and\
+               (dt in dtype_conversions):
+                dt = dtype_conversions[dt]
+                # If a data type conversion is needed, the data of the field
                 # needs to get copied.
                 copy_field = True
 
@@ -1210,7 +1210,7 @@ class DataFieldRecordArray(
             self,
             name,
             arr):
-        """Implements data field value assigment. If values are assigned to a
+        """Implements data field value assignment. If values are assigned to a
         data field that does not exist yet, it  will be added via the
         ``append_field`` method.
 
@@ -1458,21 +1458,21 @@ class DataFieldRecordArray(
 
     def convert_dtypes(
             self,
-            convertions,
+            conversions,
             except_fields=None):
         """Converts the data type of the data fields of this
         DataFieldRecordArray. This method can be used to compress the data.
 
         Parameters
         ----------
-        convertions : dict of `old_dtype` -> `new_dtype`
+        conversions : dict of `old_dtype` -> `new_dtype`
             The dictionary with the old dtype as key and the new dtype as value.
         except_fields : sequence of str | None
             The sequence of field names, which should not get converted.
         """
-        if not isinstance(convertions, dict):
+        if not isinstance(conversions, dict):
             raise TypeError(
-                'The convertions argument must be an instance of dict!')
+                'The conversions argument must be an instance of dict!')
 
         if except_fields is None:
             except_fields = []
@@ -1485,8 +1485,8 @@ class DataFieldRecordArray(
             if fname in except_fields:
                 continue
             old_dtype = _data_fields[fname].dtype
-            if old_dtype in convertions:
-                new_dtype = convertions[old_dtype]
+            if old_dtype in conversions:
+                new_dtype = conversions[old_dtype]
                 _data_fields[fname] = _data_fields[fname].astype(new_dtype)
 
     def get_selection(
@@ -1540,13 +1540,13 @@ class DataFieldRecordArray(
 
     def rename_fields(
             self,
-            convertions,
+            conversions,
             must_exist=False):
         """Renames the given fields of this array.
 
         Parameters
         ----------
-        convertions : dict of `old_name` -> `new_name`
+        conversions : dict of `old_name` -> `new_name`
             The dictionary holding the old and new names of the data fields.
         must_exist : bool
             Flag if the given fields must exist. If set to ``True`` and a field
@@ -1558,7 +1558,7 @@ class DataFieldRecordArray(
             If ``must_exist`` is set to ``True`` and a given field does not
             exist.
         """
-        for (old_fname, new_fname) in convertions.items():
+        for (old_fname, new_fname) in conversions.items():
             if old_fname in self.field_name_list:
                 self._data_fields[new_fname] = self._data_fields.pop(old_fname)
             elif must_exist is True:
