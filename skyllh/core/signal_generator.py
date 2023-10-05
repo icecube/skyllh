@@ -464,7 +464,7 @@ class MCMultiDatasetSignalGenerator(
             valid_event_field_ranges_dict_list = [dict()]*len(self.dataset_list)
         if not isinstance(valid_event_field_ranges_dict_list, list):
             raise TypeError(
-                'The valid_event_field_ranges_dict_list '
+                'The `valid_event_field_ranges_dict_list` argument must be a list.'
             )
         if len(valid_event_field_ranges_dict_list) != len(self.dataset_list):
             raise ValueError(
