@@ -92,7 +92,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     return (ra, dec)
 
 
-def rotate_signal_events(ra1, dec1, ra2, dec2, ra3, dec3):
+def rotate_signal_events_on_sphere(ra1, dec1, ra2, dec2, ra3, dec3):
     """TODO: update
     
     Calculates the rotation matrix R to rotate the spherical vector
