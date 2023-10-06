@@ -140,3 +140,6 @@ profile.html
 *.aux
 *.bbl
 *.blg
+
+# Local temporary data repositories
+.repository

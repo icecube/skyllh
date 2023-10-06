@@ -40,9 +40,9 @@ def get_kde_pdf_sig_spatial_norm_factor_func(
         log10_psi_idx = pdf._axes.get_index_by_name(log10_psi_name)
 
         if evt_mask is None:
-            psi = 10**eventdata[:, log10_psi_idx]
+            psi = 10**eventdata[log10_psi_idx]
         else:
-            psi = 10**eventdata[:, log10_psi_idx][evt_mask]
+            psi = 10**eventdata[log10_psi_idx][evt_mask]
 
         norm = 1. / (2 * np.pi * np.log(10) * psi * np.sin(psi))
 
