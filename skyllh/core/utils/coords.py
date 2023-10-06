@@ -2,7 +2,9 @@
 
 import numpy as np
 
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import (
+    SkyCoord,
+)
 
 
 def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
