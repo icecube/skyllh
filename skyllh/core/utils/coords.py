@@ -131,28 +131,31 @@ def rotate_signal_events_on_sphere(ra1, dec1, ra2, dec2, ra3, dec3):
 
 
 def angular_separation(ra1, dec1, ra2, dec2, psi_floor=None):
-    """Calculates the angular separation on the shpere between two vectors on
+    """Calculates the angular separation on the sphere between two vectors on
     the sphere.
 
     Parameters
     ----------
-    ra1 : float | array of float
-        The right-ascention or longitude coordinate of the first vector in
-        radians.
-    dec1 : float | array of float
-        The declination or latitude coordinate of the first vector in radians.
-    ra2 : float | array of float
-        The right-ascention or longitude coordinate of the second vector in
-        radians.
-    dec2 : float | array of float
-        The declination coordinate of the second vector in radians.
+    ra1 : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding the right-ascension or
+        longitude coordinate of the first vector in radians.
+    dec1 : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding declination or latitude
+        coordinate of the first vector in radians.
+    ra2 : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding the right-ascension or
+        longitude coordinate of the second vector in radians.
+    dec2 : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding declination coordinate of
+        the second vector in radians.
     psi_floor : float | None
         If not ``None``, specifies the floor value of psi.
 
     Returns
     -------
-    psi : float | array of float
-        The calculated angular separation value(s).
+    psi : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding the calculated angular
+        separation value of each event.
     """
     delta_ra = np.abs(ra1 - ra2)
     delta_dec = np.abs(dec1 - dec2)
