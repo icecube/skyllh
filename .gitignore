@@ -136,5 +136,10 @@ dmypy.json
 profile.json
 profile.html
 
+# Latex compilation files
+*.aux
+*.bbl
+*.blg
+
 # Local temporary data repositories
 .repository
