@@ -92,42 +92,50 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     return (ra, dec)
 
 
-def rotate_signal_events_on_sphere(ra1, dec1, ra2, dec2, ra3, dec3):
-    """TODO: update
-    
-    Calculates the rotation matrix R to rotate the spherical vector
-    (ra1,dec1) onto the direction (ra2,dec2), and performs this rotation on the
-    spherical vector (ra3,dec3).
+def rotate_signal_events_on_sphere(
+        src_ra, src_dec, evt_true_ra, evt_true_dec, evt_reco_ra, evt_reco_dec):
+    """Rotate signal events on a sphere preserving position angle and separation
+    (great circle distance) between the event's true and reco directions.
 
-    In practice (ra1,dec1) refers to the true location of a MC event,
-    (ra2,dec2) the true location of the signal source, and (ra3,dec3) the
-    reconstructed location of the MC event, which should get rotated according
-    to the rotation of the two true directions.
+    Parameters
+    ----------
+    src_ra : (N_events,)-shaped 1D ndarray
+        True right-ascension of the signal source.
+    src_dec : (N_events,)-shaped 1D ndarray
+        True declination of the signal source.
+    evt_true_ra : (N_events,)-shaped 1D ndarray
+        True right-ascension of a MC event.
+    evt_true_dec : (N_events,)-shaped 1D ndarray
+        True declination of a MC event.
+    evt_reco_ra : (N_events,)-shaped 1D ndarray
+        Reconstructed right-ascension of a MC event.
+    evt_reco_dec : (N_events,)-shaped 1D ndarray
+        Reconstructed declination of a MC event.
+
+    Returns
+    -------
+    (rot_evt_reco_ra, rot_evt_reco_dec) : tuple of (N_events,)-shaped 1D ndarray
+        Tuple containing rotated reconstructed event right-ascension and
+        declination arrays.
+
     """
-    # Make sure, the inputs are 1D arrays.
-    ra1 = np.atleast_1d(ra1)
-    dec1 = np.atleast_1d(dec1)
-    ra2 = np.atleast_1d(ra2)
-    dec2 = np.atleast_1d(dec2)
-    ra3 = np.atleast_1d(ra3)
-    dec3 = np.atleast_1d(dec3)
-
     assert (
-        len(ra1) == len(dec1) ==
-        len(ra2) == len(dec2) ==
-        len(ra3) == len(dec3)
+        len(src_ra) == len(src_dec) ==
+        len(evt_true_ra) == len(evt_true_dec) ==
+        len(evt_reco_ra) == len(evt_reco_dec)
     ), 'All input argument arrays must be of the same length!'
 
-    v_evt_true = SkyCoord(ra1, dec1, frame="icrs", unit="rad")
-    v_source = SkyCoord(ra2, dec2, frame="icrs", unit="rad")
-    v_evt_reco = SkyCoord(ra3, dec3, frame="icrs", unit="rad")
+    v_source = SkyCoord(src_ra, src_dec, frame="icrs", unit="rad")
+    v_evt_true = SkyCoord(evt_true_ra, evt_true_dec, frame="icrs", unit="rad")
+    v_evt_reco = SkyCoord(evt_reco_ra, evt_reco_dec, frame="icrs", unit="rad")
 
     position_angle = v_evt_true.position_angle(v_evt_reco)
     separation = v_evt_true.separation(v_evt_reco)
 
     v_rotated = v_source.directional_offset_by(position_angle, separation)
+    (rot_evt_reco_ra, rot_evt_reco_dec) = (v_rotated.ra.rad, v_rotated.dec.rad)
 
-    return (v_rotated.ra.rad, v_rotated.dec.rad)
+    return (rot_evt_reco_ra, rot_evt_reco_dec)
 
 
 def angular_separation(ra1, dec1, ra2, dec2, psi_floor=None):

@@ -383,8 +383,8 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
             # Rotate the signal events to the source location.
             (ra, dec) = rotate_signal_events_on_sphere(
-                shg_src_sig_events['true_ra'], shg_src_sig_events['true_dec'],
                 source.ra*np.ones(n_sig), source.dec*np.ones(n_sig),
+                shg_src_sig_events['true_ra'], shg_src_sig_events['true_dec'],
                 shg_src_sig_events['ra'], shg_src_sig_events['dec']
             )
 
