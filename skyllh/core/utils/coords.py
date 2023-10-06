@@ -117,7 +117,6 @@ def rotate_signal_events_on_sphere(
     (rot_evt_reco_ra, rot_evt_reco_dec) : tuple of (N_events,)-shaped 1D ndarray
         Tuple containing rotated reconstructed event right-ascension and
         declination arrays.
-
     """
     assert (
         len(src_ra) == len(src_dec) ==
