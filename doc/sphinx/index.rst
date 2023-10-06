@@ -20,6 +20,7 @@ mathematical likelihood function.
     installation
     concepts/index
     tutorials/index
+    faq/index
     examples/index
     reference/skyllh
     notes
