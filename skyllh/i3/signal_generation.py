@@ -341,7 +341,10 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         return (ev_idx_arr, shg_src_idx_arr, flux_arr)
 
     def signal_event_post_sampling_processing(
-        self, shg, shg_sig_events_meta, shg_sig_events
+            self,
+            shg,
+            shg_sig_events_meta,
+            shg_sig_events,
     ):
         """Rotates the generated signal events to their source location for a
         given source hypothesis group.
@@ -383,9 +386,12 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
             # Rotate the signal events to the source location.
             (ra, dec) = rotate_signal_events_on_sphere(
-                np.full(n_sig, source.ra), np.full(n_sig, source.dec),
-                shg_src_sig_events['true_ra'], shg_src_sig_events['true_dec'],
-                shg_src_sig_events['ra'], shg_src_sig_events['dec']
+                src_ra=np.full(n_sig, source.ra),
+                src_dec=np.full(n_sig, source.dec),
+                evt_true_ra=shg_src_sig_events['true_ra'],
+                evt_true_dec=shg_src_sig_events['true_dec'],
+                evt_reco_ra=shg_src_sig_events['ra'],
+                evt_reco_dec=shg_src_sig_events['dec']
             )
 
             shg_src_sig_events['ra'] = ra
