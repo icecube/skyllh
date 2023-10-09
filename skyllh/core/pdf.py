@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import abc
+
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
+
+from scipy.interpolate import (
+    RegularGridInterpolator,
+)
 
 from skyllh.core import (
     tool,
@@ -1081,6 +1085,8 @@ class MultiDimGridPDF(
                 raise ImportError(
                     'The path_to_pdf_splinetable argument is specified, but '
                     'the "photospline" package is not available!')
+
+            tool.assert_tool_version('photospline', '>=2.2.0')
 
         if pdf_grid_data is not None:
             if not isinstance(pdf_grid_data, np.ndarray):
