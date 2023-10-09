@@ -149,7 +149,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
     def src_sin_dec_half_bandwidth(self, v):
         v = float_cast(
             v,
-            'The src_sin_dec_half_bandwidth property must be castable to type '
+            'The src_sin_dec_half_bandwidth property must be cast-able to type '
             'float!')
         self._src_sin_dec_half_bandwidth = v
 
@@ -180,7 +180,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
     def src_batch_size(self, v):
         v = int_cast(
             v,
-            'The src_batch_size property must be castable to type int!')
+            'The src_batch_size property must be cast-able to type int!')
         self._src_batch_size = v
 
     def _get_src_dec_bands(self, src_dec, max_sin_dec_range):
