@@ -40,6 +40,11 @@ v23.2.1
   do not match these valid event field ranges, those signal events will be
   redrawn.
 
+- The i3.signal_generation.PointLikeSourceI3SignalGenerationMethod class uses
+  the new rotation function core.utils.coords.rotate_signal_events_on_sphere
+  to preserve the position angle and great circle distance between the event's
+  true and reco directions.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
