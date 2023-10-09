@@ -34,7 +34,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     N_event = len(ra1)
 
     # Calculate the space angle alpha between vector 1 and vector 2, and
-    # correct for possible rounding erros.
+    # correct for possible rounding errors.
     cos_alpha = (np.cos(ra2 - ra1) * np.cos(dec1) * np.cos(dec2)
                  + np.sin(dec1) * np.sin(dec2))
     cos_alpha[cos_alpha > 1] = 1
@@ -95,30 +95,46 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
 
 
 def rotate_signal_events_on_sphere(
-        src_ra, src_dec, evt_true_ra, evt_true_dec, evt_reco_ra, evt_reco_dec):
-    """Rotate signal events on a sphere preserving position angle and separation
-    (great circle distance) between the event's true and reco directions.
+        src_ra,
+        src_dec,
+        evt_true_ra,
+        evt_true_dec,
+        evt_reco_ra,
+        evt_reco_dec,
+):
+    """Rotate signal events on a sphere to a given source position preserving
+    position angle and separation (great circle distance) between the event's
+    true and reco directions.
 
     Parameters
     ----------
-    src_ra : (N_events,)-shaped 1D ndarray
-        True right-ascension of the signal source.
-    src_dec : (N_events,)-shaped 1D ndarray
-        True declination of the signal source.
-    evt_true_ra : (N_events,)-shaped 1D ndarray
-        True right-ascension of a MC event.
-    evt_true_dec : (N_events,)-shaped 1D ndarray
-        True declination of a MC event.
-    evt_reco_ra : (N_events,)-shaped 1D ndarray
-        Reconstructed right-ascension of a MC event.
-    evt_reco_dec : (N_events,)-shaped 1D ndarray
-        Reconstructed declination of a MC event.
+    src_ra : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the true right-ascension
+        of the source.
+    src_dec : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the true declination
+        of the source.
+    evt_true_ra : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the true right-ascension
+        of the MC event.
+    evt_true_dec : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the true declination of
+        the MC event.
+    evt_reco_ra : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the reconstructed
+        right-ascension of the MC event.
+    evt_reco_dec : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the reconstructed
+        declination of the MC event.
 
     Returns
     -------
-    (rot_evt_reco_ra, rot_evt_reco_dec) : tuple of (N_events,)-shaped 1D ndarray
-        Tuple containing rotated reconstructed event right-ascension and
-        declination arrays.
+    rot_evt_reco_ra : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the rotated
+        reconstructed event right-ascension.
+    rot_evt_reco_dec : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the rotated
+        reconstructed event declination.
     """
     assert (
         len(src_ra) == len(src_dec) ==
