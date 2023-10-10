@@ -2445,6 +2445,38 @@ class DatasetCollection(
 
         return lines
 
+    def add_aux_data(
+            self,
+            name,
+            data,
+    ):
+        """Adds the given data as auxiliary data to all datasets of this
+        dataset collection.
+
+        Parameters
+        ----------
+        name : str
+            The name under which the auxiliary data will be stored.
+        data : unspecified
+            The data that should get stored. This can be of any data type.
+
+        Raises
+        ------
+        ValueError
+            If no datasets have been added to this dataset collection yet.
+        KeyError
+            If auxiliary data is already stored under the given name.
+        """
+        if len(self._datasets) == 0:
+            raise ValueError(
+                f'The dataset collection "{self.name}" has no datasets added '
+                'yet!')
+
+        for dataset in self._datasets.values():
+            dataset.add_aux_data(
+                name=name,
+                data=data)
+
     def add_datasets(
             self,
             datasets,
