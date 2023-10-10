@@ -2421,13 +2421,10 @@ class DatasetCollection(
         return datasets
 
     def __iadd__(self, ds):
-        """Implementation of the ``self += dataset`` operation to add a
-        Dataset object to this dataset collection.
+        """Implementation of the ``self += dataset`` and
+        ``self += (dataset1, dataset2, ...)`` operations to add one or several
+        Dataset objects to this dataset collection.
         """
-        if not isinstance(ds, Dataset):
-            raise TypeError(
-                'The dataset object must be a subclass of Dataset!')
-
         self.add_datasets(ds)
 
         return self
