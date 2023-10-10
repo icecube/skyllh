@@ -131,8 +131,8 @@ class PDFAxis(object):
         other PDFAxis object.
         """
         if (self.name == other.name) and\
-           (self.vmin == other.vmin) and\
-           (self.vmax == other.vmax):
+           np.isclose(self.vmin, other.vmin) and\
+           np.isclose(self.vmax, other.vmax):
             return True
         return False
 
