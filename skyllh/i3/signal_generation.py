@@ -8,7 +8,7 @@ from skyllh.core.py import (
     int_cast,
 )
 from skyllh.core.utils.coords import (
-    rotate_spherical_vector,
+    rotate_signal_events_on_sphere,
 )
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
@@ -149,7 +149,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
     def src_sin_dec_half_bandwidth(self, v):
         v = float_cast(
             v,
-            'The src_sin_dec_half_bandwidth property must be castable to type '
+            'The src_sin_dec_half_bandwidth property must be cast-able to type '
             'float!')
         self._src_sin_dec_half_bandwidth = v
 
@@ -180,7 +180,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
     def src_batch_size(self, v):
         v = int_cast(
             v,
-            'The src_batch_size property must be castable to type int!')
+            'The src_batch_size property must be cast-able to type int!')
         self._src_batch_size = v
 
     def _get_src_dec_bands(self, src_dec, max_sin_dec_range):
@@ -341,7 +341,10 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         return (ev_idx_arr, shg_src_idx_arr, flux_arr)
 
     def signal_event_post_sampling_processing(
-        self, shg, shg_sig_events_meta, shg_sig_events
+            self,
+            shg,
+            shg_sig_events_meta,
+            shg_sig_events,
     ):
         """Rotates the generated signal events to their source location for a
         given source hypothesis group.
@@ -382,10 +385,13 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             n_sig = len(shg_src_sig_events)
 
             # Rotate the signal events to the source location.
-            (ra, dec) = rotate_spherical_vector(
-                shg_src_sig_events['true_ra'], shg_src_sig_events['true_dec'],
-                source.ra*np.ones(n_sig), source.dec*np.ones(n_sig),
-                shg_src_sig_events['ra'], shg_src_sig_events['dec']
+            (ra, dec) = rotate_signal_events_on_sphere(
+                src_ra=np.full(n_sig, source.ra),
+                src_dec=np.full(n_sig, source.dec),
+                evt_true_ra=shg_src_sig_events['true_ra'],
+                evt_true_dec=shg_src_sig_events['true_dec'],
+                evt_reco_ra=shg_src_sig_events['ra'],
+                evt_reco_dec=shg_src_sig_events['dec']
             )
 
             shg_src_sig_events['ra'] = ra

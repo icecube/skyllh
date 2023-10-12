@@ -17,7 +17,8 @@ from skyllh.core.py import (
 
 class GridManifoldInterpolationMethod(
         object,
-        metaclass=abc.ABCMeta):
+        metaclass=abc.ABCMeta,
+):
     """This is an abstract base class for implementing a method to interpolate
     a manifold that is defined on a grid of parameter values. In general the
     number of parameters can be arbitrary and hence the manifold's
@@ -27,7 +28,12 @@ class GridManifoldInterpolationMethod(
     different dimensionality.
     """
 
-    def __init__(self, func, param_grid_set, **kwargs):
+    def __init__(
+            self,
+            func,
+            param_grid_set,
+            **kwargs,
+    ):
         """Constructor for a GridManifoldInterpolationMethod object.
         It must be called by the derived class.
 
@@ -39,22 +45,24 @@ class GridManifoldInterpolationMethod(
             trial event and source.
             The call signature of func must be:
 
-                ``__call__(tdm, eventdata, gridparams_recarray, n_values)``
+                ``__call__(tdm, eventdata, gridparams_recarray, n_values, **kwargs)``
 
             The arguments are as follows:
 
                 tdm : instance of TrialDataManager
                     The TrialDataManager instance holding the trial event data.
                 eventdata : instance of numpy ndarray
-                    A two-dimensional (N_events,V)-shaped numpy ndarray holding
+                    A two-dimensional (V,N_events)-shaped numpy ndarray holding
                     the event data, where N_events is the number of trial
                     events, and V the dimensionality of the event data.
-                gridparams_recarray : instance of numpy record ndarray
-                    The numpy record ndarray of length ``len(src_idxs)`` with
-                    the D parameter names and values on the grid for all
+                gridparams_recarray : instance of numpy.ndarray
+                    The structured numpy ndarray of length ``len(src_idxs)``
+                    with the D parameter names and values on the grid for all
                     sources.
                 n_values : int
                     The length of the output numpy ndarray of shape (n_values,).
+                **kwargs
+                    Additional keyword arguments required by ``func``.
 
             The return value of ``func`` should be the (n_values,)-shaped
             one-dimensional ndarray holding the values for each set of parameter
@@ -86,7 +94,7 @@ class GridManifoldInterpolationMethod(
 
     @property
     def param_grid_set(self):
-        """The ParameterGridSet instance defining the set of d parameter grids.
+        """The ParameterGridSet instance defining the set of D parameter grids.
         This defines the grid of the manifold.
         """
         return self._param_grid_set
@@ -108,7 +116,13 @@ class GridManifoldInterpolationMethod(
         return len(self._param_grid_set)
 
     @abc.abstractmethod
-    def __call__(self, tdm, eventdata, params_recarray):
+    def __call__(
+            self,
+            tdm,
+            eventdata,
+            params_recarray,
+            **kwargs,
+    ):
         """Retrieves the interpolated value of the manifold at the D-dimensional
         point ``params_recarray`` for all given events and sources, along with
         the D gradients, i.e. partial derivatives.
@@ -118,20 +132,22 @@ class GridManifoldInterpolationMethod(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
         eventdata : numpy ndarray
-            The 2D (N_events,V)-shaped numpy ndarray holding the event data,
+            The 2D (V,N_events)-shaped numpy ndarray holding the event data,
             where N_events is the number of trial events, and V the
             dimensionality of the event data.
         params_recarray : instance of numpy record ndarray
-            The numpy record ndarray holding the N_sources set of parameter
+            The structured numpy ndarray holding the N_sources set of parameter
             names and values, that define the point (for each source) on the
             manifold for which the value should get calculated for each event.
+        **kwargs
+            Additional keyword arguments required by the function ``func``.
 
         Returns
         -------
-        values : ndarray of float
+        values : instance of numpy.ndarray
             The (N,)-shaped numpy ndarray holding the interpolated manifold
             values for the given events and sources.
-        grads : ndarray of float
+        grads : instance of numpy.ndarray
             The (D,N)-shaped numpy ndarray holding the D manifold gradients for
             the N given values, where D is the number of parameters.
             The order of the D parameters is defined by the ParameterGridSet
@@ -142,18 +158,21 @@ class GridManifoldInterpolationMethod(
 
 
 class NullGridManifoldInterpolationMethod(
-        GridManifoldInterpolationMethod):
-    """This grid manifold interpolation method performes no interpolation. When
+        GridManifoldInterpolationMethod,
+):
+    """This grid manifold interpolation method performs no interpolation. When
     the
     :meth:`~skyllh.core.interpolate.NullGridManifoldInterpolationMethod.__call__`
     method is called, it rounds the parameter values to their nearest grid
     point values. All gradients are set to zero.
     """
+
     def __init__(
             self,
             func,
             param_grid_set,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new NullGridManifoldInterpolationMethod instance.
 
         Parameters
@@ -174,7 +193,13 @@ class NullGridManifoldInterpolationMethod(
             param_grid_set=param_grid_set,
             **kwargs)
 
-    def __call__(self, tdm, eventdata, params_recarray):
+    def __call__(
+            self,
+            tdm,
+            eventdata,
+            params_recarray,
+            **kwargs,
+    ):
         """Calculates the non-interpolated manifold value and its gradient
         (zero) for each given event and source at the points given by
         ``params_recarray``.
@@ -184,13 +209,15 @@ class NullGridManifoldInterpolationMethod(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
         eventdata : instance of numpy.ndarray
-            The (N_events,V)-shaped numpy ndarray holding the event data,
+            The (V,N_events)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
         params_recarray : instance of numpy.ndarray
             The structured numpy ndarray of length N_sources holding the
             parameter names and values of the sources, defining the point on the
             manifold for which the values should get calculated.
+        **kwargs
+            Additional keyword arguments required by the function ``func``.
 
         Returns
         -------
@@ -223,7 +250,8 @@ class NullGridManifoldInterpolationMethod(
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray,
-            n_values=tdm.get_n_values())
+            n_values=tdm.get_n_values(),
+            **kwargs)
 
         grads = np.zeros(
             (len(self.param_grid_set), len(values)),
@@ -233,15 +261,18 @@ class NullGridManifoldInterpolationMethod(
 
 
 class Linear1DGridManifoldInterpolationMethod(
-        GridManifoldInterpolationMethod):
+        GridManifoldInterpolationMethod,
+):
     """This grid manifold interpolation method interpolates the 1-dimensional
     grid manifold using a line.
     """
+
     def __init__(
             self,
             func,
             param_grid_set,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new Linear1DGridManifoldInterpolationMethod instance.
 
         Parameters
@@ -276,9 +307,15 @@ class Linear1DGridManifoldInterpolationMethod(
             m=None,
             b=None)
 
-    def _create_cache(self, trial_data_state_id, x0, m, b):
+    def _create_cache(
+            self,
+            trial_data_state_id,
+            x0,
+            m,
+            b,
+    ):
         """Creates a cache for the line parameterization for the last manifold
-        grid point for the nevents different events.
+        grid point for the N_events different events.
 
         Parameters
         ----------
@@ -304,7 +341,11 @@ class Linear1DGridManifoldInterpolationMethod(
 
         return cache
 
-    def _is_cached(self, trial_data_state_id, x0):
+    def _is_cached(
+            self,
+            trial_data_state_id,
+            x0,
+    ):
         """Checks if the given line parametrization are already cached for the
         given x0 values.
 
@@ -322,7 +363,13 @@ class Linear1DGridManifoldInterpolationMethod(
 
         return False
 
-    def __call__(self, tdm, eventdata, params_recarray):
+    def __call__(
+            self,
+            tdm,
+            eventdata,
+            params_recarray,
+            **kwargs,
+    ):
         """Calculates the interpolated manifold value and its gradient for each
         given source and trial event at the point ``params_recarray``.
 
@@ -331,7 +378,7 @@ class Linear1DGridManifoldInterpolationMethod(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
         eventdata : instance of numpy ndarray
-            The (N_events,V)-shaped numpy ndarray holding the event data,
+            The (V,N_events)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
         params_recarray : numpy record ndarray
@@ -340,13 +387,15 @@ class Linear1DGridManifoldInterpolationMethod(
             for which the value should get calculated.
             This record ndarray can be of length 1. In that case the single set
             of parameters is used for all sources.
+        **kwargs
+            Additional keyword arguments required by the function ``func``.
 
         Returns
         -------
-        values : instance of numpy ndarray
+        values : instance of numpy.ndarray
             The (N_values,)-shaped numpy ndarray of float holding the
             interpolated manifold values for all sources and trial events.
-        grads :  ndarray of float
+        grads : instance of numpy.ndarray
             The (D,N_values)-shaped numpy ndarray of float holding the D
             manifold gradients for the N_values values for all sources and trial
             events, where D is the number of interpolation parameters.
@@ -388,7 +437,8 @@ class Linear1DGridManifoldInterpolationMethod(
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray,
-            n_values=n_values)
+            n_values=n_values,
+            **kwargs)
 
         gridparams_recarray = np.array(
             x1,
@@ -397,7 +447,8 @@ class Linear1DGridManifoldInterpolationMethod(
             tdm=tdm,
             eventdata=eventdata,
             gridparams_recarray=gridparams_recarray,
-            n_values=n_values)
+            n_values=n_values,
+            **kwargs)
 
         # Broadcast x0 and x1 to the values array.
         (x, v_x0, v_x1) = tdm.broadcast_sources_arrays_to_values_arrays(
@@ -420,15 +471,18 @@ class Linear1DGridManifoldInterpolationMethod(
 
 
 class Parabola1DGridManifoldInterpolationMethod(
-        GridManifoldInterpolationMethod):
+        GridManifoldInterpolationMethod,
+):
     """This grid manifold interpolation method interpolates the 1-dimensional
     grid manifold using a parabola.
     """
+
     def __init__(
             self,
             func,
             param_grid_set,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new Parabola1DGridManifoldInterpolationMethod instance.
 
         Parameters
@@ -470,26 +524,27 @@ class Parabola1DGridManifoldInterpolationMethod(
             x1,
             M1,
             a,
-            b):
+            b,
+    ):
         """Creates a cache for the parabola parameterization for the last
-        manifold grid point for the nevents different events.
+        manifold grid point for the N_events different events.
 
         Parameters
         ----------
         trial_data_state_id : int | None
             The trial data state ID of the TrialDataManager.
-        x1 : instance of numpy ndarray | None
+        x1 : instance of numpy.ndarray | None
             The (N_sources,)-shaped numpy ndarray of float holding the parameter
             grid value for the middle point of the grid manifold for all sources
             used to estimate the parabola.
-        M1 : instance of numpy ndarray
+        M1 : instance of numpy.ndarray
             The (N_values,)-shaped numpy ndarray of float holding the grid
             manifold value for each source and trial event of the middle point
             (x1,).
-        a : instance of numpy ndarray
+        a : instance of numpy.ndarray
             The (N_values,)-shaped numpy ndarray of float holding the parabola
             coefficient ``a`` for each source and trial event.
-        b : instance of numpy ndarray
+        b : instance of numpy.ndarray
             The (N_values,)-shaped numpy ndarray of float holding the parabola
             coefficient ``b`` for each source and trial event.
 
@@ -503,12 +558,16 @@ class Parabola1DGridManifoldInterpolationMethod(
             'x1': x1,
             'M1': M1,
             'a': a,
-            'b': b
+            'b': b,
         }
 
         return cache
 
-    def _is_cached(self, trial_data_state_id, x1):
+    def _is_cached(
+            self,
+            trial_data_state_id,
+            x1,
+    ):
         """Checks if the parabola parametrization is already cached for the
         given x1 values.
         """
@@ -521,7 +580,13 @@ class Parabola1DGridManifoldInterpolationMethod(
 
         return False
 
-    def __call__(self, tdm, eventdata, params_recarray):
+    def __call__(
+            self,
+            tdm,
+            eventdata,
+            params_recarray,
+            **kwargs,
+    ):
         """Calculates the interpolated manifold value and its gradient for each
         given source and trial event at the point ``params_recarray``.
 
@@ -530,7 +595,7 @@ class Parabola1DGridManifoldInterpolationMethod(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial data.
         eventdata : instance of numpy ndarray
-            The (N_events,V)-shaped numpy ndarray holding the event data,
+            The (V,N_events)-shaped numpy ndarray holding the event data,
             where N_events is the number of events, and V the dimensionality of
             the event data.
         params_recarray : numpy record ndarray
@@ -539,6 +604,8 @@ class Parabola1DGridManifoldInterpolationMethod(
             for which the value should get calculated.
             This record ndarray can be of length 1. In that case the single set
             of parameters is used for all sources.
+        **kwargs
+            Additional keyword arguments required by the function ``func``.
 
         Returns
         -------
@@ -579,7 +646,8 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                n_values=n_values)
+                n_values=n_values,
+                **kwargs)
 
             gridparams_recarray = np.array(
                 x1,
@@ -588,7 +656,8 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                n_values=n_values)
+                n_values=n_values,
+                **kwargs)
 
             gridparams_recarray = np.array(
                 x2,
@@ -597,7 +666,8 @@ class Parabola1DGridManifoldInterpolationMethod(
                 tdm=tdm,
                 eventdata=eventdata,
                 gridparams_recarray=gridparams_recarray,
-                n_values=n_values)
+                n_values=n_values,
+                **kwargs)
 
             a = 0.5*(M0 - 2.*M1 + M2) / dx**2
             b = 0.5*(M2 - M0) / dx

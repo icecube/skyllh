@@ -90,7 +90,7 @@ class DataFields(
         Parameters
         ----------
         datafields : dict
-            The dictionary of datafield names as keys and stages as values.
+            The dictionary of data field names as keys and stages as values.
         stages : int | sequence of int
             The stage(s) for which data field names should get returned.
 

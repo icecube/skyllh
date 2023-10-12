@@ -98,7 +98,7 @@ def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
 
 class BinningDefinition(object):
     """The BinningDefinition class provides a structure to hold histogram
-    binning definitions for an analyis.
+    binning definitions for an analysis.
     """
     def __init__(
             self,

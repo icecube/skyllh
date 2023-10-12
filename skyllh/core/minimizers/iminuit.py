@@ -3,10 +3,11 @@ The minimizers/iminuit module provides a SkyLLH interface to the iminuit
 minimizer.
 """
 
-import iminuit
-
 import numpy as np
 
+from skyllh.core import (
+    tool,
+)
 from skyllh.core.config import (
     HasConfig,
 )
@@ -116,6 +117,7 @@ class IMinuitMinimizerImpl(
     """The SkyLLH minimizer implementation that utilizes the iminuit minimizer.
     """
 
+    @tool.requires('iminuit')
     def __init__(
             self,
             ftol=1e-6,
@@ -193,6 +195,8 @@ class IMinuitMinimizerImpl(
             func_args = tuple()
         if kwargs is None:
             kwargs = dict()
+
+        iminuit = tool.get('iminuit')
 
         func_provides_grads = kwargs.pop('func_provides_grads', True)
 

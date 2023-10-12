@@ -77,7 +77,7 @@ def create_signal_generator(
 
     dataset_name = 'PointSourceTracks_v004p00'
     dsc = datasets.data_samples[dataset_name].create_dataset_collection(cfg=cfg)
-    ds_list = dsc.get_datasets(['IC86, 2018', 'IC86, 2019'])
+    ds_list = dsc['IC86, 2018', 'IC86, 2019']
 
     data_list = [ds.load_and_prepare_data() for ds in ds_list]
 

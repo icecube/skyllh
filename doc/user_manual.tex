@@ -15,6 +15,9 @@
 \newcommand{\psk}{\vec{p}_{\mathrm{s}_k}}
 \newcommand{\hatps}{\vec{\hat{p}}_{\mathrm{s}}}
 \newcommand{\xs}{\vec{x}_{\mathrm{s}}}
+\newcommand{\xsastro}{\vec{x}_{\mathrm{s,astro}}}
+\newcommand{\xslocal}{\vec{x}_{\mathrm{s,local}}}
+\newcommand{\tobs}{t_{\mathrm{obs}}}
 
 \newcommand{\dPhisdE}{\frac{\mathrm{d}\Phi_{\mathrm{s}}}{\mathrm{d}E}}
 
@@ -777,29 +780,29 @@ reads via the quotient rule of differentiation:
 The detector signal yield, $\mathcal{Y}_{\mathrm{s}_{j,k}}(\psk)$,
 is the mean number of expected signal events in the detector from a given
 source $k$ in a given data sample $j$. For a differential source flux,
-$\mathrm{d}\Phi_{\mathrm{s}}/(\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t)$,
+$\mathrm{d}^4\Phi_{\mathrm{s}}/(\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t)$,
 it is the integral of the product of the detector effective area and this
 differential flux over the solid-angle, energy, and time of the source:
 \begin{equation}
- \mathcal{Y}_{\mathrm{s}_{j,k}}(\psk) \equiv \int_{\Omega_{\mathrm{s}_k}} \mathrm{d}\Omega \int_0^\infty \mathrm{d}E \int_{t_{\mathrm{start}_j}}^{t_{\mathrm{end}_j}}\mathrm{d}t A_{\mathrm{eff}_j}(E,t|\psk) \frac{\mathrm{d}\Phi_{\mathrm{s}}(E,t|\psk)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t}
+ \mathcal{Y}_{\mathrm{s}_{j,k}}(\psk) \equiv \int_{\Omega_{\mathrm{s}_k}} \mathrm{d}\Omega \int_0^\infty \mathrm{d}E \int_{t_{\mathrm{start}_j}}^{t_{\mathrm{end}_j}}\mathrm{d}t A_{\mathrm{eff}_j}(E,t|\psk) \frac{\mathrm{d}^4\Phi_{\mathrm{s}}(E,t|\psk)}{\mathrm{d}A\mathrm{d}\Omega\mathrm{d}E\mathrm{d}t}
 \label{eq:Ysj}
 \end{equation}
 
-In the most-general case, the source position $\xs$ consists of celestrial
-coordinates right-ascension and declination, which might be a function of the
-observation time $t_{\mathrm{obs}}$ for very long data taking periods in the
-order of several tens of years, i.e. due to the movement of the solar system
-w.r.t. the source:
-$\xs = \{\alpha_{\mathrm{s}}(t_{\mathrm{obs}}),\delta_{\mathrm{s}}(t_{\mathrm{obs}})\}$.
-
+In the most-general case, the astrophysical source position $\xsastro$ consists
+of celestrial coordinates right-ascension and declination, which are a function
+of the observation time, $t_{\mathrm{obs}}$, for very long data taking periods
+in the order of several tens of years, due to the movement of the solar system
+w.r.t. the astrophysical source:
+$\xsastro(t_{\mathrm{obs}}) = \{\alpha_{\mathrm{s}}(t_{\mathrm{obs}}),\delta_{\mathrm{s}}(t_{\mathrm{obs}})\}$.
 
 The time-dependent effective area $A_{\mathrm{eff}_j}(E,t|\psk)$ must account
 for the detector off-time intervals within the data sample $j$. In cases, where
-the effective area is constant within a data sample, it can be written as
+the effective area has no time dependence within a data sample, it can be
+written as
 \begin{equation}
- A_{\mathrm{eff}_j}(E,t|\psk) \equiv A_{\mathrm{eff}_j}(E|\psk) T_{\mathrm{live}}(t)
+ A_{\mathrm{eff}_j}(E,t|\psk) \equiv A_{\mathrm{eff}_j}(E|\psk) T_{\mathrm{live}}(t),
 \end{equation}
-with $T_{\mathrm{live}}(t)$ is the detector live-time function as given by
+where $T_{\mathrm{live}}(t)$ is the detector live-time function as given by
 equation (\ref{eq:Tlive}).
 
 \subsection{Effective Area}
@@ -811,13 +814,27 @@ known as ``OneWeight'', which already includes the number of used MC files.},
 of the simulation events.
 In IceCube simulation the Monte-Carlo weights have the unit GeV~cm$^2$~sr.
 Using the Monte-Carlo weight, $w_{m,j}$, of the $m$th event of data sample $j$,
-that corresponds to a signal event, i.e. an event that has similar properties as
-a signal event (\emph{e.g.} same true direction), the effective area is given by
-the sum of the weights of those events, divided by the
-solid angle and the energy range $\Delta E$ of the summed selected events:
+of the set $M$ of Monte-Carlo events that correspond to signal events, i.e.
+events that have similar properties as the signal events (\emph{e.g.} same true
+direction), the effective area is simply given by the sum of the Monte-Carlo
+weights of those events, divided by the solid angle $\Omega_M$ and the energy
+range $\Delta E_M$ of the summed selected signal-like events:
 \begin{equation}
- A_{\mathrm{eff}_j}(E) = \frac{\sum_{m=1}^{M} w_{m,j}}{\Omega \Delta E}
+ A_{\mathrm{eff}_j}(E|\psk) = \frac{1}{\Omega_M \Delta E_M} \sum_{m=1}^{M} w_{m,j}
 \end{equation}
+The selection of the $M$ signal-like Monte-Carlo events depends on the detector
+local source position, $\xslocal$, within the detector (specified through the
+local horizontal coordinate system with coordinates given in altitude (or zenith)
+and azimuth). The local source position can be calculated via a coordinate
+transformation function, $f_{\mathrm{eq}\rightarrow\mathrm{horiz}}$, that
+transforms the astrophysical source position $\xsastro$ in equatorial
+coordinates right-ascension and declination into the local horizontal
+coordinates, given a detector location on Earth, $\vec{x}_{\mathrm{detector}}$,
+and an observation time $\tobs$:
+\begin{equation}
+  \xslocal = f_{\mathrm{eq}\rightarrow\mathrm{horiz}}(\xsastro|\vec{x}_{\mathrm{detector}}, \tobs)
+\end{equation}
+
 
 
 \section{The Concept of Source Hypothesis Groups}
