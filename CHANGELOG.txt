@@ -45,6 +45,10 @@ v23.2.1
   to preserve the position angle and great circle distance between the event's
   true and reco directions.
 
+- Corrected the calculation of the number of signal events to be generated for
+  each individual dataset in the
+  core.signal_generator.MultiDatasetSignalGenerator class.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters

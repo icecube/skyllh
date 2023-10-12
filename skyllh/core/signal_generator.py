@@ -369,7 +369,7 @@ class MultiDatasetSignalGenerator(
                     mean,
                     'The mean argument must be cast-able to type of float!'))
 
-        n_signal = int_cast(
+        mean = int_cast(
             mean,
             'The mean argument must be cast-able to type of int!')
 
@@ -388,14 +388,34 @@ class MultiDatasetSignalGenerator(
         self._ds_sig_weight_factors_service.calculate()
         (ds_weights, _) = self._ds_sig_weight_factors_service.get_weights()
 
+        # Calculate the number of events that need to be generated for each
+        # individual dataset. Due to rounding errors, it could happen that the
+        # sum of the events is less or greater than ``mean``.
+        n_events_arr = np.round(mean * ds_weights, 0).astype(np.int_)
+
+        # Correct the n_events_arr array based on the dataset weights if
+        # necessary.
+        sum_n_events_arr = np.sum(n_events_arr)
+        if sum_n_events_arr != mean:
+            (ds_idxs, counts) = np.unique(
+                rss.random.choice(
+                    np.arange(len(n_events_arr)),
+                    size=np.abs(mean - sum_n_events_arr),
+                    p=ds_weights,
+                ),
+                return_counts=True
+            )
+            if sum_n_events_arr < mean:
+                n_events_arr[ds_idxs] += counts
+            elif sum_n_events_arr > mean:
+                n_events_arr[ds_idxs] -= counts
+
         n_signal = 0
         signal_events_dict = {}
 
-        for (ds_weight, ds_sig_generator) in zip(
-                ds_weights,
+        for (n_events, ds_sig_generator) in zip(
+                n_events_arr,
                 self._sig_generator_list):
-
-            n_events = int(np.round(mean * ds_weight, 0))
 
             (ds_n_signal, ds_sig_events_dict) =\
                 ds_sig_generator.generate_signal_events(
