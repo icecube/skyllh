@@ -36,6 +36,37 @@ v23.2.1
   core.pdfratio.SplinedSingleConditionalEnergySigSetOverBkgPDFRatio as generic
   PDF ratio for core.pdf.SingleConditionalEnergyPDF energy PDFs.
 
+- Introduce class core.random.RandomChoice to replace numpy.random.choice with a
+  faster implementation avoiding the recalculation of the cumulative
+  distribution function (CDF) when called several times (trials) for the same
+  probabilities (dataset). This new class is used in background and signal
+  event generation from MC, resulting in a great performance increase when
+  generating many trials with many events.
+
+- The core.pdf.MultiDimGridPDF class has been adapted to the new Python
+  interface of photospline that supports numpy arrays. The determination of the
+  spline table's basis function indices has been separated from the spline table
+  evaluation which provides an accelerated PDF evaluation.
+
+- The core.dataset.Dataset.get_aux_data method got the new optional argument
+  "default" to specify a default return value if the auxiliary data is not
+  defined for that dataset.
+
+- The core.signal_generator.MCMultiDatasetSignalGenerator get the new optional
+  constructor argument "valid_event_field_ranges_dict_list=None" to specify
+  valid event field ranges, e.g. for the declination. If generated signal events
+  do not match these valid event field ranges, those signal events will be
+  redrawn.
+
+- The i3.signal_generation.PointLikeSourceI3SignalGenerationMethod class uses
+  the new rotation function core.utils.coords.rotate_signal_events_on_sphere
+  to preserve the position angle and great circle distance between the event's
+  true and reco directions.
+
+- Corrected the calculation of the number of signal events to be generated for
+  each individual dataset in the
+  core.signal_generator.MultiDatasetSignalGenerator class.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
@@ -97,7 +128,7 @@ v23.2.0
 
     - core.event_selection.SpatialBoxEventSelectionMethod:
 
-        Improved calculation of right-ascention difference. Thus, speed-up in
+        Improved calculation of right-ascension difference. Thus, speed-up in
         trial generation when using this event selection method.
 
 - core.scrambling.DataScrambler.scramble_data method also takes Dataset instance
@@ -111,7 +142,7 @@ v23.1.1
 =======
 - bugfix of core.pdf.MultiDimGridPDFSet
 - bugfix of core.pdf.MappedMultiDimGridPDFSet
-- removal of depricated proptery core.pdf.PDFSet.pdf_axes
+- removal of deprecated property core.pdf.PDFSet.pdf_axes
 
 v23.1.0
 =======

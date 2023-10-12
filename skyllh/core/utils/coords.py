@@ -2,6 +2,10 @@
 
 import numpy as np
 
+from astropy.coordinates import (
+    SkyCoord,
+)
+
 
 def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     """Calculates the rotation matrix R to rotate the spherical vector
@@ -30,7 +34,7 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     N_event = len(ra1)
 
     # Calculate the space angle alpha between vector 1 and vector 2, and
-    # correct for possible rounding erros.
+    # correct for possible rounding errors.
     cos_alpha = (np.cos(ra2 - ra1) * np.cos(dec1) * np.cos(dec2)
                  + np.sin(dec1) * np.sin(dec2))
     cos_alpha[cos_alpha > 1] = 1
@@ -90,29 +94,93 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
     return (ra, dec)
 
 
+def rotate_signal_events_on_sphere(
+        src_ra,
+        src_dec,
+        evt_true_ra,
+        evt_true_dec,
+        evt_reco_ra,
+        evt_reco_dec,
+):
+    """Rotate signal events on a sphere to a given source position preserving
+    position angle and separation (great circle distance) between the event's
+    true and reco directions.
+
+    Parameters
+    ----------
+    src_ra : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the true right-ascension
+        of the source.
+    src_dec : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the true declination
+        of the source.
+    evt_true_ra : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the true right-ascension
+        of the MC event.
+    evt_true_dec : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the true declination of
+        the MC event.
+    evt_reco_ra : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the reconstructed
+        right-ascension of the MC event.
+    evt_reco_dec : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the reconstructed
+        declination of the MC event.
+
+    Returns
+    -------
+    rot_evt_reco_ra : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the rotated
+        reconstructed event right-ascension.
+    rot_evt_reco_dec : instance of numpy.ndarray
+        The (N_events,)-shaped 1D numpy.ndarray holding the rotated
+        reconstructed event declination.
+    """
+    assert (
+        len(src_ra) == len(src_dec) ==
+        len(evt_true_ra) == len(evt_true_dec) ==
+        len(evt_reco_ra) == len(evt_reco_dec)
+    ), 'All input argument arrays must be of the same length!'
+
+    v_source = SkyCoord(src_ra, src_dec, frame="icrs", unit="rad")
+    v_evt_true = SkyCoord(evt_true_ra, evt_true_dec, frame="icrs", unit="rad")
+    v_evt_reco = SkyCoord(evt_reco_ra, evt_reco_dec, frame="icrs", unit="rad")
+
+    position_angle = v_evt_true.position_angle(v_evt_reco)
+    separation = v_evt_true.separation(v_evt_reco)
+
+    v_rotated = v_source.directional_offset_by(position_angle, separation)
+    (rot_evt_reco_ra, rot_evt_reco_dec) = (v_rotated.ra.rad, v_rotated.dec.rad)
+
+    return (rot_evt_reco_ra, rot_evt_reco_dec)
+
+
 def angular_separation(ra1, dec1, ra2, dec2, psi_floor=None):
-    """Calculates the angular separation on the shpere between two vectors on
+    """Calculates the angular separation on the sphere between two vectors on
     the sphere.
 
     Parameters
     ----------
-    ra1 : float | array of float
-        The right-ascention or longitude coordinate of the first vector in
-        radians.
-    dec1 : float | array of float
-        The declination or latitude coordinate of the first vector in radians.
-    ra2 : float | array of float
-        The right-ascention or longitude coordinate of the second vector in
-        radians.
-    dec2 : float | array of float
-        The declination coordinate of the second vector in radians.
+    ra1 : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding the right-ascension or
+        longitude coordinate of the first vector in radians.
+    dec1 : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding declination or latitude
+        coordinate of the first vector in radians.
+    ra2 : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding the right-ascension or
+        longitude coordinate of the second vector in radians.
+    dec2 : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding declination coordinate of
+        the second vector in radians.
     psi_floor : float | None
         If not ``None``, specifies the floor value of psi.
 
     Returns
     -------
-    psi : float | array of float
-        The calculated angular separation value(s).
+    psi : instance of numpy.ndarray
+        The (N_events,)-shaped numpy.ndarray holding the calculated angular
+        separation value of each event.
     """
     delta_ra = np.abs(ra1 - ra2)
     delta_dec = np.abs(dec1 - dec2)

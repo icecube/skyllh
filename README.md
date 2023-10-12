@@ -8,6 +8,9 @@
 
 The SkyLLH framework is an open-source Python3-based package licensed under the GPLv3 license. It provides a modular framework for implementing custom likelihood functions and executing log-likelihood ratio hypothesis tests. The idea is to provide a class structure tied to the mathematical objects of the likelihood functions, rather than to entire abstract likelihood models.
 
+The math formalism used in SkyLLH is described in the
+[[math formalism document]](https://github.com/icecube/skyllh/blob/master/doc/user_manual.pdf).
+
 # Installation
 
 ## Using pip
