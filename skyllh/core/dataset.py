@@ -1458,7 +1458,7 @@ class Dataset(
 
         return file_list
 
-    def make_data_available(
+    def make_data_available(  # noqa: C901
             self,
             username=None,
             password=None,
@@ -1503,10 +1503,15 @@ class Dataset(
         # just create a symlink.
         if self.origin.is_locally_available():
             root_dir = self.root_dir
+
+            # Check if the symlink to the root directory already exists.
+            if os.path.isdir(root_dir):
+                return True
+
             # Make sure all directories leading to the symlink exist.
             dirname = os.path.dirname(root_dir)
             if dirname != '':
-                os.makedirs(dirname)
+                os.makedirs(dirname, exist_ok=True)
 
             cmd = f'ln -s "{self.origin.root_dir}" "{root_dir}"'
             DatasetTransfer.execute_system_command(cmd, logger)
