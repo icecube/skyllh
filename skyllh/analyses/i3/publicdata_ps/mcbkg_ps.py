@@ -28,7 +28,6 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
-    get_tdm_field_func_psi,
 )
 from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
@@ -100,6 +99,9 @@ from skyllh.core.trialdata import (
 )
 from skyllh.core.utils.analysis import (
     pointlikesource_to_data_field_array,
+)
+from skyllh.core.utils.tdm import (
+    get_tdm_field_func_psi,
 )
 from skyllh.datasets.i3 import (
     data_samples,
