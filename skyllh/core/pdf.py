@@ -1290,10 +1290,7 @@ class MultiDimGridPDF(
             The instance of TrialDataManager that hold the trial data events.
         """
         self._cache_tdm_trial_data_state_id = None
-        self._cache_pd = np.full(
-            (tdm.get_n_values(),),
-            np.nan,
-            dtype=np.float64)
+        self._cache_pd = None
 
     def _store_pd_values_to_cache(
             self,
@@ -1316,6 +1313,12 @@ class MultiDimGridPDF(
             length N_values.
         """
         self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
+
+        if self._cache_pd is None:
+            self._cache_pd = np.full(
+                pd.shape,
+                np.nan,
+                dtype=np.float64)
 
         if evt_mask is None:
             self._cache_pd[:] = pd
