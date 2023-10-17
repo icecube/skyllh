@@ -324,9 +324,13 @@ class MultiDatasetSignalGenerator(
         self._src_params_recarray = self.create_src_params_recarray(
             src_detsigyield_weights_service=src_detsigyield_weights_service)
 
+        if self.sig_generator_list is None:
+            return
+
         for sig_generator in self.sig_generator_list:
-            sig_generator.change_shg_mgr(
-                shg_mgr=shg_mgr)
+            if sig_generator is not None:
+                sig_generator.change_shg_mgr(
+                    shg_mgr=shg_mgr)
 
     def generate_signal_events(
             self,
