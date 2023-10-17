@@ -327,10 +327,9 @@ class MultiDatasetSignalGenerator(
         if self.sig_generator_list is None:
             return
 
-        for sig_generator in self.sig_generator_list:
-            if sig_generator is not None:
-                sig_generator.change_shg_mgr(
-                    shg_mgr=shg_mgr)
+        for sig_generator in filter(None, self.sig_generator_list):
+            sig_generator.change_shg_mgr(
+                shg_mgr=shg_mgr)
 
     def generate_signal_events(
             self,
