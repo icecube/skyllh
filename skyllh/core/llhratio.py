@@ -640,7 +640,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         N : int
             The total number of events.
         ns : float
-            The value of the global fit paramater ns.
+            The value of the global fit parameter ns.
         ns_pidx : int
             The index of the global fit parameter ns.
         p_mask : instance of numpy ndarray
@@ -680,6 +680,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         # log-function argument, and an inverted mask thereof.
         m_stable = alpha_i > alpha
         m_unstable = ~m_stable
+        any_unstable_events = np.any(m_unstable)
 
         if tracing:
             logger.debug(
@@ -693,9 +694,10 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         np.log1p(alpha_i, where=m_stable, out=log_lambda_i)
 
         # Calculate the log_lambda_i value for the numerical unstable events.
-        tildealpha_i = (alpha_i[m_unstable] - alpha) / one_plus_alpha
-        log_lambda_i[m_unstable] =\
-            np.log1p(alpha) + tildealpha_i - 0.5 * tildealpha_i**2
+        if any_unstable_events:
+            tildealpha_i = (alpha_i[m_unstable] - alpha) / one_plus_alpha
+            log_lambda_i[m_unstable] =\
+                np.log1p(alpha) + tildealpha_i - 0.5 * tildealpha_i**2
 
         # Calculate the log_lambda value and account for pure background events.
         log_lambda = np.sum(log_lambda_i) + (N - Nprime)*np.log1p(-ns/N)
@@ -711,8 +713,9 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         nsgrad_i = np.empty_like(alpha_i, dtype=np.float64)
         nsgrad_i[m_stable] =\
             Xi[m_stable] * one_over_one_plus_alpha_i_stablemask
-        nsgrad_i[m_unstable] =\
-            (1 - tildealpha_i) * Xi[m_unstable] / one_plus_alpha
+        if any_unstable_events:
+            nsgrad_i[m_unstable] =\
+                (1 - tildealpha_i) * Xi[m_unstable] / one_plus_alpha
 
         # Cache the nsgrad_i values for a possible later calculation of the
         # second derivative w.r.t. ns of the log-likelihood ratio function.
@@ -730,10 +733,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             axis=0)
 
         # For all numerical unstable events.
-        grads[p_mask] += np.sum(
-            ns * (1 - tildealpha_i[:, np.newaxis]) * dXi_dp[m_unstable] /
-            one_plus_alpha,
-            axis=0)
+        if any_unstable_events:
+            grads[p_mask] += np.sum(
+                ns * (1 - tildealpha_i[:, np.newaxis]) * dXi_dp[m_unstable] /
+                one_plus_alpha,
+                axis=0)
 
         return (log_lambda, grads)
 
@@ -757,7 +761,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             The ndarray holding the current values of the global fit
             parameters.
         ns : float
-            The value of the global fit paramater ns.
+            The value of the global fit parameter ns.
         ns_pidx : int
             The parameter index of the global fit parameter ns.
             For this particular class this is an ignored interface parameter.
