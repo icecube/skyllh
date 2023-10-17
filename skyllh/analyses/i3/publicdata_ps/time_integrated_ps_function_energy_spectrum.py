@@ -52,6 +52,7 @@ from skyllh.core.flux_model import (
 from skyllh.core.minimizer import (
     Minimizer,
     LBFGSMinimizerImpl,
+
 )
 from skyllh.core.minimizers.iminuit import (
     IMinuitMinimizerImpl,
@@ -165,9 +166,9 @@ def flux_from_ns(analysis, e_peak, ns):
     #set the fluxmodel to e_peak
     set_epeak(analysis, e_peak)
 
-    scaling_factor = analysis.calculate_model_scaling_factor(ns, [ns, e_peak])
+    scaling_factor = analysis.calculate_fluxmodel_scaling_factor(ns, [ns, e_peak])
 
-    return analysis.shg_mgr.get_fluxmodel_by_src_idx(0)(E=10**e_peak).squeeze() * scaling_factor
+    return analysis.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile(E=10**e_peak).squeeze() * scaling_factor
 
 
 def ns_from_flux(analysis, e_peak, flux):
@@ -192,11 +193,11 @@ def ns_from_flux(analysis, e_peak, flux):
     set_epeak(analysis, e_peak)
 
     # reference flux at e_peak
-    reference_flux = analysis.shg_mgr.get_fluxmodel_by_src_idx(0)(E=10**e_peak).squeeze()
+    reference_flux = analysis.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile(E=10**e_peak).squeeze()
 
     scaling_factor = flux / reference_flux
 
-    scaling_factor_norm = analysis.calculate_model_scaling_factor(1, [1, e_peak])
+    scaling_factor_norm = analysis.calculate_fluxmodel_scaling_factor(1, [1, e_peak])
  
     return scaling_factor / scaling_factor_norm
 
@@ -208,7 +209,7 @@ def create_analysis(
     source_energies,
     source_energy_spectrum,
     refplflux_Phi0=1,
-    ns_seed=100.0,
+    ns_seed=10.0,
     ns_min=0.,
     ns_max=1e3,
     e_peak_signal=5,
@@ -216,7 +217,7 @@ def create_analysis(
     e_peak_min=1.06,
     e_peak_max=10.06,
     kde_smoothing=False,
-    minimizer_impl='LBFGS',
+    minimizer_impl='minuit',
     cut_sindec=None,
     spl_smooth=None,
     cap_ratio=False,

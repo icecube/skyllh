@@ -766,7 +766,7 @@ def create_analysis(  # noqa: C901
         refplflux_Phi0=1,
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
-        ns_seed=100.0,
+        ns_seed=10.0,
         ns_min=0.,
         ns_max=1e3,
         gamma_seed=3.0,
