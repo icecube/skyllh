@@ -1047,8 +1047,7 @@ class MultiDatasetTCLLHRatio(
         self._src_detsigyield_weights_service.change_shg_mgr(
             shg_mgr=shg_mgr)
 
-        self._ds_sig_weight_factors_service.change_shg_mgr(
-            shg_mgr=shg_mgr)
+        self._ds_sig_weight_factors_service.calculate()
 
         for llhratio in self._llhratio_list:
             llhratio.change_shg_mgr(
