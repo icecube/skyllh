@@ -537,7 +537,8 @@ if __name__ == '__main__':
             tl=tl)
 
     with tl.task_timer('Unblinding data.'):
-        (TS, param_dict, status) = ana.unblind(rss)
+        (TS, param_dict, status) = ana.unblind(
+            minimizer_rss=rss)
 
     print(f'TS = {TS:g}')
     print(f'ns_fit = {param_dict["ns"]:g}')
