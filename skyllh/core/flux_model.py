@@ -1140,10 +1140,12 @@ class EpeakFunctionEnergyProfile(
 
         value = self.function(E * energy_offset) * (energy_offset**2)
 
+        max_flux = self.function(10**self.e_peak * energy_offset) * (energy_offset**2)
+
         # avoid really small values
         # return np.where(value >= max(value)*1e-100, value, max(value)*1e-100)
     
-        return np.where(value >= max(value)*1e-100, value, max(value)*1e-100)
+        return np.where(value >= max_flux*1e-100, value, max_flux*1e-100)
 
 
     def get_integral(
