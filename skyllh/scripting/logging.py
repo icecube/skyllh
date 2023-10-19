@@ -30,7 +30,7 @@ def setup_logging(
     script_logger_name : str
         The name of the logger used by the script.
     log_format : str | None
-        The format template of the log message. If set to ``Ǹone``, the format
+        The format template of the log message. If set to ``None``, the format
         will be taken from ``cfg['debugging']['log_format']``.
     log_level : int
         The log level of the loggers. The default is ``logging.INFO``.

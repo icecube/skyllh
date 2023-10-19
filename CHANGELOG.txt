@@ -49,6 +49,14 @@ v23.2.1
   each individual dataset in the
   core.signal_generator.MultiDatasetSignalGenerator class.
 
+- Operations for "unstable" events in the
+  core.llhratio.ZeroSigH0SingleDatasetTCLLHRatio.calculate_log_lambda_and_grads
+  method are only performed if there are actually such events.
+
+- Added argument "iprint" to the constructor of the
+  core.minimizer.LBFGSMinimizerImpl class to be able to print out more minimizer
+  internal statistics.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters

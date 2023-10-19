@@ -134,7 +134,7 @@ def create_analysis(
         refplflux_Phi0=1,
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
-        ns_seed=100.0,
+        ns_seed=10.0,
         ns_min=0.,
         ns_max=1e3,
         gamma_seed=3.0,
@@ -471,7 +471,7 @@ if __name__ == '__main__':
         dest='ra',
         default=77.35,
         type=float,
-        help='The source right-ascention in degrees.'
+        help='The source right-ascension in degrees.'
     )
     parser.add_argument(
         '--gamma-seed',

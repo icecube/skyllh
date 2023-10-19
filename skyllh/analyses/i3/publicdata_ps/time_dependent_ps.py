@@ -405,7 +405,7 @@ def run_gamma_scan_for_single_flare(
         mu : float
             The determined mean value of the gauss curve.
         sigma : float
-            The determoned standard deviation of the gauss curve.
+            The determined standard deviation of the gauss curve.
         ns_em : float
             The scaling factor of the flare.
     """
@@ -508,7 +508,7 @@ def do_trial_with_em(
     Parameters
     ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
-        The anaylsis instance that should be used to perform the trial.
+        The analysis instance that should be used to perform the trial.
     rss : instance of RandomStateService
         The instance of RandomStateService that should be used to generate
         random numbers.
@@ -561,7 +561,7 @@ def do_trial_with_em(
         ns_em : numpy.float64
             The scaling factor of the flare.
         gamma_fit : numpy.float64
-            The fitted spectial index of the trial.
+            The fitted spectral index of the trial.
         gamma_em : numpy.float64
             The spectral index of the best EM trial.
         mu_fit : numpy.float64
@@ -650,7 +650,7 @@ def do_trials_with_em(
     Parameters
     ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
-        The anaylsis instance that should be used to perform the trials.
+        The analysis instance that should be used to perform the trials.
     n : int
         The number of trials to generate.
     ncpu : int | None
@@ -708,7 +708,7 @@ def do_trials_with_em(
         ns_em : numpy.float64
             The scaling factor of the flare.
         gamma_fit : numpy.float64
-            The fitted spectial index of the trial.
+            The fitted spectral index of the trial.
         gamma_em : numpy.float64
             The spectral index of the best EM trial.
         mu_fit : numpy.float64
@@ -768,7 +768,7 @@ def create_analysis(  # noqa: C901
         refplflux_Phi0=1,
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
-        ns_seed=100.0,
+        ns_seed=10.0,
         ns_min=0.,
         ns_max=1e3,
         gamma_seed=3.0,
@@ -1174,7 +1174,7 @@ if __name__ == '__main__':
         dest='ra',
         default=77.35,
         type=float,
-        help='The source right-ascention in degrees.'
+        help='The source right-ascension in degrees.'
     )
     parser.add_argument(
         '--gamma-seed',
