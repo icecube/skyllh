@@ -610,17 +610,16 @@ class Analysis(
     @abc.abstractmethod
     def unblind(
             self,
-            rss,
+            minimizer_rss,
             tl=None):
         """This method is supposed to run the analysis on the experimental data,
         i.e. unblinds the data.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService that should be used draw random
-            numbers from. It is used by the minimizer to generate new random
-            initial values for fit parameters.
+        minimizer_rss : instance of RandomStateService
+            The instance of RandomStateService that should be used by the
+            minimizer to generate new random initial fit parameter values.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to time the
             maximization of the LLH ratio function.
@@ -1458,16 +1457,15 @@ class LLHRatioAnalysis(
 
     def unblind(
             self,
-            rss,
+            minimizer_rss,
             tl=None):
         """Evaluates the unscrambled data, i.e. unblinds the data.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService that should be used draw random
-            numbers from. It used by the minimizer to generate new initial fit
-            parameter values.
+        minimizer_rss : instance of RandomStateService
+            The instance of RandomStateService that should be used by the
+            minimizer to generate new random initial fit parameter values.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to time the
             maximization of the LLH ratio function.
@@ -1488,7 +1486,7 @@ class LLHRatioAnalysis(
         self.initialize_trial(events_list)
 
         (log_lambda, fitparam_values, status) = self._llhratio.maximize(
-            rss=rss,
+            rss=minimizer_rss,
             tl=tl)
 
         TS = self.calculate_test_statistic(
