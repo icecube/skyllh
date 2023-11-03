@@ -306,6 +306,22 @@ class MultiDatasetBackgroundGenerator(
                 f'Its current type is {classname(generators)}.')
         self._bkg_generator_list = generators
 
+    def change_shg_mgr(
+            self,
+            shg_mgr,
+    ):
+        """Calls the ``change_shg_mgr`` method of each individual dataset
+        background generator.
+
+        Parameters
+        ----------
+        shg_mgr : instance of SourceHypoGroupManager
+            The new instance of SourceHypoGroupManager.
+        """
+        for bkg_generator in self._bkg_generator_list:
+            bkg_generator.change_shg_mgr(
+                shg_mgr=shg_mgr)
+
     def generate_background_events(
             self,
             rss,

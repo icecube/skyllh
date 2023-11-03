@@ -718,7 +718,8 @@ class Analysis(
 
         for tdm in self._tdm_list:
             tdm.change_shg_mgr(
-                shg_mgr=shg_mgr)
+                shg_mgr=shg_mgr,
+                pmm=self._pmm)
 
         if self._detsigyield_service is not None:
             self._detsigyield_service.change_shg_mgr(
