@@ -53,6 +53,26 @@ Several publications about the SkyLLH software are available:
 - IceCube Collaboration, M. Wolf, et al. PoS ICRC2019 (2020) 1035
   [DOI](https://doi.org/10.22323/1.358.1035)
 
+# Developer Guidelines
+
+These guidelines should help new developers of SkyLLH to join the development
+process easily.
+
+## Code style
+
+- The code follows PEP8 coding style guidelines as close as possible.
+- Code lines are maximum 80 characters wide.
+
+## Releases and Versioning
+
+- Release version numbers follow the format `<YY>.<MAJOR>.<MINOR>`, where `<YY>`
+  is the current year, `<MAJOR>` and `<MINOR>` are the major and minor version
+  numbers of type integer. Example: `23.2.0`.
+
+- Release candidates follow the same format as releases, but have the additional
+  suffix `.rc<NUMBER>`,  where `<NUMBER>` is an integer starting with 1.
+  Example: `23.2.0.rc1`
+
 # i3skyllh
 
 The [`i3skyllh`](https://github.com/icecube/i3skyllh) package provides complementary pre-defined common analyses and datasets for the [IceCube Neutrino Observatory](https://icecube.wisc.edu) detector in a private [repository](https://github.com/icecube/i3skyllh).
