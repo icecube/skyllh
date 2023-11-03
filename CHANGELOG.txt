@@ -57,6 +57,19 @@ v23.2.1
   core.minimizer.LBFGSMinimizerImpl class to be able to print out more minimizer
   internal statistics.
 
+- Added keyword argument "minimizer_rss" to method
+  core.analysis.Analysis.do_trial and subsequent methods, like
+  core.analysis.Analysis.do_trial_with_given_pseudo_data.
+
+  It is now possible to specify a separate RandomStateService (RSS) for the
+  minimizer. This will make sure that trial pseudo data generation is not
+  influenced by the minimizer when generating new initial fit parameter values
+  after the minimizer failed.
+
+- Changed keyword argument name "rss" of method core.analysis.Analysis.unblind
+  to "minimizer_rss" to be consistent with the new "minimizer_rss" keyword
+  argument of core.analysis.Analysis.do_trial.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters

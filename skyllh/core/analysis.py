@@ -610,17 +610,16 @@ class Analysis(
     @abc.abstractmethod
     def unblind(
             self,
-            rss,
+            minimizer_rss,
             tl=None):
         """This method is supposed to run the analysis on the experimental data,
         i.e. unblinds the data.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService that should be used draw random
-            numbers from. It can be used to generate random initial values for
-            fit parameters.
+        minimizer_rss : instance of RandomStateService
+            The instance of RandomStateService that should be used by the
+            minimizer to generate new random initial fit parameter values.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to time the
             maximization of the LLH ratio function.
@@ -641,22 +640,24 @@ class Analysis(
     @abc.abstractmethod
     def do_trial_with_given_pseudo_data(
             self,
-            rss,
+            seed,
             mean_n_sig,
             n_sig,
             n_events_list,
             events_list,
+            minimizer_rss,
             minimizer_status_dict=None,
             tl=None,
-            **kwargs):
+            **kwargs,
+    ):
         """This method is supposed to perform an analysis trial on a given
         pseudo data.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService to use for generating random
-            numbers.
+        seed : int
+            The seed value, which was used to generate the pseudo data. It will
+            be stored in the returned result array.
         mean_n_sig : float
             The mean number of signal events the pseudo data was generated with.
         n_sig : int
@@ -669,6 +670,10 @@ class Analysis(
             data sample can be less than the number of events given by
             ``n_events_list`` if an event selection method was already utilized
             when generating background events.
+        minimizer_rss : instance of RandomStateService
+            The instance of RandomStateService to use for generating random
+            numbers for the minimizer, e.g. for new initial fit parameter
+            values.
         minimizer_status_dict : dict | None
             If a dictionary is provided, it will be updated with the minimizer
             status dictionary.
@@ -733,16 +738,18 @@ class Analysis(
 
     def do_trial_with_given_bkg_and_sig_pseudo_data(
             self,
-            rss,
+            seed,
             mean_n_sig,
             n_sig,
             n_bkg_events_list,
             n_sig_events_list,
             bkg_events_list,
             sig_events_list,
+            minimizer_rss,
             minimizer_status_dict=None,
             tl=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Performs an analysis trial on the given background and signal pseudo
         data. This method merges the background and signal pseudo events and
         calls the ``do_trial_with_given_pseudo_data`` method of this class.
@@ -754,9 +761,9 @@ class Analysis(
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService instance to use for generating
-            random numbers.
+        seed : int
+            The seed value, which was used to generate the background and signal
+            pseudo data. It will be stored in the returned result array.
         mean_n_sig : float
             The mean number of signal events the pseudo data was generated with.
         n_sig : int
@@ -774,6 +781,10 @@ class Analysis(
             The list of instance of DataFieldRecordArray containing the signal
             pseudo data events for each data set. If a particular dataset has
             no signal events, the entry for that dataset can be ``None``.
+        minimizer_rss : instance of RandomStateService
+            The instance of RandomStateService to use for generating random
+            numbers for the minimizer, e.g. for new initial fit parameter
+            values.
         minimizer_status_dict : dict | None
             If a dictionary is provided, it will be updated with the minimizer
             status dictionary.
@@ -809,11 +820,12 @@ class Analysis(
                     events_list[ds_idx].append(sig_events_list[ds_idx])
 
         recarray = self.do_trial_with_given_pseudo_data(
-            rss=rss,
+            seed=seed,
             mean_n_sig=mean_n_sig,
             n_sig=n_sig,
             n_events_list=n_events_list,
             events_list=events_list,
+            minimizer_rss=minimizer_rss,
             minimizer_status_dict=minimizer_status_dict,
             tl=tl,
             **kwargs)
@@ -1075,6 +1087,7 @@ class Analysis(
             mean_n_sig=0,
             bkg_kwargs=None,
             sig_kwargs=None,
+            minimizer_rss=None,
             minimizer_status_dict=None,
             tl=None,
             **kwargs):
@@ -1087,7 +1100,7 @@ class Analysis(
         Parameters
         ----------
         rss : instance of RandomStateService
-            The instance of RandomStateService instance to use for generating
+            The instance of RandomStateService to use for generating
             random numbers.
         mean_n_bkg_list : list of float | None
             The mean number of background events that should be generated for
@@ -1104,6 +1117,10 @@ class Analysis(
             Additional keyword arguments for the `generate_signal_events` method
             of the `SignalGenerator` class. An usual keyword argument is
             `poisson`.
+        minimizer_rss : instance of RandomStateService | None
+            The instance of RandomStateService to use for generating random
+            numbers for the minimizer, e.g. new initial fit parameter values.
+            If set to ``None``, ``rss`` will be used for the minimizer.
         minimizer_status_dict : dict | None
             If a dictionary is provided, it will be updated with the minimizer
             status dictionary.
@@ -1122,6 +1139,9 @@ class Analysis(
             :py:meth:`~skyllh.core.analysis.Analysis.do_trial_with_given_pseudo_data`
             method for further information.
         """
+        if minimizer_rss is None:
+            minimizer_rss = rss
+
         with TaskTimer(tl, 'Generating pseudo data.'):
             (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
                 rss=rss,
@@ -1132,11 +1152,12 @@ class Analysis(
                 tl=tl)
 
         recarray = self.do_trial_with_given_pseudo_data(
-            rss=rss,
+            seed=rss.seed,
             mean_n_sig=mean_n_sig,
             n_sig=n_sig,
             n_events_list=n_events_list,
             events_list=events_list,
+            minimizer_rss=minimizer_rss,
             minimizer_status_dict=minimizer_status_dict,
             tl=tl,
             **kwargs)
@@ -1436,15 +1457,15 @@ class LLHRatioAnalysis(
 
     def unblind(
             self,
-            rss,
+            minimizer_rss,
             tl=None):
         """Evaluates the unscrambled data, i.e. unblinds the data.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService that should be used draw random
-            numbers from.
+        minimizer_rss : instance of RandomStateService
+            The instance of RandomStateService that should be used by the
+            minimizer to generate new random initial fit parameter values.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to time the
             maximization of the LLH ratio function.
@@ -1465,7 +1486,7 @@ class LLHRatioAnalysis(
         self.initialize_trial(events_list)
 
         (log_lambda, fitparam_values, status) = self._llhratio.maximize(
-            rss=rss,
+            rss=minimizer_rss,
             tl=tl)
 
         TS = self.calculate_test_statistic(
@@ -1479,21 +1500,23 @@ class LLHRatioAnalysis(
 
     def do_trial_with_given_pseudo_data(
             self,
-            rss,
+            seed,
             mean_n_sig,
             n_sig,
             n_events_list,
             events_list,
+            minimizer_rss,
             minimizer_status_dict=None,
             tl=None,
-            mean_n_sig_0=None):
+            mean_n_sig_0=None,
+    ):
         """Performs an analysis trial on the given pseudo data.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService to use for generating random
-            numbers.
+        seed : int
+            The seed value, which was used to generate the pseudo data. It will
+            be stored in the returned result array.
         mean_n_sig : float
             The mean number of signal events the pseudo data was generated with.
         n_sig : int
@@ -1506,6 +1529,10 @@ class LLHRatioAnalysis(
             data sample can be less than the number of events given by
             ``n_events_list`` if an event selection method was already utilized
             when generating background events.
+        minimizer_rss : instance of RandomStateService
+            The instance of RandomStateService to use for generating random
+            numbers for the minimizer, e.g. for new initial fit parameter
+            values.
         minimizer_status_dict : dict | None
             If a dictionary is provided, it will be updated with the minimizer
             status dictionary.
@@ -1523,8 +1550,8 @@ class LLHRatioAnalysis(
             The numpy record ndarray holding the result of the trial. It
             contains the following data fields:
 
-            rss_seed : int
-                The RandomStateService seed.
+            seed : int
+                The seed value of the RandomStateService.
             mean_n_sig : float
                 The mean number of signal events.
             n_sig : int
@@ -1546,7 +1573,7 @@ class LLHRatioAnalysis(
 
         with TaskTimer(tl, 'Maximizing LLH ratio function.'):
             (log_lambda, fitparam_values, status) = self._llhratio.maximize(
-                rss=rss,
+                rss=minimizer_rss,
                 tl=tl)
         if isinstance(minimizer_status_dict, dict):
             minimizer_status_dict.update(status)
@@ -1573,7 +1600,7 @@ class LLHRatioAnalysis(
             for param_name in global_params_dict.keys()
         ]
         recarray = np.empty((1,), dtype=recarray_dtype)
-        recarray['seed'] = rss.seed
+        recarray['seed'] = seed
         recarray['mean_n_sig'] = mean_n_sig
         recarray['n_sig'] = n_sig
         recarray['mean_n_sig_0'] = mean_n_sig_0
