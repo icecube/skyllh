@@ -81,6 +81,19 @@ process easily.
   suffix `.rc<NUMBER>`,  where `<NUMBER>` is an integer starting with 1.
   Example: `23.2.0.rc1`
 
+## Branching
+
+- When implementing a new feature / change, first an issue must be created
+  describing the new feature / change. Then a branch must be created referring
+  to this issue. We recommend the branch name `fix<ISSUE_NUMBER>`, where
+  `<ISSUE_NUMBER>` is the number of the created issue for this feature / change.
+
+- In cases when SkyLLH needs to be updated because of a change in the i3skyllh
+  package (see below), we recommend the branch name `i3skyllh_<ISSUE_NUMBER>`,
+  where `<ISSUE_NUMBER>` is the number of the issue created in the i3skyllh
+  repository. That way the *analysis unit tests* workflow will be able to find
+  the correct skyllh branch corresponding to the i3skyllh change automatically.
+
 # i3skyllh
 
 The [`i3skyllh`](https://github.com/icecube/i3skyllh) package provides
