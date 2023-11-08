@@ -262,6 +262,7 @@ class MCDataSamplingBkgGenMethod(
     def data_scrambler(self, scrambler):
         if scrambler is None:
             self._data_scrambler = None
+            return
 
         if not isinstance(scrambler, DataScrambler):
             raise TypeError(
