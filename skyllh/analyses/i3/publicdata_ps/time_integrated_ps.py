@@ -53,6 +53,7 @@ from skyllh.core.minimizer import (
 from skyllh.core.minimizers.iminuit import (
     IMinuitMinimizerImpl,
 )
+
 from skyllh.core.model import (
     DetectorModel,
 )
@@ -140,6 +141,7 @@ def create_analysis(
         gamma_max=5.,
         kde_smoothing=False,
         minimizer_impl='LBFGS',
+        minimizer_max_rep=100,
         cut_sindec=None,
         spl_smooth=None,
         cap_ratio=False,
@@ -186,9 +188,14 @@ def create_analysis(
         Default: False.
     minimizer_impl : str
         Minimizer implementation to be used. Supported options are ``"LBFGS"``
-        (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
-        ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module).
+        (L-BFG-S minimizer used from the :mod:`scipy.optimize` module),
+        ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module), 
+        or "crs" (global CRS minimizer by nlopt, not gradient based).
         Default: "LBFGS".
+    minimizer_max_rep : int
+        In case the minimization process did not converge at the first time
+        this option specifies the maximum number of repetitions with
+        different initials. Default is 100.
     cut_sindec : list of float | None
         sin(dec) values at which the energy cut in the southern sky should
         start. If None, np.sin(np.radians([-2, 0, -3, 0, 0])) is used.
@@ -238,7 +245,15 @@ def create_analysis(
     if minimizer_impl == "LBFGS":
         minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg))
     elif minimizer_impl == "minuit":
-        minimizer = Minimizer(IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8))
+        minimizer = Minimizer(IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8), 
+                              max_repetitions=minimizer_max_rep)
+    elif minimizer_impl == "crs":
+
+        from skyllh.core.minimizers.crs import (
+            CRSMinimizerImpl,
+        )
+
+        minimizer = Minimizer(CRSMinimizerImpl(cfg=cfg, ftol=1e-8))
     else:
         raise NameError(
             f"Minimizer implementation `{minimizer_impl}` is not supported "
