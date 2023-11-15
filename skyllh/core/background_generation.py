@@ -127,7 +127,6 @@ class MCDataSamplingBkgGenMethod(
             get_event_prob_func,
             get_mean_func=None,
             data_scrambler=None,
-            mc_inplace_scrambling=False,
             keep_mc_data_fields=None,
             pre_event_selection_method=None,
             **kwargs,
@@ -166,10 +165,6 @@ class MCDataSamplingBkgGenMethod(
             background events will get scrambled. This can ensure more
             independent data trials. It is especially important when monte-carlo
             statistics are low.
-        mc_inplace_scrambling : bool
-            Flag if the scrambling of the monte-carlo data should be done
-            inplace, i.e. without creating a copy of the MC data first.
-            Default is False.
         keep_mc_data_fields : str | list of str | None
             The MC data field names that should be kept in order to be able to
             calculate the background events rates by the functions
@@ -187,7 +182,6 @@ class MCDataSamplingBkgGenMethod(
         self.get_event_prob_func = get_event_prob_func
         self.get_mean_func = get_mean_func
         self.data_scrambler = data_scrambler
-        self.mc_inplace_scrambling = mc_inplace_scrambling
         self.keep_mc_data_field_names = keep_mc_data_fields
         self.pre_event_selection_method = pre_event_selection_method
 
@@ -270,21 +264,6 @@ class MCDataSamplingBkgGenMethod(
                 'DataScrambler! '
                 f'Its current type is {classname(scrambler)}.')
         self._data_scrambler = scrambler
-
-    @property
-    def mc_inplace_scrambling(self):
-        """Flag if the scrambling of the monte-carlo data should be done
-        inplace, i.e. without creating a copy of the MC data first.
-        """
-        return self._mc_inplace_scrambling
-
-    @mc_inplace_scrambling.setter
-    def mc_inplace_scrambling(self, b):
-        if not isinstance(b, bool):
-            raise TypeError(
-                'The mc_inplace_scrambling property must be of type bool! '
-                f'Its current type is {classname(b)}.')
-        self._mc_inplace_scrambling = b
 
     @property
     def keep_mc_data_field_names(self):
