@@ -69,7 +69,10 @@ process easily.
 ## Code style
 
 - The code follows PEP8 coding style guidelines as close as possible.
+
 - Code lines are maximum 80 characters wide.
+
+- 4 spaces are used as one indentation level.
 
 ## Releases and Versioning
 
