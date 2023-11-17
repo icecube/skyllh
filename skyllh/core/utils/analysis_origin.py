@@ -3,13 +3,6 @@
 import itertools
 import logging
 import numpy as np
-#add new import that new functions need
-import glob
-import photospline as psp
-from scipy.optimize import root_scalar
-from scipy.stats import norm
-
-
 from numpy.lib import (
     recfunctions as np_rfn,
 )
@@ -426,189 +419,6 @@ def polynomial_fit(
             'must be 1 or 2.',
             deg)
 
-def estimate_sen_dep_from_trials(bkg_trials_dir,sig_trials_dir,inj_n_max):
-
-    """Function to estimate a list of PointLikeSource sources into a numpy
-    record ndarray. The resulting numpy record ndarray contains the following
-    fields:
-
-    Parameters
-    ----------
-    bkg_trials_dir : the path one store signal trials .npy files
-    sig_trials_dir : the path one store signal trials .npy files. The number of 
-                .npy files should correspond to the signal injection number 
-                with range and step of (0,inj_n_max,inj_n_max)
-    in_n_max : maximum number of injected signal.
-
-    Returns
-    -------
-    mu_sens : events number of sensitivity
-    mu_dp_3 : events number of 3-sigma discovery potential
-    mu_dp_5 : events number of 5-sigma discovery potential
-    """
-
-    #load and combine, check existance
-    fname_bkg = os.path.join(bkg_trials_dir,"combined_bkg_trials.npy")
-    if os.path.exists(fname_bkg):
-        bkg_trials = np.load(fname_bkg)
-    else:
-        bkg_trials = np.concatenate([np.load(f) for f in glob.glob(os.path.join(bkg_trials_dir, '*.npy'))])
-        np.save(bkg_trials,os.path.join(bkg_trials_dir,"combined_bkg_trials.npy"))
-                
-    # get an idea how many 0 trials. just out of curiosity
-    xi = np.sum(bkg_trials['ts']>1.e-5) / len(bkg_trials)
-    print("fraction of bkg trials with TS>0:",xi)
-
-    # load signal trials (with poisson fluctuations)
-    # between mu=0 and mu=inj_n_max.
-    # the trials are loaded into a dictionary with mu as key and the trials as value.
-    sig_trials_dict = {}
-    mus = np.linspace(0, inj_n_max, 5) #TODO:remember to change this step! 
-    for mu in mus:
-        fpath_ns = "/home/liruohan/cluster_run/"+f"inj{mu:.0f}"
-        fname_sig = os.path.join(sig_trials_dir, f"inj{mu:.0f}_combined.npy")
-        if os.path.exists(fname_sig):
-            sig_trials_dict[int(mu)] = np.load(fname_sig)
-        else:
-            sig_trials = np.concatenate([np.load(f) for f in glob.glob(fpath_ns)])
-            np.save(sig_trials,os.path.join(fpath_ns, f"combined_sig_ns{mu:.0f}.npy"))
-    print(sig_trials_dict) #looks normal
-    print(bkg_trials)
-    
-    # sensitivity
-    bkg_p = 0.5
-    sig_p = 0.9
-    mu_sens,spline_sens = calculate_sens_dp(bkg_p, sig_p, bkg_trials, sig_trials_dict, floor=1./len(sig_trials_dict[np.amin(mus)]))
-    print(f"sens at {mu_sens:.1f} events")
-    print("")
-
-    # 3 sigma dp
-    bkg_p = norm.sf(3,0,1)
-    sig_p = 0.5
-    mu_dp_3,spline_dp3 = calculate_sens_dp(bkg_p, sig_p, bkg_trials, sig_trials_dict, floor=1./len(sig_trials_dict[np.amin(mus)]))
-    print(f"3sigma dp at {mu_dp_3:.1f} events")
-    print("")
-
-    # 5 sigma dp
-    bkg_p = norm.sf(5,0,1)
-    sig_p = 0.5
-    mu_dp_5,spline_dp5 = calculate_sens_dp(bkg_p, sig_p, bkg_trials, sig_trials_dict, floor=1./len(sig_trials_dict[np.amin(mus)]))
-    print(f"5sigma dp at {mu_dp_5:.1f} events")
-    print("") 
-
-    return mu_sens,mu_dp_3,mu_dp_5,spline_dp3,spline_dp5
-
-def calculate_sens_dp(bkg_ts_tail_prob, signal_ts_tail_prob, bkg_trials, signal_trials_dict, floor=1.e-3, spline_regularization=1):
-    """
-    Computes quantities like sensitivity and discovery potential from existing signal
-    and background trials. Strategy: Calculation fraction of signal trials above
-    critical TS value as function of injected mean number of ns (make sure the trials
-    have poisson fluctuations turned on). Using spline-interpolation, it solves for
-    the desired quantity.
-
-    Parameters
-    ----------
-    bkg_ts_tail_prob (float): desired fraction of bkg trials
-                that have TS larger than critical value. This is used to determine the
-                critical TS value. For sensitivity one would set bkg_ts_tail_prob = 0.5.
-                For n-sigma discovery potential one would set bkg_ts_tail_prob = norm.sf(n, 0 ,1).
-    signal_ts_tail_prob (float): desired fraction of signal trials that have TS larger
-                than critical TS value. For sensitivity use signal_ts_tail_prob = 0.9.
-                For n-sigma discovery potential set bkg_ts_tail_prob = 0.5.
-    bkg_trials (numpy.ndarray): numpy record array that holds the skyllh trials (output)
-    signal_trials_dict (dict): python dictionary that has mu_ns (injected value) as keys
-                and corresponding trials (numpy record arrays) as values
-    floor (float): smallest possible probability value to avoid problems with log(p) for p-> 0.
-                Use 1/N_trials_per_mu as good rule of thumb. default = 1.e-3.
-    spline_regularization (float): sets the regularization of the spline that interpolates
-                the tail area probability as function of mu (and smooths over statistical errors).
-                default = 1
-
-    Returns
-    -------
-    mu_sol (float): solution, i.e. the value of mu that satisfies bkg_ts_tail_prob
-                and signal_ts_tail_prob
-    """
-    
-    # Get critical TS value using skyllh convenience functions.
-    # And treat cases where critical TS is below gamma-fit
-    # to the test-statistic distribution.
-    try:
-        crit_ts = calculate_critical_ts_from_gamma(bkg_trials['ts'], bkg_ts_tail_prob)
-        # noticed crit_ts = nan in some cases. switch to trials based calculation in such cases
-        if np.isnan(crit_ts):
-            print("crit_ts evaluated to nan. evaluate from trials.")
-            crit_ts = np.percentile(bkg_trials['ts'], [(1.-bkg_ts_tail_prob) * 100])[0]
-    except ValueError as error:
-        if 'larger than the truncation threshold eta' in str(error):
-            print("critical_ts value below range of gamma fit. will compute from trials directly.")
-            crit_ts = np.percentile(bkg_trials['ts'], [(1.-bkg_ts_tail_prob) * 100])[0]
-        else:
-            print(error)
-            raise error
-    print("found critical TS:", crit_ts)
-
-
-    # create a dictionary that holds the fraction of trials
-    # above the critical TS as function of mu
-    signal_prob_dict = {}
-    for mu in signal_trials_dict.keys():
-        sig_ts = signal_trials_dict[mu]['ts']
-        signal_prob_dict[mu] = np.sum(sig_ts > crit_ts) / len(sig_ts) #why deivied by len(sig_ts?)
-    print('signal_prob_dict',signal_prob_dict)
-
-    # prepare input for photospline interpolation
-    xvals = list(signal_prob_dict.keys())
-    print('xvals:',xvals)
-    yvals = [signal_prob_dict[mu] for mu in xvals]
-    print('yvals:',yvals)
-    idx = np.argsort(xvals)
-    xvals = np.array(xvals)[idx]
-    yvals = np.array(yvals)[idx]
-    max_mu = np.amax(xvals)
-    # floor yvals
-    yvals[yvals < floor] = floor
-    yvals[yvals > 1-floor] = 1-floor
-    # create logits since creating the spline on logit scale
-    # has the beneficial property that it will always remain
-    # within [0, 1] (as a probability should!)
-    #yvals = np.log(yvals / (1-yvals))
-    #print('yvals after logit:', yvals)
-
-        # generate spline on logits
-    # an introduce some padding
-    knots = np.linspace(xvals[0]-1, xvals[-1]+1, max_mu*3)
-    spline = psp.glam_fit(
-        *psp.ndsparse.from_data(yvals, np.ones(len(yvals))),
-        [xvals],
-        [knots],
-        [3], # order of spline
-        [spline_regularization],
-        [2]
-    )
-
-    # find root using scipy
-    def obj(mu):
-        y = spline.evaluate_simple([mu]) - signal_ts_tail_prob
-        # need to map from logits to probabilities
-        return y
-
-    print('signal_ts_tail_prob:',signal_ts_tail_prob)
-    # search for solution within range of trials
-    # i.e. we do not trust the extrapolation of the spline
-    # beyond the trials range.
-    mu_sol = root_scalar(obj, bracket = [np.amin(xvals), np.amax(xvals)])
-	# check if converged
-    if(mu_sol.converged):
-        print(mu_sol.root, mu_sol.iterations, mu_sol.function_calls)
-        mu_sol = mu_sol.root
-    else:
-        raise RuntimeError('root finding did not converge. Are you sure the solution'
-            'is within the range of injected ns?')
-
-    return mu_sol,spline
-
-
 
 def estimate_mean_nsignal_for_ts_quantile(  # noqa: C901
         ana,
@@ -699,7 +509,7 @@ def estimate_mean_nsignal_for_ts_quantile(  # noqa: C901
         n_trials_max = int(5.e5)
         # Via binomial statistics, calcuate the minimum number of trials
         # needed to get the required precision on the critial TS value.
-        eps = min(0.01, h0_ts_quantile/10)
+        eps = min(0.005, h0_ts_quantile/10)
         n_trials_min = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
 
         # Compute either n_trials_max or n_trials_min trials depending on
