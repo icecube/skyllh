@@ -2,7 +2,9 @@
 
 import abc
 
-from skyllh.core.livetime import Livetime
+from skyllh.core.livetime import (
+    Livetime,
+)
 
 
 class TimeGenerationMethod(
@@ -53,8 +55,9 @@ class LivetimeTimeGenerationMethod(
 
         Parameters
         ----------
-        livetime : Livetime
-            The Livetime instance that should be used to generate times from.
+        livetime : instance of Livetime
+            The instance of Livetime that should be used to generate MJD times
+            from.
         """
         super().__init__(**kwargs)
 
@@ -62,7 +65,7 @@ class LivetimeTimeGenerationMethod(
 
     @property
     def livetime(self):
-        """The Livetime instance used to draw times from.
+        """The instance of Livetime used to draw MJD times from.
         """
         return self._livetime
 
@@ -104,10 +107,10 @@ class LivetimeTimeGenerationMethod(
 
 
 class TimeGenerator(
-        object):
+        object,
+):
     def __init__(self, method):
-        """Creates a time generator instance with a given defined time
-        generation method.
+        """Creates a time generator with a given defined time generation method.
 
         Parameters
         ----------
