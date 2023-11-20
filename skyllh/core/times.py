@@ -44,7 +44,7 @@ class LivetimeTimeGenerationMethod(
         TimeGenerationMethod,
 ):
     """The LivetimeTimeGenerationMethod provides the method to generate times
-    from a Livetime object. It will uniformely generate times that will coincide
+    from a Livetime object. It will uniformly generate times that will coincide
     with the on-time intervals of the detector, by calling the `draw_ontimes`
     method of the Livetime class.
     """
