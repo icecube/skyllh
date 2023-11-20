@@ -2,9 +2,84 @@
 
 import numpy as np
 
+from astropy import (
+    units,
+)
 from astropy.coordinates import (
+    AltAz,
+    ICRS,
     SkyCoord,
 )
+from astropy.time import (
+    Time,
+)
+
+from skyllh.core.model import (
+    DetectorModel,
+)
+
+
+def get_hor_to_equ_transform(detector_model):
+    """Returns the hor_to_equ_transform function for the given detector model,
+    i.e. detector location.
+
+    Parameters
+    ----------
+    detector_model : instance of DetectorModel
+        The instance of DetectorModel defining the location of the detector.
+
+    Returns
+    -------
+    hor_to_equ_transform : callable
+        The transform function to transform horizontal coordinates into
+        equatorial coordinates. The function has the following call signature:
+
+            __call__(azi, alt, mjd)
+
+    """
+    if not isinstance(detector_model, DetectorModel):
+        raise TypeError(
+            'The detector_model argument must be an instance of DetectorModel!')
+
+    location = detector_model.location
+
+    def hor_to_equ_transform(azi, alt, mjd):
+        """Transforms the given horizontal coordinates into equatorial
+        coordinates using astropy.
+
+        Parameters
+        ----------
+        azi : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the azimuth angles in
+            radians.
+        alt : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the altitude angles in
+            radians.
+        mjd : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the MJD times.
+        location : instance of astropy.coordinates.EarthLocation
+            The location on Earth of these horizontal coordinates.
+
+        Returns
+        -------
+        ra : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the right-ascensions in
+            radians.
+        dec : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the declinations in
+            radians.
+        """
+        hor = AltAz(
+            az=azi*units.rad,
+            alt=alt*units.rad,
+            obstime=Time(mjd, format='mjd'),
+            location=location)
+
+        equ = hor.transform_to(ICRS())
+
+        return (equ.ra.to(units.rad).value, equ.dec.to(units.rad).value)
+
+    return hor_to_equ_transform
 
 
 def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
