@@ -22,18 +22,18 @@ class I3TimeScramblingMethod(
     """
     def __init__(
             self,
-            timegen,
+            time_generator,
             **kwargs,
     ):
         """Initializes a new I3 time scrambling instance.
 
         Parameters
         ----------
-        timegen : TimeGenerator
+        time_generator : instance of TimeGenerator
             The time generator that should be used to generate random MJD times.
         """
         super().__init__(
-            timegen=timegen,
+            time_generator=time_generator,
             hor_to_equ_transform=hor_to_equ_transform,
             **kwargs)
 
@@ -46,7 +46,7 @@ class I3TimeScramblingMethod(
             data,
     ):
         """Draws a time from the time generator and calculates the right
-        ascention coordinate from the azimuth angle according to the time.
+        ascension coordinate from the azimuth angle according to the time.
         Sets the values of the ``time`` and ``ra`` keys of data.
 
         Parameters
@@ -65,7 +65,7 @@ class I3TimeScramblingMethod(
         data : numpy record ndarray
             The given numpy record ndarray holding the scrambled data.
         """
-        mjds = self._timegen.generate_times(rss, len(data))
+        mjds = self._time_generator.generate_times(rss, len(data))
 
         data['time'] = mjds
         data['ra'] = azi_to_ra_transform(data['azi'], mjds)
@@ -114,7 +114,7 @@ class I3SeasonalVariationTimeScramblingMethod(
             data,
     ):
         """Scrambles the given data based on random MJD times, which are
-        generated uniformely within the data runs, where the data runs are
+        generated uniformly within the data runs, where the data runs are
         weighted based on their amount of events compared to the total events.
 
         Parameters
@@ -139,7 +139,7 @@ class I3SeasonalVariationTimeScramblingMethod(
             size=len(data['time']),
             p=self.run_weights)
 
-        # Draw random times uniformely within the runs.
+        # Draw random times uniformly within the runs.
         times = rss.random.uniform(
             self.grl['start'][run_idxs],
             self.grl['stop'][run_idxs])

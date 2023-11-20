@@ -140,7 +140,7 @@ class TimeScramblingMethod(
     """
     def __init__(
             self,
-            timegen,
+            time_generator,
             hor_to_equ_transform,
             **kwargs,
     ):
@@ -148,7 +148,7 @@ class TimeScramblingMethod(
 
         Parameters
         ----------
-        timegen : instance of TimeGenerator
+        time_generator : instance of TimeGenerator
             The time generator that should be used to generate random MJD times.
         hor_to_equ_transform : callable
             The transformation function to transform coordinates from the
@@ -156,7 +156,7 @@ class TimeScramblingMethod(
 
             The call signature must be:
 
-                __call__(azi, zen, mjd)
+                __call__(azi, alt, mjd)
 
             The return signature must be: (ra, dec)
 
@@ -164,22 +164,23 @@ class TimeScramblingMethod(
         super().__init__(
             **kwargs)
 
-        self.timegen = timegen
+        self.time_generator = time_generator
         self.hor_to_equ_transform = hor_to_equ_transform
 
     @property
-    def timegen(self):
+    def time_generator(self):
         """The TimeGenerator instance that should be used to generate random MJD
         times.
         """
-        return self._timegen
+        return self._time_generator
 
-    @timegen.setter
-    def timegen(self, timegen):
-        if not isinstance(timegen, TimeGenerator):
+    @time_generator.setter
+    def time_generator(self, generator):
+        if not isinstance(generator, TimeGenerator):
             raise TypeError(
-                'The timegen property must be an instance of TimeGenerator!')
-        self._timegen = timegen
+                'The time_generator property must be an instance of '
+                'TimeGenerator!')
+        self._time_generator = generator
 
     @property
     def hor_to_equ_transform(self):
@@ -222,12 +223,12 @@ class TimeScramblingMethod(
         data : instance of DataFieldRecordArray
             The given DataFieldRecordArray holding the scrambled data.
         """
-        mjds = self.timegen.generate_times(rss, len(data))
+        mjds = self._time_generator.generate_times(rss, len(data))
 
         data['time'] = mjds
 
         (data['ra'], data['dec']) = self.hor_to_equ_transform(
-            data['azi'], data['zen'], mjds)
+            data['azi'], data['alt'], mjds)
 
         return data
 
