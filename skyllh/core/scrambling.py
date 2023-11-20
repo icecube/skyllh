@@ -52,7 +52,7 @@ class DataScramblingMethod(
 class UniformRAScramblingMethod(
         DataScramblingMethod,
 ):
-    r"""The UniformRAScramblingMethod method performs right-ascention scrambling
+    r"""The UniformRAScramblingMethod method performs right-ascension scrambling
     uniformly within a given RA range. By default it's (0, 2\pi).
 
     :note::
@@ -104,7 +104,7 @@ class UniformRAScramblingMethod(
             dataset,
             data,
     ):
-        """Scrambles the given data uniformly in right-ascention.
+        """Scrambles the given data uniformly in right-ascension.
 
         Parameters
         ----------
@@ -144,7 +144,7 @@ class TimeScramblingMethod(
             hor_to_equ_transform,
             **kwargs,
     ):
-        """Initializes a new time scramling method instance.
+        """Initializes a new time scrambling method instance.
 
         Parameters
         ----------
@@ -202,7 +202,7 @@ class TimeScramblingMethod(
             data,
     ):
         """Scrambles the given data based on random MJD times, which are
-        generated from a TimeGenerator instance. The event's right-ascention and
+        generated from a TimeGenerator instance. The event's right-ascension and
         declination coordinates are calculated via a horizontal-to-equatorial
         coordinate transformation and the generated MJD time of the event.
 
@@ -256,7 +256,7 @@ class DataScrambler(
 
     @property
     def method(self):
-        """The underlaying scrambling method that should be used to scramble
+        """The underlying scrambling method that should be used to scramble
         the data. This must be an instance of the DataScramblingMethod class.
         """
         return self._method
