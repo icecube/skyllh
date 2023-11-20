@@ -24,7 +24,6 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
-    get_tdm_field_func_psi,
 )
 
 from skyllh.core.analysis import (
@@ -99,6 +98,9 @@ from skyllh.core.utils.analysis import (
     create_trial_data_file,
     pointlikesource_to_data_field_array,
 )
+from skyllh.core.utils.tdm import (
+    get_tdm_field_func_psi,
+)
 
 from skyllh.datasets.i3 import (
     data_samples,
@@ -132,7 +134,7 @@ def create_analysis(
         refplflux_Phi0=1,
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
-        ns_seed=100.0,
+        ns_seed=10.0,
         ns_min=0.,
         ns_max=1e3,
         gamma_seed=3.0,
@@ -470,7 +472,7 @@ if __name__ == '__main__':
         dest='ra',
         default=77.35,
         type=float,
-        help='The source right-ascention in degrees.'
+        help='The source right-ascension in degrees.'
     )
     parser.add_argument(
         '--gamma-seed',
@@ -536,7 +538,8 @@ if __name__ == '__main__':
             tl=tl)
 
     with tl.task_timer('Unblinding data.'):
-        (TS, param_dict, status) = ana.unblind(rss)
+        (TS, param_dict, status) = ana.unblind(
+            minimizer_rss=rss)
 
     print(f'TS = {TS:g}')
     print(f'ns_fit = {param_dict["ns"]:g}')

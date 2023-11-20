@@ -282,7 +282,7 @@ class DetSigYieldService(
                         pbar.increment()
                 else:
                     # The builder provides a factory for the construction of
-                    # several DetSigYield instances simultaniously, one for each
+                    # several DetSigYield instances simultaneously, one for each
                     # flux model.
                     shgs = [
                         shg_list[g]
@@ -646,7 +646,7 @@ class DatasetSignalWeightFactorsService(
         self._f_j = a_j / a
 
         # Calculate the derivative of f_j w.r.t. all floating parameters present
-        # in the a_jk_grads using the quotient rule of differentation.
+        # in the a_jk_grads using the quotient rule of differentiation.
         self._f_j_grads = dict()
         for gpidx in a_jk_grads.keys():
             # a is a scalar.

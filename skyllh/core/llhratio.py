@@ -273,7 +273,7 @@ class TCLLHRatio(
     def mean_n_sig_0(self, v):
         v = float_cast(
             v,
-            'The mean_n_sig_0 property must be castable to a float value!')
+            'The mean_n_sig_0 property must be cast-able to a float value!')
         self._mean_n_sig_0 = v
 
     @abc.abstractmethod
@@ -640,7 +640,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         N : int
             The total number of events.
         ns : float
-            The value of the global fit paramater ns.
+            The value of the global fit parameter ns.
         ns_pidx : int
             The index of the global fit parameter ns.
         p_mask : instance of numpy ndarray
@@ -680,6 +680,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         # log-function argument, and an inverted mask thereof.
         m_stable = alpha_i > alpha
         m_unstable = ~m_stable
+        any_unstable_events = np.any(m_unstable)
 
         if tracing:
             logger.debug(
@@ -693,9 +694,10 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         np.log1p(alpha_i, where=m_stable, out=log_lambda_i)
 
         # Calculate the log_lambda_i value for the numerical unstable events.
-        tildealpha_i = (alpha_i[m_unstable] - alpha) / one_plus_alpha
-        log_lambda_i[m_unstable] =\
-            np.log1p(alpha) + tildealpha_i - 0.5 * tildealpha_i**2
+        if any_unstable_events:
+            tildealpha_i = (alpha_i[m_unstable] - alpha) / one_plus_alpha
+            log_lambda_i[m_unstable] =\
+                np.log1p(alpha) + tildealpha_i - 0.5 * tildealpha_i**2
 
         # Calculate the log_lambda value and account for pure background events.
         log_lambda = np.sum(log_lambda_i) + (N - Nprime)*np.log1p(-ns/N)
@@ -711,8 +713,9 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         nsgrad_i = np.empty_like(alpha_i, dtype=np.float64)
         nsgrad_i[m_stable] =\
             Xi[m_stable] * one_over_one_plus_alpha_i_stablemask
-        nsgrad_i[m_unstable] =\
-            (1 - tildealpha_i) * Xi[m_unstable] / one_plus_alpha
+        if any_unstable_events:
+            nsgrad_i[m_unstable] =\
+                (1 - tildealpha_i) * Xi[m_unstable] / one_plus_alpha
 
         # Cache the nsgrad_i values for a possible later calculation of the
         # second derivative w.r.t. ns of the log-likelihood ratio function.
@@ -730,10 +733,11 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             axis=0)
 
         # For all numerical unstable events.
-        grads[p_mask] += np.sum(
-            ns * (1 - tildealpha_i[:, np.newaxis]) * dXi_dp[m_unstable] /
-            one_plus_alpha,
-            axis=0)
+        if any_unstable_events:
+            grads[p_mask] += np.sum(
+                ns * (1 - tildealpha_i[:, np.newaxis]) * dXi_dp[m_unstable] /
+                one_plus_alpha,
+                axis=0)
 
         return (log_lambda, grads)
 
@@ -757,7 +761,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             The ndarray holding the current values of the global fit
             parameters.
         ns : float
-            The value of the global fit paramater ns.
+            The value of the global fit parameter ns.
         ns_pidx : int
             The parameter index of the global fit parameter ns.
             For this particular class this is an ignored interface parameter.
@@ -872,7 +876,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         p_mask[ns_pidx] = False
 
         # Loop over the global fit parameters and calculate the derivative of
-        # Xi w.r.t. each fit paramater.
+        # Xi w.r.t. each fit parameter.
         fitparam_ids = np.arange(n_fitparams)
         for (idx, fitparam_id) in enumerate(fitparam_ids[p_mask]):
             dRi = self._pdfratio.get_gradient(
@@ -890,7 +894,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
                 f'{classname(self)}.evaluate: N={N}, Nprime={len(Xi)}, '
                 f'ns={ns:.3f}')
 
-        with TaskTimer(tl, 'Calc logLamds and grads'):
+        with TaskTimer(tl, 'Calc logLambda and grads'):
             (log_lambda, grads) = self.calculate_log_lambda_and_grads(
                 N=N,
                 ns=ns,
@@ -936,7 +940,7 @@ class MultiDatasetTCLLHRatio(
             of this log-likelihood ratio function.
         src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
             An instance of SrcDetSigYieldWeightsService, which provides the
-            roduct of the source weights with the detector signal yield.
+            product of the source weights with the detector signal yield.
         ds_sig_weight_factors_service : instance of DatasetSignalWeightFactorsService
             An instance of DatasetSignalWeightFactorsService, which provides
             the relative dataset signal weight factors.
@@ -1045,9 +1049,6 @@ class MultiDatasetTCLLHRatio(
             source hypotheses.
         """
         self._src_detsigyield_weights_service.change_shg_mgr(
-            shg_mgr=shg_mgr)
-
-        self._ds_sig_weight_factors_service.change_shg_mgr(
             shg_mgr=shg_mgr)
 
         for llhratio in self._llhratio_list:
@@ -1209,7 +1210,7 @@ class MultiDatasetTCLLHRatio(
             The (N_fitparams,)-shaped 1D ndarray holding the current values of
             the global fit parameters.
         ns : float
-            The value of the global fit paramater ns.
+            The value of the global fit parameter ns.
         ns_pidx : int
             The index of the global parameter ns.
         src_params_recarray : instance of numpy record ndarray
@@ -1328,7 +1329,7 @@ class NsProfileMultiDatasetTCLLHRatio(
             shg_mgr):
         """Changes the source hypo group manager of all objects of this LLH
         ratio function, hence, calling the ``change_shg_mgr``
-        method of the underlaying MultiDatasetTCLLHRatio instance of this
+        method of the underlying MultiDatasetTCLLHRatio instance of this
         LLHRatio instance.
 
         Parameters
@@ -1375,7 +1376,7 @@ class NsProfileMultiDatasetTCLLHRatio(
             The (1,)-shaped numpy 1D ndarray holding the current
             values of the global fit parameters.
             By definition of this LLH ratio function, it must contain the single
-            fit paramater value for ns.
+            fit parameter value for ns.
         src_params_recarray : instance of numpy record ndarray
             The numpy record ndarray of length N_sources holding the parameter
             names and values of all sources.
@@ -1416,9 +1417,9 @@ class NsProfileMultiDatasetTCLLHRatio(
         Parameters
         ----------
         ns : float
-            The value of the global fit paramater ns.
+            The value of the global fit parameter ns.
         ns_pidx : int
-            The index of the global fit paramater ns. By definition this must
+            The index of the global fit parameter ns. By definition this must
             be ``0``.
         src_params_recarray : instance of numpy record ndarray
             The numpy record ndarray of length N_sources holding the parameter
