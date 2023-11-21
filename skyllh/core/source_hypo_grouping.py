@@ -20,6 +20,7 @@ from skyllh.core.detsigyield import (
 )
 from skyllh.core.flux_model import (
     FluxModel,
+    FluxProfile
 )
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
@@ -100,7 +101,7 @@ class SourceHypoGroup(
 
     @fluxmodel.setter
     def fluxmodel(self, fluxmodel):
-        if not isinstance(fluxmodel, FluxModel):
+        if not isinstance(fluxmodel, FluxModel) and not isinstance(fluxmodel, FluxProfile):
             raise TypeError(
                 'The fluxmodel property must be an instance of FluxModel! '
                 f'Its current type is {classname(fluxmodel)}.')
@@ -165,7 +166,7 @@ class SourceHypoGroup(
             s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
         s1 += '\n'
         s1 += 'fluxmodel:\n'
-        s2 = f'{self._fluxmodel}'
+        s2 = 'test_DM_fluxmodel'
         s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
         s1 += '\n'
         s1 += f'detector signal yield builders ({len(self._detsigyield_builder_list)}):\n'

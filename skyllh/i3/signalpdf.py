@@ -7,6 +7,7 @@ from skyllh.core.binning import (
 )
 from skyllh.core.flux_model import (
     FluxModel,
+    FluxProfile,
 )
 from skyllh.core.multiproc import (
     IsParallelizable,
@@ -133,7 +134,7 @@ class SignalI3EnergyPDFSet(
                 'The sin_dec_binning argument must be an instance '
                 'of BinningDefinition! '
                 f'Its type is {classname(sin_dec_binning)}!')
-        if not isinstance(fluxmodel, FluxModel):
+        if not isinstance(fluxmodel, FluxModel) and not isinstance(fluxmodel, FluxProfile):
             raise TypeError(
                 'The fluxmodel argument must be an instance of FluxModel! '
                 f'Its type is {classname(fluxmodel)}!')
@@ -224,8 +225,8 @@ class SignalI3EnergyPDFSet(
         data_mcweight = data_mc['mcweight']
         data_true_energy = data_mc['true_energy']
 
-        flux_unit_conv_factor =\
-            fluxmodel.to_internal_flux_unit()
+        flux_unit_conv_factor = 1.
+#            fluxmodel.to_internal_flux_unit()
 
         args_list = [
             (

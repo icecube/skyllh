@@ -42,6 +42,7 @@ from skyllh.core.py import (
 from skyllh.core.source_model import (
     IsPointlike,
 )
+#import decimal
 
 
 class FluxProfile(
@@ -974,6 +975,112 @@ class PhotosplineEnergyFluxProfile(
             'The property crit_log10_energy_upper must be castable to type '
             'float!')
         self._crit_log10_energy_upper = v
+        
+        
+class PhotosplineDMEnergyFluxProfile(
+        PhotosplineEnergyFluxProfile,
+):
+    """The abstract base class for an energy flux profile based on Pythia simulated dm 
+    spectrum photospline.
+    """
+    @tool.requires('photospline')
+    def __init__(
+            self,
+            channel,
+            mass,
+            splinetable,
+            crit_log10_energy_lower,
+            crit_log10_energy_upper,
+            energy_unit=None,
+            **kwargs,
+    ):
+        """Creates a new instance of PhotosplineEnergyFluxProfile.
+
+        Parameters
+        ----------
+        channel : str
+            annihilation channel of DM particle, could be "WW","bb", "nuenue" or "nutaunutau".
+        mass : float
+            mass of DM particle in GeV (1f. precision).
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
+        """
+        super().__init__(
+            splinetable = splinetable,
+            crit_log10_energy_lower = crit_log10_energy_lower,
+            crit_log10_energy_upper = crit_log10_energy_upper,
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.channel = channel
+        self.mass = mass
+        
+
+    @property
+    def channel(self):
+        """DM annihilation channel"""
+        return self._channel
+
+    @channel.setter
+    def channel(self,value):
+        if not value in ["W","b", '\[Nu]\[Mu]', '\[Nu]e']:
+            raise ValueError( 'not an available annahilation channel!')
+        self._channel = value
+        
+    @property
+    def mass(self):
+        """mass of DM particle in GeV"""
+        return self._mass
+
+    @channel.setter
+    def mass(self,value):
+#         d = decimal.Decimal(str(value))
+#         abs(d.as_tuple().exponent)
+#         if d != 1: 
+#             raise ValueError('the precision of mass float number does not fulfill requirement')
+        self._mass = value
+        
+        
+    def __call__(
+            self,
+            E,
+            unit=None):
+        """Returns the power law values for the given energies as numpy ndarray
+        in same shape as E.
+
+        Parameters
+        ----------
+        E : float | 1D numpy ndarray of float
+            The energy value for which to retrieve the energy profile value.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        values : 1D numpy ndarray of float
+            The energy profile values for the given energies.
+        """
+        E = np.atleast_1d(E)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            E = E * unit.to(self._energy_unit)
+
+        value = self._spline.evaluate_simple([E])
+
+        return value
+    
+        
+    def math_function_str(self):
+        """(read-only) The string representation of this energy flux profile
+        instance.
+        """
+        s = f'channel: {self._channel}, mass: {self._mass}'
+
+        return s
 
 
 class TimeFluxProfile(
