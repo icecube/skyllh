@@ -1081,6 +1081,9 @@ class PhotosplineDMEnergyFluxProfile(
         s = f'channel: {self._channel}, mass: {self._mass}'
 
         return s
+    
+#     def __copy__(self,**kwargs):
+#         return self.splinetable
 
 
 class TimeFluxProfile(
@@ -1919,7 +1922,6 @@ class FluxModel(
             models.
         """
         return cfg['units']['defaults']['fluxes']
-
     def __init__(
             self,
             angle_unit=None,
