@@ -1016,6 +1016,7 @@ class PhotosplineDMEnergyFluxProfile(
 
         self.channel = channel
         self.mass = mass
+        self.cfg = kwargs.get('cfg')
         
 
     @property
@@ -1041,6 +1042,18 @@ class PhotosplineDMEnergyFluxProfile(
 #         if d != 1: 
 #             raise ValueError('the precision of mass float number does not fulfill requirement')
         self._mass = value
+    
+    def to_internal_flux_unit(self):
+        """Calculates the conversion factor to convert the flux unit of this
+        flux model instance to the SkyLLH internally used flux unit.
+
+        Returns
+        -------
+        factor : float
+            The conversion factor.
+        """
+
+        return 1.
         
         
     def __call__(
@@ -1069,8 +1082,10 @@ class PhotosplineDMEnergyFluxProfile(
         if (unit is not None) and (unit != self._energy_unit):
             E = E * unit.to(self._energy_unit)
 
-        value = self._spline.evaluate_simple([E])
-
+        print("test E range", np.min(E), np.max(E))
+        print("test E:", E)
+        value = self.splinetable.evaluate_simple([E])
+        print("test value:", value)
         return value
     
         
@@ -1082,8 +1097,13 @@ class PhotosplineDMEnergyFluxProfile(
 
         return s
     
-#     def __copy__(self,**kwargs):
-#         return self.splinetable
+    def __deepcopy__(self,memo):
+        """The photospline.SplineTable objects are strictly immutable.
+           Hence no copy should be required, ever!
+        """
+        return PhotosplineDMEnergyFluxProfile(
+            self.channel, self.mass, self.splinetable, self.crit_log10_energy_lower,
+            self.crit_log10_energy_upper,energy_unit=None, cfg=self.cfg)
 
 
 class TimeFluxProfile(

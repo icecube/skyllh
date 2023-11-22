@@ -130,7 +130,7 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
             raise ValueError(
                 'Some of the background bins have MC coverage but no physics '
                 'background prediction. I don\'t know what to do in this case!')
-
+        #print("bkg", bkg_pd_h)
         sig_domain = sig_pd_h > 0
         bkg_domain = bkg_pd_h > 0
 
@@ -139,7 +139,7 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
         ratio[sig_bkg_domain] = (
             sig_pd_h[sig_bkg_domain] / bkg_pd_h[sig_bkg_domain]
         )
-
+        #print("ratio",ratio)
         ratio_value = np.percentile(
             ratio[ratio > 1.], self._signallike_percentile)
         np.copyto(ratio, ratio_value, where=sig_domain & ~bkg_domain)

@@ -104,8 +104,10 @@ class SignalI3EnergyPDFSet(
         ppbar : instance of ProgressBar | None
             The instance of ProgressBar of the optional parent progress bar.
         """
+        
         if isinstance(param_grid_set, ParameterGrid):
             param_grid_set = ParameterGridSet([param_grid_set])
+            
         if not isinstance(param_grid_set, ParameterGridSet):
             raise TypeError(
                 'The param_grid_set argument must be an instance of '
@@ -198,7 +200,8 @@ class SignalI3EnergyPDFSet(
             """
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
-            myfluxmodel = fluxmodel.copy(newparams=gridparams)
+            myfluxmodel = fluxmodel.copy() #only for dm case
+            #myfluxmodel = fluxmodel.copy(newparams=gridparams)
 
             # Calculate the signal energy weight of the event. Note, that
             # because we create a normalized PDF, we can ignore all constants.
