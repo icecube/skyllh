@@ -127,7 +127,6 @@ class MCDataSamplingBkgGenMethod(
             get_event_prob_func,
             get_mean_func=None,
             data_scrambler=None,
-            mc_inplace_scrambling=False,
             keep_mc_data_fields=None,
             pre_event_selection_method=None,
             **kwargs,
@@ -166,10 +165,6 @@ class MCDataSamplingBkgGenMethod(
             background events will get scrambled. This can ensure more
             independent data trials. It is especially important when monte-carlo
             statistics are low.
-        mc_inplace_scrambling : bool
-            Flag if the scrambling of the monte-carlo data should be done
-            inplace, i.e. without creating a copy of the MC data first.
-            Default is False.
         keep_mc_data_fields : str | list of str | None
             The MC data field names that should be kept in order to be able to
             calculate the background events rates by the functions
@@ -187,7 +182,6 @@ class MCDataSamplingBkgGenMethod(
         self.get_event_prob_func = get_event_prob_func
         self.get_mean_func = get_mean_func
         self.data_scrambler = data_scrambler
-        self.mc_inplace_scrambling = mc_inplace_scrambling
         self.keep_mc_data_field_names = keep_mc_data_fields
         self.pre_event_selection_method = pre_event_selection_method
 
@@ -262,6 +256,7 @@ class MCDataSamplingBkgGenMethod(
     def data_scrambler(self, scrambler):
         if scrambler is None:
             self._data_scrambler = None
+            return
 
         if not isinstance(scrambler, DataScrambler):
             raise TypeError(
@@ -269,21 +264,6 @@ class MCDataSamplingBkgGenMethod(
                 'DataScrambler! '
                 f'Its current type is {classname(scrambler)}.')
         self._data_scrambler = scrambler
-
-    @property
-    def mc_inplace_scrambling(self):
-        """Flag if the scrambling of the monte-carlo data should be done
-        inplace, i.e. without creating a copy of the MC data first.
-        """
-        return self._mc_inplace_scrambling
-
-    @mc_inplace_scrambling.setter
-    def mc_inplace_scrambling(self, b):
-        if not isinstance(b, bool):
-            raise TypeError(
-                'The mc_inplace_scrambling property must be of type bool! '
-                f'Its current type is {classname(b)}.')
-        self._mc_inplace_scrambling = b
 
     @property
     def keep_mc_data_field_names(self):
@@ -361,6 +341,22 @@ class MCDataSamplingBkgGenMethod(
         """Generates a ``mean`` number of background events for the given
         dataset and its data.
 
+        The procedure is as follows:
+
+            1. If the dataset has changed, calculate the background event
+               probability for each MC event and cache it.
+            1.1. Calculate the mean number of bkg events for the entire MC.
+            1.2. Pre-select MC events if a pre event selection method is set.
+            1.3. Calculate the background drawing probability of each selected
+                 MC event.
+            1.4. Calculate the mean number of bkg events for the selected MC
+                 events.
+            2. Draw the bkg events based on the calculated bkg event
+               probability.
+            3. Scramble the drawn background events if a data scrambler is set.
+            4. Remove any MC specific data fields from the background events
+               DataFieldRecordArray instance.
+
         Parameters
         ----------
         rss : instance of RandomStateService
@@ -397,9 +393,6 @@ class MCDataSamplingBkgGenMethod(
         """
         tracing = self._cfg['debugging']['enable_tracing']
 
-        # Create aliases to avoid dot-lookup.
-        self__pre_event_selection_method = self._pre_event_selection_method
-
         # Check if the data set has changed. In that case need to get new
         # background probabilities for each monte-carlo event and a new mean
         # number of background events.
@@ -425,7 +418,7 @@ class MCDataSamplingBkgGenMethod(
                 data.exp_field_names +
                 self._keep_mc_data_field_names
             ))
-            data_mc = data.mc.copy(keep_fields=keep_field_names)
+            self._cache_mc = data.mc.copy(keep_fields=keep_field_names)
 
             if self._get_mean_func is not None:
                 with TaskTimer(
@@ -434,15 +427,15 @@ class MCDataSamplingBkgGenMethod(
                     self._cache_mean = self._get_mean_func(
                         dataset=dataset,
                         data=data,
-                        events=data_mc)
+                        events=self._cache_mc)
 
-            if self__pre_event_selection_method is not None:
+            if self._pre_event_selection_method is not None:
                 with TaskTimer(
                         tl,
                         'Pre-select MC events.'):
                     (self._cache_mc, _) =\
-                        self__pre_event_selection_method.select_events(
-                            events=data_mc,
+                        self._pre_event_selection_method.select_events(
+                            events=self._cache_mc,
                             ret_original_evt_idxs=False,
                             tl=tl)
 
@@ -451,8 +444,6 @@ class MCDataSamplingBkgGenMethod(
                         dataset=dataset,
                         data=data,
                         events=self._cache_mc)
-            else:
-                self._cache_mc = data_mc
 
             with TaskTimer(
                     tl,
@@ -490,7 +481,7 @@ class MCDataSamplingBkgGenMethod(
 
         # Calculate the mean number of background events for the pre-selected
         # MC events.
-        if self__pre_event_selection_method is None:
+        if self._pre_event_selection_method is None:
             # No selection at all, use the total mean.
             mean_pre_selected = mean
         else:
@@ -518,6 +509,318 @@ class MCDataSamplingBkgGenMethod(
                     dataset=dataset,
                     data=bkg_events,
                     copy=False)
+
+        # Remove MC specific data fields from the background events record
+        # array. So the result contains only experimental data fields. The list
+        # of experimental data fields is defined as the unique set of the
+        # required experimental data fields defined by the data set, and the
+        # actual experimental data fields (in case there are additional kept
+        # data fields by the user).
+        with TaskTimer(tl, 'Remove MC specific data fields from MC events.'):
+            exp_field_names = list(set(
+                DataFields.get_joint_names(
+                    datafields=self._cfg['datafields'],
+                    stages=(
+                        DFS.ANALYSIS_EXP
+                    )
+                ) +
+                data.exp_field_names))
+            bkg_events.tidy_up(exp_field_names)
+
+        return (n_bkg, bkg_events)
+
+
+class CompositeMCDataSamplingBkgGenMethod(
+    MCDataSamplingBkgGenMethod,
+):
+    """This background generation method samples background events from the
+    monte-carlo (MC) data. It supports a list of background components, which
+    depend on the sky position and hence whose event rates need to be calculated
+    for each individual trial after scrambling the MC sample.
+    """
+    def __init__(
+            self,
+            bkg_component_rate_calc_func_dict,
+            get_event_prob_func,
+            get_mean_func=None,
+            data_scrambler=None,
+            keep_mc_data_fields=None,
+            pre_event_selection_method=None,
+            **kwargs,
+    ):
+        """Creates a new instance of CompositeMCDataSamplingBkgGenMethod.
+
+        Parameters
+        ----------
+        bkg_component_rate_calc_func_dict : dict
+            The dictionary holding the name of the background component as key,
+            e.g. "gp", and the background rate calculation function for that
+            component as value.
+            The call signature of each rate calculation function must be
+
+                __call__(dataset, data, events)
+
+            where ``dataset`` is an instance of Dataset and ``data`` is an
+            instance of DatasetData of the data set for which background events
+            needs to get generated. The ``events`` argument holds the actual
+            set of events, for which the background rate needs to get
+            calculated.
+        get_event_prob_func : callable
+            The function to get the background probability of each monte-carlo
+            event. The call signature of this function must be
+
+                __call__(dataset, data, events)
+
+            where ``dataset`` is an instance of Dataset and ``data`` is an
+            instance of DatasetData of the data set for which background events
+            needs to get generated. The ``events`` argument holds the actual
+            set of events, for which the background event probabilities need to
+            get calculated.
+        get_mean_func : callable | None
+            The function to get the mean number of background events.
+            The call signature of this function must be
+
+                __call__(dataset, data, events)
+
+            where ``dataset`` is an instance of Dataset and ``data`` is an
+            instance of DatasetData of the data set for which background events
+            needs to get generated. The `events` argument holds the actual set
+            of events, for which the mean number of background events should get
+            calculated. This argument can be `None`, which means that the mean
+            number of background events to generate needs to get specified
+            through the ``generate_events`` method. However, if a pre event
+            selection method is provided, this argument cannot be ``None``!
+        data_scrambler : instance of DataScrambler | None
+            If set to an instance of DataScrambler, the monte-carlo events will
+            get scrambled before drawing the background events. This can ensure
+            more independent data trials. It is especially important when
+            monte-carlo statistics are low.
+        keep_mc_data_fields : str | list of str | None
+            The MC data field names that should be kept in order to be able to
+            calculate the background events rates by the functions
+            ``get_event_prob_func`` and ``get_mean_func``. All other MC fields
+            will get dropped due to computational efficiency reasons.
+        pre_event_selection_method : instance of EventSelectionMethod | None
+            If set to an instance of EventSelectionMethod, this method will
+            pre-select the MC events that will be used for later background
+            event generation. Using this pre-selection a large portion of the
+            MC data can be reduced prior to background event generation.
+        """
+        super().__init__(
+            get_event_prob_func=get_event_prob_func,
+            get_mean_func=get_mean_func,
+            data_scrambler=data_scrambler,
+            keep_mc_data_fields=keep_mc_data_fields,
+            pre_event_selection_method=pre_event_selection_method,
+            **kwargs)
+
+        self.bkg_component_rate_calc_func_dict = bkg_component_rate_calc_func_dict
+
+    @property
+    def bkg_component_rate_calc_func_dict(self):
+        """The dictionary holding the background components (as key) and their
+        rate calculation functions (as value).
+        """
+        return self._bkg_component_rate_calc_func_dict
+
+    @bkg_component_rate_calc_func_dict.setter
+    def bkg_component_rate_calc_func_dict(self, d):
+        if not isinstance(d, dict):
+            raise TypeError(
+                'The bkg_component_rate_calc_func_dict property must be an '
+                'instance of dict! '
+                f'Its current type is {classname(d)}.')
+        for (name, func) in d.items():
+            if not isinstance(name, str):
+                raise TypeError(
+                    'The keys of the dictionary of the '
+                    'bkg_component_rate_calc_func_dict property must be '
+                    'instances of type str! At least one of the keys are of '
+                    f'type {classname(name)}!')
+            if not func_has_n_args(func, 3):
+                raise TypeError(
+                    'The function provided for the background component '
+                    f'"{name}"  must have 3 arguments!')
+        self._bkg_component_rate_calc_func_dict = d
+
+    def generate_events(
+            self,
+            rss,
+            dataset,
+            data,
+            mean=None,
+            poisson=True,
+            tl=None,
+    ):
+        """Generates a ``mean`` number of background events for the given
+        monte-carlo dataset and its data.
+
+        The procedure is as follows:
+
+            1. Scramble all MC events if a data scrambler is set.
+            2. Calculate the rate for each background component for each MC
+               event of the entire MC.
+            3. Calculate the mean number of bkg events for the entire MC.
+            4. Pre-select MC events if a pre event selection method is set.
+            5. Calculate the drawing probability of each selected MC event.
+            6. Calculate the mean number of bkg events for the selected MC
+               events.
+            7. Draw the bkg events based on the calculated bkg event
+               probability.
+            8. Remove any MC specific data fields.
+
+        Parameters
+        ----------
+        rss : instance of RandomStateService
+            The instance of RandomStateService that should be used to generate
+            random numbers from.
+        dataset : instance of Dataset
+            The Dataset instance describing the dataset for which background
+            events should get generated.
+        data : instance of DatasetData
+            The DatasetData instance holding the data of the dataset for which
+            background events should get generated.
+        mean : float | None
+            The mean number of background events to generate.
+            Can be `None`. In that case the mean number of background events is
+            obtained through the `get_mean_func` function.
+        poisson : bool
+            If set to ``True`` (default), the actual number of generated
+            background events will be drawn from a Poisson distribution with the
+            given mean number of background events.
+            If set to ``False``, the argument ``mean`` specifies the actual
+            number of generated background events.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
+
+        Returns
+        -------
+        n_bkg : int
+            The number of generated background events for the data set.
+        bkg_events : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the generated
+            background events. The number of events can be less than `n_bkg`
+            if an event selection method is used.
+        """
+        # Create a copy of the MC data with all MC data fields removed,
+        # except the specified MC data fields to keep for the
+        # ``bkg_component_rate_calc_func``, ``get_mean_func`` and
+        # ``get_event_prob_func`` functions.
+        keep_field_names = list(set(
+            DataFields.get_joint_names(
+                datafields=self._cfg['datafields'],
+                stages=(
+                    DFS.ANALYSIS_EXP
+                )
+            ) +
+            data.exp_field_names +
+            self._keep_mc_data_field_names
+        ))
+        data_mc = data.mc.copy(keep_fields=keep_field_names)
+
+        # Scramble the MC events if requested.
+        if self._data_scrambler is not None:
+            with TaskTimer(tl, 'Scramble MC events.'):
+                data_mc = self._data_scrambler.scramble_data(
+                    rss=rss,
+                    dataset=dataset,
+                    data=data_mc,
+                    copy=False)
+
+        # Calculate the rate for each background component.
+        # Note: In Python3 the order of the dictionary entries is defined by
+        #       the order they were added to the dictionary, hence the order is
+        #       preserved.
+        for (name, rate_calc_func) in self._bkg_component_rate_calc_func_dict.items():
+            rate = rate_calc_func(dataset, data, data_mc)
+            data_mc[name] = rate
+
+        # Calculate the mean number of bkg events for the entire MC.
+        mean_mc = None
+        if self._get_mean_func is not None:
+            with TaskTimer(
+                    tl,
+                    'Calculate total MC background mean.'):
+                mean_mc = self._get_mean_func(
+                    dataset=dataset,
+                    data=data,
+                    events=data_mc)
+
+        # Pre-select MC events if a pre event selection method is set.
+        if self._pre_event_selection_method is not None:
+            with TaskTimer(
+                    tl,
+                    'Pre-select MC events.'):
+                (data_mc, _) =\
+                    self._pre_event_selection_method.select_events(
+                        events=data_mc,
+                        ret_original_evt_idxs=False,
+                        tl=tl)
+
+            with TaskTimer(tl, 'Calculate selected MC background mean.'):
+                mean_mc_pre_selected = self._get_mean_func(
+                    dataset=dataset,
+                    data=data,
+                    events=data_mc)
+
+        # Calculate the drawing probability of each selected MC event.
+        with TaskTimer(
+                tl,
+                'Calculate MC background event probability.'):
+            mc_event_bkg_prob = self._get_event_prob_func(
+                dataset=dataset,
+                data=data,
+                events=data_mc)
+
+        with TaskTimer(
+                tl,
+                'Create RandomChoice for MC background events.'):
+            random_choice = RandomChoice(
+                items=data_mc.indices,
+                probabilities=mc_event_bkg_prob)
+
+        # Select the correct mean value.
+        if mean is None:
+            if mean_mc is None:
+                raise ValueError(
+                    'No mean number of background events and no '
+                    'get_mean_func were specified! One of the two must be '
+                    'specified!')
+            mean = mean_mc
+        else:
+            mean = float_cast(
+                mean,
+                'The mean number of background events must be cast-able to '
+                'type float!')
+
+        # Draw the number of background events from a poisson distribution with
+        # the given mean number of background events. This will be the number of
+        # background events for this data set.
+        n_bkg = (int(rss.random.poisson(mean)) if poisson else
+                 int(np.round(mean, 0)))
+
+        # Calculate the mean number of background events for the pre-selected
+        # MC events.
+        if self._pre_event_selection_method is None:
+            # No selection at all, use the total mean.
+            mean_pre_selected = mean
+        else:
+            mean_pre_selected = mean_mc_pre_selected
+
+        # Calculate the actual number of background events for the selected
+        # events.
+        n_bkg_selected = int(np.around(n_bkg * mean_pre_selected / mean, 0))
+
+        # Draw the actual background events from the selected events of the
+        # monte-carlo data set.
+        with TaskTimer(tl, 'Draw MC background indices.'):
+            bkg_event_indices = random_choice(
+                rss=rss,
+                size=n_bkg_selected)
+
+        with TaskTimer(tl, 'Select MC background events from indices.'):
+            bkg_events = data_mc[bkg_event_indices]
 
         # Remove MC specific data fields from the background events record
         # array. So the result contains only experimental data fields. The list

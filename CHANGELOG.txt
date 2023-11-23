@@ -70,6 +70,16 @@ v23.2.1
   to "minimizer_rss" to be consistent with the new "minimizer_rss" keyword
   argument of core.analysis.Analysis.do_trial.
 
+- Added background generation method class
+  core.background_generation.CompositeMCDataSamplingBkgGenMethod.
+
+  This new background generation method samples background events from a
+  monte-carlo sample and has the ability to calculate different background
+  component rates for each trial after the monte-carlo events were already
+  scrambled. This is useful in cases where a background component is
+  non-isotropic, i.e. depends on the position in the sky. An example would be a
+  background component from the galactic plane.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
