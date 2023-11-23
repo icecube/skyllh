@@ -1,22 +1,7 @@
 This file contains a log-book for major changes between releases.
 
-v23.2.1
+v24.1.0
 =======
-- Add access operator support for core.dataset.DatasetCollection.
-
-    - Individual datasets of a dataset collection (``dsc``) can now be accessed
-      via ``dsc[name]`` or ``dsc[name1, name2, ...]``.
-
-- Allow the definition of an origin of a dataset via the
-  core.dataset.DatasetOrigin class and download the dataset automatically from
-  the origin to the local host. The following transfer methods are provided:
-
-    - wget
-    - rsync
-
-  Unit tests for these transfer methods are added.
-
-- The iminuit package is an optional tool now.
 
 - Automatically create an I3Livetime instance for the I3DatasetData.livetime
   property if good-run-list information are available.
@@ -35,6 +20,24 @@ v23.2.1
 - Introduce PDF ratio class
   core.pdfratio.SplinedSingleConditionalEnergySigSetOverBkgPDFRatio as generic
   PDF ratio for core.pdf.SingleConditionalEnergyPDF energy PDFs.
+
+v23.2.1
+=======
+- Add access operator support for core.dataset.DatasetCollection.
+
+    - Individual datasets of a dataset collection (``dsc``) can now be accessed
+      via ``dsc[name]`` or ``dsc[name1, name2, ...]``.
+
+- Allow the definition of an origin of a dataset via the
+  core.dataset.DatasetOrigin class and download the dataset automatically from
+  the origin to the local host. The following transfer methods are provided:
+
+    - wget
+    - rsync
+
+  Unit tests for these transfer methods are added.
+
+- The iminuit package is an optional tool now.
 
 - Introduce class core.random.RandomChoice to replace numpy.random.choice with a
   faster implementation avoiding the recalculation of the cumulative
