@@ -74,16 +74,6 @@ process easily.
 
 - 4 spaces are used as one indentation level.
 
-## Releases and Versioning
-
-- Release version numbers follow the format `<YY>.<MAJOR>.<MINOR>`, where `<YY>`
-  is the current year, `<MAJOR>` and `<MINOR>` are the major and minor version
-  numbers of type integer. Example: `23.2.0`.
-
-- Release candidates follow the same format as releases, but have the additional
-  suffix `.rc<NUMBER>`,  where `<NUMBER>` is an integer starting with 1.
-  Example: `23.2.0.rc1`
-
 ## Branching
 
 - When implementing a new feature / change, first an issue must be created
@@ -96,6 +86,16 @@ process easily.
   where `<ISSUE_NUMBER>` is the number of the issue created in the i3skyllh
   repository. That way the *analysis unit tests* workflow will be able to find
   the correct skyllh branch corresponding to the i3skyllh change automatically.
+
+## Releases and Versioning
+
+- Release version numbers follow the format `v<YY>.<MAJOR>.<MINOR>`, where
+  `<YY>` is the current year, `<MAJOR>` and `<MINOR>` are the major and minor
+  version numbers of type integer. Example: `v23.2.0`.
+
+- Release candidates follow the same format as releases, but have the additional
+  suffix `.rc<NUMBER>`,  where `<NUMBER>` is an integer starting with 1.
+  Example: `v23.2.0.rc1`
 
 # i3skyllh
 
