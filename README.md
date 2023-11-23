@@ -56,6 +56,8 @@ sys.path.insert(0, '/path/to/i3skyllh')  # optional
 
 Several publications about the SkyLLH software are available:
 
+- IceCube Collaboration, C. Bellenghi, M. Karl, M. Wolf, et al. PoS ICRC2023 (2023) 1061
+  [DOI](https://doi.org/10.22323/1.444.1061)
 - IceCube Collaboration, T. Kontrimas, M. Wolf, et al. PoS ICRC2021 (2022) 1073
   [DOI](http://doi.org/10.22323/1.395.1073)
 - IceCube Collaboration, M. Wolf, et al. PoS ICRC2019 (2020) 1035
@@ -96,6 +98,9 @@ process easily.
 - Release candidates follow the same format as releases, but have the additional
   suffix `.rc<NUMBER>`,  where `<NUMBER>` is an integer starting with 1.
   Example: `v23.2.0.rc1`
+
+- Before creating the release on github, the version number needs to be updated
+  in the Sphinx documentation: `doc/sphinx/conf.py`.
 
 # i3skyllh
 
