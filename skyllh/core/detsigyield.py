@@ -988,7 +988,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
 
             return h
 
-        data_sin_true_alt = np.sin(data.mc['true_alt'])
+        data_sin_true_alt = data.mc['sin_true_alt']
 
         # Generate a list of indices that would sort the data according to the
         # sin(true_altitude) values. We will sort the MC data according to it,
