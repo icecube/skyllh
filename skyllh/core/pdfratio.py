@@ -276,7 +276,7 @@ class PDFRatioProduct(
 
     @property
     def pdfratio1(self):
-        """The first PDFRatio instance in the muliplication
+        """The first PDFRatio instance in the multiplication
         ``pdfratio1 * pdfratio2``.
         """
         return self._pdfratio1
@@ -290,7 +290,7 @@ class PDFRatioProduct(
 
     @property
     def pdfratio2(self):
-        """The second PDFRatio instance in the muliplication
+        """The second PDFRatio instance in the multiplication
         ``pdfratio1 * pdfratio2``.
         """
         return self._pdfratio2
@@ -488,7 +488,7 @@ class SourceWeightedPDFRatio(
 
         self._dataset_idx = int_cast(
             dataset_idx,
-            'The dataset_idx argument must be castable to type int!')
+            'The dataset_idx argument must be cast-able to type int!')
 
         if not isinstance(
                 src_detsigyield_weights_service,
@@ -671,8 +671,8 @@ class SourceWeightedPDFRatio(
             fitparam_id=fitparam_id)
         # R_ik_grad is a (N_values,)-shaped ndarray or 0.
 
-        if (type(a_k_grad) == int) and (a_k_grad == 0) and\
-           (type(R_ik_grad) == int) and (R_ik_grad == 0):
+        if (a_k_grad is int) and (a_k_grad == 0) and\
+           (R_ik_grad is int) and (R_ik_grad == 0):
             return 0
 
         R_i_grad = -self._cache_R_i * dAdp
@@ -786,7 +786,7 @@ class SigOverBkgPDFRatio(
     def zero_bkg_ratio_value(self, v):
         v = float_cast(
             v,
-            'The zero_bkg_ratio_value must be castable to type float!')
+            'The zero_bkg_ratio_value must be cast-able to type float!')
         self._zero_bkg_ratio_value = v
 
     def initialize_for_new_trial(
@@ -936,21 +936,21 @@ class SigOverBkgPDFRatio(
             grad[m] = self._cache_sig_grads[fitparam_id][m] / b[m]
             return grad
 
-        bgrad = self._cache_bkg_grads[fitparam_id]
-        (bgrad,) = tdm.broadcast_selected_events_arrays_to_values_arrays(
-            (bgrad,))
+        b_grad = self._cache_bkg_grads[fitparam_id]
+        (b_grad,) = tdm.broadcast_selected_events_arrays_to_values_arrays(
+            (b_grad,))
 
         if sig_dep and bkg_dep:
             # Case 4.
             s = self._cache_sig_pd
-            sgrad = self._cache_sig_grads[fitparam_id]
+            s_grad = self._cache_sig_grads[fitparam_id]
 
             # Make use of quotient rule of differentiation.
-            grad[m] = (sgrad[m] * b[m] - bgrad[m] * s[m]) / b[m]**2
+            grad[m] = (s_grad[m] * b[m] - b_grad[m] * s[m]) / b[m]**2
             return grad
 
         # Case 3.
-        grad[m] = -self._cache_sig_pd[m] / b[m]**2 * bgrad[m]
+        grad[m] = -self._cache_sig_pd[m] / b[m]**2 * b_grad[m]
 
         return grad
 
@@ -1028,14 +1028,14 @@ class SigSetOverBkgPDFRatio(
         return self._sig_pdf_set
 
     @sig_pdf_set.setter
-    def sig_pdf_set(self, pdfset):
-        if not (isinstance(pdfset, PDFSet) and
-                isinstance(pdfset, IsSignalPDF)):
+    def sig_pdf_set(self, pdf_set):
+        if not (isinstance(pdf_set, PDFSet) and
+                isinstance(pdf_set, IsSignalPDF)):
             raise TypeError(
                 'The sig_pdf_set property must be a class instance which is '
                 'derived from PDFSet and IsSignalPDF! '
-                f'Its current type is {classname(pdfset)}.')
-        self._sig_pdf_set = pdfset
+                f'Its current type is {classname(pdf_set)}.')
+        self._sig_pdf_set = pdf_set
 
     @property
     def interpolmethod_cls(self):
@@ -1094,7 +1094,7 @@ class SplinedSingleConditionalEnergySigSetOverBkgPDFRatio(
         IsParallelizable,
 ):
     """This class implements a splined signal over background PDF ratio for
-    enegry PDFs of type SingleConditionalEnergyPDF.
+    energy PDFs of type SingleConditionalEnergyPDF.
     It takes an instance, which is derived from PDFSet, and which is derived
     from IsSignalPDF, as signal PDF. Furthermore, it takes an instance, which
     is derived from SingleConditionalEnergyPDF and IsBackgroundPDF, as
