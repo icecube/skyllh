@@ -216,7 +216,16 @@ class TimeScramblingMethod(
             The instance of Dataset for which the data should get scrambled.
         data : instance of DataFieldRecordArray
             The DataFieldRecordArray instance containing the to be scrambled
-            data.
+            data. The following data fields must exist:
+
+            azi : float
+                The azimuth of the event.
+            alt : float (optional)
+                The altitude of the event. If not present, ``sin_alt`` must be
+                present.
+            sin_alt : float (optional)
+                The sin(altitude) of the event. If not present, ``alt`` must be
+                present.
 
         Returns
         -------
@@ -227,8 +236,16 @@ class TimeScramblingMethod(
 
         data['time'] = mjds
 
+        if 'alt' in data:
+            alt = data['alt']
+        elif 'sin_alt' in data:
+            alt = np.arcsin(data['sin_alt'])
+        else:
+            raise KeyError(
+                'Neither "alt", nor "sin_alt" is available as data field!')
+
         (data['ra'], data['dec']) = self.hor_to_equ_transform(
-            data['azi'], data['alt'], mjds)
+            data['azi'], alt, mjds)
 
         return data
 
