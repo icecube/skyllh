@@ -121,7 +121,7 @@ class BackgroundSinAltUniformAziSpatialPDF(
     def spline_order_sin_alt(self, order):
         self._spline_order_sin_alt = int_cast(
             order,
-            'The spline_order_sin_alt property must be castable to type int!')
+            'The spline_order_sin_alt property must be cast-able to type int!')
 
     def initialize_for_new_trial(
             self,
@@ -129,7 +129,7 @@ class BackgroundSinAltUniformAziSpatialPDF(
             tl=None,
             **kwargs,
     ):
-        """Pre-cumputes the probability density values when new trial data is
+        """Pre-computes the probability density values when new trial data is
         available. The following data fields need to be present in the trial
         data:
 
