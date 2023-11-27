@@ -197,14 +197,14 @@ class SignalI3EnergyPDFSet(
                 flux model and flux parameters.
             """
             # Create a copy of the FluxModel with the given flux parameters.
-            # The copy is needed to not interfer with other CPU processes.
-            myfluxmodel = fluxmodel.copy(newparams=gridparams)
+            # The copy is needed to not interfere with other CPU processes.
+            my_fluxmodel = fluxmodel.copy(newparams=gridparams)
 
             # Calculate the signal energy weight of the event. Note, that
             # because we create a normalized PDF, we can ignore all constants.
             # So we don't have to convert the flux unit into the internally used
             # flux unit.
-            data_physicsweight = np.squeeze(myfluxmodel(E=data_true_energy))
+            data_physicsweight = np.squeeze(my_fluxmodel(E=data_true_energy))
             data_physicsweight *= flux_unit_conv_factor
 
             energypdf = SingleConditionalEnergyPDF(
