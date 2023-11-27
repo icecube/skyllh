@@ -9,24 +9,42 @@ import numpy as np
 from skyllh.core import (
     tool,
 )
+from skyllh.core.binning import (
+    BinningDefinition,
+)
 from skyllh.core.debugging import (
     get_logger,
+)
+from skyllh.core.flux_model import (
+    FluxModel,
 )
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
     Linear1DGridManifoldInterpolationMethod,
+)
+from skyllh.core.multiproc import (
+    IsParallelizable,
+    parallelize,
+)
+from skyllh.core.parameters import (
+    ParameterGrid,
+    ParameterGridSet,
 )
 from skyllh.core.pdf import (
     PDF,
     PDFSet,
     IsSignalPDF,
     MultiDimGridPDF,
+    SingleConditionalEnergyPDF,
     SpatialPDF,
     TimePDF,
 )
 from skyllh.core.py import (
     classname,
     str_cast,
+)
+from skyllh.core.smoothing import (
+    SmoothingFilter,
 )
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
@@ -1126,3 +1144,244 @@ class SignalSHGMappedMultiDimGridPDFSet(
             pd[values_mask] = pd_pdf
 
         return (pd, dict())
+
+
+class SignalSingleConditionalEnergyPDFSet(
+        PDFSet,
+        IsSignalPDF,
+        PDF,
+        IsParallelizable,
+):
+    """This class provides a set of single conditional signal energy PDFs for a
+    discrete set of energy signal parameters. The ``SingleConditionalEnergyPDF``
+    class is used as a particular energy PDF.
+    """
+
+    def __init__(
+            self,
+            cfg,
+            data_mc,
+            log10_energy_binning,
+            cond_param_binning,
+            flux_model,
+            param_grid_set,
+            smoothing_filter=None,
+            ncpu=None,
+            ppbar=None,
+            **kwargs,
+    ):
+        """Creates a new signal energy PDF set for a discrete set of energy
+        signal parameters ``param_grid_set`` for the given flux model.
+        It creates a set of SingleConditionalEnergyPDF objects for each signal
+        parameter value permutation and stores it in an internal dictionary,
+        where the hash of the parameters dictionary is the key.
+
+        Parameters
+        ----------
+        cfg : instance of Config
+            The instance of Config holding the local configuration.
+        data_mc : instance of DataFieldRecordArray
+            The instance of DataFieldRecordArray holding the monte-carlo data.
+            The following data fields must exist:
+
+            true_energy : float
+                The true energy value of the data event.
+            ``log10_energy_binning.name`` : float
+                The base10-logarithm of the reconstructed energy value of the
+                data event.
+            ``cond_param_binning.name`` : float
+                The observable for the conditional parameter of the data event,
+                e.g. ``"sin_alt"``.
+            mcweight : float
+                The monte-carlo weight value of the data events in unit
+                GeV cm^2 sr.
+
+        log10_energy_binning : instance of BinningDefinition
+            The binning definition for the reconstructed energy binning in
+            log10(E_reco). The name of this binning definition defines the field
+            name in the MC and trial data.
+        cond_param_binning : instance of BinningDefinition
+            The binning definition for the binning of the conditional parameter,
+            e.g. sin(altitude).
+            The name of this binning definition defines the field name in the MC
+            and trial data.
+        flux_model : instance of FluxModel
+            The flux model to use to weight the MC events for creating a single
+            signal energy PDF.
+        param_grid_set : instance of ParameterGridSet |
+                         instance of ParameterGrid
+            The set of parameter grids. A ParameterGrid instance for each
+            energy parameter, for which a SingleConditionalEnergyPDF object
+            needs to be created.
+        smoothing_filter : instance of SmoothingFilter | None
+            The smoothing filter to use for smoothing the a single energy
+            histogram.
+            If ``None``, no smoothing will be applied.
+        ncpu : int | None
+            The number of CPUs to use to create the different
+            SingleConditionalEnergyPDF instances for the different parameter
+            grid values. If set to ``None``, the configured default number of
+            CPUs will be used.
+        ppbar : instance of ProgressBar | None
+            The instance of ProgressBar of the optional parent progress bar.
+        """
+        if isinstance(param_grid_set, ParameterGrid):
+            param_grid_set = ParameterGridSet([param_grid_set])
+        if not isinstance(param_grid_set, ParameterGridSet):
+            raise TypeError(
+                'The param_grid_set argument must be an instance of '
+                'ParameterGrid or ParameterGridSet! But its type is '
+                f'{classname(param_grid_set)}!')
+
+        # We need to extend the parameter grids on the lower and upper end
+        # by one bin to allow for the calculation of the interpolation. But we
+        # will do this on a copy of the object.
+        param_grid_set = param_grid_set.copy()
+        param_grid_set.add_extra_lower_and_upper_bin()
+
+        super().__init__(
+            cfg=cfg,
+            param_grid_set=param_grid_set,
+            ncpu=ncpu,
+            **kwargs)
+
+        if not isinstance(log10_energy_binning, BinningDefinition):
+            raise TypeError(
+                'The log10_energy_binning argument must be an instance of '
+                'BinningDefinition! '
+                f'Its current type is {classname(log10_energy_binning)}!')
+
+        if not isinstance(cond_param_binning, BinningDefinition):
+            raise TypeError(
+                'The cond_param_binning argument must be an instance '
+                'of BinningDefinition! '
+                f'Its current type is {classname(cond_param_binning)}!')
+
+        if not isinstance(flux_model, FluxModel):
+            raise TypeError(
+                'The flux_model argument must be an instance of FluxModel! '
+                f'Its current type is {classname(flux_model)}!')
+
+        if (smoothing_filter is not None) and\
+           (not isinstance(smoothing_filter, SmoothingFilter)):
+            raise TypeError(
+                'The smoothing_filter argument must be None or '
+                'an instance of SmoothingFilter! '
+                f'Its current type is {classname(smoothing_filter)}!')
+
+        # Create SingleConditionalEnergyPDF objects for all permutations of the
+        # parameter grid values.
+        def create_SingleConditionalEnergyPDF(
+                cfg,
+                data_log10_energy,
+                data_cond_param,
+                data_mcweight,
+                data_true_energy,
+                log10_energy_binning,
+                cond_param_binning,
+                smoothing_filter,
+                flux_model,
+                flux_unit_conv_factor,
+                gridparams,
+        ):
+            """Creates a SingleConditionalEnergyPDF instance for the given flux
+            model and flux parameters.
+
+            Parameters
+            ----------
+            cfg : instance of Config
+                The instance of Config holding the local configuration.
+            data_log10_energy : instance of numpy.ndarray
+                The (N,)-shaped numpy.ndarray holding the base-10 logarithm of
+                the reconstructed energy value of the data events.
+            data_cond_param : instance of numpy.ndarray
+                The (N,)-shaped numpy.ndarray holding the value of the
+                conditional parameter, e.g. sin(alt).
+            data_mcweight : instance of numpy.ndarray
+                The (N,)-shaped numpy.ndarray holding the monte-carlo weight
+                value of the data events.
+            data_true_energy : instance of numpy.ndarray
+                The (N,)-shaped numpy.ndarray holding the true energy value of
+                the data events.
+            log10_energy_binning : instance of BinningDefinition
+                The binning definition for the binning in log10(E_reco).
+            cond_param_binning : instance of BinningDefinition
+                The binning definition for the conditional parameter, e.g.
+                sin(alt).
+            smoothing_filter : instance of SmoothingFilter | None
+                The smoothing filter to use for smoothing a single energy
+                histogram.
+                If ``None``, no smoothing will be applied.
+            flux_model : instance of FluxModel
+                The flux model to use to weigh the MC events.
+            flux_unit_conv_factor : float
+                The factor to convert the flux unit into the internal flux unit.
+            gridparams : dict
+                The dictionary holding the specific signal flux parameters.
+
+            Returns
+            -------
+            energy_pdf : instance of SingleConditionalEnergyPDF
+                The created instance of SingleConditionalEnergyPDF for the given
+                flux model and flux parameters.
+            """
+            # Create a copy of the FluxModel with the given flux parameters.
+            # The copy is needed to not interfere with other CPU processes.
+            my_fluxmodel = flux_model.copy(newparams=gridparams)
+
+            # Calculate the signal energy weight of the event. Note, that
+            # because we create a normalized PDF, we can ignore all constants.
+            # So we don't have to convert the flux unit into the internally used
+            # flux unit.
+            data_physicsweight = np.squeeze(my_fluxmodel(E=data_true_energy))
+            data_physicsweight *= flux_unit_conv_factor
+
+            energy_pdf = SingleConditionalEnergyPDF(
+                cfg=cfg,
+                pmm=None,
+                data_log10_energy=data_log10_energy,
+                data_param=data_cond_param,
+                data_mcweight=data_mcweight,
+                data_physicsweight=data_physicsweight,
+                log10_energy_binning=log10_energy_binning,
+                param_binning=cond_param_binning,
+                smoothing_filter=smoothing_filter)
+
+            return energy_pdf
+
+        data_log10_energy = data_mc[log10_energy_binning.name]
+        data_cond_param = data_mc[cond_param_binning.name]
+        data_mcweight = data_mc['mcweight']
+        data_true_energy = data_mc['true_energy']
+
+        flux_unit_conv_factor = flux_model.to_internal_flux_unit()
+
+        args_list = [
+            (
+                (cfg,
+                 data_log10_energy,
+                 data_cond_param,
+                 data_mcweight,
+                 data_true_energy,
+                 log10_energy_binning,
+                 cond_param_binning,
+                 smoothing_filter,
+                 flux_model,
+                 flux_unit_conv_factor,
+                 gridparams),
+                {}
+            )
+            for gridparams in self.gridparams_list
+        ]
+
+        energy_pdf_list = parallelize(
+            func=create_SingleConditionalEnergyPDF,
+            args_list=args_list,
+            ncpu=self.ncpu,
+            ppbar=ppbar)
+
+        # Save all the SingleConditionalEnergyPDF instances in the PDFSet
+        # registry with the hash of the individual parameters as key.
+        for (gridparams, energy_pdf) in zip(self.gridparams_list,
+                                            energy_pdf_list):
+            self.add_pdf(energy_pdf, gridparams)

@@ -17,6 +17,11 @@ v24.1.0
   class for the IceCube background and signal energy PDFs in sin(dec_reco), as
   well as for the generic background energy PDF in sin(altitude_reco) space.
 
+- Introduce signal PDF set class
+  core.signalpdf.SignalSingleConditionalEnergyPDFSet as generic PDF set for a
+  set of energy PDFs that are conditional on a single observable, e.g. sin(alt)
+  or sin(dec). This class replaces the i3.signalpdf.SignalI3EnergyPDFSet class.
+
 - Introduce PDF ratio class
   core.pdfratio.SplinedSingleConditionalEnergySigSetOverBkgPDFRatio as generic
   PDF ratio for core.pdf.SingleConditionalEnergyPDF energy PDFs.
