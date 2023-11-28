@@ -180,13 +180,13 @@ class SiderealTimeService(
         ----------
         src_array : instance of numpy.ndarray
             The structured numpy.ndarray holding the declination and
-            right-ascention of the sources. The following data fields need to
+            right-ascension of the sources. The following data fields need to
             exist::
 
                 dec : float
                     The declination of the source.
                 ra : float
-                    The right-ascention of the source.
+                    The right-ascension of the source.
 
         Returns
         -------
