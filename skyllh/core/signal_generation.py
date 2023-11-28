@@ -56,11 +56,11 @@ class SignalGenerationMethod(
                 float_cast(
                     r[0],
                     'The first element of the energy_range '
-                    'sequence must be castable to type float!'),
+                    'sequence must be cast-able to type float!'),
                 float_cast(
                     r[1],
                     'The second element of the energy_range '
-                    'sequence must be castable to type float!')
+                    'sequence must be cast-able to type float!')
             )
         self._energy_range = r
 
