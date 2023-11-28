@@ -452,7 +452,7 @@ class PointLikeSourceDetSigYield(
                 ``'dec'`` : float
                     The declination of the source.
                 ``'ra'`` : float
-                    The right-ascention of the source.
+                    The right-ascension of the source.
 
         """
         if isinstance(sources, PointLikeSource):
@@ -522,7 +522,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             The instance of BinningDefinition defining the sin(true_altitude)
             binning.
         log_spl_sintruealt_param : instance of scipy.interpolate.RectBivariateSpline
-            The 2D spline in sin(true_altitute) and the flux model's parameter
+            The 2D spline in sin(true_altitude) and the flux model's parameter
             this detector signal yield depends on.
         """
         super().__init__(
@@ -600,7 +600,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         ----------
         src_recarray : instance of numpy.ndarray
             The (N_sources,)-shaped structured numpy ndarray with the fields
-            ``dec`` and ``ra`` holding the declination and right-ascention of
+            ``dec`` and ``ra`` holding the declination and right-ascension of
             the sources.
         src_params_recarray : instance of numpy.ndarray
             The (N_sources,)-shaped numpy structured ndarray containing the
@@ -648,7 +648,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
         # number of on-times falling into the sidereal time interval multiplied
         # by the time span of that interval.
 
-        sec2fluxtimeunit = units.second.to(self._fluxmodel.time_unit)
+        sec_2_flux_time_unit = units.second.to(self._fluxmodel.time_unit)
 
         st_livetime_sec_arr = self.st_service.st_livetime_sec_arr
 
@@ -657,7 +657,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
                 np.sin(self.src_st_alt_arr), src_param[np.newaxis, :],
                 grid=False,
             )) *
-            st_livetime_sec_arr[:, np.newaxis] * sec2fluxtimeunit
+            st_livetime_sec_arr[:, np.newaxis] * sec_2_flux_time_unit
         )
         values = np.sum(values_st_arr, axis=0)
 
@@ -793,7 +793,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
     def st_bin_width_deg(self, bw):
         bw = float_cast(
             bw,
-            'The st_bin_width_deg property must be castable to type float! '
+            'The st_bin_width_deg property must be cast-able to type float! '
             f'Its current type is {classname(bw)}!')
         self._st_bin_width_deg = bw
 
@@ -827,7 +827,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
     def spline_order_sin_true_alt(self, order):
         order = int_cast(
             order,
-            'The spline_order_sin_true_alt property must be castable to type '
+            'The spline_order_sin_true_alt property must be cast-able to type '
             'int! '
             f'Its current type is {classname(order)}.')
         self._spline_order_sin_true_alt = order
@@ -843,7 +843,7 @@ class SingleParamFluxPointLikeSourceDetSigYieldBuilder(
     def spline_order_param(self, order):
         order = int_cast(
             order,
-            'The spline_order_param property must be castable to type int! '
+            'The spline_order_param property must be cast-able to type int! '
             f'Its current type is {classname(order)}.')
         self._spline_order_param = order
 
