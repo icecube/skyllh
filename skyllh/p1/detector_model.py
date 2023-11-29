@@ -22,7 +22,8 @@ class PONEDetectorModel(
 ):
     """Definition of the P-ONE detector.
 
-    For the time being we use the position of STRAW-a.
+    For the time being we use the position of STRAW-a. As depth we use the sea
+    floor at -2658m and a detector half height of 500m.
     """
     def __init__(self, **kwargs):
         super().__init__(
@@ -30,5 +31,5 @@ class PONEDetectorModel(
             location=EarthLocation.from_geodetic(
                 lon=-127.7317*units.deg,
                 lat=47.7564*units.deg,
-                height=-1500*units.m),
+                height=-2158*units.m),
             **kwargs)
