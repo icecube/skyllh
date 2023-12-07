@@ -140,6 +140,7 @@ def create_analysis(
         gamma_seed=3.0,
         gamma_min=1.,
         gamma_max=5.,
+        fit_gamma=True,
         kde_smoothing=False,
         minimizer_impl='LBFGS',
         cut_sindec=None,
@@ -183,6 +184,9 @@ def create_analysis(
         Lower bound for gamma fit.
     gamma_max : float
         Upper bound for gamma fit.
+    fit_gamma : bool
+        Flag if the spectral index, gamma, should be fitted (``True``) or should
+        be kept constant with its initial value (``False``).
     kde_smoothing : bool
         Apply a KDE-based smoothing to the data-driven background pdf.
         Default: False.
@@ -275,7 +279,8 @@ def create_analysis(
         name='gamma',
         initial=gamma_seed,
         valmin=gamma_min,
-        valmax=gamma_max)
+        valmax=gamma_max,
+        isfixed=not fit_gamma)
 
     # Define the detector signal yield builder for the IceCube detector and this
     # source and flux model.

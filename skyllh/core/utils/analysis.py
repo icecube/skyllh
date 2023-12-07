@@ -420,6 +420,41 @@ def polynomial_fit(
             deg)
 
 
+def estimate_mean_nsignal_for_ts_quantile_with_given_trials(
+        p,
+        eps,
+        critical_ts=None,
+        h0_trials=None,
+        h1_trials_path=None,
+        h0_ts_quantile=None,
+        ppbar=None,
+        tl=None):
+    """
+    """
+
+    # If not given, get a critical TS value
+    if critical_ts is None:
+        # Check what's the minimum number of trials to get the required
+        # precision `eps` on the percentile estimate `p`.
+        n_trials_min = int(h0_ts_quantile*(1-h0_ts_quantile)/eps**2 + 0.5)
+        if n_trials_min < h0_trials:
+            critical_ts = np.percentile(h0_trials, (1. - h0_ts_quantile) * 100)
+        else:
+            critical_ts = calculate_critical_ts_from_gamma(
+                h0_ts_vals, h0_ts_quantile)
+
+    # Get the fration of H1 TS values above the critical TS.
+    fract_above_critical_ts = np.sum(h1_trials['ts'] > critical_ts) / len(h1_trials)
+
+    # Construct a spline to get the mean number of signal events giving on
+    # average a TS distribution whose p fraction is above the critical TS
+    def func(mu, spline):
+        y = spline.evaluate_simple([mu])
+        y = y - p
+        return y
+
+
+
 def estimate_mean_nsignal_for_ts_quantile(  # noqa: C901
         ana,
         rss,
@@ -1014,7 +1049,7 @@ def estimate_discovery_potential(
     rss : RandomStateService
         The RandomStateService instance to use for generating random
         numbers.
-    h0_trials : (n_h0_ts_vals,)-shaped ndarray | None
+    h0_trials : ndarray | None
         The structured ndarray holding the trials for the null-hypothesis.
         If set to `None`, the number of trials is calculated from binomial
         statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
@@ -1237,8 +1272,8 @@ def create_trial_data_file(  # noqa: C901
         ppbar=None,
         tl=None):
     """Creates and fills a trial data file with `n_trials` generated trials for
-    each mean number of injected signal events from `ns_min` up to `ns_max` for
-    a given analysis.
+    the given mean number(s) of injected signal events (`mean_n_sig`) for a
+    given analysis.
 
     Parameters
     ----------
@@ -1411,8 +1446,9 @@ def extend_trial_data_file(
         sig_kwargs=None,
         pathfilename=None,
         **kwargs):
-    """Appends to the trial data file `n_trials` generated trials for each
-    mean number of injected signal events up to `ns_max` for a given analysis.
+    """Appends to the trial data file `n_trials` generated trials for the
+    mean number(s) of injected signal events (`mean_n_sig`) for a given
+    analysis.
 
     Parameters
     ----------
