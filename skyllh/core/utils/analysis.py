@@ -532,7 +532,11 @@ def estimate_mean_nsignal_for_ts_quantile(  # noqa: C901
             n_total_generated_trials += n_trials_total
 
             if pathfilename is not None:
-                makedirs(os.path.dirname(pathfilename), exist_ok=True)
+                dirname = os.path.dirname(pathfilename)
+                if dirname:
+                    # Create the directory if dirname is not empty.
+                    makedirs(dirname, exist_ok=True)
+                # Save the trial data to file.
                 np.save(pathfilename, h0_ts_vals)
         else:
             if h0_trials.size < n_trials_total:
@@ -1385,8 +1389,11 @@ def create_trial_data_file(  # noqa: C901
             'No trials have been generated! Check your generation boundaries!')
 
     if pathfilename is not None:
+        dirname = os.path.dirname(pathfilename)
+        if dirname:
+            # Create the directory if dirname is not empty.
+            makedirs(dirname, exist_ok=True)
         # Save the trial data to file.
-        makedirs(os.path.dirname(pathfilename), exist_ok=True)
         np.save(pathfilename, trial_data)
 
     return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data)
@@ -1484,8 +1491,11 @@ def extend_trial_data_file(
         asrecarray=True)
 
     if pathfilename is not None:
+        dirname = os.path.dirname(pathfilename)
+        if dirname:
+            # Create the directory if dirname is not empty.
+            makedirs(dirname, exist_ok=True)
         # Save the trial data to file.
-        makedirs(os.path.dirname(pathfilename), exist_ok=True)
         np.save(pathfilename, trial_data)
 
     return trial_data
