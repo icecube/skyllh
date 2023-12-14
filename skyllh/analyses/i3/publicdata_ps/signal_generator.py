@@ -630,6 +630,7 @@ class TimeDependentPDDatasetSignalGenerator(
             raise TypeError(
                 'The livetime property must be an instance of Livetime! '
                 f'Its current type is {classname(lt)}!')
+        self._livetime = lt
 
     def generate_signal_events(
             self,
