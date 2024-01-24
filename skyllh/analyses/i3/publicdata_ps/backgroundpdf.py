@@ -425,6 +425,11 @@ class PDDataBackgroundI3EnergyPDF(
         smoothing_filter : instance of SmoothingFilter | None
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
+        kde_smoothing : bool
+            Apply a kde smoothing to the energy pdf for each bin in sin(dec).
+            This is useful for signal injections, because it ensures that the
+            background is not zero when injecting high energy events.
+            Default: False.
         """
         if not isinstance(data_exp, DataFieldRecordArray):
             raise TypeError(
