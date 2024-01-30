@@ -259,14 +259,15 @@ class Parameter(object):
         ValueError
             If this Parameter instance represents a fixed parameter.
         """
-        if self.isfixed:
-            print('Create a one element grid from the fixed ',
-                  f'parameter "{self._name}". !')
-            grid = np.array([self._name])
 
         delta = float_cast(
             delta,
             'The delta argument must be castable to type float!')
+        
+        if self.isfixed:
+            grid = np.array([self.initial])
+            print(f'gamma is {self.initial}')
+            return ParameterGrid(self._name, grid, delta)
 
         grid = make_linear_parameter_grid_1d(
             name=self._name,
