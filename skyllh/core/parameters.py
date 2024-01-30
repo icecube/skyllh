@@ -266,7 +266,6 @@ class Parameter(object):
         
         if self.isfixed:
             grid = np.array([self.initial])
-            print(f'gamma is {self.initial}')
             return ParameterGrid(self._name, grid, delta)
 
         grid = make_linear_parameter_grid_1d(

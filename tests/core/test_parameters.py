@@ -144,7 +144,6 @@ class Parameter_TestCase(unittest.TestCase):
         np.testing.assert_almost_equal(
             param_grid.grid, self.floating_param_grid)
         
-
     def test_change_fixed_value(self):
         with self.assertRaises(ValueError):
             self.floating_param.change_fixed_value(self.fixed_param_initial)
