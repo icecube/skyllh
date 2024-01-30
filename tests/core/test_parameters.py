@@ -138,8 +138,7 @@ class Parameter_TestCase(unittest.TestCase):
         grid_delta = 0.1
         param_grid_fixed = self.fixed_param.as_linear_grid(grid_delta)
         np.testing.assert_array_almost_equal(
-            param_grid_fixed.grid, np.array([self.fixed_param_initial]))
-        
+            param_grid_fixed.grid, np.array([self.fixed_param_initial])) 
         param_grid = self.floating_param.as_linear_grid(grid_delta)
         np.testing.assert_almost_equal(
             param_grid.grid, self.floating_param_grid)
