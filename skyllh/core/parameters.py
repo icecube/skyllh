@@ -260,9 +260,9 @@ class Parameter(object):
             If this Parameter instance represents a fixed parameter.
         """
         if self.isfixed:
-            raise ValueError(
-                'Cannot create a linear grid from the fixed '
-                f'parameter "{self._name}". The parameter must be floating!')
+            print('Create a one element grid from the fixed ',
+                  f'parameter "{self._name}". !')
+            grid = np.array([self._name])
 
         delta = float_cast(
             delta,
