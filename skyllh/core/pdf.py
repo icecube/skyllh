@@ -1748,14 +1748,15 @@ class PDFSet(
         """
         logger = get_logger(f'{__name__}.{classname(self)}.add_pdf')
 
-        if not isinstance(pdf, PDF):
-            raise TypeError(
-                'The pdf argument must be an instance of PDF!'
-                f'But its type is "{classname(pdf)}!')
-        if not isinstance(gridparams, dict):
-            raise TypeError(
-                'The gridparams argument must be of type dict!'
-                f'But its type is "{classname(gridparams)}"!')
+    # NEED TO ADJUST THIS FOR THE POSSIBILITY OF HAVING A LIST OF SPLINES
+        # if not isinstance(pdf, PDF):
+        #     raise TypeError(
+        #         'The pdf argument must be an instance of PDF!'
+        #         f'But its type is "{classname(pdf)}!')
+        # if not isinstance(gridparams, dict):
+        #     raise TypeError(
+        #         'The gridparams argument must be of type dict!'
+        #         f'But its type is "{classname(gridparams)}"!')
 
         gridparams_hash = make_dict_hash(gridparams)
         if gridparams_hash in self._gridparams_hash_pdf_dict:
@@ -1764,15 +1765,15 @@ class PDFSet(
                 'already added!')
 
         # Check that the new PDF has the same axes than the already added PDFs.
-        if len(self._gridparams_hash_pdf_dict) > 0:
-            some_pdf = self._gridparams_hash_pdf_dict[
-                next(iter(self._gridparams_hash_pdf_dict.keys()))]
-            if not pdf.axes.is_same_as(some_pdf.axes):
-                raise ValueError(
-                    'The given PDF does not have the same axes than the '
-                    'already added PDFs!\n'
-                    f'New axes:\n{str(pdf.axes)}\n'
-                    f'Old axes:\n{str(some_pdf.axes)}')
+        # if len(self._gridparams_hash_pdf_dict) > 0:
+        #     some_pdf = self._gridparams_hash_pdf_dict[
+        #         next(iter(self._gridparams_hash_pdf_dict.keys()))]
+        #     if not pdf.axes.is_same_as(some_pdf.axes):
+        #         raise ValueError(
+        #             'The given PDF does not have the same axes than the '
+        #             'already added PDFs!\n'
+        #             f'New axes:\n{str(pdf.axes)}\n'
+        #             f'Old axes:\n{str(some_pdf.axes)}')
 
         if self._cfg.is_tracing_enabled:
             logger.debug(f'Adding PDF for gridparams {gridparams}.')

@@ -369,7 +369,7 @@ class PDSmearingMatrix(
         if (true_dec < self.true_dec_bin_edges[0]) or\
            (true_dec > self.true_dec_bin_edges[-1]):
             raise ValueError(
-                f'The declination {true_dec} degrees is not supported by the '
+                f'The declination {true_dec} radians is not supported by the '
                 'smearing matrix!')
 
         true_dec_idx = np.digitize(true_dec, self.true_dec_bin_edges) - 1
