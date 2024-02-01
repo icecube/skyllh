@@ -1120,7 +1120,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
             pdf_key = self.make_key({'shg_idxs': shg_idxs})
             pdf = self.get_pdf(pdf_key)
 
-            with TaskTimer(tl, f'Get PD values for PDF of SHG {shg_idx}.'):
+            with TaskTimer(tl, f'Get PD values for PDF of SHG {shg_idxs}.'):
                 pd_pdf = pdf.get_pd_with_eventdata(
                     tdm=tdm,
                     params_recarray=params_recarray,
