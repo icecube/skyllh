@@ -702,7 +702,8 @@ class Analysis(
 
     def change_shg_mgr(
             self,
-            shg_mgr):
+            shg_mgr,
+            update_detsigyield_service=True):
         """If the SourceHypoGroupManager instance changed, this method needs to
         be called to propagate the change to all components of the analysis.
 
@@ -710,6 +711,11 @@ class Analysis(
         ----------
         shg_mgr : instance of SourceHypoGroupManager
             The new instance of SourceHypoGroupManager.
+        update_detsigyield_service : bool
+            The option whether to update SourceHypoGroupManager of
+            `detsigyield_service` property. It can be set to false for runtime
+            optimization when the detector signal yield does not change for the
+            new source. Default is True.
         """
         for evt_selection_method in self._event_selection_method_list:
             if evt_selection_method is not None:
@@ -721,7 +727,7 @@ class Analysis(
                 shg_mgr=shg_mgr,
                 pmm=self._pmm)
 
-        if self._detsigyield_service is not None:
+        if self._detsigyield_service is not None and update_detsigyield_service:
             self._detsigyield_service.change_shg_mgr(
                 shg_mgr=shg_mgr)
 
@@ -1390,7 +1396,8 @@ class LLHRatioAnalysis(
 
     def change_shg_mgr(
             self,
-            shg_mgr):
+            shg_mgr,
+            update_detsigyield_service=True):
         """If the SourceHypoGroupManager instance changed, this method needs to
         be called to propagate the change to all components of the analysis.
 
@@ -1398,6 +1405,11 @@ class LLHRatioAnalysis(
         ----------
         shg_mgr : instance of SourceHypoGroupManager
             The new instance of SourceHypoGroupManager.
+        update_detsigyield_service : bool
+            The option whether to update SourceHypoGroupManager of
+            `detsigyield_service` property. It can be set to false for runtime
+            optimization when the detector signal yield does not change for the
+            new source. Default is True.
         """
         if self._llhratio is None:
             raise RuntimeError(
@@ -1405,7 +1417,8 @@ class LLHRatioAnalysis(
                 'before the `change_shg_mgr` method can be called!')
 
         super().change_shg_mgr(
-            shg_mgr=shg_mgr)
+            shg_mgr=shg_mgr,
+            update_detsigyield_service=update_detsigyield_service)
 
         # Change the source hypo group manager of the LLH ratio function
         # instance.
@@ -1714,7 +1727,8 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
 
     def change_source(
             self,
-            source):
+            source,
+            update_detsigyield_service=True):
         """Changes the source of the analysis to the given source. It makes the
         necessary changes to all the objects of the analysis.
 
@@ -1722,6 +1736,11 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
         ----------
         source : instance of SourceModel
             The instance of SourceModel describing the new source.
+        update_detsigyield_service : bool
+            The option whether to update SourceHypoGroupManager of
+            `detsigyield_service` property. It can be set to false for runtime
+            optimization when the detector signal yield does not change for the
+            new source. Default is True.
         """
         if not isinstance(source, SourceModel):
             raise TypeError(
@@ -1734,7 +1753,8 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(
         self._shg_mgr.shg_list[0].source_list[0] = source
 
         self.change_shg_mgr(
-            shg_mgr=self._shg_mgr)
+            shg_mgr=self._shg_mgr,
+            update_detsigyield_service=update_detsigyield_service)
 
     def calculate_fluxmodel_scaling_factor(
             self,
