@@ -1449,6 +1449,9 @@ class IrregularParameterGrid(object):
     def round_to_nearest_grid_point(self, value):
         """Rounds the given value to the nearest grid point.
 
+        Note: If the given value is precisely in between two nearest grid
+        points, the lower nearest grid point will be returned!
+
         Parameters
         ----------
         value : float | ndarray of float
