@@ -15,7 +15,7 @@ from skyllh.analyses.i3.publicdata_ps.signal_generator import (
     PDDatasetSignalGenerator,
 )
 from skyllh.analyses.i3.publicdata_ps.signalpdf import (
-    PDSignalEnergyPDFSet,
+    PDSignalEnergyPDFSetMultiSource,
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
@@ -168,14 +168,72 @@ def create_analysis(
     ----------
     cfg : instance of Config
         The instance of Config holding the local configuration.
-
-
-
-
-
-
-
-
+    datasets : list of Dataset instances
+        The list of Dataset instances, which should be used in the
+        analysis.
+    catalog : Catalog instance
+        The Catalog instance defining the point sources and their weigths.
+    refplflux_Phi0 : float
+        The flux normalization to use for the reference power law flux model.
+    refplflux_E0 : float
+        The reference energy to use for the reference power law flux model.
+    refplflux_gamma : float
+        The spectral index to use for the reference power law flux model.
+    ns_seed : float
+        Value to seed the minimizer with for the ns fit.
+    ns_min : float
+        Lower bound for ns fit.
+    ns_max : float
+        Upper bound for ns fit.
+    gamma_seed : float | None
+        Value to seed the minimizer with for the gamma fit. If set to None,
+        the refplflux_gamma value will be set as gamma_seed.
+    gamma_min : float
+        Lower bound for gamma fit.
+    gamma_max : float
+        Upper bound for gamma fit.
+    kde_smoothing : bool
+        Apply a KDE-based smoothing to the data-driven background pdf.
+        Default: False.
+    minimizer_impl : str
+        Minimizer implementation to be used. Supported options are ``"LBFGS"``
+        (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
+        ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module).
+        Default: "LBFGS".
+    cut_sindec : list of float | None
+        sin(dec) values at which the energy cut in the southern sky should
+        start. If None, np.sin(np.radians([-2, 0, -3, 0, 0])) is used.
+    spl_smooth : list of float
+        Smoothing parameters for the 1D spline for the energy cut. If None,
+        [0., 0.005, 0.05, 0.2, 0.3] is used.
+    cap_ratio : bool
+        If set to True, the energy PDF ratio will be capped to a finite value
+        where no background energy PDF information is available. This will
+        ensure that an energy PDF ratio is available for high energies where
+        no background is available from the experimental data.
+        If kde_smoothing is set to True, cap_ratio should be set to False!
+        Default is False.
+    compress_data : bool
+        Flag if the data should get converted from float64 into float32.
+    keep_data_fields : list of str | None
+        List of additional data field names that should get kept when loading
+        the data.
+    evt_sel_delta_angle_deg : float
+        The delta angle in degrees for the event selection optimization methods.
+    construct_sig_generator : bool
+        Flag if the signal generator should be constructed (``True``) or not
+        (``False``).
+    tl : TimeLord instance | None
+        The TimeLord instance to use to time the creation of the analysis.
+    ppbar : ProgressBar instance | None
+        The instance of ProgressBar for the optional parent progress bar.
+    logger_name : str | None
+        The name of the logger to be used. If set to ``None``, ``__name__`` will
+        be used.
+    Returns
+    -------
+    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+        The Analysis instance for this analysis.
     """
     # Quite self explanatory
     add_icecube_specific_analysis_required_data_fields(cfg)
@@ -379,10 +437,10 @@ def create_analysis(
             bkg_pdf=spatial_bkgpdf)
 
         # Create the energy PDF ratio instance for this dataset.
-        energy_sigpdfset = PDSignalEnergyPDFSet(
+        energy_sigpdfset = PDSignalEnergyPDFSetMultiSource(
             cfg=cfg,
             ds=ds,
-            src_dec=source.dec,             # It will fail cause now we have a list of sources
+            shg_mgr=shg_mgr,
             fluxmodel=fluxmodel,
             param_grid_set=gamma_grid,
             ppbar=ppbar
@@ -461,3 +519,112 @@ def create_analysis(
         ana.construct_signal_generator()
 
     return ana
+
+# Test analysis
+
+if __name__ == '__main__':
+    parser = create_argparser(
+        description='Calculates TS for a given source location using the '
+                    '10-year public point source sample.',
+    )
+
+    parser.add_argument(
+        '--dec',
+        dest='dec',
+        default=5.7,
+        type=float,
+        help='The source declination in degrees.'
+    )
+    parser.add_argument(
+        '--ra',
+        dest='ra',
+        default=77.35,
+        type=float,
+        help='The source right-ascension in degrees.'
+    )
+    parser.add_argument(
+        '--gamma-seed',
+        dest='gamma_seed',
+        default=3,
+        type=float,
+        help='The seed value of the gamma fit parameter.'
+    )
+
+    parser.add_argument(
+        '--cap-ratio',
+        dest='cap_ratio',
+        default=False,
+        action='store_true',
+        help='Switch to cap the energy PDF ratio.')
+
+    args = parser.parse_args()
+
+    cfg = Config.from_yaml(args.config)
+    cfg.set_enable_tracing(args.enable_tracing)
+    cfg.set_ncpu(args.n_cpu)
+
+    setup_logging(
+        cfg=cfg,
+        script_logger_name=__name__,
+        debug_pathfilename=args.debug_logfile)
+
+    sample_seasons = [
+        ('PublicData_10y_ps', 'IC40'),
+        ('PublicData_10y_ps', 'IC59'),
+        ('PublicData_10y_ps', 'IC79'),
+        ('PublicData_10y_ps', 'IC86_I'),
+        ('PublicData_10y_ps', 'IC86_II-VII'),
+    ]
+
+    datasets = []
+    for (sample, season) in sample_seasons:
+        # Get the dataset from the correct dataset collection.
+        dsc = data_samples[sample].create_dataset_collection(
+            cfg=cfg,
+            base_path=args.data_basepath)
+        datasets.append(dsc.get_dataset(season))
+
+    # Define a random state service.
+    rss = RandomStateService(args.seed)
+
+    # Define the point source.
+    source = PointLikeSource(
+        name='My Point-Like-Source',
+        ra=np.deg2rad(args.ra),
+        dec=np.deg2rad(args.dec))
+    print(f'source: {source}')
+
+    tl = TimeLord()
+
+    with tl.task_timer('Creating analysis.'):
+        ana = create_analysis(
+            cfg=cfg,
+            datasets=datasets,
+            source=source,
+            gamma_seed=args.gamma_seed,
+            cap_ratio=args.cap_ratio,
+            tl=tl)
+
+    # with tl.task_timer('Unblinding data.'):
+    #     (TS, param_dict, status) = ana.unblind(
+    #         minimizer_rss=rss)
+
+    # print(f'TS = {TS:g}')
+    # print(f'ns_fit = {param_dict["ns"]:g}')
+    # print(f'gamma_fit = {param_dict["gamma"]:g}')
+    # print(f'minimizer status = {status}')
+
+    print(tl)
+
+    tl = TimeLord()
+    rss = RandomStateService(seed=1)
+    (_, _, _, trials) = create_trial_data_file(
+        ana=ana,
+        rss=rss,
+        n_trials=10,
+        mean_n_sig=0,
+        pathfilename=None,
+        ncpu=1,
+        tl=tl)
+    print(f'trials: {trials}')
+    print(tl)

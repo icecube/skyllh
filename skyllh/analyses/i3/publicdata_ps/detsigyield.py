@@ -197,7 +197,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                 E2=energy_bin_edges_upper)
             h_phi *= to_internal_flux_unit_factor
 
-            # Sum over the enegry bins for each sin_dec row.
+            # Sum over the energy bins for each sin_dec row.
             h = np.sum(aeff*h_phi, axis=1)
 
             return h
