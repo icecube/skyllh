@@ -833,11 +833,15 @@ class SignalMultiDimGridPDFSet(
                     tl,
                     'Get and set basis function indices for all PDFs.'):
                 V = self._cache_eventdata.shape[0]
-                bfi = pdf.pdf.search_centers(
-                    [self._cache_eventdata[i] for i in range(0, V)]
-                )
-                for (_, pdf) in self.items():
-                    pdf.basis_function_indices = bfi
+                try:
+                    bfi = pdf.pdf.search_centers(
+                        [self._cache_eventdata[i] for i in range(0, V)]
+                    )
+                    for (_, pdf) in self.items():
+                        pdf.basis_function_indices = bfi
+                except ValueError:
+                    logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
+                    logger.info("Falling back to the slower photospline evaluation.")
 
     def get_pd(
             self,
@@ -1054,11 +1058,15 @@ class SignalSHGMappedMultiDimGridPDFSet(
                     tl,
                     'Get and set basis function indices for all PDFs.'):
                 V = self._cache_eventdata.shape[0]
-                bfi = pdf.pdf.search_centers(
-                    [self._cache_eventdata[i] for i in range(0, V)]
-                )
-                for (_, pdf) in self.items():
-                    pdf.basis_function_indices = bfi
+                try:
+                    bfi = pdf.pdf.search_centers(
+                        [self._cache_eventdata[i] for i in range(0, V)]
+                    )
+                    for (_, pdf) in self.items():
+                        pdf.basis_function_indices = bfi
+                except ValueError:
+                    logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
+                    logger.info("Falling back to the slower photospline evaluation.")
 
     def get_pd(
             self,
@@ -1112,7 +1120,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
             pdf_key = self.make_key({'shg_idxs': shg_idxs})
             pdf = self.get_pdf(pdf_key)
 
-            with TaskTimer(tl, f'Get PD values for PDF of SHG {shg_idx}.'):
+            with TaskTimer(tl, f'Get PD values for PDF of SHG {shg_idxs}.'):
                 pd_pdf = pdf.get_pd_with_eventdata(
                     tdm=tdm,
                     params_recarray=params_recarray,

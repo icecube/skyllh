@@ -1430,21 +1430,39 @@ class MultiDimGridPDF(
 
             if self.basis_function_indices is None:
                 with TaskTimer(tl, 'Get basis function indices from photospline.'):
-                    self.basis_function_indices = self._pdf.search_centers(
-                        [eventdata[i] for i in range(0, V)]
-                    )
+                    try:
+                        self.basis_function_indices = self._pdf.search_centers(
+                            [eventdata[i] for i in range(0, V)]
+                        )
+                    except ValueError:
+                        # In case the photospline `search_centers` call fails
+                        # (when `eventdata` is outside photospline boundaries)
+                        # we can fall back to the slower photospline evaluation.
+                        logger.info(
+                            "Falling back to the slower photospline evaluation.")
 
             with TaskTimer(tl, 'Get pd from photospline fit.'):
-                if evt_mask is None:
-                    pd = self._pdf.evaluate(
-                        [eventdata[i] for i in range(0, V)],
-                        [self.basis_function_indices[i] for i in range(0, V)],
-                    )
+                if self.basis_function_indices is not None:
+                    if evt_mask is None:
+                        pd = self._pdf.evaluate(
+                            [eventdata[i] for i in range(0, V)],
+                            [self.basis_function_indices[i] for i in range(0, V)],
+                        )
+                    else:
+                        pd = self._pdf.evaluate(
+                            [eventdata[i][evt_mask] for i in range(0, V)],
+                            [self.basis_function_indices[i][evt_mask] for i in range(0, V)],
+                        )
                 else:
-                    pd = self._pdf.evaluate(
-                        [eventdata[i][evt_mask] for i in range(0, V)],
-                        [self.basis_function_indices[i][evt_mask] for i in range(0, V)],
-                    )
+                    # Falling back to the slower photospline evaluation.
+                    if evt_mask is None:
+                        pd = self._pdf.evaluate_simple(
+                            [eventdata[i] for i in range(0, V)],
+                        )
+                    else:
+                        pd = self._pdf.evaluate_simple(
+                            [eventdata[i][evt_mask] for i in range(0, V)],
+                        )
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(
