@@ -765,6 +765,8 @@ class PDSignalEnergyPDFSetMultiSource(
             ncpu=ncpu,
             **kwargs)
 
+        xvals_binedges = ds.get_binning_definition('log_energy').binedges
+        xvals = get_bincenters_from_binedges(xvals_binedges)
 
         # Load the smearing matrix.
         sm = PDSmearingMatrix(
@@ -782,113 +784,127 @@ class PDSignalEnergyPDFSetMultiSource(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('eff_area_datafile')))
         
+        stored_sm_data = dict()
+        for i, source in enumerate(shg_mgr.source_list):
+            src_dec = source.dec
+            true_dec_idx = sm.get_true_dec_idx(src_dec)
+# Check if we have already computed this dec bin data of the Smearing Matrix
+            if str(true_dec_idx) not in stored_sm_data.keys():
+                # We generate the data for this bin and save it
+                # Only look at true neutrino energies for which a recostructed
+                # muon energy distribution exists in the smearing matrix.
+                sm_pdf = sm.pdf[:, true_dec_idx]
+                (min_log_true_e,
+                max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
+                    true_dec_idx)
+                log_true_e_mask = np.logical_and(
+                    sm.log10_true_enu_binedges >= min_log_true_e,
+                    sm.log10_true_enu_binedges <= max_log_true_e)
+                true_enu_binedges = np.power(
+                    10, sm.log10_true_enu_binedges[log_true_e_mask])
+                true_enu_binedges_lower = true_enu_binedges[:-1]
+                true_enu_binedges_upper = true_enu_binedges[1:]
+                valid_true_e_idxs = [
+                    sm.get_log10_true_e_idx(0.5 * (he + le))
+                    for (he, le) in zip(
+                        sm.log10_true_enu_binedges[log_true_e_mask][1:],
+                        sm.log10_true_enu_binedges[log_true_e_mask][:-1])
+                ]
+
+                # Create the energy PDF f_e = P(log10_E_reco|dec) =
+                # \int dPsi dang_err P(E_reco,Psi,ang_err). Each element is
+                # for one E_nu bin
+                f_e_list = [np.sum(
+                    sm_pdf[true_e_idx] *
+                    psi_edges_bw[true_e_idx, true_dec_idx, :, :, np.newaxis] *
+                    ang_err_bw[true_e_idx, true_dec_idx, :, :, :],
+                    axis=(-1, -2)) for true_e_idx in valid_true_e_idxs]
+                # Each element of the list is the values for one E_nu bin
+                log10_reco_e_binedges_list = [sm.log10_reco_e_binedges[
+                        true_e_idx, true_dec_idx] for true_e_idx in valid_true_e_idxs]
+                
+                # Delete unused variables
+                del sm_pdf, min_log_true_e, max_log_true_e, log_true_e_mask
+
+                # Save it for future uses
+                stored_sm_data[str(true_dec_idx)] = dict()
+                sm_dec_slice = stored_sm_data[str(true_dec_idx)]
+                sm_dec_slice['true_enu_binedges'] = true_enu_binedges
+                sm_dec_slice['true_enu_binedges_lower'] = true_enu_binedges_lower
+                sm_dec_slice['true_enu_binedges_upper'] = true_enu_binedges_upper
+                sm_dec_slice['valid_true_e_idxs'] = valid_true_e_idxs
+                sm_dec_slice['f_e_list'] = f_e_list
+                sm_dec_slice['log10_reco_e_binedges_list'] = log10_reco_e_binedges_list
+                # Calculate the neutrino enegry bin widths in GeV.
+                d_enu = np.diff(true_enu_binedges)
+                self._logger.debug(
+                    'dE_nu (bin {})= {}'.format(true_dec_idx, d_enu)
+                )
+
+
+            if len(stored_sm_data) == sm.n_true_dec_bins:
+                print(len(stored_sm_data))
+                print(sm.n_true_dec_bins)
+                print(f'The loop broke after {i} sources')
+                break
 
         # First approach to multiple sources:
         # Now the Energy PDF is not just one PDSignalEnergyPDF, but several concatenated,
         # each one with with a spline for its source.
         # The lenght of the pdf should be the same
-        def create_energy_pdf_new(sm,aeff,fluxmodel, gridparams):
+        def create_energy_pdf_new(stored_sm_data,aeff,fluxmodel, gridparams):
             spl_list = []
-            stored_sm_data = dict()
-
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
             my_fluxmodel = fluxmodel.copy(newparams=gridparams)
 
-            xvals_binedges = ds.get_binning_definition('log_energy').binedges
-            xvals = get_bincenters_from_binedges(xvals_binedges)
+            # The flux probability integral needs to be done at most
+            # sm.n_true_dec_bins.
 
+            for dec_bin in stored_sm_data:
+                # Calculate the flux probability p(E_nu|gamma).
+                flux_prob = (
+                    my_fluxmodel.energy_profile.get_integral(
+                        stored_sm_data[dec_bin]['true_enu_binedges_lower'],
+                        stored_sm_data[dec_bin]['true_enu_binedges_upper']
+                    ) /
+                    my_fluxmodel.energy_profile.get_integral(
+                        stored_sm_data[dec_bin]['true_enu_binedges'][0],
+                        stored_sm_data[dec_bin]['true_enu_binedges'][-1]
+                    )
+                )
+                if not np.isclose(np.sum(flux_prob), 1):
+                    self._logger.warn(
+                        'The sum of the flux probabilities for the bin {}'
+                        'is not unity! It is '
+                        '{}.'.format(dec_bin,np.sum(flux_prob)))
+                    
+                self._logger.debug(
+                    'For bin {}: flux_prob = {}, sum = {}'.format(
+                        dec_bin, flux_prob, np.sum(flux_prob))
+                )
+
+                stored_sm_data[dec_bin]['flux_prob'] = flux_prob
+
+            # xvals_binedges = ds.get_binning_definition('log_energy').binedges
+            # xvals = get_bincenters_from_binedges(xvals_binedges)
             for source in shg_mgr.source_list:
                 src_dec = source.dec
                 true_dec_idx = sm.get_true_dec_idx(src_dec)
                 # aeff_dec_idx = aeff.get_true_dec_idx(src_dec)
 
+                # Load the cached data
+                sm_dec_slice = stored_sm_data[str(true_dec_idx)]
+                true_enu_binedges = sm_dec_slice['true_enu_binedges']
+                valid_true_e_idxs = sm_dec_slice['valid_true_e_idxs']
+                flux_prob = sm_dec_slice['flux_prob']
+                f_e_list = sm_dec_slice['f_e_list']
+                log10_reco_e_binedges_list = sm_dec_slice['log10_reco_e_binedges_list']
 
-                # Check if we have already computed this dec bin data of the Smearing Matrix
-                if str(true_dec_idx) not in stored_sm_data.keys():
-                    # We generate the data for this bin and save it
-                    # Only look at true neutrino energies for which a recostructed
-                    # muon energy distribution exists in the smearing matrix.
-                    sm_pdf = sm.pdf[:, true_dec_idx]
-                    (min_log_true_e,
-                    max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
-                        true_dec_idx)
-                    log_true_e_mask = np.logical_and(
-                        sm.log10_true_enu_binedges >= min_log_true_e,
-                        sm.log10_true_enu_binedges <= max_log_true_e)
-                    true_enu_binedges = np.power(
-                        10, sm.log10_true_enu_binedges[log_true_e_mask])
-                    true_enu_binedges_lower = true_enu_binedges[:-1]
-                    true_enu_binedges_upper = true_enu_binedges[1:]
-                    valid_true_e_idxs = [
-                        sm.get_log10_true_e_idx(0.5 * (he + le))
-                        for (he, le) in zip(
-                            sm.log10_true_enu_binedges[log_true_e_mask][1:],
-                            sm.log10_true_enu_binedges[log_true_e_mask][:-1])
-                    ]
-
-                    flux_prob = (
-                        my_fluxmodel.energy_profile.get_integral(
-                            true_enu_binedges_lower,
-                            true_enu_binedges_upper
-                        ) /
-                        my_fluxmodel.energy_profile.get_integral(
-                            true_enu_binedges[0],
-                            true_enu_binedges[-1]
-                        )
-                    )
-                    if not np.isclose(np.sum(flux_prob), 1):
-                        self._logger.warn(
-                            'The sum of the flux probabilities for the bin {}'
-                            'is not unity! It is '
-                            '{}.'.format(true_dec_idx,np.sum(flux_prob)))
-                        
-                    self._logger.debug(
-                        'For bin {}: flux_prob = {}, sum = {}'.format(
-                            true_dec_idx, flux_prob, np.sum(flux_prob))
-                    )
-                    # Create the energy PDF f_e = P(log10_E_reco|dec) =
-                    # \int dPsi dang_err P(E_reco,Psi,ang_err). Each element is
-                    # for one E_nu bin
-                    f_e_list = [np.sum(
-                        sm_pdf[true_e_idx] *
-                        psi_edges_bw[true_e_idx, true_dec_idx, :, :, np.newaxis] *
-                        ang_err_bw[true_e_idx, true_dec_idx, :, :, :],
-                        axis=(-1, -2)) for true_e_idx in valid_true_e_idxs]
-                    # Each element of the list is the values for one E_nu bin
-                    log10_reco_e_binedges_list = [sm.log10_reco_e_binedges[
-                            true_e_idx, true_dec_idx] for true_e_idx in valid_true_e_idxs]
-                    
-                    # Delete unused variables
-                    del sm_pdf, min_log_true_e, max_log_true_e, log_true_e_mask
-                    del true_enu_binedges_lower, true_enu_binedges_upper  
-
-                    # Save it for future uses
-                    stored_sm_data[str(true_dec_idx)] = dict()
-                    sm_dec_slice = stored_sm_data[str(true_dec_idx)]
-                    sm_dec_slice['true_enu_binedges'] = true_enu_binedges
-                    sm_dec_slice['valid_true_e_idxs'] = valid_true_e_idxs
-                    sm_dec_slice['flux_prob'] = flux_prob
-                    sm_dec_slice['f_e_list'] = f_e_list
-                    sm_dec_slice['log10_reco_e_binedges_list'] = log10_reco_e_binedges_list
-                    # Calculate the neutrino enegry bin widths in GeV.
-                    d_enu = np.diff(true_enu_binedges)
-                    self._logger.debug(
-                        'dE_nu (bin {})= {}'.format(true_dec_idx, d_enu)
-                    )
-                    self._logger.debug(
-                        f'Generate signal energy PDF for parameters {gridparams} in '
-                        f'{len(valid_true_e_idxs)} E_nu bins.')
-                    
-                else:
-                    # If already computed, we reload the cached data
-                    sm_dec_slice = stored_sm_data[str(true_dec_idx)]
-                    true_enu_binedges = sm_dec_slice['true_enu_binedges']
-                    valid_true_e_idxs = sm_dec_slice['valid_true_e_idxs']
-                    flux_prob = sm_dec_slice['flux_prob']
-                    f_e_list = sm_dec_slice['f_e_list']
-                    log10_reco_e_binedges_list = sm_dec_slice['log10_reco_e_binedges_list']
-
+                self._logger.debug(
+                    f'Generate signal energy PDF for parameters {gridparams} in '
+                    f'{len(valid_true_e_idxs)} E_nu bins.')
+                
                 # Calculate the probability to detect a neutrino of energy
                 # E_nu given a neutrino declination: p(E_nu|dec).
                 det_prob = aeff.get_detection_prob_for_decnu(
@@ -944,7 +960,7 @@ class PDSignalEnergyPDFSetMultiSource(
             return PDSignalEnergyPDFMultiSource(spl_list,cfg=self._cfg)
 
         args_list_new = [
-            ((sm,aeff, fluxmodel, gridparams), {})
+            ((stored_sm_data,aeff, fluxmodel, gridparams), {})
             for gridparams in self.gridparams_list
         ]
 
@@ -954,7 +970,7 @@ class PDSignalEnergyPDFSetMultiSource(
             ncpu=self.ncpu,
             ppbar=ppbar)
 
-        del sm, aeff
+        del stored_sm_data, sm, aeff
 
 
         # Save all the energy PDF objects in the PDFSet PDF registry with
