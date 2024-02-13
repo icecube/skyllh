@@ -278,6 +278,24 @@ class PDAeff(object):
             self.log10_enu_binedges
         )
         return spl
+    
+    def get_true_dec_idx(self, decnu):
+        """Returns the true declination index for the given true declination
+        value.
+
+        Parameters
+        ----------
+        decnu : float
+            The true neutrino declination.
+
+        Returns
+        -------
+        decnu_idx : int
+            The index of the declination bin for the given declination value.
+        """
+        decnu_idx = np.digitize(decnu, self._decnu_binedges) - 1
+
+        return decnu_idx
 
     def get_aeff_for_decnu(self, decnu):
         """Retrieves the effective area as function of log10_enu.
@@ -293,7 +311,7 @@ class PDAeff(object):
             The effective area in cm^2 for the given true neutrino declination
             as a function of log10 true neutrino energy.
         """
-        decnu_idx = np.digitize(decnu, self._decnu_binedges) - 1
+        decnu_idx = self.get_true_dec_idx(decnu)
 
         aeff = self._aeff_decnu_log10enu[decnu_idx]
 
