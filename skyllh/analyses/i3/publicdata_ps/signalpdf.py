@@ -571,14 +571,14 @@ class PDSignalEnergyPDFMultiSource(
             tl=None):
         pass
 
-    def get_pd_by_log10_reco_e(
+    def get_pd_by_log10_reco_e_one_source(
             self,
             log10_reco_e,
             source_number,
             tl=None):
         """Calculates the probability density for the given log10(E_reco/GeV)
         values using the spline representation of the PDF for the selected 
-        spline.
+        spline for one source.
 
         Parameters
         ----------
@@ -680,7 +680,7 @@ class PDSignalEnergyPDFMultiSource(
             m_source = (src_idxs == src_idx)
             log10_reco_e = np.take(tdm['log_energy'], evt_idxs[m_source])
 
-            pd_source = self.get_pd_by_log10_reco_e(
+            pd_source = self.get_pd_by_log10_reco_e_one_source(
                 log10_reco_e=log10_reco_e,
                 source_number=src_idx,
                 tl=tl)
@@ -783,7 +783,7 @@ class PDSignalEnergyPDFSetMultiSource(
         ang_err_bw = sm.ang_err_upper_edges - sm.ang_err_lower_edges
 
 
-
+        # Defined variables for cached data to be reused
         stored_sm_data = dict()
         aeff_dec_idx_computed = np.full(shg_mgr.n_sources,
                                          fill_value=-1)
@@ -868,7 +868,7 @@ class PDSignalEnergyPDFSetMultiSource(
                     'dE_nu (bin {})= {}'.format(true_dec_idx, d_enu)
                 )
 
-        print(f'# Sources with same pEnergy pdf = {n_src_sam_bin}')
+        print(f'# Sources resuing precomputed pdf: {n_src_sam_bin}')
 
         # First approach to multiple sources:
         # Now the Energy PDF is not just one PDSignalEnergyPDF, but several concatenated,
@@ -896,7 +896,7 @@ class PDSignalEnergyPDFSetMultiSource(
                 )
                 if not np.isclose(np.sum(flux_prob), 1):
                     self._logger.warn(
-                        'The sum of the flux probabilities for the bin {}'
+                        'The sum of the flux probabilities for the dec bin {}'
                         'is not unity! It is '
                         '{}.'.format(dec_bin,np.sum(flux_prob)))
                     
@@ -918,8 +918,6 @@ class PDSignalEnergyPDFSetMultiSource(
 
                 src_dec = source.dec
                 true_dec_idx = sm.get_true_dec_idx(src_dec)
-                # aeff_dec_idx = aeff.get_true_dec_idx(src_dec)
-
 
                 # Load the cached data
                 sm_dec_slice = stored_sm_data[str(true_dec_idx)]
