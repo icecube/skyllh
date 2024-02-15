@@ -772,27 +772,54 @@ class PDSignalEnergyPDFSetMultiSource(
         sm = PDSmearingMatrix(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('smearing_datafile')))
-
-        # This are independent of the dec bin.
-        psi_edges_bw = sm.psi_upper_edges - sm.psi_lower_edges
-        ang_err_bw = sm.ang_err_upper_edges - sm.ang_err_lower_edges
-
-        '''Notes for update: At this point we should retrieve the slices for
-        all sources, not only one'''
+        
        # Load the effective area.
         aeff = PDAeff(
             pathfilenames=ds.get_abs_pathfilename_list(
                 ds.get_aux_data_definition('eff_area_datafile')))
         
+        # This are independent of the dec bin.
+        psi_edges_bw = sm.psi_upper_edges - sm.psi_lower_edges
+        ang_err_bw = sm.ang_err_upper_edges - sm.ang_err_lower_edges
+
+
+
         stored_sm_data = dict()
-        for i, source in enumerate(shg_mgr.source_list):
+        aeff_dec_idx_computed = np.full(shg_mgr.n_sources,
+                                         fill_value=-1)
+        sm_dec_idx_computed = np.full(shg_mgr.n_sources,
+                                      fill_value=-1)
+        same_dec_bin_src = np.full(shg_mgr.n_sources,
+                                      fill_value=-1)
+        n_src_sam_bin = 0
+
+        for src_idx, source in enumerate(shg_mgr.source_list):
+            # Check if we have already computed this dec bin data of the Smearing Matrix
             src_dec = source.dec
             true_dec_idx = sm.get_true_dec_idx(src_dec)
-# Check if we have already computed this dec bin data of the Smearing Matrix
+            aeff_dec_idx = aeff.get_true_dec_idx(src_dec)
+
+            # Here we checked if two sources are in the same declination bins
+            # both for the smearing matrix and effective area matrix.
+            # If so, we can later skip all computations and use the computed value
+            # We store the index of a source in the same bins already computed
+            # If none, the default value is -1
+
+            if aeff_dec_idx in aeff_dec_idx_computed:
+                stored_dec_idx = np.where(aeff_dec_idx_computed == aeff_dec_idx)[0][0]
+                if sm_dec_idx_computed[stored_dec_idx] == true_dec_idx:
+                    same_dec_bin_src[src_idx] = stored_dec_idx
+                    n_src_sam_bin += 1
+            aeff_dec_idx_computed[src_idx] = aeff_dec_idx
+            sm_dec_idx_computed[src_idx] = true_dec_idx
+
             if str(true_dec_idx) not in stored_sm_data.keys():
+                # Pre compute values for different bis of true dec dependent
+                # quantities for the sm data.
                 # We generate the data for this bin and save it
                 # Only look at true neutrino energies for which a recostructed
                 # muon energy distribution exists in the smearing matrix.
+
                 sm_pdf = sm.pdf[:, true_dec_idx]
                 (min_log_true_e,
                 max_log_true_e) = sm.get_true_log_e_range_with_valid_log_e_pdfs(
@@ -841,12 +868,7 @@ class PDSignalEnergyPDFSetMultiSource(
                     'dE_nu (bin {})= {}'.format(true_dec_idx, d_enu)
                 )
 
-
-            if len(stored_sm_data) == sm.n_true_dec_bins:
-                print(len(stored_sm_data))
-                print(sm.n_true_dec_bins)
-                print(f'The loop broke after {i} sources')
-                break
+        print(f'# Sources with same pEnergy pdf = {n_src_sam_bin}')
 
         # First approach to multiple sources:
         # Now the Energy PDF is not just one PDSignalEnergyPDF, but several concatenated,
@@ -860,7 +882,6 @@ class PDSignalEnergyPDFSetMultiSource(
 
             # The flux probability integral needs to be done at most
             # sm.n_true_dec_bins.
-
             for dec_bin in stored_sm_data:
                 # Calculate the flux probability p(E_nu|gamma).
                 flux_prob = (
@@ -888,10 +909,17 @@ class PDSignalEnergyPDFSetMultiSource(
 
             # xvals_binedges = ds.get_binning_definition('log_energy').binedges
             # xvals = get_bincenters_from_binedges(xvals_binedges)
-            for source in shg_mgr.source_list:
+            for src_idx, source in enumerate(shg_mgr.source_list):
+                # Check if the value was already pre computed
+                # -1 value means no coincidence
+                if same_dec_bin_src[src_idx]!= -1:
+                    spl_list.append(spl_list[same_dec_bin_src[src_idx]])
+                    continue
+
                 src_dec = source.dec
                 true_dec_idx = sm.get_true_dec_idx(src_dec)
                 # aeff_dec_idx = aeff.get_true_dec_idx(src_dec)
+
 
                 # Load the cached data
                 sm_dec_slice = stored_sm_data[str(true_dec_idx)]
@@ -914,7 +942,6 @@ class PDSignalEnergyPDFSetMultiSource(
                     enu_range_min=true_enu_binedges[0],
                     enu_range_max=true_enu_binedges[-1]
                 )
-
                 self._logger.debug('Source {}, det_prob = {}, sum = {}'.format(source,
                     det_prob, np.sum(det_prob)))
 
@@ -940,7 +967,7 @@ class PDSignalEnergyPDFSetMultiSource(
                         """
                         # New version, it uses pre stored data for efficiency
                         p = f_e_list[idx] * true_e_prob[idx]
-
+                       
                         spline = FctSpline1D(p, log10_reco_e_binedges_list[idx])
 
                         return spline(xvals)
@@ -954,8 +981,7 @@ class PDSignalEnergyPDFSetMultiSource(
                         ],
                         axis=0)
                     spline = FctSpline1D(sum_pdf, xvals_binedges, norm=True)
-                    return spline 
-
+                    return spline
                 spl_list.append(create_energy_pdf(flux_prob))
             return PDSignalEnergyPDFMultiSource(spl_list,cfg=self._cfg)
 
