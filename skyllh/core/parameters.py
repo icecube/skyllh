@@ -1545,9 +1545,19 @@ class ParameterGridSet(
             The ParameterGrid instances this instance of ParameterGridSet should
             get initialized with.
         """
+        # Infer `obj_type` from the `param_grids` argument.
+        if (param_grids is None) or issequenceof(param_grids, type(None)):
+            # Fall back to the default `ParameterGrid` type.
+            obj_type = ParameterGrid
+        else:
+            if issequence(param_grids):
+                obj_type = type(param_grids[0])
+            else:
+                obj_type = type(param_grids)
+
         super().__init__(
             objs=param_grids,
-            obj_type=type(param_grids[0]),
+            obj_type=obj_type,
             **kwargs)
 
     @property
