@@ -30,7 +30,7 @@ copyright = u'%s, The IceCube Collaboration, T. Kontrimas, M. Wolf' % year
 author = u'The IceCube Collaboration'
 
 # The short X.Y version
-version = u'23.2.1'
+version = u'24.1.0'
 # The full version, including alpha/beta/rc tags
 release = u''
 
