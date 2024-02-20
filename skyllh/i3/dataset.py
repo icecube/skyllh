@@ -355,15 +355,22 @@ class I3Dataset(
         # Set the livetime of the dataset from the GRL data when no livetime
         # was specified previously.
         if data.livetime is None and data.grl is not None:
-            if 'start' not in data.grl:
-                raise KeyError(
-                    f'The GRL data for dataset "{self.name}" has no data '
-                    'field named "start"!')
-            if 'stop' not in data.grl:
-                raise KeyError(
-                    f'The GRL data for dataset "{self.name}" has no data '
-                    'field named "stop"!')
-            data.livetime = np.sum(data.grl['stop'] - data.grl['start'])
+            if 'livetime' in data.grl:
+                # The `livetime` column accounts for livetime gaps within run,
+                # therefore it is more precise than `stop` - `start`.
+                data.livetime = np.sum(data.grl['livetime'])
+            else:
+                # If `livetime` field does not exist fall back to
+                # `stop` - `start` implementation.
+                if 'start' not in data.grl:
+                    raise KeyError(
+                        f'The GRL data for dataset "{self.name}" has no data '
+                        'field named "start"!')
+                if 'stop' not in data.grl:
+                    raise KeyError(
+                        f'The GRL data for dataset "{self.name}" has no data '
+                        'field named "stop"!')
+                data.livetime = np.sum(data.grl['stop'] - data.grl['start'])
 
         # Execute all the data preparation functions for this dataset.
         super().prepare_data(
