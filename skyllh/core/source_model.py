@@ -318,7 +318,8 @@ class PointLikeSource(
             f'{classname(self)}: "{self.name}": '
             '{ '
             f'ra={np.rad2deg(self.ra):.3f} deg, '
-            f'dec={np.rad2deg(self.dec):.3f} deg'
+            f'dec={np.rad2deg(self.dec):.3f} deg, '
+            f'weight={self._weight:.5f}'
             f'{c}'
             ' }'
         )
