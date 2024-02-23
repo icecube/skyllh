@@ -868,7 +868,7 @@ class PDSignalEnergyPDFSetMultiSource(
                     'dE_nu (bin {})= {}'.format(true_dec_idx, d_enu)
                 )
 
-        print(f'# Sources resuing precomputed pdf: {n_src_sam_bin}')
+        # print(f'# Sources resuing precomputed pdf: {n_src_sam_bin}') Just for test purposes 
 
         # First approach to multiple sources:
         # Now the Energy PDF is not just one PDSignalEnergyPDF, but several concatenated,
