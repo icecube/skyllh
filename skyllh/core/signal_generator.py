@@ -699,7 +699,8 @@ class MCMultiDatasetSignalGenerator(
             )
             m = (events_meta['ds_idx'] == ds_idx) &\
                 (events_meta['shg_idx'] == shg_idx)
-            events = mc[events_meta['ev_idx'][m]]
+            events_meta = events_meta[m]
+            events = mc[events_meta['ev_idx']]
             if len(events) > 0:
                 events = shg.sig_gen_method.\
                     signal_event_post_sampling_processing(
