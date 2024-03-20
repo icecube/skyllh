@@ -1198,6 +1198,10 @@ class DataFieldRecordArray(
         """
         if isinstance(name, np.ndarray):
             return self.get_selection(name)
+        
+        for i in self._data_fields:
+            print(i)
+        print('=======================================================================')
 
         if name not in self._data_fields:
             raise KeyError(
