@@ -1201,7 +1201,7 @@ class DataFieldRecordArray(
         
         for i in self._data_fields:
             print(i)
-        print('=======================================================================')
+        print('===================================================================')
 
         if name not in self._data_fields:
             raise KeyError(
