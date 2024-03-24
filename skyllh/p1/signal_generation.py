@@ -261,7 +261,8 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
                     'The source instance must be an instance of '
                     'PointLikeSource!')
             src_dec[k] = source.dec
-
+        print('************************************ p1/signal_generation.py L264 *******************************')
+        print(data_mc)
         data_mc_sin_true_dec = data_mc['sin_true_dec']
         data_mc_true_energy = data_mc['true_energy']
 
