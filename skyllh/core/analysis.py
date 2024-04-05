@@ -1127,7 +1127,8 @@ class Analysis(
         minimizer_rss : instance of RandomStateService | None
             The instance of RandomStateService to use for generating random
             numbers for the minimizer, e.g. new initial fit parameter values.
-            If set to ``None``, ``rss`` will be used for the minimizer.
+            If set to ``None``, a rss with the same seed as ``rss`` will be
+            initialized.
         minimizer_status_dict : dict | None
             If a dictionary is provided, it will be updated with the minimizer
             status dictionary.
@@ -1147,7 +1148,7 @@ class Analysis(
             method for further information.
         """
         if minimizer_rss is None:
-            minimizer_rss = rss
+            minimizer_rss = RandomStateService(seed=rss.seed)
 
         with TaskTimer(tl, 'Generating pseudo data.'):
             (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
