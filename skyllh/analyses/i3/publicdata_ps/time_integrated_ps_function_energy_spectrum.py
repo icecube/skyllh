@@ -228,6 +228,8 @@ def create_analysis(
     tl=None,
     ppbar=None,
     logger_name=None,
+    signal_generate_shape="epeak",
+    energy_pdf_shape="epeak",
 ):
     """Creates the Analysis instance for this particular analysis.
 
@@ -240,6 +242,10 @@ def create_analysis(
         analysis.
     source : PointLikeSource instance
         The PointLikeSource instance defining the point source position.
+    source_energy : numpy array
+        Energies in GeV for which source_energy_spectrum is given
+    source_energy_spectrum : numpy array
+        The energy spectrum in GeV / cm^2 / s 
     refplflux_Phi0 : float
         The flux normalization to use for the reference power law flux model.
     ns_seed : float
@@ -294,6 +300,12 @@ def create_analysis(
     logger_name : str | None
         The name of the logger to be used. If set to ``None``, ``__name__`` will
         be used.
+    signal_generate_shape : str
+        The shape of the generated signal energy spectrum. Can be "epeak" or 
+        "power_law". "epeak" will follow the array that is given as source_energy_spectrum.
+    energy_pdf_shap : str
+        The shape of the signal energy pdf. Can be "epeak" or 
+        "power_law". "epeak" will follow the array that is given as source_energy_spectrum.
 
     Returns
     -------

@@ -901,7 +901,7 @@ class Minimizer(
             **kwargs,
     ):
         """Creates a new Minimizer instance.
-
+                        
         Parameters
         ----------
         minimizer_impl : instance of MinimizerImpl
