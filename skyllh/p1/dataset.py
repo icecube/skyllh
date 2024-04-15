@@ -394,8 +394,8 @@ class P1Dataset(
                         'sin_dec', np.sin(data.exp['dec']))
 
         if data.mc is not None:
-            print("*************************** p1/dataset.py L397 **********************************")
-            print(data.mc)
+            #print("*************************** p1/dataset.py L397 **********************************")
+            #print(data.mc)
             # Append sin(dec) and sin(true_dec) to the MC data.
             task = 'Appending IceCube-specific data fields to MC data.'
             with TaskTimer(tl, task):
@@ -405,8 +405,8 @@ class P1Dataset(
                 if 'sin_true_dec' not in data.mc.field_name_list:
                     data.mc.append_field(
                         'sin_true_dec', np.sin(data.mc['true_dec']))
-            print("********************************** After ****************************************")
-            print(data.mc)
+            #print("********************************** After ****************************************")
+            #print(data.mc)
         # Select only the experimental data which fits the good-run-list for
         # this dataset.
         if (data.grl is not None) and (data.exp is not None):

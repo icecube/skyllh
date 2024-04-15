@@ -156,7 +156,7 @@ class SiderealTimeService(
             # Transform MJD times into sidereal times.
             t = Time(mjd_times, format='mjd', scale='utc')
             st_times = np.sort(t.sidereal_time(
-                kind='apparent', longitude=longitude).value)
+                kind='mean', longitude=longitude).value)
 
             (hist_, _) = np.histogram(
                 st_times,
