@@ -3,6 +3,8 @@
 [![Tests](https://github.com/icecube/skyllh/actions/workflows/pythonpackage.yml/badge.svg)](#)
 [![Docs](https://github.com/icecube/skyllh/actions/workflows/documentation.yml/badge.svg)](https://icecube.github.io/skyllh/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PyPI](https://img.shields.io/pypi/v/skyllh)](https://pypi.org/project/skyllh/)
 
 [[Full documentation]](https://icecube.github.io/skyllh/).
 
@@ -51,6 +53,22 @@ import sys
 sys.path.insert(0, '/path/to/skyllh')
 sys.path.insert(0, '/path/to/i3skyllh')  # optional
 ```
+
+# Development
+
+We are using [`black`](https://black.readthedocs.io/en/stable/) for code linting and have configured pre-commit hooks.
+
+To pass automatic tests on GitHub we recommend to install `pre-commit` package:
+```bash
+pip install pre-commit
+```
+and run:
+```bash
+pre-commit install
+```
+inside the cloned repository once. The pre-commit hook will then automatically run before any commit and will show `Passed`/`Failed` tests. In case of `Failed` test you can review automatic changes using `git diff`, add updated files using `git add -u`, and commit again.
+
+It will also show existing `flake8` errors, but treat them as warnings. Feel free to fix them!
 
 # Publications
 
