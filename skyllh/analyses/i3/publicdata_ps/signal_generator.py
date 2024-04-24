@@ -505,7 +505,7 @@ class PDDatasetSignalGenerator(
             dataset index for which the signal events have been generated.
         """
         if poisson:
-            n_events = rss.random.poisson(
+            mean = rss.random.poisson(
                 float_cast(
                     mean,
                     'The `mean` argument must be castable to type of float!'))
