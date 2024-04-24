@@ -509,7 +509,7 @@ class PDDatasetSignalGenerator(
                 float_cast(
                     mean,
                     'The `mean` argument must be castable to type of float!'))
-            
+
         n_events = int_cast(
             mean,
             'The `mean` argument must be castable to type of int!')
