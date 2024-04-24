@@ -9,4 +9,5 @@ updates:
       # Check for updates to GitHub Actions every week
       interval: "weekly"
     ignore:
-      update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
