@@ -505,13 +505,11 @@ class PDDatasetSignalGenerator(
             dataset index for which the signal events have been generated.
         """
         if poisson:
-            # Here n_events should be mean, so line 515 ensures that if it's poissonian it is good
-            n_events = rss.random.poisson(
+            mean = rss.random.poisson(
                 float_cast(
                     mean,
                     'The `mean` argument must be castable to type of float!'))
 
-    # If it is poissonian, should we round or truncate? Which is better?
         n_events = int_cast(
             mean,
             'The `mean` argument must be castable to type of int!')
@@ -526,18 +524,37 @@ class PDDatasetSignalGenerator(
         a_k = np.copy(a_jk[self.ds_idx])
         a_k /= np.sum(a_k)
 
+        # Calculate the number of events that need to be generated for each
+        # individual dataset. Due to rounding errors, it could happen that the
+        # sum of the events is less or greater than ``mean``.
         n_signal = 0
         signal_events_dict = {}
+        n_events_arr = np.round(n_events * a_k , 0).astype(np.int_)
+       
+        # Correct the n_events_arr array based on the dataset weights if
+        # necessary.
+        sum_n_events_arr = np.sum(n_events_arr)
+        if sum_n_events_arr != n_events:
+            (src_idxs, counts) = np.unique(
+                rss.random.choice(
+                    np.arange(len(n_events_arr)),
+                    size=np.abs(n_events - sum_n_events_arr),
+                    p=a_k,
+                ),
+                return_counts=True
+            )
+            if sum_n_events_arr < n_events:
+                n_events_arr[src_idxs] += counts
+            elif sum_n_events_arr > n_events:
+                n_events_arr[src_idxs] -= counts
 
         # Loop over the sources and generate signal events according to the
         # weights of the sources.
         for src_idx in range(self.shg_mgr.n_sources):
-            n_events_src = int(np.round(n_events * a_k[src_idx], 0))
-
             src_events = self.generate_signal_events_for_source(
                 rss=rss,
                 src_idx=src_idx,
-                n_events=n_events_src,
+                n_events=n_events_arr[src_idx],
             )
             if src_events is None:
                 continue
