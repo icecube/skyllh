@@ -505,7 +505,7 @@ class PDDatasetSignalGenerator(
             dataset index for which the signal events have been generated.
         """
         if poisson:
-            n_events = rss.random.poisson(
+            mean = rss.random.poisson(
                 float_cast(
                     mean,
                     'The `mean` argument must be castable to type of float!'))
@@ -631,7 +631,7 @@ class TimeDependentPDDatasetSignalGenerator(
             raise TypeError(
                 'The livetime property must be an instance of Livetime! '
                 f'Its current type is {classname(lt)}!')
-        self._lifetime = lt
+        self._livetime = lt
 
     def generate_signal_events(
             self,

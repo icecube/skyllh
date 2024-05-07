@@ -25,6 +25,61 @@ v23.2.1
   event generation from MC, resulting in a great performance increase when
   generating many trials with many events.
 
+- The core.pdf.MultiDimGridPDF class has been adapted to the new Python
+  interface of photospline that supports numpy arrays. The determination of the
+  spline table's basis function indices has been separated from the spline table
+  evaluation which provides an accelerated PDF evaluation.
+
+- The core.dataset.Dataset.get_aux_data method got the new optional argument
+  "default" to specify a default return value if the auxiliary data is not
+  defined for that dataset.
+
+- The core.signal_generator.MCMultiDatasetSignalGenerator get the new optional
+  constructor argument "valid_event_field_ranges_dict_list=None" to specify
+  valid event field ranges, e.g. for the declination. If generated signal events
+  do not match these valid event field ranges, those signal events will be
+  redrawn.
+
+- The i3.signal_generation.PointLikeSourceI3SignalGenerationMethod class uses
+  the new rotation function core.utils.coords.rotate_signal_events_on_sphere
+  to preserve the position angle and great circle distance between the event's
+  true and reco directions.
+
+- Corrected the calculation of the number of signal events to be generated for
+  each individual dataset in the
+  core.signal_generator.MultiDatasetSignalGenerator class.
+
+- Operations for "unstable" events in the
+  core.llhratio.ZeroSigH0SingleDatasetTCLLHRatio.calculate_log_lambda_and_grads
+  method are only performed if there are actually such events.
+
+- Added argument "iprint" to the constructor of the
+  core.minimizer.LBFGSMinimizerImpl class to be able to print out more minimizer
+  internal statistics.
+
+- Added keyword argument "minimizer_rss" to method
+  core.analysis.Analysis.do_trial and subsequent methods, like
+  core.analysis.Analysis.do_trial_with_given_pseudo_data.
+
+  It is now possible to specify a separate RandomStateService (RSS) for the
+  minimizer. This will make sure that trial pseudo data generation is not
+  influenced by the minimizer when generating new initial fit parameter values
+  after the minimizer failed.
+
+- Changed keyword argument name "rss" of method core.analysis.Analysis.unblind
+  to "minimizer_rss" to be consistent with the new "minimizer_rss" keyword
+  argument of core.analysis.Analysis.do_trial.
+
+- Added background generation method class
+  core.background_generation.CompositeMCDataSamplingBkgGenMethod.
+
+  This new background generation method samples background events from a
+  monte-carlo sample and has the ability to calculate different background
+  component rates for each trial after the monte-carlo events were already
+  scrambled. This is useful in cases where a background component is
+  non-isotropic, i.e. depends on the position in the sky. An example would be a
+  background component from the galactic plane.
+
 v23.2.0
 =======
 - Complete overhaul of SkyLLH for more generic handling of parameters
@@ -86,7 +141,7 @@ v23.2.0
 
     - core.event_selection.SpatialBoxEventSelectionMethod:
 
-        Improved calculation of right-ascention difference. Thus, speed-up in
+        Improved calculation of right-ascension difference. Thus, speed-up in
         trial generation when using this event selection method.
 
 - core.scrambling.DataScrambler.scramble_data method also takes Dataset instance
@@ -100,7 +155,7 @@ v23.1.1
 =======
 - bugfix of core.pdf.MultiDimGridPDFSet
 - bugfix of core.pdf.MappedMultiDimGridPDFSet
-- removal of depricated proptery core.pdf.PDFSet.pdf_axes
+- removal of deprecated property core.pdf.PDFSet.pdf_axes
 
 v23.1.0
 =======

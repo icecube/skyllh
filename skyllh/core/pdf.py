@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import abc
+
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
+
+from scipy.interpolate import (
+    RegularGridInterpolator,
+)
 
 from skyllh.core import (
     tool,
@@ -95,7 +99,7 @@ class PDFAxis(object):
     def vmin(self, v):
         self._vmin = float_cast(
             v,
-            'The value for the vmin property must be castable to type float!')
+            'The value for the vmin property must be cast-able to type float!')
 
     @property
     def vmax(self):
@@ -107,7 +111,7 @@ class PDFAxis(object):
     def vmax(self, v):
         self._vmax = float_cast(
             v,
-            'The value for the vmax property must be castable to type float!')
+            'The value for the vmax property must be cast-able to type float!')
 
     @property
     def range(self):
@@ -127,8 +131,8 @@ class PDFAxis(object):
         other PDFAxis object.
         """
         if (self.name == other.name) and\
-           (self.vmin == other.vmin) and\
-           (self.vmax == other.vmax):
+           np.isclose(self.vmin, other.vmin) and\
+           np.isclose(self.vmax, other.vmax):
             return True
         return False
 
@@ -475,7 +479,7 @@ class PDF(
             <name:gpidx> holding the global parameter index plus one for each
             source value. For values mapping to non-fit parameters, the index
             should be negative.
-            This can be ``Ǹone`` for PDFs that do not depend on any parameters.
+            This can be ``None`` for PDFs that do not depend on any parameters.
         tl : instance of TimeLord | None
             The optional instance of TimeLord that should be used to measure
             timing information.
@@ -500,7 +504,8 @@ class PDF(
 
 
 class PDFProduct(
-        PDF):
+        PDF,
+):
     """The PDFProduct class represents the product of two PDF instances, i.e.
     ``pdf1 * pdf2``. It is derived from the PDF class and hence is a PDF itself.
     """
@@ -598,6 +603,26 @@ class PDFProduct(
             tl=tl,
             **kwargs)
 
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs,
+    ):
+        """Calls the ``initialize_for_new_trial`` method of the two PDF
+        instances of this PDF product.
+
+        Parameters
+        ----------
+        tdm : instance of TrialDataManager
+            The instance of TrialDataManager holding the new trial event data.
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
+            information.
+        """
+        self._pdf1.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        self._pdf2.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+
     def get_pd(
             self,
             tdm,
@@ -614,18 +639,18 @@ class PDFProduct(
         tdm : instance of TrialDataManager
             The TrialDataManager instance holding the trial event data for which
             the PDF values should get calculated.
-        params_recarray : numpy record ndarray | None
-            The (N_models,)-shaped numpy record ndarray holding the parameter
-            values of the models. The the documentation of the
+        params_recarray : instance of numpy.ndarray | None
+            The (N_models,)-shaped structured numpy ndarray holding the
+            parameter values of the models. The the documentation of the
             :meth:`~skyllh.core.pdf.PDF.get_pd` method of the
             :class:`~skyllh.core.pdf.PDF` class for further information.
-        tl : TimeLord instance | None
-            The optional TimeLord instance to use for measuring timing
+        tl : instance of TimeLord | None
+            The optional instance of TimeLord to use for measuring timing
             information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd : instance of numpy.ndarray
             The (N_events,)-shaped numpy ndarray holding the probability density
             for each event. In case of a signal PDF product the shape will be
             (N_sources,N_events).
@@ -665,8 +690,8 @@ class PDFProduct(
             #        calculated through the product rule of differentiation.
             #     2. Only PDF1 depends on this fit parameter.
             #     3. Only PDF2 depends on this fit parameter.
-            #     4. Both PDFs are independ of this fit parameter, the gradient
-            #        is 0.
+            #     4. Both PDFs are independent of this fit parameter, the
+            #        gradient is 0.
             pdf1_has_fitparam = gpid in grads1
             pdf2_has_fitparam = gpid in grads2
             if pdf1_has_fitparam and pdf2_has_fitparam:
@@ -722,7 +747,7 @@ class SpatialPDF(
         PDF,
         metaclass=abc.ABCMeta):
     """This is the abstract base class for a spatial PDF model. A spatial PDF
-    has two axes, right-ascention (ra) and declination (dec).
+    has two axes, right-ascension (ra) and declination (dec).
     """
 
     def __init__(self, ra_range, dec_range, **kwargs):
@@ -732,7 +757,7 @@ class SpatialPDF(
         Parameters
         ----------
         ra_range : 2-element tuple
-            The tuple specifying the right-ascention range this PDF covers.
+            The tuple specifying the right-ascension range this PDF covers.
         dec_range : 2-element tuple
             The tuple specifying the declination range this PDF covers.
         """
@@ -756,7 +781,7 @@ class SpatialPDF(
             **kwargs):
         """Checks if this spatial PDF is valid for all the given experimental
         data.
-        It checks if all the data is within the right-ascention and declination
+        It checks if all the data is within the right-ascension and declination
         range.
 
         Parameters
@@ -766,7 +791,7 @@ class SpatialPDF(
             The following data fields must exist:
 
             - 'ra' : float
-                The right-ascention of the data event.
+                The right-ascension of the data event.
             - 'dec' : float
                 The declination of the data event.
         tl : instance of TimeLord | None
@@ -775,7 +800,7 @@ class SpatialPDF(
         Raises
         ------
         ValueError
-            If some of the data is outside the right-ascention or declination
+            If some of the data is outside the right-ascension or declination
             range.
         """
         ra_axis = self.axes['ra']
@@ -784,10 +809,10 @@ class SpatialPDF(
         ra = tdm.get_data('ra')
         dec = tdm.get_data('dec')
 
-        # Check if all the data is within the right-ascention range.
+        # Check if all the data is within the right-ascension range.
         if np.any((ra < ra_axis.vmin) | (ra > ra_axis.vmax)):
             raise ValueError(
-                'Some data is outside the right-ascention range '
+                'Some data is outside the right-ascension range '
                 f'({ra_axis.vmin:.3f}, {ra_axis.vmax:.3f})!')
 
         # Check if all the data is within the declination range.
@@ -958,7 +983,8 @@ class TimePDF(
 
 
 class MultiDimGridPDF(
-        PDF):
+        PDF,
+):
     """This class provides a multi-dimensional PDF. The PDF is created from
     pre-calculated PDF data on a grid. The grid data is either interpolated
     using a :class:`scipy.interpolate.RegularGridInterpolator` instance, or is
@@ -973,7 +999,8 @@ class MultiDimGridPDF(
             pdf_grid_data=None,
             norm_factor_func=None,
             cache_pd_values=False,
-            **kwargs):
+            **kwargs,
+    ):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid or as PDF values stored in a photospline table.
 
@@ -1059,6 +1086,8 @@ class MultiDimGridPDF(
                     'The path_to_pdf_splinetable argument is specified, but '
                     'the "photospline" package is not available!')
 
+            tool.assert_tool_version('photospline', '>=2.2.0')
+
         if pdf_grid_data is not None:
             if not isinstance(pdf_grid_data, np.ndarray):
                 raise TypeError(
@@ -1070,7 +1099,7 @@ class MultiDimGridPDF(
         self.cache_pd_values = cache_pd_values
 
         # Define the PDF axes.
-        for axis_binning in self._axis_binnning_list:
+        for axis_binning in self._axis_binning_list:
             self.add_axis(PDFAxis(
                 name=axis_binning.name,
                 vmin=axis_binning.lower_edge,
@@ -1080,7 +1109,7 @@ class MultiDimGridPDF(
         # Create the internal PDF object.
         if path_to_pdf_splinetable is None:
             self._pdf = RegularGridInterpolator(
-                tuple([binning.binedges for binning in self._axis_binnning_list]),
+                tuple([binning.binedges for binning in self._axis_binning_list]),
                 pdf_grid_data,
                 method='linear',
                 bounds_error=False,
@@ -1088,6 +1117,10 @@ class MultiDimGridPDF(
         else:
             self._pdf = tool.get('photospline').SplineTable(
                 path_to_pdf_splinetable)
+
+        # The basis function indices (centers) is a (V,N_values)-shaped numpy
+        # ndarray holding the spline table indices for the eventdata.
+        self.basis_function_indices = None
 
         # Because this PDF does not depend on any fit parameters, the PDF values
         # can be cached as long as the trial data state ID of the trial data
@@ -1105,7 +1138,7 @@ class MultiDimGridPDF(
         The name of each BinningDefinition instance defines the event field
         name that should be used for querying the PDF.
         """
-        return self._axis_binnning_list
+        return self._axis_binning_list
 
     @axis_binning_list.setter
     def axis_binning_list(self, binnings):
@@ -1117,7 +1150,29 @@ class MultiDimGridPDF(
                 'BinningDefinition or a sequence of BinningDefinition '
                 'instances! '
                 f'Its current type is {classname(binnings)}.')
-        self._axis_binnning_list = list(binnings)
+        self._axis_binning_list = list(binnings)
+
+    @property
+    def basis_function_indices(self):
+        """The (V,N_values)-shaped numpy.ndarray of int holding the basis
+        function indices of the photospline table for the current trial
+        eventdata.
+        """
+        return self._basis_function_indices
+
+    @basis_function_indices.setter
+    def basis_function_indices(self, bfi):
+        if bfi is not None:
+            if not isinstance(bfi, np.ndarray):
+                raise TypeError(
+                    'The basis_function_indices property must be None, or an '
+                    'instance of numpy.ndarray! '
+                    f'It\'s current type is {classname(bfi)}!')
+            if bfi.ndim != 2:
+                raise ValueError(
+                    'The ndarray dimensionality of the basis_function_indices '
+                    f'property must be 2! Currently it is {bfi.ndim}!')
+        self._basis_function_indices = bfi
 
     @property
     def norm_factor_func(self):
@@ -1170,13 +1225,21 @@ class MultiDimGridPDF(
     def cache_pd_values(self, b):
         self._cache_pd_values = bool_cast(
             b,
-            'The cache_pd_values property must be castable to type bool!')
+            'The cache_pd_values property must be cast-able to type bool!')
+
+    @property
+    def pdf(self):
+        """(read-only) The instance of RegularGridInterpolator or instance of
+        photospline.SplineTable that represents the internal PDF object.
+        """
+        return self._pdf
 
     def assert_is_valid_for_trial_data(
             self,
             tdm,
             tl=None,
-            **kwargs):
+            **kwargs,
+    ):
         """Checks if the PDF is valid for all values of the given evaluation
         data. The evaluation data values must be within the ranges of the PDF
         axes.
@@ -1203,6 +1266,18 @@ class MultiDimGridPDF(
                     f'of range ({axis.vmin:g},{axis.vmax:g})! '
                     f'Data values out of range: {data[m]}')
 
+    def initialize_for_new_trial(
+            self,
+            tdm,
+            tl=None,
+            **kwargs,
+    ):
+        """This method is called whenever a new trial is initialized.
+        """
+        # We need to recalculate the the basis function indices for the
+        # photospline table.
+        self.basis_function_indices = None
+
     def _initialize_cache(
             self,
             tdm,
@@ -1215,10 +1290,7 @@ class MultiDimGridPDF(
             The instance of TrialDataManager that hold the trial data events.
         """
         self._cache_tdm_trial_data_state_id = None
-        self._cache_pd = np.full(
-            (tdm.get_n_values(),),
-            np.nan,
-            dtype=np.float64)
+        self._cache_pd = None
 
     def _store_pd_values_to_cache(
             self,
@@ -1241,6 +1313,12 @@ class MultiDimGridPDF(
             length N_values.
         """
         self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
+
+        if self._cache_pd is None:
+            self._cache_pd = np.full(
+                pd.shape,
+                np.nan,
+                dtype=np.float64)
 
         if evt_mask is None:
             self._cache_pd[:] = pd
@@ -1310,7 +1388,7 @@ class MultiDimGridPDF(
             The (N_models,)-shaped numpy structured ndarray holding the local
             parameter names and values of the models.
             By definition, this PDF does not depend on any parameters.
-        eventdata : instance of numpy ndarray
+        eventdata : instance of numpy.ndarray
             The (V,N_values)-shaped numpy ndarray holding the V data attributes
             for each of the N_values events needed for the evaluation of the
             PDF.
@@ -1348,14 +1426,43 @@ class MultiDimGridPDF(
                 else:
                     pd = self._pdf(eventdata.T[evt_mask])
         else:
+            V = eventdata.shape[0]
+
+            if self.basis_function_indices is None:
+                with TaskTimer(tl, 'Get basis function indices from photospline.'):
+                    try:
+                        self.basis_function_indices = self._pdf.search_centers(
+                            [eventdata[i] for i in range(0, V)]
+                        )
+                    except ValueError:
+                        # In case the photospline `search_centers` call fails
+                        # (when `eventdata` is outside photospline boundaries)
+                        # we can fall back to the slower photospline evaluation.
+                        logger.info(
+                            "Falling back to the slower photospline evaluation.")
+
             with TaskTimer(tl, 'Get pd from photospline fit.'):
-                V = eventdata.shape[0]
-                if evt_mask is None:
-                    pd = self._pdf.evaluate_simple(
-                        [eventdata[i] for i in range(0, V)])
+                if self.basis_function_indices is not None:
+                    if evt_mask is None:
+                        pd = self._pdf.evaluate(
+                            [eventdata[i] for i in range(0, V)],
+                            [self.basis_function_indices[i] for i in range(0, V)],
+                        )
+                    else:
+                        pd = self._pdf.evaluate(
+                            [eventdata[i][evt_mask] for i in range(0, V)],
+                            [self.basis_function_indices[i][evt_mask] for i in range(0, V)],
+                        )
                 else:
-                    pd = self._pdf.evaluate_simple(
-                        [eventdata[i][evt_mask] for i in range(0, V)])
+                    # Falling back to the slower photospline evaluation.
+                    if evt_mask is None:
+                        pd = self._pdf.evaluate_simple(
+                            [eventdata[i] for i in range(0, V)],
+                        )
+                    else:
+                        pd = self._pdf.evaluate_simple(
+                            [eventdata[i][evt_mask] for i in range(0, V)],
+                        )
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
             norm = self._norm_factor_func(
@@ -1389,6 +1496,12 @@ class MultiDimGridPDF(
             The instance of TrialDataManager holding the trial event data.
         axes : instance of PDFAxes
             The instance of PDFAxes defining the data field names for the PDF.
+
+        Returns
+        -------
+        eventdata : instance of numpy.ndarray
+            The (V,N_values)-shaped numpy ndarray holding the event data for
+            evaluating the signal PDF.
         """
         eventdata_fields = []
 
@@ -1521,7 +1634,7 @@ class PDFSet(
         param_grid_set : instance of ParameterGrid |
                          instance of ParameterGridSet
             The instance of ParameterGridSet with the parameter grids defining
-            the descrete parameter values for which the PDFs of this PDF set
+            the discrete parameter values for which the PDFs of this PDF set
             are made for.
         """
         # Call super to support multiple class inheritance.

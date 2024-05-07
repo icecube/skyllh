@@ -174,14 +174,12 @@ class PointLikeSourceI3DetSigYield(
         param_names : sequence of str
             The sequence of parameter names this detector signal yield depends
             on. These are either fixed or floating parameters.
-        implmethod : instance of DetSigYieldImplMethod
-            The implementation method to use for constructing and receiving
-            the detector signal yield. The appropriate method depends on
-            the used flux model.
         dataset : Dataset instance
             The Dataset instance holding the monte-carlo event data.
         fluxmodel : FluxModel
             The flux model instance. Must be an instance of FluxModel.
+        livetime : float | Livetime instance
+            The livetime in days or an instance of Livetime.
         sin_dec_binning : BinningDefinition instance
             The BinningDefinition instance defining the sin(dec) binning.
         """

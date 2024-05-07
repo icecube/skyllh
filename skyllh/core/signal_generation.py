@@ -52,7 +52,7 @@ class SignalGenerationMethod(
                 raise ValueError(
                     'The energy_range property must be a sequence of 2 '
                     'elements!')
-            r = tuple(
+            r = (
                 float_cast(
                     r[0],
                     'The first element of the energy_range '

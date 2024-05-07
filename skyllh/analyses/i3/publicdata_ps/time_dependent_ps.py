@@ -24,7 +24,6 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     clip_grl_start_times,
     create_energy_cut_spline,
-    get_tdm_field_func_psi,
 )
 
 from skyllh.core.analysis import (
@@ -113,6 +112,9 @@ from skyllh.core.trialdata import (
 from skyllh.core.utils.analysis import (
     create_trial_data_file,
     pointlikesource_to_data_field_array,
+)
+from skyllh.core.utils.tdm import (
+    get_tdm_field_func_psi,
 )
 
 from skyllh.datasets.i3 import (
@@ -403,7 +405,7 @@ def run_gamma_scan_for_single_flare(
         mu : float
             The determined mean value of the gauss curve.
         sigma : float
-            The determoned standard deviation of the gauss curve.
+            The determined standard deviation of the gauss curve.
         ns_em : float
             The scaling factor of the flare.
     """
@@ -473,7 +475,7 @@ def unblind_single_flare(
     rss = RandomStateService(seed=1)
 
     ana.unblind(
-        rss=rss)
+        minimizer_rss=rss)
 
     em_results = run_gamma_scan_for_single_flare(
         ana=ana,
@@ -506,7 +508,7 @@ def do_trial_with_em(
     Parameters
     ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
-        The anaylsis instance that should be used to perform the trial.
+        The analysis instance that should be used to perform the trial.
     rss : instance of RandomStateService
         The instance of RandomStateService that should be used to generate
         random numbers.
@@ -559,7 +561,7 @@ def do_trial_with_em(
         ns_em : numpy.float64
             The scaling factor of the flare.
         gamma_fit : numpy.float64
-            The fitted spectial index of the trial.
+            The fitted spectral index of the trial.
         gamma_em : numpy.float64
             The spectral index of the best EM trial.
         mu_fit : numpy.float64
@@ -648,7 +650,7 @@ def do_trials_with_em(
     Parameters
     ----------
     ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
-        The anaylsis instance that should be used to perform the trials.
+        The analysis instance that should be used to perform the trials.
     n : int
         The number of trials to generate.
     ncpu : int | None
@@ -706,7 +708,7 @@ def do_trials_with_em(
         ns_em : numpy.float64
             The scaling factor of the flare.
         gamma_fit : numpy.float64
-            The fitted spectial index of the trial.
+            The fitted spectral index of the trial.
         gamma_em : numpy.float64
             The spectral index of the best EM trial.
         mu_fit : numpy.float64
@@ -1172,7 +1174,7 @@ if __name__ == '__main__':
         dest='ra',
         default=77.35,
         type=float,
-        help='The source right-ascention in degrees.'
+        help='The source right-ascension in degrees.'
     )
     parser.add_argument(
         '--gamma-seed',
@@ -1227,7 +1229,8 @@ if __name__ == '__main__':
             tl=tl)
 
     with tl.task_timer('Unblinding data.'):
-        (TS, param_dict, status) = ana.unblind(rss)
+        (TS, param_dict, status) = ana.unblind(
+            minimizer_rss=rss)
 
     print(f'TS = {TS:g}')
     print(f'ns_fit = {param_dict["ns"]:g}')
