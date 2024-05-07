@@ -977,12 +977,6 @@ class PhotosplineEnergyFluxProfile(
         self._crit_log10_energy_upper = v
 
 
-# take the array
-# evaluate it
-# shift and scale it for the pdfs. 
-
-
-
 class FunctionEnergyFluxProfile(
         EnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument.
@@ -1043,7 +1037,8 @@ class FunctionEnergyFluxProfile(
 class EpeakFunctionEnergyProfile(
     FunctionEnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument where 
-    Epeak and the scaling will be optimized.  
+    Epeak (assuming a peaked spectrum, this is the peak's energy) and the scaling 
+    will be optimized.  
 
     """
     def __init__(
@@ -1058,8 +1053,8 @@ class EpeakFunctionEnergyProfile(
         Parameters
         ----------
         function : callable function, takes energy as argument 
-        e_peak_orig : log10(energy) for which the original flux reaches its peak value
-        e_peak_offset : log10(energy) to which the flux should be shifted
+        e_peak_orig : log10(energy) for which the original array reaches its peak value
+        e_peak_offset : log10(energy) to which the peak flux should be shifted
         energy_unit : instance of astropy.units.UnitBase | None
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
@@ -1095,7 +1090,8 @@ class EpeakFunctionEnergyProfile(
 
     @property
     def e_peak_orig(self):
-        """The original peak energy of the original distribution. The shift will be relative to this energy
+        """The original peak energy of the original distribution. The shift will 
+        be relative to this energy
         """
         return self._e_peak_orig
 
@@ -1142,9 +1138,7 @@ class EpeakFunctionEnergyProfile(
 
         max_flux = self.function(10**self.e_peak * energy_offset) * (energy_offset**2)
 
-        # avoid really small values
-        # return np.where(value >= max(value)*1e-100, value, max(value)*1e-100)
-    
+        # avoid really small values    
         return np.where(value >= max_flux*1e-100, value, max_flux*1e-100)
 
 
@@ -1159,7 +1153,7 @@ class EpeakFunctionEnergyProfile(
 
         .. note::
 
-            This implementation utilizes the ``scipy.integrate.quad`` function
+            This implementation utilizes the ``scipy.integrate.trapz`` function
             to perform a generic numeric integration. Hence, this implementation
             is slow and should be reimplemented by the derived class if an
             analytic integral form is available.

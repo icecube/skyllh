@@ -133,7 +133,8 @@ cfg = Config()
 
 
 def set_epeak(analysis, e_peak):
-    """Change the flux model
+    """Change the peak energy. The shape stays the same but the spectrum is 
+    moved to higher/lower energies. 
 
     Parameters
     ----------
@@ -147,7 +148,8 @@ def set_epeak(analysis, e_peak):
 
 
 def flux_from_ns(analysis, e_peak, ns):
-    """Get the flux for a certain flux model (defined by e_peak) for a mean number of signal neutrinos ns
+    """Get the flux at e_eak for a certain flux model (defined by e_peak)
+      for a mean number of signal neutrinos ns
     
     Parameters
     ----------
@@ -228,8 +230,6 @@ def create_analysis(
     tl=None,
     ppbar=None,
     logger_name=None,
-    signal_generate_shape="epeak",
-    energy_pdf_shape="epeak",
 ):
     """Creates the Analysis instance for this particular analysis.
 
@@ -300,12 +300,6 @@ def create_analysis(
     logger_name : str | None
         The name of the logger to be used. If set to ``None``, ``__name__`` will
         be used.
-    signal_generate_shape : str
-        The shape of the generated signal energy spectrum. Can be "epeak" or 
-        "power_law". "epeak" will follow the array that is given as source_energy_spectrum.
-    energy_pdf_shap : str
-        The shape of the signal energy pdf. Can be "epeak" or 
-        "power_law". "epeak" will follow the array that is given as source_energy_spectrum.
 
     Returns
     -------
