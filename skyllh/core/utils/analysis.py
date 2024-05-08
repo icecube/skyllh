@@ -1367,7 +1367,7 @@ def create_trial_data_file(  # noqa: C901
     for (mean_n_sig_, mean_n_sig_null_) in itertools.product(
             mean_n_sig, mean_n_sig_null):
 
-        trials = ana.do_trials(
+        trials , src_n_events_arr= ana.do_trials(
             rss=rss,
             n=n_trials,
             mean_n_bkg_list=mean_n_bkg_list,
@@ -1382,11 +1382,13 @@ def create_trial_data_file(  # noqa: C901
 
         if trial_data is None:
             trial_data = trials
+            src_n_events_arr_data = src_n_events_arr
         else:
             trial_data = np_rfn.stack_arrays(
                 [trial_data, trials],
                 usemask=False,
                 asrecarray=True)
+            np.vstack((src_n_events_arr_data,src_n_events_arr))
 
         pbar.increment()
     pbar.finish()
@@ -1403,7 +1405,7 @@ def create_trial_data_file(  # noqa: C901
         # Save the trial data to file.
         np.save(pathfilename, trial_data)
 
-    return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data)
+    return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data) , src_n_events_arr_data 
 
 
 def extend_trial_data_file(

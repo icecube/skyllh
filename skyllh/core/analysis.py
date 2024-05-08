@@ -991,7 +991,8 @@ class Analysis(
         n_sig = 0
 
         if mean_n_sig == 0:
-            return (n_sig, n_events_list, events_list)
+            src_n_events_arr = np.zeros((self._shg_mgr.n_sources)) 
+            return (n_sig, n_events_list, events_list, src_n_events_arr)
 
         # Construct the signal generator if not done yet.
         if self._sig_generator is None:
@@ -1002,7 +1003,7 @@ class Analysis(
         # events.
         sig_kwargs.update(mean=mean_n_sig)
         with TaskTimer(tl, 'Generating signal events.'):
-            (n_sig, ds_sig_events_dict) =\
+            (n_sig, ds_sig_events_dict, src_n_events_arr) =\
                 self._sig_generator.generate_signal_events(
                     rss=rss,
                     **sig_kwargs)
@@ -1015,7 +1016,7 @@ class Analysis(
             else:
                 events_list[ds_idx].append(sig_events)
 
-        return (n_sig, n_events_list, events_list)
+        return (n_sig, n_events_list, events_list, src_n_events_arr)
 
     def generate_pseudo_data(
             self,
@@ -1077,7 +1078,7 @@ class Analysis(
 
         # Generate signal events and add them to the already generated
         # background events.
-        (n_sig, n_events_list, events_list) = self.generate_signal_events(
+        (n_sig, n_events_list, events_list, src_n_events_arr) = self.generate_signal_events(
             rss=rss,
             mean_n_sig=mean_n_sig,
             sig_kwargs=sig_kwargs,
@@ -1085,7 +1086,7 @@ class Analysis(
             events_list=events_list,
             tl=tl)
 
-        return (n_sig, n_events_list, events_list)
+        return (n_sig, n_events_list, events_list, src_n_events_arr)
 
     def do_trial(
             self,
@@ -1151,7 +1152,7 @@ class Analysis(
             minimizer_rss = RandomStateService(seed=rss.seed)
 
         with TaskTimer(tl, 'Generating pseudo data.'):
-            (n_sig, n_events_list, events_list) = self.generate_pseudo_data(
+            (n_sig, n_events_list, events_list, src_n_events_arr) = self.generate_pseudo_data(
                 rss=rss,
                 mean_n_bkg_list=mean_n_bkg_list,
                 mean_n_sig=mean_n_sig,
@@ -1170,7 +1171,7 @@ class Analysis(
             tl=tl,
             **kwargs)
 
-        return recarray
+        return recarray, src_n_events_arr
 
     def do_trials(
             self,
@@ -1223,12 +1224,19 @@ class Analysis(
             rss=rss,
             tl=tl,
             ppbar=ppbar)
-
-        recarray_dtype = result_list[0].dtype
+        
+        recarray_dtype = result_list[0][0].dtype
         recarray = np.empty(n, dtype=recarray_dtype)
-        recarray[:] = np.array(result_list)[:, 0]
+        src_n_events_arr = np.empty((n,self._shg_mgr.n_sources))
+        for i in range(n):
+            recarray[i] = np.array(result_list[i][0])
+            src_n_events_arr[i,:] = result_list[i][1]
 
-        return recarray
+        # recarray_dtype = result_list[0].dtype
+        # recarray = np.empty(n, dtype=recarray_dtype)
+        # recarray[:] = np.array(result_list)[:, 0]
+        # print(f'{result_list = }')
+        return recarray , src_n_events_arr
 
 
 class LLHRatioAnalysis(

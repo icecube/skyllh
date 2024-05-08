@@ -472,6 +472,7 @@ class PDDatasetSignalGenerator(
             mean,
             poisson=True,
             src_detsigyield_weights_service=None,
+            test_split=True,
             **kwargs):
         """Generates ``mean`` number of signal events.
 
@@ -547,6 +548,25 @@ class PDDatasetSignalGenerator(
                 n_events_arr[src_idxs] += counts
             elif sum_n_events_arr > n_events:
                 n_events_arr[src_idxs] -= counts
+                if np.any(n_events_arr) < 0:
+                    while np.any(n_events_arr) < 0:
+                    # We first exclude for the new redistribution all sources
+                    # with 0 or negative counts
+                        src_mask = ( n_events_arr <= 0 ) 
+                        a_k_corrected = np.copy(a_k)
+                        a_k_corrected[src_mask] = 0
+                        a_k_corrected /= np.sum(a_k_corrected)
+                            
+                        (src_idxs, counts) = np.unique(
+                        rss.random.choice(
+                            np.arange(len(n_events_arr)),
+                            size= np.abs(np.sum(n_events_arr, where = src_mask)),
+                            p=a_k_corrected,
+                        ),
+                        return_counts=True
+                        )
+                        n_events_arr[src_idxs] += counts
+
 
         # Loop over the sources and generate signal events according to the
         # weights of the sources.
@@ -565,6 +585,10 @@ class PDDatasetSignalGenerator(
                 signal_events_dict[self.ds_idx] = src_events
             else:
                 signal_events_dict[self.ds_idx].append(src_events)
+
+        if test_split:
+            # Development tool to check the splitting of events among sources
+            return (n_signal, signal_events_dict , n_events_arr)
 
         return (n_signal, signal_events_dict)
 

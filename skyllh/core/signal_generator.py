@@ -336,6 +336,7 @@ class MultiDatasetSignalGenerator(
             rss,
             mean,
             poisson=True,
+            test_split=True,
             **kwargs):
         """Generates a given number of signal events distributed across the
         individual datasets.
@@ -413,20 +414,54 @@ class MultiDatasetSignalGenerator(
             elif sum_n_events_arr > mean:
                 n_events_arr[ds_idxs] -= counts
 
+                # Check that we don not include any negative values
+                if np.any(n_events_arr) < 0: 
+                    while np.any(n_events_arr) < 0:
+                    # We first exclude for the new redistribution all sources
+                    # with 0 or negative counts
+                        src_mask = ( n_events_arr <= 0 ) 
+                        ds_weights_corrected = np.copy(ds_weights)
+                        ds_weights_corrected[src_mask] = 0
+                        ds_weights_corrected /= np.sum(ds_weights_corrected)
+                            
+                        (src_idxs, counts) = np.unique(
+                        rss.random.choice(
+                            np.arange(len(n_events_arr)),
+                            size= np.abs(np.sum(n_events_arr, where = src_mask)),
+                            p=ds_weights_corrected,
+                        ),
+                        return_counts=True
+                        )
+                        n_events_arr[src_idxs] += counts
+
+
         n_signal = 0
         signal_events_dict = {}
-
+        
+        src_n_events_arr = np.zeros((self._shg_mgr.n_sources)) # Test purposes only
         for (n_events, ds_sig_generator) in zip(
                 n_events_arr,
                 self._sig_generator_list):
 
-            (ds_n_signal, ds_sig_events_dict) =\
-                ds_sig_generator.generate_signal_events(
-                    rss=rss,
-                    mean=n_events,
-                    poisson=False,
-                    src_detsigyield_weights_service=src_detsigyield_weights_service,
-                )
+            if test_split:
+
+                (ds_n_signal, ds_sig_events_dict, ds_src_n_events_arr) =\
+                    ds_sig_generator.generate_signal_events(
+                        rss=rss,
+                        mean=n_events,
+                        poisson=False,
+                        src_detsigyield_weights_service=src_detsigyield_weights_service,
+                        test_split=test_split
+                    )
+                src_n_events_arr += ds_src_n_events_arr
+            else: 
+                (ds_n_signal, ds_sig_events_dict) =\
+                    ds_sig_generator.generate_signal_events(
+                        rss=rss,
+                        mean=n_events,
+                        poisson=False,
+                        src_detsigyield_weights_service=src_detsigyield_weights_service
+                        )
 
             n_signal += ds_n_signal
 
@@ -436,6 +471,10 @@ class MultiDatasetSignalGenerator(
                 else:
                     signal_events_dict[k].append(v)
 
+        if test_split:
+            # print(f'{src_n_events_arr = }')
+            # print(' ')
+            return (n_signal, signal_events_dict, src_n_events_arr)
         return (n_signal, signal_events_dict)
 
 
