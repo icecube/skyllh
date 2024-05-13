@@ -976,6 +976,230 @@ class PhotosplineEnergyFluxProfile(
         self._crit_log10_energy_upper = v
 
 
+class FunctionEnergyFluxProfile(
+        EnergyFluxProfile):
+    r"""Energy flux profile for a callable function with energy as argument.
+    """
+    def __init__(
+            self,
+            function,
+            energy_unit=None,
+            **kwargs):
+        """Creates a new flux profile following a given function.
+
+        Parameters
+        ----------
+        function : callable function, takes energy as argument 
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
+        """
+        super().__init__(
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.function = function
+
+    def __call__(
+            self,
+            E,
+            unit=None):
+        """Returns the function values for the given energies as numpy ndarray
+        in same shape as E.
+
+        Parameters
+        ----------
+        E : float | 1D numpy ndarray of float
+            The energy value for which to retrieve the energy profile value.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        values : 1D numpy ndarray of float
+            The energy profile values for the given energies.
+        """
+        E = np.atleast_1d(E)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            E = E * unit.to(self._energy_unit)
+
+        value = self.function(E)
+
+        return value
+
+
+class EpeakFunctionEnergyProfile(
+    FunctionEnergyFluxProfile):
+    r"""Energy flux profile for a callable function with energy as argument where 
+    Epeak (assuming a peaked spectrum, this is the peak's energy) and the scaling 
+    will be optimized.  
+    """
+    def __init__(
+            self,
+            function,
+            e_peak_orig,
+            e_peak_offset,
+            energy_unit=None,
+            **kwargs):
+        """Creates a new  flux profile with the peak energy ``E0``.
+
+        Parameters
+        ----------
+        function : callable function, takes energy as argument 
+        e_peak_orig : log10(energy) for which the original array reaches its peak value
+        e_peak_offset : log10(energy) to which the peak flux should be shifted
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
+        """
+        super().__init__(
+            function,
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.e_peak_orig = e_peak_orig
+        self.e_peak = e_peak_offset
+
+        # Define the parameters which can be set via the `set_params`
+        # method.
+        self.param_names = ('e_peak')
+
+    @property
+    def e_peak(self):
+        """The e_peak parameter of the function.
+        """
+        return self._e_peak
+
+    @e_peak.setter
+    def e_peak(self, e):
+        e = float_cast(
+            e,
+            'Property e must be castable to type float!')
+        self._e_peak = e
+
+    @property
+    def e_peak_orig(self):
+        """The original peak energy of the original distribution. The shift will 
+        be relative to this energy
+        """
+        return self._e_peak_orig
+
+    @e_peak_orig.setter
+    def e_peak_orig(self, e):
+        e = float_cast(
+            e,
+            'Property e must be castable to type float!')
+        self._e_peak_orig = e
+
+    def __call__(
+            self,
+            E,
+            unit=None):
+        """Returns the function values for the given energies as numpy ndarray
+        in same shape as E.
+
+        Parameters
+        ----------
+        E : float | 1D numpy ndarray of float
+            The energy value for which to retrieve the energy profile value.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        values : 1D numpy ndarray of float
+            The energy profile values for the given energies.
+        """
+        E = np.atleast_1d(E)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            E = E * unit.to(self._energy_unit)
+
+        energy_offset = 10**self.e_peak_orig / 10**self.e_peak
+
+        # we want to conserve energy, so the peak value should stay the same for E^2 dN/dE. 
+
+        value = self.function(E * energy_offset) * (energy_offset**2)
+
+        max_flux = self.function(10**self.e_peak * energy_offset) * (energy_offset**2)
+
+        # avoid really small values    
+        return np.where(value >= max_flux*1e-100, value, max_flux*1e-100)
+
+    def get_integral(
+            self,
+            E1,
+            E2,
+            unit=None,
+    ):
+        """This is the default implementation for calculating the integral value
+        of this energy flux profile in the range ``[E1, E2]``.
+
+        .. note::
+
+            This implementation utilizes the ``scipy.integrate.trapz`` function
+            to perform a generic numeric integration. Hence, this implementation
+            is slow and should be reimplemented by the derived class if an
+            analytic integral form is available.
+
+        Parameters
+        ----------
+        E1 : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E2 : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral : instance of ndarray
+            The (n,)-shaped numpy ndarray holding the integral values of the
+            given integral ranges.
+        """
+        E1 = np.atleast_1d(E1)
+        E2 = np.atleast_1d(E2)
+
+
+        energy_offset = 10**self.e_peak_orig / 10**self.e_peak
+
+        if (unit is not None) and (unit != self._energy_unit):
+            time_unit_conv_factor = unit.to(self._energy_unit)
+            E1 = E1 * time_unit_conv_factor
+            E2 = E2 * time_unit_conv_factor
+
+        integral = np.empty((len(E1),), dtype=np.float64)
+
+        for (i, (E1_i, E2_i)) in enumerate(zip(E1, E2)):
+
+            # integration for log(energy) for hopefully better numerical stability
+
+            tmp_e = np.linspace(np.log10(E1_i), np.log10(E2_i))
+            tmp_int = np.trapz(np.log(10) * self(10**tmp_e) * 10**tmp_e, tmp_e) 
+
+            # make sure it is always positive (probably not an issue any more with np.trapz. 
+            # used to be an issue using the spline integrate self.function.integrate)
+            integral[i] = tmp_int if tmp_int >= 0. else 0.
+
+        return integral
+
+    @property
+    def math_function_str(self):
+        """(read-only) The string representation of the mathematical function of
+        this spatial flux profile instance.
+        """
+        return 'spline of histogram'
+
+
 class TimeFluxProfile(
         FluxProfile,
         metaclass=abc.ABCMeta,
