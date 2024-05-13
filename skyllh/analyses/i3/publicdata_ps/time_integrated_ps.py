@@ -52,7 +52,6 @@ from skyllh.core.minimizer import (
 from skyllh.core.minimizers.iminuit import (
     IMinuitMinimizerImpl,
 )
-
 from skyllh.core.model import (
     DetectorModel,
 )
@@ -192,7 +191,7 @@ def create_analysis(
         Minimizer implementation to be used. Supported options are ``"LBFGS"``
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module),
         ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module), 
-        or "crs" (global CRS minimizer by nlopt, not gradient based).
+        or ``"crs"`` (global CRS minimizer by nlopt, not gradient based).
         Default: "LBFGS".
     minimizer_max_rep : int
         In case the minimization process did not converge at the first time
@@ -245,7 +244,8 @@ def create_analysis(
 
     # Create the minimizer instance.
     if minimizer_impl == "LBFGS":
-        minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg))
+        minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg),
+                              max_repetitions=minimizer_max_rep)
     elif minimizer_impl == "minuit":
         minimizer = Minimizer(IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8), 
                               max_repetitions=minimizer_max_rep)
@@ -255,7 +255,8 @@ def create_analysis(
             CRSMinimizerImpl,
         )
 
-        minimizer = Minimizer(CRSMinimizerImpl(cfg=cfg, ftol=1e-8))
+        minimizer = Minimizer(CRSMinimizerImpl(cfg=cfg, ftol=1e-8),
+                              max_repetitions=minimizer_max_rep)
     else:
         raise NameError(
             f"Minimizer implementation `{minimizer_impl}` is not supported "

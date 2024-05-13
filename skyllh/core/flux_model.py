@@ -520,7 +520,6 @@ class UnityEnergyFluxProfile(
         return integral
 
 
-
 class PowerLawEnergyFluxProfile(
         EnergyFluxProfile,
 ):
@@ -980,7 +979,6 @@ class PhotosplineEnergyFluxProfile(
 class FunctionEnergyFluxProfile(
         EnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument.
-
     """
     def __init__(
             self,
@@ -1039,7 +1037,6 @@ class EpeakFunctionEnergyProfile(
     r"""Energy flux profile for a callable function with energy as argument where 
     Epeak (assuming a peaked spectrum, this is the peak's energy) and the scaling 
     will be optimized.  
-
     """
     def __init__(
             self,
@@ -1072,13 +1069,11 @@ class EpeakFunctionEnergyProfile(
         # method.
         self.param_names = ('e_peak')
 
-
     @property
     def e_peak(self):
         """The e_peak parameter of the function.
         """
         return self._e_peak
-
 
     @e_peak.setter
     def e_peak(self, e):
@@ -1087,7 +1082,6 @@ class EpeakFunctionEnergyProfile(
             'Property e must be castable to type float!')
         self._e_peak = e
 
-
     @property
     def e_peak_orig(self):
         """The original peak energy of the original distribution. The shift will 
@@ -1095,14 +1089,12 @@ class EpeakFunctionEnergyProfile(
         """
         return self._e_peak_orig
 
-
     @e_peak_orig.setter
     def e_peak_orig(self, e):
         e = float_cast(
             e,
             'Property e must be castable to type float!')
         self._e_peak_orig = e
-
 
     def __call__(
             self,
@@ -1140,7 +1132,6 @@ class EpeakFunctionEnergyProfile(
 
         # avoid really small values    
         return np.where(value >= max_flux*1e-100, value, max_flux*1e-100)
-
 
     def get_integral(
             self,
@@ -1199,9 +1190,7 @@ class EpeakFunctionEnergyProfile(
             # used to be an issue using the spline integrate self.function.integrate)
             integral[i] = tmp_int if tmp_int >= 0. else 0.
 
-
         return integral
-
 
     @property
     def math_function_str(self):

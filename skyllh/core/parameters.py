@@ -54,7 +54,6 @@ def make_linear_parameter_grid_1d(
     grid = np.arange(low, high+delta, delta)
     return ParameterGrid(name, grid, delta)
 
-
 def make_logarithmic_parameter_grid_1d(
         name,
         low,
@@ -306,7 +305,6 @@ class Parameter(object):
             delta=delta)
 
         return grid
-
 
     def as_logarithmic_grid(self, delta):
         """Creates a ParameterGrid instance with a linear grid with constant

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from astropy.coordinates import SkyCoord
 
 from astropy.coordinates import (
     SkyCoord,
@@ -199,4 +198,3 @@ def angular_separation(ra1, dec1, ra2, dec2, psi_floor=None):
         psi = np.where(psi < psi_floor, psi_floor, psi)
 
     return psi
-
