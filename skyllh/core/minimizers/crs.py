@@ -1,6 +1,8 @@
-import nlopt
 from numpy import *
 
+from skyllh.core import (
+    tool,
+)
 from skyllh.core.minimizer import (
     MinimizerImpl,
 )
@@ -14,7 +16,7 @@ class CRSMinimizerImpl(
     """The SkyLLH minimizer implementation that utilizes the CRS minimizer from nlopt.
     """
 
-
+    @tool.requires('nlopt')
     def __init__(
             self,
             ftol=1e-6,
@@ -93,6 +95,7 @@ class CRSMinimizerImpl(
         if kwargs is None:
             kwargs = dict()
 
+        nlopt = tool.get('nlopt')
 
         opt = nlopt.opt(nlopt.GN_CRS2_LM, 2)
 
