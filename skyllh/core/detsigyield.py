@@ -625,7 +625,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             value dY_k/dp_s.
         """
         if np.any(src_recarray != self.src_recarray):
-            self.src_st_zen_arr = self.st_service.create_src_st_zen_array(
+            self.src_st_alt_arr = self.st_service.create_src_st_alt_array(
                 src_array=self.src_recarray,
             )
 
