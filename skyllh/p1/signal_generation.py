@@ -6,6 +6,7 @@ from skyllh.core.py import (
     get_smallest_numpy_int_type,
     float_cast,
     int_cast,
+    issequenceof,
 )
 from skyllh.core.utils.coords import (
     rotate_signal_events_on_sphere,
@@ -17,6 +18,51 @@ from skyllh.core.source_model import (
     PointLikeSource,
 )
 
+from skyllh.core.sidereal_time import (SiderealTimeService)
+
+
+def sources_to_recarray(sources):
+    """Converts the sequence of PointLikeSource sources into a numpy
+    structured array holding the information of the sources needed for the
+    detector signal yield calculation.
+
+    Parameters
+    ----------
+    sources : SourceModel | sequence of SourceModel
+        The source model(s) containing the information of the source(s).
+
+    Returns
+    -------
+    arr : instance of numpy.ndarray
+        The generated (N_sources,)-shaped structured numpy ndarray holding
+        the information for each source. This array contains the following
+        fields:
+
+            ``'dec'`` : float
+                The declination of the source.
+            ``'ra'`` : float
+                The right-ascension of the source.
+
+    """
+    if isinstance(sources, PointLikeSource):
+        sources = [sources]
+    if not issequenceof(sources, PointLikeSource):
+        raise TypeError(
+            'The sources argument must be an instance or a sequence of '
+            'instances of PointLikeSource!')
+
+    arr_dtype = [
+        ('dec', np.float64),
+        ('ra', np.float64),
+    ]
+
+    arr = np.empty((len(sources),), dtype=arr_dtype)
+    for (i, src) in enumerate(sources):
+        arr['dec'][i] = src.dec
+        arr['ra'][i] = src.ra
+
+    return arr
+
 class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
     """This class provides a signal generation method for point-like sources
     seen in the IceCube detector.
@@ -24,6 +70,10 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
 
     def __init__(
         self,
+        detector_model,
+        livetime,
+        st_bin_width_deg,
+        band_deg_alt_range,
         src_batch_size=128,
         energy_range=None,
         **kwargs
@@ -33,14 +83,23 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
 
         Parameters
         ----------
+        detector_model : instance of DetectorModel
+            The instance of DetectorModel defining the detector for this
+            detector signal yield.
+        livetime : instance of Livetime
+            The instance of Livetime defining the live-time of the dataset.
+        st_bin_width_deg : float
+            The sidereal time bin width in degree. This value must be in the
+            range [0, 360].
+        
+        band_deg_alt_range : float
+            The withd of the altitude bands in degree.
+        source_list : list of instance of PointLikeSource
+            The list of instance of PointLikeSource defining the sources
+            for this detector signal yield.
         src_sin_dec_half_bandwidth : float
             The half-width of the sin(dec) band to take MC events from around a
             source. The default is sin(1deg), i.e. a 1deg half-bandwidth.
-        src_sin_dec_shift_func : callable | None
-            The function that provides the source sin(dec) shift needed for
-            constructing the source declination bands from where to draw
-            monte-carlo events from. If set to None, the default function
-            ``source_sin_dec_shift_linear`` will be used.
         energy_range : 2-element tuple of float | None
             The energy range from which to take MC events into account for
             signal event generation.
@@ -54,6 +113,10 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
             **kwargs)
 
         self.src_batch_size = src_batch_size
+        self.detector_model = detector_model
+        self.livetime = livetime
+        self.st_bin_width_deg = st_bin_width_deg
+        self.band_deg_alt_range = band_deg_alt_range
 
         @property
         def src_batch_size(self):
@@ -115,6 +178,16 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
         src_batch_size = self.src_batch_size
         n_batches = int(np.ceil(n_sources / src_batch_size))
 
+
+        st_service = SiderealTimeService(detector_model=self.detector_model,
+                                         livetime=self.livetime, 
+                                         st_bin_width_deg=self.st_bin_width_deg)
+        
+        src_recarray = sources_to_recarray(shg.source_list)
+        (src_st_alt_arr, _) = st_service.create_src_st_alt_array(
+                src_array=src_recarray,
+            )
+
         for bi in range(n_batches):
             src_start = bi*src_batch_size
             src_end = np.min([(bi+1)*src_batch_size, n_sources])
@@ -124,12 +197,12 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
             
             for alt in src_st_alt_arr:
                 # Create an event mask of shape (N_sources,N_events)
-                src_sin_alt_band_min = np.sin(np.deg2rad(np.rad2deg(alt) - band_deg_alt_range/2))
-                src_sin_alt_band_max = np.sin(np.deg2rad(np.rad2deg(alt) + band_deg_alt_range/2))
+                src_sin_alt_band_min = np.sin(np.deg2rad(np.rad2deg(alt) - self.band_deg_alt_range/2))
+                src_sin_alt_band_max = np.sin(np.deg2rad(np.rad2deg(alt) + self.band_deg_alt_range/2))
 
                 # Calculate the solid angle of the declination band.
                 src_alt_band_omega = (
-                    2 * np.pi * (src_sin_dec_band_max - src_sin_dec_band_min)
+                    2 * np.pi * (src_sin_alt_band_max - src_sin_alt_band_min)
                 )
                 
                 ev_mask = np.logical_and(
@@ -157,5 +230,6 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
                 flux_arr = np.append(flux_arr, flux)
 
         return (ev_idx_arr, shg_src_idx_arr, flux_arr)
+    
     def signal_event_post_sampling_processing(self):
         pass
