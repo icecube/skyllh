@@ -1044,7 +1044,6 @@ class Analysis(
                 events_list[ds_idx] = sig_events
             else:
                 events_list[ds_idx].append(sig_events)
-
         return (n_sig, n_events_list, events_list)
 
     def generate_pseudo_data(

@@ -20,7 +20,6 @@ from skyllh.core.source_model import (
 
 from skyllh.core.sidereal_time import (SiderealTimeService)
 
-
 def sources_to_recarray(sources):
     """Converts the sequence of PointLikeSource sources into a numpy
     structured array holding the information of the sources needed for the
@@ -63,17 +62,29 @@ def sources_to_recarray(sources):
 
     return arr
 
+def compute_alt_array(
+        shg,
+        detector_model,
+        livetime,
+        st_bin_width_deg
+):
+        st_service = SiderealTimeService(detector_model=detector_model,
+                                         livetime=livetime, 
+                                         st_bin_width_deg=st_bin_width_deg)
+        
+        src_recarray = sources_to_recarray(shg.source_list)
+        (src_st_alt_arr, src_st_az_arr) = st_service.create_src_st_alt_array(
+                src_array=src_recarray,
+            )
+        return (src_st_alt_arr, src_st_az_arr)
+
 class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
     """This class provides a signal generation method for point-like sources
     seen in the IceCube detector.
     """
-
     def __init__(
         self,
-        detector_model,
-        livetime,
-        st_bin_width_deg,
-        band_deg_alt_range,
+        band_deg_alt_range = 1.0,
         src_batch_size=128,
         energy_range=None,
         **kwargs
@@ -83,23 +94,8 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
 
         Parameters
         ----------
-        detector_model : instance of DetectorModel
-            The instance of DetectorModel defining the detector for this
-            detector signal yield.
-        livetime : instance of Livetime
-            The instance of Livetime defining the live-time of the dataset.
-        st_bin_width_deg : float
-            The sidereal time bin width in degree. This value must be in the
-            range [0, 360].
-        
         band_deg_alt_range : float
             The withd of the altitude bands in degree.
-        source_list : list of instance of PointLikeSource
-            The list of instance of PointLikeSource defining the sources
-            for this detector signal yield.
-        src_sin_dec_half_bandwidth : float
-            The half-width of the sin(dec) band to take MC events from around a
-            source. The default is sin(1deg), i.e. a 1deg half-bandwidth.
         energy_range : 2-element tuple of float | None
             The energy range from which to take MC events into account for
             signal event generation.
@@ -113,9 +109,6 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
             **kwargs)
 
         self.src_batch_size = src_batch_size
-        self.detector_model = detector_model
-        self.livetime = livetime
-        self.st_bin_width_deg = st_bin_width_deg
         self.band_deg_alt_range = band_deg_alt_range
 
         @property
@@ -178,15 +171,7 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
         src_batch_size = self.src_batch_size
         n_batches = int(np.ceil(n_sources / src_batch_size))
 
-
-        st_service = SiderealTimeService(detector_model=self.detector_model,
-                                         livetime=self.livetime, 
-                                         st_bin_width_deg=self.st_bin_width_deg)
-        
-        src_recarray = sources_to_recarray(shg.source_list)
-        (src_st_alt_arr, _) = st_service.create_src_st_alt_array(
-                src_array=src_recarray,
-            )
+        alt = np.array([0.5969206])  # fake data
 
         for bi in range(n_batches):
             src_start = bi*src_batch_size
@@ -194,42 +179,106 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
             bs = src_end - src_start
 
             src_slice = slice(src_start, src_end)
-            
-            for alt in src_st_alt_arr:
-                # Create an event mask of shape (N_sources,N_events)
-                src_sin_alt_band_min = np.sin(np.deg2rad(np.rad2deg(alt) - self.band_deg_alt_range/2))
-                src_sin_alt_band_max = np.sin(np.deg2rad(np.rad2deg(alt) + self.band_deg_alt_range/2))
 
-                # Calculate the solid angle of the declination band.
-                src_alt_band_omega = (
-                    2 * np.pi * (src_sin_alt_band_max - src_sin_alt_band_min)
+            # Create an event mask of shape (N_sources,N_events)
+            src_sin_alt_band_min = np.sin(np.deg2rad(np.rad2deg(alt) - self.band_deg_alt_range/2))
+            src_sin_alt_band_max = np.sin(np.deg2rad(np.rad2deg(alt) + self.band_deg_alt_range/2))
+
+            # Calculate the solid angle of the declination band.
+            src_alt_band_omega = (
+                2 * np.pi * (src_sin_alt_band_max - src_sin_alt_band_min)
+            )
+            
+            ev_mask = np.logical_and(
+                    (data_mc_sin_true_alt >=
+                        src_sin_alt_band_min[src_slice][:, np.newaxis]),
+                    (data_mc_sin_true_alt <=
+                        src_sin_alt_band_max[src_slice][:, np.newaxis])
                 )
-                
-                ev_mask = np.logical_and(
-                        (data_mc_sin_true_alt >=
-                            src_sin_alt_band_min[src_slice][:, np.newaxis]),
-                        (data_mc_sin_true_alt <=
-                            src_sin_alt_band_max[src_slice][:, np.newaxis])
-                    )
-                print(src_sin_alt_band_min, src_sin_alt_band_max)
-                print(np.count_nonzero(ev_mask))
-                ev_idxs = np.tile(indices, bs)[ev_mask.ravel()]
-                #print(ev_idxs)
-                shg_src_idxs = bi*src_batch_size + np.repeat(
-                        np.arange(bs),
-                        ev_mask.sum(axis=1)
-                    )
-                del ev_mask
-                flux = (
-                        fluxmodel(E=data_mc_true_energy[ev_idxs]).squeeze() *
-                        to_internal_flux_unit /
-                        src_alt_band_omega[shg_src_idxs]
-                    )
-                ev_idx_arr = np.append(ev_idx_arr, ev_idxs)
-                shg_src_idx_arr = np.append(shg_src_idx_arr, shg_src_idxs)
-                flux_arr = np.append(flux_arr, flux)
+            print(src_sin_alt_band_min, src_sin_alt_band_max)
+            print(np.count_nonzero(ev_mask))
+            ev_idxs = np.tile(indices, bs)[ev_mask.ravel()]
+            #print(ev_idxs)
+            shg_src_idxs = bi*src_batch_size + np.repeat(
+                    np.arange(bs),
+                    ev_mask.sum(axis=1)
+                )
+            del ev_mask
+            flux = (
+                    fluxmodel(E=data_mc_true_energy[ev_idxs]).squeeze() *
+                    to_internal_flux_unit /
+                    src_alt_band_omega[shg_src_idxs]
+                )
+            ev_idx_arr = np.append(ev_idx_arr, ev_idxs)
+            shg_src_idx_arr = np.append(shg_src_idx_arr, shg_src_idxs)
+            flux_arr = np.append(flux_arr, flux)
 
         return (ev_idx_arr, shg_src_idx_arr, flux_arr)
     
-    def signal_event_post_sampling_processing(self):
-        pass
+
+    def signal_event_post_sampling_processing(
+            self,
+            shg,
+            shg_sig_events_meta,
+            shg_sig_events,
+    ):
+        """Rotates the generated signal events to their source location for a
+        given source hypothesis group.
+
+        Parameters
+        ----------
+        shg : SourceHypoGroup instance
+            The source hypothesis group instance holding the sources and their
+            locations.
+        shg_sig_events_meta : numpy record ndarray
+            The numpy record ndarray holding meta information about the
+            generated signal events for the given source hypothesis group.
+            The length of this array must be the same as shg_sig_events.
+            It needs to contain the following data fields:
+
+            - 'shg_src_idx': int
+                The source index within the source hypothesis group.
+
+        shg_sig_events : numpy record ndarray
+            The numpy record ndarray holding the generated signal events for
+            the given source hypothesis group and in the format of the original
+            MC events.
+
+        Returns
+        -------
+        shg_sig_events : numpy record ndarray
+            The numpy record ndarray with the processed MC signal events.
+        """
+        
+        alt_value = np.array([0.5969206])  # fake data
+        azi_value = np.array([2.41163])  # fake data
+
+        # Get the unique source indices of that source hypo group.
+        shg_src_idxs = np.unique(shg_sig_events_meta['shg_src_idx'])
+        # Go through each (sampled) source.
+        for shg_src_idx in shg_src_idxs:
+            #source = shg.source_list[shg_src_idx]
+            # Get the signal events of the source hypo group, that belong to the
+            # source index.
+            # Get the signal event of the alt
+            shg_src_mask = shg_sig_events_meta['shg_src_idx'] == shg_src_idx
+            shg_src_sig_events = shg_sig_events[shg_src_mask]
+            n_sig = len(shg_src_sig_events)
+
+            # Rotate the signal events to the source location.
+            (ra, dec) = rotate_signal_events_on_sphere(
+                src_ra=np.full(n_sig, azi_value),
+                src_dec=np.full(n_sig, alt_value),
+                evt_true_ra=shg_src_sig_events['true_ra'],
+                evt_true_dec=shg_src_sig_events['true_dec'],
+                evt_reco_ra=shg_src_sig_events['ra'],
+                evt_reco_dec=shg_src_sig_events['dec']
+            )
+
+            shg_src_sig_events['ra'] = ra
+            shg_src_sig_events['dec'] = dec
+            shg_src_sig_events['sin_dec'] = np.sin(dec)
+
+            shg_sig_events[shg_src_mask] = shg_src_sig_events
+
+        return shg_sig_events

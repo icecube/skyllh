@@ -550,7 +550,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             livetime=self._livetime,
             st_bin_width_deg=st_bin_width_deg)
 
-        self.src_st_alt_arr = self.st_service.create_src_st_alt_array(
+        self.src_st_alt_arr, _ = self.st_service.create_src_st_alt_array(
             src_array=self.src_recarray,
         )
 
@@ -625,7 +625,7 @@ class SingleParamFluxPointLikeSourceDetSigYield(
             value dY_k/dp_s.
         """
         if np.any(src_recarray != self.src_recarray):
-            self.src_st_alt_arr = self.st_service.create_src_st_alt_array(
+            self.src_st_alt_arr, _ = self.st_service.create_src_st_alt_array(
                 src_array=self.src_recarray,
             )
 

@@ -220,7 +220,7 @@ class SiderealTimeService(
             dtype=np.float32,
         )
 
-        src_st_az_arr = np.empty(
+        src_st_azi_arr = np.empty(
             (len(self.st_hist), len(src_array)),
             dtype=np.float32,
         )
@@ -240,9 +240,9 @@ class SiderealTimeService(
             ))
 
             src_alt = src_altaz.alt.to(units.radian).value
-            src_az = src_altaz.az.to(units.radian).value
+            src_azi = src_altaz.az.to(units.radian).value
 
             src_st_alt_arr[st_bin_idx] = src_alt
-            src_st_az_arr[st_bin_idx] = src_az
+            src_st_azi_arr[st_bin_idx] = src_azi
 
-        return (src_st_alt_arr, src_st_az_arr)
+        return (src_st_alt_arr, src_st_azi_arr)
