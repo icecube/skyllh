@@ -211,7 +211,7 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
                         (data_mc_sin_true_alt <=
                             src_sin_alt_band_max[src_slice][:, np.newaxis])
                     )
-                #print(src_sin_alt_band_min, src_sin_alt_band_max)
+                print(src_sin_alt_band_min, src_sin_alt_band_max)
                 print(np.count_nonzero(ev_mask))
                 ev_idxs = np.tile(indices, bs)[ev_mask.ravel()]
                 #print(ev_idxs)
