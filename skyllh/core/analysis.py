@@ -56,7 +56,7 @@ from skyllh.core.services import (
     DetSigYieldService,
     SrcDetSigYieldWeightsService,
 )
-from skyllh.core.signal_generator import (
+from skyllh.p1.signal_generator import (
     SignalGenerator,
     MultiDatasetSignalGenerator,
 )

@@ -141,7 +141,7 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
                 'The src_batch_size property must be cast-able to type int!')
             self._src_batch_size = v
 
-    def calc_source_signal_mc_event_flux(self, data_mc, shg):
+    def calc_source_signal_mc_event_flux(self, data_mc, shg, obstime):
         """Calculates the signal flux of each given MC event for each source
         hypothesis of the given source hypothesis group.
 
@@ -152,6 +152,9 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
         shg : SourceHypoGroup instance
             The source hypothesis group, which defines the list of sources, and
             their flux model.
+        obs_time : float
+            The mjd random observation time from detector livetime drawn
+            in generate events
 
         Returns
         -------
@@ -181,17 +184,22 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
                     'The source instance must be an instance of '
                     'PointLikeSource!')
             src_dec[k] = source.dec
-            src_ra[k]  = source.ra
+            src_ra[k] = source.ra
+
+        # TODO
+        #src_alt = get_soure_alt(src_dec, obstime, detector_model)
+        src_alt = np.array([0.5969206])  # fake data
         
         data_mc_sin_true_alt = data_mc['sin_true_alt']
         data_mc_true_energy = data_mc['true_energy']
 
-        alt = np.array([0.5969206])  # fake data
-
-        # Calculate the source altitude bands and their solid angle.
+        # Calculate the source altitude bands and their solid angle
+        # TODO: Wrire a simple function above that takes the altitude
+        # in radian and compute the corresponding altitude band
+        # and the solid angle.
         band_deg_alt_range = self.band_deg_alt_range  # self._band_deg_alt_range does not work!
-        src_sin_alt_band_min = np.sin(np.deg2rad(np.rad2deg(alt) - band_deg_alt_range/2))
-        src_sin_alt_band_max = np.sin(np.deg2rad(np.rad2deg(alt) + band_deg_alt_range/2))
+        src_sin_alt_band_min = np.sin(np.deg2rad(np.rad2deg(src_alt) - band_deg_alt_range/2))
+        src_sin_alt_band_max = np.sin(np.deg2rad(np.rad2deg(src_alt) + band_deg_alt_range/2))
 
         src_alt_band_omega = (
             2 * np.pi * (src_sin_alt_band_max - src_sin_alt_band_min)
@@ -242,8 +250,8 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
                     (data_mc_true_energy <= self.energy_range[1])
                 )
 
-            print(src_sin_alt_band_min, src_sin_alt_band_max)
-            print(np.count_nonzero(ev_mask))
+            print(f'(alt_min, alt_max):{src_sin_alt_band_min, src_sin_alt_band_max}')
+            print(f'MC event masked: {np.count_nonzero(ev_mask)}')
 
             ev_idxs = np.tile(indices, bs)[ev_mask.ravel()]
             #print(ev_idxs)
@@ -270,6 +278,7 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
     def signal_event_post_sampling_processing(
             self,
             shg,
+            obstime,
             shg_sig_events_meta,
             shg_sig_events,
     ):
@@ -289,7 +298,9 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
 
             - 'shg_src_idx': int
                 The source index within the source hypothesis group.
-
+        obs_time : float
+            The mjd random observation time from detector livetime drawn
+            in generate events
         shg_sig_events : numpy record ndarray
             The numpy record ndarray holding the generated signal events for
             the given source hypothesis group and in the format of the original
@@ -301,14 +312,18 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
             The numpy record ndarray with the processed MC signal events.
         """
         
-        alt_value = np.array([0.5969206])  # fake data
-        azi_value = np.array([2.41163])  # fake data
+        src_alt = np.array([0.5969206])  # fake data
+        src_azi = np.array([2.41163])  # fake data
 
         # Get the unique source indices of that source hypo group.
         shg_src_idxs = np.unique(shg_sig_events_meta['shg_src_idx'])
         # Go through each (sampled) source.
         for shg_src_idx in shg_src_idxs:
-            #source = shg.source_list[shg_src_idx]
+            source = shg.source_list[shg_src_idx]
+
+            # TODO
+            #src_alt = get_soure_alt(source, obstime, detector_model)
+
             # Get the signal events of the source hypo group, that belong to the
             # source index.
             # Get the signal event of the alt
@@ -318,8 +333,8 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
 
             # Rotate the signal events to the source location.
             (ra, dec) = rotate_signal_events_on_sphere(
-                src_ra=np.full(n_sig, azi_value),
-                src_dec=np.full(n_sig, alt_value),
+                src_ra=np.full(n_sig, src_azi),
+                src_dec=np.full(n_sig, src_alt),
                 evt_true_ra=shg_src_sig_events['true_ra'],
                 evt_true_dec=shg_src_sig_events['true_dec'],
                 evt_reco_ra=shg_src_sig_events['ra'],
