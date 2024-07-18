@@ -250,8 +250,8 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
                     (data_mc_true_energy <= self.energy_range[1])
                 )
 
-            print(f'(alt_min, alt_max):{src_sin_alt_band_min, src_sin_alt_band_max}')
-            print(f'MC event masked: {np.count_nonzero(ev_mask)}')
+            #print(f'(alt_min, alt_max):{src_sin_alt_band_min, src_sin_alt_band_max}')
+            #print(f'MC event masked: {np.count_nonzero(ev_mask)}')
 
             ev_idxs = np.tile(indices, bs)[ev_mask.ravel()]
             #print(ev_idxs)

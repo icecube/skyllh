@@ -540,7 +540,7 @@ class MCMultiDatasetSignalGenerator(
         
         Parameter
         ----------
-        obs_time : float
+        obstime : float
             The mjd random observation time from detector livetime drawn 
             in generate events
         """
@@ -708,6 +708,7 @@ class MCMultiDatasetSignalGenerator(
             m = (events_meta['ds_idx'] == ds_idx) &\
                 (events_meta['shg_idx'] == shg_idx)
             events = mc[events_meta['ev_idx'][m]]
+
             if len(events) > 0:
                 events = shg.sig_gen_method.\
                     signal_event_post_sampling_processing(
@@ -804,10 +805,9 @@ class MCMultiDatasetSignalGenerator(
         mu_flux = np.sum(mu_fluxes)
         return mu_flux
 
-    def _generate_signal_event(
+    def generate_signal_events(
             self,
             rss,
-            obstime,
             mean,
             poisson=True,
             **kwargs):
@@ -840,8 +840,6 @@ class MCMultiDatasetSignalGenerator(
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
         """
-        self._construct_signal_candidates(obstime=60410.50)
-        
         if poisson:
             mean = rss.random.poisson(
                 float_cast(
@@ -852,137 +850,114 @@ class MCMultiDatasetSignalGenerator(
             mean,
             'The mean argument must be cast-able to type of int!')
 
-        n_signal = 1 # Draw 1 signal event!
-        # Draw n_signal signal candidates according to their weight.
-        sig_events_meta = self._sig_candidates_random_choice(
-            rss=rss,
-            size=n_signal,
-        )
-
-        # Get the list of unique dataset and source hypothesis group indices of
-        # the drawn signal events.
-        # Note: This code does not assume the same format for each of the
-        #       individual MC datasets, thus might be a bit slower.
-        #       If one could assume the same MC dataset format, one
-        #       could gather all the MC events of all the datasets first and do
-        #       the signal event post processing for all datasets at once.
-        signal_events_dict = dict()
-        ds_idxs = np.unique(sig_events_meta['ds_idx'])
-        for ds_idx in ds_idxs:
-            valid_event_field_ranges_dict =\
-                self.valid_event_field_ranges_dict_list[ds_idx]
-            mc = self._data_list[ds_idx].mc
-            ds_mask = sig_events_meta['ds_idx'] == ds_idx
-            n_sig_events_ds = np.count_nonzero(ds_mask)
-
-            data = dict([
-                (
-                    fname,
-                    np.empty(
-                        (n_sig_events_ds,),
-                        dtype=mc.get_field_dtype(fname))
-                )
-                for fname in mc.field_name_list
-            ])
-            sig_events = DataFieldRecordArray(data, copy=False)
-
-            fill_start_idx = 0
-            # Get the list of unique source hypothesis group indices for the
-            # current dataset.
-            shg_idxs = np.unique(sig_events_meta[ds_mask]['shg_idx'])
-            for shg_idx in shg_idxs:
-                shg = self._shg_mgr.shg_list[shg_idx]
-                shg_mask = sig_events_meta['shg_idx'] == shg_idx
-                # Get the MC events for the drawn signal events.
-                ds_shg_mask = ds_mask & shg_mask
-                shg_sig_events_meta = sig_events_meta[ds_shg_mask]
-                n_shg_sig_events = len(shg_sig_events_meta)
-                ev_idx = shg_sig_events_meta['ev_idx']
-                # Get the signal MC events of the current dataset and source
-                # hypothesis group.
-                shg_sig_events = mc[ev_idx]
-
-                # Do the signal event post sampling processing.
-                shg_sig_events = shg.sig_gen_method.\
-                    signal_event_post_sampling_processing(
-                        shg, obstime, shg_sig_events_meta, shg_sig_events)
-
-                # Determine the signal events, which do not fulfill the valid
-                # event field ranges for this dataset.
-                invalid_events_mask = self._get_invalid_events_mask(
-                    shg_sig_events,
-                    valid_event_field_ranges_dict)
-                n_redraw_events = np.count_nonzero(invalid_events_mask)
-                if n_redraw_events > 0:
-                    # Re-draw n_redraw_events signal events for this dataset
-                    # and SHG.
-                    redrawn_shg_sig_events =\
-                        self._draw_valid_sig_events_for_dataset_and_shg(
-                            rss=rss,
-                            mc=mc,
-                            n_signal=n_redraw_events,
-                            ds_idx=ds_idx,
-                            valid_event_field_ranges_dict=valid_event_field_ranges_dict,
-                            shg=shg,
-                            shg_idx=shg_idx,
-                            obstime=obstime,
-                        )
-                    shg_sig_events[invalid_events_mask] = redrawn_shg_sig_events
-
-                indices = np.indices((n_shg_sig_events,))[0] + fill_start_idx
-                sig_events.set_selection(indices, shg_sig_events)
-
-                fill_start_idx += n_shg_sig_events
-
-            signal_events_dict[ds_idx] = sig_events
-
-        return (n_signal, signal_events_dict)
-    
-    def generate_signal_events(self, rss, mean, poisson=True, **kwargs):
-        """Generates a given number of signal events from the signal candidate
-        monte-carlo events.
-
-        Parameters
-        ----------
-        rss : instance of RandomStateService
-            The instance of RandomStateService providing the random number
-            generator state.
-        mean : float | int
-            The mean number of signal events. If the ``poisson`` argument is set
-            to True, the actual number of generated signal events will be drawn
-            from a Poisson distribution with this given mean value of signal
-            events.
-        poisson : bool
-            If set to True, the actual number of generated signal events will
-            be drawn from a Poisson distribution with the given mean value of
-            signal events.
-            If set to False, the argument ``mean`` must be an integer and
-            specifies the actual number of generated signal events.
-
-        Returns
-        -------
-        n_signal : int
-            The number of actual generated signal events.
-        signal_events_dict : dict of DataFieldRecordArray
-            The dictionary holding the DataFieldRecordArray instances with the
-            generated signal events. Each key of this dictionary represents the
-            dataset index for which the signal events have been generated.
-        """
-        if poisson:
-            mean = rss.random.poisson(
-                float_cast(
-                    mean,
-                    'The mean argument must be cast-able to type of float!'))
-
-        n_signal = int_cast(
-            mean,
-            'The mean argument must be cast-able to type of int!')
-
+        signal_events_dict_list = []
 
         obstime = 60410.50
-        #signal_events_dict = dict()
+
+        obstimes = np.full(n_signal, obstime) # creating fake observation time
         # TODO
         # make a for loop over the obstime based from mean = N_s at this time
         # the append generate signal event for each source alt to get
         # N_s signal events for all alt of each source hypothesis
-        return self._generate_signal_event(rss, obstime, mean, poisson=True)
+
+        for obstime in obstimes:
+            self._construct_signal_candidates(obstime)
+            # Draw n_signal signal candidates according to their weight.
+            sig_events_meta = self._sig_candidates_random_choice(
+                rss=rss,
+                size=1, # Draw a single event for eac observation time.
+            )
+            #print(f'sig_event_meta: {sig_events_meta}')
+
+            # Get the list of unique dataset and source hypothesis group indices of
+            # the drawn signal events.
+            # Note: This code does not assume the same format for each of the
+            #       individual MC datasets, thus might be a bit slower.
+            #       If one could assume the same MC dataset format, one
+            #       could gather all the MC events of all the datasets first and do
+            #       the signal event post processing for all datasets at once.
+
+            signal_events_dict = dict()
+            ds_idxs = np.unique(sig_events_meta['ds_idx'])
+            #print(f'ds_idxs: {ds_idxs}')
+            for ds_idx in ds_idxs:
+                valid_event_field_ranges_dict =\
+                    self.valid_event_field_ranges_dict_list[ds_idx]
+                mc = self._data_list[ds_idx].mc
+                ds_mask = sig_events_meta['ds_idx'] == ds_idx
+                n_sig_events_ds = np.count_nonzero(ds_mask)
+
+                data = dict([
+                    (
+                        fname,
+                        np.empty(
+                            (n_sig_events_ds,),
+                            dtype=mc.get_field_dtype(fname))
+                    )
+                    for fname in mc.field_name_list
+                ])
+                sig_events = DataFieldRecordArray(data, copy=False)
+
+                fill_start_idx = 0
+                # Get the list of unique source hypothesis group indices for the
+                # current dataset.
+                shg_idxs = np.unique(sig_events_meta[ds_mask]['shg_idx'])
+                for shg_idx in shg_idxs:
+                    shg = self._shg_mgr.shg_list[shg_idx]
+                    shg_mask = sig_events_meta['shg_idx'] == shg_idx
+                    # Get the MC events for the drawn signal events.
+                    ds_shg_mask = ds_mask & shg_mask
+                    shg_sig_events_meta = sig_events_meta[ds_shg_mask]
+                    n_shg_sig_events = len(shg_sig_events_meta)
+                    ev_idx = shg_sig_events_meta['ev_idx']
+                    # Get the signal MC events of the current dataset and source
+                    # hypothesis group.
+                    shg_sig_events = mc[ev_idx]
+
+                    # Do the signal event post sampling processing.
+                    shg_sig_events = shg.sig_gen_method.\
+                        signal_event_post_sampling_processing(
+                            shg, obstime, shg_sig_events_meta, shg_sig_events)
+
+                    # Determine the signal events, which do not fulfill the valid
+                    # event field ranges for this dataset.
+                    invalid_events_mask = self._get_invalid_events_mask(
+                        shg_sig_events,
+                        valid_event_field_ranges_dict)
+                    n_redraw_events = np.count_nonzero(invalid_events_mask)
+                    #print(f'n_redraw_events: {n_redraw_events}')
+                    if n_redraw_events > 0:
+                        # Re-draw n_redraw_events signal events for this dataset
+                        # and SHG.
+                        redrawn_shg_sig_events =\
+                            self._draw_valid_sig_events_for_dataset_and_shg(
+                                rss=rss,
+                                mc=mc,
+                                n_signal=n_redraw_events,
+                                ds_idx=ds_idx,
+                                valid_event_field_ranges_dict=valid_event_field_ranges_dict,
+                                shg=shg,
+                                shg_idx=shg_idx,
+                                obstime=obstime,
+                            )
+                        shg_sig_events[invalid_events_mask] = redrawn_shg_sig_events
+
+                    indices = np.indices((n_shg_sig_events,))[0] + fill_start_idx
+                    sig_events.set_selection(indices, shg_sig_events)
+
+                    fill_start_idx += n_shg_sig_events
+
+                signal_events_dict[ds_idx] = sig_events
+
+            signal_events_dict_list.append(signal_events_dict)
+
+        # Build a single dictionary merging events with same dataset index
+        signal_events_dicts = dict()
+        for d in signal_events_dict_list:
+            for key, value in d.items():
+                if key in signal_events_dicts:
+                    signal_events_dicts[key].append(value)
+                else:
+                    signal_events_dicts[key] = value.copy()
+        print(signal_events_dicts)
+        return (n_signal, signal_events_dicts)
