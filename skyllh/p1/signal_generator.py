@@ -39,6 +39,10 @@ from skyllh.core.storage import (
     DataFieldRecordArray,
 )
 
+from skyllh.core.times import (
+LivetimeTimeGenerationMethod,
+TimeGenerator,
+)
 
 class SignalGenerator(
         HasConfig,
@@ -852,9 +856,23 @@ class MCMultiDatasetSignalGenerator(
 
         signal_events_dict_list = []
 
-        obstime = 60410.50
+        #obstime = 60410.50
+        #print(type(self._data_list))
+        #print(self._data_list)
+        #print(self._data_list[0])
+        #print(self._data_list[0].mc)
+        #print(self._data_list[0].livetime)
+        time_generator = TimeGenerator(method = LivetimeTimeGenerationMethod(livetime = self._data_list[0].livetime))
+        # TODO
+        # The above only works when we have a single dataset
+        # There is a need to find a better way to draw observation times
+        # in case we have there is many dataset and ensure the drawn observation times
+        # cover the total detector up time and also ensure that the drawn 
+        # signal event at each drawn time is from the dataset corresponding
+        # to the livetime interval where it was drawn from
 
-        obstimes = np.full(n_signal, obstime) # creating fake observation time
+        obstimes = time_generator.generate_times(rss=rss, size = n_signal)
+        #obstimes = np.full(n_signal, obstime) # creating fake observation time
         # TODO
         # make a for loop over the obstime based from mean = N_s at this time
         # the append generate signal event for each source alt to get
