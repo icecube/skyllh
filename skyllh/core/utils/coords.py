@@ -18,6 +18,70 @@ from skyllh.core.model import (
     DetectorModel,
 )
 
+def get_equ_to_hor_transform(detector_model):
+    """Returns the equ_to_hor_transform function for the given detector model,
+    i.e. detector location.
+
+    Parameters
+    ----------
+    detector_model : instance of DetectorModel
+        The instance of DetectorModel defining the location of the detector.
+
+    Returns
+    -------
+    equ_to_hor_transform : callable
+        The transform function to transform equatorial coordinates into
+        horizontal coordinates. The function has the following call signature:
+
+            __call__(ra, dec, mjd)
+
+    """
+    if not isinstance(detector_model, DetectorModel):
+        raise TypeError(
+            'The detector_model argument must be an instance of DetectorModel!')
+
+    location = detector_model.location
+
+    def equ_to_hor_transform(src_ra, src_dec, mjd):
+        """Transforms the given horizontal coordinates into equatorial
+        coordinates using astropy.
+
+        Parameters
+        ----------
+        src_ra : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the right-ascensions in
+            radians.
+        src_dec : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the declinations angles in
+            radians.
+        mjd : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the MJD times.
+        location : instance of astropy.coordinates.EarthLocation
+            The location on Earth of these horizontal coordinates.
+
+        Returns
+        -------
+        azi : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the azimuth angles in
+            radians.
+        alt : instance of numpy.ndarray
+            The (N,)-shaped numpy.ndarray holding the altitude angles in
+            radians.
+        """
+        equ = SkyCoord(
+            ra=src_ra,
+            dec=src_dec,
+            frame="icrs",
+            unit="rad"
+        )
+
+        hor = equ.tranform_to(
+            AltAz(obstime=Time(mjd, format='mjd'),
+                  location=location)
+        )
+        return (hor.az.to(units.rad).value, hor.alt.to(units.rad).value)
+
+    return equ_to_hor_transform
 
 def get_hor_to_equ_transform(detector_model):
     """Returns the hor_to_equ_transform function for the given detector model,
