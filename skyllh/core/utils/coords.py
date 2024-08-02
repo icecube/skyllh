@@ -72,10 +72,9 @@ def get_equ_to_hor_transform(detector_model):
             ra=src_ra,
             dec=src_dec,
             frame="icrs",
-            unit="rad"
-        )
+            unit="rad")
 
-        hor = equ.tranform_to(
+        hor = equ.transform_to(
             AltAz(obstime=Time(mjd, format='mjd'),
                   location=location)
         )
