@@ -84,6 +84,7 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
     """
     def __init__(
         self,
+        equ_to_hor_transform,
         band_deg_alt_range = 1.0,
         src_batch_size=128,
         energy_range=None,
@@ -94,6 +95,16 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
 
         Parameters
         ----------
+        equ_to_hor_transform : callable
+            The transformation function to transform coordinates from the
+            equatorial system into the horizontal system.
+
+            The call signature must be:
+
+                __call__(ra, dec, mjd)
+
+            The return signature must be: (azi, alt)
+
         band_deg_alt_range : float
             The width of the alt band to take MC events from around a
             source altitude position in AltAz coordinates.
@@ -108,9 +119,23 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
         super().__init__(
             energy_range=energy_range,
             **kwargs)
-
+        self.equ_to_hor_transform = equ_to_hor_transform
         self.band_deg_alt_range = band_deg_alt_range
         self.src_batch_size = src_batch_size
+
+        @property
+        def equ_to_hor_transform(self):
+            """The transformation function to transform coordinates from the
+            equatorial system into the horizontal system.
+            """
+            return self._equ_to_hor_transform
+
+        @equ_to_hor_transform.setter
+        def equ_to_hor_transform(self, transform):
+            if not callable(transform):
+                raise TypeError(
+                    'The equ_to_hor_transform property must be a callable object!')
+            self._equ_to_hor_transform = transform
 
         @property
         def band_deg_alt_range(self):
