@@ -18,66 +18,6 @@ from skyllh.core.source_model import (
     PointLikeSource,
 )
 
-from skyllh.core.sidereal_time import (SiderealTimeService)
-
-def sources_to_recarray(sources):
-    """Converts the sequence of PointLikeSource sources into a numpy
-    structured array holding the information of the sources needed for the
-    detector signal yield calculation.
-
-    Parameters
-    ----------
-    sources : SourceModel | sequence of SourceModel
-        The source model(s) containing the information of the source(s).
-
-    Returns
-    -------
-    arr : instance of numpy.ndarray
-        The generated (N_sources,)-shaped structured numpy ndarray holding
-        the information for each source. This array contains the following
-        fields:
-
-            ``'dec'`` : float
-                The declination of the source.
-            ``'ra'`` : float
-                The right-ascension of the source.
-
-    """
-    if isinstance(sources, PointLikeSource):
-        sources = [sources]
-    if not issequenceof(sources, PointLikeSource):
-        raise TypeError(
-            'The sources argument must be an instance or a sequence of '
-            'instances of PointLikeSource!')
-
-    arr_dtype = [
-        ('dec', np.float64),
-        ('ra', np.float64),
-    ]
-
-    arr = np.empty((len(sources),), dtype=arr_dtype)
-    for (i, src) in enumerate(sources):
-        arr['dec'][i] = src.dec
-        arr['ra'][i] = src.ra
-
-    return arr
-
-def compute_alt_array(
-        shg,
-        detector_model,
-        livetime,
-        st_bin_width_deg
-):
-        st_service = SiderealTimeService(detector_model=detector_model,
-                                         livetime=livetime, 
-                                         st_bin_width_deg=st_bin_width_deg)
-        
-        src_recarray = sources_to_recarray(shg.source_list)
-        (src_st_alt_arr, src_st_az_arr) = st_service.create_src_st_alt_array(
-                src_array=src_recarray,
-            )
-        return (src_st_alt_arr, src_st_az_arr)
-
 class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
     """This class provides a signal generation method for point-like sources
     seen in the IceCube detector.
@@ -212,8 +152,7 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
             src_ra[k] = source.ra
 
         # TODO
-        #src_alt = get_soure_alt(src_dec, obstime, detector_model)
-        src_alt = np.array([0.5969206])  # fake data
+        (_, src_alt) = self.equ_to_hor_transform(src_ra, src_dec, obstime)
         
         data_mc_sin_true_alt = data_mc['sin_true_alt']
         data_mc_true_energy = data_mc['true_energy']
@@ -323,7 +262,7 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
 
             - 'shg_src_idx': int
                 The source index within the source hypothesis group.
-        obs_time : float
+        obstime : float
             The mjd random observation time from detector livetime drawn
             in generate events
         shg_sig_events : numpy record ndarray
@@ -336,9 +275,6 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
         shg_sig_events : numpy record ndarray
             The numpy record ndarray with the processed MC signal events.
         """
-        
-        src_alt = np.array([0.5969206])  # fake data
-        src_azi = np.array([2.41163])  # fake data
 
         # Get the unique source indices of that source hypo group.
         shg_src_idxs = np.unique(shg_sig_events_meta['shg_src_idx'])
@@ -346,8 +282,7 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
         for shg_src_idx in shg_src_idxs:
             source = shg.source_list[shg_src_idx]
 
-            # TODO
-            #src_alt = get_soure_alt(source, obstime, detector_model)
+            (src_azi, src_alt) = self.equ_to_hor_transform(source.ra, source.dec, obstime)
 
             # Get the signal events of the source hypo group, that belong to the
             # source index.
