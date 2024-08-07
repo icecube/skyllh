@@ -856,12 +856,6 @@ class MCMultiDatasetSignalGenerator(
 
         signal_events_dict_list = []
 
-        #obstime = 60410.50
-        #print(type(self._data_list))
-        #print(self._data_list)
-        #print(self._data_list[0])
-        #print(self._data_list[0].mc)
-        #print(self._data_list[0].livetime)
         time_generator = TimeGenerator(method = LivetimeTimeGenerationMethod(livetime = self._data_list[0].livetime))
         # TODO
         # The above only works when we have a single dataset
@@ -885,7 +879,6 @@ class MCMultiDatasetSignalGenerator(
                 rss=rss,
                 size=1, # Draw a single event for eac observation time.
             )
-            #print(f'sig_event_meta: {sig_events_meta}')
 
             # Get the list of unique dataset and source hypothesis group indices of
             # the drawn signal events.
@@ -897,7 +890,7 @@ class MCMultiDatasetSignalGenerator(
 
             signal_events_dict = dict()
             ds_idxs = np.unique(sig_events_meta['ds_idx'])
-            #print(f'ds_idxs: {ds_idxs}')
+
             for ds_idx in ds_idxs:
                 valid_event_field_ranges_dict =\
                     self.valid_event_field_ranges_dict_list[ds_idx]
@@ -943,7 +936,7 @@ class MCMultiDatasetSignalGenerator(
                         shg_sig_events,
                         valid_event_field_ranges_dict)
                     n_redraw_events = np.count_nonzero(invalid_events_mask)
-                    #print(f'n_redraw_events: {n_redraw_events}')
+
                     if n_redraw_events > 0:
                         # Re-draw n_redraw_events signal events for this dataset
                         # and SHG.
@@ -977,5 +970,5 @@ class MCMultiDatasetSignalGenerator(
                     signal_events_dicts[key].append(value)
                 else:
                     signal_events_dicts[key] = value.copy()
-        print(signal_events_dicts)
+
         return (n_signal, signal_events_dicts)

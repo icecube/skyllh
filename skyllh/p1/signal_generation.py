@@ -151,7 +151,6 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
             src_dec[k] = source.dec
             src_ra[k] = source.ra
 
-        # TODO
         (_, src_alt) = self.equ_to_hor_transform(src_ra, src_dec, obstime)
         
         data_mc_sin_true_alt = data_mc['sin_true_alt']
@@ -214,11 +213,8 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
                     (data_mc_true_energy <= self.energy_range[1])
                 )
 
-            #print(f'(alt_min, alt_max):{src_sin_alt_band_min, src_sin_alt_band_max}')
-            #print(f'MC event masked: {np.count_nonzero(ev_mask)}')
-
             ev_idxs = np.tile(indices, bs)[ev_mask.ravel()]
-            #print(ev_idxs)
+
             shg_src_idxs = bi*src_batch_size + np.repeat(
                     np.arange(bs),
                     ev_mask.sum(axis=1)
