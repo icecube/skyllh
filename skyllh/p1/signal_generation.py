@@ -288,18 +288,18 @@ class PointLikeSourceSignalGenerationMethod(SignalGenerationMethod):
             n_sig = len(shg_src_sig_events)
 
             # Rotate the signal events to the source location.
-            (ra, dec) = rotate_signal_events_on_sphere(
+            (azi, alt) = rotate_signal_events_on_sphere(
                 src_ra=np.full(n_sig, src_azi),
                 src_dec=np.full(n_sig, src_alt),
-                evt_true_ra=shg_src_sig_events['true_ra'],
-                evt_true_dec=shg_src_sig_events['true_dec'],
-                evt_reco_ra=shg_src_sig_events['ra'],
-                evt_reco_dec=shg_src_sig_events['dec']
+                evt_true_ra=shg_src_sig_events['true_azi'],
+                evt_true_dec=shg_src_sig_events['true_alt'],
+                evt_reco_ra=shg_src_sig_events['azi'],
+                evt_reco_dec=shg_src_sig_events['alt']
             )
 
-            shg_src_sig_events['ra'] = ra
-            shg_src_sig_events['dec'] = dec
-            shg_src_sig_events['sin_dec'] = np.sin(dec)
+            shg_src_sig_events['azi'] = azi
+            shg_src_sig_events['alt'] = alt
+            shg_src_sig_events['sin_alt'] = np.sin(alt)
 
             shg_sig_events[shg_src_mask] = shg_src_sig_events
 
