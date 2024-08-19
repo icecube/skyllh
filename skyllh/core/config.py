@@ -75,10 +75,10 @@ _BASECONFIG = {
     },
     'datafields': {
         'run': DFS.ANALYSIS_EXP,
-        'azi': DFS.ANALYSIS_EXP,
-        'alt': DFS.ANALYSIS_EXP,
+        'ra': DFS.ANALYSIS_EXP,
+        'dec': DFS.ANALYSIS_EXP,
         'ang_err': DFS.ANALYSIS_EXP,
-        #'time': DFS.ANALYSIS_EXP,
+        'time': DFS.ANALYSIS_EXP,
         'log_energy': DFS.ANALYSIS_EXP,
         'true_azi': DFS.ANALYSIS_MC,
         'true_alt': DFS.ANALYSIS_MC,
