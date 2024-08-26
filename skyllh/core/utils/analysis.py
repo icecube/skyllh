@@ -1234,6 +1234,7 @@ def create_trial_data_file(  # noqa: C901
         bkg_kwargs=None,
         sig_kwargs=None,
         pathfilename=None,
+        keep_src_n_events_arr_data=False , # Temporary, to keep compatibility in older outputs
         ncpu=None,
         ppbar=None,
         tl=None):
@@ -1382,13 +1383,15 @@ def create_trial_data_file(  # noqa: C901
 
         if trial_data is None:
             trial_data = trials
-            src_n_events_arr_data = src_n_events_arr
+            if keep_src_n_events_arr_data:
+                src_n_events_arr_data = src_n_events_arr
         else:
             trial_data = np_rfn.stack_arrays(
                 [trial_data, trials],
                 usemask=False,
                 asrecarray=True)
-            np.vstack((src_n_events_arr_data,src_n_events_arr))
+            if keep_src_n_events_arr_data:
+                np.vstack((src_n_events_arr_data,src_n_events_arr))
 
         pbar.increment()
     pbar.finish()
@@ -1405,7 +1408,11 @@ def create_trial_data_file(  # noqa: C901
         # Save the trial data to file.
         np.save(pathfilename, trial_data)
 
-    return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data) , src_n_events_arr_data 
+    if keep_src_n_events_arr_data:
+        return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data) , src_n_events_arr_data 
+    else:
+        return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data)
+
 
 
 def extend_trial_data_file(

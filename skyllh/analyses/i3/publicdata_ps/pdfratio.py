@@ -71,12 +71,16 @@ class PDSigSetOverBkgPDFRatio(
             self.ratio_fill_value_dict = dict()
             for sig_pdf_key in sig_pdf_set.pdf_keys:
                 sigpdf = sig_pdf_set[sig_pdf_key]
-                sigvals = sigpdf.get_pd_by_log10_reco_e(log10_e_bc)
-                sigvals = np.broadcast_to(sigvals, (n_sinDec, n_logE)).T
-                r = sigvals[bd] / bkg_pdf._hist_logE_sinDec[bd]
-                # Remove possible inf values.
-                r = r[np.invert(np.isinf(r))]
-                val = np.percentile(r[r > 1.], ratio_perc)
+                r = np.array((), dtype=np.double)
+                for i in range(sigpdf.n_splines):
+                    sigvals_source = sigpdf.get_pd_by_log10_reco_e_one_source(log10_e_bc,i)
+                    sigvals_source = np.broadcast_to(sigvals_source, (n_sinDec, n_logE)).T
+                    r_source = sigvals_source[bd] / bkg_pdf._hist_logE_sinDec[bd]
+                    # Remove possible inf values.
+                    r_source = r_source[np.invert(np.isinf(r_source))]
+                    r_source = r_source[r_source > 1.]
+                    r = np.concatenate((r,r_source))
+                val = np.percentile(r, ratio_perc)
                 self.ratio_fill_value_dict[sig_pdf_key] = val
                 self._logger.info(
                     f'The cap value for the energy PDF ratio key {sig_pdf_key} '
