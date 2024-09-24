@@ -49,6 +49,7 @@ class PDBackgroundI3EnergyPDF(
 
     _KDE_BW_NORTH = 0.4
     _KDE_BW_SOUTH = 0.32
+    _ALPHA = 2.0
 
     def __init__(
             self,
@@ -60,6 +61,7 @@ class PDBackgroundI3EnergyPDF(
             sinDec_binning,
             smoothing_filter,
             kde_smoothing=False,
+            numerical_stabilizer=False,
             **kwargs):
         """Creates a new IceCube energy PDF object for the public data.
 
@@ -89,7 +91,12 @@ class PDBackgroundI3EnergyPDF(
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
             Default: False.
+        numerical_stabilizer : bool
+            Auxiliary option for KDE smoothing. It artificially sets the pdf
+            values where in the region where it is not originally defined in
+            order to avoid artificially low values.
         """
+
         super().__init__(
             pmm=None,
             **kwargs)
@@ -127,6 +134,15 @@ class PDBackgroundI3EnergyPDF(
             raise ValueError(
                 'The kde_smoothing argument must be an instance of bool! '
                 f'Its current type is {classname(kde_smoothing)}!')
+
+
+        # Auxiliary function to ensure numerical stability option
+        # when extending the bkg pdf outside the region with data.
+        # This version performs an exponential decrease controlled
+        # by the parameter alpha, which expreses how many orders
+        # of magnitude the pdf decreases per decade in energy.
+        def extend_energy_hist(log_E,log_E_0,alpha):
+            return np.power(10,-alpha * np.abs(log_E - log_E_0))
 
         # We have to figure out, which histogram bins are zero due to no
         # monte-carlo coverage, and which due to zero physics model
@@ -171,6 +187,57 @@ class PDBackgroundI3EnergyPDF(
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered_zero_physics = h > 0
 
+        # Create a 2D histogram with only the data which has physics
+        # contribution. We will do the normalization along the logE
+        # axis manually.
+        data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
+        (h, bins_logE, bins_sinDec) = np.histogram2d(
+            data_logE[~mask],
+            data_sinDec[~mask],
+            bins=[
+                logE_binning.binedges,
+                sinDec_binning.binedges
+            ],
+            weights=data_weights,
+            range=[
+                logE_binning.range,
+                sinDec_binning.range
+            ],
+            density=False)
+        
+        if numerical_stabilizer:
+            hist_energy_minima_idx = np.zeros_like(sinDec_binning.bincenters,int)
+            hist_energy_maxima_idx = np.zeros_like(sinDec_binning.bincenters,int)
+            for idx_sin_dec in range(h.shape[1]):
+                energy_hist = h[:,idx_sin_dec]
+                idx_nonzero_bins = np.nonzero(energy_hist)[0]
+                idx_nonzero_low = idx_nonzero_bins[0]
+                idx_nonzero_high = idx_nonzero_bins[-1]
+
+                hist_energy_minima_idx[idx_sin_dec] = idx_nonzero_low
+                hist_energy_maxima_idx[idx_sin_dec] = idx_nonzero_high
+
+                energy_hist_low = energy_hist[idx_nonzero_low]
+                energy_hist_high = energy_hist[idx_nonzero_high]
+            
+                if not kde_smoothing:
+                    logE_low = logE_binning.bincenters[idx_nonzero_low]
+                    logE_high = logE_binning.bincenters[idx_nonzero_high]
+
+
+                    energy_hist[:idx_nonzero_low] = energy_hist_low *\
+                        extend_energy_hist(logE_binning.bincenters[:idx_nonzero_low],
+                                        logE_low,
+                                        self._ALPHA)
+                    
+                    energy_hist[idx_nonzero_high+1:] = energy_hist_high *\
+                        extend_energy_hist(logE_binning.bincenters[idx_nonzero_high+1:],
+                                        logE_high,
+                                        self._ALPHA)
+
+            self._hist_energy_minima_idx = hist_energy_minima_idx
+            self._hist_energy_maxima_idx = hist_energy_maxima_idx
+
         if kde_smoothing:
             # If a bandwidth is passed, apply a KDE-based smoothing with the
             # given bandwidth parameter as bandwidth for the fit.
@@ -199,33 +266,45 @@ class PDBackgroundI3EnergyPDF(
 
             h = np.vstack(kde_pdf_list).T
 
-        else:
-            # Create a 2D histogram with only the data which has physics
-            # contribution. We will do the normalization along the logE
-            # axis manually.
-            data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
-            (h, bins_logE, bins_sinDec) = np.histogram2d(
-                data_logE[~mask],
-                data_sinDec[~mask],
-                bins=[
-                    logE_binning.binedges,
-                    sinDec_binning.binedges
-                ],
-                weights=data_weights,
-                range=[
-                    logE_binning.range,
-                    sinDec_binning.range
-                ],
-                density=False)
+            if numerical_stabilizer:
+            # For the KDE smoothing, we can extend one bin the range of our
+            # histogram, to use the KDE smoothing in the borders.
+                hist_energy_minima_idx[hist_energy_minima_idx > 0] -= 1
+                hist_energy_maxima_idx[hist_energy_maxima_idx < len(logE_binning.bincenters)] +=1
+                
+                for idx_sin_dec in range(h.shape[1]):
+                    energy_hist = h[:,idx_sin_dec]
+
+                    idx_nonzero_low = hist_energy_minima_idx[idx_sin_dec]
+                    idx_nonzero_high = hist_energy_maxima_idx[idx_sin_dec]
+
+                    energy_hist_low = energy_hist[idx_nonzero_low]
+                    energy_hist_high = energy_hist[idx_nonzero_high]
+                
+                    logE_low = logE_binning.bincenters[idx_nonzero_low]
+                    logE_high = logE_binning.bincenters[idx_nonzero_high]
+
+
+                    energy_hist[:idx_nonzero_low] = energy_hist_low *\
+                        extend_energy_hist(logE_binning.bincenters[:idx_nonzero_low],
+                                        logE_low,
+                                        self._ALPHA)
+                    
+                    energy_hist[idx_nonzero_high+1:] = energy_hist_high *\
+                        extend_energy_hist(logE_binning.bincenters[idx_nonzero_high+1:],
+                                        logE_high,
+                                        self._ALPHA)
+
 
         # Calculate the normalization for each logE bin. Hence we need to sum
         # over the logE bins (axis 0) for each sin(dec) bin and need to divide
         # by the logE bin widths along the sin(dec) bins. The result array norm
         # is a 2D array of the same shape as h.
+        h = self._hist_smoothing_method.smooth(h)
         norms = np.sum(h, axis=(0,))[np.newaxis, ...] * \
             np.diff(logE_binning.binedges)[..., np.newaxis]
         h /= norms
-        h = self._hist_smoothing_method.smooth(h)
+        # h = self._hist_smoothing_method.smooth(h)
 
         self._hist_logE_sinDec = h
 
@@ -275,7 +354,23 @@ class PDBackgroundI3EnergyPDF(
         return (
             self._hist_mask_mc_covered &
             ~self._hist_mask_mc_covered_zero_physics)
-
+    
+    @property
+    def hist_energy_minima_idx(self):
+        """(read-only) The indices of the lowest energy bin for each sin dec 
+        bin for which the original histogram is non-zero. 
+        Used for the numerical stabilizer.
+        """
+        return self._hist_energy_minima_idx
+    
+    @property
+    def hist_energy_maxima_idx(self):
+        """(read-only) The indices of the highest energy bin for each sin dec 
+        bin for which the original histogram is non-zero.
+        Used for the numerical stabilizer.
+        """
+        return self._hist_energy_maxima_idx
+    
     def initialize_for_new_trial(
             self,
             tdm,

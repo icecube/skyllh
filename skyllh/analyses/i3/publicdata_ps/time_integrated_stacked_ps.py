@@ -150,6 +150,7 @@ def create_analysis(
         gamma_min=1.,
         gamma_max=5.,
         kde_smoothing=False,
+        numerical_stabilizer=False,
         minimizer_impl='LBFGS',
         cut_sindec=None,
         spl_smooth=None,
@@ -195,6 +196,10 @@ def create_analysis(
     kde_smoothing : bool
         Apply a KDE-based smoothing to the data-driven background pdf.
         Default: False.
+    numerical_stabilizer: bool
+        Imposes a controled decrease in the energy background pdf in the 
+        regions where it was originally zero to avoid numerical bumps
+        on the pdf ratio.
     minimizer_impl : str
         Minimizer implementation to be used. Supported options are ``"LBFGS"``
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
@@ -452,7 +457,8 @@ def create_analysis(
             logE_binning=log_energy_binning,
             sinDec_binning=sin_dec_binning,
             smoothing_filter=smoothing_filter,
-            kde_smoothing=kde_smoothing)
+            kde_smoothing=kde_smoothing,
+            numerical_stabilizer=numerical_stabilizer)
 
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
             cfg=cfg,
