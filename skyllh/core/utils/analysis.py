@@ -1238,8 +1238,8 @@ def create_trial_data_file(  # noqa: C901
         ppbar=None,
         tl=None):
     """Creates and fills a trial data file with `n_trials` generated trials for
-    each mean number of injected signal events from `ns_min` up to `ns_max` for
-    a given analysis.
+    each mean number of injected signal events specified by `mean_n_sig` for a
+    given analysis.
 
     Parameters
     ----------
@@ -1419,7 +1419,8 @@ def extend_trial_data_file(
         pathfilename=None,
         **kwargs):
     """Appends to the trial data file `n_trials` generated trials for each
-    mean number of injected signal events up to `ns_max` for a given analysis.
+    mean number of injected signal events specified by `mean_n_sig` for a
+    given analysis.
 
     Parameters
     ----------
