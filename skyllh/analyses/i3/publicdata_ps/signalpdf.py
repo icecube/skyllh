@@ -708,6 +708,7 @@ class PDSignalEnergyPDFSetMultiSource(
             shg_mgr,
             fluxmodel,
             param_grid_set,
+            only_one_pdf=False,
             ncpu=None,
             ppbar=None,
             **kwargs,
@@ -729,6 +730,9 @@ class PDSignalEnergyPDFSetMultiSource(
         param_grid_set : instance of ParameterGrid | instance of ParameterGridSet
             The parameter grid set defining the grids of the parameters this
             energy PDF set depends on.
+        only_one_pdf: bool
+            Option to generate only a pdf for an specific parameter value,
+            rather than a set of pdfs. 
         ncpu : int | None
             The number of CPUs to utilize. Global setting will take place if
             not specified, i.e. set to None.
@@ -758,7 +762,8 @@ class PDSignalEnergyPDFSetMultiSource(
         # Extend the param_grid_set to allow for parameter interpolation
         # values at the grid edges.
         param_grid_set = param_grid_set.copy()
-        param_grid_set.add_extra_lower_and_upper_bin()
+        if not only_one_pdf:
+            param_grid_set.add_extra_lower_and_upper_bin()
 
         super().__init__(
             param_grid_set=param_grid_set,

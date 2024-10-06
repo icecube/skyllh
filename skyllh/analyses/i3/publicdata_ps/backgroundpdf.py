@@ -2,13 +2,26 @@
 
 import numpy as np
 
+from skyllh.analyses.i3.publicdata_ps.detsigyield import (
+    PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
+)
 from scipy.stats import (
     gaussian_kde,
 )
-
 from skyllh.core.binning import (
     BinningDefinition,
     UsesBinning,
+)
+from skyllh.core.flux_model import (
+    PowerLawEnergyFluxProfile,
+    SteadyPointlikeFFM,
+)
+from skyllh.core.parameters import (
+    Parameter,
+    ParameterModelMapper,
+)
+from skyllh.analyses.i3.publicdata_ps.signalpdf import (
+    PDSignalEnergyPDFSetMultiSource,
 )
 from skyllh.core.pdf import (
     EnergyPDF,
@@ -25,6 +38,13 @@ from skyllh.core.smoothing import (
     NoHistSmoothingMethod,
     NeighboringBinHistSmoothingMethod,
 )
+from skyllh.core.source_model import (
+    PointLikeSource,
+)
+from skyllh.core.source_hypo_grouping import (
+    SourceHypoGroup,
+    SourceHypoGroupManager,
+)
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
@@ -37,7 +57,8 @@ class PDBackgroundI3EnergyPDF(
         EnergyPDF,
         IsBackgroundPDF,
         UsesBinning):
-    """This is the base class for an IceCube specific energy background PDF for
+    """
+    This is the base class for an IceCube specific energy background PDF for
     the public data.
 
     IceCube energy PDFs depend solely on the energy and the zenith angle, and
@@ -53,6 +74,7 @@ class PDBackgroundI3EnergyPDF(
 
     def __init__(
             self,
+            ds,
             data_logE,
             data_sinDec,
             data_mcweight,
@@ -61,12 +83,17 @@ class PDBackgroundI3EnergyPDF(
             sinDec_binning,
             smoothing_filter,
             kde_smoothing=False,
-            numerical_stabilizer=False,
+            numerical_stabilizer=None,
+            astrodiffplflux_phi0=1.68e-18,
+            astrodiffplflux_E0=1e3,
+            astrodiffplflux_gamma=2.58,
             **kwargs):
         """Creates a new IceCube energy PDF object for the public data.
 
         Parameters
         ----------
+        ds : instance of Dataset | None
+            The instance of Dataset that defines the dataset of the public data.
         data_logE : instance of ndarray
             The 1d ndarray holding the log10(E) values of the events.
         data_sinDec : instance of ndarray
@@ -91,10 +118,27 @@ class PDBackgroundI3EnergyPDF(
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
             Default: False.
-        numerical_stabilizer : bool
-            Auxiliary option for KDE smoothing. It artificially sets the pdf
-            values where in the region where it is not originally defined in
-            order to avoid artificially low values.
+        numerical_stabilizer : {None,'numerical','physical'}
+            It artificially sets the pdf values in the region where it is not
+            originally defined in order to avoid artificially low values.
+        astrodiffplflux_phi0: float
+            The flux normalization to use for the astrophysical diffuse power
+            law flux model. 
+            This is used with the option numerical_stabilizer ='Physical'.
+            Default value from: 
+            [1] https://arxiv.org/pdf/2111.10299.pdf
+        astrodiffplflux_E0 : float
+            The reference energy to use for the astrophysical diffuse power 
+            law flux model.
+            This is used with the option numerical_stabilizer ='Physical'.
+            Default value from: 
+            [1] https://arxiv.org/pdf/2111.10299.pdf
+        astrodiffplflux_gamma : float
+            The spectral index to use for the astrophysical diffuse law 
+            flux model.
+            This is used with the option numerical_stabilizer ='Physical'.
+            Default value from: 
+            [1] https://arxiv.org/pdf/2111.10299.pdf
         """
 
         super().__init__(
@@ -134,15 +178,6 @@ class PDBackgroundI3EnergyPDF(
             raise ValueError(
                 'The kde_smoothing argument must be an instance of bool! '
                 f'Its current type is {classname(kde_smoothing)}!')
-
-
-        # Auxiliary function to ensure numerical stability option
-        # when extending the bkg pdf outside the region with data.
-        # This version performs an exponential decrease controlled
-        # by the parameter alpha, which expreses how many orders
-        # of magnitude the pdf decreases per decade in energy.
-        def extend_energy_hist(log_E,log_E_0,alpha):
-            return np.power(10,-alpha * np.abs(log_E - log_E_0))
 
         # We have to figure out, which histogram bins are zero due to no
         # monte-carlo coverage, and which due to zero physics model
@@ -204,40 +239,10 @@ class PDBackgroundI3EnergyPDF(
                 sinDec_binning.range
             ],
             density=False)
-        
-        if numerical_stabilizer:
-            hist_energy_minima_idx = np.zeros_like(sinDec_binning.bincenters,int)
-            hist_energy_maxima_idx = np.zeros_like(sinDec_binning.bincenters,int)
-            for idx_sin_dec in range(h.shape[1]):
-                energy_hist = h[:,idx_sin_dec]
-                idx_nonzero_bins = np.nonzero(energy_hist)[0]
-                idx_nonzero_low = idx_nonzero_bins[0]
-                idx_nonzero_high = idx_nonzero_bins[-1]
+        h = self._hist_smoothing_method.smooth(h)
 
-                hist_energy_minima_idx[idx_sin_dec] = idx_nonzero_low
-                hist_energy_maxima_idx[idx_sin_dec] = idx_nonzero_high
-
-                energy_hist_low = energy_hist[idx_nonzero_low]
-                energy_hist_high = energy_hist[idx_nonzero_high]
-            
-                if not kde_smoothing:
-                    logE_low = logE_binning.bincenters[idx_nonzero_low]
-                    logE_high = logE_binning.bincenters[idx_nonzero_high]
-
-
-                    energy_hist[:idx_nonzero_low] = energy_hist_low *\
-                        extend_energy_hist(logE_binning.bincenters[:idx_nonzero_low],
-                                        logE_low,
-                                        self._ALPHA)
-                    
-                    energy_hist[idx_nonzero_high+1:] = energy_hist_high *\
-                        extend_energy_hist(logE_binning.bincenters[idx_nonzero_high+1:],
-                                        logE_high,
-                                        self._ALPHA)
-
-            self._hist_energy_minima_idx = hist_energy_minima_idx
-            self._hist_energy_maxima_idx = hist_energy_maxima_idx
-
+        self.compute_hist_energy_max_min_idx(h,sinDec_binning)
+    
         if kde_smoothing:
             # If a bandwidth is passed, apply a KDE-based smoothing with the
             # given bandwidth parameter as bandwidth for the fit.
@@ -265,42 +270,26 @@ class PDBackgroundI3EnergyPDF(
                 kde_pdf_list.append(kde.evaluate(logE_binning.bincenters))
 
             h = np.vstack(kde_pdf_list).T
+            h = self._hist_smoothing_method.smooth(h)
 
-            if numerical_stabilizer:
-            # For the KDE smoothing, we can extend one bin the range of our
-            # histogram, to use the KDE smoothing in the borders.
-                hist_energy_minima_idx[hist_energy_minima_idx > 0] -= 1
-                hist_energy_maxima_idx[hist_energy_maxima_idx < len(logE_binning.bincenters)] +=1
-                
-                for idx_sin_dec in range(h.shape[1]):
-                    energy_hist = h[:,idx_sin_dec]
+        if numerical_stabilizer == 'numerical':
+            h = self.artificial_stabilizer(h,logE_binning,
+                        self.hist_energy_minima_idx,self.hist_energy_maxima_idx,
+                        kde_smoothing=kde_smoothing)
 
-                    idx_nonzero_low = hist_energy_minima_idx[idx_sin_dec]
-                    idx_nonzero_high = hist_energy_maxima_idx[idx_sin_dec]
-
-                    energy_hist_low = energy_hist[idx_nonzero_low]
-                    energy_hist_high = energy_hist[idx_nonzero_high]
-                
-                    logE_low = logE_binning.bincenters[idx_nonzero_low]
-                    logE_high = logE_binning.bincenters[idx_nonzero_high]
-
-
-                    energy_hist[:idx_nonzero_low] = energy_hist_low *\
-                        extend_energy_hist(logE_binning.bincenters[:idx_nonzero_low],
-                                        logE_low,
-                                        self._ALPHA)
-                    
-                    energy_hist[idx_nonzero_high+1:] = energy_hist_high *\
-                        extend_energy_hist(logE_binning.bincenters[idx_nonzero_high+1:],
-                                        logE_high,
-                                        self._ALPHA)
+        if numerical_stabilizer == 'physical':
+            h = self.physics_stabilizer(h,ds,sinDec_binning,logE_binning,
+                        self.hist_energy_minima_idx,self.hist_energy_maxima_idx,
+                        astrodiffplflux_phi0=astrodiffplflux_phi0,
+                        astrodiffplflux_E0=astrodiffplflux_E0,
+                        astrodiffplflux_gamma=astrodiffplflux_gamma,
+                        kde_smoothing=kde_smoothing)
 
 
         # Calculate the normalization for each logE bin. Hence we need to sum
         # over the logE bins (axis 0) for each sin(dec) bin and need to divide
         # by the logE bin widths along the sin(dec) bins. The result array norm
         # is a 2D array of the same shape as h.
-        h = self._hist_smoothing_method.smooth(h)
         norms = np.sum(h, axis=(0,))[np.newaxis, ...] * \
             np.diff(logE_binning.binedges)[..., np.newaxis]
         h /= norms
@@ -371,6 +360,175 @@ class PDBackgroundI3EnergyPDF(
         """
         return self._hist_energy_maxima_idx
     
+    def compute_hist_energy_max_min_idx(self,h,sinDec_binning):
+        '''It computes the indices of the highest and lowest energy bin for 
+        each sin dec bin for which the original histogram is non-zero.
+        '''
+        hist_energy_minima_idx = np.zeros_like(sinDec_binning.bincenters,int)
+        hist_energy_maxima_idx = np.zeros_like(sinDec_binning.bincenters,int)
+        for idx_sin_dec in range(h.shape[1]):
+            energy_hist = h[:,idx_sin_dec]
+            idx_nonzero_bins = np.nonzero(energy_hist)[0]
+            idx_nonzero_low = idx_nonzero_bins[0]
+            idx_nonzero_high = idx_nonzero_bins[-1]
+
+            hist_energy_minima_idx[idx_sin_dec] = idx_nonzero_low
+            hist_energy_maxima_idx[idx_sin_dec] = idx_nonzero_high
+        
+        self._hist_energy_minima_idx = hist_energy_minima_idx
+        self._hist_energy_maxima_idx = hist_energy_maxima_idx
+
+        pass
+
+    def artificial_stabilizer(self,h,logE_binning,
+                              hist_energy_minima_idx,hist_energy_maxima_idx,
+                              kde_smoothing):
+        '''Auxiliary function to perform an artificial numerical 
+        stabilization.It is implemented for the option 
+        numerical_stabilizer='numerical'.
+
+            It extends the energy range in which the pdf is defined
+        by imposing an exponential decay (in log10 E scale) regulated
+        by the parameter _ALPHA=2.0 by default. This avoids 
+        artificially large values when injecting events in energy
+        regions where there was no bkg data available.
+        '''
+        for idx_sin_dec in range(h.shape[1]):
+            energy_hist = h[:,idx_sin_dec]
+            idx_nonzero_low = hist_energy_minima_idx[idx_sin_dec] 
+            idx_nonzero_high = hist_energy_maxima_idx[idx_sin_dec] 
+
+            if kde_smoothing:
+                if idx_nonzero_low > 0:
+                    idx_nonzero_low -= 1
+                if idx_nonzero_high < (len(logE_binning.bincenters)-1):
+                    idx_nonzero_high += 1
+            energy_hist_low = energy_hist[idx_nonzero_low]
+            energy_hist_high = energy_hist[idx_nonzero_high]
+
+            logE_low = logE_binning.bincenters[idx_nonzero_low]
+            logE_high = logE_binning.bincenters[idx_nonzero_high]
+        
+            energy_hist[:idx_nonzero_low] = energy_hist_low *\
+                self.extend_energy_hist(logE_binning.bincenters[:idx_nonzero_low],
+                                logE_low,
+                                self._ALPHA)
+            
+            energy_hist[idx_nonzero_high+1:] = energy_hist_high *\
+                self.extend_energy_hist(logE_binning.bincenters[idx_nonzero_high+1:],
+                                logE_high,
+                                self._ALPHA)
+        return h 
+    
+    def physics_stabilizer(self,h,ds,sinDec_binning,logE_binning,
+                        hist_energy_minima_idx,hist_energy_maxima_idx,
+                        astrodiffplflux_phi0=1.68e-18,
+                        astrodiffplflux_E0=1e3,
+                        astrodiffplflux_gamma=2.58,
+                        kde_smoothing=False):
+        '''Auxiliary function to perform a numerical 
+        stabilization based in the astrophysical diffuse flux.
+        It is implemented for the option numerical_stabilizer='physics'.
+
+            It extends the energy range in which the pdf is defined
+        by imposing an exponential decay (in log10 E scale) regulated
+        by the parameter _ALPHA=2.0 by default. This avoids 
+        artificially large values when injecting events in energy
+        regions where there was no bkg data available.
+        '''
+        param_gamma = Parameter(
+            name='gamma_astro_diff',
+            initial=astrodiffplflux_gamma,
+            isfixed=True)
+        fluxmodel_astro =  SteadyPointlikeFFM(
+            Phi0=astrodiffplflux_phi0,
+            energy_profile=PowerLawEnergyFluxProfile(
+                E0=astrodiffplflux_E0,
+                gamma=astrodiffplflux_gamma,
+                cfg=self.cfg),
+                cfg=self.cfg)
+        gamma_grid = param_gamma.as_linear_grid(delta=0.1)
+
+        detsigyield_builder =\
+                    PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
+                        cfg=self.cfg,
+                        param_grid=gamma_grid)    
+        
+        dec_bins = np.arcsin(sinDec_binning.bincenters)
+        source_list = [PointLikeSource(name='Dec '+str(i),
+                                       weight=1,
+                                       ra=0,
+                                       dec=dec) for i,dec in enumerate(dec_bins)]
+
+        shg_mgr = SourceHypoGroupManager(
+            SourceHypoGroup(
+                sources=source_list,
+                fluxmodel=fluxmodel_astro,
+                detsigyield_builders=detsigyield_builder,
+            ))
+
+        energy_sigpdfset = PDSignalEnergyPDFSetMultiSource(
+            cfg=self.cfg,
+            ds=ds,
+            shg_mgr=shg_mgr,
+            fluxmodel=fluxmodel_astro,
+            param_grid_set=gamma_grid,
+            only_one_pdf=True)
+        
+        bkg_astro_pdf = energy_sigpdfset.get_pdf(
+            {'gamma_astro_diff':astrodiffplflux_gamma})
+        
+        # Now we asign values according to this bkg pdf
+        for idx_sin_dec in range(h.shape[1]):
+            energy_hist = h[:,idx_sin_dec]
+            idx_nonzero_low = hist_energy_minima_idx[idx_sin_dec] 
+            idx_nonzero_high = hist_energy_maxima_idx[idx_sin_dec] 
+
+            if kde_smoothing:
+                if idx_nonzero_low > 0:
+                    idx_nonzero_low -= 1
+                if idx_nonzero_high < (len(logE_binning.bincenters)-1):
+                    idx_nonzero_high += 1
+
+            bkg_astro_pdf_values = bkg_astro_pdf.get_pd_by_log10_reco_e_one_source(
+                log10_reco_e=logE_binning.bincenters,
+                source_number=idx_sin_dec)
+
+            # To avoid division by zero for the cases the lower value is zero
+            # we take as a reference the first non zero well defined value
+            if bkg_astro_pdf_values[idx_nonzero_low] == 0:
+                bkg_astro_pdf_value_low = bkg_astro_pdf_values[idx_nonzero_low]
+                counter = 0
+                while bkg_astro_pdf_value_low == 0 :
+                    counter += 1
+                    bkg_astro_pdf_value_low = bkg_astro_pdf_values[idx_nonzero_low+counter]
+                scale_factor_low = energy_hist[idx_nonzero_low+counter] /\
+                    bkg_astro_pdf_value_low
+                
+            else:
+                scale_factor_low = energy_hist[idx_nonzero_low] /\
+                    bkg_astro_pdf_values[idx_nonzero_low]
+                
+            scale_factor_high = energy_hist[idx_nonzero_high]/\
+                bkg_astro_pdf_values[idx_nonzero_high]
+
+            energy_hist[:idx_nonzero_low] = scale_factor_low *\
+                bkg_astro_pdf_values[:idx_nonzero_low]
+            energy_hist[idx_nonzero_high+1:] = scale_factor_high *\
+                bkg_astro_pdf_values[idx_nonzero_high+1:]
+                
+        return h 
+
+
+    def extend_energy_hist(self,log_E,log_E_0,alpha):
+        '''Auxiliary function to ensure numerical stability option
+        when extending the bkg pdf outside the region with data.
+        This version performs an exponential decrease controlled
+        by the parameter alpha, which expreses how many orders
+        of magnitude the pdf decreases per decade in energy.'''
+
+        return np.power(10,-alpha * np.abs(log_E - log_E_0))
+
     def initialize_for_new_trial(
             self,
             tdm,
@@ -497,12 +655,19 @@ class PDDataBackgroundI3EnergyPDF(
             sinDec_binning,
             smoothing_filter=None,
             kde_smoothing=False,
+            numerical_stabilizer=None,
+            astrodiffplflux_phi0=1.68e-18,
+            astrodiffplflux_E0=1e3,
+            astrodiffplflux_gamma=2.58,
+            ds=None,
             **kwargs):
         """Constructs a new IceCube energy background PDF from experimental
         data.
 
         Parameters
         ----------
+        ds : instance of Dataset
+            The instance of Dataset that defines the dataset of the public data.
         data_exp : instance of DataFieldRecordArray
             The array holding the experimental data. The following data fields
             must exist:
@@ -525,6 +690,29 @@ class PDDataBackgroundI3EnergyPDF(
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
             Default: False.
+        numerical_stabilizer : {None,'numerical','physical'}
+            It artificially sets the pdf values in the region where it is not
+            originally defined in order to avoid artificially low values.
+        astrodiffplflux_phi0: float
+            The flux normalization to use for the astrophysical diffuse power
+            law flux model. 
+            This is used with the option numerical_stabilizer ='Physical'.
+            Default value from: 
+            [1] https://arxiv.org/pdf/2111.10299.pdf
+        astrodiffplflux_E0 : float
+            The reference energy to use for the astrophysical diffuse power 
+            law flux model.
+            This is used with the option numerical_stabilizer ='Physical'.
+            Default value from: 
+            [1] https://arxiv.org/pdf/2111.10299.pdf
+        astrodiffplflux_gamma : float
+            The spectral index to use for the astrophysical diffuse law 
+            flux model.
+            This is used with the option numerical_stabilizer ='Physical'.
+            Default value from: 
+            [1] https://arxiv.org/pdf/2111.10299.pdf
+        ds : instance of Dataset | None
+            The instance of Dataset that defines the dataset of the public data.
         """
         if not isinstance(data_exp, DataFieldRecordArray):
             raise TypeError(
@@ -540,6 +728,7 @@ class PDDataBackgroundI3EnergyPDF(
 
         # Create the energy PDF using the base class.
         super().__init__(
+            ds=ds,
             data_logE=data_logE,
             data_sinDec=data_sinDec,
             data_mcweight=data_mcweight,
@@ -548,6 +737,10 @@ class PDDataBackgroundI3EnergyPDF(
             sinDec_binning=sinDec_binning,
             smoothing_filter=smoothing_filter,
             kde_smoothing=kde_smoothing,
+            numerical_stabilizer=numerical_stabilizer,
+            astrodiffplflux_phi0=astrodiffplflux_phi0,
+            astrodiffplflux_E0=astrodiffplflux_E0,
+            astrodiffplflux_gamma=astrodiffplflux_gamma,
             **kwargs)
 
 
