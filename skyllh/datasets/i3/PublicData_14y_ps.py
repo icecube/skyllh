@@ -265,7 +265,7 @@ def create_dataset_collection(
 
     # Define the origin of the dataset.
     origin = DatasetOrigin(
-        base_path='/data/user/wluszczak/datarelease_2025/wg-nu-sources/wg-scripts/data-release/pstracks_v004p02/',
+        base_path='/data/user/tkontrimas/datarelease_2025/',
         sub_path='icecube_pstracks_v004p02/',
         host='convey.icecube.wisc.edu',
         transfer_func=WGETDatasetTransfer(protocol='https').transfer,
