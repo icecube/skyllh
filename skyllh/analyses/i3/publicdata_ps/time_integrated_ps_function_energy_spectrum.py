@@ -245,7 +245,7 @@ def create_analysis(
         analysis.
     source : PointLikeSource instance
         The PointLikeSource instance defining the point source position.
-    source_energy : numpy array
+    source_energies : numpy array
         Energies in GeV for which source_energy_spectrum is given
     source_energy_spectrum : numpy array
         The energy spectrum in GeV / cm^2 / s 
