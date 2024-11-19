@@ -39,6 +39,7 @@ from skyllh.core.pdf import (
 from skyllh.core.py import (
     classname,
     module_classname,
+    issequence,
     issequenceof,
 )
 from skyllh.core.timing import (
@@ -53,7 +54,7 @@ class PDSignalEnergyPDF(
         PDF,
         IsSignalPDF,
 ):
-    """This class provides a signal energy PDF for a spectrial index value.
+    """This class provides a signal energy PDF for a spectral index value.
     """
     def __init__(
             self,
@@ -434,11 +435,14 @@ class PDSignalEnergyPDFMultiSource(
         PDF,
         IsSignalPDF,
 ):
-    """This class provides a signal energy PDF for a spectrial index value.
-        MULTISOURCE VERSION
+    """This class provides a signal energy PDF for a spectral index value.
+       MULTISOURCE VERSION
 
-        We need to have one spline per source, so we have to adapt to code
-        to handle this
+       Compared to the single source case, for the source stacking we
+       need to compute a list of signal energy PDF splines, one per source.
+
+       NB: it might be that we can use this structure for both the single-
+       and the multi-source analyses. Needs to be tested!
     """
     def __init__(
             self,
@@ -478,9 +482,7 @@ class PDSignalEnergyPDFMultiSource(
                 vmin=min(self.log10_reco_e_min_list),
                 vmax=max(self.log10_reco_e_max_list)))
 
-    # Check integrity.
-    # DOES THIS NORMALIZATION STILL WORK FOR SEVERAL SOURCES?
-    # It should be normalized for each source
+        # Check the PDFs are all correctly normalized
         integral = lambda spline, log10_e_min, log10_e_max: integrate.quad(
             spline.evaluate,
             log10_e_min,
@@ -493,11 +495,11 @@ class PDSignalEnergyPDFMultiSource(
                             spline, log10_e_min, log10_e_max in 
                             zip(self.f_e_spl_list, self.log10_reco_e_min_list,
                                 self.log10_reco_e_max_list)]
-        for integral in integral_list:
+        for i,integral in enumerate(integral_list):
             if not np.isclose(integral, 1):
                 raise ValueError(
                     'The integral over log10_reco_e of the energy term must be '
-                    f'unity! But it is {integral}! for some spline')
+                    f'unity! But it is {integral} for spline (source) #{i}.')
                 
         
 
@@ -512,11 +514,11 @@ class PDSignalEnergyPDFMultiSource(
     def f_e_spl_list(self, f_e_spl):
         if isinstance(f_e_spl,FctSpline1D):
             f_e_spl = [f_e_spl]
-        if not issequenceof(f_e_spl,FctSpline1D):
+        if issequence(f_e_spl) and not issequenceof(f_e_spl,FctSpline1D):
             raise TypeError(
                 'The f_e_spl argument must be an instance of FctSpline1D,'
                 'or a sequence of FctSpline1D.'
-                f'Its current type is {classname(f_e_spl)} or list of it!')
+                f'Its current type is {classname(f_e_spl[0])}!')
         self._f_e_spl_list = list(f_e_spl)
 
     @property
@@ -525,45 +527,6 @@ class PDSignalEnergyPDFMultiSource(
         one per source considered
         """
         return len(self._f_e_spl_list)
-
-    # @property
-    # def log10_reco_e_lower_binedges_list(self):
-    #     return self._log10_reco_e_lower_binedges_list
-    
-    # @log10_reco_e_lower_binedges_list.setter
-    # def log10_reco_e_lower_binedges_list(self,f_e_spl_list):
-    #     self._log10_reco_e_lower_binedges_list =\
-    #     [spline.x_binedges[:-1] for spline in f_e_spl_list]
-
-    # @property
-    # def log10_reco_e_upper_binedges_list(self):
-    #     return self._log10_reco_e_upper_binedges_list
-    
-    # @log10_reco_e_upper_binedges_list.setter
-    # def log10_reco_e_upper_binedges_list(self):
-    #     self._log10_reco_e_upper_binedges_list =\
-    #     [spline.x_binedges[1:] for spline in self._f_e_spl_list]
-
-    # @property
-    # def log10_reco_e_min_list(self):
-    #     return self._log10_reco_e_min_list
-    
-    # @log10_reco_e_min_list.setter
-    # def log10_reco_e_min_list(self):
-    #     self._log10_reco_e_min_list =\
-    #     [binedge[0] for binedge in self._log10_reco_e_lower_binedges_list]
-
-    # @property
-    # def log10_reco_e_max_list(self):
-    #     return self._log10_reco_e_max_list
-    
-    # @log10_reco_e_max_list.setter
-    # def log10_reco_e_max_list(self):
-    #     self._log10_reco_e_max_list =\
-    #     [binedge[-1] for binedge in self._log10_reco_e_upper_binedges_list]
-    # MAYBE WE NEED ONE AXIS PER SPLINE
-    # Add the PDF axes.
-
 
     def assert_is_valid_for_trial_data(
             self,
