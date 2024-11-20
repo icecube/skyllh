@@ -1,0 +1,5 @@
+Parameters for the astrophysical diffuse background power law:
+
+Flux normalization phi_0: 1.44e-18GeV^-1 cm^-2 s^-1 sr^-1'
+Reference energy E_0: 1e5 GeV' 
+Spectral index gamma: 2.37'

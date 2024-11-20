@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pkgutil
+import importlib.resources as impresources
 
 from skyllh.analyses.i3.publicdata_ps.detsigyield import (
     PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
@@ -84,9 +86,7 @@ class PDBackgroundI3EnergyPDF(
             smoothing_filter,
             kde_smoothing=False,
             numerical_stabilizer=None,
-            astrodiffplflux_phi0=1.68e-18,
-            astrodiffplflux_E0=1e3,
-            astrodiffplflux_gamma=2.58,
+            astro_diff_bkg_file='default',
             **kwargs):
         """Creates a new IceCube energy PDF object for the public data.
 
@@ -121,24 +121,11 @@ class PDBackgroundI3EnergyPDF(
         numerical_stabilizer : {None,'numerical','physical'}
             It artificially sets the pdf values in the region where it is not
             originally defined in order to avoid artificially low values.
-        astrodiffplflux_phi0: float
-            The flux normalization to use for the astrophysical diffuse power
-            law flux model. 
-            This is used with the option numerical_stabilizer ='Physical'.
-            Default value from: 
-            [1] https://arxiv.org/pdf/2111.10299.pdf
-        astrodiffplflux_E0 : float
-            The reference energy to use for the astrophysical diffuse power 
-            law flux model.
-            This is used with the option numerical_stabilizer ='Physical'.
-            Default value from: 
-            [1] https://arxiv.org/pdf/2111.10299.pdf
-        astrodiffplflux_gamma : float
-            The spectral index to use for the astrophysical diffuse law 
-            flux model.
-            This is used with the option numerical_stabilizer ='Physical'.
-            Default value from: 
-            [1] https://arxiv.org/pdf/2111.10299.pdf
+        astro_diff_bkg_file : None | str
+            The file of the 2D histogram with the number of expected muons
+            from the astrophisical diffuse background. 'Default' loads the 
+            precomputed values for that dataset. See 
+            analysis/i3/publicdata_ps/astro_bkg_flux folder for more details.
         """
 
         super().__init__(
@@ -239,8 +226,24 @@ class PDBackgroundI3EnergyPDF(
                 sinDec_binning.range
             ],
             density=False)
-        h = self._hist_smoothing_method.smooth(h)
+        
+        self._hist_logE_sinDec_total = np.copy(h)
 
+        if numerical_stabilizer == 'physical':
+            # Add the expected events for background in the bins where it would have
+            # been zero.
+            zero_bkg__mask = (h==0)
+            if astro_diff_bkg_file == 'default':
+                datafile_name = f"astro_bkg_flux/astro_diff_mu_signal_2D-{ds.name}.npy"
+            # FIX HERE THE LOAD, NOT GETTING AS I WANT THE DATA
+                datafile_name = impresources.files("skyllh.analyses.i3.publicdata_ps").joinpath(
+                    f"astro_bkg_flux/astro_diff_mu_signal_2D-{ds.name}.npy")
+                hist_astro_diff_bkg = np.load(datafile_name)
+            else:
+                hist_astro_diff_bkg = np.load(astro_diff_bkg_file)
+            h[zero_bkg__mask] += hist_astro_diff_bkg[zero_bkg__mask]
+        
+        h = self._hist_smoothing_method.smooth(h)
         self.compute_hist_energy_max_min_idx(h,sinDec_binning)
     
         if kde_smoothing:
@@ -277,15 +280,6 @@ class PDBackgroundI3EnergyPDF(
                         self.hist_energy_minima_idx,self.hist_energy_maxima_idx,
                         kde_smoothing=kde_smoothing)
 
-        if numerical_stabilizer == 'physical':
-            h = self.physics_stabilizer(h,ds,sinDec_binning,logE_binning,
-                        self.hist_energy_minima_idx,self.hist_energy_maxima_idx,
-                        astrodiffplflux_phi0=astrodiffplflux_phi0,
-                        astrodiffplflux_E0=astrodiffplflux_E0,
-                        astrodiffplflux_gamma=astrodiffplflux_gamma,
-                        kde_smoothing=kde_smoothing)
-
-
         # Calculate the normalization for each logE bin. Hence we need to sum
         # over the logE bins (axis 0) for each sin(dec) bin and need to divide
         # by the logE bin widths along the sin(dec) bins. The result array norm
@@ -293,7 +287,6 @@ class PDBackgroundI3EnergyPDF(
         norms = np.sum(h, axis=(0,))[np.newaxis, ...] * \
             np.diff(logE_binning.binedges)[..., np.newaxis]
         h /= norms
-        # h = self._hist_smoothing_method.smooth(h)
 
         self._hist_logE_sinDec = h
 
@@ -318,6 +311,12 @@ class PDBackgroundI3EnergyPDF(
         """(read-only) The 2D logE-sinDec histogram array.
         """
         return self._hist_logE_sinDec
+    
+    @property
+    def hist_total_counts(self):
+        """(read-only) The 2D logE-sinDec histogram array. Non normalized
+        """
+        return self._hist_logE_sinDec_total
 
     @property
     def hist_mask_mc_covered(self):
@@ -420,106 +419,6 @@ class PDBackgroundI3EnergyPDF(
                                 self._ALPHA)
         return h 
     
-    def physics_stabilizer(self,h,ds,sinDec_binning,logE_binning,
-                        hist_energy_minima_idx,hist_energy_maxima_idx,
-                        astrodiffplflux_phi0=1.68e-18,
-                        astrodiffplflux_E0=1e3,
-                        astrodiffplflux_gamma=2.58,
-                        kde_smoothing=False):
-        '''Auxiliary function to perform a numerical 
-        stabilization based in the astrophysical diffuse flux.
-        It is implemented for the option numerical_stabilizer='physics'.
-
-            It extends the energy range in which the pdf is defined
-        by imposing an exponential decay (in log10 E scale) regulated
-        by the parameter _ALPHA=2.0 by default. This avoids 
-        artificially large values when injecting events in energy
-        regions where there was no bkg data available.
-        '''
-        param_gamma = Parameter(
-            name='gamma_astro_diff',
-            initial=astrodiffplflux_gamma,
-            isfixed=True)
-        fluxmodel_astro =  SteadyPointlikeFFM(
-            Phi0=astrodiffplflux_phi0,
-            energy_profile=PowerLawEnergyFluxProfile(
-                E0=astrodiffplflux_E0,
-                gamma=astrodiffplflux_gamma,
-                cfg=self.cfg),
-                cfg=self.cfg)
-        gamma_grid = param_gamma.as_linear_grid(delta=0.1)
-
-        detsigyield_builder =\
-                    PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
-                        cfg=self.cfg,
-                        param_grid=gamma_grid)    
-        
-        dec_bins = np.arcsin(sinDec_binning.bincenters)
-        source_list = [PointLikeSource(name='Dec '+str(i),
-                                       weight=1,
-                                       ra=0,
-                                       dec=dec) for i,dec in enumerate(dec_bins)]
-
-        shg_mgr = SourceHypoGroupManager(
-            SourceHypoGroup(
-                sources=source_list,
-                fluxmodel=fluxmodel_astro,
-                detsigyield_builders=detsigyield_builder,
-            ))
-
-        energy_sigpdfset = PDSignalEnergyPDFSetMultiSource(
-            cfg=self.cfg,
-            ds=ds,
-            shg_mgr=shg_mgr,
-            fluxmodel=fluxmodel_astro,
-            param_grid_set=gamma_grid,
-            only_one_pdf=True)
-        
-        bkg_astro_pdf = energy_sigpdfset.get_pdf(
-            {'gamma_astro_diff':astrodiffplflux_gamma})
-        
-        # Now we asign values according to this bkg pdf
-        for idx_sin_dec in range(h.shape[1]):
-            energy_hist = h[:,idx_sin_dec]
-            idx_nonzero_low = hist_energy_minima_idx[idx_sin_dec] 
-            idx_nonzero_high = hist_energy_maxima_idx[idx_sin_dec] 
-
-            if kde_smoothing:
-                if idx_nonzero_low > 0:
-                    idx_nonzero_low -= 1
-                if idx_nonzero_high < (len(logE_binning.bincenters)-1):
-                    idx_nonzero_high += 1
-
-            bkg_astro_pdf_values = bkg_astro_pdf.get_pd_by_log10_reco_e_one_source(
-                log10_reco_e=logE_binning.bincenters,
-                source_number=idx_sin_dec)
-
-            # To avoid division by zero for the cases the lower value is zero
-            # we take as a reference the first non zero well defined value
-            if bkg_astro_pdf_values[idx_nonzero_low] == 0:
-                bkg_astro_pdf_value_low = bkg_astro_pdf_values[idx_nonzero_low]
-                counter = 0
-                while bkg_astro_pdf_value_low == 0 :
-                    counter += 1
-                    bkg_astro_pdf_value_low = bkg_astro_pdf_values[idx_nonzero_low+counter]
-                scale_factor_low = energy_hist[idx_nonzero_low+counter] /\
-                    bkg_astro_pdf_value_low
-                
-            else:
-                scale_factor_low = energy_hist[idx_nonzero_low] /\
-                    bkg_astro_pdf_values[idx_nonzero_low]
-                
-            scale_factor_high = energy_hist[idx_nonzero_high]/\
-                bkg_astro_pdf_values[idx_nonzero_high]
-
-            energy_hist[:idx_nonzero_low] = scale_factor_low *\
-                bkg_astro_pdf_values[:idx_nonzero_low]
-            energy_hist[idx_nonzero_high+1:] = scale_factor_high *\
-                bkg_astro_pdf_values[idx_nonzero_high+1:]
-                
-        return h 
-
-
     def extend_energy_hist(self,log_E,log_E_0,alpha):
         '''Auxiliary function to ensure numerical stability option
         when extending the bkg pdf outside the region with data.
@@ -656,9 +555,7 @@ class PDDataBackgroundI3EnergyPDF(
             smoothing_filter=None,
             kde_smoothing=False,
             numerical_stabilizer=None,
-            astrodiffplflux_phi0=1.68e-18,
-            astrodiffplflux_E0=1e3,
-            astrodiffplflux_gamma=2.58,
+            astro_diff_bkg_file='default',
             ds=None,
             **kwargs):
         """Constructs a new IceCube energy background PDF from experimental
@@ -693,24 +590,11 @@ class PDDataBackgroundI3EnergyPDF(
         numerical_stabilizer : {None,'numerical','physical'}
             It artificially sets the pdf values in the region where it is not
             originally defined in order to avoid artificially low values.
-        astrodiffplflux_phi0: float
-            The flux normalization to use for the astrophysical diffuse power
-            law flux model. 
-            This is used with the option numerical_stabilizer ='Physical'.
-            Default value from: 
-            [1] https://arxiv.org/pdf/2111.10299.pdf
-        astrodiffplflux_E0 : float
-            The reference energy to use for the astrophysical diffuse power 
-            law flux model.
-            This is used with the option numerical_stabilizer ='Physical'.
-            Default value from: 
-            [1] https://arxiv.org/pdf/2111.10299.pdf
-        astrodiffplflux_gamma : float
-            The spectral index to use for the astrophysical diffuse law 
-            flux model.
-            This is used with the option numerical_stabilizer ='Physical'.
-            Default value from: 
-            [1] https://arxiv.org/pdf/2111.10299.pdf
+        astro_diff_bkg_file : None | str
+            The file of the 2D histogram with the number of expected muons
+            from the astrophisical diffuse background. 'Default' loads the 
+            precomputed values for that dataset. See 
+            analysis/i3/publicdata_ps/astro_bkg_flux folder for more details.
         ds : instance of Dataset | None
             The instance of Dataset that defines the dataset of the public data.
         """
@@ -738,9 +622,7 @@ class PDDataBackgroundI3EnergyPDF(
             smoothing_filter=smoothing_filter,
             kde_smoothing=kde_smoothing,
             numerical_stabilizer=numerical_stabilizer,
-            astrodiffplflux_phi0=astrodiffplflux_phi0,
-            astrodiffplflux_E0=astrodiffplflux_E0,
-            astrodiffplflux_gamma=astrodiffplflux_gamma,
+            astro_diff_bkg_file=astro_diff_bkg_file,
             **kwargs)
 
 

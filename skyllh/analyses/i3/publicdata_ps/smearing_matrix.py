@@ -407,7 +407,8 @@ class PDSmearingMatrix(
             self,
             true_e_idx,
             true_dec_idx,
-            reco_e):
+            reco_e,
+            give_edge_value=False):
         """Returns the bin index for the given reco energy value given the
         given true energy and true declination bin indices.
 
@@ -419,22 +420,32 @@ class PDSmearingMatrix(
             The index of the true declination bin.
         reco_e : float
             The reco energy value for which the bin index should get returned.
+        give_edge_value: bool
+            If True, for reco_e values outside the defined range it will asign
+            the index of the nearest well defined bin instead of None.
 
         Returns
         -------
         reco_e_idx : int | None
             The index of the reco energy bin the given reco energy value falls
-            into. It returns None if the value is out of range.
+            into. It returns None if the value is out of range, unless
+            give_edge_value = True. 
         """
         lower_edges = self.reco_e_lower_edges[true_e_idx, true_dec_idx]
         upper_edges = self.reco_e_upper_edges[true_e_idx, true_dec_idx]
 
         m = (lower_edges <= reco_e) & (upper_edges > reco_e)
         idxs = np.nonzero(m)[0]
+
+        if give_edge_value:
+            if reco_e <= lower_edges[0]:
+                return 0
+            if reco_e >= upper_edges[-1]:
+                return len(upper_edges)-1
+        reco_e_idx = idxs[0]
+
         if (len(idxs) == 0):
             return None
-
-        reco_e_idx = idxs[0]
 
         return reco_e_idx
 
