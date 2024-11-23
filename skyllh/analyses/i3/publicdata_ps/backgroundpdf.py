@@ -230,14 +230,14 @@ class PDBackgroundI3EnergyPDF(
         self._hist_logE_sinDec_total = np.copy(h)
 
         if numerical_stabilizer == 'physical':
-            # Add the expected events for background in the bins where it would have
-            # been zero.
+            # Add the expected events for background in the bins where it 
+            # would have been zero.
             zero_bkg__mask = (h==0)
             if astro_diff_bkg_file == 'default':
-                datafile_name = f"astro_bkg_flux/astro_diff_mu_signal_2D-{ds.name}.npy"
-            # FIX HERE THE LOAD, NOT GETTING AS I WANT THE DATA
-                datafile_name = impresources.files("skyllh.analyses.i3.publicdata_ps").joinpath(
-                    f"astro_bkg_flux/astro_diff_mu_signal_2D-{ds.name}.npy")
+                datafile_name = f"astro_diff_mu_signal_2D-{ds.name}.npy"
+                datafile_name = impresources.path("skyllh.analyses.i3."
+                    "publicdata_ps.astro_bkg_flux",
+                    f"astro_diff_mu_signal_2D-{ds.name}.npy")
                 hist_astro_diff_bkg = np.load(datafile_name)
             else:
                 hist_astro_diff_bkg = np.load(astro_diff_bkg_file)
