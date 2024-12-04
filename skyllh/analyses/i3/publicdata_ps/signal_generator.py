@@ -505,11 +505,11 @@ class PDDatasetSignalGenerator(
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
         """
-        if poisson:
-            mean = rss.random.poisson(
-                float_cast(
-                    mean,
-                    'The `mean` argument must be castable to type of float!'))
+        # if poisson:
+        #     mean = rss.random.poisson(
+        #         float_cast(
+        #             mean,
+        #             'The `mean` argument must be castable to type of float!'))
 
         n_events = int_cast(
             mean,
@@ -530,42 +530,69 @@ class PDDatasetSignalGenerator(
         # sum of the events is less or greater than ``mean``.
         n_signal = 0
         signal_events_dict = {}
-        n_events_arr = np.round(n_events * a_k , 0).astype(np.int_)
-       
+
+        if poisson:
+            # The right way is to do a possonian for every source.
+            n_expected_arr = mean * a_k
+            n_events_arr = np.array([rss.random.poisson(lam=n_evt_src)
+                                    for n_evt_src in n_expected_arr],
+                                    dtype=np.int_)
+            
+            # Alternative implementation 
+            # Actually better to just do a poissonian for each source.
+            # n_events_arr = np.zeros(len(a_k),dtype=np.int_)
+            # (src_idx_arr, counts) = np.unique(
+            #         rss.random.choice(
+            #             np.arange(len(a_k)),
+            #             size=np.abs(n_events),
+            #             p=a_k,
+            #         ),
+            #         return_counts=True
+            #     )
+            # if counts.size == self.shg_mgr.n_sources:
+            #     n_events_arr = counts
+            # else:
+            #     for i,src_idx in enumerate(src_idx_arr):
+            #         n_events_arr[src_idx] = counts[i]
+            # +++++++ End of new implementation++++++++++
+
+        else:
+            n_events_arr = np.round(n_events * a_k , 0).astype(np.int_) 
+
         # Correct the n_events_arr array based on the dataset weights if
         # necessary.
-        sum_n_events_arr = np.sum(n_events_arr)
-        if sum_n_events_arr != n_events:
-            (src_idxs, counts) = np.unique(
-                rss.random.choice(
-                    np.arange(len(n_events_arr)),
-                    size=np.abs(n_events - sum_n_events_arr),
-                    p=a_k,
-                ),
-                return_counts=True
-            )
-            if sum_n_events_arr < n_events:
-                n_events_arr[src_idxs] += counts
-            elif sum_n_events_arr > n_events:
-                n_events_arr[src_idxs] -= counts
-                if np.any(n_events_arr) < 0:
-                    while np.any(n_events_arr) < 0:
-                    # We first exclude for the new redistribution all sources
-                    # with 0 or negative counts
-                        src_mask = ( n_events_arr <= 0 ) 
-                        a_k_corrected = np.copy(a_k)
-                        a_k_corrected[src_mask] = 0
-                        a_k_corrected /= np.sum(a_k_corrected)
-                            
-                        (src_idxs, counts) = np.unique(
-                        rss.random.choice(
-                            np.arange(len(n_events_arr)),
-                            size= np.abs(np.sum(n_events_arr, where = src_mask)),
-                            p=a_k_corrected,
-                        ),
-                        return_counts=True
-                        )
-                        n_events_arr[src_idxs] += counts
+            sum_n_events_arr = np.sum(n_events_arr)
+            if sum_n_events_arr != n_events:
+                (src_idxs, counts) = np.unique(
+                    rss.random.choice(
+                        np.arange(len(n_events_arr)),
+                        size=np.abs(n_events - sum_n_events_arr),
+                        p=a_k,
+                    ),
+                    return_counts=True
+                )
+                if sum_n_events_arr < n_events:
+                    n_events_arr[src_idxs] += counts
+                elif sum_n_events_arr > n_events:
+                    n_events_arr[src_idxs] -= counts
+                    if np.any(n_events_arr) < 0:
+                        while np.any(n_events_arr) < 0:
+                        # We first exclude for the new redistribution all sources
+                        # with 0 or negative counts
+                            src_mask = ( n_events_arr <= 0 ) 
+                            a_k_corrected = np.copy(a_k)
+                            a_k_corrected[src_mask] = 0
+                            a_k_corrected /= np.sum(a_k_corrected)
+                                
+                            (src_idxs, counts) = np.unique(
+                            rss.random.choice(
+                                np.arange(len(n_events_arr)),
+                                size= np.abs(np.sum(n_events_arr, where = src_mask)),
+                                p=a_k_corrected,
+                            ),
+                            return_counts=True
+                            )
+                            n_events_arr[src_idxs] += counts
 
 
         # Loop over the sources and generate signal events according to the

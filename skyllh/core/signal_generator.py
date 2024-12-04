@@ -367,15 +367,17 @@ class MultiDatasetSignalGenerator(
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
         """
-        if poisson:
-            mean = rss.random.poisson(
-                float_cast(
-                    mean,
-                    'The mean argument must be cast-able to type of float!'))
-
-        mean = int_cast(
-            mean,
-            'The mean argument must be cast-able to type of int!')
+        # if poisson:
+        #     # Used before
+        #     mean = rss.random.poisson(
+        #         float_cast(
+        #             mean,
+        #             'The mean argument must be cast-able to type of float!'))
+        # NO NEED ANYMORE IN THE NEW VERSION.
+        # MAYBE JUST ENSURE IS INTEGER
+        # mean = int_cast(
+        #     mean,
+        #     'The mean argument must be cast-able to type of int!')
 
         src_detsigyield_weights_service =\
             self.ds_sig_weight_factors_service.src_detsigyield_weights_service
@@ -392,48 +394,54 @@ class MultiDatasetSignalGenerator(
         self._ds_sig_weight_factors_service.calculate()
         (ds_weights, _) = self._ds_sig_weight_factors_service.get_weights()
 
-        # Calculate the number of events that need to be generated for each
-        # individual dataset. Due to rounding errors, it could happen that the
-        # sum of the events is less or greater than ``mean``.
-        n_events_arr = np.round(mean * ds_weights, 0).astype(np.int_)
 
-        # Correct the n_events_arr array based on the dataset weights if
-        # necessary.
-        sum_n_events_arr = np.sum(n_events_arr)
-        if sum_n_events_arr != mean:
-            (ds_idxs, counts) = np.unique(
-                rss.random.choice(
-                    np.arange(len(n_events_arr)),
-                    size=np.abs(mean - sum_n_events_arr),
-                    p=ds_weights,
-                ),
-                return_counts=True
-            )
-            if sum_n_events_arr < mean:
-                n_events_arr[ds_idxs] += counts
-            elif sum_n_events_arr > mean:
-                n_events_arr[ds_idxs] -= counts
+        # PREVIOUS IMPLEMENTED VERSION
+        # # Calculate the number of events that need to be generated for each
+        # # individual dataset. Due to rounding errors, it could happen that the
+        # # sum of the events is less or greater than ``mean``.
+        # n_events_arr = np.round(mean * ds_weights, 0).astype(np.int_)
 
-                # Check that we don not include any negative values
-                if np.any(n_events_arr) < 0: 
-                    while np.any(n_events_arr) < 0:
-                    # We first exclude for the new redistribution all sources
-                    # with 0 or negative counts
-                        src_mask = ( n_events_arr <= 0 ) 
-                        ds_weights_corrected = np.copy(ds_weights)
-                        ds_weights_corrected[src_mask] = 0
-                        ds_weights_corrected /= np.sum(ds_weights_corrected)
+        # # Correct the n_events_arr array based on the dataset weights if
+        # # necessary.
+        # sum_n_events_arr = np.sum(n_events_arr)
+        # if sum_n_events_arr != mean:
+        #     (ds_idxs, counts) = np.unique(
+        #         rss.random.choice(
+        #             np.arange(len(n_events_arr)),
+        #             size=np.abs(mean - sum_n_events_arr),
+        #             p=ds_weights,
+        #         ),
+        #         return_counts=True
+        #     )
+        #     if sum_n_events_arr < mean:
+        #         n_events_arr[ds_idxs] += counts
+        #     elif sum_n_events_arr > mean:
+        #         n_events_arr[ds_idxs] -= counts
+
+        #         # Check that we don not include any negative values
+        #         if np.any(n_events_arr) < 0: 
+        #             while np.any(n_events_arr) < 0:
+        #             # We first exclude for the new redistribution all sources
+        #             # with 0 or negative counts
+        #                 src_mask = ( n_events_arr <= 0 ) 
+        #                 ds_weights_corrected = np.copy(ds_weights)
+        #                 ds_weights_corrected[src_mask] = 0
+        #                 ds_weights_corrected /= np.sum(ds_weights_corrected)
                             
-                        (src_idxs, counts) = np.unique(
-                        rss.random.choice(
-                            np.arange(len(n_events_arr)),
-                            size= np.abs(np.sum(n_events_arr, where = src_mask)),
-                            p=ds_weights_corrected,
-                        ),
-                        return_counts=True
-                        )
-                        n_events_arr[src_idxs] += counts
+        #                 (src_idxs, counts) = np.unique(
+        #                 rss.random.choice(
+        #                     np.arange(len(n_events_arr)),
+        #                     size= np.abs(np.sum(n_events_arr, where = src_mask)),
+        #                     p=ds_weights_corrected,
+        #                 ),
+        #                 return_counts=True
+        #                 )
+        #                 n_events_arr[src_idxs] += counts
 
+
+        # NEW VERSION
+        # Bring the poissonian to source level
+        n_events_arr = mean * ds_weights
 
         n_signal = 0
         signal_events_dict = {}
@@ -449,7 +457,7 @@ class MultiDatasetSignalGenerator(
                     ds_sig_generator.generate_signal_events(
                         rss=rss,
                         mean=n_events,
-                        poisson=False,
+                        poisson=poisson,
                         src_detsigyield_weights_service=src_detsigyield_weights_service,
                         test_split=test_split
                     )
@@ -459,7 +467,7 @@ class MultiDatasetSignalGenerator(
                     ds_sig_generator.generate_signal_events(
                         rss=rss,
                         mean=n_events,
-                        poisson=False,
+                        poisson=poisson,
                         src_detsigyield_weights_service=src_detsigyield_weights_service
                         )
 
@@ -472,8 +480,6 @@ class MultiDatasetSignalGenerator(
                     signal_events_dict[k].append(v)
 
         if test_split:
-            # print(f'{src_n_events_arr = }')
-            # print(' ')
             return (n_signal, signal_events_dict, src_n_events_arr)
         return (n_signal, signal_events_dict)
 
