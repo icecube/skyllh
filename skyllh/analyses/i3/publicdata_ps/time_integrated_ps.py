@@ -139,7 +139,7 @@ def create_analysis(
         ns_max=1e3,
         gamma_seed=3.0,
         gamma_min=1.,
-        gamma_max=5.,
+        gamma_max=4.,
         kde_smoothing=False,
         minimizer_impl='LBFGS',
         minimizer_max_rep=100,
