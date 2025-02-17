@@ -387,6 +387,14 @@ class PDSignalEnergyPDFSet(
                 log10_reco_e_binedges = sm.log10_reco_e_binedges[
                     true_e_idx, true_dec_idx]
 
+                if if np.all(log10_reco_e_binedges == 0):
+                    self._logger.warn(
+                        'There is no distribution of reconstructed energies '
+                        'for true neutrino energy {}. '.format(
+                            sm.log10_true_enu_binedges[true_e_idx])
+                        'Skipping this true energy bin.')
+                    continue
+
                 p = f_e * true_e_prob[idx]
 
                 spline = FctSpline1D(p, log10_reco_e_binedges)
