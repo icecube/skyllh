@@ -636,7 +636,7 @@ def do_trials_with_em(
         mean_n_sig=0,
         gamma_src=2,
         gamma_min=1,
-        gamma_max=5,
+        gamma_max=4,
         n_gamma=21,
         gauss=None,
         box=None,
@@ -941,6 +941,11 @@ def create_analysis(  # noqa: C901
         valmax=ns_max)
 
     # Define the fit parameter gamma.
+    if gamma_max > 4.0:
+        logger.warn(
+            'You are allowing `gamma` values larger than 4.0. '
+            'For such soft spectra, we cannot garantee the correct '
+            'behaviour of the energy PDF.')
     param_gamma = Parameter(
         name='gamma',
         initial=gamma_seed,
