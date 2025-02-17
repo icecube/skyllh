@@ -272,7 +272,7 @@ class PDSignalEnergyPDFSet(
         # Select the slice of the smearing matrix corresponding to the
         # source declination band.
         true_dec_idx = sm.get_true_dec_idx(src_dec)
-        sm_pdf = sm.pdf[:, true_dec_idx]
+        sm_pdf_dec_slice = sm.pdf[:, true_dec_idx]
 
         # Only look at true neutrino energies for which a recostructed
         # muon energy distribution exists in the smearing matrix.
@@ -329,7 +329,7 @@ class PDSignalEnergyPDFSet(
         ang_err_bw = sm.ang_err_upper_edges - sm.ang_err_lower_edges
 
         # Create the energy pdf for different gamma values.
-        def create_energy_pdf(sm_pdf, fluxmodel, gridparams):
+        def create_energy_pdf(sm_pdf_dec_slice, fluxmodel, gridparams):
             """Creates an energy pdf for a specific gamma value.
             """
             # Create a copy of the FluxModel with the given flux parameters.
@@ -376,27 +376,28 @@ class PDSignalEnergyPDFSet(
                 # Create the energy PDF f_e = P(log10_E_reco|dec) =
                 # \int dPsi dang_err P(E_reco,Psi,ang_err).
                 f_e = np.sum(
-                    sm_pdf[true_e_idx] *
+                    sm_pdf_dec_slice[true_e_idx] *
                     psi_edges_bw[true_e_idx, true_dec_idx, :, :, np.newaxis] *
                     ang_err_bw[true_e_idx, true_dec_idx, :, :, :],
                     axis=(-1, -2)
                 )
-
-                # Build the spline for this P(E_reco|E_nu). Weigh the pdf
-                # with the true neutrino energy probability (flux prob).
+                
                 log10_reco_e_binedges = sm.log10_reco_e_binedges[
                     true_e_idx, true_dec_idx]
 
-                if if np.all(log10_reco_e_binedges == 0):
+                # Check that the reco energy PDF is not all zeros
+                if np.sum(f_e) == 0:
                     self._logger.warn(
                         'There is no distribution of reconstructed energies '
-                        'for true neutrino energy {}. '.format(
-                            sm.log10_true_enu_binedges[true_e_idx])
-                        'Skipping this true energy bin.')
-                    continue
+                        'for true neutrino energy {}. Assigning a sequance of '
+                        'zeros.'.format(sm.log10_true_enu_binedges[true_e_idx]))
+                    f_e = np.zeros_like(f_e)
+                    log10_reco_e_binedges = np.linspace(2, 6, f_e.size+1)
 
+                # Build the spline for this P(E_reco|E_nu). Weigh the pdf
+                # with the true neutrino energy probability (flux prob).
                 p = f_e * true_e_prob[idx]
-
+                
                 spline = FctSpline1D(p, log10_reco_e_binedges)
 
                 return spline(xvals)
@@ -416,7 +417,7 @@ class PDSignalEnergyPDFSet(
             return pdf
 
         args_list = [
-            ((sm_pdf, fluxmodel, gridparams), {})
+            ((sm_pdf_dec_slice, fluxmodel, gridparams), {})
             for gridparams in self.gridparams_list
         ]
 
@@ -426,7 +427,7 @@ class PDSignalEnergyPDFSet(
             ncpu=self.ncpu,
             ppbar=ppbar)
 
-        del sm_pdf
+        del sm_pdf_dec_slice
 
         # Save all the energy PDF objects in the PDFSet PDF registry with
         # the hash of the individual parameters as key.
