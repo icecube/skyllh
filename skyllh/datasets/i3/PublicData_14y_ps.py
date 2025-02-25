@@ -55,7 +55,7 @@ def create_dataset_collection(
 
     # We create a dataset collection that will hold the individual seasonal
     # public data datasets (all of the same version!).
-    dsc = DatasetCollection('Public Data 10-year point-source')
+    dsc = DatasetCollection('Public Data 14-year point-source')
 
     dsc.description = r"""
     The events contained in this release correspond to the IceCube's
