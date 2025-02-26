@@ -318,6 +318,9 @@ def create_dataset_collection(
     energy_bins = np.arange(2., 9.5 + 0.01, 0.125)
     IC40.define_binning('log_energy', energy_bins)
 
+    IC40.add_aux_data('spline_smoothing', 0.1)
+    IC40.add_aux_data('cumulative_threshold', 5.e-4)
+
     # ---------- IC59 ----------------------------------------------------------
     IC59 = I3Dataset(
         name='IC59',
@@ -342,6 +345,9 @@ def create_dataset_collection(
 
     energy_bins = np.arange(2., 9.5 + 0.01, 0.125)
     IC59.define_binning('log_energy', energy_bins)
+
+    IC59.add_aux_data('spline_smoothing', 0.1)
+    IC59.add_aux_data('cumulative_threshold', 5.e-4)
 
     # ---------- IC79 ----------------------------------------------------------
     IC79 = I3Dataset(
@@ -368,6 +374,9 @@ def create_dataset_collection(
     energy_bins = np.arange(1., 9.5 + 0.01, 0.125)
     # energy_bins = np.arange(1, 9 + 0.01, 0.125) # from csky
     IC79.define_binning('log_energy', energy_bins)
+
+    IC79.add_aux_data('spline_smoothing', 0.5)
+    IC79.add_aux_data('cumulative_threshold', 1.9e-3)
 
     # ---------- IC86-I --------------------------------------------------------
     IC86_I = I3Dataset(
@@ -619,6 +628,9 @@ def create_dataset_collection(
         IC86_I.get_binning_definition('sin_dec'))
     IC86_I_XI.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
+
+    IC86_I_XI.add_aux_data('spline_smoothing', 0.25)
+    IC86_I_XI.add_aux_data('cumulative_threshold', 7.e-5)
 
     # --------------------------------------------------------------------------
 

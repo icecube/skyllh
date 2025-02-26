@@ -143,8 +143,6 @@ def create_analysis(
         kde_smoothing=False,
         minimizer_impl='LBFGS',
         minimizer_max_rep=100,
-        cut_sindec=None,
-        spl_smooth=None,
         cap_ratio=False,
         compress_data=False,
         keep_data_fields=None,
@@ -357,14 +355,14 @@ def create_analysis(
         delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
 
     # Prepare the spline parameters for the signal generator.
-    if cut_sindec is None:
-        cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
-    if spl_smooth is None:
-        spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
-    if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
-        raise AssertionError(
-            'The length of the spl_smooth and of the cut_sindec must be equal '
-            f'to the length of datasets: {len(datasets)}.')
+    # if cut_sindec is None:
+    #     cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
+    # if spl_smooth is None:
+    #     spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
+    # if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
+    #     raise AssertionError(
+    #         'The length of the spl_smooth and of the cut_sindec must be equal '
+    #         f'to the length of datasets: {len(datasets)}.')
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
@@ -429,9 +427,10 @@ def create_analysis(
             is_srcevt_data=True)
 
         energy_cut_spline = create_energy_cut_spline(
-            ds,
-            data.exp,
-            spl_smooth[ds_idx])
+            ds=ds,
+            exp_data=data.exp,
+            spl_smooth=ds.get_aux_data('spline_smoothing'),
+            cumulative_thr=ds.get_aux_data('cumulative_threshold'))
 
         bkg_generator = DatasetBackgroundGenerator(
             cfg=cfg,
@@ -446,7 +445,7 @@ def create_analysis(
             ds=ds,
             ds_idx=ds_idx,
             energy_cut_spline=energy_cut_spline,
-            cut_sindec=cut_sindec[ds_idx],
+            # cut_sindec=cut_sindec[ds_idx],
         )
 
         ana.add_dataset(
