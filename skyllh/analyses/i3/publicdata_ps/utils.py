@@ -270,7 +270,7 @@ def psi_to_dec_and_ra(
     return (dec, ra)
 
 
-def create_energy_cut_spline(
+def create_energy_cut_spline_old(
         ds,
         exp_data,
         spl_smooth):
@@ -303,6 +303,67 @@ def create_energy_cut_spline(
     del data_exp
     sindec_centers = 0.5 * (sindec_edges[1:]+sindec_edges[:-1])
 
+    spline = interpolate.UnivariateSpline(
+        sindec_centers, min_log_e, k=2, s=spl_smooth)
+
+    return spline
+
+def create_energy_cut_spline(
+        ds,
+        exp_data,
+        spl_smooth,
+        cumulative_thr):
+    """Create the spline for the declination-dependent energy cut
+    that the signal generator needs for injection in the southern sky.
+    Cut bins which do not exceed the defined `cumulative_thr` threshold
+    to exclude isolated, low-statistics bins which would cause extreme
+    wiggles in the spline. 
+
+    Parameters
+    ----------
+    ds : instance of Dataset
+        The instance of Dataset for which the spline should be calculated.
+    exp_data : instance of DataFieldRecordArray
+        The array containing the experimental data for dataset `ds`.
+    spl_smooth : float
+
+    cumulative_thr : float
+
+
+    Returns
+    -------
+    spline : instance of scipy.interpolate.UnivariateSpline
+
+    """
+    data_exp = exp_data.copy(keep_fields=['sin_dec', 'log_energy'])
+
+    loge_binning = ds.get_binning_definition('log_energy')
+    sin_dec_binning = ds.get_binning_definition('sin_dec')
+    sindec_edges = sin_dec_binning.binedges
+
+    # Initialize array to store the minumum allowed energy
+    # for eaach sin(dec) bin.
+    min_log_e = np.zeros(len(sindec_edges)-1, dtype=float)
+    for i in range(len(sindec_edges)-1):
+        # Select events in this declintion bin
+        mask = np.logical_and(
+            data_exp['sin_dec'] >= sindec_edges[i],
+            data_exp['sin_dec'] < sindec_edges[i+1])
+
+        # Make histogram along energy axis and compute the cum distribution
+        counts,_ = np.histogram(
+            data_exp['log_energy'][mask], bins=loge_binning.binedges)
+        cumsum = np.cumsum(counts) / np.sum(counts)
+
+        # Remove low-population energy bins to help the spline smoothness
+        remove_isolated_bins = cumsum >= cumulative_thr
+        # Define minimum energy for this declination bin
+        min_log_e[i] = np.min(loge_binning.bincenters[remove_isolated_bins])
+
+    del data_exp
+
+    # Generate the energy spline as function of sin(dec)
+    sindec_centers = 0.5 * (sindec_edges[1:]+sindec_edges[:-1])
     spline = interpolate.UnivariateSpline(
         sindec_centers, min_log_e, k=2, s=spl_smooth)
 
