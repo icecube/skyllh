@@ -381,7 +381,7 @@ class PDDatasetSignalGenerator(
             logger.warn(
                 'No `cut_sindec` has been specified. The energy cut will be '
                 'applied in [-90, 90] deg.')
-            cut_sindec = np.sin(n.radians(90.1))
+            cut_sindec = np.sin(np.radians(90.1))
 
         filter_mask = np.logical_and(
             events['sin_dec'] < cut_sindec,
