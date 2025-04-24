@@ -326,11 +326,14 @@ class PDAeff(object):
         enu_binedges = np.power(10, self.log10_enu_binedges)
 
         # Get the bin indices for the lower and upper energy range values.
-        (lidx,) = get_bin_indices_from_lower_and_upper_binedges(
-            enu_binedges[:-1],
-            enu_binedges[1:],
-            np.array([enu_range_min])
-        )
+        if enu_range_min <= enu_binedges[0]:
+            lidx = 0
+        else:
+            (lidx,) = get_bin_indices_from_lower_and_upper_binedges(
+                enu_binedges[:-1],
+                enu_binedges[1:],
+                np.array([enu_range_min])
+            )
         if enu_range_max >= enu_binedges[-1]:
             uidx = len(enu_binedges)-1
         else:
