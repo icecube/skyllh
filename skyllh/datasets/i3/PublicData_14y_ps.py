@@ -315,7 +315,7 @@ def create_dataset_collection(
     ]))
     IC40.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(2., 9.5 + 0.01, 0.125)
+    energy_bins = np.arange(2., 9. + 0.01, 0.125)
     IC40.define_binning('log_energy', energy_bins)
 
     IC40.add_aux_data('spline_smoothing', 0.1)
@@ -371,7 +371,7 @@ def create_dataset_collection(
     # sin_dec_bins = np.linspace(-1, 1, 50) # from csky
     IC79.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(1., 9.5 + 0.01, 0.125)
+    energy_bins = np.arange(2., 9. + 0.01, 0.125)
     # energy_bins = np.arange(1, 9 + 0.01, 0.125) # from csky
     IC79.define_binning('log_energy', energy_bins)
 
