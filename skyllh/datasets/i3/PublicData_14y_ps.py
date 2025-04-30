@@ -363,16 +363,15 @@ def create_dataset_collection(
     IC79.add_aux_data_definition(
         'smearing_datafile', f'{irfs_path}/IC79_smearing.csv')
 
-    sin_dec_bins = np.unique(np.concatenate([
-        np.linspace(-1., -0.75, 10 + 1),
-        np.linspace(-0.75, 0., 15 + 1),
-        np.linspace(0., 1., 20 + 1),
-    ]))
-    # sin_dec_bins = np.linspace(-1, 1, 50) # from csky
+    # sin_dec_bins = np.unique(np.concatenate([
+    #     np.linspace(-1., -0.75, 10 + 1),
+    #     np.linspace(-0.75, 0., 15 + 1),
+    #     np.linspace(0., 1., 20 + 1),
+    # ]))
+    sin_dec_bins = np.linspace(-1, 1, 50)
     IC79.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(2., 9. + 0.01, 0.125)
-    # energy_bins = np.arange(1, 9 + 0.01, 0.125) # from csky
+    energy_bins = np.arange(1., 9. + 0.01, 0.125)
     IC79.define_binning('log_energy', energy_bins)
 
     IC79.add_aux_data('spline_smoothing', 0.5)
