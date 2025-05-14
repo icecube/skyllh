@@ -5,10 +5,6 @@ import os.path
 import sys
 
 
-# Initialize the root logger.
-logging.root.setLevel(logging.NOTSET)
-
-
 def get_logger(
         name):
     """Retrieves the logger with the given name from the Python logging system.
