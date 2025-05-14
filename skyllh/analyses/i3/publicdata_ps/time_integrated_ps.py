@@ -266,7 +266,7 @@ def create_analysis(
     dtc_except_fields = None
     if compress_data is True:
         dtc_dict = {np.dtype(np.float64): np.dtype(np.float32)}
-        dtc_except_fields = ['mcweight']
+        dtc_except_fields = ['mcweight', 'time']
 
     # Define the flux model.
     fluxmodel = SteadyPointlikeFFM(
