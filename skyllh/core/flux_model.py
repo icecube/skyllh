@@ -771,6 +771,53 @@ class CutoffPowerLawEnergyFluxProfile(
         values *= np.exp(-E / self._Ecut)
 
         return values
+    def get_integral(
+            self,
+            E1,
+            E2,
+            unit=None,
+    ):
+        """This falls back to the default implementation for the CutoffPowerLawEnergyFluxProfile
+        to avoid using the inhereted function
+        .. note::
+
+            This implementation utilizes the ``scipy.integrate.quad`` function
+            to perform a generic numeric integration. Hence, this implementation
+            is slow and should be reimplemented by the derived class if an
+            analytic integral form is available.
+
+        Parameters
+        ----------
+        E1 : float | 1d numpy ndarray of float
+            The lower energy bound of the integration.
+        E2 : float | 1d numpy ndarray of float
+            The upper energy bound of the integration.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+
+        Returns
+        -------
+        integral : instance of ndarray
+            The (n,)-shaped numpy ndarray holding the integral values of the
+            given integral ranges.
+        """
+        E1 = np.atleast_1d(E1)
+        E2 = np.atleast_1d(E2)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            time_unit_conv_factor = unit.to(self._energy_unit)
+            E1 = E1 * time_unit_conv_factor
+            E2 = E2 * time_unit_conv_factor
+
+        integral = np.empty((len(E1),), dtype=np.float64)
+
+        for (i, (E1_i, E2_i)) in enumerate(zip(E1, E2)):
+            integral[i] = quad(self, E1_i, E2_i, full_output=True)[0]
+
+        return integral
+
 
 
 class LogParabolaPowerLawEnergyFluxProfile(
