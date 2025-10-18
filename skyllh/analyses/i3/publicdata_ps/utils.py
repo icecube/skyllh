@@ -5,7 +5,6 @@ import numpy as np
 from scipy import (
     integrate,
     interpolate,
-    stats
 )
 
 from skyllh.core.binning import (

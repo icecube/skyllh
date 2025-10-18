@@ -195,12 +195,6 @@ def create_analysis(
         In case the minimization process did not converge at the first time
         this option specifies the maximum number of repetitions with
         different initials. Default is 100.
-    cut_sindec : list of float | None
-        sin(dec) values at which the energy cut in the southern sky should
-        start. If None, np.sin(np.radians([-2, 0, -3, 0, 0])) is used.
-    spl_smooth : list of float
-        Smoothing parameters for the 1D spline for the energy cut. If None,
-        [0., 0.005, 0.05, 0.2, 0.3] is used.
     cap_ratio : bool
         If set to True, the energy PDF ratio will be capped to a finite value
         where no background energy PDF information is available. This will
