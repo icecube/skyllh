@@ -128,29 +128,29 @@ from skyllh.scripting.logging import (
 
 
 def create_analysis(
-    cfg,
-    datasets,
-    source,
-    refplflux_Phi0=1,
-    refplflux_E0=1e3,
-    refplflux_gamma=2.0,
-    ns_seed=10.0,
-    ns_min=0.0,
-    ns_max=1e3,
-    gamma_seed=3.0,
-    gamma_min=1.0,
-    gamma_max=4.0,
-    kde_smoothing=False,
-    minimizer_impl="LBFGS",
-    minimizer_max_rep=100,
-    cap_ratio=False,
-    compress_data=False,
-    keep_data_fields=None,
-    evt_sel_delta_angle_deg=10,
-    construct_sig_generator=True,
-    tl=None,
-    ppbar=None,
-    logger_name=None,
+        cfg,
+        datasets,
+        source,
+        refplflux_Phi0=1,
+        refplflux_E0=1e3,
+        refplflux_gamma=2.0,
+        ns_seed=10.0,
+        ns_min=0.,
+        ns_max=1e3,
+        gamma_seed=3.0,
+        gamma_min=1.,
+        gamma_max=4.,
+        kde_smoothing=False,
+        minimizer_impl='LBFGS',
+        minimizer_max_rep=100,
+        cap_ratio=False,
+        compress_data=False,
+        keep_data_fields=None,
+        evt_sel_delta_angle_deg=10,
+        construct_sig_generator=True,
+        tl=None,
+        ppbar=None,
+        logger_name=None,
 ):
     """Creates the Analysis instance for this particular analysis.
 
@@ -188,7 +188,7 @@ def create_analysis(
     minimizer_impl : str
         Minimizer implementation to be used. Supported options are ``"LBFGS"``
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module),
-        ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module),
+        ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module), 
         or ``"crs"`` (global CRS minimizer by nlopt, not gradient based).
         Default: "LBFGS".
     minimizer_max_rep : int
@@ -234,7 +234,7 @@ def create_analysis(
     add_icecube_specific_analysis_required_data_fields(cfg)
 
     # Remove run number from the dataset data field requirements.
-    cfg["datafields"].pop("run", None)
+    cfg['datafields'].pop('run', None)
 
     if logger_name is None:
         logger_name = __name__
@@ -242,32 +242,29 @@ def create_analysis(
 
     # Create the minimizer instance.
     if minimizer_impl == "LBFGS":
-        minimizer = Minimizer(
-            LBFGSMinimizerImpl(cfg=cfg), max_repetitions=minimizer_max_rep
-        )
+        minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg),
+                              max_repetitions=minimizer_max_rep)
     elif minimizer_impl == "minuit":
-        minimizer = Minimizer(
-            IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8), max_repetitions=minimizer_max_rep
-        )
+        minimizer = Minimizer(IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8), 
+                              max_repetitions=minimizer_max_rep)
     elif minimizer_impl == "crs":
+
         from skyllh.core.minimizers.crs import (
             CRSMinimizerImpl,
         )
 
-        minimizer = Minimizer(
-            CRSMinimizerImpl(cfg=cfg, ftol=1e-8), max_repetitions=minimizer_max_rep
-        )
+        minimizer = Minimizer(CRSMinimizerImpl(cfg=cfg, ftol=1e-8),
+                              max_repetitions=minimizer_max_rep)
     else:
         raise NameError(
             f"Minimizer implementation `{minimizer_impl}` is not supported "
-            "Please use `LBFGS` or `minuit`."
-        )
+            "Please use `LBFGS` or `minuit`.")
 
     dtc_dict = None
     dtc_except_fields = None
     if compress_data is True:
         dtc_dict = {np.dtype(np.float64): np.dtype(np.float32)}
-        dtc_except_fields = ["mcweight"]
+        dtc_except_fields = ['mcweight']
 
     # Define the flux model.
     fluxmodel = SteadyPointlikeFFM(
@@ -281,27 +278,33 @@ def create_analysis(
     )
 
     # Define the fit parameter ns.
-    param_ns = Parameter(name="ns", initial=ns_seed, valmin=ns_min, valmax=ns_max)
+    param_ns = Parameter(
+        name='ns',
+        initial=ns_seed,
+        valmin=ns_min,
+        valmax=ns_max)
 
     # Define the fit parameter gamma.
     if gamma_max > 4.0:
         logger.warn(
-            "You are allowing `gamma` values larger than 4.0. "
-            "For such soft spectra, we cannot garantee the correct "
-            "behaviour of the energy PDF."
-        )
+            'You are allowing `gamma` values larger than 4.0. '
+            'For such soft spectra, we cannot garantee the correct '
+            'behaviour of the energy PDF.')
     param_gamma = Parameter(
-        name="gamma", initial=gamma_seed, valmin=gamma_min, valmax=gamma_max
-    )
+        name='gamma',
+        initial=gamma_seed,
+        valmin=gamma_min,
+        valmax=gamma_max)
 
     # Define the detector signal yield builder for the IceCube detector and this
     # source and flux model.
     # The sin(dec) binning will be taken by the builder automatically from the
     # Dataset instance.
     gamma_grid = param_gamma.as_linear_grid(delta=0.1)
-    detsigyield_builder = PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
-        cfg=cfg, param_grid=gamma_grid
-    )
+    detsigyield_builder =\
+        PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
+            cfg=cfg,
+            param_grid=gamma_grid)
 
     # Create a source hypothesis group manager with a single source hypothesis
     # group for the single source.
@@ -310,16 +313,16 @@ def create_analysis(
             sources=source,
             fluxmodel=fluxmodel,
             detsigyield_builders=detsigyield_builder,
-        )
-    )
+        ))
     logger.info(str(shg_mgr))
 
     # Define a detector model for the ns fit parameter.
-    detector_model = DetectorModel("IceCube")
+    detector_model = DetectorModel('IceCube')
 
     # Define the parameter model mapper for the analysis, which will map global
     # parameters to local source parameters.
-    pmm = ParameterModelMapper(models=[detector_model, source])
+    pmm = ParameterModelMapper(
+        models=[detector_model, source])
     pmm.map_param(param_ns, models=detector_model)
     pmm.map_param(param_gamma, models=source)
     logger.info(str(pmm))
@@ -342,38 +345,49 @@ def create_analysis(
 
     # Create background generation method, which will be used for all datasets.
     bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(
-        cfg=cfg, data_scrambler=data_scrambler
-    )
+        cfg=cfg,
+        data_scrambler=data_scrambler)
 
     # Define the event selection method for pure optimization purposes.
     # We will use the same method for all datasets.
     event_selection_method = SpatialBoxEventSelectionMethod(
-        shg_mgr=shg_mgr, delta_angle=np.deg2rad(evt_sel_delta_angle_deg)
-    )
+        shg_mgr=shg_mgr,
+        delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
+
+    # Prepare the spline parameters for the signal generator.
+    # if cut_sindec is None:
+    #     cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
+    # if spl_smooth is None:
+    #     spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
+    # if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
+    #     raise AssertionError(
+    #         'The length of the spl_smooth and of the cut_sindec must be equal '
+    #         f'to the length of datasets: {len(datasets)}.')
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
-    for ds_idx, ds in enumerate(datasets):
+    for (ds_idx, ds) in enumerate(datasets):
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
             dtc_dict=dtc_dict,
             dtc_except_fields=dtc_except_fields,
-            tl=tl,
-        )
+            tl=tl)
 
-        sin_dec_binning = ds.get_binning_definition("sin_dec")
-        log_energy_binning = ds.get_binning_definition("log_energy")
+        sin_dec_binning = ds.get_binning_definition('sin_dec')
+        log_energy_binning = ds.get_binning_definition('log_energy')
 
         # Create the spatial PDF ratio instance for this dataset.
         spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
-            cfg=cfg, dec_range=np.arcsin(sin_dec_binning.range)
-        )
+            cfg=cfg,
+            dec_range=np.arcsin(sin_dec_binning.range))
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(
-            cfg=cfg, data_exp=data.exp, sin_dec_binning=sin_dec_binning
-        )
+            cfg=cfg,
+            data_exp=data.exp,
+            sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(
-            cfg=cfg, sig_pdf=spatial_sigpdf, bkg_pdf=spatial_bkgpdf
-        )
+            cfg=cfg,
+            sig_pdf=spatial_sigpdf,
+            bkg_pdf=spatial_bkgpdf)
 
         # Create the energy PDF ratio instance for this dataset.
         energy_sigpdfset = PDSignalEnergyPDFSet(
@@ -382,7 +396,7 @@ def create_analysis(
             src_dec=source.dec,
             fluxmodel=fluxmodel,
             param_grid_set=gamma_grid,
-            ppbar=ppbar,
+            ppbar=ppbar
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
         energy_bkgpdf = PDDataBackgroundI3EnergyPDF(
@@ -391,33 +405,32 @@ def create_analysis(
             logE_binning=log_energy_binning,
             sinDec_binning=sin_dec_binning,
             smoothing_filter=smoothing_filter,
-            kde_smoothing=kde_smoothing,
-        )
+            kde_smoothing=kde_smoothing)
 
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
             cfg=cfg,
             sig_pdf_set=energy_sigpdfset,
             bkg_pdf=energy_bkgpdf,
-            cap_ratio=cap_ratio,
-        )
+            cap_ratio=cap_ratio)
 
         pdfratio = spatial_pdfratio * energy_pdfratio
 
         # Create a trial data manager and add the required data fields.
         tdm = TrialDataManager()
         tdm.add_source_data_field(
-            name="src_array", func=pointlikesource_to_data_field_array
-        )
+            name='src_array',
+            func=pointlikesource_to_data_field_array)
         tdm.add_data_field(
-            name="psi", func=get_tdm_field_func_psi(), dt="dec", is_srcevt_data=True
-        )
+            name='psi',
+            func=get_tdm_field_func_psi(),
+            dt='dec',
+            is_srcevt_data=True)
 
         energy_cut_spline = create_energy_cut_spline(
             ds=ds,
             exp_data=data.exp,
-            spl_smooth=ds.get_aux_data("spline_smoothing"),
-            cumulative_thr=ds.get_aux_data("cumulative_threshold"),
-        )
+            spl_smooth=ds.get_aux_data('spline_smoothing'),
+            cumulative_thr=ds.get_aux_data('cumulative_threshold'))
 
         bkg_generator = DatasetBackgroundGenerator(
             cfg=cfg,
@@ -442,15 +455,17 @@ def create_analysis(
             tdm=tdm,
             event_selection_method=event_selection_method,
             bkg_generator=bkg_generator,
-            sig_generator=sig_generator,
-        )
+            sig_generator=sig_generator)
 
         pbar.increment()
     pbar.finish()
 
-    ana.construct_services(ppbar=ppbar)
+    ana.construct_services(
+        ppbar=ppbar)
 
-    ana.llhratio = ana.construct_llhratio(minimizer=minimizer, ppbar=ppbar)
+    ana.llhratio = ana.construct_llhratio(
+        minimizer=minimizer,
+        ppbar=ppbar)
 
     if construct_sig_generator is True:
         ana.construct_signal_generator()
@@ -458,41 +473,40 @@ def create_analysis(
     return ana
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = create_argparser(
-        description="Calculates TS for a given source location using the "
-        "10-year public point source sample.",
+        description='Calculates TS for a given source location using the '
+                    '10-year public point source sample.',
     )
 
     parser.add_argument(
-        "--dec",
-        dest="dec",
+        '--dec',
+        dest='dec',
         default=5.7,
         type=float,
-        help="The source declination in degrees.",
+        help='The source declination in degrees.'
     )
     parser.add_argument(
-        "--ra",
-        dest="ra",
+        '--ra',
+        dest='ra',
         default=77.35,
         type=float,
-        help="The source right-ascension in degrees.",
+        help='The source right-ascension in degrees.'
     )
     parser.add_argument(
-        "--gamma-seed",
-        dest="gamma_seed",
+        '--gamma-seed',
+        dest='gamma_seed',
         default=3,
         type=float,
-        help="The seed value of the gamma fit parameter.",
+        help='The seed value of the gamma fit parameter.'
     )
 
     parser.add_argument(
-        "--cap-ratio",
-        dest="cap_ratio",
+        '--cap-ratio',
+        dest='cap_ratio',
         default=False,
-        action="store_true",
-        help="Switch to cap the energy PDF ratio.",
-    )
+        action='store_true',
+        help='Switch to cap the energy PDF ratio.')
 
     args = parser.parse_args()
 
@@ -501,23 +515,24 @@ if __name__ == "__main__":
     cfg.set_ncpu(args.n_cpu)
 
     setup_logging(
-        cfg=cfg, script_logger_name=__name__, debug_pathfilename=args.debug_logfile
-    )
+        cfg=cfg,
+        script_logger_name=__name__,
+        debug_pathfilename=args.debug_logfile)
 
     sample_seasons = [
-        ("PublicData_10y_ps", "IC40"),
-        ("PublicData_10y_ps", "IC59"),
-        ("PublicData_10y_ps", "IC79"),
-        ("PublicData_10y_ps", "IC86_I"),
-        ("PublicData_10y_ps", "IC86_II-VII"),
+        ('PublicData_10y_ps', 'IC40'),
+        ('PublicData_10y_ps', 'IC59'),
+        ('PublicData_10y_ps', 'IC79'),
+        ('PublicData_10y_ps', 'IC86_I'),
+        ('PublicData_10y_ps', 'IC86_II-VII'),
     ]
 
     datasets = []
-    for sample, season in sample_seasons:
+    for (sample, season) in sample_seasons:
         # Get the dataset from the correct dataset collection.
         dsc = data_samples[sample].create_dataset_collection(
-            cfg=cfg, base_path=args.data_basepath
-        )
+            cfg=cfg,
+            base_path=args.data_basepath)
         datasets.append(dsc.get_dataset(season))
 
     # Define a random state service.
@@ -525,36 +540,42 @@ if __name__ == "__main__":
 
     # Define the point source.
     source = PointLikeSource(
-        name="My Point-Like-Source", ra=np.deg2rad(args.ra), dec=np.deg2rad(args.dec)
-    )
-    print(f"source: {source}")
+        name='My Point-Like-Source',
+        ra=np.deg2rad(args.ra),
+        dec=np.deg2rad(args.dec))
+    print(f'source: {source}')
 
     tl = TimeLord()
 
-    with tl.task_timer("Creating analysis."):
+    with tl.task_timer('Creating analysis.'):
         ana = create_analysis(
             cfg=cfg,
             datasets=datasets,
             source=source,
             gamma_seed=args.gamma_seed,
             cap_ratio=args.cap_ratio,
-            tl=tl,
-        )
+            tl=tl)
 
-    with tl.task_timer("Unblinding data."):
-        (TS, param_dict, status) = ana.unblind(minimizer_rss=rss)
+    with tl.task_timer('Unblinding data.'):
+        (TS, param_dict, status) = ana.unblind(
+            minimizer_rss=rss)
 
-    print(f"TS = {TS:g}")
-    print(f"ns_fit = {param_dict['ns']:g}")
-    print(f"gamma_fit = {param_dict['gamma']:g}")
-    print(f"minimizer status = {status}")
+    print(f'TS = {TS:g}')
+    print(f'ns_fit = {param_dict["ns"]:g}')
+    print(f'gamma_fit = {param_dict["gamma"]:g}')
+    print(f'minimizer status = {status}')
 
     print(tl)
 
     tl = TimeLord()
     rss = RandomStateService(seed=1)
     (_, _, _, trials) = create_trial_data_file(
-        ana=ana, rss=rss, n_trials=10, mean_n_sig=0, pathfilename=None, ncpu=1, tl=tl
-    )
-    print(f"trials: {trials}")
+        ana=ana,
+        rss=rss,
+        n_trials=10,
+        mean_n_sig=0,
+        pathfilename=None,
+        ncpu=1,
+        tl=tl)
+    print(f'trials: {trials}')
     print(tl)
