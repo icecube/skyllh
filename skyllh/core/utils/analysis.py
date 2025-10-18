@@ -181,7 +181,7 @@ def calculate_pval_from_gammafit_to_trials(
     if len(ts_vals) > n_max:
         ts_vals = ts_vals[:n_max]
 
-    (pars, norm) = fit_truncated_gamma(ts_vals=ts_vals, eta=eta)
+    (pars, norm) = fit_truncated_gamma(vals=ts_vals, eta=eta)
     p = norm * gamma.sf(ts_threshold, a=pars[0], scale=pars[1])
 
     # a correct calculation of the error in pvalue due to
@@ -289,16 +289,16 @@ def truncated_gamma_logpdf(
 
 
 def fit_truncated_gamma(
-        ts_vals,
+        vals,
         eta=3.0):
     """
-    Fits a truncated gamma function to the distribution of test-statistic
-    values. Returns the best-fit parameters and the normalization constant
+    Fits a truncated gamma function to a set of values.
+    Returns the best-fit parameters and the normalization constant
     that accounts for the truncation of the function.
 
     Parameters
     ----------
-    ts_vals : (n_trials,)-shaped 1D ndarray of float
+    vals : (n_trials,)-shaped 1D ndarray of float
     eta : float
         Test-statistic value at which the gamma function is truncated
         from below. Default is 3.0.
@@ -317,9 +317,9 @@ def fit_truncated_gamma(
             'This module is a requirement of the function '
             '"calculate_critical_ts_from_gamma"!')
 
-    Ntot = len(ts_vals)
-    ts_eta = ts_vals[ts_vals > eta]
-    N_prime = len(ts_eta)
+    Ntot = len(vals)
+    vals_eta = vals[vals > eta]
+    N_prime = len(vals_eta)
     alpha = N_prime/Ntot
 
     def obj(x):
@@ -327,7 +327,7 @@ def fit_truncated_gamma(
             x[0],
             x[1],
             eta=eta,
-            ts_above_eta=ts_eta,
+            ts_above_eta=vals_eta,
             N_above_eta=N_prime)
 
     x0 = [0.75, 1.8]  # Initial values of function parameters.
@@ -362,7 +362,7 @@ def calculate_critical_ts_from_gamma(
     -------
     critical_ts : float
     """
-    (pars, norm) = fit_truncated_gamma(ts_vals=ts, eta=eta)
+    (pars, norm) = fit_truncated_gamma(vals=ts, eta=eta)
     critical_ts = gamma.ppf(1 - 1./norm*h0_ts_quantile, a=pars[0], scale=pars[1])
 
     if critical_ts < eta:
