@@ -776,8 +776,6 @@ def create_analysis(  # noqa: C901
         gamma_max=5.,
         kde_smoothing=False,
         minimizer_impl="LBFGS",
-        cut_sindec=None,
-        spl_smooth=None,
         cap_ratio=False,
         compress_data=False,
         keep_data_fields=None,
@@ -799,7 +797,7 @@ def create_analysis(  # noqa: C901
         analysis.
     source : PointLikeSource instance
         The PointLikeSource instance defining the point source position.
-    box : None or dictionary with start, end
+    box : None or dictionary with start, stop
         None if no box shaped time pdf, else dictionary of the format
         ``{'start': float, 'stop': float}``.
     gauss : None or dictionary with mu, sigma
@@ -832,12 +830,6 @@ def create_analysis(  # noqa: C901
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
         "minuit" (Minuit minimizer used by the :mod:`iminuit` module).
         Default: "LBFGS".
-    cut_sindec : list of float | None
-        sin(dec) values at which the energy cut in the southern sky should
-        start. If None, np.sin(np.radians([-2, 0, -3, 0, 0])) is used.
-    spl_smooth : list of float
-        Smoothing parameters for the 1D spline for the energy cut. If None,
-        [0., 0.005, 0.05, 0.2, 0.3] is used.
     cap_ratio : bool
         If set to True, the energy PDF ratio will be capped to a finite value
         where no background energy PDF information is available. This will
@@ -1001,16 +993,6 @@ def create_analysis(  # noqa: C901
         shg_mgr=shg_mgr,
         delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
 
-    # Prepare the spline parameters for the signal generator.
-    if cut_sindec is None:
-        cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
-    if spl_smooth is None:
-        spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
-    if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
-        raise AssertionError(
-            'The length of the spl_smooth and of the cut_sindec must be equal '
-            f'to the length of datasets: {len(datasets)}.')
-
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     for (ds_idx, ds) in enumerate(datasets):
@@ -1117,9 +1099,10 @@ def create_analysis(  # noqa: C901
         )
 
         energy_cut_spline = create_energy_cut_spline(
-            ds,
-            data.exp,
-            spl_smooth[ds_idx])
+            ds=ds,
+            exp_data=data.exp,
+            spl_smooth=ds.get_aux_data('spline_smoothing'),
+            cumulative_thr=ds.get_aux_data('cumulative_threshold'))
 
         sig_generator = TimeDependentPDDatasetSignalGenerator(
             cfg=cfg,
@@ -1129,7 +1112,6 @@ def create_analysis(  # noqa: C901
             livetime=livetime,
             time_flux_profile=time_flux_profile,
             energy_cut_spline=energy_cut_spline,
-            cut_sindec=cut_sindec[ds_idx],
         )
 
         ana.add_dataset(

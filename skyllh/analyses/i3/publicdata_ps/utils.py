@@ -5,6 +5,7 @@ import numpy as np
 from scipy import (
     integrate,
     interpolate,
+    stats
 )
 
 from skyllh.core.binning import (
@@ -116,7 +117,7 @@ class FctSpline2D(object):
         Parameters
         ----------
         f : (n_x, n_y)-shaped 2D numpy ndarray
-            he numpy ndarray holding the function values at the bin centers.
+            The numpy ndarray holding the function values at the bin centers.
         x_binedges : (n_x+1,)-shaped 1D numpy ndarray
             The numpy ndarray holding the bin edges of the x-axis.
         y_binedges : (n_y+1,)-shaped 1D numpy ndarray
@@ -133,7 +134,12 @@ class FctSpline2D(object):
         self.y_max = self.y_binedges[-1]
 
         x = get_bincenters_from_binedges(self.x_binedges)
-        y = get_bincenters_from_binedges(self.y_binedges)
+        # y = get_bincenters_from_binedges(self.y_binedges)
+
+        # Hack to avoid awkward behaviors due to splining in sin(dec)
+        y = np.repeat(self.y_binedges, repeats=2)[1:-1]
+        y[1::2] -= 1e-10
+        f = np.repeat(f, repeats=2, axis=1)
 
         # Note: For simplicity we approximate zero bins with 1000x smaller
         # values than the minimum value. To do this correctly, one should store
@@ -144,16 +150,80 @@ class FctSpline2D(object):
         z[np.invert(m)] = np.min(z[m]) - 3
 
         self.spl_log10_f = interpolate.RectBivariateSpline(
-            x, y, z, kx=3, ky=3, s=0)
+            x, y, z, kx=3, ky=1, s=0)
 
-    def __call__(
-            self,
-            x,
-            y,
-            oor_value=0):
+        # In case we have to renormalize when the evaluation is done...
+        self._prepare_quadrature()
+
+    def _prepare_quadrature(self, n=128):
+        gx, gw = np.polynomial.legendre.leggauss(n)
+        self._qx = 0.5*(self.x_max - self.x_min)*gx + 0.5*(
+            self.x_max + self.x_min)
+        self._qw = 0.5*(self.x_max - self.x_min)*gw
+
+    @staticmethod
+    def _pow10(arr):
+        return np.power(10.0, arr)
+
+    def _mask_oor_axes(self, x, y):
+        m_x = (x < self.x_min) | (x > self.x_max)
+        m_y = (y < self.y_min) | (y > self.y_max)
+        return m_x, m_y
+
+    def _eval_paired(self, x, y):
+        """Evaluate at paired points (grid=False) → 1D array."""
+        return self._pow10(self.spl_log10_f(x, y, grid=False))
+
+    def _eval_grid(self, x, y):
+        """Evaluate on tensor grid with internal sort/unsort → 2D array."""
+        x = np.asarray(x); y = np.asarray(y)
+
+        # sort as required by RectBivariateSpline(grid=True)
+        ix = np.argsort(x) if (x.size >= 2 and not np.all(np.diff(x) >= 0)) else None
+        iy = np.argsort(y) if (y.size >= 2 and not np.all(np.diff(y) >= 0)) else None
+        xs = x[ix] if ix is not None else x
+        ys = y[iy] if iy is not None else y
+
+        f_sorted = self._pow10(self.spl_log10_f(xs, ys, grid=True))
+
+        # unsort to original order
+        if ix is not None: f_sorted = f_sorted[np.argsort(ix), :]
+        if iy is not None: f_sorted = f_sorted[:, np.argsort(iy)]
+        return f_sorted
+
+    def _renorm_per_y_grid(self, f2d, y, *, in_user_order=True):
+        """Renormalize columns so ∫_x f(x, y) dx = 1 (grid=True)."""
+        y = np.asarray(y)
+        # For renorm we can evaluate on (qx, y) with grid=True (expects sorted y).
+        iy = np.argsort(y) if (y.size >= 2 and not np.all(np.diff(y) >= 0)) else None
+        ys = y[iy] if iy is not None else y
+
+        fyq = self._pow10(self.spl_log10_f(self._qx, ys, grid=True))  # (nq, ny)
+        Z = fyq.T @ self._qw                                          # (ny,)
+        Z[Z == 0] = np.nan
+        if iy is not None:
+            Z = Z[np.argsort(iy)]  # back to user order
+        f2d /= Z[np.newaxis, :]
+        return f2d
+
+    def _renorm_per_y_pairs(self, x, y, f):
+        """Renormalize paired evaluations so each value is divided by Z(y_i)."""
+        # Compute Z for each distinct y present (no sorting needed for outputs;
+        # np.unique returns a sorted list, but we map back via 'inv').
+        uniq_y, inv = np.unique(y, return_inverse=True)
+        Z = np.empty_like(uniq_y, dtype=float)
+        for k, yk in enumerate(uniq_y):
+            yq = np.full(self._qx.shape, yk, dtype=float)
+            vals = self._pow10(self.spl_log10_f(self._qx, yq, grid=False))  # (nq,)
+            Z[k] = np.dot(vals, self._qw)
+        Z[Z == 0] = np.nan
+        f /= Z[inv]
+        return f
+
+    def __call__(self, x, y, oor_value=0, grid=False, renorm=True):
         """Evaluates the spline at the given coordinates. For coordinates
         outside the spline's range, the oor_value is returned.
-
+        
         Parameters
         ----------
         x : (n_x,)-shaped 1D numpy ndarray
@@ -162,25 +232,51 @@ class FctSpline2D(object):
         y : (n_y,)-shaped 1D numpy ndarray
             The numpy ndarray holding the y values at which the spline should
             get evaluated.
-        oor_value : float
+        oor_value : float | 0
             The value for out-of-range (oor) coordinates.
-
+        grid : bool | False
+            Whether the interpolation should return a 2D numpy array or a
+            1D sequence of values.
+        renorm_axis : bool | True
+        Whether to renormalize the histogram along the x axis for each y-value.
+        (This is useful when constructing the background energy PDF.)
+        
         Returns
         -------
-        f : (n_x, n_y)-shaped 2D numpy ndarray
+        f : numpy ndarray
             The numpy ndarray holding the evaluated values of the spline.
         """
-        m_x_oor = (x < self.x_min) | (x > self.x_max)
-        m_y_oor = (y < self.y_min) | (y > self.y_max)
+        x = np.asarray(x); y = np.asarray(y)
+        m_x_oor, m_y_oor = self._mask_oor_axes(x, y)
 
-        (m_xx_oor, m_yy_oor) = np.meshgrid(m_x_oor, m_y_oor, indexing='ij')
-        m_xy_oor = m_xx_oor | m_yy_oor
+        if not grid:
+            if x.shape != y.shape:
+                raise ValueError(
+                    "For grid=False, x and y must have the same shape "
+                    "(paired points).")
 
-        f = np.power(10, self.spl_log10_f(x, y))
-        f[m_xy_oor] = oor_value
+            m_oor = m_x_oor | m_y_oor
+            f = np.empty_like(x, dtype=float)
+            inside = ~m_oor
 
-        return f
+            if np.any(inside):
+                f_in = self._eval_paired(x[inside], y[inside])
+                if renorm:
+                    f_in = self._renorm_per_y_pairs(x[inside], y[inside], f_in)
+                f[inside] = f_in
 
+            f[m_oor] = oor_value
+            return f
+
+        # grid=True: tensor output
+        f2d = self._eval_grid(x, y)
+        if renorm:
+            f2d = self._renorm_per_y_grid(f2d, y)
+
+        # OOR mask on tensor grid in user order
+        mx2d, my2d = np.meshgrid(m_x_oor, m_y_oor, indexing='ij')
+        f2d[mx2d | my2d] = oor_value
+        return f2d
 
 def clip_grl_start_times(grl_data):
     """Make sure that the start time of a run is not smaller than the stop time
