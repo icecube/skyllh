@@ -165,12 +165,6 @@ def calculate_pval_from_gammafit_to_trials(
     -------
     p, p_sigma: tuple(float, float)
     """
-    if not IMINUIT_LOADED:
-        raise ImportError(
-            'The iminuit module was not imported! '
-            'This module is a requirement for the function '
-            '"calculate_pval_from_gammafit_to_trials"!')
-
     if ts_threshold < eta:
         raise ValueError(
             'ts threshold value = %e, eta = %e. The calculation of the p-value'
@@ -181,25 +175,7 @@ def calculate_pval_from_gammafit_to_trials(
     if len(ts_vals) > n_max:
         ts_vals = ts_vals[:n_max]
 
-    Ntot = len(ts_vals)
-    ts_eta = ts_vals[ts_vals > eta]
-    N_prime = len(ts_eta)
-    alpha = N_prime/Ntot
-
-    def obj(x):
-        return truncated_gamma_logpdf(
-            x[0],
-            x[1],
-            eta=eta,
-            ts_above_eta=ts_eta,
-            N_above_eta=N_prime)
-
-    x0 = [0.75, 1.8]  # Initial values of function parameters.
-    bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
-    r = minimize(obj, x0, bounds=bounds)
-    pars = r.x
-
-    norm = alpha/gamma.sf(eta, a=pars[0], scale=pars[1])
+    (pars, norm) = fit_truncated_gamma(vals=ts_vals, eta=eta)
     p = norm * gamma.sf(ts_threshold, a=pars[0], scale=pars[1])
 
     # a correct calculation of the error in pvalue due to
@@ -306,6 +282,55 @@ def truncated_gamma_logpdf(
     return -logl
 
 
+def fit_truncated_gamma(vals, eta):
+    """
+    Fits a truncated gamma function to a set of values.
+    Returns the best-fit parameters and the normalization constant
+    that accounts for the truncation of the function.
+
+    Parameters
+    ----------
+    vals : (n_trials,)-shaped 1D ndarray of float
+    eta : float
+        Value at which the gamma function is truncated from below.
+
+    Returns
+    -------
+    pars : (2,)-shaped 1D array of float
+        `a` and `scale` parameters of the truncated gamma function.
+    norm : float
+        Normalization constant of the truncated gamma function.
+    """
+
+    if not IMINUIT_LOADED:
+        raise ImportError(
+            'The iminuit module was not imported! '
+            'This module is a requirement of the function '
+            '"calculate_critical_ts_from_gamma"!')
+
+    Ntot = len(vals)
+    vals_eta = vals[vals > eta]
+    N_prime = len(vals_eta)
+    alpha = N_prime/Ntot
+
+    def obj(x):
+        return truncated_gamma_logpdf(
+            x[0],
+            x[1],
+            eta=eta,
+            ts_above_eta=vals_eta,
+            N_above_eta=N_prime)
+
+    x0 = [0.75, 1.8]  # Initial values of function parameters.
+    bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
+    r = minimize(obj, x0, bounds=bounds)
+    pars = r.x
+
+    norm = alpha/gamma.sf(eta, a=pars[0], scale=pars[1])
+
+    return pars, norm
+
+
 def calculate_critical_ts_from_gamma(
         ts,
         h0_ts_quantile,
@@ -328,31 +353,7 @@ def calculate_critical_ts_from_gamma(
     -------
     critical_ts : float
     """
-    if not IMINUIT_LOADED:
-        raise ImportError(
-            'The iminuit module was not imported! '
-            'This module is a requirement of the function '
-            '"calculate_critical_ts_from_gamma"!')
-
-    Ntot = len(ts)
-    ts_eta = ts[ts > eta]
-    N_prime = len(ts_eta)
-    alpha = N_prime/Ntot
-
-    def obj(x):
-        return truncated_gamma_logpdf(
-            x[0],
-            x[1],
-            eta=eta,
-            ts_above_eta=ts_eta,
-            N_above_eta=N_prime)
-
-    x0 = [0.75, 1.8]  # Initial values of function parameters.
-    bounds = [[0.1, 10], [0.1, 10]]  # Ranges for the minimization fitter.
-    r = minimize(obj, x0, bounds=bounds)
-    pars = r.x
-
-    norm = alpha/gamma.sf(eta, a=pars[0], scale=pars[1])
+    (pars, norm) = fit_truncated_gamma(vals=ts, eta=eta)
     critical_ts = gamma.ppf(1 - 1./norm*h0_ts_quantile, a=pars[0], scale=pars[1])
 
     if critical_ts < eta:
