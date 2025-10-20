@@ -165,12 +165,6 @@ def calculate_pval_from_gammafit_to_trials(
     -------
     p, p_sigma: tuple(float, float)
     """
-    if not IMINUIT_LOADED:
-        raise ImportError(
-            'The iminuit module was not imported! '
-            'This module is a requirement for the function '
-            '"calculate_pval_from_gammafit_to_trials"!')
-
     if ts_threshold < eta:
         raise ValueError(
             'ts threshold value = %e, eta = %e. The calculation of the p-value'
@@ -288,9 +282,7 @@ def truncated_gamma_logpdf(
     return -logl
 
 
-def fit_truncated_gamma(
-        vals,
-        eta=3.0):
+def fit_truncated_gamma(vals, eta):
     """
     Fits a truncated gamma function to a set of values.
     Returns the best-fit parameters and the normalization constant
@@ -300,8 +292,7 @@ def fit_truncated_gamma(
     ----------
     vals : (n_trials,)-shaped 1D ndarray of float
     eta : float
-        Test-statistic value at which the gamma function is truncated
-        from below. Default is 3.0.
+        Value at which the gamma function is truncated from below.
 
     Returns
     -------
