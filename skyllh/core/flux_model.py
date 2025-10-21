@@ -814,7 +814,14 @@ class CutoffPowerLawEnergyFluxProfile(
         integral = np.empty((len(E1),), dtype=np.float64)
 
         for (i, (E1_i, E2_i)) in enumerate(zip(E1, E2)):
-            integral[i] = quad(self, E1_i, E2_i, full_output=True)[0]
+
+            # integration for log(energy) for hopefully better numerical stability
+            tmp_e = np.linspace(np.log10(E1_i), np.log10(E2_i), 5000)
+            tmp_int = np.trapz(np.log(10) * self(10**tmp_e) * 10**tmp_e, tmp_e) 
+
+            # make sure it is always positive (probably not an issue any more with np.trapz. 
+            # used to be an issue using the spline integrate self.function.integrate)
+            integral[i] = max(0.0, tmp_int)
 
         return integral
 
