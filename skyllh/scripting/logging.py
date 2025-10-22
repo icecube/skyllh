@@ -8,6 +8,7 @@ import logging
 
 from skyllh.core.debugging import (
     get_logger,
+    setup_logger,
     setup_console_handler,
     setup_file_handler,
 )
@@ -19,9 +20,9 @@ def setup_logging(
         log_format=None,
         log_level=logging.INFO,
         debug_pathfilename=None):
-    """Installs console handlers for the ``skyllh`` and ``script_logger_name``
-    loggers. If a debug file is specified, file handlers for debug messages
-    will be installed as well.
+    """Initializes loggers and installs console handlers for the ``skyllh`` and
+    ``script_logger_name`` loggers. If a debug file is specified, file handlers
+    for debug messages will be installed as well.
 
     Parameters
     ----------
@@ -45,6 +46,9 @@ def setup_logging(
     """
     if log_format is None:
         log_format = cfg['debugging']['log_format']
+
+    setup_logger('skyllh', log_level)
+    setup_logger(script_logger_name, log_level)
 
     setup_console_handler(
         cfg=cfg,

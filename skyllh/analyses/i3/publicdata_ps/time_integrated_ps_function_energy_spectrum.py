@@ -245,7 +245,7 @@ def create_analysis(
         analysis.
     source : PointLikeSource instance
         The PointLikeSource instance defining the point source position.
-    source_energy : numpy array
+    source_energies : numpy array
         Energies in GeV for which source_energy_spectrum is given
     source_energy_spectrum : numpy array
         The energy spectrum in GeV / cm^2 / s 
@@ -334,7 +334,7 @@ def create_analysis(
     dtc_except_fields = None
     if compress_data is True:
         dtc_dict = {np.dtype(np.float64): np.dtype(np.float32)}
-        dtc_except_fields = ['mcweight']
+        dtc_except_fields = ['mcweight', 'time']
 
     # Define the flux model.
 
