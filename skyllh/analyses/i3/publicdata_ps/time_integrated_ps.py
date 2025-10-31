@@ -42,6 +42,7 @@ from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
 from skyllh.core.flux_model import (
+    CutoffPowerLawEnergyFluxProfile,
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
 )
@@ -134,6 +135,7 @@ def create_analysis(
         refplflux_Phi0=1,
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
+        refplflux_Ec=np.inf,
         ns_seed=10.0,
         ns_min=0.,
         ns_max=1e3,
@@ -169,6 +171,8 @@ def create_analysis(
         The reference energy to use for the reference power law flux model.
     refplflux_gamma : float
         The spectral index to use for the reference power law flux model.
+    refplflux_Ec: float,
+        The cutoff energy for the cutoff power law flux model.
     ns_seed : float
         Value to seed the minimizer with for the ns fit.
     ns_min : float
@@ -261,15 +265,28 @@ def create_analysis(
         dtc_except_fields = ['mcweight', 'time']
 
     # Define the flux model.
-    fluxmodel = SteadyPointlikeFFM(
-        Phi0=refplflux_Phi0,
-        energy_profile=PowerLawEnergyFluxProfile(
-            E0=refplflux_E0,
-            gamma=refplflux_gamma,
+    if refplflux_Ec == np.inf:
+        fluxmodel = SteadyPointlikeFFM(
+            Phi0=refplflux_Phi0,
+            energy_profile=PowerLawEnergyFluxProfile(
+                E0=refplflux_E0,
+                gamma=refplflux_gamma,
+                cfg=cfg,
+            ),
             cfg=cfg,
-        ),
-        cfg=cfg,
-    )
+        )
+    else:
+        fluxmodel = SteadyPointlikeFFM(
+            Phi0=refplflux_Phi0,
+            energy_profile=CutoffPowerLawEnergyFluxProfile(
+                E0=refplflux_E0,
+                gamma=refplflux_gamma,
+                Ecut=refplflux_Ec, #in GeV
+                cfg=cfg,
+            ),
+            cfg=cfg,
+        )
+
 
     # Define the fit parameter ns.
     param_ns = Parameter(
