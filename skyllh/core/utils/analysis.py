@@ -104,7 +104,7 @@ def pointlikesource_to_data_field_array(
 
 
 def calculate_pval_from_trials(
-        ts_vals, ts_threshold, comp_operator='greater'):
+        ts_vals, ts_threshold, comp_operator='greater_equal'):
     """Calculates the percentage (p-value) of test-statistic trials that are
     above the given test-statistic critical value.
     In addition it calculates the standard deviation of the p-value assuming
