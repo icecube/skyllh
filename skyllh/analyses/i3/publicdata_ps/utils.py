@@ -407,7 +407,7 @@ def create_energy_cut_spline(
         ds,
         exp_data,
         spl_smooth,
-        cumulative_thr):
+        cumulative_thr=0):
     """Create the spline for the declination-dependent energy cut
     that the signal generator needs for injection in the southern sky.
     Cut bins which do not exceed the defined `cumulative_thr` threshold
@@ -423,6 +423,7 @@ def create_energy_cut_spline(
     spl_smooth : float
 
     cumulative_thr : float
+        Defaults to 0 that corresponds to no cut.
 
 
     Returns
