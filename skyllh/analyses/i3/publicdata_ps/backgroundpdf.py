@@ -32,7 +32,6 @@ from skyllh.core.timing import (
     TaskTimer,
 )
 from skyllh.analyses.i3.publicdata_ps.utils import (
-    FctSpline1D,
     FctSpline2D,
 )
 

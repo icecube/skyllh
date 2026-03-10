@@ -237,8 +237,8 @@ class FctSpline2D(object):
             Whether the interpolation should return a 2D numpy array or a
             1D sequence of values.
         renorm_axis : bool | True
-        Whether to renormalize the histogram along the x axis for each y-value.
-        (This is useful when constructing the background energy PDF.)
+            Whether to renormalize the histogram along the x axis for each
+            y-value. Useful when constructing the background energy PDF.
         
         Returns
         -------

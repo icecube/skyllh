@@ -17,16 +17,11 @@ def create_dataset_collection(
         cfg,
         base_path=None,
         sub_path_fmt=None,
-        irfs_path='irfs'
 ):
     """
-    TODO:
-    - Update docstring
-    - Update `sin_dec` and `log_energy` binnings
-    
-    # Defines the dataset collection for IceCube's 10-year
+    # Defines the dataset collection for IceCube's 14-year
     # point-source public data, which is available at
-    # http://icecube.wisc.edu/data-releases/20210126_PS-IC40-IC86_VII.zip
+    # TBD
 
     Parameters
     ----------
@@ -58,48 +53,35 @@ def create_dataset_collection(
     dsc = DatasetCollection('Public Data 14-year point-source')
 
     dsc.description = r"""
-    The events contained in this release correspond to the IceCube's
-    time-integrated point source search with 10 years of data [2]. Please refer
-    to the description of the sample and known changes in the text at [1].
+    This dataset contains data from 2008 (IC40) until the spring of 2022
+    (IC86-2021), covering 14 years of track-like events detected by IceCube
+    and selected as candidate neutrino-induced events. For a detailed
+    description of the data release we refer the user to the publication
+    that accompanies it [1].
 
-    The data contained in this release of IceCube’s point source sample shows
-    evidence of a cumulative excess of events from four sources (NGC 1068,
-    TXS 0506+056, PKS 1424+240, and GB6 J1542+6129) from a catalogue of 110
-    potential sources. NGC 1068 gives the largest excess and is coincidentally
-    the hottest spot in the full Northern sky search [1].
+    Compared to the previous track release of 10 years of data [2], several
+    improvements were implemented. Most notably:
+    -   the detector configuration and selection were homogenized for all data
+        taking seasong using the full, 86-string detector configuration (IC86).
+    -   a finer binning for the detector smearing matrices has been introduced.
 
-    Data from IC86-2012 through IC86-2014 used in [2] use an updated selection
-    and reconstruction compared to the 7 year time-integrated search [3] and the
-    detection of the 2014-2015 neutrino flare from the direction of
-    TXS 0506+056 [4]. The 7 year and 10 year versions of the sample show
-    overlaps of between 80 and 90%.
-
-    An a posteriori cross check of the updated sample has been performed on
-    TXS 0506+056 showing two previously-significant cascade-like events removed
-    in the newer sample. These two events occur near the blazar's position
-    during the TXS flare and give large reconstructed energies, but are likely
-    not well-modeled by the track-like reconstructions included in this
-    selection. While the events are unlikely to be track-like, their
-    contribution to previous results has been handled properly.
-
-    While the significance of the 2014-2015 TXS 0505+56 flare has decreased from
-    p=7.0e-5 to 8.1e-3, the change is a result of changes to the sample and not
-    of increased data. No problems have been identified with the previously
-    published results and since we have no reason a priori to prefer the new
-    sample over the old sample, these results do not supercede those in [4].
-
-    This release contains data beginning in 2008 (IC40) until the spring of 2018
-    (IC86-2017). This release duplicates and supplants previously released data
-    from 2012 and earlier. Events from this release cannot be combined with any
-    other releases
+    A detailed description of the dataset content follows.
 
     --------------------------
     # Experimental data events
     --------------------------
-    The "events" folder contains the events observed in the 10 year sample of
+    The "events" folder contains the events observed in the 14 year sample of
     IceCube's point source neutrino selection. Each file corresponds to a single
     season of IceCube datataking, including roughly one year of data. For each
-    event, reconstructed particle information is included.
+    event, reconstructed particle information is included. Moreover, we include
+    the run, event, and subevent numbers to allow the identification of alert 
+    track events from the IceCat catalog.
+
+    - run : run number
+
+    - event : event number
+
+    - subevent : subevent number
 
     - MJD: The MJD time (ut1) of the event interaction given to 1e-8 days,
     corresponding to roughly millisecond precision.
@@ -127,10 +109,6 @@ def create_dataset_collection(
     detector's response as a function of azimuth. In these cases, we recommend
     scrambling events in time, then using the local coordinates and time to
     calculate new RA and Dec values.
-
-    Note that during the preparation of this data release, one duplicated event
-    was discovered in the IC86-2015 season. This event has not contributed to
-    any significant excesses.
 
     -----------------
     # Detector uptime
@@ -175,9 +153,7 @@ def create_dataset_collection(
 
     Tabulated versions of the effective area are included in csv files in the
     "irfs" folder. Plotted versions are included as pdf files in the same
-    location. Because the detector configuration and selection were unchanged
-    after the IC86-2012 season, the effective area for this season should be
-    used for IC86-2012 through IC86-2017.
+    location.
 
     - log10(E_nu/GeV)_min, log10(E_nu/GeV)_max: The minimum and maximum of the
     energy bin used to caclulate the average effective area. Note that this uses
@@ -195,8 +171,8 @@ def create_dataset_collection(
     IceCube has a nontrivial smearing matrix with correlations between the
     directional uncertainty, the point spread function, and the reconstructed
     muon energy. To provide the most complete set of information, we include
-    tables of these responses for each season from IC40 through IC86-2012.
-    Seasons after IC86-2012 reuse that season's response functions.
+    tables of these responses for each season from IC40 through IC86-2021.
+    All IC86 seasons use the same response function.
 
     The included smearing matrices take the form of 5D tables mapping a
     (E_nu, Dec_nu) bin in effective area to a 3D matrix of (E, PSF, AngErr).
@@ -207,11 +183,10 @@ def create_dataset_collection(
                         [Events in (E_nu, Dec_nu)]
 
     The simulations statistics, while large enough for direct sampling, are
-    limited when producing these tables, ranging from just 621,858 simulated
-    events for IC40 to 11,595,414 simulated events for IC86-2012. In order to
-    reduce statistical uncertainties in each 5D bin, bins are selected in each
-    (E_nu, Dec_nu) bin independently. The bin edges are given in the smearing
-    matrix files. All locations not given have a Fractional_Counts of 0.
+    limited when producing these tables. In order to reduce statistical
+    uncertainties in each 5D bin, bins are selected in each (E_nu, Dec_nu)
+    bin independently. The bin edges are given in the smearing matrix files.
+    All locations not given have a Fractional_Counts of 0.
 
     - log10(E_nu/GeV)_min, log10(E_nu/GeV)_max: The minimum and maximum of the
     energy bin used to caclulate the average effective area. Note that this uses
@@ -220,6 +195,9 @@ def create_dataset_collection(
     - Dec_nu_min[deg], Dec_nu_max[deg]: The minimum and maximum of the
     declination of the neutrino origin. Again, note that this is the true
     direction of the neutrino and not the reconstructed muon direction.
+    Also note, that compared to the previous data release, a finer declination
+    binning is provided for the 14yr dataset, thus providing a more
+    accurate description of the detector response variations across the sky.
 
     - log10(E/GeV): The reconstructed energy of a muon passing through the
     detector. The reconstruction follows the prescription for unfolding the
@@ -242,16 +220,10 @@ def create_dataset_collection(
     ------------
     # References
     ------------
-    [1] IceCube Data for Neutrino Point-Source Searches: Years 2008-2018,
+    [1] IceCube Second Track Data Release IceT-DR2: Data from 2008-2022 for 
+        Neutrino Source Searches, [DOI](TBD)
+    [2] IceCube Data for Neutrino Point-Source Searches: Years 2008-2018,
         [ArXiv link](https://arxiv.org/abs/2101.09836)
-    [2] Time-integrated Neutrino Source Searches with 10 years of IceCube Data,
-        Phys. Rev. Lett. 124, 051103 (2020)
-    [3] All-sky search for time-integrated neutrino emission from astrophysical
-        sources with 7 years of IceCube data,
-        Astrophys. J., 835 (2017) no. 2, 151
-    [4] Neutrino emission from the direction of the blazar TXS 0506+056 prior to
-        the IceCube-170922A alert,
-        Science 361, 147-151 (2018)
     [5] Energy Reconstruction Methods in the IceCube Neutrino Telescope,
         JINST 9 (2014), P03009
     [6] Methods for point source analysis in high energy neutrino telescopes,
@@ -260,7 +232,7 @@ def create_dataset_collection(
     -------------
     # Last Update
     -------------
-    28 January 2021
+    TBD
     """
 
     # Define the origin of the dataset.
@@ -304,9 +276,9 @@ def create_dataset_collection(
     )
     IC40.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC40.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC40_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC40_effectiveArea.csv')
     IC40.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC40_smearing.csv')
+        'smearing_datafile', f'irfs/IC40_smearing.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.25, 10 + 1),
@@ -331,9 +303,9 @@ def create_dataset_collection(
     )
     IC59.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC59.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC59_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC59_effectiveArea.csv')
     IC59.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC59_smearing.csv')
+        'smearing_datafile', f'irfs/IC59_smearing.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.95, 2 + 1),
@@ -359,9 +331,9 @@ def create_dataset_collection(
     )
     IC79.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC79.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC79_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC79_effectiveArea.csv')
     IC79.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC79_smearing.csv')
+        'smearing_datafile', f'irfs/IC79_smearing.csv')
 
     # sin_dec_bins = np.unique(np.concatenate([
     #     np.linspace(-1., -0.75, 10 + 1),
@@ -387,9 +359,9 @@ def create_dataset_collection(
     )
     IC86_I.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_I.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_I.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.93, 4 + 1),
@@ -412,9 +384,9 @@ def create_dataset_collection(
     )
     IC86_II.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_II.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_II.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
     
     IC86_II.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -432,9 +404,9 @@ def create_dataset_collection(
     )
     IC86_III.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_III.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_III.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_III.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -451,9 +423,9 @@ def create_dataset_collection(
     )
     IC86_IV.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_IV.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_IV.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_IV.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -470,9 +442,9 @@ def create_dataset_collection(
     )
     IC86_V.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_V.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_V.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_V.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -489,9 +461,9 @@ def create_dataset_collection(
     )
     IC86_VI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_VI.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_VI.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_VI.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -508,9 +480,9 @@ def create_dataset_collection(
     )
     IC86_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_VII.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_VII.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_VII.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -527,9 +499,9 @@ def create_dataset_collection(
     )
     IC86_VIII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_VIII.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_VIII.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_VIII.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -546,9 +518,9 @@ def create_dataset_collection(
     )
     IC86_IX.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_IX.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_IX.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_IX.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -565,9 +537,9 @@ def create_dataset_collection(
     )
     IC86_X.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_X.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_X.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_X.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -584,9 +556,9 @@ def create_dataset_collection(
     )
     IC86_XI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_XI.add_aux_data_definition(
-        'eff_area_datafile', f'{irfs_path}/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
     IC86_XI.add_aux_data_definition(
-        'smearing_datafile', f'{irfs_path}/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
 
     IC86_XI.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
