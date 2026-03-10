@@ -145,7 +145,6 @@ def create_analysis(
         kde_smoothing=False,
         minimizer_impl='LBFGS',
         minimizer_max_rep=100,
-        cap_ratio=False,
         compress_data=False,
         keep_data_fields=None,
         evt_sel_delta_angle_deg=10,
@@ -199,13 +198,6 @@ def create_analysis(
         In case the minimization process did not converge at the first time
         this option specifies the maximum number of repetitions with
         different initials. Default is 100.
-    cap_ratio : bool
-        If set to True, the energy PDF ratio will be capped to a finite value
-        where no background energy PDF information is available. This will
-        ensure that an energy PDF ratio is available for high energies where
-        no background is available from the experimental data.
-        If kde_smoothing is set to True, cap_ratio should be set to False!
-        Default is False.
     compress_data : bool
         Flag if the data should get converted from float64 into float32.
     keep_data_fields : list of str | None
@@ -421,8 +413,7 @@ def create_analysis(
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
             cfg=cfg,
             sig_pdf_set=energy_sigpdfset,
-            bkg_pdf=energy_bkgpdf,
-            cap_ratio=cap_ratio)
+            bkg_pdf=energy_bkgpdf)
 
         pdfratio = spatial_pdfratio * energy_pdfratio
 
@@ -512,13 +503,6 @@ if __name__ == '__main__':
         help='The seed value of the gamma fit parameter.'
     )
 
-    parser.add_argument(
-        '--cap-ratio',
-        dest='cap_ratio',
-        default=False,
-        action='store_true',
-        help='Switch to cap the energy PDF ratio.')
-
     args = parser.parse_args()
 
     cfg = Config.from_yaml(args.config)
@@ -564,7 +548,6 @@ if __name__ == '__main__':
             datasets=datasets,
             source=source,
             gamma_seed=args.gamma_seed,
-            cap_ratio=args.cap_ratio,
             tl=tl)
 
     with tl.task_timer('Unblinding data.'):
