@@ -928,7 +928,7 @@ def create_analysis(  # noqa: C901
     if gamma_max > 4.0:
         logger.warn(
             'You are allowing `gamma` values larger than 4.0. '
-            'For such soft spectra, we cannot garantee the correct '
+            'For such soft spectra, we cannot guarantee the correct '
             'behaviour of the energy PDF.')
     param_gamma = Parameter(
         name='gamma',
