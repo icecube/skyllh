@@ -1,5 +1,8 @@
 -r ../../requirements.txt
-sphinx
+# NOTE: Sphinx v9.0.0 introduced several breaking changes, including
+#       incompatibility with Sphinx multiversion project, see:
+# https://github.com/sphinx-contrib/multiversion/issues/201
+sphinx<9.0.0
 sphinx_rtd_theme
 nbsphinx
 ipython
