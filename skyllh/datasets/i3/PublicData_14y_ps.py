@@ -335,11 +335,6 @@ def create_dataset_collection(
     IC79.add_aux_data_definition(
         'smearing_datafile', f'irfs/IC79_smearing.csv')
 
-    # sin_dec_bins = np.unique(np.concatenate([
-    #     np.linspace(-1., -0.75, 10 + 1),
-    #     np.linspace(-0.75, 0., 15 + 1),
-    #     np.linspace(0., 1., 20 + 1),
-    # ]))
     sin_dec_bins = np.linspace(-1, 1, 50)
     IC79.define_binning('sin_dec', sin_dec_bins)
 
@@ -374,6 +369,9 @@ def create_dataset_collection(
     energy_bins = np.arange(1.0, 9.5 + 0.01, 0.125)
     IC86_I.define_binning('log_energy', energy_bins)
 
+    IC86_I.add_aux_data('spline_smoothing', 0.25)
+    IC86_I.add_aux_data('cumulative_threshold', 7.e-5)
+
     # ---------- IC86-II -------------------------------------------------------
     IC86_II = I3Dataset(
         name='IC86_II',
@@ -393,6 +391,8 @@ def create_dataset_collection(
     IC86_II.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
 
+    IC86_II.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_II.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
 
     # ---------- IC86-III ------------------------------------------------------
     IC86_III = I3Dataset(
@@ -413,6 +413,9 @@ def create_dataset_collection(
     IC86_III.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
 
+    IC86_III.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_III.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
+
     # ---------- IC86-IV -------------------------------------------------------
     IC86_IV = I3Dataset(
         name='IC86_IV',
@@ -431,6 +434,9 @@ def create_dataset_collection(
         IC86_I.get_binning_definition('sin_dec'))
     IC86_IV.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
+
+    IC86_IV.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_IV.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
 
     # ---------- IC86-V --------------------------------------------------------
     IC86_V = I3Dataset(
@@ -451,6 +457,9 @@ def create_dataset_collection(
     IC86_V.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
 
+    IC86_V.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_V.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
+
     # ---------- IC86-VI -------------------------------------------------------
     IC86_VI = I3Dataset(
         name='IC86_VI',
@@ -469,6 +478,9 @@ def create_dataset_collection(
         IC86_I.get_binning_definition('sin_dec'))
     IC86_VI.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
+
+    IC86_VI.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_VI.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
 
     # ---------- IC86-VII ------------------------------------------------------
     IC86_VII = I3Dataset(
@@ -489,6 +501,9 @@ def create_dataset_collection(
     IC86_VII.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
 
+    IC86_VII.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_VII.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
+
     # ---------- IC86-VIII -----------------------------------------------------
     IC86_VIII = I3Dataset(
         name='IC86_VIII',
@@ -507,6 +522,9 @@ def create_dataset_collection(
         IC86_I.get_binning_definition('sin_dec'))
     IC86_VIII.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
+
+    IC86_VIII.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_VIII.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
 
     # ---------- IC86-IX -------------------------------------------------------
     IC86_IX = I3Dataset(
@@ -527,6 +545,9 @@ def create_dataset_collection(
     IC86_IX.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
 
+    IC86_IX.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_IX.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
+
     # ---------- IC86-X --------------------------------------------------------
     IC86_X = I3Dataset(
         name='IC86_X',
@@ -546,6 +567,9 @@ def create_dataset_collection(
     IC86_X.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
 
+    IC86_X.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_X.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
+
     # ---------- IC86-XI -------------------------------------------------------
     IC86_XI = I3Dataset(
         name='IC86_XI',
@@ -564,6 +588,9 @@ def create_dataset_collection(
         IC86_I.get_binning_definition('sin_dec'))
     IC86_XI.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
+
+    IC86_XI.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_XI.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
 
     # ---------- IC86-I-XI -----------------------------------------------------
     ds_list = [
@@ -600,8 +627,8 @@ def create_dataset_collection(
     IC86_I_XI.add_binning_definition(
         IC86_I.get_binning_definition('log_energy'))
 
-    IC86_I_XI.add_aux_data('spline_smoothing', 0.25)
-    IC86_I_XI.add_aux_data('cumulative_threshold', 7.e-5)
+    IC86_I_XI.add_aux_data('spline_smoothing', IC86_I.get_aux_data('spline_smoothing'))
+    IC86_I_XI.add_aux_data('cumulative_threshold', IC86_I.get_aux_data('cumulative_threshold'))
 
     # --------------------------------------------------------------------------
 
