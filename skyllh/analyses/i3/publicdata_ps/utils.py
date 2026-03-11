@@ -133,7 +133,8 @@ class FctSpline2D(object):
         self.y_max = self.y_binedges[-1]
 
         x = get_bincenters_from_binedges(self.x_binedges)
-        # Hack to avoid awkward behaviors due to splining in sin(dec)
+        # Hack to avoid awkward behaviors due to splining in sin(dec).
+        # It construct a spline that follows the histogram very closely in the `y` (sin(dec)) dimension.
         y = np.repeat(self.y_binedges, repeats=2)[1:-1]
         y[1::2] -= 1e-10
         f = np.repeat(f, repeats=2, axis=1)
