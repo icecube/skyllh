@@ -136,6 +136,7 @@ def create_analysis(
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
         refplflux_Ec=np.inf,
+        energy_range=None,
         ns_seed=10.0,
         ns_min=0.,
         ns_max=1e3,
@@ -172,6 +173,10 @@ def create_analysis(
         The spectral index to use for the reference power law flux model.
     refplflux_Ec: float,
         The cutoff energy for the cutoff power law flux model.
+    energy_range: tuple of floats (low energy, high energy) | None
+        The energy range for signal generation. Both low and high energies are
+        given in GeV. If set to ``None``, the entire energy range of the
+        dataset is used.
     ns_seed : float
         Value to seed the minimizer with for the ns fit.
     ns_min : float
@@ -437,6 +442,7 @@ def create_analysis(
             ds=ds,
             ds_idx=ds_idx,
             energy_cut_spline=energy_cut_spline,
+            energy_range=energy_range,
         )
 
         ana.add_dataset(

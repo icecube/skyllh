@@ -28,6 +28,7 @@ from skyllh.core.py import (
     classname,
     float_cast,
     int_cast,
+    issequence,
     module_classname,
 )
 from skyllh.core.signal_generator import (
@@ -54,6 +55,7 @@ class PDDatasetSignalGenerator(
             ds_idx,
             energy_cut_spline=None,
             cut_sindec=None,
+            energy_range=None,
             **kwargs,
     ):
         """Creates a new instance of the signal generator for generating
@@ -75,6 +77,9 @@ class PDDatasetSignalGenerator(
         cut_sindec : float
             The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
+        energy_range : 2-element tuple of float | None
+            The energy range in which signal events should be generated.
+            If set to None, the entire energy range [1e2, 1e9] GeV is used.
         """
         super().__init__(
             shg_mgr=shg_mgr,
@@ -86,12 +91,51 @@ class PDDatasetSignalGenerator(
         self.ds_idx = ds_idx
         self.energy_cut_spline = energy_cut_spline
         self.cut_sindec = cut_sindec
-
+        self.energy_range = energy_range
         self.sm = PDSmearingMatrix(
             pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
 
         self._create_source_dependent_data_structures()
+
+    @property
+    def energy_range(self):
+        """The energy range in which signal events should be generated. It is a
+        2-element tuple of floats. The first element is the low energy and the
+        second element is the high energy. Both energies are given in GeV.
+        """
+        if hasattr(self, '_energy_range'):
+            return self._energy_range
+        else:
+            return (1e2, 1e9)
+
+    @energy_range.setter
+    def energy_range(self, r):
+        if r is not None:
+            if not issequence(r) or len(r) != 2:
+                raise ValueError(
+                    'The energy_range property must be a 2-element sequence of floats! '
+                    f'Its current value is {r}!')
+            r = (
+                float_cast(
+                    r[0],
+                    'The first element of the energy_range '
+                    'sequence must be castable to type of float!'),
+                float_cast(
+                    r[1],
+                    'The second element of the energy_range '
+                    'sequence must be castable to type of float!')
+            )
+            if r[0] >= r[1]:
+                raise ValueError(
+                    'The first element of the energy_range sequence must be '
+                    'strictly smaller than the second element!')
+            # Convert the energy boundaries to the closest smearing matrix bin edges.
+            idx0 = self.sm.get_log10_true_e_idx(np.log10(r[0]))
+            idx1 = self.sm.get_log10_true_e_idx(np.log10(r[1]))
+            r = (self.sm.true_e_bin_edges[idx0],
+                 self.sm.true_e_bin_edges[idx1])
+        self._energy_range = r
 
     def _create_source_dependent_data_structures(self):
         """Creates the source dependent data structures needed by this signal
@@ -126,6 +170,14 @@ class PDDatasetSignalGenerator(
              max_log_true_e) =\
                 self.sm.get_true_log_e_range_with_valid_log_e_pdfs(
                     dec_idx)
+            
+            if self.energy_range is not None:
+                min_log_true_e = max(
+                    min_log_true_e,
+                    self.energy_range[0])
+                max_log_true_e = min(
+                    max_log_true_e,
+                    self.energy_range[1])
 
             self._effA_arr[src_idx] = PDAeff(
                 pathfilenames=self.ds.get_abs_pathfilename_list(
