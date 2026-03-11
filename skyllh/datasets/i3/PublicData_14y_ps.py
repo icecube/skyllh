@@ -354,9 +354,9 @@ def create_dataset_collection(
     )
     IC86_I.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_I.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_I.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     sin_dec_bins = np.unique(np.concatenate([
         np.linspace(-1., -0.93, 4 + 1),
@@ -382,9 +382,9 @@ def create_dataset_collection(
     )
     IC86_II.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_II.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_II.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
     
     IC86_II.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -404,9 +404,9 @@ def create_dataset_collection(
     )
     IC86_III.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_III.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_III.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_III.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -426,9 +426,9 @@ def create_dataset_collection(
     )
     IC86_IV.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_IV.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_IV.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_IV.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -448,9 +448,9 @@ def create_dataset_collection(
     )
     IC86_V.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_V.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_V.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_V.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -470,9 +470,9 @@ def create_dataset_collection(
     )
     IC86_VI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_VI.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_VI.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_VI.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -492,9 +492,9 @@ def create_dataset_collection(
     )
     IC86_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_VII.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_VII.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_VII.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -514,9 +514,9 @@ def create_dataset_collection(
     )
     IC86_VIII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_VIII.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_VIII.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_VIII.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -536,9 +536,9 @@ def create_dataset_collection(
     )
     IC86_IX.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_IX.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_IX.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_IX.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -558,9 +558,9 @@ def create_dataset_collection(
     )
     IC86_X.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_X.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_X.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_X.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
@@ -580,9 +580,9 @@ def create_dataset_collection(
     )
     IC86_XI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
     IC86_XI.add_aux_data_definition(
-        'eff_area_datafile', f'irfs/IC86_VI_effectiveArea.csv')
+        'eff_area_datafile', f'irfs/IC86_effectiveArea.csv')
     IC86_XI.add_aux_data_definition(
-        'smearing_datafile', f'irfs/IC86_VI_smearing.csv')
+        'smearing_datafile', f'irfs/IC86_smearing.csv')
 
     IC86_XI.add_binning_definition(
         IC86_I.get_binning_definition('sin_dec'))
