@@ -62,6 +62,10 @@ class SignalGenerationMethod(
                     'The second element of the energy_range '
                     'sequence must be castable to type float!')
             )
+            if r[0] >= r[1]:
+                raise ValueError(
+                    'The first element of the energy_range sequence must be '
+                    'strictly smaller than the second element!')
         self._energy_range = r
 
     @abc.abstractmethod
