@@ -31,7 +31,9 @@ from skyllh.core.storage import (
 from skyllh.core.timing import (
     TaskTimer,
 )
-
+from skyllh.analyses.i3.publicdata_ps.utils import (
+    FctSpline2D,
+)
 
 class PDBackgroundI3EnergyPDF(
         EnergyPDF,
@@ -229,6 +231,8 @@ class PDBackgroundI3EnergyPDF(
 
         self._hist_logE_sinDec = h
 
+        self._pdf_spline = self._construct_conditional_pdf_spline()
+
     @property
     def hist_smoothing_method(self):
         """The instance of HistSmoothingMethod defining the smoothing filter of
@@ -276,6 +280,16 @@ class PDBackgroundI3EnergyPDF(
             self._hist_mask_mc_covered &
             ~self._hist_mask_mc_covered_zero_physics)
 
+    def _construct_conditional_pdf_spline(self):
+        """
+        """
+        spline = FctSpline2D(
+            self._hist_logE_sinDec,
+            self.binnings[0].binedges,
+            self.binnings[1].binedges)
+
+        return spline
+
     def initialize_for_new_trial(
             self,
             tdm,
@@ -284,17 +298,8 @@ class PDBackgroundI3EnergyPDF(
         """Pre-compute the probability densitiy values of the trial data,
         which has to be done only once for a particular trial data.
         """
-
-        logE_binning = self.get_binning('log_energy')
-        sinDec_binning = self.get_binning('sin_dec')
-
-        logE_idx = np.digitize(
-            tdm['log_energy'], logE_binning.binedges) - 1
-        sinDec_idx = np.digitize(
-            tdm['sin_dec'], sinDec_binning.binedges) - 1
-
         with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
-            self._pd = self._hist_logE_sinDec[(logE_idx, sinDec_idx)]
+            self._pd = self._pdf_spline(tdm['log_energy'], tdm['sin_dec'], grid=False)
 
     def assert_is_valid_for_trial_data(
             self,

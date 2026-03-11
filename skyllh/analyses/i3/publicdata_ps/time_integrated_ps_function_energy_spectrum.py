@@ -223,9 +223,6 @@ def create_analysis(
     e_peak_max=10.06,
     kde_smoothing=False,
     minimizer_impl='minuit',
-    cut_sindec=None,
-    spl_smooth=None,
-    cap_ratio=False,
     compress_data=False,
     keep_data_fields=None,
     evt_sel_delta_angle_deg=10,
@@ -273,19 +270,6 @@ def create_analysis(
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
         ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module).
         Default: "LBFGS".
-    cut_sindec : list of float | None
-        sin(dec) values at which the energy cut in the southern sky should
-        start. If None, np.sin(np.radians([-2, 0, -3, 0, 0])) is used.
-    spl_smooth : list of float
-        Smoothing parameters for the 1D spline for the energy cut. If None,
-        [0., 0.005, 0.05, 0.2, 0.3] is used.
-    cap_ratio : bool
-        If set to True, the energy PDF ratio will be capped to a finite value
-        where no background energy PDF information is available. This will
-        ensure that an energy PDF ratio is available for high energies where
-        no background is available from the experimental data.
-        If kde_smoothing is set to True, cap_ratio should be set to False!
-        Default is False.
     compress_data : bool
         Flag if the data should get converted from float64 into float32.
     keep_data_fields : list of str | None
@@ -432,16 +416,6 @@ def create_analysis(
         shg_mgr=shg_mgr,
         delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
 
-    # Prepare the spline parameters for the signal generator.
-    if cut_sindec is None:
-        cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
-    if spl_smooth is None:
-        spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
-    if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
-        raise AssertionError(
-            'The length of the spl_smooth and of the cut_sindec must be equal '
-            f'to the length of datasets: {len(datasets)}.')
-
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     for (ds_idx, ds) in enumerate(datasets):
@@ -489,8 +463,7 @@ def create_analysis(
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
             cfg=cfg,
             sig_pdf_set=energy_sigpdfset,
-            bkg_pdf=energy_bkgpdf,
-            cap_ratio=cap_ratio)
+            bkg_pdf=energy_bkgpdf)
 
         pdfratio = spatial_pdfratio * energy_pdfratio
 
@@ -506,9 +479,10 @@ def create_analysis(
             is_srcevt_data=True)
 
         energy_cut_spline = create_energy_cut_spline(
-            ds,
-            data.exp,
-            spl_smooth[ds_idx])
+            ds=ds,
+            exp_data=data.exp,
+            spl_smooth=ds.get_aux_data('spline_smoothing'),
+            cumulative_thr=ds.get_aux_data('cumulative_threshold'))
 
         bkg_generator = DatasetBackgroundGenerator(
             cfg=cfg,
@@ -523,7 +497,6 @@ def create_analysis(
             ds=ds,
             ds_idx=ds_idx,
             energy_cut_spline=energy_cut_spline,
-            cut_sindec=cut_sindec[ds_idx],
         )
 
         ana.add_dataset(

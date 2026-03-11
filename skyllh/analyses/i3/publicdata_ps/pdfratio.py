@@ -24,7 +24,6 @@ class PDSigSetOverBkgPDFRatio(
             self,
             sig_pdf_set,
             bkg_pdf,
-            cap_ratio=False,
             **kwargs):
         """Creates a PDFRatio instance for the public data.
         It takes a signal PDF set for different discrete gamma values.
@@ -37,9 +36,6 @@ class PDSigSetOverBkgPDFRatio(
         bkg_pdf : instance of PDDataBackgroundI3EnergyPDF
             The PDDataBackgroundI3EnergyPDF instance holding the background
             energy PDF.
-        cap_ratio : bool
-            Switch whether the S/B PDF ratio should get capped where no
-            background is available. Default is False.
         """
         self._logger = get_logger(module_class_method_name(self, '__init__'))
 
@@ -53,35 +49,6 @@ class PDSigSetOverBkgPDFRatio(
             func=self._get_ratio_values,
             param_grid_set=sig_pdf_set.param_grid_set)
 
-        self.cap_ratio = cap_ratio
-        if self.cap_ratio:
-            self._logger.info('The energy PDF ratio will be capped!')
-
-            # Calculate the ratio value for the phase space where no background
-            # is available. We will take the p_sig percentile of the signal
-            # like phase space.
-            ratio_perc = 99
-
-            # Get the log10 reco energy values where the background pdf has
-            # non-zero values.
-            n_logE = bkg_pdf.get_binning('log_energy').nbins
-            n_sinDec = bkg_pdf.get_binning('sin_dec').nbins
-            bd = bkg_pdf._hist_logE_sinDec > 0
-            log10_e_bc = bkg_pdf.get_binning('log_energy').bincenters
-            self.ratio_fill_value_dict = dict()
-            for sig_pdf_key in sig_pdf_set.pdf_keys:
-                sigpdf = sig_pdf_set[sig_pdf_key]
-                sigvals = sigpdf.get_pd_by_log10_reco_e(log10_e_bc)
-                sigvals = np.broadcast_to(sigvals, (n_sinDec, n_logE)).T
-                r = sigvals[bd] / bkg_pdf._hist_logE_sinDec[bd]
-                # Remove possible inf values.
-                r = r[np.invert(np.isinf(r))]
-                val = np.percentile(r[r > 1.], ratio_perc)
-                self.ratio_fill_value_dict[sig_pdf_key] = val
-                self._logger.info(
-                    f'The cap value for the energy PDF ratio key {sig_pdf_key} '
-                    f'is {val}.')
-
         # Create cache variables for the last ratio value and gradients in
         # order to avoid the recalculation of the ratio value when the
         # ``get_gradient`` method is called (usually after the ``get_ratio``
@@ -90,18 +57,6 @@ class PDSigSetOverBkgPDFRatio(
         self._cache_fitparams_hash = None
         self._cache_ratio = None
         self._cache_grads = None
-
-    @property
-    def cap_ratio(self):
-        """Boolean switch whether to cap the ratio where no background
-        information is available (True) or use the smallest possible floating
-        point number greater than zero as background pdf value (False).
-        """
-        return self._cap_ratio
-
-    @cap_ratio.setter
-    def cap_ratio(self, b):
-        self._cap_ratio = b
 
     def _is_cached(
             self,
@@ -227,14 +182,11 @@ class PDSigSetOverBkgPDFRatio(
             where=m_nonzero_bkg,
             out=ratio)
 
-        if self._cap_ratio:
-            ratio[m_zero_bkg] = self.ratio_fill_value_dict[sig_pdf_key]
-        else:
-            np.divide(
-                ratio,
-                np.finfo(np.double).resolution,
-                where=m_zero_bkg,
-                out=ratio)
+        np.divide(
+            ratio,
+            np.finfo(np.double).resolution,
+            where=m_zero_bkg,
+            out=ratio)
 
         # Check for positive inf values in the ratio and set the ratio to a
         # finite number. Here we choose the maximum value of float32 to keep
