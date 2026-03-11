@@ -298,17 +298,7 @@ class PDBackgroundI3EnergyPDF(
         """Pre-compute the probability densitiy values of the trial data,
         which has to be done only once for a particular trial data.
         """
-
-        # logE_binning = self.get_binning('log_energy')
-        # sinDec_binning = self.get_binning('sin_dec')
-
-        # logE_idx = np.digitize(
-        #     tdm['log_energy'], logE_binning.binedges) - 1
-        # sinDec_idx = np.digitize(
-        #     tdm['sin_dec'], sinDec_binning.binedges) - 1
-
         with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
-            # self._pd = self._hist_logE_sinDec[(logE_idx, sinDec_idx)]
             self._pd = self._pdf_spline(tdm['log_energy'], tdm['sin_dec'], grid=False)
 
     def assert_is_valid_for_trial_data(
