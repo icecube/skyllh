@@ -91,12 +91,10 @@ class PDDatasetSignalGenerator(
         self.ds_idx = ds_idx
         self.energy_cut_spline = energy_cut_spline
         self.cut_sindec = cut_sindec
-        self.energy_range = energy_range
         self.sm = PDSmearingMatrix(
             pathfilenames=ds.get_abs_pathfilename_list(
                     ds.get_aux_data_definition('smearing_datafile')))
-
-        self._create_source_dependent_data_structures()
+        self.energy_range = energy_range
 
     @property
     def energy_range(self):
@@ -136,6 +134,7 @@ class PDDatasetSignalGenerator(
             r = (self.sm.true_e_bin_edges[idx0],
                  self.sm.true_e_bin_edges[idx1])
         self._energy_range = r
+        self._create_source_dependent_data_structures()
 
     def _create_source_dependent_data_structures(self):
         """Creates the source dependent data structures needed by this signal
@@ -524,7 +523,7 @@ class PDDatasetSignalGenerator(
             mean,
             poisson=True,
             src_detsigyield_weights_service=None,
-            **kwargs):
+            energy_range=None):
         """Generates ``mean`` number of signal events.
 
         Parameters
@@ -546,6 +545,9 @@ class PDDatasetSignalGenerator(
         src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
             The instance of SrcDetSigYieldWeightsService providing the weighting
             of the sources within the detector.
+        energy_range : 2-element tuple of float | None
+            The energy range in which signal events should be generated. If set
+            to None, the entire energy range [1e2, 1e9] GeV is used.
 
         Returns
         -------
@@ -575,6 +577,9 @@ class PDDatasetSignalGenerator(
 
         a_k = np.copy(a_jk[self.ds_idx])
         a_k /= np.sum(a_k)
+
+        if energy_range is not None:
+            self.energy_range = energy_range
 
         n_signal = 0
         signal_events_dict = {}
