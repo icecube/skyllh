@@ -105,7 +105,7 @@ class PDDatasetSignalGenerator(
         if hasattr(self, '_energy_range'):
             return self._energy_range
         else:
-            return (1e2, 1e9)
+            return (self.sm.true_e_bin_edges[0], self.sm.true_e_bin_edges[-1])
 
     @energy_range.setter
     def energy_range(self, r):
@@ -124,15 +124,21 @@ class PDDatasetSignalGenerator(
                     'The second element of the energy_range '
                     'sequence must be castable to type of float!')
             )
-            if r[0] >= r[1]:
-                raise ValueError(
-                    'The first element of the energy_range sequence must be '
-                    'strictly smaller than the second element!')
+
             # Convert the energy boundaries to the closest smearing matrix bin edges.
             idx0 = self.sm.get_log10_true_e_idx(np.log10(r[0]))
             idx1 = self.sm.get_log10_true_e_idx(np.log10(r[1]))
             r = (self.sm.true_e_bin_edges[idx0],
                  self.sm.true_e_bin_edges[idx1])
+            
+            if r[0] >= r[1]:
+                raise ValueError(
+                    'The first element of the energy_range sequence must be '
+                    'strictly smaller than the second element!')
+            
+            self._logger.info(
+            f'Set the energy range for signal generation to {self._energy_range} GeV!')
+            
         self._energy_range = r
         self._create_source_dependent_data_structures()
 
