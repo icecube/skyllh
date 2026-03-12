@@ -100,7 +100,7 @@ class PDDatasetSignalGenerator(
     def energy_range(self):
         """The energy range in which signal events should be generated. It is a
         2-element tuple of floats. The first element is the low energy and the
-        second element is the high energy. Both energies are given in GeV.
+        second element is the high energy. Energies are given in log10(E/GeV).
         """
         if hasattr(self, '_energy_range'):
             return self._energy_range
@@ -109,11 +109,14 @@ class PDDatasetSignalGenerator(
 
     @energy_range.setter
     def energy_range(self, r):
+        if hasattr(self, '_input_range') and self._input_range == r:
+            return
+        self._input_range = r
         if r is not None:
             if not issequence(r) or len(r) != 2:
                 raise ValueError(
-                    'The energy_range property must be a 2-element sequence of floats! '
-                    f'Its current value is {r}!')
+                    'The energy_range property must be a 2-element sequence of '
+                    f' floats! Its current value is {r}!')
             r = (
                 float_cast(
                     r[0],
@@ -125,7 +128,7 @@ class PDDatasetSignalGenerator(
                     'sequence must be castable to type of float!')
             )
 
-            # Convert the energy boundaries to the closest smearing matrix bin edges.
+            # Convert the energy boundaries to the closest SM bin edges.
             idx0 = self.sm.get_log10_true_e_idx(np.log10(r[0]))
             idx1 = self.sm.get_log10_true_e_idx(np.log10(r[1]))
             r = (self.sm.true_e_bin_edges[idx0],
@@ -137,8 +140,9 @@ class PDDatasetSignalGenerator(
                     'strictly smaller than the second element!')
             
             self._logger.info(
-            f'Set the energy range for signal generation to {self._energy_range} GeV!')
-            
+                f'Energy range for signal generation set to {r} '
+                'in log10(E/GeV).')
+        
         self._energy_range = r
         self._create_source_dependent_data_structures()
 
