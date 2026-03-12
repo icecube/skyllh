@@ -1,0 +1,18 @@
+skyllh.core.minimizers package
+==============================
+
+.. automodule:: skyllh.core.minimizers
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+skyllh.core.minimizers.iminuit module
+-------------------------------------
+
+.. automodule:: skyllh.core.minimizers.iminuit
+   :members:
+   :show-inheritance:
+   :undoc-members:

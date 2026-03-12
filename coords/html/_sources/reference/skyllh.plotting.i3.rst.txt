@@ -1,0 +1,18 @@
+skyllh.plotting.i3 package
+==========================
+
+.. automodule:: skyllh.plotting.i3
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+skyllh.plotting.i3.backgroundpdf module
+---------------------------------------
+
+.. automodule:: skyllh.plotting.i3.backgroundpdf
+   :members:
+   :show-inheritance:
+   :undoc-members:

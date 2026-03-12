@@ -1,0 +1,26 @@
+skyllh.plotting.core package
+============================
+
+.. automodule:: skyllh.plotting.core
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+skyllh.plotting.core.pdfratio module
+------------------------------------
+
+.. automodule:: skyllh.plotting.core.pdfratio
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+skyllh.plotting.core.signalpdf module
+-------------------------------------
+
+.. automodule:: skyllh.plotting.core.signalpdf
+   :members:
+   :show-inheritance:
+   :undoc-members:
