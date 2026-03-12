@@ -79,7 +79,7 @@ class PDDatasetSignalGenerator(
             The cut will be applied from this declination down.
         energy_range : 2-element tuple of float | None
             The energy range in which signal events should be generated.
-            If set to None, the entire energy range [1e2, 1e9] GeV is used.
+            If set to None, the full energy range (1e2 - 1e9 GeV) is used.
         """
         super().__init__(
             shg_mgr=shg_mgr,
@@ -101,11 +101,11 @@ class PDDatasetSignalGenerator(
         """The energy range in which signal events should be generated. It is a
         2-element tuple of floats. The first element is the low energy and the
         second element is the high energy. Energies are given in log10(E/GeV).
+        Note that this sets the true energy range, not the reconstructed one.
         """
-        if hasattr(self, '_energy_range'):
-            return self._energy_range
-        else:
+        if self._energy_range is None:
             return (self.sm.true_e_bin_edges[0], self.sm.true_e_bin_edges[-1])
+        return self._energy_range
 
     @energy_range.setter
     def energy_range(self, r):
