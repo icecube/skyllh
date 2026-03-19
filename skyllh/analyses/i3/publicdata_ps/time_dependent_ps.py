@@ -776,7 +776,6 @@ def create_analysis(  # noqa: C901
         gamma_max=5.,
         kde_smoothing=False,
         minimizer_impl="LBFGS",
-        cap_ratio=False,
         compress_data=False,
         keep_data_fields=None,
         evt_sel_delta_angle_deg=10,
@@ -830,13 +829,6 @@ def create_analysis(  # noqa: C901
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
         "minuit" (Minuit minimizer used by the :mod:`iminuit` module).
         Default: "LBFGS".
-    cap_ratio : bool
-        If set to True, the energy PDF ratio will be capped to a finite value
-        where no background energy PDF information is available. This will
-        ensure that an energy PDF ratio is available for high energies where
-        no background is available from the experimental data.
-        If kde_smoothing is set to True, cap_ratio should be set to False!
-        Default is False.
     compress_data : bool
         Flag if the data should get converted from float64 into float32.
     keep_data_fields : list of str | None
@@ -936,7 +928,7 @@ def create_analysis(  # noqa: C901
     if gamma_max > 4.0:
         logger.warn(
             'You are allowing `gamma` values larger than 4.0. '
-            'For such soft spectra, we cannot garantee the correct '
+            'For such soft spectra, we cannot guarantee the correct '
             'behaviour of the energy PDF.')
     param_gamma = Parameter(
         name='gamma',
@@ -1045,8 +1037,7 @@ def create_analysis(  # noqa: C901
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
             cfg=cfg,
             sig_pdf_set=energy_sigpdfset,
-            bkg_pdf=energy_bkgpdf,
-            cap_ratio=cap_ratio)
+            bkg_pdf=energy_bkgpdf)
 
         pdfratio = spatial_pdfratio * energy_pdfratio
 

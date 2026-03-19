@@ -133,9 +133,8 @@ class FctSpline2D(object):
         self.y_max = self.y_binedges[-1]
 
         x = get_bincenters_from_binedges(self.x_binedges)
-        # y = get_bincenters_from_binedges(self.y_binedges)
-
-        # Hack to avoid awkward behaviors due to splining in sin(dec)
+        # Hack to avoid awkward behaviors due to splining in sin(dec).
+        # It construct a spline that follows the histogram very closely in the `y` (sin(dec)) dimension.
         y = np.repeat(self.y_binedges, repeats=2)[1:-1]
         y[1::2] -= 1e-10
         f = np.repeat(f, repeats=2, axis=1)
@@ -222,7 +221,6 @@ class FctSpline2D(object):
     def __call__(self, x, y, oor_value=0, grid=False, renorm=True):
         """Evaluates the spline at the given coordinates. For coordinates
         outside the spline's range, the oor_value is returned.
-        
         Parameters
         ----------
         x : (n_x,)-shaped 1D numpy ndarray
@@ -236,9 +234,9 @@ class FctSpline2D(object):
         grid : bool | False
             Whether the interpolation should return a 2D numpy array or a
             1D sequence of values.
-        renorm_axis : bool | True
-        Whether to renormalize the histogram along the x axis for each y-value.
-        (This is useful when constructing the background energy PDF.)
+        renorm : bool | True
+            Whether to renormalize the histogram along the x axis for each
+            y-value. Useful when constructing the background energy PDF.
         
         Returns
         -------
@@ -272,7 +270,7 @@ class FctSpline2D(object):
         if renorm:
             f2d = self._renorm_per_y_grid(f2d, y)
 
-        # OOR mask on tensor grid in user order
+        # OOR mask on tensor grid
         mx2d, my2d = np.meshgrid(m_x_oor, m_y_oor, indexing='ij')
         f2d[mx2d | my2d] = oor_value
         return f2d
@@ -364,50 +362,11 @@ def psi_to_dec_and_ra(
 
     return (dec, ra)
 
-
-def create_energy_cut_spline_old(
-        ds,
-        exp_data,
-        spl_smooth):
-    """Create the spline for the declination-dependent energy cut
-    that the signal generator needs for injection in the southern sky
-    Some special conditions are needed for IC79 and IC86_I, because
-    their experimental dataset shows events that should probably have
-    been cut by the IceCube selection.
-    """
-    data_exp = exp_data.copy(keep_fields=['sin_dec', 'log_energy'])
-    if ds.name == 'IC79':
-        m = np.invert(np.logical_and(
-            data_exp['sin_dec'] < -0.75,
-            data_exp['log_energy'] < 4.2))
-        data_exp = data_exp[m]
-    if ds.name == 'IC86_I':
-        m = np.invert(np.logical_and(
-            data_exp['sin_dec'] < -0.2,
-            data_exp['log_energy'] < 2.5))
-        data_exp = data_exp[m]
-
-    sin_dec_binning = ds.get_binning_definition('sin_dec')
-    sindec_edges = sin_dec_binning.binedges
-    min_log_e = np.zeros(len(sindec_edges)-1, dtype=float)
-    for i in range(len(sindec_edges)-1):
-        mask = np.logical_and(
-            data_exp['sin_dec'] >= sindec_edges[i],
-            data_exp['sin_dec'] < sindec_edges[i+1])
-        min_log_e[i] = np.min(data_exp['log_energy'][mask])
-    del data_exp
-    sindec_centers = 0.5 * (sindec_edges[1:]+sindec_edges[:-1])
-
-    spline = interpolate.UnivariateSpline(
-        sindec_centers, min_log_e, k=2, s=spl_smooth)
-
-    return spline
-
 def create_energy_cut_spline(
         ds,
         exp_data,
         spl_smooth,
-        cumulative_thr):
+        cumulative_thr=0):
     """Create the spline for the declination-dependent energy cut
     that the signal generator needs for injection in the southern sky.
     Cut bins which do not exceed the defined `cumulative_thr` threshold
@@ -423,6 +382,7 @@ def create_energy_cut_spline(
     spl_smooth : float
 
     cumulative_thr : float
+        Defaults to 0 that corresponds to no cut.
 
 
     Returns

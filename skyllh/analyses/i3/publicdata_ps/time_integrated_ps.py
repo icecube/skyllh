@@ -291,7 +291,7 @@ def create_analysis(
     if gamma_max > 4.0:
         logger.warn(
             'You are allowing `gamma` values larger than 4.0. '
-            'For such soft spectra, we cannot garantee the correct '
+            'For such soft spectra, we cannot guarantee the correct '
             'behaviour of the energy PDF.')
     param_gamma = Parameter(
         name='gamma',
@@ -356,16 +356,6 @@ def create_analysis(
     event_selection_method = SpatialBoxEventSelectionMethod(
         shg_mgr=shg_mgr,
         delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
-
-    # Prepare the spline parameters for the signal generator.
-    # if cut_sindec is None:
-    #     cut_sindec = np.sin(np.radians([-2, 0, -3, 0, 0]))
-    # if spl_smooth is None:
-    #     spl_smooth = [0., 0.005, 0.05, 0.2, 0.3]
-    # if len(spl_smooth) < len(datasets) or len(cut_sindec) < len(datasets):
-    #     raise AssertionError(
-    #         'The length of the spl_smooth and of the cut_sindec must be equal '
-    #         f'to the length of datasets: {len(datasets)}.')
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
@@ -447,7 +437,6 @@ def create_analysis(
             ds=ds,
             ds_idx=ds_idx,
             energy_cut_spline=energy_cut_spline,
-            # cut_sindec=cut_sindec[ds_idx],
         )
 
         ana.add_dataset(
@@ -515,11 +504,10 @@ if __name__ == '__main__':
         debug_pathfilename=args.debug_logfile)
 
     sample_seasons = [
-        ('PublicData_10y_ps', 'IC40'),
-        ('PublicData_10y_ps', 'IC59'),
-        ('PublicData_10y_ps', 'IC79'),
-        ('PublicData_10y_ps', 'IC86_I'),
-        ('PublicData_10y_ps', 'IC86_II-VII'),
+        ('PublicData_14y_ps', 'IC40'),
+        ('PublicData_14y_ps', 'IC59'),
+        ('PublicData_14y_ps', 'IC79'),
+        ('PublicData_14y_ps', 'IC86_I-XI'),
     ]
 
     datasets = []

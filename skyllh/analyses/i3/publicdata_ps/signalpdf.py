@@ -389,7 +389,7 @@ class PDSignalEnergyPDFSet(
                 if np.sum(f_e) == 0:
                     self._logger.warn(
                         'There is no distribution of reconstructed energies '
-                        'for true neutrino energy {}. Assigning a sequance of '
+                        'for true neutrino energy {}. Assigning a sequence of '
                         'zeros.'.format(sm.log10_true_enu_binedges[true_e_idx]))
                     f_e = np.zeros_like(f_e)
                     log10_reco_e_binedges = np.linspace(2, 6, f_e.size+1)

@@ -135,7 +135,6 @@ def create_analysis(
     minimizer_impl='LBFGS',
     cut_sindec=None,
     spl_smooth=None,
-    cap_ratio=False,
     compress_data=False,
     keep_data_fields=None,
     evt_sel_delta_angle_deg=10,
@@ -363,8 +362,7 @@ def create_analysis(
 
         energy_pdfratio = PDSigSetOverBkgPDFRatio(
             sig_pdf_set=energy_sigpdfset,
-            bkg_pdf=energy_bkgpdf,
-            cap_ratio=cap_ratio)
+            bkg_pdf=energy_bkgpdf)
 
         pdfratio = spatial_pdfratio * energy_pdfratio
 
@@ -458,11 +456,6 @@ if __name__ == '__main__':
         type=int,
         help='The number of CPUs to utilize where parallelization is possible.'
     )
-    p.add_argument(
-        '--cap-ratio',
-        action='store_true',
-        help='Switch to cap the energy PDF ratio.')
-    p.set_defaults(cap_ratio=False)
     args = p.parse_args()
 
     # Setup `skyllh` package logging.
@@ -510,7 +503,6 @@ if __name__ == '__main__':
         ana = create_analysis(
             datasets=datasets,
             source=source,
-            cap_ratio=args.cap_ratio,
             gamma_seed=args.gamma_seed,
             tl=tl)
 
