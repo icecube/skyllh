@@ -123,7 +123,7 @@ from skyllh.i3.config import (
 from skyllh.scripting.argparser import (
     create_argparser,
 )
-from skyllh.scripting.logging import (
+from skyllh.core.debugging import (
     setup_logging,
 )
 
@@ -501,7 +501,7 @@ if __name__ == '__main__':
     setup_logging(
         cfg=cfg,
         script_logger_name=__name__,
-        debug_pathfilename=args.debug_logfile)
+        log_file=args.debug_logfile)
 
     sample_seasons = [
         ('PublicData_14y_ps', 'IC40'),

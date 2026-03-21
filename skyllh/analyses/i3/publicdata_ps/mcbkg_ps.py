@@ -37,9 +37,7 @@ from skyllh.core.config import (
 )
 from skyllh.core.debugging import (
     get_logger,
-    setup_logger,
-    setup_console_handler,
-    setup_file_handler,
+    setup_logging,
 )
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
@@ -458,22 +456,19 @@ if __name__ == '__main__':
     )
     args = p.parse_args()
 
-    # Setup `skyllh` package logging.
-    # To optimize logging set the logging level to the lowest handling level.
-    setup_logger('skyllh', logging.DEBUG)
-    log_format = '%(asctime)s %(processName)s %(name)s %(levelname)s: '\
-                 '%(message)s'
-    setup_console_handler(
-        'skyllh',
-        logging.INFO, log_format)
-    setup_file_handler(
-        'skyllh',
-        'debug.log',
-        log_level=logging.DEBUG,
-        log_format=log_format)
-
     cfg = Config()
     cfg.set_ncpu(args.ncpu)
+
+    # Setup `skyllh` package logging.
+    setup_logging(
+        cfg=cfg,
+        name='skyllh',
+        log_level=logging.DEBUG,
+        console=True,
+        console_level=logging.INFO,
+        log_file='debug.log',
+        file_level=logging.DEBUG,
+    )
 
     sample_seasons = [
         # ('PublicData_10y_ps', 'IC40'),

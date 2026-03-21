@@ -128,7 +128,7 @@ from skyllh.i3.backgroundpdf import (
 from skyllh.scripting.argparser import (
     create_argparser,
 )
-from skyllh.scripting.logging import (
+from skyllh.core.debugging import (
     setup_logging,
 )
 

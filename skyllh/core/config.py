@@ -37,6 +37,13 @@ _BASECONFIG = {
         'ncpu': None,
     },
     'debugging': {
+        # The log level of the loggers. The default is ``logging.INFO``.
+        # Values are the log levels defined in the Python logging module.
+        # E.g.:
+        # - logging.DEBUG
+        # - logging.INFO
+        # - logging.WARNING
+        'log_level': 'INFO',
         # The default log format.
         'log_format': (
             '%(asctime)s %(processName)s %(name)s %(levelname)s: '
