@@ -321,7 +321,7 @@ class PDSignalEnergyPDFSet(
             det_prob, np.sum(det_prob)))
 
         if not np.isclose(np.sum(det_prob), 1):
-            self._logger.warn(
+            self._logger.warning(
                 'The sum of the detection probabilities is not unity! It is '
                 '{}.'.format(np.sum(det_prob)))
 
@@ -352,7 +352,7 @@ class PDSignalEnergyPDFSet(
                 )
             )
             if not np.isclose(np.sum(flux_prob), 1):
-                self._logger.warn(
+                self._logger.warning(
                     'The sum of the flux probabilities is not unity! It is '
                     '{}.'.format(np.sum(flux_prob)))
 
@@ -387,7 +387,7 @@ class PDSignalEnergyPDFSet(
 
                 # Check that the reco energy PDF is not all zeros
                 if np.sum(f_e) == 0:
-                    self._logger.warn(
+                    self._logger.warning(
                         'There is no distribution of reconstructed energies '
                         'for true neutrino energy {}. Assigning a sequence of '
                         'zeros.'.format(sm.log10_true_enu_binedges[true_e_idx]))

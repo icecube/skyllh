@@ -926,7 +926,7 @@ def create_analysis(  # noqa: C901
 
     # Define the fit parameter gamma.
     if gamma_max > 4.0:
-        logger.warn(
+        logger.warning(
             'You are allowing `gamma` values larger than 4.0. '
             'For such soft spectra, we cannot guarantee the correct '
             'behaviour of the energy PDF.')

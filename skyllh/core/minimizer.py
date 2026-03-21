@@ -242,7 +242,7 @@ class ScipyMinimizerImpl(
             bounds = None
 
         if (bounds is not None) and (not method_supports_bounds):
-            logger.warn(
+            logger.warning(
                 f'Selected minimization method "{self._method}" does not '
                 'support bounds. Continue at your own risk!')
             bounds = None

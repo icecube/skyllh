@@ -495,7 +495,7 @@ class DatasetTransfer(
         try:
             os.remove(zip_file)
         except Exception as exc:
-            logger.warn(str(exc))
+            logger.warning(str(exc))
 
 
 class RSYNCDatasetTransfer(
@@ -1494,7 +1494,7 @@ class Dataset(
             return True
 
         if self.origin is None:
-            logger.warn(
+            logger.warning(
                 f'No origin defined for dataset "{self.name}"! '
                 'Cannot download dataset!')
             return False
@@ -1518,7 +1518,7 @@ class Dataset(
             return True
 
         if self._cfg['repository']['download_from_origin'] is False:
-            logger.warn(
+            logger.warning(
                 f'The data of dataset "{self.name}" is locally not available '
                 'and the download from the origin is disabled through the '
                 'configuration!')

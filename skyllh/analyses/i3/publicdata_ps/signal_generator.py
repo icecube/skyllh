@@ -378,7 +378,7 @@ class PDDatasetSignalGenerator(
             to cut.
         """
         if cut_sindec is None:
-            logger.warn(
+            logger.warning(
                 'No `cut_sindec` has been specified. The energy cut will be '
                 'applied in [-90, 90] deg.')
             cut_sindec = np.sin(np.radians(90.1))
