@@ -11,7 +11,7 @@ from skyllh.core.datafields import (
     DataFields,
     DataFieldStages as DFS,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.event_selection import (

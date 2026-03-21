@@ -72,7 +72,7 @@ def setup_logger(
     file_level=None,
     file_mode="a",
     propagate=False,
-    reset_handlers=False,
+    clear_existing_handlers=False,
 ):
     """Sets up a logger with the given local configuration and a name.
 
@@ -106,7 +106,7 @@ def setup_logger(
     propagate : bool
         Whether the logger should propagate messages to ancestor loggers.
         Default: False.
-    reset_handlers : bool
+    clear_existing_handlers : bool
         Optionally clear handlers before setting up new ones.
         Default: False.
     """
@@ -124,7 +124,7 @@ def setup_logger(
         log_format = cfg["debugging"]["log_format"]
     formatter = logging.Formatter(log_format)
 
-    if reset_handlers:
+    if clear_existing_handlers:
         for h in list(logger.handlers):
             logger.removeHandler(h)
 
@@ -176,18 +176,19 @@ def setup_logger(
 
 def setup_logging(
         cfg,
-        script_logger_name,
+        name,
         log_format=None,
         log_level=None,
-        log_file=None):
+        log_file=None,
+        reconfigure=False):
     """Initializes package and script loggers and returns the script logger.
 
     Parameters
     ----------
     cfg : instance of Config
         The instance of Config holding the local configuration.
-    script_logger_name : str
-        The name of the logger used by the script.
+    name : str
+        The name of the user-defined logger to set up.
     log_format : str | None
         The format template of the log message. If ``None``, the format
         is taken from ``cfg['debugging']['log_format']``.
@@ -197,11 +198,16 @@ def setup_logging(
     log_file : str | None
         If not ``None``, a file handler for log messages will be installed
         for both loggers using this path.
+    reconfigure : bool
+        Rebuild logging setup from scratch for this run/session.
+        Especially useful in interactive environments like Jupyter notebooks
+        to avoid duplicate log messages due to multiple logging handlers.
+        Default: False.
 
     Returns
     -------
     logging.Logger
-        The logger instance specified by ``script_logger_name``.
+        The logger instance specified by ``name``.
     """
     if log_format is None:
         log_format = cfg['debugging']['log_format']
@@ -213,15 +219,17 @@ def setup_logging(
         log_format=log_format,
         console=True,
         log_file=log_file,
-        file_level=logging.DEBUG)
+        file_level=logging.DEBUG,
+        clear_existing_handlers=reconfigure)
 
     setup_logger(
         cfg=cfg,
-        name=script_logger_name,
+        name=name,
         log_level=log_level,
         log_format=log_format,
         console=True,
         log_file=log_file,
-        file_level=logging.DEBUG)
+        file_level=logging.DEBUG,
+        clear_existing_handlers=reconfigure)
 
-    return get_logger(script_logger_name)
+    return get_logger(name)

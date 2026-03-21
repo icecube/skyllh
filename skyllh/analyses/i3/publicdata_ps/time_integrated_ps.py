@@ -35,7 +35,7 @@ from skyllh.core.background_generator import (
 from skyllh.core.config import (
     Config,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.event_selection import (
@@ -123,7 +123,7 @@ from skyllh.i3.config import (
 from skyllh.scripting.argparser import (
     create_argparser,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     setup_logging,
 )
 

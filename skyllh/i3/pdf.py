@@ -5,7 +5,7 @@ import numpy as np
 from skyllh.core.binning import (
     UsesBinning,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.pdf import (

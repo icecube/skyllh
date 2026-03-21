@@ -16,7 +16,7 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
 from skyllh.core.binning import (
     get_bincenters_from_binedges,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.flux_model import (

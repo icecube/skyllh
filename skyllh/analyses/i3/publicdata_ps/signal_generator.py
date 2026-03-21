@@ -15,7 +15,7 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     psi_to_dec_and_ra,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.flux_model import (

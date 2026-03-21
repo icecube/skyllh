@@ -10,7 +10,7 @@ then be used by different analysis objects, like PDF objects.
 from collections import OrderedDict
 import numpy as np
 
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core import display as dsp

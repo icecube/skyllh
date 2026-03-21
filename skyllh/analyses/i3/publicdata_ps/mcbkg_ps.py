@@ -35,7 +35,7 @@ from skyllh.core.analysis import (
 from skyllh.core.config import (
     Config,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
     setup_logging,
 )

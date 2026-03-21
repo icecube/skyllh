@@ -11,7 +11,7 @@ import numpy as np
 from skyllh.core.config import (
     HasConfig,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.minimizer import (
