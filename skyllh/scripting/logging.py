@@ -7,10 +7,7 @@ analysis script.
 import logging
 
 from skyllh.core.debugging import (
-    get_logger,
-    setup_logger,
-    setup_console_handler,
-    setup_file_handler,
+    configure_logging,
 )
 
 
@@ -44,42 +41,10 @@ def setup_logging(
     script_logger : instance of logging.Logger
         The logger instance of the script, specified by ``script_logger_name``.
     """
-    if log_format is None:
-        log_format = cfg['debugging']['log_format']
-
-    setup_logger('skyllh', log_level)
-    setup_logger(script_logger_name, log_level)
-
-    setup_console_handler(
+    return configure_logging(
         cfg=cfg,
-        name='skyllh',
+        script_logger_name=script_logger_name,
+        log_format=log_format,
         log_level=log_level,
-        log_format=log_format
+        debug_pathfilename=debug_pathfilename
     )
-
-    setup_console_handler(
-        cfg=cfg,
-        name=script_logger_name,
-        log_level=log_level,
-        log_format=log_format
-    )
-
-    if debug_pathfilename is not None:
-        setup_file_handler(
-            cfg=cfg,
-            name='skyllh',
-            filename=debug_pathfilename,
-            log_format=log_format,
-            log_level=logging.DEBUG
-        )
-        setup_file_handler(
-            cfg=cfg,
-            name=script_logger_name,
-            filename=debug_pathfilename,
-            log_format=log_format,
-            log_level=logging.DEBUG
-        )
-
-    script_logger = get_logger(script_logger_name)
-
-    return script_logger
