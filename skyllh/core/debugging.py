@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-
 import logging
 import os.path
 import sys
 
 
-def get_logger(
-        name):
+def get_logger(name):
     """Retrieves the logger with the given name from the Python logging system.
 
     Parameters
@@ -24,9 +21,7 @@ def get_logger(
     return logger
 
 
-def setup_logger(
-        name,
-        log_level):
+def setup_logger(name, log_level):
     """Initializes logger with a given name and a log level.
 
     Parameters
@@ -41,12 +36,7 @@ def setup_logger(
     logger.setLevel(log_level)
 
 
-def setup_console_handler(
-        cfg,
-        name,
-        log_level=None,
-        log_format=None,
-        stream=None):
+def setup_console_handler(cfg, name, log_level=None, log_format=None, stream=None):
     """Initializes `StreamHandler` for a logger with a given name and sets its
     handling level.
 
@@ -84,14 +74,7 @@ def setup_console_handler(
     logger.addHandler(sh)
 
 
-def setup_file_handler(
-        cfg,
-        name,
-        filename,
-        log_level=None,
-        path=None,
-        log_format=None,
-        mode='a'):
+def setup_file_handler(cfg, name, filename, log_level=None, path=None, log_format=None, mode='a'):
     """Initializes `FileHandler` for a logger with a given name and sets its
     handling level.
 

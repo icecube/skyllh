@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """The ``backgroundpdf`` module contains background PDF classes for the
 likelihood function.
 """
@@ -16,19 +14,14 @@ from skyllh.core.py import (
 )
 
 
-class BackgroundMultiDimGridPDF(
-        MultiDimGridPDF,
-        IsBackgroundPDF):
+class BackgroundMultiDimGridPDF(MultiDimGridPDF, IsBackgroundPDF):
     """This class provides a multi-dimensional background PDF defined on a grid.
     The PDF is created from pre-calculated PDF data on a grid. The grid data is
     interpolated using a :class:`scipy.interpolate.RegularGridInterpolator`
     instance.
     """
 
-    def __init__(
-            self,
-            *args,
-            **kwargs):
+    def __init__(self, *args, **kwargs):
         """Creates a new :class:`~skyllh.core.pdf.MultiDimGridPDF` instance that
         is also derived from :class:`~skyllh.core.pdf.IsBackgroundPDF`.
 
@@ -38,17 +31,10 @@ class BackgroundMultiDimGridPDF(
         super().__init__(*args, **kwargs)
 
 
-class BackgroundTimePDF(
-        TimePDF,
-        IsBackgroundPDF):
-    """This class provides a background time PDF class.
-    """
+class BackgroundTimePDF(TimePDF, IsBackgroundPDF):
+    """This class provides a background time PDF class."""
 
-    def __init__(
-            self,
-            livetime,
-            time_flux_profile,
-            **kwargs):
+    def __init__(self, livetime, time_flux_profile, **kwargs):
         """Creates a new signal time PDF instance for a given time flux profile
         and detector live time.
 
@@ -60,19 +46,11 @@ class BackgroundTimePDF(
         time_flux_profile : instance of TimeFluxProfile
             The signal's time flux profile.
         """
-        super().__init__(
-            pmm=None,
-            livetime=livetime,
-            time_flux_profile=time_flux_profile,
-            **kwargs)
+        super().__init__(pmm=None, livetime=livetime, time_flux_profile=time_flux_profile, **kwargs)
 
         self._pd = None
 
-    def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """Initializes the background time PDF with new trial data. Because this
         PDF does not depend on any parameters, the probability density values
         can be pre-computed here.
@@ -101,11 +79,7 @@ class BackgroundTimePDF(
 
         self._pd[on] = self._time_flux_profile(t=times[on]) / self._S
 
-    def get_pd(
-            self,
-            tdm,
-            params_recarray=None,
-            tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """
         Parameters
         ----------
@@ -135,8 +109,7 @@ class BackgroundTimePDF(
             hence, this is an empty dictionary.
         """
         if self._pd is None:
-            raise RuntimeError(
-                f'The {classname(self)} was not initialized with trial data!')
+            raise RuntimeError(f'The {classname(self)} was not initialized with trial data!')
 
         grads = dict()
 

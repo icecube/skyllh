@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import sys
 
 """The session module provides global settings for session handling.
@@ -11,16 +9,14 @@ IS_INTERACTIVE_SESSION = False
 
 
 def enable_interactive_session():
-    """Enables interactive session mode.
-    """
+    """Enables interactive session mode."""
     global IS_INTERACTIVE_SESSION
 
     IS_INTERACTIVE_SESSION = True
 
 
 def disable_interactive_session():
-    """Disables interactive session mode.
-    """
+    """Disables interactive session mode."""
     global IS_INTERACTIVE_SESSION
 
     IS_INTERACTIVE_SESSION = False

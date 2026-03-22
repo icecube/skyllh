@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Author: Martin Wolf <mail@martin-wolf.org>
 
 """This test module tests classes, methods and functions of the ``core.model``
@@ -7,10 +6,7 @@ module.
 
 import unittest
 
-from skyllh.core.model import (
-    Model,
-    ModelCollection
-)
+from skyllh.core.model import Model, ModelCollection
 
 
 class Model_TestCase(unittest.TestCase):

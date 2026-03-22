@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """This module contains utility functions for logging functionalities of an
 analysis script.
 """
@@ -8,18 +6,13 @@ import logging
 
 from skyllh.core.debugging import (
     get_logger,
-    setup_logger,
     setup_console_handler,
     setup_file_handler,
+    setup_logger,
 )
 
 
-def setup_logging(
-        cfg,
-        script_logger_name,
-        log_format=None,
-        log_level=logging.INFO,
-        debug_pathfilename=None):
+def setup_logging(cfg, script_logger_name, log_format=None, log_level=logging.INFO, debug_pathfilename=None):
     """Initializes loggers and installs console handlers for the ``skyllh`` and
     ``script_logger_name`` loggers. If a debug file is specified, file handlers
     for debug messages will be installed as well.
@@ -50,34 +43,20 @@ def setup_logging(
     setup_logger('skyllh', log_level)
     setup_logger(script_logger_name, log_level)
 
-    setup_console_handler(
-        cfg=cfg,
-        name='skyllh',
-        log_level=log_level,
-        log_format=log_format
-    )
+    setup_console_handler(cfg=cfg, name='skyllh', log_level=log_level, log_format=log_format)
 
-    setup_console_handler(
-        cfg=cfg,
-        name=script_logger_name,
-        log_level=log_level,
-        log_format=log_format
-    )
+    setup_console_handler(cfg=cfg, name=script_logger_name, log_level=log_level, log_format=log_format)
 
     if debug_pathfilename is not None:
         setup_file_handler(
-            cfg=cfg,
-            name='skyllh',
-            filename=debug_pathfilename,
-            log_format=log_format,
-            log_level=logging.DEBUG
+            cfg=cfg, name='skyllh', filename=debug_pathfilename, log_format=log_format, log_level=logging.DEBUG
         )
         setup_file_handler(
             cfg=cfg,
             name=script_logger_name,
             filename=debug_pathfilename,
             log_format=log_format,
-            log_level=logging.DEBUG
+            log_level=logging.DEBUG,
         )
 
     script_logger = get_logger(script_logger_name)

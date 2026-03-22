@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
-
 """The llhratio module provides classes implementing the log-likelihood ratio
 functions. In general these should be detector independent, because they
 implement the pure math of the log-likelihood ratio function.
 """
 
 import abc
+
 import numpy as np
 
 from skyllh.core.config import (
@@ -27,8 +26,8 @@ from skyllh.core.pdfratio import (
 )
 from skyllh.core.py import (
     classname,
-    issequenceof,
     float_cast,
+    issequenceof,
 )
 from skyllh.core.services import (
     DatasetSignalWeightFactorsService,
@@ -44,22 +43,16 @@ from skyllh.core.trialdata import (
     TrialDataManager,
 )
 
-
 logger = get_logger(__name__)
 
 
 class LLHRatio(
-        HasConfig,
-        metaclass=abc.ABCMeta,
+    HasConfig,
+    metaclass=abc.ABCMeta,
 ):
-    """Abstract base class for a log-likelihood (LLH) ratio function.
-    """
+    """Abstract base class for a log-likelihood (LLH) ratio function."""
 
-    def __init__(
-            self,
-            pmm,
-            minimizer,
-            **kwargs):
+    def __init__(self, pmm, minimizer, **kwargs):
         """Creates a new LLH ratio function instance.
 
         Parameters
@@ -89,7 +82,8 @@ class LLHRatio(
             raise TypeError(
                 'The pmm property must be an instance of '
                 'ParameterModelMapper! '
-                f'Its current type is {classname(mapper)}.')
+                f'Its current type is {classname(mapper)}.'
+            )
         self._pmm = mapper
 
     @property
@@ -103,15 +97,12 @@ class LLHRatio(
     def minimizer(self, minimizer):
         if not isinstance(minimizer, Minimizer):
             raise TypeError(
-                'The minimizer property must be an instance of Minimizer! '
-                f'Its current type is {classname(minimizer)}.')
+                f'The minimizer property must be an instance of Minimizer! Its current type is {classname(minimizer)}.'
+            )
         self._minimizer = minimizer
 
     @abc.abstractmethod
-    def initialize_for_new_trial(
-            self,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tl=None, **kwargs):
         """This method will be called by the Analysis class after new trial data
         has been initialized to the trial data manager. Derived classes can make
         use of this call hook to perform LLHRatio specific trial initialization.
@@ -124,11 +115,7 @@ class LLHRatio(
         pass
 
     @abc.abstractmethod
-    def evaluate(
-            self,
-            fitparam_values,
-            src_params_recarray=None,
-            tl=None):
+    def evaluate(self, fitparam_values, src_params_recarray=None, tl=None):
         """This method evaluates the LLH ratio function for the given set of
         fit parameter values.
 
@@ -157,10 +144,7 @@ class LLHRatio(
         """
         pass
 
-    def maximize(
-            self,
-            rss,
-            tl=None):
+    def maximize(self, rss, tl=None):
         """Maximize the log-likelihood ratio function, by using the ``evaluate``
         method.
 
@@ -191,57 +175,42 @@ class LLHRatio(
         self_evaluate = self.evaluate
 
         def negative_llhratio_func(fitparam_values, func_stats, tl=None):
-            src_params_recarray = self._pmm.create_src_params_recarray(
-                fitparam_values)
+            src_params_recarray = self._pmm.create_src_params_recarray(fitparam_values)
 
             func_stats['n_calls'] += 1
             with TaskTimer(tl, 'Evaluate llh-ratio function.'):
                 (f, grads) = self_evaluate(
-                    fitparam_values=fitparam_values,
-                    src_params_recarray=src_params_recarray,
-                    tl=tl)
+                    fitparam_values=fitparam_values, src_params_recarray=src_params_recarray, tl=tl
+                )
                 if tracing:
-                    logger.debug(
-                        f'LLH-ratio func value f={f:g}, grads={str(grads)}')
+                    logger.debug(f'LLH-ratio func value f={f:g}, grads={grads!s}')
             return (-f, -grads)
 
-        minimize_kwargs = {
-            'func_provides_grads': True
-        }
+        minimize_kwargs = {'func_provides_grads': True}
 
-        func_stats = {
-            'n_calls': 0
-        }
+        func_stats = {'n_calls': 0}
         with TaskTimer(tl, 'Minimize -llhratio function.'):
             (fitparam_values, fmin, status) = self._minimizer.minimize(
                 rss=rss,
                 paramset=self._pmm.global_paramset,
                 func=negative_llhratio_func,
                 args=(func_stats, tl),
-                kwargs=minimize_kwargs)
+                kwargs=minimize_kwargs,
+            )
         log_lambda_max = -fmin
         status['n_llhratio_func_calls'] = func_stats['n_calls']
 
-        logger.debug(
-            f'Maximized LLH ratio function with '
-            f'{status["n_llhratio_func_calls"]:d} calls')
+        logger.debug(f'Maximized LLH ratio function with {status["n_llhratio_func_calls"]:d} calls')
 
         return (log_lambda_max, fitparam_values, status)
 
 
-class TCLLHRatio(
-        LLHRatio,
-        metaclass=abc.ABCMeta):
+class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
     """Abstract base class for a log-likelihood (LLH) ratio function with two
     components, i.e. signal and background.
     """
 
-    def __init__(
-            self,
-            pmm,
-            minimizer,
-            mean_n_sig_0,
-            **kwargs):
+    def __init__(self, pmm, minimizer, mean_n_sig_0, **kwargs):
         """Creates a new two-component LLH ratio function instance.
 
         Parameters
@@ -255,10 +224,7 @@ class TCLLHRatio(
         mean_n_sig_0 : float
             The fixed mean number of signal events for the null-hypothesis.
         """
-        super().__init__(
-            pmm=pmm,
-            minimizer=minimizer,
-            **kwargs)
+        super().__init__(pmm=pmm, minimizer=minimizer, **kwargs)
 
         self.mean_n_sig_0 = mean_n_sig_0
 
@@ -271,19 +237,11 @@ class TCLLHRatio(
 
     @mean_n_sig_0.setter
     def mean_n_sig_0(self, v):
-        v = float_cast(
-            v,
-            'The mean_n_sig_0 property must be cast-able to a float value!')
+        v = float_cast(v, 'The mean_n_sig_0 property must be cast-able to a float value!')
         self._mean_n_sig_0 = v
 
     @abc.abstractmethod
-    def calculate_ns_grad2(
-            self,
-            ns,
-            ns_pidx,
-            src_params_recarray,
-            tl=None,
-            **kwargs):
+    def calculate_ns_grad2(self, ns, ns_pidx, src_params_recarray, tl=None, **kwargs):
         """This method is supposed to calculate the second derivative of the
         log-likelihood ratio function w.r.t. the fit parameter ns, the number
         of signal events in the data set.
@@ -313,10 +271,7 @@ class TCLLHRatio(
         """
         pass
 
-    def maximize_with_1d_newton_rapson_minimizer(
-            self,
-            rss,
-            tl=None):
+    def maximize_with_1d_newton_rapson_minimizer(self, rss, tl=None):
         """Maximizes this log-likelihood ratio function, by minimizing its
         negative using a 1D Newton-Rapson minimizer.
 
@@ -352,39 +307,26 @@ class TCLLHRatio(
 
         def negative_llhratio_func_nr1d_ns(fitparam_values, tl):
             ns = fitparam_values[ns_pidx]
-            src_params_recarray = self._pmm.create_src_params_recarray(
-                fitparam_values)
-            with TaskTimer(
-                    tl,
-                    'Evaluate llh-ratio function.'):
+            src_params_recarray = self._pmm.create_src_params_recarray(fitparam_values)
+            with TaskTimer(tl, 'Evaluate llh-ratio function.'):
                 (f, grads) = self__evaluate(
-                    fitparam_values=fitparam_values,
-                    src_params_recarray=src_params_recarray,
-                    tl=tl)
-            with TaskTimer(
-                    tl,
-                    'Calculate 2nd derivative of llh-ratio function w.r.t. ns'):
+                    fitparam_values=fitparam_values, src_params_recarray=src_params_recarray, tl=tl
+                )
+            with TaskTimer(tl, 'Calculate 2nd derivative of llh-ratio function w.r.t. ns'):
                 grad2_ns = self__calculate_ns_grad2(
-                    ns=ns,
-                    ns_pidx=ns_pidx,
-                    src_params_recarray=src_params_recarray,
-                    tl=tl)
+                    ns=ns, ns_pidx=ns_pidx, src_params_recarray=src_params_recarray, tl=tl
+                )
 
             return (-f, -grads[ns_pidx], -grad2_ns)
 
         (fitparam_values, fmin, status) = self._minimizer.minimize(
-            rss=rss,
-            paramset=self._pmm.global_paramset,
-            func=negative_llhratio_func_nr1d_ns,
-            args=(tl,))
+            rss=rss, paramset=self._pmm.global_paramset, func=negative_llhratio_func_nr1d_ns, args=(tl,)
+        )
         log_lambda_max = -fmin
 
         return (log_lambda_max, fitparam_values, status)
 
-    def maximize(
-            self,
-            rss,
-            tl=None):
+    def maximize(self, rss, tl=None):
         """Maximizes this log-likelihood ratio function, by minimizing its
         negative.
         This method has a special implementation when a 1D Newton-Rapson
@@ -413,32 +355,18 @@ class TCLLHRatio(
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        if isinstance(self._minimizer.minimizer_impl, NR1dNsMinimizerImpl) or\
-           isinstance(self._minimizer.minimizer_impl, NRNsScan2dMinimizerImpl):
-            return self.maximize_with_1d_newton_rapson_minimizer(
-                rss=rss,
-                tl=tl)
+        if isinstance(self._minimizer.minimizer_impl, (NR1dNsMinimizerImpl, NRNsScan2dMinimizerImpl)):
+            return self.maximize_with_1d_newton_rapson_minimizer(rss=rss, tl=tl)
 
-        return super().maximize(
-            rss=rss,
-            tl=tl)
+        return super().maximize(rss=rss, tl=tl)
 
 
-class SingleDatasetTCLLHRatio(
-        TCLLHRatio,
-        metaclass=abc.ABCMeta):
+class SingleDatasetTCLLHRatio(TCLLHRatio, metaclass=abc.ABCMeta):
     """Abstract base class for a log-likelihood (LLH) ratio function with two
     components, i.e. signal and background, for a single data set.
     """
 
-    def __init__(
-            self,
-            pmm,
-            minimizer,
-            shg_mgr,
-            tdm,
-            mean_n_sig_0,
-            **kwargs):
+    def __init__(self, pmm, minimizer, shg_mgr, tdm, mean_n_sig_0, **kwargs):
         """Creates a new two-component LLH ratio function instance for a single
         data set.
 
@@ -459,19 +387,13 @@ class SingleDatasetTCLLHRatio(
         mean_n_sig_0 : float
             The fixed mean number of signal events for the null-hypothesis.
         """
-        super().__init__(
-            pmm=pmm,
-            minimizer=minimizer,
-            mean_n_sig_0=mean_n_sig_0,
-            **kwargs)
+        super().__init__(pmm=pmm, minimizer=minimizer, mean_n_sig_0=mean_n_sig_0, **kwargs)
 
         self.shg_mgr = shg_mgr
         self.tdm = tdm
 
         # Calculate the data fields that solely depend on source parameters.
-        self._tdm.calculate_source_data_fields(
-            shg_mgr=self._shg_mgr,
-            pmm=self._pmm)
+        self._tdm.calculate_source_data_fields(shg_mgr=self._shg_mgr, pmm=self._pmm)
 
     @property
     def shg_mgr(self):
@@ -486,7 +408,8 @@ class SingleDatasetTCLLHRatio(
             raise TypeError(
                 'The shg_mgr property must be an instance of '
                 'SourceHypoGroupManager! '
-                f'Its current type is {classname(mgr)}.')
+                f'Its current type is {classname(mgr)}.'
+            )
         self._shg_mgr = mgr
 
     @property
@@ -500,8 +423,8 @@ class SingleDatasetTCLLHRatio(
     def tdm(self, mgr):
         if not isinstance(mgr, TrialDataManager):
             raise TypeError(
-                'The tdm property must be an instance of TrialDataManager! '
-                f'Its current type is {classname(mgr)}.')
+                f'The tdm property must be an instance of TrialDataManager! Its current type is {classname(mgr)}.'
+            )
         self._tdm = mgr
 
     def change_shg_mgr(self, shg_mgr):
@@ -515,16 +438,14 @@ class SingleDatasetTCLLHRatio(
         """
         self.shg_mgr = shg_mgr
 
-        self._tdm.change_shg_mgr(
-            shg_mgr=shg_mgr,
-            pmm=self._pmm)
+        self._tdm.change_shg_mgr(shg_mgr=shg_mgr, pmm=self._pmm)
 
 
-class ZeroSigH0SingleDatasetTCLLHRatio(
-        SingleDatasetTCLLHRatio):
+class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
     """This class implements a two-component (TC) log-likelihood (LLH) ratio
     function for a single dataset assuming zero signal for the null-hypothesis.
     """
+
     # The (1 + alpha)-threshold float value for which the log-likelihood ratio
     # function of a single event should get approximated by a Taylor expansion.
     # This is to prevent a divergence of the log-function for each event, where
@@ -533,14 +454,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
     # instance member, because it is supposed to be the same for all instances.
     _one_plus_alpha = 1e-3
 
-    def __init__(
-            self,
-            pmm,
-            minimizer,
-            shg_mgr,
-            tdm,
-            pdfratio,
-            **kwargs):
+    def __init__(self, pmm, minimizer, shg_mgr, tdm, pdfratio, **kwargs):
         """Constructor of the two-component log-likelihood ratio function.
 
         Parameters
@@ -561,13 +475,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             The instance of PDFRatio. A PDFRatio instance might depend
             on none, one, or several fit parameters.
         """
-        super().__init__(
-            pmm=pmm,
-            minimizer=minimizer,
-            shg_mgr=shg_mgr,
-            tdm=tdm,
-            mean_n_sig_0=0,
-            **kwargs)
+        super().__init__(pmm=pmm, minimizer=minimizer, shg_mgr=shg_mgr, tdm=tdm, mean_n_sig_0=0, **kwargs)
 
         self.pdfratio = pdfratio
 
@@ -580,28 +488,22 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
     def mean_n_sig_0(self, v):
         SingleDatasetTCLLHRatio.mean_n_sig_0.fset(self, v)
         if self._mean_n_sig_0 != 0:
-            raise ValueError(
-                f'The {classname(self)} class is only valid for '
-                f'mean_n_sig_0 = 0!')
+            raise ValueError(f'The {classname(self)} class is only valid for mean_n_sig_0 = 0!')
 
     @property
     def pdfratio(self):
-        """The instance of PDFRatio.
-        """
+        """The instance of PDFRatio."""
         return self._pdfratio
 
     @pdfratio.setter
     def pdfratio(self, r):
         if not isinstance(r, PDFRatio):
             raise TypeError(
-                'The pdfratio property must be an instance of PDFRatio! '
-                f'Its current type is {classname(r)}.')
+                f'The pdfratio property must be an instance of PDFRatio! Its current type is {classname(r)}.'
+            )
         self._pdfratio = r
 
-    def initialize_for_new_trial(
-            self,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tl=None, **kwargs):
         """Initializes the log-likelihood ratio function for a new trial.
         It calls the
         :meth:`~skyllh.core.pdfratio.PDFRatio.initialize_for_new_trial` method
@@ -612,19 +514,9 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         tl : instance of TimeLord
             The optional instance of TimeLord to measure timing information.
         """
-        self._pdfratio.initialize_for_new_trial(
-            tdm=self._tdm,
-            tl=tl,
-            **kwargs)
+        self._pdfratio.initialize_for_new_trial(tdm=self._tdm, tl=tl, **kwargs)
 
-    def calculate_log_lambda_and_grads(
-            self,
-            N,
-            ns,
-            ns_pidx,
-            p_mask,
-            Xi,
-            dXi_dp):
+    def calculate_log_lambda_and_grads(self, N, ns, ns_pidx, p_mask, Xi, dXi_dp):
         """Calculates the log(Lambda) value and its gradient for each global fit
         parameter. This calculation is source and detector independent.
 
@@ -668,13 +560,12 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         Nprime = len(Xi)
 
         if tracing:
-            logger.debug(
-                f'N={N:d}, Nprime={Nprime:d}')
+            logger.debug(f'N={N:d}, Nprime={Nprime:d}')
 
         one_plus_alpha = ZeroSigH0SingleDatasetTCLLHRatio._one_plus_alpha
 
         alpha = one_plus_alpha - 1
-        alpha_i = ns*Xi
+        alpha_i = ns * Xi
 
         # Create a mask for events which have a stable non-diverging
         # log-function argument, and an inverted mask thereof.
@@ -683,9 +574,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         any_unstable_events = np.any(m_unstable)
 
         if tracing:
-            logger.debug(
-                '# of events doing Taylor expansion for (unstable events): '
-                f'{np.count_nonzero(m_unstable):d}')
+            logger.debug(f'# of events doing Taylor expansion for (unstable events): {np.count_nonzero(m_unstable):d}')
 
         # Allocate memory for the log_lambda_i values.
         log_lambda_i = np.empty_like(alpha_i, dtype=np.float64)
@@ -696,14 +585,13 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         # Calculate the log_lambda_i value for the numerical unstable events.
         if any_unstable_events:
             tildealpha_i = (alpha_i[m_unstable] - alpha) / one_plus_alpha
-            log_lambda_i[m_unstable] =\
-                np.log1p(alpha) + tildealpha_i - 0.5 * tildealpha_i**2
+            log_lambda_i[m_unstable] = np.log1p(alpha) + tildealpha_i - 0.5 * tildealpha_i**2
 
         # Calculate the log_lambda value and account for pure background events.
-        log_lambda = np.sum(log_lambda_i) + (N - Nprime)*np.log1p(-ns/N)
+        log_lambda = np.sum(log_lambda_i) + (N - Nprime) * np.log1p(-ns / N)
 
         # Calculate the gradient for each fit parameter.
-        grads = np.empty((dXi_dp.shape[1]+1,), dtype=np.float64)
+        grads = np.empty((dXi_dp.shape[1] + 1,), dtype=np.float64)
 
         # Pre-calculate value that is used twice for the gradients of the
         # numerical stable events.
@@ -711,11 +599,9 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
         # For ns.
         nsgrad_i = np.empty_like(alpha_i, dtype=np.float64)
-        nsgrad_i[m_stable] =\
-            Xi[m_stable] * one_over_one_plus_alpha_i_stablemask
+        nsgrad_i[m_stable] = Xi[m_stable] * one_over_one_plus_alpha_i_stablemask
         if any_unstable_events:
-            nsgrad_i[m_unstable] =\
-                (1 - tildealpha_i) * Xi[m_unstable] / one_plus_alpha
+            nsgrad_i[m_unstable] = (1 - tildealpha_i) * Xi[m_unstable] / one_plus_alpha
 
         # Cache the nsgrad_i values for a possible later calculation of the
         # second derivative w.r.t. ns of the log-likelihood ratio function.
@@ -727,26 +613,17 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         # Now for each other fit parameter.
 
         # For all numerical stable events.
-        grads[p_mask] = np.sum(
-            ns * one_over_one_plus_alpha_i_stablemask[:, np.newaxis] *
-            dXi_dp[m_stable],
-            axis=0)
+        grads[p_mask] = np.sum(ns * one_over_one_plus_alpha_i_stablemask[:, np.newaxis] * dXi_dp[m_stable], axis=0)
 
         # For all numerical unstable events.
         if any_unstable_events:
             grads[p_mask] += np.sum(
-                ns * (1 - tildealpha_i[:, np.newaxis]) * dXi_dp[m_unstable] /
-                one_plus_alpha,
-                axis=0)
+                ns * (1 - tildealpha_i[:, np.newaxis]) * dXi_dp[m_unstable] / one_plus_alpha, axis=0
+            )
 
         return (log_lambda, grads)
 
-    def calculate_ns_grad2(
-            self,
-            ns,
-            ns_pidx=None,
-            src_params_recarray=None,
-            tl=None):
+    def calculate_ns_grad2(self, ns, ns_pidx=None, src_params_recarray=None, tl=None):
         """Calculates the second derivative w.r.t. ns of the log-likelihood
         ratio function.
         This method tries to use cached values for the first derivative
@@ -784,21 +661,17 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         """
         if self._cache_nsgrad_i is None:
             raise RuntimeError(
-                'The evaluate method needs to be called before the '
-                'calculate_ns_grad2 method can be called!')
+                'The evaluate method needs to be called before the calculate_ns_grad2 method can be called!'
+            )
 
         Nprime = self._tdm.n_selected_events
         N = Nprime + self._tdm.n_pure_bkg_events
 
-        nsgrad2 = -np.sum(self._cache_nsgrad_i**2) - (N - Nprime)/(N - ns)**2
+        nsgrad2 = -np.sum(self._cache_nsgrad_i**2) - (N - Nprime) / (N - ns) ** 2
 
         return nsgrad2
 
-    def evaluate(
-            self,
-            fitparam_values,
-            src_params_recarray=None,
-            tl=None):
+    def evaluate(self, fitparam_values, src_params_recarray=None, tl=None):
         """Evaluates the log-likelihood ratio function for the given set of
         data events.
 
@@ -828,9 +701,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         tracing = self._cfg['debugging']['enable_tracing']
 
         if src_params_recarray is None:
-            src_params_recarray = self._pmm.create_src_params_recarray(
-                gflp_values=fitparam_values
-            )
+            src_params_recarray = self._pmm.create_src_params_recarray(gflp_values=fitparam_values)
 
         tdm = self._tdm
 
@@ -842,34 +713,25 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
 
         # Calculate the data fields that depend on global fit parameters.
         if tdm.has_global_fitparam_data_fields:
-            with TaskTimer(
-                    tl,
-                    'Calculate global fit parameter dependent data fields.'):
+            with TaskTimer(tl, 'Calculate global fit parameter dependent data fields.'):
                 # Create the global_fitparams dictionary with the global fit
                 # parameter names and values.
-                global_fitparams = self._pmm.get_global_floating_params_dict(
-                    gflp_values=fitparam_values)
+                global_fitparams = self._pmm.get_global_floating_params_dict(gflp_values=fitparam_values)
                 tdm.calculate_global_fitparam_data_fields(
-                    shg_mgr=self._shg_mgr,
-                    pmm=self._pmm,
-                    global_fitparams=global_fitparams)
+                    shg_mgr=self._shg_mgr, pmm=self._pmm, global_fitparams=global_fitparams
+                )
 
         # Calculate the PDF ratio values for each selected event.
         with TaskTimer(tl, 'Calc pdfratio value Ri'):
-            Ri = self._pdfratio.get_ratio(
-                tdm=tdm,
-                src_params_recarray=src_params_recarray,
-                tl=tl)
+            Ri = self._pdfratio.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
 
         # Calculate Xi for each selected event.
-        Xi = (Ri - 1.) / N
+        Xi = (Ri - 1.0) / N
 
         n_fitparams = len(fitparam_values)
 
         # Calculate the gradients of Xi for each fit parameter (without ns).
-        dXi_dp = np.empty(
-            (Xi.shape[0], n_fitparams-1),
-            dtype=np.float64)
+        dXi_dp = np.empty((Xi.shape[0], n_fitparams - 1), dtype=np.float64)
 
         # Create a mask that selects all fit parameters except ns.
         p_mask = np.ones((n_fitparams,), dtype=np.bool_)
@@ -878,36 +740,27 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
         # Loop over the global fit parameters and calculate the derivative of
         # Xi w.r.t. each fit parameter.
         fitparam_ids = np.arange(n_fitparams)
-        for (idx, fitparam_id) in enumerate(fitparam_ids[p_mask]):
+        for idx, fitparam_id in enumerate(fitparam_ids[p_mask]):
             dRi = self._pdfratio.get_gradient(
-                tdm=tdm,
-                src_params_recarray=src_params_recarray,
-                fitparam_id=fitparam_id,
-                tl=tl)
+                tdm=tdm, src_params_recarray=src_params_recarray, fitparam_id=fitparam_id, tl=tl
+            )
 
             # Calculate the derivative of Xi w.r.t. the global fit parameter
             # with ID fitparam_id.
             dXi_dp[:, idx] = dRi / N
 
         if tracing:
-            logger.debug(
-                f'{classname(self)}.evaluate: N={N}, Nprime={len(Xi)}, '
-                f'ns={ns:.3f}')
+            logger.debug(f'{classname(self)}.evaluate: N={N}, Nprime={len(Xi)}, ns={ns:.3f}')
 
         with TaskTimer(tl, 'Calc logLambda and grads'):
             (log_lambda, grads) = self.calculate_log_lambda_and_grads(
-                N=N,
-                ns=ns,
-                ns_pidx=ns_pidx,
-                p_mask=p_mask,
-                Xi=Xi,
-                dXi_dp=dXi_dp)
+                N=N, ns=ns, ns_pidx=ns_pidx, p_mask=p_mask, Xi=Xi, dXi_dp=dXi_dp
+            )
 
         return (log_lambda, grads)
 
 
-class MultiDatasetTCLLHRatio(
-        TCLLHRatio):
+class MultiDatasetTCLLHRatio(TCLLHRatio):
     """This class describes a two-component log-likelihood ratio function for
     multiple datasets. The final log-likelihood ratio value is the sum of the
     individual log-likelihood ratio values.
@@ -920,14 +773,10 @@ class MultiDatasetTCLLHRatio(
     By mathematical definition this class is suitable for single and multi
     source hypotheses.
     """
+
     def __init__(
-            self,
-            pmm,
-            minimizer,
-            src_detsigyield_weights_service,
-            ds_sig_weight_factors_service,
-            llhratio_list,
-            **kwargs):
+        self, pmm, minimizer, src_detsigyield_weights_service, ds_sig_weight_factors_service, llhratio_list, **kwargs
+    ):
         """Creates a new composite two-component log-likelihood ratio function.
 
         Parameters
@@ -952,26 +801,21 @@ class MultiDatasetTCLLHRatio(
             raise TypeError(
                 'The llhratio_list argument must be a sequence of '
                 'SingleDatasetTCLLHRatio instances! '
-                f'Its current type is {classname(llhratio_list)}.')
+                f'Its current type is {classname(llhratio_list)}.'
+            )
         self._llhratio_list = list(llhratio_list)
 
-        super().__init__(
-            pmm=pmm,
-            minimizer=minimizer,
-            mean_n_sig_0=self._llhratio_list[0].mean_n_sig_0,
-            **kwargs)
+        super().__init__(pmm=pmm, minimizer=minimizer, mean_n_sig_0=self._llhratio_list[0].mean_n_sig_0, **kwargs)
 
         self.src_detsigyield_weights_service = src_detsigyield_weights_service
         self.ds_sig_weight_factors_service = ds_sig_weight_factors_service
 
-        if (
-            self.ds_sig_weight_factors_service.n_datasets
-            != len(self._llhratio_list)
-           ):
+        if self.ds_sig_weight_factors_service.n_datasets != len(self._llhratio_list):
             raise ValueError(
                 'The number of datasets the DatasetSignalWeightFactorsService '
                 'instance is made for must be equal to the number of '
-                'log-likelihood ratio functions!')
+                'log-likelihood ratio functions!'
+            )
 
     @property
     def src_detsigyield_weights_service(self):
@@ -986,7 +830,8 @@ class MultiDatasetTCLLHRatio(
             raise TypeError(
                 'The src_detsigyield_weights_service property must be an '
                 'instance of SrcDetSigYieldWeightsService! '
-                f'Its current type is {classname(service)}.')
+                f'Its current type is {classname(service)}.'
+            )
         self._src_detsigyield_weights_service = service
 
     @property
@@ -1002,7 +847,8 @@ class MultiDatasetTCLLHRatio(
             raise TypeError(
                 'The ds_sig_weight_factors_service property must be an '
                 'instance of DatasetSignalWeightFactorsService! '
-                f'Its current type is {classname(service)}.')
+                f'Its current type is {classname(service)}.'
+            )
         self._ds_sig_weight_factors_service = service
 
     @property
@@ -1018,7 +864,8 @@ class MultiDatasetTCLLHRatio(
             raise TypeError(
                 'The llhratio_list property must be a sequence of '
                 'SingleDatasetTCLLHRatio instances! '
-                f'Its current type is {classname(llhratios)}.')
+                f'Its current type is {classname(llhratios)}.'
+            )
         self._llhratio_list = list(llhratios)
 
     @property
@@ -1048,17 +895,12 @@ class MultiDatasetTCLLHRatio(
             The instance of SourceHypoGroupManager that defines the groups of
             source hypotheses.
         """
-        self._src_detsigyield_weights_service.change_shg_mgr(
-            shg_mgr=shg_mgr)
+        self._src_detsigyield_weights_service.change_shg_mgr(shg_mgr=shg_mgr)
 
         for llhratio in self._llhratio_list:
-            llhratio.change_shg_mgr(
-                shg_mgr=shg_mgr)
+            llhratio.change_shg_mgr(shg_mgr=shg_mgr)
 
-    def initialize_for_new_trial(
-            self,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tl=None, **kwargs):
         """Initializes the log-likelihood-ratio function for a new trial.
         It calls the
         :meth:`~skyllh.core.llhratio.LLHRatio.initialize_for_new_trial` method
@@ -1071,15 +913,9 @@ class MultiDatasetTCLLHRatio(
             The optional instance of TimeLord to measure timing information.
         """
         for llhratio in self._llhratio_list:
-            llhratio.initialize_for_new_trial(
-                tl=tl,
-                **kwargs)
+            llhratio.initialize_for_new_trial(tl=tl, **kwargs)
 
-    def evaluate(
-            self,
-            fitparam_values,
-            src_params_recarray=None,
-            tl=None):
+    def evaluate(self, fitparam_values, src_params_recarray=None, tl=None):
         """Evaluates the composite log-likelihood-ratio function and returns its
         value and global fit parameter gradients.
 
@@ -1114,9 +950,7 @@ class MultiDatasetTCLLHRatio(
         tracing = self._cfg['debugging']['enable_tracing']
 
         if src_params_recarray is None:
-            src_params_recarray = self._pmm.create_src_params_recarray(
-                gflp_values=fitparam_values
-            )
+            src_params_recarray = self._pmm.create_src_params_recarray(gflp_values=fitparam_values)
 
         n_fitparams = len(fitparam_values)
 
@@ -1124,13 +958,11 @@ class MultiDatasetTCLLHRatio(
 
         ns = fitparam_values[ns_pidx]
         if tracing:
-            logger.debug(
-                f'{classname(self)}.evaluate: ns={ns:.3f}')
+            logger.debug(f'{classname(self)}.evaluate: ns={ns:.3f}')
 
         # We need to calculate the source detsigyield weights and the dataset
         # signal weight factors.
-        self._src_detsigyield_weights_service.calculate(
-            src_params_recarray=src_params_recarray)
+        self._src_detsigyield_weights_service.calculate(src_params_recarray=src_params_recarray)
         self._ds_sig_weight_factors_service.calculate()
 
         # Get the dataset signal weights and their gradients.
@@ -1141,7 +973,7 @@ class MultiDatasetTCLLHRatio(
 
         # Convert the f_grads dictionary into a (N_datasets,N_fitparams)
         f_grads = np.zeros((len(f), n_fitparams), dtype=np.float64)
-        for pidx in f_grads_dict.keys():
+        for pidx in f_grads_dict:
             f_grads[:, pidx] = f_grads_dict[pidx]
 
         nsf = ns * f
@@ -1166,17 +998,15 @@ class MultiDatasetTCLLHRatio(
         pmask[ns_pidx] = False
 
         # Loop over the llh ratio functions.
-        for (j, llhratio) in enumerate(self._llhratio_list):
+        for j, llhratio in enumerate(self._llhratio_list):
             if tracing:
-                logger.debug(
-                    f'nsf[j={j}] = {nsf[j]:.3f}')
+                logger.debug(f'nsf[j={j}] = {nsf[j]:.3f}')
 
             llhratio_fitparam_values[ns_pidx] = nsf[j]
 
             (log_lambda_j, grads_j) = llhratio.evaluate(
-                fitparam_values=llhratio_fitparam_values,
-                src_params_recarray=src_params_recarray,
-                tl=tl)
+                fitparam_values=llhratio_fitparam_values, src_params_recarray=src_params_recarray, tl=tl
+            )
             log_lambda += log_lambda_j
 
             # Gradient for ns.
@@ -1189,12 +1019,7 @@ class MultiDatasetTCLLHRatio(
 
         return (log_lambda, grads)
 
-    def calculate_ns_grad2(
-            self,
-            ns,
-            ns_pidx,
-            src_params_recarray,
-            tl=None):
+    def calculate_ns_grad2(self, ns, ns_pidx, src_params_recarray, tl=None):
         """Calculates the second derivative w.r.t. ns of the log-likelihood
         ratio function.
 
@@ -1229,7 +1054,7 @@ class MultiDatasetTCLLHRatio(
             The second derivative w.r.t. ns of the log-likelihood ratio function
             for the given fit parameter values.
         """
-        (f, f_grads_dict) = self._ds_sig_weight_factors_service.get_weights()
+        (f, _) = self._ds_sig_weight_factors_service.get_weights()
 
         nsf = ns * f
 
@@ -1237,20 +1062,17 @@ class MultiDatasetTCLLHRatio(
 
         # Loop over the llh ratio functions and calculate their second
         # derivative.
-        for (j, llhratio) in enumerate(self._llhratio_list):
+        for j, llhratio in enumerate(self._llhratio_list):
             nsgrad2j[j] = llhratio.calculate_ns_grad2(
-                ns=nsf[j],
-                ns_pidx=ns_pidx,
-                src_params_recarray=src_params_recarray,
-                tl=tl)
+                ns=nsf[j], ns_pidx=ns_pidx, src_params_recarray=src_params_recarray, tl=tl
+            )
 
         nsgrad2 = np.sum(nsgrad2j * f**2)
 
         return nsgrad2
 
 
-class NsProfileMultiDatasetTCLLHRatio(
-        TCLLHRatio):
+class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
     r"""This class implements a profile log-likelihood ratio function that has
     only ns as fit parameter. It uses a MultiDatasetTCLLHRatio instance as
     log-likelihood function. Hence, mathematically it is
@@ -1262,13 +1084,8 @@ class NsProfileMultiDatasetTCLLHRatio(
     where :math:`n_{\mathrm{s},0}` is the fixed mean number of signal events for
     the null-hypothesis.
     """
-    def __init__(
-            self,
-            pmm,
-            minimizer,
-            mean_n_sig_0,
-            llhratio,
-            **kwargs):
+
+    def __init__(self, pmm, minimizer, mean_n_sig_0, llhratio, **kwargs):
         r"""Creates a new ns-profile log-likelihood-ratio function with a
         null-hypothesis where :math:`n_{\mathrm{s}}` is fixed to
         ``mean_n_sig_0``.
@@ -1288,11 +1105,7 @@ class NsProfileMultiDatasetTCLLHRatio(
             The instance of MultiDatasetTCLLHRatio, which should be used as
             log-likelihood function.
         """
-        super().__init__(
-            pmm=pmm,
-            minimizer=minimizer,
-            mean_n_sig_0=mean_n_sig_0,
-            **kwargs)
+        super().__init__(pmm=pmm, minimizer=minimizer, mean_n_sig_0=mean_n_sig_0, **kwargs)
 
         self.llhratio = llhratio
 
@@ -1302,7 +1115,8 @@ class NsProfileMultiDatasetTCLLHRatio(
                 f'{classname(self)} provides functionality only for LLH '
                 'function with a single global fit parameter! Currently there '
                 f'are {pmm.n_global_floating_params} global fit parameters '
-                'defined!')
+                'defined!'
+            )
 
         # Define a member to hold the constant null-hypothesis log-likelihood
         # function value for ns=mean_n_sig_0.
@@ -1321,12 +1135,11 @@ class NsProfileMultiDatasetTCLLHRatio(
             raise TypeError(
                 'The llhratio property must be an instance of '
                 'MultiDatasetTCLLHRatio! '
-                f'Its current type is {classname(obj)}.')
+                f'Its current type is {classname(obj)}.'
+            )
         self._llhratio = obj
 
-    def change_shg_mgr(
-            self,
-            shg_mgr):
+    def change_shg_mgr(self, shg_mgr):
         """Changes the source hypo group manager of all objects of this LLH
         ratio function, hence, calling the ``change_shg_mgr``
         method of the underlying MultiDatasetTCLLHRatio instance of this
@@ -1339,10 +1152,7 @@ class NsProfileMultiDatasetTCLLHRatio(
         """
         self._llhratio.change_shg_mgr(shg_mgr=shg_mgr)
 
-    def initialize_for_new_trial(
-            self,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tl=None, **kwargs):
         """Initializes the log-likelihood-ratio function for a new trial.
 
         Parameters
@@ -1351,22 +1161,14 @@ class NsProfileMultiDatasetTCLLHRatio(
             The optional instance of TimeLord that should be used for timing
             measurements.
         """
-        self._llhratio.initialize_for_new_trial(
-            tl=tl,
-            **kwargs)
+        self._llhratio.initialize_for_new_trial(tl=tl, **kwargs)
 
         # Compute the constant log-likelihood function value for the
         # null-hypothesis.
         fitparam_values_0 = np.array([self._mean_n_sig_0], dtype=np.float64)
-        (self._logL_0, grads_0) = self._llhratio.evaluate(
-            fitparam_values=fitparam_values_0,
-            tl=tl)
+        (self._logL_0, _) = self._llhratio.evaluate(fitparam_values=fitparam_values_0, tl=tl)
 
-    def evaluate(
-            self,
-            fitparam_values,
-            src_params_recarray=None,
-            tl=None):
+    def evaluate(self, fitparam_values, src_params_recarray=None, tl=None):
         """Evaluates the log-likelihood-ratio function and returns its value and
         global fit parameter gradients.
 
@@ -1397,20 +1199,14 @@ class NsProfileMultiDatasetTCLLHRatio(
             for ns.
         """
         (logL, grads) = self._llhratio.evaluate(
-            fitparam_values=fitparam_values,
-            src_params_recarray=src_params_recarray,
-            tl=tl)
+            fitparam_values=fitparam_values, src_params_recarray=src_params_recarray, tl=tl
+        )
 
         log_lambda = logL - self._logL_0
 
         return (log_lambda, grads)
 
-    def calculate_ns_grad2(
-            self,
-            ns,
-            ns_pidx,
-            src_params_recarray,
-            tl=None):
+    def calculate_ns_grad2(self, ns, ns_pidx, src_params_recarray, tl=None):
         """Calculates the second derivative w.r.t. ns of the log-likelihood
         ratio function.
 
@@ -1438,14 +1234,10 @@ class NsProfileMultiDatasetTCLLHRatio(
             for the given fit parameter values.
         """
         if ns_pidx != 0:
-            raise ValueError(
-                'The value of the ns_pidx argument must be 0! '
-                f'Its current value is {ns_pidx}.')
+            raise ValueError(f'The value of the ns_pidx argument must be 0! Its current value is {ns_pidx}.')
 
         nsgrad2 = self._llhratio.calculate_ns_grad2(
-            ns=ns,
-            ns_pidx=ns_pidx,
-            src_params_recarray=src_params_recarray,
-            tl=tl)
+            ns=ns, ns_pidx=ns_pidx, src_params_recarray=src_params_recarray, tl=tl
+        )
 
         return nsgrad2

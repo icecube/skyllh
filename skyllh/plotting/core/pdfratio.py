@@ -1,23 +1,20 @@
-# -*- coding: utf-8 -*-
+"""Plotting module for core PDF ratio objects."""
 
-"""Plotting module for core PDF ratio objects.
-"""
-
-import numpy as np
 import itertools
 
+import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
+from skyllh.core.pdfratio import SigOverBkgPDFRatio
 from skyllh.core.py import classname
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.trialdata import TrialDataManager
-from skyllh.core.pdfratio import SigOverBkgPDFRatio
 
 
-class SigOverBkgPDFRatioPlotter(object):
-    """Plotter class to plot a SigOverBkgPDFRatio object.
-    """
+class SigOverBkgPDFRatioPlotter:
+    """Plotter class to plot a SigOverBkgPDFRatio object."""
+
     def __init__(self, tdm, pdfratio):
         """Creates a new plotter object for plotting a
         SpatialSigOverBkgPDFRatio object.
@@ -35,39 +32,27 @@ class SigOverBkgPDFRatioPlotter(object):
 
     @property
     def pdfratio(self):
-        """The PDF ratio object to plot.
-        """
+        """The PDF ratio object to plot."""
         return self._pdfratio
 
     @pdfratio.setter
     def pdfratio(self, pdfratio):
         if not isinstance(pdfratio, SigOverBkgPDFRatio):
-            raise TypeError(
-                'The pdfratio property must be an instance of '
-                'SigOverBkgPDFRatio!')
+            raise TypeError('The pdfratio property must be an instance of SigOverBkgPDFRatio!')
         self._pdfratio = pdfratio
 
     @property
     def tdm(self):
-        """The TrialDataManager that provides the data for the PDF evaluation.
-        """
+        """The TrialDataManager that provides the data for the PDF evaluation."""
         return self._tdm
 
     @tdm.setter
     def tdm(self, obj):
         if not isinstance(obj, TrialDataManager):
-            raise TypeError(
-                'The tdm property must be an instance of TrialDataManager!')
+            raise TypeError('The tdm property must be an instance of TrialDataManager!')
         self._tdm = obj
 
-    def plot(
-            self,
-            src_hypo_group_manager,
-            axes,
-            source_idx=None,
-            log=True,
-            **kwargs
-    ):
+    def plot(self, src_hypo_group_manager, axes, source_idx=None, log=True, **kwargs):
         """Plots the spatial PDF ratio. If the signal PDF depends on the source,
         source_idx specifies the index of the source for which the PDF should
         get plotted.
@@ -96,9 +81,7 @@ class SigOverBkgPDFRatioPlotter(object):
             The AxesImage instance showing the PDF ratio image.
         """
         if not isinstance(axes, Axes):
-            raise TypeError(
-                'The axes argument must be an instance of '
-                'matplotlib.axes.Axes!')
+            raise TypeError('The axes argument must be an instance of matplotlib.axes.Axes!')
 
         if source_idx is None:
             source_idx = 0
@@ -118,25 +101,29 @@ class SigOverBkgPDFRatioPlotter(object):
 
         ratios = np.zeros((rabins, decbins), dtype=np.float64)
 
-        ra_binedges = np.linspace(raaxis.vmin, raaxis.vmax, rabins+1)
-        ra_bincenters = 0.5*(ra_binedges[:-1] + ra_binedges[1:])
+        ra_binedges = np.linspace(raaxis.vmin, raaxis.vmax, rabins + 1)
+        ra_bincenters = 0.5 * (ra_binedges[:-1] + ra_binedges[1:])
 
-        dec_binedges = np.linspace(decaxis.vmin, decaxis.vmax, decbins+1)
-        dec_bincenters = 0.5*(dec_binedges[:-1] + dec_binedges[1:])
+        dec_binedges = np.linspace(decaxis.vmin, decaxis.vmax, decbins + 1)
+        dec_bincenters = 0.5 * (dec_binedges[:-1] + dec_binedges[1:])
 
         # Generate events that fall into the ratio bins.
         events = DataFieldRecordArray(
             np.zeros(
                 (ratios.size,),
-                dtype=[('ira', np.int64),
-                       ('ra', np.float64),
-                       ('idec', np.int64),
-                       ('dec', np.float64),
-                       ('sin_dec', np.float64),
-                       ('ang_err', np.float64)]))
-        for (i, ((ira, ra), (idec, dec))) in enumerate(itertools.product(
-                                                enumerate(ra_bincenters),
-                                                enumerate(dec_bincenters))):
+                dtype=[
+                    ('ira', np.int64),
+                    ('ra', np.float64),
+                    ('idec', np.int64),
+                    ('dec', np.float64),
+                    ('sin_dec', np.float64),
+                    ('ang_err', np.float64),
+                ],
+            )
+        )
+        for i, ((ira, ra), (idec, dec)) in enumerate(
+            itertools.product(enumerate(ra_bincenters), enumerate(dec_bincenters))
+        ):
             events['ira'][i] = ira
             events['ra'][i] = ra
             events['idec'][i] = idec
@@ -154,15 +141,11 @@ class SigOverBkgPDFRatioPlotter(object):
 
         ratios[events['ira'], events['idec']] = event_ratios
 
-        (left, right, bottom, top) = (raaxis.vmin, raaxis.vmax,
-                                      decaxis.vmin, decaxis.vmax)
+        (left, right, bottom, top) = (raaxis.vmin, raaxis.vmax, decaxis.vmin, decaxis.vmax)
         norm = LogNorm() if log else None
         img = axes.imshow(
-            ratios.T,
-            extent=(left, right, bottom, top),
-            origin='lower',
-            norm=norm,
-            interpolation='none', **kwargs)
+            ratios.T, extent=(left, right, bottom, top), origin='lower', norm=norm, interpolation='none', **kwargs
+        )
         axes.set_xlabel(raaxis.name)
         axes.set_ylabel(decaxis.name)
         axes.set_title(classname(self._pdfratio))

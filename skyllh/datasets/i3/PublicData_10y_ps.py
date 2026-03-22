@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Author: Dr. Martin Wolf <mail@martin-wolf.org>
 
 import numpy as np
@@ -14,9 +13,9 @@ from skyllh.i3.dataset import (
 
 
 def create_dataset_collection(
-        cfg,
-        base_path=None,
-        sub_path_fmt=None,
+    cfg,
+    base_path=None,
+    sub_path_fmt=None,
 ):
     """Defines the dataset collection for IceCube's 10-year
     point-source public data, which is available at
@@ -56,7 +55,7 @@ def create_dataset_collection(
     time-integrated point source search with 10 years of data [2]. Please refer
     to the description of the sample and known changes in the text at [1].
 
-    The data contained in this release of IceCube’s point source sample shows
+    The data contained in this release of IceCube's point source sample shows
     evidence of a cumulative excess of events from four sources (NGC 1068,
     TXS 0506+056, PKS 1424+240, and GB6 J1542+6129) from a catalogue of 110
     potential sources. NGC 1068 gives the largest excess and is coincidentally
@@ -298,23 +297,25 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC40.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC40.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC40_effectiveArea.csv')
-    IC40.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC40_smearing.csv')
+    IC40.add_aux_data_definition('eff_area_datafile', 'irfs/IC40_effectiveArea.csv')
+    IC40.add_aux_data_definition('smearing_datafile', 'irfs/IC40_smearing.csv')
 
-    sin_dec_bins = np.unique(np.concatenate([
-        np.linspace(-1., -0.25, 10 + 1),
-        np.linspace(-0.25, 0.0, 10 + 1),
-        np.linspace(0.0, 1., 10 + 1),
-    ]))
+    sin_dec_bins = np.unique(
+        np.concatenate(
+            [
+                np.linspace(-1.0, -0.25, 10 + 1),
+                np.linspace(-0.25, 0.0, 10 + 1),
+                np.linspace(0.0, 1.0, 10 + 1),
+            ]
+        )
+    )
     IC40.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(2., 9.5 + 0.01, 0.125)
+    energy_bins = np.arange(2.0, 9.5 + 0.01, 0.125)
     IC40.define_binning('log_energy', energy_bins)
 
     IC40.add_aux_data('spline_smoothing', 0.1)
-    IC40.add_aux_data('cumulative_threshold', 5.e-4)
+    IC40.add_aux_data('cumulative_threshold', 5.0e-4)
 
     # ---------- IC59 ----------------------------------------------------------
     IC59 = I3Dataset(
@@ -325,24 +326,26 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC59.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC59.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC59_effectiveArea.csv')
-    IC59.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC59_smearing.csv')
+    IC59.add_aux_data_definition('eff_area_datafile', 'irfs/IC59_effectiveArea.csv')
+    IC59.add_aux_data_definition('smearing_datafile', 'irfs/IC59_smearing.csv')
 
-    sin_dec_bins = np.unique(np.concatenate([
-        np.linspace(-1., -0.95, 2 + 1),
-        np.linspace(-0.95, -0.25, 25 + 1),
-        np.linspace(-0.25, 0.05, 15 + 1),
-        np.linspace(0.05, 1., 10 + 1),
-    ]))
+    sin_dec_bins = np.unique(
+        np.concatenate(
+            [
+                np.linspace(-1.0, -0.95, 2 + 1),
+                np.linspace(-0.95, -0.25, 25 + 1),
+                np.linspace(-0.25, 0.05, 15 + 1),
+                np.linspace(0.05, 1.0, 10 + 1),
+            ]
+        )
+    )
     IC59.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(2., 9.5 + 0.01, 0.125)
+    energy_bins = np.arange(2.0, 9.5 + 0.01, 0.125)
     IC59.define_binning('log_energy', energy_bins)
 
     IC59.add_aux_data('spline_smoothing', 0.1)
-    IC59.add_aux_data('cumulative_threshold', 5.e-4)
+    IC59.add_aux_data('cumulative_threshold', 5.0e-4)
 
     # ---------- IC79 ----------------------------------------------------------
     IC79 = I3Dataset(
@@ -353,15 +356,13 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC79.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC79.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC79_effectiveArea.csv')
-    IC79.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC79_smearing.csv')
+    IC79.add_aux_data_definition('eff_area_datafile', 'irfs/IC79_effectiveArea.csv')
+    IC79.add_aux_data_definition('smearing_datafile', 'irfs/IC79_smearing.csv')
 
     sin_dec_bins = np.linspace(-1, 1, 50)
     IC79.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(2., 9.5 + 0.01, 0.125)
+    energy_bins = np.arange(2.0, 9.5 + 0.01, 0.125)
     IC79.define_binning('log_energy', energy_bins)
 
     IC79.add_aux_data('spline_smoothing', 0.5)
@@ -376,25 +377,27 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC86_I.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC86_I.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC86_I_effectiveArea.csv')
-    IC86_I.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC86_I_smearing.csv')
+    IC86_I.add_aux_data_definition('eff_area_datafile', 'irfs/IC86_I_effectiveArea.csv')
+    IC86_I.add_aux_data_definition('smearing_datafile', 'irfs/IC86_I_smearing.csv')
 
-    b = np.sin(np.radians(-5.))  # North/South transition boundary.
-    sin_dec_bins = np.unique(np.concatenate([
-        np.linspace(-1., -0.2, 10 + 1),
-        np.linspace(-0.2, b, 4 + 1),
-        np.linspace(b, 0.2, 5 + 1),
-        np.linspace(0.2, 1., 10),
-    ]))
+    b = np.sin(np.radians(-5.0))  # North/South transition boundary.
+    sin_dec_bins = np.unique(
+        np.concatenate(
+            [
+                np.linspace(-1.0, -0.2, 10 + 1),
+                np.linspace(-0.2, b, 4 + 1),
+                np.linspace(b, 0.2, 5 + 1),
+                np.linspace(0.2, 1.0, 10),
+            ]
+        )
+    )
     IC86_I.define_binning('sin_dec', sin_dec_bins)
 
-    energy_bins = np.arange(1., 10.5 + 0.01, 0.125)
+    energy_bins = np.arange(1.0, 10.5 + 0.01, 0.125)
     IC86_I.define_binning('log_energy', energy_bins)
 
     IC86_I.add_aux_data('spline_smoothing', 0.25)
-    IC86_I.add_aux_data('cumulative_threshold', 7.e-5)
+    IC86_I.add_aux_data('cumulative_threshold', 7.0e-5)
 
     # ---------- IC86-II -------------------------------------------------------
     IC86_II = I3Dataset(
@@ -405,24 +408,26 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC86_II.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC86_II.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
-    IC86_II.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_II.add_aux_data_definition('eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
+    IC86_II.add_aux_data_definition('smearing_datafile', 'irfs/IC86_II_smearing.csv')
 
-    sin_dec_bins = np.unique(np.concatenate([
-        np.linspace(-1., -0.93, 4 + 1),
-        np.linspace(-0.93, -0.3, 10 + 1),
-        np.linspace(-0.3, 0.05, 9 + 1),
-        np.linspace(0.05, 1., 18 + 1),
-    ]))
+    sin_dec_bins = np.unique(
+        np.concatenate(
+            [
+                np.linspace(-1.0, -0.93, 4 + 1),
+                np.linspace(-0.93, -0.3, 10 + 1),
+                np.linspace(-0.3, 0.05, 9 + 1),
+                np.linspace(0.05, 1.0, 18 + 1),
+            ]
+        )
+    )
     IC86_II.define_binning('sin_dec', sin_dec_bins)
 
     energy_bins = np.arange(0.5, 9.5 + 0.01, 0.125)
     IC86_II.define_binning('log_energy', energy_bins)
 
     IC86_II.add_aux_data('spline_smoothing', 0.25)
-    IC86_II.add_aux_data('cumulative_threshold', 7.e-5)
+    IC86_II.add_aux_data('cumulative_threshold', 7.0e-5)
 
     # ---------- IC86-III ------------------------------------------------------
     IC86_III = I3Dataset(
@@ -433,15 +438,11 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC86_III.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC86_III.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
-    IC86_III.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_III.add_aux_data_definition('eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
+    IC86_III.add_aux_data_definition('smearing_datafile', 'irfs/IC86_II_smearing.csv')
 
-    IC86_III.add_binning_definition(
-        IC86_II.get_binning_definition('sin_dec'))
-    IC86_III.add_binning_definition(
-        IC86_II.get_binning_definition('log_energy'))
+    IC86_III.add_binning_definition(IC86_II.get_binning_definition('sin_dec'))
+    IC86_III.add_binning_definition(IC86_II.get_binning_definition('log_energy'))
 
     IC86_III.add_aux_data('spline_smoothing', IC86_II.get_aux_data('spline_smoothing'))
     IC86_III.add_aux_data('cumulative_threshold', IC86_II.get_aux_data('cumulative_threshold'))
@@ -455,15 +456,11 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC86_IV.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC86_IV.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
-    IC86_IV.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_IV.add_aux_data_definition('eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
+    IC86_IV.add_aux_data_definition('smearing_datafile', 'irfs/IC86_II_smearing.csv')
 
-    IC86_IV.add_binning_definition(
-        IC86_II.get_binning_definition('sin_dec'))
-    IC86_IV.add_binning_definition(
-        IC86_II.get_binning_definition('log_energy'))
+    IC86_IV.add_binning_definition(IC86_II.get_binning_definition('sin_dec'))
+    IC86_IV.add_binning_definition(IC86_II.get_binning_definition('log_energy'))
 
     IC86_IV.add_aux_data('spline_smoothing', IC86_II.get_aux_data('spline_smoothing'))
     IC86_IV.add_aux_data('cumulative_threshold', IC86_II.get_aux_data('cumulative_threshold'))
@@ -477,15 +474,11 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC86_V.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC86_V.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
-    IC86_V.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_V.add_aux_data_definition('eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
+    IC86_V.add_aux_data_definition('smearing_datafile', 'irfs/IC86_II_smearing.csv')
 
-    IC86_V.add_binning_definition(
-        IC86_II.get_binning_definition('sin_dec'))
-    IC86_V.add_binning_definition(
-        IC86_II.get_binning_definition('log_energy'))
+    IC86_V.add_binning_definition(IC86_II.get_binning_definition('sin_dec'))
+    IC86_V.add_binning_definition(IC86_II.get_binning_definition('log_energy'))
 
     IC86_V.add_aux_data('spline_smoothing', IC86_II.get_aux_data('spline_smoothing'))
     IC86_V.add_aux_data('cumulative_threshold', IC86_II.get_aux_data('cumulative_threshold'))
@@ -499,15 +492,11 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC86_VI.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC86_VI.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
-    IC86_VI.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_VI.add_aux_data_definition('eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
+    IC86_VI.add_aux_data_definition('smearing_datafile', 'irfs/IC86_II_smearing.csv')
 
-    IC86_VI.add_binning_definition(
-        IC86_II.get_binning_definition('sin_dec'))
-    IC86_VI.add_binning_definition(
-        IC86_II.get_binning_definition('log_energy'))
+    IC86_VI.add_binning_definition(IC86_II.get_binning_definition('sin_dec'))
+    IC86_VI.add_binning_definition(IC86_II.get_binning_definition('log_energy'))
 
     IC86_VI.add_aux_data('spline_smoothing', IC86_II.get_aux_data('spline_smoothing'))
     IC86_VI.add_aux_data('cumulative_threshold', IC86_II.get_aux_data('cumulative_threshold'))
@@ -521,15 +510,11 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC86_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC86_VII.add_aux_data_definition(
-        'eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
-    IC86_VII.add_aux_data_definition(
-        'smearing_datafile', 'irfs/IC86_II_smearing.csv')
+    IC86_VII.add_aux_data_definition('eff_area_datafile', 'irfs/IC86_II_effectiveArea.csv')
+    IC86_VII.add_aux_data_definition('smearing_datafile', 'irfs/IC86_II_smearing.csv')
 
-    IC86_VII.add_binning_definition(
-        IC86_II.get_binning_definition('sin_dec'))
-    IC86_VII.add_binning_definition(
-        IC86_II.get_binning_definition('log_energy'))
+    IC86_VII.add_binning_definition(IC86_II.get_binning_definition('sin_dec'))
+    IC86_VII.add_binning_definition(IC86_II.get_binning_definition('log_energy'))
 
     IC86_VII.add_aux_data('spline_smoothing', IC86_II.get_aux_data('spline_smoothing'))
     IC86_VII.add_aux_data('cumulative_threshold', IC86_II.get_aux_data('cumulative_threshold'))
@@ -551,47 +536,45 @@ def create_dataset_collection(
         **ds_kwargs,
     )
     IC86_II_VII.grl_field_name_renaming_dict = grl_field_name_renaming_dict
-    IC86_II_VII.add_aux_data_definition(
-        'eff_area_datafile',
-        IC86_II.get_aux_data_definition('eff_area_datafile'))
+    IC86_II_VII.add_aux_data_definition('eff_area_datafile', IC86_II.get_aux_data_definition('eff_area_datafile'))
 
-    IC86_II_VII.add_aux_data_definition(
-        'smearing_datafile',
-        IC86_II.get_aux_data_definition('smearing_datafile'))
+    IC86_II_VII.add_aux_data_definition('smearing_datafile', IC86_II.get_aux_data_definition('smearing_datafile'))
 
-    IC86_II_VII.add_binning_definition(
-        IC86_II.get_binning_definition('sin_dec'))
-    IC86_II_VII.add_binning_definition(
-        IC86_II.get_binning_definition('log_energy'))
+    IC86_II_VII.add_binning_definition(IC86_II.get_binning_definition('sin_dec'))
+    IC86_II_VII.add_binning_definition(IC86_II.get_binning_definition('log_energy'))
 
     IC86_II_VII.add_aux_data('spline_smoothing', IC86_II.get_aux_data('spline_smoothing'))
     IC86_II_VII.add_aux_data('cumulative_threshold', IC86_II.get_aux_data('cumulative_threshold'))
 
     # --------------------------------------------------------------------------
 
-    dsc.add_datasets((
-        IC40,
-        IC59,
-        IC79,
-        IC86_I,
-        IC86_II,
-        IC86_III,
-        IC86_IV,
-        IC86_V,
-        IC86_VI,
-        IC86_VII,
-        IC86_II_VII,
-    ))
+    dsc.add_datasets(
+        (
+            IC40,
+            IC59,
+            IC79,
+            IC86_I,
+            IC86_II,
+            IC86_III,
+            IC86_IV,
+            IC86_V,
+            IC86_VI,
+            IC86_VII,
+            IC86_II_VII,
+        )
+    )
 
-    dsc.set_exp_field_name_renaming_dict({
-        'MJD[days]':    'time',
-        'log10(E/GeV)': 'log_energy',
-        'AngErr[deg]':  'ang_err',
-        'RA[deg]':      'ra',
-        'Dec[deg]':     'dec',
-        'Azimuth[deg]': 'azi',
-        'Zenith[deg]':  'zen',
-    })
+    dsc.set_exp_field_name_renaming_dict(
+        {
+            'MJD[days]': 'time',
+            'log10(E/GeV)': 'log_energy',
+            'AngErr[deg]': 'ang_err',
+            'RA[deg]': 'ra',
+            'Dec[deg]': 'dec',
+            'Azimuth[deg]': 'azi',
+            'Zenith[deg]': 'zen',
+        }
+    )
 
     def convert_deg2rad(data):
         exp = data.exp

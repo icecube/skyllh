@@ -1,9 +1,5 @@
-# -*- coding: utf-8 -*-
-
-import scipy.interpolate
-
 import numpy as np
-
+import scipy.interpolate
 from numpy.lib.recfunctions import (
     repack_fields,
 )
@@ -24,9 +20,7 @@ from skyllh.core.py import (
 )
 
 
-class SplinedI3EnergySigSetOverBkgPDFRatio(
-        SigSetOverBkgPDFRatio,
-        IsParallelizable):
+class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizable):
     """This class implements a splined signal over background PDF ratio for
     enegry PDFs of type I3EnergyPDF.
     It takes an instance, which is derived from PDFSet, and which is derived
@@ -36,15 +30,16 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
     of different discrete energy signal parameters, which are defined by the
     signal PDF set.
     """
+
     def __init__(
-            self,
-            sig_pdf_set,
-            bkg_pdf,
-            fillmethod=None,
-            interpolmethod_cls=None,
-            ncpu=None,
-            ppbar=None,
-            **kwargs,
+        self,
+        sig_pdf_set,
+        bkg_pdf,
+        fillmethod=None,
+        interpolmethod_cls=None,
+        ncpu=None,
+        ppbar=None,
+        **kwargs,
     ):
         """Creates a new IceCube signal-over-background energy PDF ratio spline
         instance.
@@ -78,11 +73,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             If the signal and background PDFs use different binning.
         """
         super().__init__(
-            sig_pdf_set=sig_pdf_set,
-            bkg_pdf=bkg_pdf,
-            interpolmethod_cls=interpolmethod_cls,
-            ncpu=ncpu,
-            **kwargs)
+            sig_pdf_set=sig_pdf_set, bkg_pdf=bkg_pdf, interpolmethod_cls=interpolmethod_cls, ncpu=ncpu, **kwargs
+        )
 
         # Define the default ratio fill method.
         if fillmethod is None:
@@ -92,15 +84,9 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         # Ensure same binning of signal and background PDFs.
         for sig_pdf in self._sig_pdf_set.values():
             if not sig_pdf.has_same_binning_as(self._bkg_pdf):
-                raise ValueError(
-                    'At least one signal PDF does not have the same binning '
-                    'as the background PDF!')
+                raise ValueError('At least one signal PDF does not have the same binning as the background PDF!')
 
-        def create_log_ratio_spline(
-                sig_pdf_set,
-                bkg_pdf,
-                fillmethod,
-                gridparams):
+        def create_log_ratio_spline(sig_pdf_set, bkg_pdf, fillmethod, gridparams):
             """Creates the signal/background ratio spline for the given signal
             parameters.
 
@@ -124,7 +110,8 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
                 sig_pdf.hist_mask_mc_covered,
                 sig_pdf.hist_mask_mc_covered_zero_physics,
                 bkg_pdf.hist_mask_mc_covered,
-                bkg_pdf.hist_mask_mc_covered_zero_physics)
+                bkg_pdf.hist_mask_mc_covered_zero_physics,
+            )
 
             # Define the grid points for the spline. In general, we use the bin
             # centers of the binning, but for the first and last point of each
@@ -133,17 +120,13 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             points_list = []
             for binning in sig_pdf.binnings:
                 points = binning.bincenters
-                (points[0], points[-1]) = (
-                    binning.lower_edge, binning.upper_edge)
+                (points[0], points[-1]) = (binning.lower_edge, binning.upper_edge)
                 points_list.append(points)
 
             # Create the spline for the ratio values.
             log_ratio_spline = scipy.interpolate.RegularGridInterpolator(
-                tuple(points_list),
-                np.log(ratio),
-                method='linear',
-                bounds_error=False,
-                fill_value=0.)
+                tuple(points_list), np.log(ratio), method='linear', bounds_error=False, fill_value=0.0
+            )
 
             return log_ratio_spline
 
@@ -152,52 +135,36 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         gridparams_list = self._sig_pdf_set.gridparams_list
 
         args_list = [
-            ((self._sig_pdf_set,
-              self._bkg_pdf,
-              self._fillmethod,
-              gridparams),
-             {})
-            for gridparams in gridparams_list
+            ((self._sig_pdf_set, self._bkg_pdf, self._fillmethod, gridparams), {}) for gridparams in gridparams_list
         ]
 
         log_ratio_spline_list = parallelize(
-            func=create_log_ratio_spline,
-            args_list=args_list,
-            ncpu=self.ncpu,
-            ppbar=ppbar)
+            func=create_log_ratio_spline, args_list=args_list, ncpu=self.ncpu, ppbar=ppbar
+        )
 
         # Save all the log_ratio splines in a dictionary.
         self._gridparams_hash_log_ratio_spline_dict = dict()
-        for (gridparams, log_ratio_spline) in zip(gridparams_list,
-                                                  log_ratio_spline_list):
+        for gridparams, log_ratio_spline in zip(gridparams_list, log_ratio_spline_list, strict=True):
             gridparams_hash = make_dict_hash(gridparams)
-            self._gridparams_hash_log_ratio_spline_dict[gridparams_hash] =\
-                log_ratio_spline
+            self._gridparams_hash_log_ratio_spline_dict[gridparams_hash] = log_ratio_spline
 
         # Save the list of data field names.
-        self._data_field_names = [
-            binning.name
-            for binning in self._bkg_pdf.binnings
-        ]
+        self._data_field_names = [binning.name for binning in self._bkg_pdf.binnings]
 
         # Construct the instance for the parameter interpolation method.
         self._interpolmethod = self._interpolmethod_cls(
-            func=self._evaluate_splines,
-            param_grid_set=sig_pdf_set.param_grid_set)
+            func=self._evaluate_splines, param_grid_set=sig_pdf_set.param_grid_set
+        )
 
         # Save the parameter names needed for the interpolation for later usage.
-        self._interpol_param_names = \
-            self._sig_pdf_set.param_grid_set.params_name_list
+        self._interpol_param_names = self._sig_pdf_set.param_grid_set.params_name_list
 
         # Create cache variable for the last ratio values and gradients in order
         # to avoid the recalculation of the ratio value when the
         # ``get_gradient`` method is called (usually after the ``get_ratio``
         # method was called).
         self._cache = self._create_cache(
-            trial_data_state_id=None,
-            interpol_params_recarray=None,
-            ratio=None,
-            grads=None
+            trial_data_state_id=None, interpol_params_recarray=None, ratio=None, grads=None
         )
 
     @property
@@ -210,17 +177,10 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
     @fillmethod.setter
     def fillmethod(self, obj):
         if not isinstance(obj, PDFRatioFillMethod):
-            raise TypeError(
-                'The fillmethod property must be an instance of '
-                'PDFRatioFillMethod!')
+            raise TypeError('The fillmethod property must be an instance of PDFRatioFillMethod!')
         self._fillmethod = obj
 
-    def _create_cache(
-            self,
-            trial_data_state_id,
-            interpol_params_recarray,
-            ratio,
-            grads):
+    def _create_cache(self, trial_data_state_id, interpol_params_recarray, ratio, grads):
         """Creates a cache dictionary holding cache data.
 
         Parameters
@@ -241,7 +201,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             'trial_data_state_id': trial_data_state_id,
             'interpol_params_recarray': interpol_params_recarray,
             'ratio': ratio,
-            'grads': grads
+            'grads': grads,
         }
 
         return cache
@@ -256,12 +216,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         if self._cache['trial_data_state_id'] != trial_data_state_id:
             return False
 
-        if not np.all(
-                self._cache['interpol_params_recarray'] ==
-                interpol_params_recarray):
-            return False
-
-        return True
+        return np.all(self._cache['interpol_params_recarray'] == interpol_params_recarray)
 
     def _get_spline_for_param_values(self, interpol_param_values):
         """Retrieves the spline for a given set of parameter values.
@@ -277,20 +232,14 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         spline : instance of scipy.interpolate.RegularGridInterpolator
             The requested spline instance.
         """
-        gridparams = dict(
-            zip(self._interpol_param_names, interpol_param_values))
+        gridparams = dict(zip(self._interpol_param_names, interpol_param_values, strict=True))
         gridparams_hash = make_dict_hash(gridparams)
 
         spline = self._gridparams_hash_log_ratio_spline_dict[gridparams_hash]
 
         return spline
 
-    def _evaluate_splines(
-            self,
-            tdm,
-            eventdata,
-            gridparams_recarray,
-            n_values):
+    def _evaluate_splines(self, tdm, eventdata, gridparams_recarray, n_values):
         """For each set of parameter values given by ``gridparams_recarray``,
         the spline is retrieved and evaluated for the events suitable for that
         source model.
@@ -336,7 +285,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         values = np.empty(n_values, dtype=np.float64)
 
         v_start = 0
-        for (sidx, param_values) in enumerate(gridparams_recarray):
+        for sidx, param_values in enumerate(gridparams_recarray):
             spline = self._get_spline_for_param_values(param_values)
 
             # Select the eventdata that belongs to the current source.
@@ -344,7 +293,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             src_eventdata = np.take(eventdata, evt_idxs[m], axis=1)
 
             n = src_eventdata.shape[1]
-            sl = slice(v_start, v_start+n)
+            sl = slice(v_start, v_start + n)
             values[sl] = spline(src_eventdata.T)
 
             v_start += n
@@ -369,13 +318,11 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             The numpy record ndarray of length N_sources or 1 holding only the
             parameters needed for the interpolation.
         """
-        interpol_params_recarray = repack_fields(
-            src_params_recarray[self._interpol_param_names])
+        interpol_params_recarray = repack_fields(src_params_recarray[self._interpol_param_names])
 
         all_params_are_equal_for_all_sources = True
         for pname in self._interpol_param_names:
-            if not np.all(
-                    np.isclose(np.diff(interpol_params_recarray[pname]), 0)):
+            if not np.all(np.isclose(np.diff(interpol_params_recarray[pname]), 0)):
                 all_params_are_equal_for_all_sources = False
                 break
         if all_params_are_equal_for_all_sources:
@@ -383,10 +330,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
 
         return interpol_params_recarray
 
-    def _calculate_ratio_and_grads(
-            self,
-            tdm,
-            interpol_params_recarray):
+    def _calculate_ratio_and_grads(self, tdm, interpol_params_recarray):
         """Calculates the ratio values and ratio gradients for all the sources
         and trial events given the source parameter values.
         The result is stored in the class member variable ``_cache``.
@@ -404,10 +348,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         # for the PDF ratio spline evaluation.
         eventdata = np.vstack([tdm[fn] for fn in self._data_field_names])
 
-        (ratio, grads) = self._interpolmethod(
-            tdm=tdm,
-            eventdata=eventdata,
-            params_recarray=interpol_params_recarray)
+        (ratio, grads) = self._interpolmethod(tdm=tdm, eventdata=eventdata, params_recarray=interpol_params_recarray)
 
         # The interpolation works on the logarithm of the ratio spline, hence
         # we need to transform it using the exp function, and we need to account
@@ -420,14 +361,10 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             trial_data_state_id=tdm.trial_data_state_id,
             interpol_params_recarray=interpol_params_recarray,
             ratio=ratio,
-            grads=grads
+            grads=grads,
         )
 
-    def get_ratio(
-            self,
-            tdm,
-            src_params_recarray,
-            tl=None):
+    def get_ratio(self, tdm, src_params_recarray, tl=None):
         """Retrieves the PDF ratio values for each given trial event data, given
         the given set of fit parameters. This method is called during the
         likelihood maximization process.
@@ -455,27 +392,19 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             value for each source and trial event.
         """
         # Select only the parameters necessary for the interpolation.
-        interpol_params_recarray = self._create_interpol_params_recarray(
-            src_params_recarray)
+        interpol_params_recarray = self._create_interpol_params_recarray(src_params_recarray)
 
         # Check if the ratio values are already cached.
         if self._is_cached(
-               trial_data_state_id=tdm.trial_data_state_id,
-               interpol_params_recarray=interpol_params_recarray):
+            trial_data_state_id=tdm.trial_data_state_id, interpol_params_recarray=interpol_params_recarray
+        ):
             return self._cache['ratio']
 
-        self._calculate_ratio_and_grads(
-            tdm=tdm,
-            interpol_params_recarray=interpol_params_recarray)
+        self._calculate_ratio_and_grads(tdm=tdm, interpol_params_recarray=interpol_params_recarray)
 
         return self._cache['ratio']
 
-    def get_gradient(
-            self,
-            tdm,
-            src_params_recarray,
-            fitparam_id,
-            tl=None):
+    def get_gradient(self, tdm, src_params_recarray, fitparam_id, tl=None):
         """Retrieves the PDF ratio gradient for the given fit parameter
         ``fitparam_id``.
 
@@ -504,17 +433,13 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
             parameter.
         """
         # Select only the parameters necessary for the interpolation.
-        interpol_params_recarray = self._create_interpol_params_recarray(
-            src_params_recarray)
+        interpol_params_recarray = self._create_interpol_params_recarray(src_params_recarray)
 
         # Calculate the gradients if necessary.
         if not self._is_cached(
-            trial_data_state_id=tdm.trial_data_state_id,
-            interpol_params_recarray=interpol_params_recarray
+            trial_data_state_id=tdm.trial_data_state_id, interpol_params_recarray=interpol_params_recarray
         ):
-            self._calculate_ratio_and_grads(
-                tdm=tdm,
-                interpol_params_recarray=interpol_params_recarray)
+            self._calculate_ratio_and_grads(tdm=tdm, interpol_params_recarray=interpol_params_recarray)
 
         tdm_n_sources = tdm.n_sources
 
@@ -522,8 +447,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
 
         # Loop through the parameters of the signal PDF set and match them with
         # the global fit parameter.
-        for (pidx, pname) in enumerate(
-                self._sig_pdf_set.param_grid_set.params_name_list):
+        for pidx, pname in enumerate(self._sig_pdf_set.param_grid_set.params_name_list):
             if pname not in src_params_recarray.dtype.fields:
                 continue
             p_gpidxs = src_params_recarray[f'{pname}:gpidx']
