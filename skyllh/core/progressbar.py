@@ -86,7 +86,7 @@ class ProgressBar:
 
     @property
     def val(self):
-        """(read-only) The current value of the progess."""
+        """(read-only) The current value of the progress."""
         return self._val
 
     @property
