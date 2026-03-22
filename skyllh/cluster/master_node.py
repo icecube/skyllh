@@ -80,7 +80,7 @@ class MasterNode:
 
         # bind the socket to a public host, and a well-known port
         master_hostname = socket.getfqdn(socket.gethostname())
-        logger.debug('Listening on %s:%d with %d simulanious allowed connections', master_hostname, master_port, n_cn)
+        logger.debug('Listening on %s:%d with %d simultaneous allowed connections', master_hostname, master_port, n_cn)
         serversock.bind((master_hostname, master_port))
         serversock.listen(n_cn)
 
