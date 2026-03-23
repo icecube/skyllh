@@ -125,13 +125,6 @@ from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
 )
 
-from skyllh.scripting.argparser import (
-    create_argparser,
-)
-from skyllh.core.logging import (
-    setup_logging,
-)
-
 cfg = Config()
 
 

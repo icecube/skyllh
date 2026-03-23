@@ -126,7 +126,10 @@ def setup_logger(
 
     if clear_existing_handlers:
         for h in list(logger.handlers):
-            logger.removeHandler(h)
+            try:
+                h.close()
+            finally:
+                logger.removeHandler(h)
 
     if console:
         if console_level is None:
@@ -219,7 +222,6 @@ def setup_logging(
         log_format=log_format,
         console=True,
         log_file=log_file,
-        file_level=logging.DEBUG,
         clear_existing_handlers=reconfigure)
 
     setup_logger(
@@ -229,7 +231,6 @@ def setup_logging(
         log_format=log_format,
         console=True,
         log_file=log_file,
-        file_level=logging.DEBUG,
         clear_existing_handlers=reconfigure)
 
     return get_logger(name)

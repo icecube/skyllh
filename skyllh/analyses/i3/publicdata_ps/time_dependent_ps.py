@@ -137,13 +137,6 @@ from skyllh.i3.scrambling import (
     I3SeasonalVariationTimeScramblingMethod,
 )
 
-from skyllh.scripting.argparser import (
-    create_argparser,
-)
-from skyllh.core.logging import (
-    setup_logging,
-)
-
 TXS_0506_PLUS056_SOURCE = PointLikeSource(
     name='TXS 0506+056',
     ra=np.deg2rad(77.3581851),
@@ -1134,6 +1127,14 @@ def create_analysis(  # noqa: C901
 
 
 if __name__ == '__main__':
+
+    from skyllh.scripting.argparser import (
+        create_argparser,
+    )
+    from skyllh.core.logging import (
+        setup_logging,
+    )
+
     parser = create_argparser(
         description='Calculates TS for a given source location using the '
                     '10-year public point source sample assuming a signal '
@@ -1170,7 +1171,7 @@ if __name__ == '__main__':
 
     setup_logging(
         cfg=cfg,
-        script_logger_name=__name__,
+        name=__name__,
         log_file=args.debug_logfile)
 
     sample_seasons = [

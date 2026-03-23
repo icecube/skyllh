@@ -37,7 +37,6 @@ from skyllh.core.config import (
 )
 from skyllh.core.logging import (
     get_logger,
-    setup_logging,
 )
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
@@ -412,10 +411,18 @@ def create_analysis(
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(
+
+
+    from skyllh.scripting.argparser import (
+        create_argparser,
+    )
+    from skyllh.core.logging import (
+        setup_logging,
+    )
+
+    p = create_argparser(
         description='Calculates TS for a given source location using the '
         '10-year public point source sample.',
-        formatter_class=argparse.RawTextHelpFormatter
     )
     p.add_argument(
         '--dec',
@@ -435,40 +442,16 @@ if __name__ == '__main__':
         type=float,
         help='The seed value of the gamma fit parameter.'
     )
-    p.add_argument(
-        '--data_base_path',
-        default=None,
-        type=str,
-        help='The base path to the data samples (default=None)'
-    )
-    p.add_argument(
-        '--seed',
-        default=1,
-        type=int,
-        help='The random number generator seed for the likelihood '
-             'minimization.'
-    )
-    p.add_argument(
-        '--ncpu',
-        default=1,
-        type=int,
-        help='The number of CPUs to utilize where parallelization is possible.'
-    )
     args = p.parse_args()
 
-    cfg = Config()
-    cfg.set_ncpu(args.ncpu)
+    cfg = Config.from_yaml(args.config)
+    cfg.set_enable_tracing(args.enable_tracing)
+    cfg.set_ncpu(args.n_cpu)
 
-    # Setup `skyllh` package logging.
     setup_logging(
         cfg=cfg,
-        name='skyllh',
-        log_level=logging.DEBUG,
-        console=True,
-        console_level=logging.INFO,
-        log_file='debug.log',
-        file_level=logging.DEBUG,
-    )
+        name=__name__,
+        log_file=args.debug_logfile)
 
     sample_seasons = [
         # ('PublicData_10y_ps', 'IC40'),

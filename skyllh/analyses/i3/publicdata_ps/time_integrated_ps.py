@@ -120,13 +120,6 @@ from skyllh.i3.config import (
     add_icecube_specific_analysis_required_data_fields,
 )
 
-from skyllh.scripting.argparser import (
-    create_argparser,
-)
-from skyllh.core.logging import (
-    setup_logging,
-)
-
 
 def create_analysis(
         cfg,
@@ -465,6 +458,14 @@ def create_analysis(
 
 
 if __name__ == '__main__':
+
+    from skyllh.scripting.argparser import (
+        create_argparser,
+    )
+    from skyllh.core.logging import (
+        setup_logging,
+    )
+
     parser = create_argparser(
         description='Calculates TS for a given source location using the '
                     '10-year public point source sample.',
@@ -500,7 +501,7 @@ if __name__ == '__main__':
 
     setup_logging(
         cfg=cfg,
-        script_logger_name=__name__,
+        name=__name__,
         log_file=args.debug_logfile)
 
     sample_seasons = [
