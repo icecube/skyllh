@@ -28,7 +28,6 @@ from skyllh.core.random import (
 from skyllh.core.timing import (
     TimeLord,
 )
-from skyllh.skyllh.scripting import logging
 
 
 def get_ncpu(
