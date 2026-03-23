@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from skyllh.core.background_generation import (
     BackgroundGenerationMethod,
 )
@@ -12,17 +10,18 @@ from skyllh.core.scrambling import (
 
 
 class FixedScrambledExpDataI3BkgGenMethod(
-        BackgroundGenerationMethod,
+    BackgroundGenerationMethod,
 ):
     """This class implements the background event generation method for the
     IceCube detector using scrambled experimental data as background hypothesis
     with a fixed number of background events equal to the number of events in
     the dataset. This background generation method is the one used in SkyLab.
     """
+
     def __init__(
-            self,
-            data_scrambler,
-            **kwargs,
+        self,
+        data_scrambler,
+        **kwargs,
     ):
         """Creates a new background generation method instance to generate
         background events from scrambled experimental data with a fixed number
@@ -40,8 +39,7 @@ class FixedScrambledExpDataI3BkgGenMethod(
 
     @property
     def data_scrambler(self):
-        """The DataScrambler instance that implements the data scrambling.
-        """
+        """The DataScrambler instance that implements the data scrambling."""
         return self._data_scrambler
 
     @data_scrambler.setter
@@ -50,15 +48,16 @@ class FixedScrambledExpDataI3BkgGenMethod(
             raise TypeError(
                 'The data_scrambler property must be an instance of '
                 'DataScrambler! '
-                f'Its current type is {classname(scrambler)}!')
+                f'Its current type is {classname(scrambler)}!'
+            )
         self._data_scrambler = scrambler
 
     def generate_events(
-            self,
-            rss,
-            dataset,
-            data,
-            **kwargs,
+        self,
+        rss,
+        dataset,
+        data,
+        **kwargs,
     ):
         """Generates background events from the given data, by scrambling the
         experimental data. The number of events is equal to the size of the
@@ -84,10 +83,6 @@ class FixedScrambledExpDataI3BkgGenMethod(
             The instance of DataFieldRecordArray holding the generated
             background events.
         """
-        bkg_events = self._data_scrambler.scramble_data(
-            rss=rss,
-            dataset=dataset,
-            data=data.exp,
-            copy=True)
+        bkg_events = self._data_scrambler.scramble_data(rss=rss, dataset=dataset, data=data.exp, copy=True)
 
         return (len(bkg_events), bkg_events)

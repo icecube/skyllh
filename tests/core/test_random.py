@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import unittest
 
 import numpy as np
@@ -11,7 +9,7 @@ from skyllh.core.random import (
 
 
 class RandomChoice_TestCase(
-        unittest.TestCase,
+    unittest.TestCase,
 ):
     def setUp(self):
         self.size = 100
@@ -21,19 +19,11 @@ class RandomChoice_TestCase(
 
     def test_choice(self):
         rss = RandomStateService(seed=1)
-        np_items = rss.random.choice(
-            self.items,
-            size=5,
-            replace=True,
-            p=self.probs)
+        np_items = rss.random.choice(self.items, size=5, replace=True, p=self.probs)
 
         rss = RandomStateService(seed=1)
-        random_choice = RandomChoice(
-            items=self.items,
-            probabilities=self.probs)
-        rc_items = random_choice(
-            rss=rss,
-            size=5)
+        random_choice = RandomChoice(items=self.items, probabilities=self.probs)
+        rc_items = random_choice(rss=rss, size=5)
 
         np.testing.assert_equal(np_items, rc_items)
 

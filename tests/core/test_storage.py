@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
 import unittest
+
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
@@ -12,11 +11,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.field1 = np.array([1.4, 1.3, 1.5, 1.1, 1.2], dtype=np.float64)
         self.field2 = np.array([2.5, 2.1, 2.3, 2.4, 2.2], dtype=np.float64)
         self.field3 = np.array([3.2, 3.5, 3.1, 3.3, 3.4], dtype=np.float64)
-        data = dict(
-            field1=self.field1,
-            field2=self.field2,
-            field3=self.field3
-        )
+        data = dict(field1=self.field1, field2=self.field2, field3=self.field3)
         self.arr = DataFieldRecordArray(data)
         self.arr_len = 5
 
@@ -66,17 +61,11 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
 
         # Set selected rows with new values by indices.
         idx = np.array([1, 4, 2])
-        new_data = dict(
-            field1=self.field1[idx],
-            field2=new_field2[idx],
-            field3=self.field3[idx]
-        )
+        new_data = dict(field1=self.field1[idx], field2=new_field2[idx], field3=self.field3[idx])
         new_arr = DataFieldRecordArray(new_data)
         self.arr[idx] = new_arr
         assert_array_almost_equal(self.arr['field1'], self.field1)
-        assert_array_almost_equal(
-            self.arr['field2'],
-            np.array([2.5, 2.12, 2.33, 2.4, 2.25], dtype=np.float64))
+        assert_array_almost_equal(self.arr['field2'], np.array([2.5, 2.12, 2.33, 2.4, 2.25], dtype=np.float64))
         assert_array_almost_equal(self.arr['field3'], self.field3)
 
         # Reset the array.
@@ -84,17 +73,11 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
 
         # Set selected rows with new values by mask.
         mask = np.array([True, True, False, True, False])
-        new_data = dict(
-            field1=self.field1[mask],
-            field2=new_field2[mask],
-            field3=self.field3[mask]
-        )
+        new_data = dict(field1=self.field1[mask], field2=new_field2[mask], field3=self.field3[mask])
         new_arr = DataFieldRecordArray(new_data)
         self.arr[mask] = new_arr
         assert_array_almost_equal(self.arr['field1'], self.field1)
-        assert_array_almost_equal(
-            self.arr['field2'],
-            np.array([2.51, 2.12, 2.3, 2.44, 2.2], dtype=np.float64))
+        assert_array_almost_equal(self.arr['field2'], np.array([2.51, 2.12, 2.3, 2.44, 2.2], dtype=np.float64))
         assert_array_almost_equal(self.arr['field3'], self.field3)
 
         # Reset the array.
@@ -105,9 +88,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.arr['field4'] = new_field
         self.assertTrue('field4' in self.arr)
         self.assertTrue('field4' in self.arr.field_name_list)
-        assert_array_almost_equal(
-            self.arr['field4'],
-            new_field)
+        assert_array_almost_equal(self.arr['field4'], new_field)
 
     def test__str__(self):
         try:
@@ -122,9 +103,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.assertTrue('field3' in self.arr.field_name_list)
 
     def test_indices(self):
-        assert_array_almost_equal(
-            self.arr.indices,
-            np.array([0, 1, 2, 3, 4]))
+        assert_array_almost_equal(self.arr.indices, np.array([0, 1, 2, 3, 4]))
 
     def test_len(self):
         self.assertEqual(len(self.arr), self.arr_len)
@@ -142,15 +121,9 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
 
     def test_sort_by_field(self):
         self.arr.sort_by_field('field2')
-        assert_array_almost_equal(
-            self.arr['field1'],
-            np.array([1.3, 1.2, 1.5, 1.1, 1.4], dtype=np.float64))
-        assert_array_almost_equal(
-            self.arr['field2'],
-            np.array([2.1, 2.2, 2.3, 2.4, 2.5], dtype=np.float64))
-        assert_array_almost_equal(
-            self.arr['field3'],
-            np.array([3.5, 3.4, 3.1, 3.3, 3.2], dtype=np.float64))
+        assert_array_almost_equal(self.arr['field1'], np.array([1.3, 1.2, 1.5, 1.1, 1.4], dtype=np.float64))
+        assert_array_almost_equal(self.arr['field2'], np.array([2.1, 2.2, 2.3, 2.4, 2.5], dtype=np.float64))
+        assert_array_almost_equal(self.arr['field3'], np.array([3.5, 3.4, 3.1, 3.3, 3.2], dtype=np.float64))
 
     def test_tidy_up(self):
         self.arr.tidy_up('field2')

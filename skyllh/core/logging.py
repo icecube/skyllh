@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 import os.path
 import sys
@@ -33,16 +31,12 @@ def _resolve_log_level(level, default=logging.INFO):
         try:
             return int(getattr(logging, level_name))
         except AttributeError as err:
-            raise ValueError(
-                f'Unknown logging level string "{level}"!') from err
+            raise ValueError(f'Unknown logging level string "{level}"!') from err
 
-    raise TypeError(
-        'The logging level must be int, str, or None! '
-        f'Its current type is {type(level)}.')
+    raise TypeError(f'The logging level must be int, str, or None! Its current type is {type(level)}.')
 
 
-def get_logger(
-        name):
+def get_logger(name):
     """Retrieves the logger with the given name from the Python logging system.
 
     Parameters
@@ -70,7 +64,7 @@ def setup_logger(
     stream=None,
     log_file=None,
     file_level=None,
-    file_mode="a",
+    file_mode='a',
     propagate=False,
     clear_existing_handlers=False,
 ):
@@ -111,17 +105,17 @@ def setup_logger(
         Default: False.
     """
     logger = logging.getLogger(name)
-    
+
     cfg_log_level = cfg['logging'].get('log_level', logging.INFO)
     resolved_log_level = _resolve_log_level(
-        level=log_level,
-        default=_resolve_log_level(cfg_log_level, default=logging.INFO))
-    
+        level=log_level, default=_resolve_log_level(cfg_log_level, default=logging.INFO)
+    )
+
     logger.setLevel(resolved_log_level)
     logger.propagate = propagate
 
     if log_format is None:
-        log_format = cfg["logging"]["log_format"]
+        log_format = cfg['logging']['log_format']
     formatter = logging.Formatter(log_format)
 
     if clear_existing_handlers:
@@ -132,7 +126,7 @@ def setup_logger(
                 logger.removeHandler(h)
 
     if console:
-        if console_level is None:
+        if console_level is None:  # noqa: SIM108
             console_level = resolved_log_level
         else:
             console_level = _resolve_log_level(console_level)
@@ -141,9 +135,7 @@ def setup_logger(
 
         # deduplicate StreamHandler targeting same stream
         exists = any(
-            isinstance(h, logging.StreamHandler)
-            and getattr(h, "stream", None) is stream
-            for h in logger.handlers
+            isinstance(h, logging.StreamHandler) and getattr(h, 'stream', None) is stream for h in logger.handlers
         )
         if not exists:
             sh = logging.StreamHandler(stream=stream)
@@ -154,18 +146,15 @@ def setup_logger(
     if log_file is not None:
         log_file = os.path.expanduser(log_file)
         if not os.path.isabs(log_file):
-            base = os.path.abspath(
-                os.path.expanduser(cfg["project"]["working_directory"]))
+            base = os.path.abspath(os.path.expanduser(cfg['project']['working_directory']))
             log_file = os.path.join(base, log_file)
         log_file = os.path.abspath(log_file)
 
         exists = any(
-            isinstance(h, logging.FileHandler)
-            and getattr(h, "baseFilename", None) == log_file
-            for h in logger.handlers
+            isinstance(h, logging.FileHandler) and getattr(h, 'baseFilename', None) == log_file for h in logger.handlers
         )
         if not exists:
-            if file_level is None:
+            if file_level is None:  # noqa: SIM108
                 file_level = resolved_log_level
             else:
                 file_level = _resolve_log_level(file_level)
@@ -177,14 +166,7 @@ def setup_logger(
     return logger
 
 
-def setup_logging(
-        cfg,
-        name,
-        log_format=None,
-        log_level=None,
-        console=True,
-        log_file=None,
-        reconfigure=False):
+def setup_logging(cfg, name, log_format=None, log_level=None, console=True, log_file=None, reconfigure=False):
     """Initializes package and script loggers and returns the script logger.
 
     Parameters
@@ -225,7 +207,8 @@ def setup_logging(
         log_format=log_format,
         console=console,
         log_file=log_file,
-        clear_existing_handlers=reconfigure)
+        clear_existing_handlers=reconfigure,
+    )
 
     setup_logger(
         cfg=cfg,
@@ -234,6 +217,7 @@ def setup_logging(
         log_format=log_format,
         console=console,
         log_file=log_file,
-        clear_existing_handlers=reconfigure)
+        clear_existing_handlers=reconfigure,
+    )
 
     return get_logger(name)

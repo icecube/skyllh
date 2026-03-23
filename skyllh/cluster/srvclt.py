@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import pickle
 
 from skyllh.core.py import (
@@ -7,7 +5,7 @@ from skyllh.core.py import (
 )
 
 
-class Message(object):
+class Message:
     @staticmethod
     def receive(sock, blocksize=2048, as_bytes=False):
         """Receives a message from the given socket.
@@ -27,8 +25,7 @@ class Message(object):
             The Message instance created with the message read from the socket.
         """
         # Get the first 2 bytes to determine the length of the message.
-        msglen = int.from_bytes(
-            read_from_socket(sock, 2, blocksize=blocksize), 'little')
+        msglen = int.from_bytes(read_from_socket(sock, 2, blocksize=blocksize), 'little')
 
         # Read the message of length msglen bytes from the socket. Here, msg is
         # a bytes object.
@@ -59,16 +56,12 @@ class Message(object):
     @msg.setter
     def msg(self, m):
         if not isinstance(m, bytes):
-            m = str_cast(
-                m,
-                'The msg property must be of type bytes or castable to type '
-                'str!')
+            m = str_cast(m, 'The msg property must be of type bytes or castable to type str!')
         self._msg = m
 
     @property
     def length(self):
-        """The length of the message in bytes.
-        """
+        """The length of the message in bytes."""
         return len(self.msg)
 
     def as_socket_msg(self):
@@ -98,11 +91,10 @@ def send_to_socket(sock, msg):
 
 
 def read_from_socket(sock, size, blocksize=2048):
-    """Reads ``size`` bytes from the socket ``sock``.
-    """
+    """Reads ``size`` bytes from the socket ``sock``."""
     chunks = []
     n_bytes_recd = 0
-    while (n_bytes_recd < size):
+    while n_bytes_recd < size:
         chunk = sock.recv(min(size - n_bytes_recd, blocksize))
         if chunk == b'':
             raise RuntimeError('Socket connection broken!')

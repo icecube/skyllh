@@ -1,14 +1,11 @@
-# -*- coding: utf-8 -*-
-
+import multiprocessing as mp
 import queue
 import time
-
-import multiprocessing as mp
-import numpy as np
-
 from logging.handlers import (
     QueueHandler,
 )
+
+import numpy as np
 
 from skyllh.core.config import (
     HasConfig,
@@ -31,8 +28,8 @@ from skyllh.core.timing import (
 
 
 def get_ncpu(
-        cfg,
-        local_ncpu,
+    cfg,
+    local_ncpu,
 ):
     """Determines the number of CPUs to use for functions that support
     multi-processing.
@@ -59,23 +56,21 @@ def get_ncpu(
         ncpu = 1
 
     if not isinstance(ncpu, int):
-        raise TypeError(
-            'The ncpu setting must be of type int!')
+        raise TypeError('The ncpu setting must be of type int!')
 
     if ncpu < 1:
-        raise ValueError(
-            'The ncpu setting must be >= 1!')
+        raise ValueError('The ncpu setting must be >= 1!')
 
     return ncpu
 
 
-def parallelize(  # noqa: C901
-        func,
-        args_list,
-        ncpu,
-        rss=None,
-        tl=None,
-        ppbar=None,
+def parallelize(
+    func,
+    args_list,
+    ncpu,
+    rss=None,
+    tl=None,
+    ppbar=None,
 ):
     """Parallelizes the execution of the given function for different arguments.
 
@@ -106,17 +101,18 @@ def parallelize(  # noqa: C901
         The list of the result values of ``func``, where each element of that
         list corresponds to the arguments element in ``args_list``.
     """
+
     # Define a wrapper function for the multiprocessing module that evaluates
     # ``func`` for a subset of `args_list` on a worker process.
     def worker_wrapper(
-            func,
-            sub_args_list,
-            pid,
-            rqueue,
-            lqueue,
-            squeue=None,
-            rss=None,
-            tl=None,
+        func,
+        sub_args_list,
+        pid,
+        rqueue,
+        lqueue,
+        squeue=None,
+        rss=None,
+        tl=None,
     ):
         """Wrapper function for the multiprocessing module that evaluates
         ``func`` for the subset ``sub_args_list`` of ``args_list`` on a worker
@@ -155,11 +151,11 @@ def parallelize(  # noqa: C901
         """
         # Get the `QueueHandler` and update its log records queue.
         logger = get_logger('skyllh')
-        queue_handler = list(logger.handlers)[0]
+        queue_handler = list(logger.handlers)[0]  # noqa: RUF015
         queue_handler.queue = lqueue
 
         result_list = []
-        for (task_idx, (args, kwargs)) in enumerate(sub_args_list):
+        for task_idx, (args, kwargs) in enumerate(sub_args_list):
             if rss is not None:
                 kwargs['rss'] = rss
             if tl is not None:
@@ -177,13 +173,13 @@ def parallelize(  # noqa: C901
     # Define a wrapper function that evaluates ``func`` for a subset of
     # `args_list` on the master process.
     def master_wrapper(
-            pbar,
-            sarr,
-            func,
-            sub_args_list,
-            squeue=None,
-            rss=None,
-            tl=None,
+        pbar,
+        sarr,
+        func,
+        sub_args_list,
+        squeue=None,
+        rss=None,
+        tl=None,
     ):
         """This is the wrapper function for the master process.
 
@@ -221,7 +217,7 @@ def parallelize(  # noqa: C901
             tasks.
         """
         result_list = []
-        for (master_task_idx, (args, kwargs)) in enumerate(sub_args_list):
+        for master_task_idx, (args, kwargs) in enumerate(sub_args_list):
             if rss is not None:
                 kwargs['rss'] = rss
             if tl is not None:
@@ -253,8 +249,7 @@ def parallelize(  # noqa: C901
     # Return result list if only one CPU is used.
     if ncpu == 1:
         sarr = np.zeros((1,), dtype=[('n_finished_tasks', np.int64)])
-        result_list = master_wrapper(
-            pbar, sarr, func, args_list, squeue=None, rss=rss, tl=tl)
+        result_list = master_wrapper(pbar, sarr, func, args_list, squeue=None, rss=rss, tl=tl)
 
         pbar.finish()
 
@@ -271,35 +266,27 @@ def parallelize(  # noqa: C901
 
     # Create a multiprocessing queue for each worker process.
     # Prepend it with None to be able to use `pid` as the list index.
-    lqueue_list = [None] + [mp.Queue() for i in range(ncpu-1)]
+    lqueue_list = [None] + [mp.Queue() for i in range(ncpu - 1)]
 
     # Create a list of RandomStateService for each process if rss argument is
     # set.
     rss_list = [rss]
     if rss is None:
-        rss_list += [None]*(ncpu-1)
+        rss_list += [None] * (ncpu - 1)
     else:
         if not isinstance(rss, RandomStateService):
-            raise TypeError(
-                'The rss argument must be an instance of RandomStateService!')
-        rss_list.extend([
-            RandomStateService(seed=rss.random.randint(0, 2**32))
-            for i in range(1, ncpu)
-        ])
+            raise TypeError('The rss argument must be an instance of RandomStateService!')
+        rss_list.extend([RandomStateService(seed=rss.random.randint(0, 2**32)) for i in range(1, ncpu)])
 
     # Create a list of TimeLord instances, one for each process if tl argument
     # is set.
     tl_list = [tl]
     if tl is None:
-        tl_list += [None]*(ncpu-1)
+        tl_list += [None] * (ncpu - 1)
     else:
         if not isinstance(tl, TimeLord):
-            raise TypeError(
-                'The tl argument must be an instance of TimeLord!')
-        tl_list.extend([
-            TimeLord()
-            for i in range(1, ncpu)
-        ])
+            raise TypeError('The tl argument must be an instance of TimeLord!')
+        tl_list.extend([TimeLord() for i in range(1, ncpu)])
 
     # Replace all existing main process handlers with the `QueueHandler`.
     # This allows storing all the log record generated by worker processes at
@@ -312,11 +299,15 @@ def parallelize(  # noqa: C901
     queue_handler = QueueHandler(lqueue_list[0])
     logger.addHandler(queue_handler)
 
-    processes = [mp.Process(
-        target=worker_wrapper,
-        args=(func, sub_args_list, pid, rqueue, lqueue_list[pid]),
-        kwargs={'squeue': squeue, 'rss': rss_list[pid], 'tl': tl_list[pid]})
-        for (pid, sub_args_list) in enumerate(sub_args_list_list) if pid > 0]
+    processes = [
+        mp.Process(
+            target=worker_wrapper,
+            args=(func, sub_args_list, pid, rqueue, lqueue_list[pid]),
+            kwargs={'squeue': squeue, 'rss': rss_list[pid], 'tl': tl_list[pid]},
+        )
+        for (pid, sub_args_list) in enumerate(sub_args_list_list)
+        if pid > 0
+    ]
 
     # Start the processes.
     for proc in processes:
@@ -328,10 +319,10 @@ def parallelize(  # noqa: C901
         logger.addHandler(orig_handler)
 
     # Compute the first chunk in the main process.
-    sarr = np.zeros((len(processes)+1,), dtype=[('n_finished_tasks', np.int64)])
+    sarr = np.zeros((len(processes) + 1,), dtype=[('n_finished_tasks', np.int64)])
     result_list_0 = master_wrapper(
-        pbar, sarr, func, sub_args_list_list[0], squeue=squeue, rss=rss_list[0],
-        tl=tl_list[0])
+        pbar, sarr, func, sub_args_list_list[0], squeue=squeue, rss=rss_list[0], tl=tl_list[0]
+    )
 
     # Initialize logger.
     logger = get_logger(__name__)
@@ -358,15 +349,12 @@ def parallelize(  # noqa: C901
                 elif proc.exitcode != 0:
                     proc_died = True
         if proc_died:
-            raise RuntimeError(
-                f'Child process {proc.pid} did not return with 0! '
-                f'Exit code was {proc.exitcode}.')
+            raise RuntimeError(f'Child process {proc.pid} did not return with 0! Exit code was {proc.exitcode}.')
 
         pid_result_list_map[pid] = result_list
         if tl is not None:
             tl.join(proc_tl)
-        logger.debug(
-            f'Beginning of worker process (pid={pid}) log records.')
+        logger.debug(f'Beginning of worker process (pid={pid}) log records.')
         lqueue_end = False
         while not lqueue_end:
             record = lqueue_list[pid].get()
@@ -391,26 +379,22 @@ def parallelize(  # noqa: C901
     return result_list
 
 
-class IsParallelizable(
-        object,
-):
+class IsParallelizable:
     """Classifier class defining the ncpu property. Classes that derive from
     this class indicate, that they can make use of multi-processing on several
     CPUs at the same time.
     """
 
     def __init__(
-            self,
-            *args,
-            ncpu=None,
-            **kwargs,
+        self,
+        *args,
+        ncpu=None,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
         if not isinstance(self, HasConfig):
-            raise TypeError(
-                f'The class "{classname(self)}" is not derived from '
-                'skyllh.core.config.HasConfig!')
+            raise TypeError(f'The class "{classname(self)}" is not derived from skyllh.core.config.HasConfig!')
 
         self.ncpu = ncpu
 
@@ -426,9 +410,7 @@ class IsParallelizable(
     def ncpu(self, n):
         if n is not None:
             if not isinstance(n, int):
-                raise TypeError(
-                    'The ncpu property must be of type int!')
+                raise TypeError('The ncpu property must be of type int!')
             if n < 1:
-                raise ValueError(
-                    'The ncpu property must be >= 1!')
+                raise ValueError('The ncpu property must be >= 1!')
         self._ncpu = n

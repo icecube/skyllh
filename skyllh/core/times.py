@@ -1,25 +1,21 @@
-# -*- coding: utf-8 -*-
-
 import abc
 
 from skyllh.core.livetime import Livetime
 
 
 class TimeGenerationMethod(
-        object,
-        metaclass=abc.ABCMeta,
+    metaclass=abc.ABCMeta,
 ):
-    """Base class (type) for implementing a method to generate times.
-    """
+    """Base class (type) for implementing a method to generate times."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     @abc.abstractmethod
     def generate_times(
-            self,
-            rss,
-            size,
+        self,
+        rss,
+        size,
     ):
         """The ``generate_times`` method implements the actual generation of
         times, which is method dependent.
@@ -41,13 +37,14 @@ class TimeGenerationMethod(
 
 
 class LivetimeTimeGenerationMethod(
-        TimeGenerationMethod,
+    TimeGenerationMethod,
 ):
     """The LivetimeTimeGenerationMethod provides the method to generate times
     from a Livetime object. It will uniformely generate times that will coincide
     with the on-time intervals of the detector, by calling the `draw_ontimes`
     method of the Livetime class.
     """
+
     def __init__(self, livetime, **kwargs):
         """Creates a new LivetimeTimeGeneration instance.
 
@@ -62,22 +59,20 @@ class LivetimeTimeGenerationMethod(
 
     @property
     def livetime(self):
-        """The Livetime instance used to draw times from.
-        """
+        """The Livetime instance used to draw times from."""
         return self._livetime
 
     @livetime.setter
     def livetime(self, livetime):
         if not isinstance(livetime, Livetime):
-            raise TypeError(
-                'The livetime property must be an instance of Livetime!')
+            raise TypeError('The livetime property must be an instance of Livetime!')
         self._livetime = livetime
 
     def generate_times(
-            self,
-            rss,
-            size,
-            **kwargs,
+        self,
+        rss,
+        size,
+        **kwargs,
     ):
         """Generates `size` MJD times according to the detector on-times
         provided by the Livetime instance.
@@ -95,16 +90,12 @@ class LivetimeTimeGenerationMethod(
         times : ndarray
             The 1d (`size`,)-shaped numpy ndarray holding the generated times.
         """
-        times = self._livetime.draw_ontimes(
-            rss=rss,
-            size=size,
-            **kwargs)
+        times = self._livetime.draw_ontimes(rss=rss, size=size, **kwargs)
 
         return times
 
 
-class TimeGenerator(
-        object):
+class TimeGenerator:
     def __init__(self, method):
         """Creates a time generator instance with a given defined time
         generation method.
@@ -127,16 +118,14 @@ class TimeGenerator(
     @method.setter
     def method(self, method):
         if not isinstance(method, TimeGenerationMethod):
-            raise TypeError(
-                'The time generation method must be an instance of '
-                'TimeGenerationMethod!')
+            raise TypeError('The time generation method must be an instance of TimeGenerationMethod!')
         self._method = method
 
     def generate_times(
-            self,
-            rss,
-            size,
-            **kwargs,
+        self,
+        rss,
+        size,
+        **kwargs,
     ):
         """Generates ``size`` amount of times by calling the ``generate_times``
         method of the TimeGenerationMethod class.
@@ -157,9 +146,6 @@ class TimeGenerator(
         times : ndarray
             The 1d (``size``,)-shaped ndarray holding the generated times.
         """
-        times = self._method.generate_times(
-            rss=rss,
-            size=size,
-            **kwargs)
+        times = self._method.generate_times(rss=rss, size=size, **kwargs)
 
         return times

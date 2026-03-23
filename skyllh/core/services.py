@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
-
 from collections import (
     defaultdict,
 )
+
 import numpy as np
 
 from skyllh.core.dataset import (
@@ -21,31 +20,21 @@ from skyllh.core.source_hypo_grouping import (
 )
 
 
-class DetSigYieldService(
-        object):
+class DetSigYieldService:
     """This class provides a service to build and hold detector signal yield
     instances for multiple datasets and source hypothesis groups.
     """
 
-    def __init__(
-            self,
-            shg_mgr,
-            dataset_list,
-            data_list,
-            ppbar=None,
-            **kwargs):
-        """Creates a new DetSigYieldService instance.
-        """
-        super().__init__(
-            **kwargs)
+    def __init__(self, shg_mgr, dataset_list, data_list, ppbar=None, **kwargs):
+        """Creates a new DetSigYieldService instance."""
+        super().__init__(**kwargs)
 
         self._set_shg_mgr(shg_mgr)
 
         self.dataset_list = dataset_list
         self.data_list = data_list
 
-        self._arr = self.construct_detsigyield_array(
-            ppbar=ppbar)
+        self._arr = self.construct_detsigyield_array(ppbar=ppbar)
 
     @property
     def shg_mgr(self):
@@ -67,7 +56,8 @@ class DetSigYieldService(
             raise TypeError(
                 'The dataset_list property must be a sequence of Dataset '
                 'instances! '
-                f'Its current type is {classname(datasets)}!')
+                f'Its current type is {classname(datasets)}!'
+            )
         self._dataset_list = list(datasets)
 
     @property
@@ -83,7 +73,8 @@ class DetSigYieldService(
             raise TypeError(
                 'The data_list property must be a sequence of DatasetData '
                 'instances! '
-                f'Its current type is {classname(datas)}!')
+                f'Its current type is {classname(datas)}!'
+            )
         self._data_list = list(datas)
 
     @property
@@ -95,8 +86,7 @@ class DetSigYieldService(
 
     @property
     def n_datasets(self):
-        """(read-only) The number of datasets this service was created for.
-        """
+        """(read-only) The number of datasets this service was created for."""
         return self._arr.shape[0]
 
     @property
@@ -114,26 +104,26 @@ class DetSigYieldService(
             raise TypeError(
                 'The shg_mgr argument must be an instance of '
                 'SourceHypoGroupManager! '
-                f'Its current type is {classname(mgr)}!')
+                f'Its current type is {classname(mgr)}!'
+            )
 
         self._shg_mgr = mgr
 
     def change_shg_mgr(
-            self,
-            shg_mgr,
-            ppbar=None,
+        self,
+        shg_mgr,
+        ppbar=None,
     ):
         """Changes the instance of SourceHypoGroupManager of this service. This
         will also rebuild the detector signal yields.
         """
         self._set_shg_mgr(shg_mgr)
 
-        self._arr = self.construct_detsigyield_array(
-            ppbar=ppbar)
+        self._arr = self.construct_detsigyield_array(ppbar=ppbar)
 
     def get_builder_to_shgidxs_dict(
-            self,
-            ds_idx,
+        self,
+        ds_idx,
     ):
         """Creates a dictionary with the builder instance as key and the list of
         source hypo group indices to which the builder applies as value.
@@ -154,33 +144,28 @@ class DetSigYieldService(
         n_datasets = len(self._dataset_list)
 
         if ds_idx < 0 or ds_idx >= n_datasets:
-            raise ValueError(
-                f'The dataset index {ds_idx} must be within the range '
-                f'[0,{n_datasets-1}]!')
+            raise ValueError(f'The dataset index {ds_idx} must be within the range [0,{n_datasets - 1}]!')
 
         builder_shgidxs_dict = defaultdict(list)
-        for (g, shg) in enumerate(self._shg_mgr.shg_list):
-
+        for g, shg in enumerate(self._shg_mgr.shg_list):
             builder_list = shg.detsigyield_builder_list
             if (len(builder_list) != 1) and (len(builder_list) != n_datasets):
                 raise ValueError(
                     'The number of detector signal yield builders '
                     f'({len(builder_list)}) is not 1 and does not '
                     f'match the number of datasets ({n_datasets}) for the '
-                    f'{g}th source hypothesis group!')
+                    f'{g}th source hypothesis group!'
+                )
 
-            builder = (
-                builder_list[0] if len(builder_list) == 1 else
-                builder_list[ds_idx]
-            )
+            builder = builder_list[0] if len(builder_list) == 1 else builder_list[ds_idx]
 
             builder_shgidxs_dict[builder].append(g)
 
         return builder_shgidxs_dict
 
     def construct_detsigyield_array(
-            self,
-            ppbar=None,
+        self,
+        ppbar=None,
     ):
         """Creates a (N_datasets, N_source_hypo_groups)-shaped numpy ndarray of
         object holding the constructed DetSigYield instances.
@@ -204,24 +189,16 @@ class DetSigYieldService(
         """
         n_datasets = len(self._dataset_list)
 
-        detsigyield_arr = np.empty(
-            (n_datasets,
-             self._shg_mgr.n_src_hypo_groups),
-            dtype=object
-        )
+        detsigyield_arr = np.empty((n_datasets, self._shg_mgr.n_src_hypo_groups), dtype=object)
 
-        pbar = ProgressBar(
-            self._shg_mgr.n_src_hypo_groups * n_datasets,
-            parent=ppbar).start()
+        pbar = ProgressBar(self._shg_mgr.n_src_hypo_groups * n_datasets, parent=ppbar).start()
 
         shg_list = self.shg_mgr.shg_list
 
-        for (j, (dataset, data)) in enumerate(zip(self._dataset_list,
-                                                  self._data_list)):
-
+        for j, (dataset, data) in enumerate(zip(self._dataset_list, self._data_list, strict=True)):
             builder_to_shgidxs_dict = self.get_builder_to_shgidxs_dict(ds_idx=j)
 
-            for (builder, shgidxs) in builder_to_shgidxs_dict.items():
+            for builder, shgidxs in builder_to_shgidxs_dict.items():
                 factory = builder.get_detsigyield_construction_factory()
                 if factory is None:
                     # The builder does not provide a factory for DetSigYield
@@ -230,11 +207,7 @@ class DetSigYieldService(
                     for g in shgidxs:
                         shg = shg_list[g]
 
-                        detsigyield = builder.construct_detsigyield(
-                            dataset=dataset,
-                            data=data,
-                            shg=shg,
-                            ppbar=pbar)
+                        detsigyield = builder.construct_detsigyield(dataset=dataset, data=data, shg=shg, ppbar=pbar)
 
                         detsigyield_arr[j, g] = detsigyield
 
@@ -243,18 +216,11 @@ class DetSigYieldService(
                     # The builder provides a factory for the construction of
                     # several DetSigYield instances simultaneously, one for each
                     # flux model.
-                    shgs = [
-                        shg_list[g]
-                        for g in shgidxs
-                    ]
+                    shgs = [shg_list[g] for g in shgidxs]
 
-                    detsigyields = factory(
-                        dataset=dataset,
-                        data=data,
-                        shgs=shgs,
-                        ppbar=pbar)
+                    detsigyields = factory(dataset=dataset, data=data, shgs=shgs, ppbar=pbar)
 
-                    for (i, g) in enumerate(shgidxs):
+                    for i, g in enumerate(shgidxs):
                         detsigyield_arr[j, g] = detsigyields[i]
 
                     pbar.increment(len(detsigyields))
@@ -264,8 +230,7 @@ class DetSigYieldService(
         return detsigyield_arr
 
 
-class SrcDetSigYieldWeightsService(
-        object):
+class SrcDetSigYieldWeightsService:
     r"""This class provides a service for the source detector signal yield
     weights, which are the product of the source weights with the detector
     signal yield, denoted with :math:`a_{j,k}(\vec{p}_{\mathrm{s}_k})` in the
@@ -282,7 +247,7 @@ class SrcDetSigYieldWeightsService(
 
     @staticmethod
     def create_src_recarray_list_list(
-            detsigyield_service,
+        detsigyield_service,
     ):
         """Creates a list of numpy record ndarrays, one for each source
         hypothesis group suited for evaluating the detector signal yield
@@ -313,9 +278,7 @@ class SrcDetSigYieldWeightsService(
             src_recarray_list = []
             for shg_idx in range(n_shgs):
                 shg = shg_list[shg_idx]
-                src_recarray_list.append(
-                    detsigyield_service.arr[ds_idx][shg_idx].sources_to_recarray(
-                        shg.source_list))
+                src_recarray_list.append(detsigyield_service.arr[ds_idx][shg_idx].sources_to_recarray(shg.source_list))
 
             src_recarray_list_list.append(src_recarray_list)
 
@@ -323,7 +286,7 @@ class SrcDetSigYieldWeightsService(
 
     @staticmethod
     def create_src_weight_array_list(
-            shg_mgr,
+        shg_mgr,
     ):
         """Creates a list of numpy 1D ndarrays holding the source weights, one
         for each source hypothesis group.
@@ -340,16 +303,13 @@ class SrcDetSigYieldWeightsService(
             The list of 1D numpy ndarrays holding the source weights, one for
             each source hypothesis group.
         """
-        src_weight_array_list = [
-            np.array([src.weight for src in shg.source_list])
-            for shg in shg_mgr.shg_list
-        ]
+        src_weight_array_list = [np.array([src.weight for src in shg.source_list]) for shg in shg_mgr.shg_list]
         return src_weight_array_list
 
     def __init__(
-            self,
-            detsigyield_service,
-            **kwargs,
+        self,
+        detsigyield_service,
+        **kwargs,
     ):
         """Creates a new SrcDetSigYieldWeightsService instance.
 
@@ -361,20 +321,19 @@ class SrcDetSigYieldWeightsService(
             instances, one instance for each combination of dataset and source
             hypothesis group.
         """
-        super().__init__(
-            **kwargs)
+        super().__init__(**kwargs)
 
         self.detsigyield_service = detsigyield_service
 
         # Create the list of list of source record arrays for each combination
         # of dataset and source hypothesis group.
         self._src_recarray_list_list = type(self).create_src_recarray_list_list(
-            detsigyield_service=self._detsigyield_service)
+            detsigyield_service=self._detsigyield_service
+        )
 
         # Create the list of 1D ndarrays holding the source weights for each
         # source hypothesis group.
-        self._src_weight_array_list = type(self).create_src_weight_array_list(
-            shg_mgr=self._detsigyield_service.shg_mgr)
+        self._src_weight_array_list = type(self).create_src_weight_array_list(shg_mgr=self._detsigyield_service.shg_mgr)
 
         self._a_jk = None
         self._a_jk_grads = None
@@ -400,7 +359,8 @@ class SrcDetSigYieldWeightsService(
             raise TypeError(
                 'The detsigyield_service property must be an instance of '
                 'DetSigYieldService! '
-                f'Its current type is {classname(service)}!')
+                f'Its current type is {classname(service)}!'
+            )
         self._detsigyield_service = service
 
     @property
@@ -413,8 +373,7 @@ class SrcDetSigYieldWeightsService(
 
     @property
     def n_datasets(self):
-        """(read-only) The number of datasets this service was created for.
-        """
+        """(read-only) The number of datasets this service was created for."""
         return self._detsigyield_service.n_datasets
 
     @property
@@ -434,8 +393,8 @@ class SrcDetSigYieldWeightsService(
         return self._src_recarray_list_list
 
     def change_shg_mgr(
-            self,
-            shg_mgr,
+        self,
+        shg_mgr,
     ):
         """Re-creates the internal source numpy record arrays needed for the
         detector signal yield calculation.
@@ -448,17 +407,16 @@ class SrcDetSigYieldWeightsService(
         if id(shg_mgr) != id(self._detsigyield_service.shg_mgr):
             raise ValueError(
                 'The provides instance of SourceHypoGroupManager does not '
-                'match the instance of the detector signal yield service!')
+                'match the instance of the detector signal yield service!'
+            )
 
         self._src_recarray_list_list = type(self).create_src_recarray_list_list(
-            detsigyield_service=self._detsigyield_service)
+            detsigyield_service=self._detsigyield_service
+        )
 
-        self._src_weight_array_list = type(self).create_src_weight_array_list(
-            shg_mgr=self._detsigyield_service.shg_mgr)
+        self._src_weight_array_list = type(self).create_src_weight_array_list(shg_mgr=self._detsigyield_service.shg_mgr)
 
-    def calculate(
-            self,
-            src_params_recarray):
+    def calculate(self, src_params_recarray):
         """Calculates the source detector signal yield weights for each source
         and their derivative w.r.t. each global floating parameter. The result
         is stored internally as:
@@ -486,21 +444,20 @@ class SrcDetSigYieldWeightsService(
         shg_mgr = self._detsigyield_service.shg_mgr
 
         self._a_jk = np.empty(
-            (n_datasets, shg_mgr.n_sources,),
-            dtype=np.double)
+            (
+                n_datasets,
+                shg_mgr.n_sources,
+            ),
+            dtype=np.double,
+        )
 
-        self._a_jk_grads = defaultdict(
-            lambda: np.zeros(
-                (n_datasets, shg_mgr.n_sources),
-                dtype=np.double))
+        self._a_jk_grads = defaultdict(lambda: np.zeros((n_datasets, shg_mgr.n_sources), dtype=np.double))
 
         sidx = 0
-        for (shg_idx, (shg, src_weights)) in enumerate(zip(
-                shg_mgr.shg_list, self._src_weight_array_list)):
-
+        for shg_idx, (shg, src_weights) in enumerate(zip(shg_mgr.shg_list, self._src_weight_array_list, strict=True)):
             shg_n_src = shg.n_sources
 
-            shg_src_slice = slice(sidx, sidx+shg_n_src)
+            shg_src_slice = slice(sidx, sidx + shg_n_src)
 
             shg_src_params_recarray = src_params_recarray[shg_src_slice]
 
@@ -508,15 +465,12 @@ class SrcDetSigYieldWeightsService(
                 detsigyield = self._detsigyield_service.arr[ds_idx, shg_idx]
                 src_recarray = self._src_recarray_list_list[ds_idx][shg_idx]
 
-                (Yg, Yg_grads) = detsigyield(
-                    src_recarray=src_recarray,
-                    src_params_recarray=shg_src_params_recarray)
+                (Yg, Yg_grads) = detsigyield(src_recarray=src_recarray, src_params_recarray=shg_src_params_recarray)
 
                 self._a_jk[ds_idx][shg_src_slice] = src_weights * Yg
 
-                for gpidx in Yg_grads.keys():
-                    self._a_jk_grads[gpidx][ds_idx, shg_src_slice] =\
-                        src_weights * Yg_grads[gpidx]
+                for gpidx in Yg_grads:
+                    self._a_jk_grads[gpidx][ds_idx, shg_src_slice] = src_weights * Yg_grads[gpidx]
 
             sidx += shg_n_src
 
@@ -539,8 +493,7 @@ class SrcDetSigYieldWeightsService(
         return (self._a_jk, self._a_jk_grads)
 
 
-class DatasetSignalWeightFactorsService(
-        object):
+class DatasetSignalWeightFactorsService:
     r"""This class provides a service to calculates the dataset signal weight
     factors, :math:`f_j(\vec{p}_\mathrm{s})`, for each dataset.
     It utilizes the source detector signal yield weights
@@ -548,9 +501,7 @@ class DatasetSignalWeightFactorsService(
     :class:`~SrcDetSigYieldWeightsService` class.
     """
 
-    def __init__(
-            self,
-            src_detsigyield_weights_service):
+    def __init__(self, src_detsigyield_weights_service):
         r"""Creates a new DatasetSignalWeightFactors instance.
 
         Parameters
@@ -573,14 +524,13 @@ class DatasetSignalWeightFactorsService(
     def src_detsigyield_weights_service(self, service):
         if not isinstance(service, SrcDetSigYieldWeightsService):
             raise TypeError(
-                'The src_detsigyield_weights_service property must be an '
-                'instance of SrcDetSigYieldWeightsService!')
+                'The src_detsigyield_weights_service property must be an instance of SrcDetSigYieldWeightsService!'
+            )
         self._src_detsigyield_weights_service = service
 
     @property
     def n_datasets(self):
-        """(read-only) The number of datasets.
-        """
+        """(read-only) The number of datasets."""
         return self._src_detsigyield_weights_service.n_datasets
 
     def calculate(self):
@@ -606,7 +556,7 @@ class DatasetSignalWeightFactorsService(
         # Calculate the derivative of f_j w.r.t. all floating parameters present
         # in the a_jk_grads using the quotient rule of differentiation.
         self._f_j_grads = dict()
-        for gpidx in a_jk_grads.keys():
+        for gpidx in a_jk_grads:
             # a is a scalar.
             # a_j is a (N_datasets)-shaped ndarray.
             # a_jk_grads is a dict of length N_gfl_params with values of

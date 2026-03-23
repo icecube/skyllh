@@ -18,12 +18,11 @@ from skyllh.core.minimizer import (
     MinimizerImpl,
 )
 
-
 logger = get_logger(__name__)
 
 
 class FuncWithGradsFunctor(
-        HasConfig,
+    HasConfig,
 ):
     """Helper class to evaluate the LLH function that returns the function value
     and its gradients in two seperate calls, one for the LLH function value and
@@ -31,10 +30,10 @@ class FuncWithGradsFunctor(
     """
 
     def __init__(
-            self,
-            func,
-            func_args=None,
-            **kwargs,
+        self,
+        func,
+        func_args=None,
+        **kwargs,
     ):
         """Initializes a new functor instance for the given function ``func``.
 
@@ -49,8 +48,7 @@ class FuncWithGradsFunctor(
         func_args : tuple | None
             The optional positional arguments for the function ``func``.
         """
-        super().__init__(
-            **kwargs)
+        super().__init__(**kwargs)
 
         if func_args is None:
             func_args = tuple()
@@ -72,18 +70,15 @@ class FuncWithGradsFunctor(
         else:
             if np.all(x == self._cache_x):
                 if tracing:
-                    logger.debug(
-                        f'call_func(x={x}): Return cached f={self._cache_f}')
+                    logger.debug(f'call_func(x={x}): Return cached f={self._cache_f}')
                 return self._cache_f
             else:
                 np.copyto(self._cache_x, x)
 
-        (self._cache_f, self._cache_grads) = self._func(
-            x, *self._func_args)
+        (self._cache_f, self._cache_grads) = self._func(x, *self._func_args)
 
         if tracing:
-            logger.debug(
-                f'call_func(x={x}): Return calculated f={self._cache_f}')
+            logger.debug(f'call_func(x={x}): Return calculated f={self._cache_f}')
         return self._cache_f
 
     def get_grads(self, x):
@@ -94,34 +89,28 @@ class FuncWithGradsFunctor(
         else:
             if np.all(x == self._cache_x):
                 if tracing:
-                    logger.debug(
-                        f'call_grads(x={x}): Return cached '
-                        f'grads={self._cache_grads}')
+                    logger.debug(f'call_grads(x={x}): Return cached grads={self._cache_grads}')
                 return self._cache_grads
             else:
                 np.copyto(self._cache_x, x)
 
-        (self._cache_f, self._cache_grads) = self._func(
-            x, *self._func_args)
+        (self._cache_f, self._cache_grads) = self._func(x, *self._func_args)
 
         if tracing:
-            logger.debug(
-                f'call_grads(x={x}): Return calculated '
-                f'grads={self._cache_grads}')
+            logger.debug(f'call_grads(x={x}): Return calculated grads={self._cache_grads}')
         return self._cache_grads
 
 
 class IMinuitMinimizerImpl(
-        MinimizerImpl,
+    MinimizerImpl,
 ):
-    """The SkyLLH minimizer implementation that utilizes the iminuit minimizer.
-    """
+    """The SkyLLH minimizer implementation that utilizes the iminuit minimizer."""
 
     @tool.requires('iminuit')
     def __init__(
-            self,
-            ftol=1e-6,
-            **kwargs,
+        self,
+        ftol=1e-6,
+        **kwargs,
     ):
         """Creates a new IMinuit minimizer instance to minimize a given
         function.
@@ -136,12 +125,12 @@ class IMinuitMinimizerImpl(
         self._ftol = ftol
 
     def minimize(
-            self,
-            initials,
-            bounds,
-            func,
-            func_args=None,
-            **kwargs,
+        self,
+        initials,
+        bounds,
+        func,
+        func_args=None,
+        **kwargs,
     ):
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials`` and within the given parameter bounds
@@ -203,30 +192,15 @@ class IMinuitMinimizerImpl(
         if func_provides_grads:
             # The function func returns the function value and its gradients,
             # so we need to use the FuncWithGradsFunctor helper class.
-            functor = FuncWithGradsFunctor(
-                cfg=self._cfg,
-                func=func,
-                func_args=func_args)
+            functor = FuncWithGradsFunctor(cfg=self._cfg, func=func, func_args=func_args)
 
             res = iminuit.minimize(
-                fun=functor.get_f,
-                x0=initials,
-                bounds=bounds,
-                jac=functor.get_grads,
-                tol=self._ftol,
-                **kwargs
+                fun=functor.get_f, x0=initials, bounds=bounds, jac=functor.get_grads, tol=self._ftol, **kwargs
             )
         else:
             # The function func returns only the function value, so we can use
             # the
-            res = iminuit.minimize(
-                func,
-                initials,
-                bounds=bounds,
-                args=func_args,
-                tol=self._ftol,
-                **kwargs
-            )
+            res = iminuit.minimize(func, initials, bounds=bounds, args=func_args, tol=self._ftol, **kwargs)
 
         return (res.x, res.fun, res)
 
