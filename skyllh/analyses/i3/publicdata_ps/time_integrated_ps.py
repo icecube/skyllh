@@ -35,7 +35,7 @@ from skyllh.core.background_generator import (
 from skyllh.core.config import (
     Config,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.event_selection import (
@@ -118,13 +118,6 @@ from skyllh.i3.backgroundpdf import (
 )
 from skyllh.i3.config import (
     add_icecube_specific_analysis_required_data_fields,
-)
-
-from skyllh.scripting.argparser import (
-    create_argparser,
-)
-from skyllh.scripting.logging import (
-    setup_logging,
 )
 
 
@@ -289,7 +282,7 @@ def create_analysis(
 
     # Define the fit parameter gamma.
     if gamma_max > 4.0:
-        logger.warn(
+        logger.warning(
             'You are allowing `gamma` values larger than 4.0. '
             'For such soft spectra, we cannot guarantee the correct '
             'behaviour of the energy PDF.')
@@ -465,6 +458,14 @@ def create_analysis(
 
 
 if __name__ == '__main__':
+
+    from skyllh.scripting.argparser import (
+        create_argparser,
+    )
+    from skyllh.core.logging import (
+        setup_logging,
+    )
+
     parser = create_argparser(
         description='Calculates TS for a given source location using the '
                     '10-year public point source sample.',
@@ -498,10 +499,11 @@ if __name__ == '__main__':
     cfg.set_enable_tracing(args.enable_tracing)
     cfg.set_ncpu(args.n_cpu)
 
-    setup_logging(
+    logger = setup_logging(
         cfg=cfg,
-        script_logger_name=__name__,
-        debug_pathfilename=args.debug_logfile)
+        name=__name__,
+        log_level='info',
+        log_file=args.debug_logfile)
 
     sample_seasons = [
         ('PublicData_14y_ps', 'IC40'),
@@ -542,12 +544,12 @@ if __name__ == '__main__':
         (TS, param_dict, status) = ana.unblind(
             minimizer_rss=rss)
 
-    print(f'TS = {TS:g}')
-    print(f'ns_fit = {param_dict["ns"]:g}')
-    print(f'gamma_fit = {param_dict["gamma"]:g}')
-    print(f'minimizer status = {status}')
+    logger.debug(f'TS = {TS:g}')
+    logger.debug(f'ns_fit = {param_dict["ns"]:g}')
+    logger.debug(f'gamma_fit = {param_dict["gamma"]:g}')
+    logger.debug(f'minimizer status = {status}')
 
-    print(tl)
+    logger.info(f'TimeLord: {tl}')
 
     tl = TimeLord()
     rss = RandomStateService(seed=1)
@@ -559,5 +561,5 @@ if __name__ == '__main__':
         pathfilename=None,
         ncpu=1,
         tl=tl)
-    print(f'trials: {trials}')
-    print(tl)
+    logger.info(f'trials: {trials}')
+    logger.info(f'TimeLord: {tl}')

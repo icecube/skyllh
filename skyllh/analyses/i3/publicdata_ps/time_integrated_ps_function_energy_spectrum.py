@@ -38,7 +38,7 @@ from skyllh.core.config import (
     Config,
 )
 
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.event_selection import (
@@ -114,22 +114,11 @@ from skyllh.i3.config import (
     add_icecube_specific_analysis_required_data_fields,
 )
 
-from skyllh.datasets.i3 import (
-    data_samples,
-)
-
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
 )
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
-)
-
-from skyllh.scripting.argparser import (
-    create_argparser,
-)
-from skyllh.scripting.logging import (
-    setup_logging,
 )
 
 cfg = Config()

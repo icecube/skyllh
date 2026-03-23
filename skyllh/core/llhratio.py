@@ -11,7 +11,7 @@ import numpy as np
 from skyllh.core.config import (
     HasConfig,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.minimizer import (
@@ -185,7 +185,7 @@ class LLHRatio(
             The dictionary with status information about the maximization
             process, i.e. from the minimizer.
         """
-        tracing = self._cfg['debugging']['enable_tracing']
+        tracing = self._cfg['logging']['enable_tracing']
 
         # Define the negative llhratio function, that will get minimized.
         self_evaluate = self.evaluate
@@ -662,7 +662,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             The (N_fitparams,)-shaped numpy ndarray holding the gradient value
             of log_lambda for each fit parameter.
         """
-        tracing = self._cfg['debugging']['enable_tracing']
+        tracing = self._cfg['logging']['enable_tracing']
 
         # Get the number of selected events.
         Nprime = len(Xi)
@@ -825,7 +825,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(
             The (N_fitparams,)-shaped 1D numpy ndarray holding the gradient
             value for each global fit parameter.
         """
-        tracing = self._cfg['debugging']['enable_tracing']
+        tracing = self._cfg['logging']['enable_tracing']
 
         if src_params_recarray is None:
             src_params_recarray = self._pmm.create_src_params_recarray(
@@ -1111,7 +1111,7 @@ class MultiDatasetTCLLHRatio(
             the composite log-likelihood-ratio function for each global fit
             parameter.
         """
-        tracing = self._cfg['debugging']['enable_tracing']
+        tracing = self._cfg['logging']['enable_tracing']
 
         if src_params_recarray is None:
             src_params_recarray = self._pmm.create_src_params_recarray(

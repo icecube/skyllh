@@ -11,7 +11,7 @@ from skyllh.core.dataset import (
     Dataset,
     DatasetData,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.py import (

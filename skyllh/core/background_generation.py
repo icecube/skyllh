@@ -11,7 +11,7 @@ from skyllh.core.datafields import (
     DataFields,
     DataFieldStages as DFS,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.event_selection import (
@@ -391,7 +391,7 @@ class MCDataSamplingBkgGenMethod(
             background events. The number of events can be less than `n_bkg`
             if an event selection method is used.
         """
-        tracing = self._cfg['debugging']['enable_tracing']
+        tracing = self._cfg['logging']['enable_tracing']
 
         # Check if the data set has changed. In that case need to get new
         # background probabilities for each monte-carlo event and a new mean

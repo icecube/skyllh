@@ -35,11 +35,8 @@ from skyllh.core.analysis import (
 from skyllh.core.config import (
     Config,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
-    setup_logger,
-    setup_console_handler,
-    setup_file_handler,
 )
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
@@ -414,10 +411,17 @@ def create_analysis(
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(
+
+    from skyllh.scripting.argparser import (
+        create_argparser,
+    )
+    from skyllh.core.logging import (
+        setup_logging,
+    )
+
+    p = create_argparser(
         description='Calculates TS for a given source location using the '
         '10-year public point source sample.',
-        formatter_class=argparse.RawTextHelpFormatter
     )
     p.add_argument(
         '--dec',
@@ -437,43 +441,17 @@ if __name__ == '__main__':
         type=float,
         help='The seed value of the gamma fit parameter.'
     )
-    p.add_argument(
-        '--data_base_path',
-        default=None,
-        type=str,
-        help='The base path to the data samples (default=None)'
-    )
-    p.add_argument(
-        '--seed',
-        default=1,
-        type=int,
-        help='The random number generator seed for the likelihood '
-             'minimization.'
-    )
-    p.add_argument(
-        '--ncpu',
-        default=1,
-        type=int,
-        help='The number of CPUs to utilize where parallelization is possible.'
-    )
     args = p.parse_args()
 
-    # Setup `skyllh` package logging.
-    # To optimize logging set the logging level to the lowest handling level.
-    setup_logger('skyllh', logging.DEBUG)
-    log_format = '%(asctime)s %(processName)s %(name)s %(levelname)s: '\
-                 '%(message)s'
-    setup_console_handler(
-        'skyllh',
-        logging.INFO, log_format)
-    setup_file_handler(
-        'skyllh',
-        'debug.log',
-        log_level=logging.DEBUG,
-        log_format=log_format)
+    cfg = Config.from_yaml(args.config)
+    cfg.set_enable_tracing(args.enable_tracing)
+    cfg.set_ncpu(args.n_cpu)
 
-    cfg = Config()
-    cfg.set_ncpu(args.ncpu)
+    logger = setup_logging(
+        cfg=cfg,
+        name=__name__,
+        log_level='info',
+        log_file=args.debug_logfile)
 
     sample_seasons = [
         # ('PublicData_10y_ps', 'IC40'),
@@ -495,7 +473,7 @@ if __name__ == '__main__':
     rss = RandomStateService(args.seed)
     # Define the point source.
     source = PointLikeSource(np.deg2rad(args.ra), np.deg2rad(args.dec))
-    print('source: ', str(source))
+    logger.info('source: %s' % (str(source)))
 
     tl = TimeLord()
 
@@ -509,8 +487,8 @@ if __name__ == '__main__':
     with tl.task_timer('Unblinding data.'):
         (TS, fitparam_dict, status) = ana.unblind(rss)
 
-    print('TS = %g' % (TS))
-    print('ns_fit = %g' % (fitparam_dict['ns']))
-    print('gamma_fit = %g' % (fitparam_dict['gamma']))
+    logger.debug('TS = %g' % (TS))
+    logger.debug('ns_fit = %g' % (fitparam_dict['ns']))
+    logger.debug('gamma_fit = %g' % (fitparam_dict['gamma']))
 
-    print(tl)
+    logger.info(f'TimeLord: {tl}')

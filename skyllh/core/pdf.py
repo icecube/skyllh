@@ -32,7 +32,7 @@ from skyllh.core.py import (
     issequenceof,
     make_dict_hash,
 )
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.flux_model import (
