@@ -14,9 +14,6 @@ from skyllh.core.binning import (
 from skyllh.core.config import (
     HasConfig,
 )
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.display import (
     INDENTATION_WIDTH,
 )
@@ -25,6 +22,9 @@ from skyllh.core.flux_model import (
 )
 from skyllh.core.livetime import (
     Livetime,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.parameters import (
     ParameterGrid,

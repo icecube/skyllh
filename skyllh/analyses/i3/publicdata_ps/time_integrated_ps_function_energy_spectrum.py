@@ -33,15 +33,15 @@ from skyllh.core.background_generator import (
 from skyllh.core.config import (
     Config,
 )
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
 from skyllh.core.flux_model import (
     EpeakFunctionEnergyProfile,
     SteadyPointlikeFFM,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.minimizer import (
     LBFGSMinimizerImpl,

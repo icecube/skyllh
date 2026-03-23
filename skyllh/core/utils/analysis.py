@@ -1,5 +1,4 @@
 import itertools
-import logging
 import os.path
 from os import (
     makedirs,
@@ -23,6 +22,9 @@ except Exception:
 else:
     IMINUIT_LOADED = True
 
+from skyllh.core.logging import (
+    get_logger,
+)
 from skyllh.core.progressbar import (
     ProgressBar,
 )
@@ -454,7 +456,7 @@ def estimate_mean_nsignal_for_ts_quantile(
     mu_err : None
         Error estimate needs to be implemented.
     """
-    logger = logging.getLogger(__name__)
+    logger = get_logger(__name__)
 
     n_total_generated_trials = 0
 
@@ -1120,7 +1122,7 @@ def generate_mu_of_p_spline_interpolation(
     spline : callable
         The spline function mu(p).
     """
-    logger = logging.getLogger(__name__)
+    logger = get_logger(__name__)
 
     n_total_generated_trials = 0
 

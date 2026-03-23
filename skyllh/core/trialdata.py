@@ -10,7 +10,7 @@ from collections import OrderedDict
 import numpy as np
 
 from skyllh.core import display as dsp
-from skyllh.core.debugging import (
+from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.py import (

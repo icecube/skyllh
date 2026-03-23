@@ -7,12 +7,12 @@ import numpy as np
 from skyllh.core import (
     tool,
 )
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
     Linear1DGridManifoldInterpolationMethod,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.pdf import (
     PDF,

@@ -35,9 +35,6 @@ from skyllh.core.backgroundpdf import (
 from skyllh.core.config import (
     Config,
 )
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
@@ -49,6 +46,9 @@ from skyllh.core.flux_model import (
     GaussianTimeFluxProfile,
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.minimizer import (
     LBFGSMinimizerImpl,
@@ -130,12 +130,6 @@ from skyllh.i3.livetime import (
 )
 from skyllh.i3.scrambling import (
     I3SeasonalVariationTimeScramblingMethod,
-)
-from skyllh.scripting.argparser import (
-    create_argparser,
-)
-from skyllh.scripting.logging import (
-    setup_logging,
 )
 
 TXS_0506_PLUS056_SOURCE = PointLikeSource(name='TXS 0506+056', ra=np.deg2rad(77.3581851), dec=np.deg2rad(5.69314828))
@@ -854,7 +848,7 @@ def create_analysis(
 
     # Define the fit parameter gamma.
     if gamma_max > 4.0:
-        logger.warn(
+        logger.warning(
             'You are allowing `gamma` values larger than 4.0. '
             'For such soft spectra, we cannot guarantee the correct '
             'behaviour of the energy PDF.'
@@ -1023,6 +1017,13 @@ def create_analysis(
 
 
 if __name__ == '__main__':
+    from skyllh.core.logging import (
+        setup_logging,
+    )
+    from skyllh.scripting.argparser import (
+        create_argparser,
+    )
+
     parser = create_argparser(
         description='Calculates TS for a given source location using the '
         '10-year public point source sample assuming a signal '
@@ -1041,7 +1042,7 @@ if __name__ == '__main__':
     cfg.set_enable_tracing(args.enable_tracing)
     cfg.set_ncpu(args.n_cpu)
 
-    setup_logging(cfg=cfg, script_logger_name=__name__, debug_pathfilename=args.debug_logfile)
+    logger = setup_logging(cfg=cfg, name=__name__, log_level='info', log_file=args.debug_logfile)
 
     sample_seasons = [
         ('PublicData_10y_ps', 'IC86_II-VII'),
@@ -1058,7 +1059,7 @@ if __name__ == '__main__':
 
     # Define the point source.
     source = PointLikeSource(name='My Point-Like-Source', ra=np.deg2rad(args.ra), dec=np.deg2rad(args.dec))
-    print(f'source: {source}')
+    logger.info(f'source: {source}')
 
     tl = TimeLord()
 
@@ -1075,17 +1076,17 @@ if __name__ == '__main__':
     with tl.task_timer('Unblinding data.'):
         (TS, param_dict, status) = ana.unblind(minimizer_rss=rss)
 
-    print(f'TS = {TS:g}')
-    print(f'ns_fit = {param_dict["ns"]:g}')
-    print(f'gamma_fit = {param_dict["gamma"]:g}')
-    print(f'minimizer status = {status}')
+    logger.debug(f'TS = {TS:g}')
+    logger.debug(f'ns_fit = {param_dict["ns"]:g}')
+    logger.debug(f'gamma_fit = {param_dict["gamma"]:g}')
+    logger.debug(f'minimizer status = {status}')
 
-    print(tl)
+    logger.info(f'TimeLord: {tl}')
 
     tl = TimeLord()
     rss = RandomStateService(seed=1)
     (_, _, _, trials) = create_trial_data_file(
         ana=ana, rss=rss, n_trials=10, mean_n_sig=0, pathfilename=None, ncpu=1, tl=tl
     )
-    print(f'trials: {trials}')
-    print(tl)
+    logger.info(f'trials: {trials}')
+    logger.info(f'TimeLord: {tl}')
