@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "versioneer"]
+requires = ["setuptools >= 77.0.3", "versioneer[toml]"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -51,6 +51,13 @@ docs = [
     "sphinxcontrib-apidoc",
     "sphinx-multiversion",
 ]
+extras = [
+    "iminuit",
+    "pyarrow",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "skyllh.__version__"}
 
 [tool.versioneer]
 VCS = "git"
