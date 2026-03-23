@@ -1,4 +1,3 @@
-import logging
 import socket
 
 from skyllh.cluster.commands import (
@@ -8,6 +7,9 @@ from skyllh.cluster.commands import (
     RegisterCN,
     ShutdownCN,
     receive_command_from_socket,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 
 
@@ -70,7 +72,7 @@ class MasterNode:
         self.cn_registry = dict()
 
     def register_compute_nodes(self, n_cn=10, master_port=9999, blocksize=2048):
-        logger = logging.getLogger(__name__)
+        logger = get_logger(__name__)
 
         logger.debug('Clearing the CN registry')
         self.clear_cn_registry()

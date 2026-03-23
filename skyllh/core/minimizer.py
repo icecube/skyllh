@@ -4,13 +4,15 @@ a function.
 """
 
 import abc
-import logging
 
 import numpy as np
 import scipy.optimize
 
 from skyllh.core.config import (
     HasConfig,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.parameters import (
     ParameterSet,
@@ -19,7 +21,7 @@ from skyllh.core.py import (
     classname,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MinimizerImpl(
@@ -237,7 +239,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
             bounds = None
 
         if (bounds is not None) and (not method_supports_bounds):
-            logger.warn(
+            logger.warning(
                 f'Selected minimization method "{self._method}" does not support bounds. Continue at your own risk!'
             )
             bounds = None

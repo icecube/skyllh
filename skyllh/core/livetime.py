@@ -301,7 +301,7 @@ class Livetime:
         )
 
         if not issequence(mjd):
-            return np.asscalar(livetimes)
+            return livetimes.item()
 
         return livetimes
 

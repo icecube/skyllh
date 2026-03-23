@@ -12,14 +12,14 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     psi_to_dec_and_ra,
 )
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.flux_model import (
     TimeFluxProfile,
 )
 from skyllh.core.livetime import (
     Livetime,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.py import (
     classname,
@@ -320,7 +320,7 @@ class PDDatasetSignalGenerator(
             to cut.
         """
         if cut_sindec is None:
-            logger.warn('No `cut_sindec` has been specified. The energy cut will be applied in [-90, 90] deg.')
+            logger.warning('No `cut_sindec` has been specified. The energy cut will be applied in [-90, 90] deg.')
             cut_sindec = np.sin(np.radians(90.1))
 
         filter_mask = np.logical_and(events['sin_dec'] < cut_sindec, events['log_energy'] < spline(events['sin_dec']))

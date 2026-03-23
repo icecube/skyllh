@@ -13,11 +13,11 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.core.binning import (
     get_bincenters_from_binedges,
 )
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.flux_model import (
     FactorizedFluxModel,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.multiproc import (
     IsParallelizable,
@@ -286,7 +286,7 @@ class PDSignalEnergyPDFSet(
         self._logger.debug(f'det_prob = {det_prob}, sum = {np.sum(det_prob)}')
 
         if not np.isclose(np.sum(det_prob), 1):
-            self._logger.warn(f'The sum of the detection probabilities is not unity! It is {np.sum(det_prob)}.')
+            self._logger.warning(f'The sum of the detection probabilities is not unity! It is {np.sum(det_prob)}.')
 
         psi_edges_bw = sm.psi_upper_edges - sm.psi_lower_edges
         ang_err_bw = sm.ang_err_upper_edges - sm.ang_err_lower_edges
@@ -307,7 +307,7 @@ class PDSignalEnergyPDFSet(
                 true_enu_binedges_lower, true_enu_binedges_upper
             ) / my_fluxmodel.energy_profile.get_integral(true_enu_binedges[0], true_enu_binedges[-1])
             if not np.isclose(np.sum(flux_prob), 1):
-                self._logger.warn(f'The sum of the flux probabilities is not unity! It is {np.sum(flux_prob)}.')
+                self._logger.warning(f'The sum of the flux probabilities is not unity! It is {np.sum(flux_prob)}.')
 
             self._logger.debug(f'flux_prob = {flux_prob}, sum = {np.sum(flux_prob)}')
 
@@ -334,7 +334,7 @@ class PDSignalEnergyPDFSet(
 
                 # Check that the reco energy PDF is not all zeros
                 if np.sum(f_e) == 0:
-                    self._logger.warn(
+                    self._logger.warning(
                         'There is no distribution of reconstructed energies '
                         f'for true neutrino energy {sm.log10_true_enu_binedges[true_e_idx]}. Assigning a sequence of '
                         'zeros.'
