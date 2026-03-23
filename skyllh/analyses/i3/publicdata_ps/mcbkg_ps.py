@@ -412,7 +412,6 @@ def create_analysis(
 
 if __name__ == '__main__':
 
-
     from skyllh.scripting.argparser import (
         create_argparser,
     )
@@ -448,9 +447,10 @@ if __name__ == '__main__':
     cfg.set_enable_tracing(args.enable_tracing)
     cfg.set_ncpu(args.n_cpu)
 
-    setup_logging(
+    logger = setup_logging(
         cfg=cfg,
         name=__name__,
+        log_level='info',
         log_file=args.debug_logfile)
 
     sample_seasons = [
@@ -473,7 +473,7 @@ if __name__ == '__main__':
     rss = RandomStateService(args.seed)
     # Define the point source.
     source = PointLikeSource(np.deg2rad(args.ra), np.deg2rad(args.dec))
-    print('source: ', str(source))
+    logger.info('source: %s' % (str(source)))
 
     tl = TimeLord()
 
@@ -487,8 +487,8 @@ if __name__ == '__main__':
     with tl.task_timer('Unblinding data.'):
         (TS, fitparam_dict, status) = ana.unblind(rss)
 
-    print('TS = %g' % (TS))
-    print('ns_fit = %g' % (fitparam_dict['ns']))
-    print('gamma_fit = %g' % (fitparam_dict['gamma']))
+    logger.debug('TS = %g' % (TS))
+    logger.debug('ns_fit = %g' % (fitparam_dict['ns']))
+    logger.debug('gamma_fit = %g' % (fitparam_dict['gamma']))
 
-    print(tl)
+    logger.info(f'TimeLord: {tl}')

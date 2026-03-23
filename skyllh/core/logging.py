@@ -112,7 +112,7 @@ def setup_logger(
     """
     logger = logging.getLogger(name)
     
-    cfg_log_level = cfg['debugging'].get('log_level', logging.INFO)
+    cfg_log_level = cfg['logging'].get('log_level', logging.INFO)
     resolved_log_level = _resolve_log_level(
         level=log_level,
         default=_resolve_log_level(cfg_log_level, default=logging.INFO))
@@ -121,7 +121,7 @@ def setup_logger(
     logger.propagate = propagate
 
     if log_format is None:
-        log_format = cfg["debugging"]["log_format"]
+        log_format = cfg["logging"]["log_format"]
     formatter = logging.Formatter(log_format)
 
     if clear_existing_handlers:
@@ -182,6 +182,7 @@ def setup_logging(
         name,
         log_format=None,
         log_level=None,
+        console=True,
         log_file=None,
         reconfigure=False):
     """Initializes package and script loggers and returns the script logger.
@@ -194,10 +195,12 @@ def setup_logging(
         The name of the user-defined logger to set up.
     log_format : str | None
         The format template of the log message. If ``None``, the format
-        is taken from ``cfg['debugging']['log_format']``.
+        is taken from ``cfg['logging']['log_format']``.
     log_level : int | str | None
         The log level of the loggers. If ``None``, it is taken from the
         configuration.
+    console : bool
+        Whether to set up console handlers for the loggers. Default: True.
     log_file : str | None
         If not ``None``, a file handler for log messages will be installed
         for both loggers using this path.
@@ -213,14 +216,14 @@ def setup_logging(
         The logger instance specified by ``name``.
     """
     if log_format is None:
-        log_format = cfg['debugging']['log_format']
+        log_format = cfg['logging']['log_format']
 
     setup_logger(
         cfg=cfg,
         name='skyllh',
         log_level=log_level,
         log_format=log_format,
-        console=True,
+        console=console,
         log_file=log_file,
         clear_existing_handlers=reconfigure)
 
@@ -229,7 +232,7 @@ def setup_logging(
         name=name,
         log_level=log_level,
         log_format=log_format,
-        console=True,
+        console=console,
         log_file=log_file,
         clear_existing_handlers=reconfigure)
 

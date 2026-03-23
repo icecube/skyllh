@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import numpy as np
 
-from skyllh.core.utils.analysis import (
-    estimate_discovery_potential,
-    estimate_sensitivity,
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.progressbar import (
     ProgressBar,
 )
 from skyllh.core.source_model import (
     PointLikeSource,
+)
+from skyllh.core.utils.analysis import (
+    estimate_discovery_potential,
+    estimate_sensitivity,
 )
 
 
@@ -64,7 +66,7 @@ def generate_ps_sin_dec_h0_ts_values(
         The numpy ndarray holding the null-hypothesis ts values for all
         sin(dec) values and iterations.
     """
-    logger = logging.getLogger(__name__)
+    logger = get_logger(__name__)
 
     sin_dec_arr = np.linspace(
         sin_dec_min, sin_dec_max,
@@ -177,7 +179,7 @@ def estimate_ps_sin_dec_sensitivity_curve(
         The ndarray holding the scaling factor the reference flux needs to get
         scaled to obtain the flux for the estimated sensitivity.
     """
-    logger = logging.getLogger(__name__)
+    logger = get_logger(__name__)
 
     mu_min_arr = np.repeat(mu_min, len(sin_dec_arr))
     mu_max_arr = np.repeat(mu_max, len(sin_dec_arr))

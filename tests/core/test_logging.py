@@ -13,7 +13,7 @@ class SetupLoggingTestCase(unittest.TestCase):
     def setUp(self):
         # Configure a base log_format for testing
         self.cfg = {
-            "debugging": {
+            "logging": {
                 "log_level": "INFO",
                 "log_format": "%(levelname)s:%(name)s:%(message)s",
             },
@@ -52,6 +52,7 @@ class SetupLoggingTestCase(unittest.TestCase):
             cfg=self.cfg,
             name=self.user_logger_name,
             log_level="INFO",
+            console=True,
             reconfigure=True,
         )
 
@@ -70,7 +71,7 @@ class SetupLoggingTestCase(unittest.TestCase):
         self.assertIn("INFO:skyllh.tests.setup_logging:hello", stream.getvalue())
 
     def test_log_level_from_config(self):
-        self.cfg["debugging"]["log_level"] = "WARNING"
+        self.cfg["logging"]["log_level"] = "WARNING"
         stream = io.StringIO()
 
         logger = setup_logging(

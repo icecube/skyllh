@@ -3,13 +3,15 @@ The minimizer module provides functionality for the minimization process of
 a function.
 """
 import abc
-import logging
 import scipy.optimize
 
 import numpy as np
 
 from skyllh.core.config import (
     HasConfig,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.parameters import (
     ParameterSet,
@@ -19,7 +21,7 @@ from skyllh.core.py import (
 )
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MinimizerImpl(

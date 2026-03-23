@@ -114,10 +114,6 @@ from skyllh.i3.config import (
     add_icecube_specific_analysis_required_data_fields,
 )
 
-from skyllh.datasets.i3 import (
-    data_samples,
-)
-
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
 )

@@ -499,9 +499,10 @@ if __name__ == '__main__':
     cfg.set_enable_tracing(args.enable_tracing)
     cfg.set_ncpu(args.n_cpu)
 
-    setup_logging(
+    logger = setup_logging(
         cfg=cfg,
         name=__name__,
+        log_level='info',
         log_file=args.debug_logfile)
 
     sample_seasons = [
@@ -543,12 +544,12 @@ if __name__ == '__main__':
         (TS, param_dict, status) = ana.unblind(
             minimizer_rss=rss)
 
-    print(f'TS = {TS:g}')
-    print(f'ns_fit = {param_dict["ns"]:g}')
-    print(f'gamma_fit = {param_dict["gamma"]:g}')
-    print(f'minimizer status = {status}')
+    logger.debug(f'TS = {TS:g}')
+    logger.debug(f'ns_fit = {param_dict["ns"]:g}')
+    logger.debug(f'gamma_fit = {param_dict["gamma"]:g}')
+    logger.debug(f'minimizer status = {status}')
 
-    print(tl)
+    logger.info(f'TimeLord: {tl}')
 
     tl = TimeLord()
     rss = RandomStateService(seed=1)
@@ -560,5 +561,5 @@ if __name__ == '__main__':
         pathfilename=None,
         ncpu=1,
         tl=tl)
-    print(f'trials: {trials}')
-    print(tl)
+    logger.info(f'trials: {trials}')
+    logger.info(f'TimeLord: {tl}')

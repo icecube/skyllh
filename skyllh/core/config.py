@@ -36,7 +36,7 @@ _BASECONFIG = {
         # specified.
         'ncpu': None,
     },
-    'debugging': {
+    'logging': {
         # The log level of the loggers. The default is 'INFO'
         # (equivalent to logging.INFO).
         # Values are the standard log levels defined in the Python logging
@@ -183,7 +183,7 @@ class Config(
     def is_tracing_enabled(self):
         """``True``, if tracing mode is enabled, ``False`` otherwise.
         """
-        return self['debugging']['enable_tracing']
+        return self['logging']['enable_tracing']
 
     def disable_tracing(
             self,
@@ -195,7 +195,7 @@ class Config(
         self : instance of Config
             The updated instance of Config.
         """
-        self['debugging']['enable_tracing'] = False
+        self['logging']['enable_tracing'] = False
 
         return self
 
@@ -209,7 +209,7 @@ class Config(
         self : instance of Config
             The updated instance of Config.
         """
-        self['debugging']['enable_tracing'] = True
+        self['logging']['enable_tracing'] = True
 
         return self
 
@@ -245,7 +245,7 @@ class Config(
         self : instance of Config
             The updated instance of Config.
         """
-        self['debugging']['enable_tracing'] = flag
+        self['logging']['enable_tracing'] = flag
 
         return self
 
