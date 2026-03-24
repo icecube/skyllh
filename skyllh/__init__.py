@@ -1,8 +1,6 @@
 import logging
 import multiprocessing as mp
 
-from skyllh import _version
-
 # Initialize top-level logger with a do-nothing NullHandler. It is required to
 # be able to log messages when user has not set up any handler for the logger.
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -18,5 +16,3 @@ except Exception:
             "Couldn't set the multiprocessing start method to 'fork'. "
             "Parallel calculations using 'ncpu' argument != 1 may break."
         )
-
-__version__ = _version.get_versions()['version']
