@@ -16,6 +16,9 @@ from skyllh.core.dataset import (
 from skyllh.core.livetime import (
     Livetime,
 )
+from skyllh.core.logging import (
+    get_logger,
+)
 from skyllh.core.py import (
     classname,
     float_cast,
@@ -35,6 +38,9 @@ from skyllh.core.source_hypo_grouping import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
+
+
+logger = get_logger(__name__)
 
 
 class SignalGenerator(
@@ -657,61 +663,61 @@ class MCMultiDatasetSignalGenerator(
 
         self._construct_signal_candidates()
 
-    def mu2flux(self, mu, per_source=False):
-        """Translate the mean number of signal events `mu` into the
-        corresponding flux. The unit of the returned flux is the internally used
-        flux unit.
+    def fluxmodel_scaling_factor(self, per_source=False):
+        """scaling factor to convert a mean number of signal events (mu) into a flux normalization as per the
+        definition of the flux models of the source hypothesis groups.
+
+            flux_norm = mu * scaling_factor
+                        or
+            mu = flux_norm / scaling_factor
 
         Parameters
         ----------
-        mu : float
-            The mean number of expected signal events for which to get the flux.
         per_source : bool
-            Flag if the flux should be returned for each source individually
-            (True), or as the sum of all these fluxes (False). The default is
-            False.
+            Flag if the scaling factors should be returned for each source individually (True), or as the sum of all
+            these factors (False). The default is False.
 
         Returns
         -------
-        mu_flux : float | (n_sources,)-shaped numpy ndarray
-            The total flux for all sources (if `per_source = False`) that would
-            correspond to the given mean number of detected signal events `mu`.
-            If `per_source` is set to True, a numpy ndarray is returned that
-            contains the flux for each individual source.
+        scaling_factor : float | (n_sources,)-shaped numpy ndarray
+            Dimensionless conversion factor (summed for all sources if `per_source = False`) to convert one detected
+            signal event into a flux normalization for the given signal hypothesis. If `per_source` is set to True,
+            a numpy ndarray is returned that contains the flux for each individual source.
         """
-        # Calculate the expected mean number of signal events for each source
-        # of the source hypo group manager. For each source we can calculate the
-        # flux that would correspond to the given mean number of signal events
-        # `mu`. The total flux for all sources is then just the sum.
+        logger.warning(
+            "The mu2flux method of the MCMultiDatasetSignalGenerator class is currently only implemented for the case "
+            "of a single source or for multiple sources with the same flux model. Multiple sources withdifferent flux "
+            "models are not correctly handled. This will be fixed in a future release."
+        )
 
-        # The ref_N variable describes how many total signal events are expected
-        # on average for the reference fluxes.
+        # Calculate the expected mean number of signal events for each source of the source hypo group manager. For
+        # each source we can calculate the flux that would correspond to the given mean number of signal events `mu`.
+        # The total flux for all sources is then just the sum.
+
+        # ref_N is the total signal events are expected on average for the reference fluxes.
         ref_N = self._sig_candidates_weight_sum
 
-        # The mu_fluxes array is the flux of each source for mu mean detected
-        # signal events.
+        # The mu_fluxes array is the flux of each source for mu mean detected signal events.
         n_sources = self._shg_mgr.n_sources
-        mu_fluxes = np.empty((n_sources,), dtype=np.float64)
+        scaling_factors = np.empty((n_sources,), dtype=np.float64)
 
         shg_list = self._shg_mgr.shg_list
-        mu_fluxes_idx_offset = 0
+        src_idx_offset = 0
         for shg_idx, shg in enumerate(shg_list):
-            fluxmodel = shg.fluxmodel
-            # Calculate conversion factor from the flux model unit into the
-            # internal flux unit.
-            to_internal_flux_unit = fluxmodel.to_internal_flux_unit()
+            # Calculate conversion factors for each source
             for k in range(shg.n_sources):
                 mask = (self._sig_candidates['shg_idx'] == shg_idx) & (self._sig_candidates['shg_src_idx'] == k)
-                ref_N_k = np.sum(self._sig_candidates[mask]['weight']) * ref_N
-                mu_flux_k = (mu / ref_N) * (ref_N_k / ref_N) * fluxmodel.Phi0 * to_internal_flux_unit
-                mu_fluxes[mu_fluxes_idx_offset + k] = mu_flux_k
-            mu_fluxes_idx_offset += shg.n_sources
+                source_weight_fraction = np.sum(self._sig_candidates[mask]['weight'])
+                source_factor = (1.0 / ref_N) * source_weight_fraction
+                scaling_factors[src_idx_offset + k] = source_factor
+            src_idx_offset += shg.n_sources
 
         if per_source:
-            return mu_fluxes
+            return scaling_factors
+        
+        scaling_factor = np.sum(scaling_factors)
 
-        mu_flux = np.sum(mu_fluxes)
-        return mu_flux
+        return scaling_factor
 
     def generate_signal_events(self, rss, mean, poisson=True, **kwargs):
         """Generates a given number of signal events from the signal candidate

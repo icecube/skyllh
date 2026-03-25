@@ -155,6 +155,10 @@ class PDDatasetSignalGenerator(
 
             dec_idx = self.sm.get_true_dec_idx(src.dec)
             (min_log_true_e, max_log_true_e) = self.sm.get_true_log_e_range_with_valid_log_e_pdfs(dec_idx)
+            
+            if self.energy_range is not None:
+                min_log_true_e = max(min_log_true_e, self.energy_range[0])
+                max_log_true_e = min(max_log_true_e, self.energy_range[1])
 
             self._effA_arr[src_idx] = PDAeff(
                 pathfilenames=self.ds.get_abs_pathfilename_list(self.ds.get_aux_data_definition('eff_area_datafile')),

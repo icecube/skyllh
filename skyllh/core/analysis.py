@@ -1627,43 +1627,45 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
 
         self.change_shg_mgr(shg_mgr=self._shg_mgr, update_detsigyield_service=update_detsigyield_service)
 
-    def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
-        """Calculates the factor the source's fluxmodel has to be scaled
-        in order to obtain the given mean number of signal events in the
+    def calculate_fluxmodel_scaling_factor(self, fitparam_values):
+        """Calculates the factor the source's fluxmodel has to be scaled in order to obtain one signal event in the 
         detector.
+
+        The conversion is delegated to the configured signal generator. This scaling factor can then be multiplied
+        by any number of signal events to get the corresponding flux model normalization. Or the other way around,
+        it can be divided for a given flux model normalization to get the corresponding number of signal events in
+        the detector.
+
+            flux_norm = scaling_factor * mean_n_sig
+            
+                            and
+
+            mean_n_sig = flux_norm / scaling_factor
 
         Parameters
         ----------
-        mean_ns : float
-            The mean number of signal events in the detector for which the
-            scaling factor is calculated.
         fitparam_values : instance of numpy ndarray
-            The (N_fitparam,)-shaped 1D ndarray holding the values of the global
-            fit parameters, that should be used for the flux calculation.
-            The order of the values must match the order the fit parameters were
-            defined in the parameter model mapper.
+            Unused. Kept for API backwards compatibility.
 
         Returns
         -------
-        factor : float
-            The factor the source's fluxmodel needs to be scaled in order to
-            obtain the given mean number of signal events in the detector.
+        scaling_factor : float
+            The factor the source's fluxmodel needs to be scaled in order to obtain 1 signal event in the detector.
         """
-        src_params_recarray = self._pmm.create_src_params_recarray(gflp_values=fitparam_values)
+        # Keep the method signature stable for existing callers.
+        del fitparam_values
 
-        # Calculate the detector signal yield, i.e. the mean number of signal
-        # events in the detector, for the given reference flux model.
-        mean_ns_ref = 0
+        if self._sig_generator is None:
+            self.construct_signal_generator()
 
-        detsigyields = self.detsigyield_service.arr[:, 0]
-        for j, detsigyield in enumerate(detsigyields):
-            src_recarray = self.src_detsigyield_weights_service.src_recarray_list_list[j][0]
-            (Yj, _) = detsigyield(src_recarray=src_recarray, src_params_recarray=src_params_recarray)
-            mean_ns_ref += Yj[0]
+        if not hasattr(self._sig_generator, 'fluxmodel_scaling_factor'):
+            raise RuntimeError(
+                'The configured signal generator does not implement the fluxmodel_scaling_factor interface!'
+            )
 
-        factor = mean_ns / mean_ns_ref
+        scaling_factor = self._sig_generator.fluxmodel_scaling_factor()
 
-        return factor
+        return scaling_factor
 
 
 class MultiSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
