@@ -1628,7 +1628,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
         self.change_shg_mgr(shg_mgr=self._shg_mgr, update_detsigyield_service=update_detsigyield_service)
 
     def calculate_fluxmodel_scaling_factor(self, fitparam_values):
-        """Calculates the factor the source's fluxmodel has to be scaled in order to obtain one signal event in the 
+        """Calculates the factor the source's fluxmodel has to be scaled in order to obtain one signal event in the
         detector.
 
         The conversion is delegated to the configured signal generator. This scaling factor can then be multiplied
@@ -1637,7 +1637,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
         the detector.
 
             flux_norm = scaling_factor * mean_n_sig
-            
+
                             and
 
             mean_n_sig = flux_norm / scaling_factor

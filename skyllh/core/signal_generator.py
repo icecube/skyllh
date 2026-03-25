@@ -39,7 +39,6 @@ from skyllh.core.storage import (
     DataFieldRecordArray,
 )
 
-
 logger = get_logger(__name__)
 
 
@@ -685,9 +684,9 @@ class MCMultiDatasetSignalGenerator(
             a numpy ndarray is returned that contains the flux for each individual source.
         """
         logger.warning(
-            "The mu2flux method of the MCMultiDatasetSignalGenerator class is currently only implemented for the case "
-            "of a single source or for multiple sources with the same flux model. Multiple sources withdifferent flux "
-            "models are not correctly handled. This will be fixed in a future release."
+            'The mu2flux method of the MCMultiDatasetSignalGenerator class is currently only implemented for the case '
+            'of a single source or for multiple sources with the same flux model. Multiple sources withdifferent flux '
+            'models are not correctly handled. This will be fixed in a future release.'
         )
 
         # Calculate the expected mean number of signal events for each source of the source hypo group manager. For
@@ -714,7 +713,7 @@ class MCMultiDatasetSignalGenerator(
 
         if per_source:
             return scaling_factors
-        
+
         scaling_factor = np.sum(scaling_factors)
 
         return scaling_factor
