@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 
 from skyllh.core.utils.coords import (
@@ -23,10 +21,8 @@ def get_tdm_field_func_psi(psi_floor=None):
     tdm_field_func_psi : function
         TrialDataManager (TDM) field function for psi.
     """
-    def tdm_field_func_psi(
-            tdm,
-            shg_mgr,
-            pmm):
+
+    def tdm_field_func_psi(tdm, shg_mgr, pmm):
         """TDM data field function to calculate the opening angle between the
         source positions and the event's reconstructed position.
         """
@@ -39,12 +35,7 @@ def get_tdm_field_func_psi(psi_floor=None):
         src_ra = np.take(src_array['ra'], src_idxs)
         src_dec = np.take(src_array['dec'], src_idxs)
 
-        psi = angular_separation(
-            ra1=ra,
-            dec1=dec,
-            ra2=src_ra,
-            dec2=src_dec,
-            psi_floor=psi_floor)
+        psi = angular_separation(ra1=ra, dec1=dec, ra2=src_ra, dec2=src_dec, psi_floor=psi_floor)
 
         return psi
 

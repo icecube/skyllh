@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """This file contains the global configuration dictionary, together with some
 convenience utility functions to set different configuration settings.
 """
@@ -7,14 +5,12 @@ convenience utility functions to set different configuration settings.
 import copy
 import os.path
 import sys
+from typing import (
+    Any,
+)
 
 from astropy import (
     units,
-)
-
-from typing import (
-    Any,
-    Dict,
 )
 
 from skyllh.core import (
@@ -27,7 +23,6 @@ from skyllh.core.py import (
     classname,
 )
 
-
 _BASECONFIG = {
     'multiproc': {
         # The number of CPUs to use for functions that allow multi-processing.
@@ -36,11 +31,18 @@ _BASECONFIG = {
         # specified.
         'ncpu': None,
     },
-    'debugging': {
+    'logging': {
+        # The log level of the loggers. The default is 'INFO'
+        # (equivalent to logging.INFO).
+        # Values are the standard log levels defined in the Python logging
+        # module, specified either as strings or their corresponding integer
+        # values. E.g.:
+        # - 'DEBUG'  (10)
+        # - 'INFO'   (20)
+        # - 'WARNING' (30)
+        'log_level': 'INFO',
         # The default log format.
-        'log_format': (
-            '%(asctime)s %(processName)s %(name)s %(levelname)s: '
-            '%(message)s'),
+        'log_format': ('%(asctime)s %(processName)s %(name)s %(levelname)s: %(message)s'),
         # Flag if detailed debug log messages, i.e. trace log messages, should
         # get generated. This is good for debugging but bad for performance.
         'enable_tracing': False,
@@ -71,7 +73,7 @@ _BASECONFIG = {
                 'length': units.cm,
                 'time': units.s,
             }
-        }
+        },
     },
     'datafields': {
         'run': DFS.ANALYSIS_EXP,
@@ -90,28 +92,26 @@ _BASECONFIG = {
         'pdf': {
             'MultiDimGridPDF': False,
         }
-    }
+    },
 }
 
 
 class Config(
-        dict,
+    dict,
 ):
-    """This class, derived from dict, holds the a local configuration state.
-    """
+    """This class, derived from dict, holds the a local configuration state."""
 
     def __init__(
-            self,
+        self,
     ) -> None:
-        """Initializes a new Config instance holding the base configuration.
-        """
+        """Initializes a new Config instance holding the base configuration."""
         super().__init__(copy.deepcopy(_BASECONFIG))
 
     @classmethod
     @tool.requires('yaml')
     def from_yaml(
-            cls,
-            pathfilename: str,
+        cls,
+        pathfilename: str,
     ):
         """Creates a new instance of Config holding the base configuration and
         updated by the configuration items contained in the yaml file using the
@@ -137,17 +137,16 @@ class Config(
 
         yaml = tool.get('yaml')
 
-        user_config_dict = yaml.load(
-            open(pathfilename),
-            Loader=yaml.SafeLoader)
+        with open(pathfilename) as f:
+            user_config_dict = yaml.load(f, Loader=yaml.SafeLoader)
         cfg.update(user_config_dict)
 
         return cfg
 
     @classmethod
     def from_dict(
-            cls,
-            user_dict: Dict[str, Any],
+        cls,
+        user_dict: dict[str, Any],
     ):
         """Creates a new instance of Config holding the base configuration and
         updated by the given configuration dictionary using the
@@ -172,12 +171,11 @@ class Config(
 
     @property
     def is_tracing_enabled(self):
-        """``True``, if tracing mode is enabled, ``False`` otherwise.
-        """
-        return self['debugging']['enable_tracing']
+        """``True``, if tracing mode is enabled, ``False`` otherwise."""
+        return self['logging']['enable_tracing']
 
     def disable_tracing(
-            self,
+        self,
     ):
         """Disables the tracing mode of SkyLLH.
 
@@ -186,12 +184,12 @@ class Config(
         self : instance of Config
             The updated instance of Config.
         """
-        self['debugging']['enable_tracing'] = False
+        self['logging']['enable_tracing'] = False
 
         return self
 
     def enable_tracing(
-            self,
+        self,
     ):
         """Enables the tracing mode of SkyLLH.
 
@@ -200,12 +198,12 @@ class Config(
         self : instance of Config
             The updated instance of Config.
         """
-        self['debugging']['enable_tracing'] = True
+        self['logging']['enable_tracing'] = True
 
         return self
 
     def get_wd(
-            self,
+        self,
     ):
         """Retrieves the absolute path to the working directory as configured in
         this configuration.
@@ -220,8 +218,8 @@ class Config(
         return wd
 
     def set_enable_tracing(
-            self,
-            flag,
+        self,
+        flag,
     ):
         """Sets the setting for tracing.
 
@@ -236,16 +234,16 @@ class Config(
         self : instance of Config
             The updated instance of Config.
         """
-        self['debugging']['enable_tracing'] = flag
+        self['logging']['enable_tracing'] = flag
 
         return self
 
     def set_internal_units(
-            self,
-            angle_unit=None,
-            energy_unit=None,
-            length_unit=None,
-            time_unit=None,
+        self,
+        angle_unit=None,
+        energy_unit=None,
+        length_unit=None,
+        time_unit=None,
     ):
         """Sets the units used internally to compute quantities. These units
         must match the units used in the monte-carlo files.
@@ -272,37 +270,29 @@ class Config(
         """
         if angle_unit is not None:
             if not isinstance(angle_unit, units.UnitBase):
-                raise TypeError(
-                    'The angle_unit argument must be an instance of '
-                    'astropy.units.UnitBase!')
+                raise TypeError('The angle_unit argument must be an instance of astropy.units.UnitBase!')
             self['units']['internal']['angle'] = angle_unit
 
         if energy_unit is not None:
             if not isinstance(energy_unit, units.UnitBase):
-                raise TypeError(
-                    'The energy_unit argument must be an instance of '
-                    'astropy.units.UnitBase!')
+                raise TypeError('The energy_unit argument must be an instance of astropy.units.UnitBase!')
             self['units']['internal']['energy'] = energy_unit
 
         if length_unit is not None:
             if not isinstance(length_unit, units.UnitBase):
-                raise TypeError(
-                    'The length_unit argument must be an instance of '
-                    'astropy.units.UnitBase!')
+                raise TypeError('The length_unit argument must be an instance of astropy.units.UnitBase!')
             self['units']['internal']['length'] = length_unit
 
         if time_unit is not None:
             if not isinstance(time_unit, units.UnitBase):
-                raise TypeError(
-                    'The time_unit argument must be an instance of '
-                    'astropy.units.UnitBase!')
+                raise TypeError('The time_unit argument must be an instance of astropy.units.UnitBase!')
             self['units']['internal']['time'] = time_unit
 
         return self
 
     def set_ncpu(
-            self,
-            ncpu,
+        self,
+        ncpu,
     ):
         """Sets the global setting for the number of CPUs to use, when
         parallelization is available.
@@ -322,8 +312,8 @@ class Config(
         return self
 
     def set_wd(
-            self,
-            path=None,
+        self,
+        path=None,
     ):
         """Sets the project's working directory configuration variable and adds
         it to the Python path variable.
@@ -357,8 +347,8 @@ class Config(
         return wd
 
     def to_internal_time_unit(
-            self,
-            time_unit,
+        self,
+        time_unit,
     ):
         """Calculates the conversion factor from the given time unit to the
         internal time unit specified by this local configuration.
@@ -394,18 +384,16 @@ class Config(
         return pathfilename
 
 
-class HasConfig(
-        object,
-):
+class HasConfig:
     """Classifier class defining the cfg property. Classes that derive from
     this class indicate, that they hold an instance of Config.
     """
 
     def __init__(
-            self,
-            cfg,
-            *args,
-            **kwargs,
+        self,
+        cfg,
+        *args,
+        **kwargs,
     ):
         """Creates a new instance having the property ``cfg``.
 
@@ -414,22 +402,17 @@ class HasConfig(
         cfg : instance of Config
             The instance of Config holding the local configuration.
         """
-        super().__init__(
-            *args,
-            **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.cfg = cfg
 
     @property
     def cfg(self):
-        """The instance of Config holding the local configuration.
-        """
+        """The instance of Config holding the local configuration."""
         return self._cfg
 
     @cfg.setter
     def cfg(self, c):
         if not isinstance(c, Config):
-            raise TypeError(
-                'The cfg property must be an instance of Config! '
-                f'Currently its type is {classname(c)}!')
+            raise TypeError(f'The cfg property must be an instance of Config! Currently its type is {classname(c)}!')
         self._cfg = c

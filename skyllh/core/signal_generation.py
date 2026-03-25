@@ -1,26 +1,21 @@
-# -*- coding: utf-8 -*-
-
 import abc
 
 from skyllh.core.py import (
-    issequence,
     float_cast,
+    issequence,
 )
 
 
-class SignalGenerationMethod(
-        object,
-        metaclass=abc.ABCMeta
-):
+class SignalGenerationMethod(metaclass=abc.ABCMeta):
     """This is a base class for a source and detector specific signal generation
     method, that calculates the source flux for a given monte-carlo event, which
     is needed to calculate the MC event weights for the signal generator.
     """
 
     def __init__(
-            self,
-            energy_range,
-            **kwargs,
+        self,
+        energy_range,
+        **kwargs,
     ):
         """Constructs a new signal generation method instance.
 
@@ -46,33 +41,24 @@ class SignalGenerationMethod(
     def energy_range(self, r):
         if r is not None:
             if not issequence(r):
-                raise TypeError(
-                    'The energy_range property must be a sequence!')
+                raise TypeError('The energy_range property must be a sequence!')
             if len(r) != 2:
-                raise ValueError(
-                    'The energy_range property must be a sequence of 2 '
-                    'elements!')
+                raise ValueError('The energy_range property must be a sequence of 2 elements!')
             r = (
-                float_cast(
-                    r[0],
-                    'The first element of the energy_range '
-                    'sequence must be castable to type float!'),
-                float_cast(
-                    r[1],
-                    'The second element of the energy_range '
-                    'sequence must be castable to type float!')
+                float_cast(r[0], 'The first element of the energy_range sequence must be castable to type float!'),
+                float_cast(r[1], 'The second element of the energy_range sequence must be castable to type float!'),
             )
             if r[0] >= r[1]:
                 raise ValueError(
-                    'The first element of the energy_range sequence must be '
-                    'strictly smaller than the second element!')
+                    'The first element of the energy_range sequence must be strictly smaller than the second element!'
+                )
         self._energy_range = r
 
     @abc.abstractmethod
     def calc_source_signal_mc_event_flux(
-            self,
-            data_mc,
-            shg,
+        self,
+        data_mc,
+        shg,
     ):
         """This method is supposed to calculate the signal flux of each given
         MC event for each source hypothesis of the given source hypothesis

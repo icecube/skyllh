@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """The trialdata module of SkyLLH provides a trial data manager class that
 manages the data of an analysis trial. It provides also possible additional data
 fields and their calculation, which are required by the particular analysis.
@@ -8,12 +6,13 @@ then be used by different analysis objects, like PDF objects.
 """
 
 from collections import OrderedDict
+
 import numpy as np
 
-from skyllh.core.debugging import (
+from skyllh.core import display as dsp
+from skyllh.core.logging import (
     get_logger,
 )
-from skyllh.core import display as dsp
 from skyllh.core.py import (
     classname,
     func_has_n_args,
@@ -24,24 +23,18 @@ from skyllh.core.storage import (
     DataFieldRecordArray,
 )
 
-
 logger = get_logger(__name__)
 
 
-class DataField(object):
+class DataField:
     """This class defines a data field and its calculation that is used by an
     Analysis class instance. The calculation is defined through an external
     function.
     """
+
     def __init__(
-            self,
-            name,
-            func,
-            global_fitparam_names=None,
-            dt=None,
-            is_src_field=False,
-            is_srcevt_data=False,
-            **kwargs):
+        self, name, func, global_fitparam_names=None, dt=None, is_src_field=False, is_srcevt_data=False, **kwargs
+    ):
         """Creates a new instance of DataField that might depend on fit
         parameters.
 
@@ -93,15 +86,15 @@ class DataField(object):
             raise TypeError(
                 'The global_fitparam_names argument must be None or a sequence '
                 'of str instances! It is of type '
-                f'{classname(global_fitparam_names)}!')
+                f'{classname(global_fitparam_names)}!'
+            )
         self._global_fitparam_name_list = list(global_fitparam_names)
 
         self.dt = dt
 
         # Define the list of fit parameter values for which the fit parameter
         # depend data field values have been calculated for.
-        self._global_fitparam_value_list = [None] *\
-            len(self._global_fitparam_name_list)
+        self._global_fitparam_value_list = [None] * len(self._global_fitparam_name_list)
 
         self._is_srcevt_data = is_srcevt_data
 
@@ -120,33 +113,26 @@ class DataField(object):
 
     @property
     def name(self):
-        """The name of the data field.
-        """
+        """The name of the data field."""
         return self._name
 
     @name.setter
     def name(self, name):
         if not isinstance(name, str):
-            raise TypeError(
-                'The name property must be an instance of str!'
-                f'It is of type {classname(name)}!')
+            raise TypeError(f'The name property must be an instance of str!It is of type {classname(name)}!')
         self._name = name
 
     @property
     def func(self):
-        """The function that calculates the data field values.
-        """
+        """The function that calculates the data field values."""
         return self._func
 
     @func.setter
     def func(self, f):
         if not callable(f):
-            raise TypeError(
-                'The func property must be a callable object!')
-        if (not func_has_n_args(f, 3)) and\
-           (not func_has_n_args(f, 4)):
-            raise TypeError(
-                'The func property must be a function with 3 or 4 arguments!')
+            raise TypeError('The func property must be a callable object!')
+        if (not func_has_n_args(f, 3)) and (not func_has_n_args(f, 4)):
+            raise TypeError('The func property must be a function with 3 or 4 arguments!')
         self._func = f
 
     @property
@@ -161,13 +147,12 @@ class DataField(object):
 
     @dt.setter
     def dt(self, obj):
-        if obj is not None:
-            if (not isinstance(obj, np.dtype)) and\
-               (not isinstance(obj, str)):
-                raise TypeError(
-                    'The dt property must be None, an instance of numpy.dtype, '
-                    'or an instance of str! Currently it is of type '
-                    f'{classname(obj)}.')
+        if obj is not None and (not isinstance(obj, np.dtype)) and (not isinstance(obj, str)):
+            raise TypeError(
+                'The dt property must be None, an instance of numpy.dtype, '
+                'or an instance of str! Currently it is of type '
+                f'{classname(obj)}.'
+            )
         self._dt = obj
 
     @property
@@ -179,13 +164,11 @@ class DataField(object):
 
     @property
     def values(self):
-        """(read-only) The calculated data values of the data field.
-        """
+        """(read-only) The calculated data values of the data field."""
         return self._values
 
     def __str__(self):
-        """Pretty string representation of this DataField instance.
-        """
+        """Pretty string representation of this DataField instance."""
         dtype = 'None'
         vmin = np.nan
         vmax = np.nan
@@ -206,11 +189,10 @@ class DataField(object):
         """Retrieves the data type this field should have. It's ``None``, if no
         data type was defined for this data field.
         """
-        if self._dt is not None:
-            if isinstance(self._dt, str):
-                # The _dt attribute defines the name of the data field whose
-                # data type should be used.
-                self._dt = tdm.get_dtype(self._dt)
+        if self._dt is not None and isinstance(self._dt, str):
+            # The _dt attribute defines the name of the data field whose
+            # data type should be used.
+            self._dt = tdm.get_dtype(self._dt)
         return self._dt
 
     def _convert_to_desired_dtype(self, tdm, values):
@@ -222,11 +204,7 @@ class DataField(object):
             values = values.astype(dt, copy=False)
         return values
 
-    def _calc_source_values(
-            self,
-            tdm,
-            shg_mgr,
-            pmm):
+    def _calc_source_values(self, tdm, shg_mgr, pmm):
         """Calculates the data field values utilizing the defined external
         function. The data field values solely depend on fixed source
         parameters.
@@ -243,25 +221,19 @@ class DataField(object):
             The instance of ParameterModelMapper, which defines the global
             parameters and their mapping to local source parameters.
         """
-        self._values = self._func(
-            tdm=tdm,
-            shg_mgr=shg_mgr,
-            pmm=pmm)
+        self._values = self._func(tdm=tdm, shg_mgr=shg_mgr, pmm=pmm)
 
         if not isinstance(self._values, np.ndarray):
             raise TypeError(
                 f'The calculation function for the data field "{self._name}" '
                 'must return an instance of numpy.ndarray! '
-                f'Currently it is of type "{classname(self._values)}".')
+                f'Currently it is of type "{classname(self._values)}".'
+            )
 
         # Convert the data type.
         self._values = self._convert_to_desired_dtype(tdm, self._values)
 
-    def _calc_static_values(
-            self,
-            tdm,
-            shg_mgr,
-            pmm):
+    def _calc_static_values(self, tdm, shg_mgr, pmm):
         """Calculates the data field values utilizing the defined external
         function, that are static and only depend on source parameters.
 
@@ -277,16 +249,14 @@ class DataField(object):
             The instance of ParameterModelMapper, which defines the global
             parameters and their mapping to local source parameters.
         """
-        values = self._func(
-            tdm=tdm,
-            shg_mgr=shg_mgr,
-            pmm=pmm)
+        values = self._func(tdm=tdm, shg_mgr=shg_mgr, pmm=pmm)
 
         if not isinstance(values, np.ndarray):
             raise TypeError(
                 f'The calculation function for the data field "{self._name}" '
                 'must return an instance of numpy.ndarray! '
-                f'Currently it is of type "{classname(values)}".')
+                f'Currently it is of type "{classname(values)}".'
+            )
 
         # Convert the data type.
         values = self._convert_to_desired_dtype(tdm, values)
@@ -297,19 +267,15 @@ class DataField(object):
                 raise ValueError(
                     'The calculation function for the data field '
                     f'"{self._name}" must return a numpy ndarray of shape '
-                    f'({n_values},), but the shape is {values.shape}!')
+                    f'({n_values},), but the shape is {values.shape}!'
+                )
             self._values = values
         else:
             # Set the data values. This will add the data field to the
             # DataFieldRecordArray if it does not exist yet.
             tdm.events[self._name] = values
 
-    def _calc_global_fitparam_dependent_values(
-            self,
-            tdm,
-            shg_mgr,
-            pmm,
-            global_fitparams_dict):
+    def _calc_global_fitparam_dependent_values(self, tdm, shg_mgr, pmm, global_fitparams_dict):
         """Calculate data field values utilizing the defined external
         function, that depend on fit parameter values. We check if the fit
         parameter values have changed.
@@ -335,26 +301,22 @@ class DataField(object):
         if self._name not in tdm.events:
             calc_values = True
         else:
-            for (idx, name) in enumerate(self._global_fitparam_name_list):
-                if global_fitparams_dict[name] !=\
-                   self._global_fitparam_value_list[idx]:
+            for idx, name in enumerate(self._global_fitparam_name_list):
+                if global_fitparams_dict[name] != self._global_fitparam_value_list[idx]:
                     calc_values = True
                     break
 
         if not calc_values:
             return
 
-        values = self._func(
-            tdm=tdm,
-            shg_mgr=shg_mgr,
-            pmm=pmm,
-            global_fitparams_dict=global_fitparams_dict)
+        values = self._func(tdm=tdm, shg_mgr=shg_mgr, pmm=pmm, global_fitparams_dict=global_fitparams_dict)
 
         if not isinstance(values, np.ndarray):
             raise TypeError(
                 'The calculation function for the data field '
                 f'"{self._name}" must return an instance of numpy.ndarray! '
-                f'Currently it is of type "{classname(values)}".')
+                f'Currently it is of type "{classname(values)}".'
+            )
 
         # Convert the data type.
         values = self._convert_to_desired_dtype(tdm, values)
@@ -365,7 +327,8 @@ class DataField(object):
                 raise ValueError(
                     'The calculation function for the data field '
                     f'"{self._name}" must return a numpy ndarray of shape '
-                    f'({n_values},), but the shape is {values.shape}!')
+                    f'({n_values},), but the shape is {values.shape}!'
+                )
             self._values = values
         else:
             # Set the data values. This will add the data field to the
@@ -375,13 +338,10 @@ class DataField(object):
         # We store the global fit parameter values for which the field values
         # were calculated. So they have to get recalculated only when the
         # global fit parameter values, the field depends on, change.
-        self._global_fitparam_value_list = [
-            global_fitparams_dict[name]
-            for name in self._global_fitparam_name_list
-        ]
+        self._global_fitparam_value_list = [global_fitparams_dict[name] for name in self._global_fitparam_name_list]
 
 
-class TrialDataManager(object):
+class TrialDataManager:
     """The TrialDataManager class manages the event data for an analysis trial.
     It provides possible additional data fields and their calculation.
     New data fields can be defined via the :py:meth:`add_data_field` method.
@@ -389,6 +349,7 @@ class TrialDataManager(object):
     The data trial manager is provided to the PDF evaluation method.
     Hence, data fields are calculated only once.
     """
+
     def __init__(self, index_field_name=None, **kwargs):
         """Creates a new TrialDataManager instance.
 
@@ -451,11 +412,10 @@ class TrialDataManager(object):
 
     @index_field_name.setter
     def index_field_name(self, name):
-        if name is not None:
-            if not isinstance(name, str):
-                raise TypeError(
-                    'The index_field_name property must be an instance of '
-                    f'type str! It is of type {classname(name)}!')
+        if name is not None and not isinstance(name, str):
+            raise TypeError(
+                f'The index_field_name property must be an instance of type str! It is of type {classname(name)}!'
+            )
         self._index_field_name = name
 
     @property
@@ -469,8 +429,8 @@ class TrialDataManager(object):
     def events(self, arr):
         if not isinstance(arr, DataFieldRecordArray):
             raise TypeError(
-                'The events property must be an instance of '
-                f'DataFieldRecordArray! It is of type {classname(arr)}!')
+                f'The events property must be an instance of DataFieldRecordArray! It is of type {classname(arr)}!'
+            )
         self._events = arr
 
     @property
@@ -496,13 +456,11 @@ class TrialDataManager(object):
 
     @n_events.setter
     def n_events(self, n):
-        self._n_events = int_cast(
-            n, 'The n_events property must be castable to type int!')
+        self._n_events = int_cast(n, 'The n_events property must be castable to type int!')
 
     @property
     def n_selected_events(self):
-        """(read-only) The number of selected events which should get evaluated.
-        """
+        """(read-only) The number of selected events which should get evaluated."""
         return len(self._events)
 
     @property
@@ -543,18 +501,16 @@ class TrialDataManager(object):
             False otherwise.
         """
         # Check if the data field is part of the original trial data.
-        if (self._events is not None) and\
-           (name in self._events.field_name_list):
+        if (self._events is not None) and (name in self._events.field_name_list):
             return True
 
         # Check if the data field is a user defined data field.
-        if (name in self._source_data_fields_dict) or\
-           (name in self._pre_evt_sel_static_data_fields_dict) or\
-           (name in self._static_data_fields_dict) or\
-           (name in self._global_fitparam_data_fields_dict):
-            return True
-
-        return False
+        return (
+            (name in self._source_data_fields_dict)
+            or (name in self._pre_evt_sel_static_data_fields_dict)
+            or (name in self._static_data_fields_dict)
+            or (name in self._global_fitparam_data_fields_dict)
+        )
 
     def __getitem__(self, name):
         """Implements the evaluation of ``self[name]`` to access data fields.
@@ -566,7 +522,7 @@ class TrialDataManager(object):
         """Implements pretty string representation of this TrialDataManager
         instance.
         """
-        s = classname(self)+':\n'
+        s = classname(self) + ':\n'
         s1 = 'Base data fields:\n'
         s2 = str(self._events)
         s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
@@ -574,12 +530,7 @@ class TrialDataManager(object):
         s += '\n'
 
         s1 = 'Source data fields:\n'
-        s2 = '\n'.join(
-            [
-                str(df)
-                for (_, df) in self._source_data_fields_dict.items()
-            ]
-        )
+        s2 = '\n'.join([str(df) for (_, df) in self._source_data_fields_dict.items()])
         if s2 == '':
             s2 = 'None'
         s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
@@ -587,12 +538,7 @@ class TrialDataManager(object):
         s += '\n'
 
         s1 = 'Pre-event-selection static data fields:\n'
-        s2 = '\n'.join(
-            [
-                str(df)
-                for (_, df) in self._pre_evt_sel_static_data_fields_dict.items()
-            ]
-        )
+        s2 = '\n'.join([str(df) for (_, df) in self._pre_evt_sel_static_data_fields_dict.items()])
         if s2 == '':
             s2 = 'None'
         s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
@@ -600,12 +546,7 @@ class TrialDataManager(object):
         s += '\n'
 
         s1 = 'Static data fields:\n'
-        s2 = '\n'.join(
-            [
-                str(df)
-                for (_, df) in self._static_data_fields_dict.items()
-            ]
-        )
+        s2 = '\n'.join([str(df) for (_, df) in self._static_data_fields_dict.items()])
         if s2 == '':
             s2 = 'None'
         s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
@@ -613,12 +554,7 @@ class TrialDataManager(object):
         s += '\n'
 
         s1 = 'Global fitparam data fields:\n'
-        s2 = '\n'.join(
-            [
-                str(df)
-                for (_, df) in self._global_fitparam_data_fields_dict.items()
-            ]
-        )
+        s2 = '\n'.join([str(df) for (_, df) in self._global_fitparam_data_fields_dict.items()])
         if s2 == '':
             s2 = 'None'
         s1 += dsp.add_leading_text_line_padding(dsp.INDENTATION_WIDTH, s2)
@@ -626,9 +562,7 @@ class TrialDataManager(object):
 
         return s
 
-    def broadcast_sources_array_to_values_array(
-            self,
-            arr):
+    def broadcast_sources_array_to_values_array(self, arr):
         """Broadcasts the given 1d numpy ndarray of length 1 or N_sources to a
         numpy ndarray of length N_values.
 
@@ -652,27 +586,22 @@ class TrialDataManager(object):
 
         if len(arr) != self.n_sources:
             raise ValueError(
-                f'The length of arr ({len(arr)}) must be 1 or equal to the '
-                f'number of sources ({self.n_sources})!')
+                f'The length of arr ({len(arr)}) must be 1 or equal to the number of sources ({self.n_sources})!'
+            )
 
-        out_arr = np.empty(
-            (n_values,),
-            dtype=arr.dtype)
+        out_arr = np.empty((n_values,), dtype=arr.dtype)
 
         src_idxs = self.src_evt_idxs[0]
         v_start = 0
-        for (src_idx, src_value) in enumerate(arr):
+        for src_idx, src_value in enumerate(arr):
             n = np.count_nonzero(src_idxs == src_idx)
             # n = len(evt_idxs[src_idxs == src_idx])
-            out_arr[v_start:v_start+n] = np.full(
-                (n,), src_value, dtype=arr_dtype)
+            out_arr[v_start : v_start + n] = np.full((n,), src_value, dtype=arr_dtype)
             v_start += n
 
         return out_arr
 
-    def broadcast_sources_arrays_to_values_arrays(
-            self,
-            arrays):
+    def broadcast_sources_arrays_to_values_arrays(self, arrays):
         """Broadcasts the 1d numpy ndarrays to the values array.
 
         Parameters
@@ -687,16 +616,11 @@ class TrialDataManager(object):
             The list of (N_values,)-shaped numpy ndarrays holding the
             broadcasted array values.
         """
-        out_arrays = [
-            self.broadcast_sources_array_to_values_array(arr)
-            for arr in arrays
-        ]
+        out_arrays = [self.broadcast_sources_array_to_values_array(arr) for arr in arrays]
 
         return out_arrays
 
-    def broadcast_selected_events_arrays_to_values_arrays(
-            self,
-            arrays):
+    def broadcast_selected_events_arrays_to_values_arrays(self, arrays):
         """Broadcasts the given arrays of length N_selected_events to arrays
         of length N_values.
 
@@ -712,10 +636,7 @@ class TrialDataManager(object):
             The list of broadcasted numpy ndarray instances.
         """
         evt_idxs = self._src_evt_idxs[1]
-        out_arrays = [
-            np.take(arr, evt_idxs)
-            for arr in arrays
-        ]
+        out_arrays = [np.take(arr, evt_idxs) for arr in arrays]
 
         return out_arrays
 
@@ -735,18 +656,9 @@ class TrialDataManager(object):
             The instance of ParameterModelMapper that defines the global
             parameters and their mapping to local source parameter.
         """
-        self.calculate_source_data_fields(
-            shg_mgr=shg_mgr,
-            pmm=pmm)
+        self.calculate_source_data_fields(shg_mgr=shg_mgr, pmm=pmm)
 
-    def initialize_trial(
-            self,
-            shg_mgr,
-            pmm,
-            events,
-            n_events=None,
-            evt_sel_method=None,
-            tl=None):
+    def initialize_trial(self, shg_mgr, pmm, events, n_events=None, evt_sel_method=None, tl=None):
         """Initializes the trial data manager for a new trial. It sets the raw
         events, calculates pre-event-selection data fields, performs a possible
         event selection and calculates the static data fields for the left-over
@@ -788,33 +700,23 @@ class TrialDataManager(object):
 
         # Calculate pre-event-selection data fields that are required by the
         # event selection method.
-        self.calculate_pre_evt_sel_static_data_fields(
-            shg_mgr=shg_mgr,
-            pmm=pmm)
+        self.calculate_pre_evt_sel_static_data_fields(shg_mgr=shg_mgr, pmm=pmm)
 
         if evt_sel_method is not None:
-            logger.debug(
-                f'Performing event selection method '
-                f'"{classname(evt_sel_method)}".')
-            (selected_events, src_evt_idxs) = evt_sel_method.select_events(
-                events=self._events,
-                tl=tl)
-            logger.debug(
-                f'Selected {len(selected_events)} out of {len(self._events)} '
-                'events.')
+            logger.debug(f'Performing event selection method "{classname(evt_sel_method)}".')
+            (selected_events, src_evt_idxs) = evt_sel_method.select_events(events=self._events, tl=tl)
+            logger.debug(f'Selected {len(selected_events)} out of {len(self._events)} events.')
             self.events = selected_events
             self._src_evt_idxs = src_evt_idxs
 
         # Sort the events by the index field, if a field was provided.
         if self._index_field_name is not None:
-            logger.debug(
-                f'Sorting events in index field "{self._index_field_name}"')
+            logger.debug(f'Sorting events in index field "{self._index_field_name}"')
             sorted_idxs = self._events.sort_by_field(self._index_field_name)
             # If event indices are stored, we need to re-assign also those event
             # indices according to the new order.
             if self._src_evt_idxs is not None:
-                self._src_evt_idxs[1] = np.take(
-                    sorted_idxs, self._src_evt_idxs[1])
+                self._src_evt_idxs[1] = np.take(sorted_idxs, self._src_evt_idxs[1])
 
         # Create the src_evt_idxs property data in case it was not provided by
         # the event selection. In that case all events are selected for all
@@ -822,14 +724,12 @@ class TrialDataManager(object):
         if self._src_evt_idxs is None:
             self._src_evt_idxs = (
                 np.repeat(np.arange(self.n_sources), self.n_selected_events),
-                np.tile(np.arange(self.n_selected_events), self.n_sources)
+                np.tile(np.arange(self.n_selected_events), self.n_sources),
             )
 
         # Now calculate all the static data fields. This will increment the
         # trial data state ID.
-        self.calculate_static_data_fields(
-            shg_mgr=shg_mgr,
-            pmm=pmm)
+        self.calculate_static_data_fields(shg_mgr=shg_mgr, pmm=pmm)
 
     def get_n_values(self):
         """Returns the expected size of the values array after a PDF
@@ -872,11 +772,7 @@ class TrialDataManager(object):
 
         return values_mask
 
-    def add_source_data_field(
-            self,
-            name,
-            func,
-            dt=None):
+    def add_source_data_field(self, name, func, dt=None):
         """Adds a new data field to the manager. The data field must depend
         solely on source parameters.
 
@@ -900,25 +796,13 @@ class TrialDataManager(object):
             whose data type should be taken for the data field.
         """
         if name in self:
-            raise KeyError(
-                f'The data field "{name}" is already defined!')
+            raise KeyError(f'The data field "{name}" is already defined!')
 
-        data_field = DataField(
-            name=name,
-            func=func,
-            dt=dt,
-            is_src_field=True)
+        data_field = DataField(name=name, func=func, dt=dt, is_src_field=True)
 
         self._source_data_fields_dict[name] = data_field
 
-    def add_data_field(
-            self,
-            name,
-            func,
-            global_fitparam_names=None,
-            dt=None,
-            pre_evt_sel=False,
-            is_srcevt_data=False):
+    def add_data_field(self, name, func, global_fitparam_names=None, dt=None, pre_evt_sel=False, is_srcevt_data=False):
         """Adds a new data field to the manager.
 
         Parameters
@@ -956,20 +840,20 @@ class TrialDataManager(object):
             Default is False.
         """
         if name in self:
-            raise KeyError(
-                'The data field "{name}" is already defined!')
+            raise KeyError('The data field "{name}" is already defined!')
 
         if pre_evt_sel:
             if global_fitparam_names is not None:
                 raise ValueError(
-                    f'The pre-event-selection data field "{name}" must not '
-                    'depend on global fit parameters!')
+                    f'The pre-event-selection data field "{name}" must not depend on global fit parameters!'
+                )
 
             if is_srcevt_data:
                 raise ValueError(
                     'By definition the pre-event-selection data field '
                     f'"{name}" cannot hold source-event data! The '
-                    'is_srcevt_data argument must be set to False!')
+                    'is_srcevt_data argument must be set to False!'
+                )
 
         data_field = DataField(
             name=name,
@@ -977,7 +861,8 @@ class TrialDataManager(object):
             global_fitparam_names=global_fitparam_names,
             dt=dt,
             is_src_field=False,
-            is_srcevt_data=is_srcevt_data)
+            is_srcevt_data=is_srcevt_data,
+        )
 
         if pre_evt_sel:
             self._pre_evt_sel_static_data_fields_dict[name] = data_field
@@ -986,10 +871,7 @@ class TrialDataManager(object):
         else:
             self._global_fitparam_data_fields_dict[name] = data_field
 
-    def calculate_source_data_fields(
-            self,
-            shg_mgr,
-            pmm):
+    def calculate_source_data_fields(self, shg_mgr, pmm):
         """Calculates the data values of the data fields that solely depend on
         source parameters.
 
@@ -1005,18 +887,12 @@ class TrialDataManager(object):
         if len(self._source_data_fields_dict) == 0:
             return
 
-        for (name, dfield) in self._source_data_fields_dict.items():
-            dfield.calculate(
-                tdm=self,
-                shg_mgr=shg_mgr,
-                pmm=pmm)
+        for _, dfield in self._source_data_fields_dict.items():
+            dfield.calculate(tdm=self, shg_mgr=shg_mgr, pmm=pmm)
 
         self._trial_data_state_id += 1
 
-    def calculate_pre_evt_sel_static_data_fields(
-            self,
-            shg_mgr,
-            pmm):
+    def calculate_pre_evt_sel_static_data_fields(self, shg_mgr, pmm):
         """Calculates the data values of the data fields that should be
         available for the event selection method and do not depend on any fit
         parameters.
@@ -1033,18 +909,12 @@ class TrialDataManager(object):
         if len(self._pre_evt_sel_static_data_fields_dict) == 0:
             return
 
-        for (name, dfield) in self._pre_evt_sel_static_data_fields_dict.items():
-            dfield.calculate(
-                tdm=self,
-                shg_mgr=shg_mgr,
-                pmm=pmm)
+        for _, dfield in self._pre_evt_sel_static_data_fields_dict.items():
+            dfield.calculate(tdm=self, shg_mgr=shg_mgr, pmm=pmm)
 
         self._trial_data_state_id += 1
 
-    def calculate_static_data_fields(
-            self,
-            shg_mgr,
-            pmm):
+    def calculate_static_data_fields(self, shg_mgr, pmm):
         """Calculates the data values of the data fields that do not depend on
         any source or fit parameters.
 
@@ -1060,19 +930,12 @@ class TrialDataManager(object):
         if len(self._static_data_fields_dict) == 0:
             return
 
-        for (name, dfield) in self._static_data_fields_dict.items():
-            dfield.calculate(
-                tdm=self,
-                shg_mgr=shg_mgr,
-                pmm=pmm)
+        for _, dfield in self._static_data_fields_dict.items():
+            dfield.calculate(tdm=self, shg_mgr=shg_mgr, pmm=pmm)
 
         self._trial_data_state_id += 1
 
-    def calculate_global_fitparam_data_fields(
-            self,
-            shg_mgr,
-            pmm,
-            global_fitparams_dict):
+    def calculate_global_fitparam_data_fields(self, shg_mgr, pmm, global_fitparams_dict):
         """Calculates the data values of the data fields that depend on global
         fit parameter values.
 
@@ -1091,12 +954,8 @@ class TrialDataManager(object):
         if len(self._global_fitparam_data_fields_dict) == 0:
             return
 
-        for (name, dfield) in self._global_fitparam_data_fields_dict.items():
-            dfield.calculate(
-                tdm=self,
-                shg_mgr=shg_mgr,
-                pmm=pmm,
-                global_fitparams_dict=global_fitparams_dict)
+        for _, dfield in self._global_fitparam_data_fields_dict.items():
+            dfield.calculate(tdm=self, shg_mgr=shg_mgr, pmm=pmm, global_fitparams_dict=global_fitparams_dict)
 
         self._trial_data_state_id += 1
 
@@ -1127,8 +986,7 @@ class TrialDataManager(object):
         # stored within the _events DataFieldRecordArray if they do not contain
         # source-event data. For all other cases, the data is stored in the
         # .values attribute of the DataField class instance.
-        if self._events is not None and\
-           name in self._events.field_name_list:
+        if self._events is not None and name in self._events.field_name_list:
             return self._events[name]
 
         if name in self._source_data_fields_dict:
@@ -1140,8 +998,7 @@ class TrialDataManager(object):
         if name in self._global_fitparam_data_fields_dict:
             return self._global_fitparam_data_fields_dict[name].values
 
-        raise KeyError(
-            f'The data field "{name}" is not defined!')
+        raise KeyError(f'The data field "{name}" is not defined!')
 
     def get_dtype(self, name):
         """Gets the data type of the given data field.
@@ -1180,11 +1037,7 @@ class TrialDataManager(object):
             ``True`` if the given data field contains event data, ``False``
             otherwise.
         """
-        if self._events is not None and\
-           name in self._events.field_name_list:
-            return True
-
-        return False
+        return self._events is not None and name in self._events.field_name_list
 
     def is_source_data_field(self, name):
         """Checks if the given data field is a source data field, i.e. its
@@ -1201,10 +1054,7 @@ class TrialDataManager(object):
             ``True`` if the given data field contains source data, ``False``
             otherwise.
         """
-        if name in self._source_data_fields_dict:
-            return True
-
-        return False
+        return name in self._source_data_fields_dict
 
     def is_srcevt_data_field(self, name):
         """Checks if the given data field is a source-event data field, i.e. its

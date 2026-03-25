@@ -1,26 +1,22 @@
-from numpy import *
-
 from skyllh.core import (
     tool,
 )
 from skyllh.core.minimizer import (
     MinimizerImpl,
 )
-
 from skyllh.core.minimizers.iminuit import FuncWithGradsFunctor
 
 
 class CRSMinimizerImpl(
-        MinimizerImpl,
+    MinimizerImpl,
 ):
-    """The SkyLLH minimizer implementation that utilizes the CRS minimizer from nlopt.
-    """
+    """The SkyLLH minimizer implementation that utilizes the CRS minimizer from nlopt."""
 
     @tool.requires('nlopt')
     def __init__(
-            self,
-            ftol=1e-6,
-            **kwargs,
+        self,
+        ftol=1e-6,
+        **kwargs,
     ):
         """Creates a new CRS minimizer instance to minimize a given
         function.
@@ -35,12 +31,12 @@ class CRSMinimizerImpl(
         self._ftol = ftol
 
     def minimize(
-            self,
-            initials,
-            bounds,
-            func,
-            func_args=None,
-            **kwargs,
+        self,
+        initials,
+        bounds,
+        func,
+        func_args=None,
+        **kwargs,
     ):
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials`` and within the given parameter bounds
@@ -99,10 +95,8 @@ class CRSMinimizerImpl(
 
         opt = nlopt.opt(nlopt.GN_CRS2_LM, 2)
 
-        opt.set_lower_bounds(bounds[:,0])
-        opt.set_upper_bounds(bounds[:,1])
-
-
+        opt.set_lower_bounds(bounds[:, 0])
+        opt.set_upper_bounds(bounds[:, 1])
 
         func_provides_grads = kwargs.pop('func_provides_grads', True)
 
@@ -112,19 +106,16 @@ class CRSMinimizerImpl(
             if func_provides_grads:
                 # The function func returns the function value and its gradients,
                 # so we need to use the FuncWithGradsFunctor helper class.
-                functor = FuncWithGradsFunctor(
-                    cfg=self._cfg,
-                    func=func,
-                    func_args=func_args)
-                
+                functor = FuncWithGradsFunctor(cfg=self._cfg, func=func, func_args=func_args)
+
                 print(x, functor.get_f(x))
                 return functor.get_f(x)
 
             else:
                 # we can use the function directly
                 print(x, func(x, *func_args))
-                return (lambda x, grad: func(x, *func_args))
-            
+                return lambda x, grad: func(x, *func_args)
+
         opt.set_ftol_abs(self._ftol)
         opt.set_stopval(1e-6)
         opt.set_xtol_abs((1e-5, 1e-4))
@@ -137,11 +128,17 @@ class CRSMinimizerImpl(
 
         status = opt.last_optimize_result()
 
-        res = {"x": x, "success": True if status > 0 else False, "status": status, "message": self.get_message(status), 
-               "nfev": opt.get_numevals(), "fun": val}
+        res = {
+            'x': x,
+            'success': status > 0,
+            'status': status,
+            'message': self.get_message(status),
+            'nfev': opt.get_numevals(),
+            'fun': val,
+        }
 
         return (x, val, res)
-    
+
     def get_message(self, status):
         """returns the message belonging to the minimizer status
 
@@ -151,18 +148,20 @@ class CRSMinimizerImpl(
             The number of the minimizer status
         """
 
-        message = {1: "Generic success return value.",
-            2: "Optimization stopped because stopval was reached.",
-            3: "Optimization stopped because ftol_rel or ftol_abs was reached.", 
-            4: "Optimization stopped because xtol_rel or xtol_abs was reached.", 
-            5: "Optimization stopped because maxeval was reached.", 
-            6: "Optimization stopped because maxtime was reached.", 
-            -1: "Generic failure code.", 
-            -2: "Invalid arguments (e.g. lower bounds are bigger than upper bounds, an unknown algorithm was specified, etcetera).",
-            -3: "Ran out of memory.",
-            -4: "Halted because roundoff errors limited progress. (In this case, the optimization still typically returns a useful result.)",
-            -5: "Halted because of a forced termination"}
-        
+        message = {
+            1: 'Generic success return value.',
+            2: 'Optimization stopped because stopval was reached.',
+            3: 'Optimization stopped because ftol_rel or ftol_abs was reached.',
+            4: 'Optimization stopped because xtol_rel or xtol_abs was reached.',
+            5: 'Optimization stopped because maxeval was reached.',
+            6: 'Optimization stopped because maxtime was reached.',
+            -1: 'Generic failure code.',
+            -2: 'Invalid arguments (e.g. lower bounds are bigger than upper bounds, an unknown algorithm was specified, etcetera).',
+            -3: 'Ran out of memory.',
+            -4: 'Halted because roundoff errors limited progress. (In this case, the optimization still typically returns a useful result.)',
+            -5: 'Halted because of a forced termination',
+        }
+
         return message[status]
 
     def get_niter(self, status):

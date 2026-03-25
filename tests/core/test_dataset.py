@@ -1,20 +1,19 @@
-# -*- coding: utf-8 -*-
-
-import numpy as np
 import os.path
 import unittest
+
+import numpy as np
 
 from skyllh.core.config import (
     Config,
 )
 from skyllh.core.dataset import (
-    get_data_subset,
     Dataset,
     DatasetData,
     DatasetOrigin,
     DatasetTransferError,
     RSYNCDatasetTransfer,
     WGETDatasetTransfer,
+    get_data_subset,
 )
 from skyllh.core.livetime import (
     Livetime,
@@ -22,7 +21,6 @@ from skyllh.core.livetime import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
-
 from skyllh.datasets.i3 import (
     TestData,
 )
@@ -37,9 +35,8 @@ class TestRSYNCDatasetTransfer(
     def setUp(self):
         self.cfg = Config()
         self.ds = TestData.create_dataset_collection(
-            cfg=self.cfg,
-            base_path=os.path.join(os.getcwd(), '.repository')).get_dataset(
-                'TestData')
+            cfg=self.cfg, base_path=os.path.join(os.getcwd(), '.repository')
+        ).get_dataset('TestData')
 
         # Remove the dataset if it already exists.
         if self.ds.exists:
@@ -56,12 +53,9 @@ class TestRSYNCDatasetTransfer(
     def test_transfer(self):
         try:
             if not self.ds.make_data_available():
-                raise RuntimeError(
-                    f'The data of dataset {self.ds.name} could not be made '
-                    'available!')
+                raise RuntimeError(f'The data of dataset {self.ds.name} could not be made available!')
         except DatasetTransferError:
-            self.skipTest(
-                f'The data of dataset {self.ds.name} could not be transfered.')
+            self.skipTest(f'The data of dataset {self.ds.name} could not be transfered.')
 
         # Check that there are no missing files.
         missing_files = self.ds.get_missing_files()
@@ -74,9 +68,8 @@ class TestWGETDatasetTransfer(
     def setUp(self):
         self.cfg = Config()
         self.ds = TestData.create_dataset_collection(
-            cfg=self.cfg,
-            base_path=os.path.join(os.getcwd(), '.repository')).get_dataset(
-                'TestData')
+            cfg=self.cfg, base_path=os.path.join(os.getcwd(), '.repository')
+        ).get_dataset('TestData')
 
         # Remove the dataset if it already exists.
         if self.ds.exists:
@@ -94,16 +87,12 @@ class TestWGETDatasetTransfer(
     def test_transfer(self):
         password = os.environ.get('ICECUBE_PASSWORD', None)
         if password is None:
-            self.skipTest(
-                f'No password for username "{self.ds.origin.username}" '
-                'provided via the environment!')
+            self.skipTest(f'No password for username "{self.ds.origin.username}" provided via the environment!')
 
         if not self.ds.make_data_available(
             password=password,
         ):
-            raise RuntimeError(
-                f'The data of dataset {self.ds.name} could not be made '
-                'available!')
+            raise RuntimeError(f'The data of dataset {self.ds.name} could not be made available!')
 
         # Check that there are no missing files.
         missing_files = self.ds.get_missing_files()
@@ -115,26 +104,18 @@ class TestDatasetFunctions(
 ):
     def setUp(self):
         path = os.path.abspath(os.path.dirname(__file__))
-        self.exp_data = DataFieldRecordArray(
-            np.load(os.path.join(path, 'testdata/exp_testdata.npy')))
-        self.mc_data = DataFieldRecordArray(
-            np.load(os.path.join(path, 'testdata/mc_testdata.npy')))
-        self.livetime_datafile = np.load(
-            os.path.join(path, 'testdata/livetime_testdata.npy'))
+        self.exp_data = DataFieldRecordArray(np.load(os.path.join(path, 'testdata/exp_testdata.npy')))
+        self.mc_data = DataFieldRecordArray(np.load(os.path.join(path, 'testdata/mc_testdata.npy')))
+        self.livetime_datafile = np.load(os.path.join(path, 'testdata/livetime_testdata.npy'))
         self.livetime = 100
 
     def test_get_data_subset(self):
         # Whole interval.
         t_start = 58442.0
         t_end = 58445.0
-        dataset_data = DatasetData(
-            self.exp_data, self.mc_data, self.livetime)
+        dataset_data = DatasetData(self.exp_data, self.mc_data, self.livetime)
         livetime_data = Livetime(self.livetime_datafile)
-        (dataset_data_subset, livetime_subset) = get_data_subset(
-            dataset_data,
-            livetime_data,
-            t_start,
-            t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 4)
         self.assertEqual(len(dataset_data_subset.mc), 4)
@@ -143,14 +124,9 @@ class TestDatasetFunctions(
         # Sub interval without cutting livetime.
         t_start = 58443.3
         t_end = 58444.3
-        dataset_data = DatasetData(
-            self.exp_data, self.mc_data, self.livetime)
+        dataset_data = DatasetData(self.exp_data, self.mc_data, self.livetime)
         livetime_data = Livetime(self.livetime_datafile)
-        (dataset_data_subset, livetime_subset) = get_data_subset(
-            dataset_data,
-            livetime_data,
-            t_start,
-            t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 2)
         self.assertEqual(len(dataset_data_subset.mc), 2)
@@ -159,11 +135,7 @@ class TestDatasetFunctions(
         # Cutting first livetime interval.
         t_start = 58443.1
         t_end = 58444.75
-        (dataset_data_subset, livetime_subset) = get_data_subset(
-            dataset_data,
-            livetime_data,
-            t_start,
-            t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 3)
         self.assertEqual(len(dataset_data_subset.mc), 3)
@@ -172,11 +144,7 @@ class TestDatasetFunctions(
         # Cutting last livetime interval.
         t_start = 58443.0
         t_end = 58444.6
-        (dataset_data_subset, livetime_subset) = get_data_subset(
-            dataset_data,
-            livetime_data,
-            t_start,
-            t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 4)
         self.assertEqual(len(dataset_data_subset.mc), 4)
@@ -185,11 +153,7 @@ class TestDatasetFunctions(
         # Cutting first and last livetime interval.
         t_start = 58443.1
         t_end = 58444.6
-        (dataset_data_subset, livetime_subset) = get_data_subset(
-            dataset_data,
-            livetime_data,
-            t_start,
-            t_end)
+        (dataset_data_subset, livetime_subset) = get_data_subset(dataset_data, livetime_data, t_start, t_end)
 
         self.assertEqual(len(dataset_data_subset.exp), 3)
         self.assertEqual(len(dataset_data_subset.mc), 3)

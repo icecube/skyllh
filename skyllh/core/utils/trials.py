@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
-"""This module contains utility functions related analysis trials.
-"""
+"""This module contains utility functions related analysis trials."""
 
 import pickle
 
@@ -11,14 +8,7 @@ from skyllh.core.timing import (
 
 
 def create_pseudo_data_file(
-        ana,
-        rss,
-        filename,
-        mean_n_bkg_list=None,
-        mean_n_sig=0,
-        bkg_kwargs=None,
-        sig_kwargs=None,
-        tl=None
+    ana, rss, filename, mean_n_bkg_list=None, mean_n_sig=0, bkg_kwargs=None, sig_kwargs=None, tl=None
 ):
     """Creates a pickle file that contains the pseudo data for a single trial
     by generating background and signal events.
@@ -53,17 +43,11 @@ def create_pseudo_data_file(
 
     """
     (n_bkg_events_list, bkg_events_list) = ana.generate_background_events(
-        rss=rss,
-        mean_n_bkg_list=mean_n_bkg_list,
-        bkg_kwargs=bkg_kwargs,
-        tl=tl
+        rss=rss, mean_n_bkg_list=mean_n_bkg_list, bkg_kwargs=bkg_kwargs, tl=tl
     )
 
     (n_sig, n_sig_events_list, sig_events_list) = ana.generate_signal_events(
-        rss=rss,
-        mean_n_sig=mean_n_sig,
-        sig_kwargs=sig_kwargs,
-        tl=tl
+        rss=rss, mean_n_sig=mean_n_sig, sig_kwargs=sig_kwargs, tl=tl
     )
 
     trial_data = dict(
@@ -75,12 +59,11 @@ def create_pseudo_data_file(
         n_bkg_events_list=n_bkg_events_list,
         n_sig_events_list=n_sig_events_list,
         bkg_events_list=bkg_events_list,
-        sig_events_list=sig_events_list
+        sig_events_list=sig_events_list,
     )
 
-    with TaskTimer(tl, 'Writing pseudo data to file.'):
-        with open(filename, 'wb') as fp:
-            pickle.dump(trial_data, fp)
+    with TaskTimer(tl, 'Writing pseudo data to file.'), open(filename, 'wb') as fp:
+        pickle.dump(trial_data, fp)
 
 
 def load_pseudo_data(filename, tl=None):
@@ -113,9 +96,8 @@ def load_pseudo_data(filename, tl=None):
         pseudo data events for each data set. If a particular dataset has
         no signal events, the entry for that dataset can be None.
     """
-    with TaskTimer(tl, 'Loading pseudo data from file.'):
-        with open(filename, 'rb') as fp:
-            trial_data = pickle.load(fp)
+    with TaskTimer(tl, 'Loading pseudo data from file.'), open(filename, 'rb') as fp:
+        trial_data = pickle.load(fp)
 
     return (
         trial_data['mean_n_sig'],
@@ -123,5 +105,5 @@ def load_pseudo_data(filename, tl=None):
         trial_data['n_bkg_events_list'],
         trial_data['n_sig_events_list'],
         trial_data['bkg_events_list'],
-        trial_data['sig_events_list']
+        trial_data['sig_events_list'],
     )

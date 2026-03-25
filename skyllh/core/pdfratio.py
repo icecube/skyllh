@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import abc
 
 import numpy as np
@@ -15,9 +13,9 @@ from skyllh.core.parameters import (
     ParameterModelMapper,
 )
 from skyllh.core.pdf import (
-    PDFSet,
     IsBackgroundPDF,
     IsSignalPDF,
+    PDFSet,
 )
 from skyllh.core.py import (
     classname,
@@ -35,18 +33,18 @@ from skyllh.core.timing import (
 
 
 class PDFRatio(
-        HasConfig,
-        metaclass=abc.ABCMeta,
+    HasConfig,
+    metaclass=abc.ABCMeta,
 ):
     """Abstract base class for a signal over background PDF ratio class.
     It defines the interface of a signal over background PDF ratio class.
     """
 
     def __init__(
-            self,
-            sig_param_names=None,
-            bkg_param_names=None,
-            **kwargs,
+        self,
+        sig_param_names=None,
+        bkg_param_names=None,
+        **kwargs,
     ):
         """Creates a new PDFRatio instance.
 
@@ -77,8 +75,7 @@ class PDFRatio(
         function of. This is the superset of signal and background parameter
         names.
         """
-        return list(
-            set(list(self._sig_param_names) + list(self._bkg_param_names)))
+        return list(set(list(self._sig_param_names) + list(self._bkg_param_names)))
 
     @property
     def n_sig_params(self):
@@ -96,8 +93,7 @@ class PDFRatio(
 
     @property
     def sig_param_names(self):
-        """The list of signal parameter names this PDF ratio is a function of.
-        """
+        """The list of signal parameter names this PDF ratio is a function of."""
         return self._sig_param_names
 
     @sig_param_names.setter
@@ -107,9 +103,7 @@ class PDFRatio(
         if not issequence(names):
             names = [names]
         if not issequenceof(names, str):
-            raise TypeError(
-                'The sig_param_names property must be a sequence of str '
-                'instances!')
+            raise TypeError('The sig_param_names property must be a sequence of str instances!')
         self._sig_param_names = names
 
     @property
@@ -126,17 +120,15 @@ class PDFRatio(
         if not issequence(names):
             names = [names]
         if not issequenceof(names, str):
-            raise TypeError(
-                'The bkg_param_names property must be a sequence of str '
-                'instances!')
+            raise TypeError('The bkg_param_names property must be a sequence of str instances!')
         self._bkg_param_names = names
 
     @abc.abstractmethod
     def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs,
+        self,
+        tdm,
+        tl=None,
+        **kwargs,
     ):
         """Initializes the PDFRatio instance for a new trial. This method can
         be utilized to pre-calculate PDFRatio values that do not depend on any
@@ -153,10 +145,10 @@ class PDFRatio(
 
     @abc.abstractmethod
     def get_ratio(
-            self,
-            tdm,
-            src_params_recarray,
-            tl=None,
+        self,
+        tdm,
+        src_params_recarray,
+        tl=None,
     ):
         """Retrieves the PDF ratio value for each given trial data events (and
         sources), given the given set of parameters.
@@ -186,11 +178,11 @@ class PDFRatio(
 
     @abc.abstractmethod
     def get_gradient(
-            self,
-            tdm,
-            src_params_recarray,
-            fitparam_id,
-            tl=None,
+        self,
+        tdm,
+        src_params_recarray,
+        fitparam_id,
+        tl=None,
     ):
         """Retrieves the PDF ratio gradient for the global fit parameter
         ``fitparam_id`` for each trial data event and source, given the given
@@ -233,16 +225,17 @@ class PDFRatio(
 
 
 class PDFRatioProduct(
-        PDFRatio,
+    PDFRatio,
 ):
     """This is the mathematical product of two PDFRatio instances, which is a
     PDFRatio instance again.
     """
+
     def __init__(
-            self,
-            pdfratio1,
-            pdfratio2,
-            **kwargs,
+        self,
+        pdfratio1,
+        pdfratio2,
+        **kwargs,
     ):
         """Creates a new PDFRatioProduct instance representing the product of
         two PDFRatio instances.
@@ -250,15 +243,10 @@ class PDFRatioProduct(
         self.pdfratio1 = pdfratio1
         self.pdfratio2 = pdfratio2
 
-        sig_param_names = set(
-            list(pdfratio1.sig_param_names) + list(pdfratio2.sig_param_names))
-        bkg_param_names = set(
-            list(pdfratio1.bkg_param_names) + list(pdfratio2.bkg_param_names))
+        sig_param_names = set(list(pdfratio1.sig_param_names) + list(pdfratio2.sig_param_names))
+        bkg_param_names = set(list(pdfratio1.bkg_param_names) + list(pdfratio2.bkg_param_names))
 
-        super().__init__(
-            sig_param_names=sig_param_names,
-            bkg_param_names=bkg_param_names,
-            **kwargs)
+        super().__init__(sig_param_names=sig_param_names, bkg_param_names=bkg_param_names, **kwargs)
 
     @property
     def pdfratio1(self):
@@ -270,8 +258,7 @@ class PDFRatioProduct(
     @pdfratio1.setter
     def pdfratio1(self, pdfratio):
         if not isinstance(pdfratio, PDFRatio):
-            raise TypeError(
-                'The pdfratio1 property must be an instance of PDFRatio!')
+            raise TypeError('The pdfratio1 property must be an instance of PDFRatio!')
         self._pdfratio1 = pdfratio
 
     @property
@@ -284,13 +271,10 @@ class PDFRatioProduct(
     @pdfratio2.setter
     def pdfratio2(self, pdfratio):
         if not isinstance(pdfratio, PDFRatio):
-            raise TypeError(
-                'The pdfratio2 property must be an instance of PDFRatio!')
+            raise TypeError('The pdfratio2 property must be an instance of PDFRatio!')
         self._pdfratio2 = pdfratio
 
-    def initialize_for_new_trial(
-            self,
-            **kwargs):
+    def initialize_for_new_trial(self, **kwargs):
         """Initializes the PDFRatioProduct instance for a new trial.
         It calls the
         :meth:`~skyllh.core.pdfratio.PDFRatio.initialize_for_new_trial` method
@@ -300,10 +284,10 @@ class PDFRatioProduct(
         self._pdfratio2.initialize_for_new_trial(**kwargs)
 
     def get_ratio(
-            self,
-            tdm,
-            src_params_recarray,
-            tl=None,
+        self,
+        tdm,
+        src_params_recarray,
+        tl=None,
     ):
         """Retrieves the PDF ratio product value for each trial data
         event and source, given the given set of parameters for all sources.
@@ -330,24 +314,18 @@ class PDFRatioProduct(
             of the PDF ratio values for each trial event and source.
             The PDF ratio product value for each trial event.
         """
-        r1 = self._pdfratio1.get_ratio(
-            tdm=tdm,
-            src_params_recarray=src_params_recarray,
-            tl=tl)
+        r1 = self._pdfratio1.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
 
-        r2 = self._pdfratio2.get_ratio(
-            tdm=tdm,
-            src_params_recarray=src_params_recarray,
-            tl=tl)
+        r2 = self._pdfratio2.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
 
         return r1 * r2
 
     def get_gradient(
-            self,
-            tdm,
-            src_params_recarray,
-            fitparam_id,
-            tl=None,
+        self,
+        tdm,
+        src_params_recarray,
+        fitparam_id,
+        tl=None,
     ):
         """Retrieves the PDF ratio product gradient for the global fit parameter
         with parameter ID ``fitparam_id`` for each trial data event and source,
@@ -379,41 +357,27 @@ class PDFRatioProduct(
             two PDFRatio instances depend on the given global fit parameter, the
             scalar value ``0`` is returned.
         """
-        r1_depends_on_fitparam =\
-            ParameterModelMapper.is_global_fitparam_a_local_param(
-                fitparam_id=fitparam_id,
-                params_recarray=src_params_recarray,
-                local_param_names=self._pdfratio1.param_names)
+        r1_depends_on_fitparam = ParameterModelMapper.is_global_fitparam_a_local_param(
+            fitparam_id=fitparam_id, params_recarray=src_params_recarray, local_param_names=self._pdfratio1.param_names
+        )
 
-        r2_depends_on_fitparam =\
-            ParameterModelMapper.is_global_fitparam_a_local_param(
-                fitparam_id=fitparam_id,
-                params_recarray=src_params_recarray,
-                local_param_names=self._pdfratio2.param_names)
+        r2_depends_on_fitparam = ParameterModelMapper.is_global_fitparam_a_local_param(
+            fitparam_id=fitparam_id, params_recarray=src_params_recarray, local_param_names=self._pdfratio2.param_names
+        )
 
         if r1_depends_on_fitparam:
-            r2 = self._pdfratio2.get_ratio(
-                tdm=tdm,
-                src_params_recarray=src_params_recarray,
-                tl=tl)
+            r2 = self._pdfratio2.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
 
             r1_grad = self._pdfratio1.get_gradient(
-                tdm=tdm,
-                src_params_recarray=src_params_recarray,
-                fitparam_id=fitparam_id,
-                tl=tl)
+                tdm=tdm, src_params_recarray=src_params_recarray, fitparam_id=fitparam_id, tl=tl
+            )
 
         if r2_depends_on_fitparam:
-            r1 = self._pdfratio1.get_ratio(
-                tdm=tdm,
-                src_params_recarray=src_params_recarray,
-                tl=tl)
+            r1 = self._pdfratio1.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
 
             r2_grad = self._pdfratio2.get_gradient(
-                tdm=tdm,
-                src_params_recarray=src_params_recarray,
-                fitparam_id=fitparam_id,
-                tl=tl)
+                tdm=tdm, src_params_recarray=src_params_recarray, fitparam_id=fitparam_id, tl=tl
+            )
 
         if r1_depends_on_fitparam and r2_depends_on_fitparam:
             gradient = r1 * r2_grad
@@ -428,8 +392,7 @@ class PDFRatioProduct(
         return gradient
 
 
-class SourceWeightedPDFRatio(
-        PDFRatio):
+class SourceWeightedPDFRatio(PDFRatio):
     r"""This class provides the calculation of a source weighted PDF ratio for
     multiple sources:
 
@@ -440,12 +403,8 @@ class SourceWeightedPDFRatio(
             (\vec{p}_{\mathrm{s}_k})
 
     """
-    def __init__(
-            self,
-            dataset_idx,
-            src_detsigyield_weights_service,
-            pdfratio,
-            **kwargs):
+
+    def __init__(self, dataset_idx, src_detsigyield_weights_service, pdfratio, **kwargs):
         """Creates a new SourceWeightedPDFRatio instance.
 
         Parameters
@@ -463,27 +422,23 @@ class SourceWeightedPDFRatio(
         """
         if not isinstance(pdfratio, PDFRatio):
             raise TypeError(
-                'The pdfratio argument must be an instance of PDFRatio! '
-                f'Its current type is {classname(pdfratio)}.')
+                f'The pdfratio argument must be an instance of PDFRatio! Its current type is {classname(pdfratio)}.'
+            )
         self._pdfratio = pdfratio
 
         super().__init__(
-            sig_param_names=self._pdfratio.sig_param_names,
-            bkg_param_names=self._pdfratio.bkg_param_names,
-            **kwargs)
+            sig_param_names=self._pdfratio.sig_param_names, bkg_param_names=self._pdfratio.bkg_param_names, **kwargs
+        )
 
-        self._dataset_idx = int_cast(
-            dataset_idx,
-            'The dataset_idx argument must be castable to type int!')
+        self._dataset_idx = int_cast(dataset_idx, 'The dataset_idx argument must be castable to type int!')
 
-        if not isinstance(
-                src_detsigyield_weights_service,
-                SrcDetSigYieldWeightsService):
+        if not isinstance(src_detsigyield_weights_service, SrcDetSigYieldWeightsService):
             raise TypeError(
                 'The src_detsigyield_weights_service argument must be an '
                 'instance of type SrcDetSigYieldWeightsService! '
                 'Its current type is '
-                f'{classname(src_detsigyield_weights_service)}.')
+                f'{classname(src_detsigyield_weights_service)}.'
+            )
         self._src_detsigyield_weights_service = src_detsigyield_weights_service
 
         self._cache_R_ik = None
@@ -511,11 +466,7 @@ class SourceWeightedPDFRatio(
         """
         return self._pdfratio
 
-    def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """Initializes the PDFRatio instance for a new trial. It calls the
         :meth:`~skyllh.core.pdfratio.PDFRatio.initialize_for_new_trial` method
         of the :class:`~skyllh.core.pdfratio.PDFRatio` instance.
@@ -527,16 +478,9 @@ class SourceWeightedPDFRatio(
         tl : instance of TimeLord
             The optional instance of TimeLord to measure timing information.
         """
-        self._pdfratio.initialize_for_new_trial(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
+        self._pdfratio.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
 
-    def get_ratio(
-            self,
-            tdm,
-            src_params_recarray,
-            tl=None):
+    def get_ratio(self, tdm, src_params_recarray, tl=None):
         """Retrieves the PDF ratio value for each given trial data events (and
         sources), given the given set of parameters.
 
@@ -568,7 +512,7 @@ class SourceWeightedPDFRatio(
             The (N_selected_events,)-shaped 1d numpy ndarray of float holding
             the PDF ratio value for each selected trial data event.
         """
-        (a_jk, a_jk_grads) = self._src_detsigyield_weights_service.get_weights()
+        (a_jk, _) = self._src_detsigyield_weights_service.get_weights()
         a_k = a_jk[self._dataset_idx]
 
         n_sources = len(a_k)
@@ -576,10 +520,7 @@ class SourceWeightedPDFRatio(
 
         A = np.sum(a_k)
 
-        R_ik = self._pdfratio.get_ratio(
-            tdm=tdm,
-            src_params_recarray=src_params_recarray,
-            tl=tl)
+        R_ik = self._pdfratio.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
         # The R_ik ndarray is (N_values,)-shaped.
 
         R_i = np.zeros((n_sel_events,), dtype=np.double)
@@ -595,12 +536,7 @@ class SourceWeightedPDFRatio(
 
         return R_i
 
-    def get_gradient(
-            self,
-            tdm,
-            src_params_recarray,
-            fitparam_id,
-            tl=None):
+    def get_gradient(self, tdm, src_params_recarray, fitparam_id, tl=None):
         """Retrieves the PDF ratio gradient for the parameter ``fitparam_id``
         for each trial data event, given the given set of parameters
         ``src_params_recarray`` for each source.
@@ -652,13 +588,11 @@ class SourceWeightedPDFRatio(
             dAdp = np.sum(a_k_grad)
 
         R_ik_grad = self._pdfratio.get_gradient(
-            tdm=tdm,
-            src_params_recarray=src_params_recarray,
-            fitparam_id=fitparam_id)
+            tdm=tdm, src_params_recarray=src_params_recarray, fitparam_id=fitparam_id
+        )
         # R_ik_grad is a (N_values,)-shaped ndarray or 0.
 
-        if (type(a_k_grad) == int) and (a_k_grad == 0) and\
-           (type(R_ik_grad) == int) and (R_ik_grad == 0):
+        if (isinstance(a_k_grad, int) and a_k_grad == 0) and (isinstance(R_ik_grad, int) and R_ik_grad == 0):
             return 0
 
         R_i_grad = -self._cache_R_i * dAdp
@@ -670,11 +604,9 @@ class SourceWeightedPDFRatio(
             src_mask = src_idxs == k
             src_evt_idxs = evt_idxs[src_mask]
             if isinstance(a_k_grad, np.ndarray):
-                src_sum_i[src_evt_idxs] +=\
-                    a_k_grad[k] * self._cache_R_ik[src_mask]
+                src_sum_i[src_evt_idxs] += a_k_grad[k] * self._cache_R_ik[src_mask]
             if isinstance(R_ik_grad, np.ndarray):
-                src_sum_i[src_evt_idxs] +=\
-                    a_k[k] * R_ik_grad[src_mask]
+                src_sum_i[src_evt_idxs] += a_k[k] * R_ik_grad[src_mask]
 
         R_i_grad += src_sum_i
         R_i_grad /= A
@@ -682,20 +614,14 @@ class SourceWeightedPDFRatio(
         return R_i_grad
 
 
-class SigOverBkgPDFRatio(
-        PDFRatio):
+class SigOverBkgPDFRatio(PDFRatio):
     """This class implements a generic signal-over-background PDF ratio for a
     signal and a background PDF instance.
     It takes a signal PDF of type *pdf_type* and a background PDF of type
     *pdf_type* and calculates the PDF ratio.
     """
-    def __init__(
-            self,
-            sig_pdf,
-            bkg_pdf,
-            same_axes=True,
-            zero_bkg_ratio_value=1.,
-            **kwargs):
+
+    def __init__(self, sig_pdf, bkg_pdf, same_axes=True, zero_bkg_ratio_value=1.0, **kwargs):
         """Creates a new signal-over-background PDF ratio instance.
 
         Parameters
@@ -714,7 +640,8 @@ class SigOverBkgPDFRatio(
         super().__init__(
             sig_param_names=sig_pdf.param_set.params_name_list,
             bkg_param_names=bkg_pdf.param_set.params_name_list,
-            **kwargs)
+            **kwargs,
+        )
 
         self.sig_pdf = sig_pdf
         self.bkg_pdf = bkg_pdf
@@ -722,8 +649,7 @@ class SigOverBkgPDFRatio(
         # Check that the PDF axes ranges are the same for the signal and
         # background PDFs.
         if same_axes and not sig_pdf.axes.is_same_as(bkg_pdf.axes):
-            raise ValueError(
-                'The signal and background PDFs do not have the same axes!')
+            raise ValueError('The signal and background PDFs do not have the same axes!')
 
         self.zero_bkg_ratio_value = zero_bkg_ratio_value
 
@@ -735,30 +661,26 @@ class SigOverBkgPDFRatio(
 
     @property
     def sig_pdf(self):
-        """The signal PDF object used to create the PDF ratio.
-        """
+        """The signal PDF object used to create the PDF ratio."""
         return self._sig_pdf
 
     @sig_pdf.setter
     def sig_pdf(self, pdf):
         if not isinstance(pdf, IsSignalPDF):
-            raise TypeError(
-                'The sig_pdf property must be an instance of IsSignalPDF! '
-                f'Its type is "{classname(pdf)}".')
+            raise TypeError(f'The sig_pdf property must be an instance of IsSignalPDF! Its type is "{classname(pdf)}".')
         self._sig_pdf = pdf
 
     @property
     def bkg_pdf(self):
-        """The background PDF object used to create the PDF ratio.
-        """
+        """The background PDF object used to create the PDF ratio."""
         return self._bkg_pdf
 
     @bkg_pdf.setter
     def bkg_pdf(self, pdf):
         if not isinstance(pdf, IsBackgroundPDF):
             raise TypeError(
-                'The bkg_pdf property must be an instance of IsBackgroundPDF! '
-                f'Its type is "{classname(pdf)}".')
+                f'The bkg_pdf property must be an instance of IsBackgroundPDF! Its type is "{classname(pdf)}".'
+            )
         self._bkg_pdf = pdf
 
     @property
@@ -770,43 +692,21 @@ class SigOverBkgPDFRatio(
 
     @zero_bkg_ratio_value.setter
     def zero_bkg_ratio_value(self, v):
-        v = float_cast(
-            v,
-            'The zero_bkg_ratio_value must be castable to type float!')
+        v = float_cast(v, 'The zero_bkg_ratio_value must be castable to type float!')
         self._zero_bkg_ratio_value = v
 
-    def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """Initializes the PDFRatio instance for a new trial. It calls the
         :meth:`~skyllh.core.pdf.PDF.assert_is_valid_for_trial_data` of the
         signal and background :class:`~skyllh.core.pdf.PDF` instances.
         """
-        self._sig_pdf.initialize_for_new_trial(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
-        self._sig_pdf.assert_is_valid_for_trial_data(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
+        self._sig_pdf.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        self._sig_pdf.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
 
-        self._bkg_pdf.initialize_for_new_trial(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
-        self._bkg_pdf.assert_is_valid_for_trial_data(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
+        self._bkg_pdf.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        self._bkg_pdf.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
 
-    def get_ratio(
-            self,
-            tdm,
-            src_params_recarray,
-            tl=None):
+    def get_ratio(self, tdm, src_params_recarray, tl=None):
         """Calculates the PDF ratio for the given trial events.
 
         Parameters
@@ -832,36 +732,22 @@ class SigOverBkgPDFRatio(
         """
         with TaskTimer(tl, 'Get sig probability densities and grads.'):
             (self._cache_sig_pd, self._cache_sig_grads) = self._sig_pdf.get_pd(
-                tdm=tdm,
-                params_recarray=src_params_recarray,
-                tl=tl)
+                tdm=tdm, params_recarray=src_params_recarray, tl=tl
+            )
         with TaskTimer(tl, 'Get bkg probability densities and grads.'):
-            (self._cache_bkg_pd, self._cache_bkg_grads) = self._bkg_pdf.get_pd(
-                tdm=tdm,
-                params_recarray=None,
-                tl=tl)
+            (self._cache_bkg_pd, self._cache_bkg_grads) = self._bkg_pdf.get_pd(tdm=tdm, params_recarray=None, tl=tl)
 
         with TaskTimer(tl, 'Calculate PDF ratios.'):
             # Select only the events, where the background pdf is greater than
             # zero.
             ratios = np.full_like(self._cache_sig_pd, self._zero_bkg_ratio_value)
-            m = (self._cache_bkg_pd > 0)
-            (m, bkg_pd) = tdm.broadcast_selected_events_arrays_to_values_arrays(
-                (m, self._cache_bkg_pd))
-            np.divide(
-                self._cache_sig_pd,
-                bkg_pd,
-                where=m,
-                out=ratios)
+            m = self._cache_bkg_pd > 0
+            (m, bkg_pd) = tdm.broadcast_selected_events_arrays_to_values_arrays((m, self._cache_bkg_pd))
+            np.divide(self._cache_sig_pd, bkg_pd, where=m, out=ratios)
 
         return ratios
 
-    def get_gradient(
-            self,
-            tdm,
-            src_params_recarray,
-            fitparam_id,
-            tl=None):
+    def get_gradient(self, tdm, src_params_recarray, fitparam_id, tl=None):
         """Retrieves the gradient of the PDF ratio w.r.t. the given parameter.
 
         Note:
@@ -914,8 +800,7 @@ class SigOverBkgPDFRatio(
         m = self._cache_bkg_pd > 0
         b = self._cache_bkg_pd
 
-        (m, b) = tdm.broadcast_selected_events_arrays_to_values_arrays(
-            (m, b))
+        (m, b) = tdm.broadcast_selected_events_arrays_to_values_arrays((m, b))
 
         if sig_dep and not bkg_dep:
             # Case 2, which should be the most common case.
@@ -923,8 +808,7 @@ class SigOverBkgPDFRatio(
             return grad
 
         bgrad = self._cache_bkg_grads[fitparam_id]
-        (bgrad,) = tdm.broadcast_selected_events_arrays_to_values_arrays(
-            (bgrad,))
+        (bgrad,) = tdm.broadcast_selected_events_arrays_to_values_arrays((bgrad,))
 
         if sig_dep and bkg_dep:
             # Case 4.
@@ -932,29 +816,24 @@ class SigOverBkgPDFRatio(
             sgrad = self._cache_sig_grads[fitparam_id]
 
             # Make use of quotient rule of differentiation.
-            grad[m] = (sgrad[m] * b[m] - bgrad[m] * s[m]) / b[m]**2
+            grad[m] = (sgrad[m] * b[m] - bgrad[m] * s[m]) / b[m] ** 2
             return grad
 
         # Case 3.
-        grad[m] = -self._cache_sig_pd[m] / b[m]**2 * bgrad[m]
+        grad[m] = -self._cache_sig_pd[m] / b[m] ** 2 * bgrad[m]
 
         return grad
 
 
-class SigSetOverBkgPDFRatio(
-        PDFRatio):
+class SigSetOverBkgPDFRatio(PDFRatio):
     """Class for a PDF ratio class that takes a PDFSet as signal PDF and a PDF
     as background PDF.
     The signal PDF depends on signal parameters and an interpolation method
     defines how the PDF ratio gets interpolated between the parameter grid
     values.
     """
-    def __init__(
-            self,
-            sig_pdf_set,
-            bkg_pdf,
-            interpolmethod_cls=None,
-            **kwargs):
+
+    def __init__(self, sig_pdf_set, bkg_pdf, interpolmethod_cls=None, **kwargs):
         """Constructor called by creating an instance of a class which is
         derived from this PDFRatio class.
 
@@ -974,7 +853,8 @@ class SigSetOverBkgPDFRatio(
         super().__init__(
             sig_param_names=sig_pdf_set.param_grid_set.params_name_list,
             bkg_param_names=bkg_pdf.param_set.params_name_list,
-            **kwargs)
+            **kwargs,
+        )
 
         self.sig_pdf_set = sig_pdf_set
         self.bkg_pdf = bkg_pdf
@@ -989,13 +869,13 @@ class SigSetOverBkgPDFRatio(
                 raise ValueError(
                     'There is no default parameter manifold grid '
                     f'interpolation method class available for {ndim} '
-                    'dimensions!')
+                    'dimensions!'
+                )
         self.interpolmethod_cls = interpolmethod_cls
 
     @property
     def bkg_pdf(self):
-        """The background PDF instance, derived from IsBackgroundPDF.
-        """
+        """The background PDF instance, derived from IsBackgroundPDF."""
         return self._bkg_pdf
 
     @bkg_pdf.setter
@@ -1004,23 +884,23 @@ class SigSetOverBkgPDFRatio(
             raise TypeError(
                 'The bkg_pdf property must be an instance derived from '
                 'IsBackgroundPDF! '
-                f'Its current type is {classname(pdf)}.')
+                f'Its current type is {classname(pdf)}.'
+            )
         self._bkg_pdf = pdf
 
     @property
     def sig_pdf_set(self):
-        """The signal PDFSet instance, derived from IsSignalPDF.
-        """
+        """The signal PDFSet instance, derived from IsSignalPDF."""
         return self._sig_pdf_set
 
     @sig_pdf_set.setter
     def sig_pdf_set(self, pdfset):
-        if not (isinstance(pdfset, PDFSet) and
-                isinstance(pdfset, IsSignalPDF)):
+        if not (isinstance(pdfset, PDFSet) and isinstance(pdfset, IsSignalPDF)):
             raise TypeError(
                 'The sig_pdf_set property must be a class instance which is '
                 'derived from PDFSet and IsSignalPDF! '
-                f'Its current type is {classname(pdfset)}.')
+                f'Its current type is {classname(pdfset)}.'
+            )
         self._sig_pdf_set = pdfset
 
     @property
@@ -1036,14 +916,11 @@ class SigSetOverBkgPDFRatio(
             raise TypeError(
                 'The interpolmethod_cls property must be a sub-class '
                 'of GridManifoldInterpolationMethod! '
-                f'Its current type is {classname(cls)}.')
+                f'Its current type is {classname(cls)}.'
+            )
         self._interpolmethod_cls = cls
 
-    def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """Initializes the PDFRatio instance for a new trial. It calls the
         :meth:`~skyllh.core.pdf.PDF.assert_is_valid_for_trial_data` of the
         signal :class:`~skyllh.core.pdf.PDFSet` instance and the background
@@ -1056,20 +933,8 @@ class SigSetOverBkgPDFRatio(
         tl : instance of TimeLord | None
             The optional instance of TimeLord for measuring timing information.
         """
-        self._sig_pdf_set.initialize_for_new_trial(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
-        self._sig_pdf_set.assert_is_valid_for_trial_data(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
+        self._sig_pdf_set.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        self._sig_pdf_set.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
 
-        self._bkg_pdf.initialize_for_new_trial(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
-        self._bkg_pdf.assert_is_valid_for_trial_data(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
+        self._bkg_pdf.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        self._bkg_pdf.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)

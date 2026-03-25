@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Author: Dr. Martin Wolf <mail@martin-wolf.org>
 
 import numpy as np
@@ -9,9 +8,9 @@ from skyllh.datasets.i3 import (
 
 
 def create_dataset_collection(
-        cfg,
-        base_path=None,
-        sub_path_fmt=None,
+    cfg,
+    base_path=None,
+    sub_path_fmt=None,
 ):
     """Defines the dataset collection for IceCube's 10-year
     point-source public data, which is available at
@@ -37,10 +36,7 @@ def create_dataset_collection(
         The dataset collection containing all the seasons as individual
         I3Dataset objects.
     """
-    dsc = PublicData_10y_ps.create_dataset_collection(
-        cfg=cfg,
-        base_path=base_path,
-        sub_path_fmt=sub_path_fmt)
+    dsc = PublicData_10y_ps.create_dataset_collection(cfg=cfg, base_path=base_path, sub_path_fmt=sub_path_fmt)
 
     dsc.description += """
     This dataset collection has monte-carlo (MC) files defined for each dataset.

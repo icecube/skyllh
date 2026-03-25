@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import unittest
 
 from skyllh.core.config import (
@@ -19,9 +17,7 @@ class TestFixedScrambledExpDataI3BkgGenMethod(unittest.TestCase):
         cfg = Config()
         data_scrambling_method = UniformRAScramblingMethod()
         data_scrambler = DataScrambler(data_scrambling_method)
-        test_object = FixedScrambledExpDataI3BkgGenMethod(
-            data_scrambler=data_scrambler,
-            cfg=cfg)
+        test_object = FixedScrambledExpDataI3BkgGenMethod(data_scrambler=data_scrambler, cfg=cfg)
 
         self.assertIsInstance(test_object.data_scrambler, DataScrambler)
 

@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
-
 from scipy.stats import (
     gaussian_kde,
 )
 
+from skyllh.analyses.i3.publicdata_ps.utils import (
+    FctSpline2D,
+)
 from skyllh.core.binning import (
     BinningDefinition,
     UsesBinning,
@@ -20,10 +20,10 @@ from skyllh.core.py import (
 )
 from skyllh.core.smoothing import (
     UNSMOOTH_AXIS,
-    SmoothingFilter,
     HistSmoothingMethod,
-    NoHistSmoothingMethod,
     NeighboringBinHistSmoothingMethod,
+    NoHistSmoothingMethod,
+    SmoothingFilter,
 )
 from skyllh.core.storage import (
     DataFieldRecordArray,
@@ -31,14 +31,9 @@ from skyllh.core.storage import (
 from skyllh.core.timing import (
     TaskTimer,
 )
-from skyllh.analyses.i3.publicdata_ps.utils import (
-    FctSpline2D,
-)
 
-class PDBackgroundI3EnergyPDF(
-        EnergyPDF,
-        IsBackgroundPDF,
-        UsesBinning):
+
+class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
     """This is the base class for an IceCube specific energy background PDF for
     the public data.
 
@@ -53,16 +48,17 @@ class PDBackgroundI3EnergyPDF(
     _KDE_BW_SOUTH = 0.32
 
     def __init__(
-            self,
-            data_logE,
-            data_sinDec,
-            data_mcweight,
-            data_physicsweight,
-            logE_binning,
-            sinDec_binning,
-            smoothing_filter,
-            kde_smoothing=False,
-            **kwargs):
+        self,
+        data_logE,
+        data_sinDec,
+        data_mcweight,
+        data_physicsweight,
+        logE_binning,
+        sinDec_binning,
+        smoothing_filter,
+        kde_smoothing=False,
+        **kwargs,
+    ):
         """Creates a new IceCube energy PDF object for the public data.
 
         Parameters
@@ -92,43 +88,35 @@ class PDBackgroundI3EnergyPDF(
             background is not zero when injecting high energy events.
             Default: False.
         """
-        super().__init__(
-            pmm=None,
-            **kwargs)
+        super().__init__(pmm=None, **kwargs)
 
         # Define the PDF axes.
-        self.add_axis(
-            PDFAxis(
-                name='log_energy',
-                vmin=logE_binning.lower_edge,
-                vmax=logE_binning.upper_edge))
-        self.add_axis(
-            PDFAxis(
-                name='sin_dec',
-                vmin=sinDec_binning.lower_edge,
-                vmax=sinDec_binning.upper_edge))
+        self.add_axis(PDFAxis(name='log_energy', vmin=logE_binning.lower_edge, vmax=logE_binning.upper_edge))
+        self.add_axis(PDFAxis(name='sin_dec', vmin=sinDec_binning.lower_edge, vmax=sinDec_binning.upper_edge))
 
         self.add_binning(logE_binning, 'log_energy')
         self.add_binning(sinDec_binning, 'sin_dec')
 
         # Create the smoothing method instance tailored to the energy PDF.
         # We will smooth only the first axis (logE).
-        if (smoothing_filter is not None) and\
-           (not isinstance(smoothing_filter, SmoothingFilter)):
+        if (smoothing_filter is not None) and (not isinstance(smoothing_filter, SmoothingFilter)):
             raise TypeError(
                 'The smoothing_filter argument must be None or an instance of '
                 'SmoothingFilter! '
-                f'Its current type is {classname(smoothing_filter)}!')
+                f'Its current type is {classname(smoothing_filter)}!'
+            )
         if smoothing_filter is None:
             self.hist_smoothing_method = NoHistSmoothingMethod()
         else:
             self.hist_smoothing_method = NeighboringBinHistSmoothingMethod(
-                (smoothing_filter.axis_kernel_array, UNSMOOTH_AXIS))
+                (smoothing_filter.axis_kernel_array, UNSMOOTH_AXIS)
+            )
 
         if not isinstance(kde_smoothing, bool):
             raise ValueError(
                 'The kde_smoothing argument must be an instance of bool! '
-                f'Its current type is {classname(kde_smoothing)}!')
+                f'Its current type is {classname(kde_smoothing)}!'
+            )
 
         # We have to figure out, which histogram bins are zero due to no
         # monte-carlo coverage, and which due to zero physics model
@@ -136,40 +124,30 @@ class PDBackgroundI3EnergyPDF(
 
         # Create a 2D histogram with only the MC events to determine the MC
         # coverage.
-        (h, bins_logE, bins_sinDec) = np.histogram2d(
+        (h, _, _) = np.histogram2d(
             data_logE,
             data_sinDec,
-            bins=[
-                logE_binning.binedges,
-                sinDec_binning.binedges
-            ],
-            range=[
-                logE_binning.range,
-                sinDec_binning.range
-            ],
-            density=False)
+            bins=[logE_binning.binedges, sinDec_binning.binedges],
+            range=[logE_binning.range, sinDec_binning.range],
+            density=False,
+        )
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered = h > 0
 
         # Select the events which have MC coverage but zero physics
         # contribution, i.e. the physics model predicts zero contribution.
-        mask = data_physicsweight == 0.
+        mask = data_physicsweight == 0.0
 
         # Create a 2D histogram with only the MC events that have zero physics
         # contribution. Note: By construction the zero physics contribution bins
         # are a subset of the MC covered bins.
-        (h, bins_logE, bins_sinDec) = np.histogram2d(
+        (h, _, _) = np.histogram2d(
             data_logE[mask],
             data_sinDec[mask],
-            bins=[
-                logE_binning.binedges,
-                sinDec_binning.binedges
-            ],
-            range=[
-                logE_binning.range,
-                sinDec_binning.range
-            ],
-            density=False)
+            bins=[logE_binning.binedges, sinDec_binning.binedges],
+            range=[logE_binning.range, sinDec_binning.range],
+            density=False,
+        )
         h = self._hist_smoothing_method.smooth(h)
         self._hist_mask_mc_covered_zero_physics = h > 0
 
@@ -180,23 +158,15 @@ class PDBackgroundI3EnergyPDF(
             data_logE_masked = data_logE[~mask]
             data_sinDec_masked = data_sinDec[~mask]
 
-            for (sindec_lower, sindec_upper) in zip(
-                    sinDec_binning.binedges[:-1],
-                    sinDec_binning.binedges[1:]):
-
-                sindec_mask = np.logical_and(
-                    data_sinDec_masked >= sindec_lower,
-                    data_sinDec_masked < sindec_upper
-                )
+            for sindec_lower, sindec_upper in zip(
+                sinDec_binning.binedges[:-1], sinDec_binning.binedges[1:], strict=True
+            ):
+                sindec_mask = np.logical_and(data_sinDec_masked >= sindec_lower, data_sinDec_masked < sindec_upper)
                 this_energy = data_logE_masked[sindec_mask]
                 if sindec_lower >= 0:
-                    kde = gaussian_kde(
-                        this_energy,
-                        bw_method=self._KDE_BW_NORTH)
+                    kde = gaussian_kde(this_energy, bw_method=self._KDE_BW_NORTH)
                 else:
-                    kde = gaussian_kde(
-                        this_energy,
-                        bw_method=self._KDE_BW_SOUTH)
+                    kde = gaussian_kde(this_energy, bw_method=self._KDE_BW_SOUTH)
                 kde_pdf_list.append(kde.evaluate(logE_binning.bincenters))
 
             h = np.vstack(kde_pdf_list).T
@@ -206,26 +176,20 @@ class PDBackgroundI3EnergyPDF(
             # contribution. We will do the normalization along the logE
             # axis manually.
             data_weights = data_mcweight[~mask] * data_physicsweight[~mask]
-            (h, bins_logE, bins_sinDec) = np.histogram2d(
+            (h, _, _) = np.histogram2d(
                 data_logE[~mask],
                 data_sinDec[~mask],
-                bins=[
-                    logE_binning.binedges,
-                    sinDec_binning.binedges
-                ],
+                bins=[logE_binning.binedges, sinDec_binning.binedges],
                 weights=data_weights,
-                range=[
-                    logE_binning.range,
-                    sinDec_binning.range
-                ],
-                density=False)
+                range=[logE_binning.range, sinDec_binning.range],
+                density=False,
+            )
 
         # Calculate the normalization for each logE bin. Hence we need to sum
         # over the logE bins (axis 0) for each sin(dec) bin and need to divide
         # by the logE bin widths along the sin(dec) bins. The result array norm
         # is a 2D array of the same shape as h.
-        norms = np.sum(h, axis=(0,))[np.newaxis, ...] * \
-            np.diff(logE_binning.binedges)[..., np.newaxis]
+        norms = np.sum(h, axis=(0,))[np.newaxis, ...] * np.diff(logE_binning.binedges)[..., np.newaxis]
         h /= norms
         h = self._hist_smoothing_method.smooth(h)
 
@@ -246,13 +210,13 @@ class PDBackgroundI3EnergyPDF(
             raise TypeError(
                 'The hist_smoothing_method property must be an instance of '
                 'HistSmoothingMethod! '
-                f'Its current type is {classname(method)}!')
+                f'Its current type is {classname(method)}!'
+            )
         self._hist_smoothing_method = method
 
     @property
     def hist(self):
-        """(read-only) The 2D logE-sinDec histogram array.
-        """
+        """(read-only) The 2D logE-sinDec histogram array."""
         return self._hist_logE_sinDec
 
     @property
@@ -276,35 +240,22 @@ class PDBackgroundI3EnergyPDF(
         bins for which there is monte-carlo coverage and has physics
         contribution.
         """
-        return (
-            self._hist_mask_mc_covered &
-            ~self._hist_mask_mc_covered_zero_physics)
+        return self._hist_mask_mc_covered & ~self._hist_mask_mc_covered_zero_physics
 
     def _construct_conditional_pdf_spline(self):
-        """
-        """
-        spline = FctSpline2D(
-            self._hist_logE_sinDec,
-            self.binnings[0].binedges,
-            self.binnings[1].binedges)
+        """ """
+        spline = FctSpline2D(self._hist_logE_sinDec, self.binnings[0].binedges, self.binnings[1].binedges)
 
         return spline
 
-    def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """Pre-compute the probability densitiy values of the trial data,
         which has to be done only once for a particular trial data.
         """
         with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
             self._pd = self._pdf_spline(tdm['log_energy'], tdm['sin_dec'], grid=False)
 
-    def assert_is_valid_for_trial_data(
-            self,
-            tdm,
-            tl=None):
+    def assert_is_valid_for_trial_data(self, tdm, tl=None):
         """Checks if this energy PDF covers the entire value range of the trail
         data events.
 
@@ -333,12 +284,14 @@ class PDBackgroundI3EnergyPDF(
             raise ValueError(
                 f'The minimum log10emu value {np.min(log10emu):g} of the trial '
                 'data is lower than the minimum value of the PDF '
-                f'{log10emu_axis.vmin:g}!')
+                f'{log10emu_axis.vmin:g}!'
+            )
         if np.max(log10emu) > log10emu_axis.vmax:
             raise ValueError(
                 f'The maximum log10emu value {np.max(log10emu):g} of the trial '
                 'data is larger than the maximum value of the PDF '
-                f'{log10emu_axis.vmax}:g!')
+                f'{log10emu_axis.vmax}:g!'
+            )
 
         sindecmu = tdm['sin_dec']
         sindecmu_axis = self.axes['sin_dec']
@@ -346,18 +299,16 @@ class PDBackgroundI3EnergyPDF(
             raise ValueError(
                 f'The minimum sindecmu value {np.min(sindecmu):g} of the trial '
                 'data is lower than the minimum value of the PDF '
-                f'{sindecmu_axis.vmin:g}!')
+                f'{sindecmu_axis.vmin:g}!'
+            )
         if np.max(sindecmu) > sindecmu_axis.vmax:
             raise ValueError(
                 f'The maximum sindecmu value {np.max(sindecmu):g} of the trial '
                 'data is larger than the maximum value of the PDF '
-                f'{sindecmu_axis.vmax:g}!')
+                f'{sindecmu_axis.vmax:g}!'
+            )
 
-    def get_pd(
-            self,
-            tdm,
-            params_recarray=None,
-            tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """Calculates the energy probability density (in 1/log10(E/GeV)) of each
         trial data event.
 
@@ -394,20 +345,12 @@ class PDBackgroundI3EnergyPDF(
         return (self._pd, grads)
 
 
-class PDDataBackgroundI3EnergyPDF(
-        PDBackgroundI3EnergyPDF):
+class PDDataBackgroundI3EnergyPDF(PDBackgroundI3EnergyPDF):
     """This is the IceCube energy background PDF, which gets constructed from
     the experimental data of the public data.
     """
 
-    def __init__(
-            self,
-            data_exp,
-            logE_binning,
-            sinDec_binning,
-            smoothing_filter=None,
-            kde_smoothing=False,
-            **kwargs):
+    def __init__(self, data_exp, logE_binning, sinDec_binning, smoothing_filter=None, kde_smoothing=False, **kwargs):
         """Constructs a new IceCube energy background PDF from experimental
         data.
 
@@ -440,7 +383,8 @@ class PDDataBackgroundI3EnergyPDF(
             raise TypeError(
                 'The data_exp argument must be an instance of '
                 'DataFieldRecordArray! '
-                f'Its current type is {classname(data_exp)}!')
+                f'Its current type is {classname(data_exp)}!'
+            )
 
         data_logE = data_exp['log_energy']
         data_sinDec = data_exp['sin_dec']
@@ -458,23 +402,16 @@ class PDDataBackgroundI3EnergyPDF(
             sinDec_binning=sinDec_binning,
             smoothing_filter=smoothing_filter,
             kde_smoothing=kde_smoothing,
-            **kwargs)
+            **kwargs,
+        )
 
 
-class PDMCBackgroundI3EnergyPDF(
-        EnergyPDF,
-        IsBackgroundPDF,
-        UsesBinning):
+class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
     """This class provides a background energy PDF constructed from the public
     data and a monte-carlo background flux model.
     """
 
-    def __init__(
-            self,
-            pdf_log10emu_sindecmu,
-            log10emu_binning,
-            sindecmu_binning,
-            **kwargs):
+    def __init__(self, pdf_log10emu_sindecmu, log10emu_binning, sindecmu_binning, **kwargs):
         """Constructs a new background energy PDF with the given PDF data and
         binning.
 
@@ -491,42 +428,35 @@ class PDMCBackgroundI3EnergyPDF(
             The binning definition for the binning in sin(dec_mu).
         """
         if not isinstance(pdf_log10emu_sindecmu, np.ndarray):
-            raise TypeError(
-                'The pdf_log10emu_sindecmu argument must be an instance of '
-                'numpy.ndarray!')
+            raise TypeError('The pdf_log10emu_sindecmu argument must be an instance of numpy.ndarray!')
         if not isinstance(sindecmu_binning, BinningDefinition):
-            raise TypeError(
-                'The sindecmu_binning argument must be an instance of '
-                'BinningDefinition!')
+            raise TypeError('The sindecmu_binning argument must be an instance of BinningDefinition!')
         if not isinstance(log10emu_binning, BinningDefinition):
-            raise TypeError(
-                'The log10emu_binning argument must be an instance of '
-                'BinningDefinition!')
+            raise TypeError('The log10emu_binning argument must be an instance of BinningDefinition!')
 
-        super().__init__(
-            pmm=None,
-            **kwargs)
+        super().__init__(pmm=None, **kwargs)
 
-        self.add_axis(PDFAxis(
-            log10emu_binning.name,
-            log10emu_binning.lower_edge,
-            log10emu_binning.upper_edge,
-        ))
+        self.add_axis(
+            PDFAxis(
+                log10emu_binning.name,
+                log10emu_binning.lower_edge,
+                log10emu_binning.upper_edge,
+            )
+        )
 
-        self.add_axis(PDFAxis(
-            sindecmu_binning.name,
-            sindecmu_binning.lower_edge,
-            sindecmu_binning.upper_edge,
-        ))
+        self.add_axis(
+            PDFAxis(
+                sindecmu_binning.name,
+                sindecmu_binning.lower_edge,
+                sindecmu_binning.upper_edge,
+            )
+        )
 
         self._hist_logE_sinDec = np.copy(pdf_log10emu_sindecmu)
         self.add_binning(log10emu_binning, name='log_energy')
         self.add_binning(sindecmu_binning, name='sin_dec')
 
-    def assert_is_valid_for_trial_data(
-            self,
-            tdm,
-            tl=None):
+    def assert_is_valid_for_trial_data(self, tdm, tl=None):
         """Checks if this energy PDF covers the entire value range of the trail
         data events.
 
@@ -555,12 +485,14 @@ class PDMCBackgroundI3EnergyPDF(
             raise ValueError(
                 f'The minimum log10emu value {np.min(log10emu):g} of the trial '
                 'data is lower than the minimum value of the PDF '
-                f'{log10emu_axis.vmin:g}!')
+                f'{log10emu_axis.vmin:g}!'
+            )
         if np.max(log10emu) > log10emu_axis.vmax:
             raise ValueError(
                 f'The maximum log10emu value {np.max(log10emu):g} of the trial '
                 'data is larger than the maximum value of the PDF '
-                f'{log10emu_axis.vmax}:g!')
+                f'{log10emu_axis.vmax}:g!'
+            )
 
         sindecmu = tdm['sin_dec']
         sindecmu_axis = self.get_axis(1)
@@ -568,18 +500,16 @@ class PDMCBackgroundI3EnergyPDF(
             raise ValueError(
                 f'The minimum sindecmu value {np.min(sindecmu):g} of the trial '
                 'data is lower than the minimum value of the PDF '
-                f'{sindecmu_axis.vmin:g}!')
+                f'{sindecmu_axis.vmin:g}!'
+            )
         if np.max(sindecmu) > sindecmu_axis.vmax:
             raise ValueError(
                 f'The maximum sindecmu value {np.max(sindecmu):g} of the trial '
                 'data is larger than the maximum value of the PDF '
-                f'{sindecmu_axis.vmax:g}!')
+                f'{sindecmu_axis.vmax:g}!'
+            )
 
-    def get_pd(
-            self,
-            tdm,
-            params_recarray=None,
-            tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """Gets the probability density for the given trial data events.
 
         Parameters
@@ -612,10 +542,8 @@ class PDMCBackgroundI3EnergyPDF(
         log10emu = tdm['log_energy']
         sindecmu = tdm['sin_dec']
 
-        log10emu_idxs = np.digitize(
-            log10emu, self.get_binning('log_energy').binedges) - 1
-        sindecmu_idxs = np.digitize(
-            sindecmu, self.get_binning('sin_dec').binedges) - 1
+        log10emu_idxs = np.digitize(log10emu, self.get_binning('log_energy').binedges) - 1
+        sindecmu_idxs = np.digitize(sindecmu, self.get_binning('sin_dec').binedges) - 1
 
         with TaskTimer(tl, 'Evaluating sindecmu-log10emu PDF.'):
             pd = self._hist_logE_sinDec[(log10emu_idxs, sindecmu_idxs)]

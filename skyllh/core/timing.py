@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
-
 """The timing module provides code execution timing functionalities. The
 TimeLord class keeps track of execution times of specific code segments,
 called "tasks". The TaskTimer class can be used within a `with`
 statement to time the execution of the code within the `with` block.
 """
 
-import numpy as np
 import time
+
+import numpy as np
 
 from skyllh.core import (
     display,
@@ -17,13 +16,8 @@ from skyllh.core.py import (
 )
 
 
-class TaskRecord(
-        object):
-    def __init__(
-            self,
-            name,
-            start_times,
-            end_times):
+class TaskRecord:
+    def __init__(self, name, start_times, end_times):
         """Creates a new TaskRecord instance.
 
         Parameters
@@ -38,22 +32,19 @@ class TaskRecord(
         self.name = name
 
         if len(start_times) != len(end_times):
-            raise ValueError(
-                'The number of start and end time stamps must be equal!')
+            raise ValueError('The number of start and end time stamps must be equal!')
 
         self._start_times = start_times
         self._end_times = end_times
 
     @property
     def tstart(self):
-        """(read-only) The time stamps the execution of this task started.
-        """
+        """(read-only) The time stamps the execution of this task started."""
         return self._start_times
 
     @property
     def tend(self):
-        """(read-only) The time stamps the execution of this task was stopped.
-        """
+        """(read-only) The time stamps the execution of this task was stopped."""
         return self._end_times
 
     @property
@@ -64,9 +55,7 @@ class TaskRecord(
         # Create a (2,Niter)-shaped 2D ndarray holding the start and end time
         # stamps of the task executions. This array gets then sorted by the
         # start time stamps.
-        arr = np.sort(
-            np.vstack((self._start_times, self._end_times)),
-            axis=1)
+        arr = np.sort(np.vstack((self._start_times, self._end_times)), axis=1)
 
         d = arr[1, 0] - arr[0, 0]
         last_tend = arr[1, 0]
@@ -85,8 +74,7 @@ class TaskRecord(
 
     @property
     def niter(self):
-        """(read-only) The number of times this task was executed.
-        """
+        """(read-only) The number of times this task was executed."""
         return len(self._start_times)
 
     def join(self, tr):
@@ -102,24 +90,18 @@ class TaskRecord(
         self._end_times.extend(tr._end_times)
 
 
-class TimeLord(
-        object):
-    def __init__(
-            self):
+class TimeLord:
+    def __init__(self):
         self._task_records = []
         self._task_records_name_idx_map = {}
 
     @property
     def task_name_list(self):
-        """(read-only) The list of task names.
-        """
+        """(read-only) The list of task names."""
         return list(self._task_records_name_idx_map.keys())
 
-    def add_task_record(
-            self,
-            tr):
-        """Adds a given task record to the internal list of task records.
-        """
+    def add_task_record(self, tr):
+        """Adds a given task record to the internal list of task records."""
         tname = tr.name
 
         if self.has_task_record(tname):
@@ -129,11 +111,9 @@ class TimeLord(
             return
 
         self._task_records.append(tr)
-        self._task_records_name_idx_map[tr.name] = len(self._task_records)-1
+        self._task_records_name_idx_map[tr.name] = len(self._task_records) - 1
 
-    def get_task_record(
-            self,
-            name):
+    def get_task_record(self, name):
         """Retrieves a task record of the given name.
 
         Parameters
@@ -148,9 +128,7 @@ class TimeLord(
         """
         return self._task_records[self._task_records_name_idx_map[name]]
 
-    def has_task_record(
-            self,
-            name):
+    def has_task_record(self, name):
         """Checks if this TimeLord instance has a task record of the given name.
 
         Parameters
@@ -166,9 +144,7 @@ class TimeLord(
         """
         return name in self._task_records_name_idx_map
 
-    def join(
-            self,
-            tl):
+    def join(self, tl):
         """Joins a given TimeLord instance with this TimeLord instance. Tasks
         of the same name will be updated and new tasks will be added.
 
@@ -189,13 +165,11 @@ class TimeLord(
                 self.add_task_record(other_tr)
 
     def task_timer(self, name):
-        """Creates TaskTimer instance for the given task name.
-        """
+        """Creates TaskTimer instance for the given task name."""
         return TaskTimer(self, name)
 
     def __str__(self):
-        """Generates a pretty string for this time lord.
-        """
+        """Generates a pretty string for this time lord."""
         task_name_list = self.task_name_list
         n_tasks = len(task_name_list)
 
@@ -204,35 +178,27 @@ class TimeLord(
             s += ' None.'
             return s
 
-        task_name_len_list = [
-            len(task_name)
-            for task_name in task_name_list
-        ]
-        max_task_name_len = np.minimum(
-            np.max(task_name_len_list), display.PAGE_WIDTH-25)
+        task_name_len_list = [len(task_name) for task_name in task_name_list]
+        max_task_name_len = np.minimum(np.max(task_name_len_list), display.PAGE_WIDTH - 25)
 
         for i in range(n_tasks):
             tr = self._task_records[i]
             task_name = tr.name[0:max_task_name_len]
             t = tr.duration / tr.niter
-            line = '\n[{task_name:'+str(max_task_name_len)+'s}] {t:7.{p}{c}} '\
-                'sec/iter ({niter:d})'
+            line = '\n[{task_name:' + str(max_task_name_len) + 's}] {t:7.{p}{c}} sec/iter ({niter:d})'
             s += line.format(
                 task_name=task_name,
                 t=t,
                 p=1 if t > 1e3 or t < 1e-3 else 3,
                 c='e' if t > 1e3 or t < 1e-3 else 'f',
-                niter=tr.niter)
+                niter=tr.niter,
+            )
 
         return s
 
 
-class TaskTimer(
-        object):
-    def __init__(
-            self,
-            time_lord,
-            name):
+class TaskTimer:
+    def __init__(self, time_lord, name):
         """
         Parameters
         ----------
@@ -256,48 +222,36 @@ class TaskTimer(
 
     @time_lord.setter
     def time_lord(self, lord):
-        if lord is not None:
-            if not isinstance(lord, TimeLord):
-                raise TypeError(
-                    'The time_lord property must be None or an instance of '
-                    'TimeLord!')
+        if lord is not None and not isinstance(lord, TimeLord):
+            raise TypeError('The time_lord property must be None or an instance of TimeLord!')
         self._time_lord = lord
 
     @property
     def name(self):
-        """The name if the task.
-        """
+        """The name if the task."""
         return self._name
 
     @name.setter
     def name(self, name):
         if not isinstance(name, str):
-            raise TypeError(
-                'The name property must be an instance of str!')
+            raise TypeError('The name property must be an instance of str!')
         self._name = name
 
     @property
     def duration(self):
-        """The duration in seconds the task was executed.
-        """
-        return (self._end - self._start)
+        """The duration in seconds the task was executed."""
+        return self._end - self._start
 
     def __enter__(self):
-        """This gets executed when entering the `with` block.
-        """
+        """This gets executed when entering the `with` block."""
         self._start = time.process_time()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """This gets executed when exiting the `with` block.
-        """
+        """This gets executed when exiting the `with` block."""
         self._end = time.process_time()
 
         if self._time_lord is None:
             return
 
-        self._time_lord.add_task_record(
-            TaskRecord(
-                name=self._name,
-                start_times=[self._start],
-                end_times=[self._end]))
+        self._time_lord.add_task_record(TaskRecord(name=self._name, start_times=[self._start], end_times=[self._end]))

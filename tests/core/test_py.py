@@ -1,19 +1,13 @@
-# -*- coding: utf-8 -*-
 # Author: Dr. Martin Wolf <mail@martin-wolf.org>
 
 import unittest
 
-from skyllh.core.py import (
-    ConstPyQualifier,
-    NamedObjectCollection,
-    const,
-    issequenceof
-)
+from skyllh.core.py import ConstPyQualifier, NamedObjectCollection, const, issequenceof
 
 
-class A(object):
+class A:
     def __init__(self, name=None):
-        super(A, self).__init__()
+        super().__init__()
 
         self._name = name
 
@@ -22,9 +16,9 @@ class A(object):
         return self._name
 
 
-class B(object):
+class B:
     def __init__(self, name=None):
-        super(B, self).__init__()
+        super().__init__()
 
         self.name = name
 
@@ -49,8 +43,7 @@ class issequenceof_TestCase(unittest.TestCase):
         self.assertFalse(issequenceof(seq, A))
 
     def test_pyqualifiers(self):
-        """Tests if the issequenceof function works with PyQualifiers.
-        """
+        """Tests if the issequenceof function works with PyQualifiers."""
         seq = [const(A('a1')), const(A('a2'))]
         self.assertTrue(issequenceof(seq, A, const))
 
@@ -58,8 +51,7 @@ class issequenceof_TestCase(unittest.TestCase):
         self.assertFalse(issequenceof(seq, A, const))
 
 
-class NamedObjectCollection_TestCase(
-        unittest.TestCase):
+class NamedObjectCollection_TestCase(unittest.TestCase):
     def setUp(self):
         self.a1 = A('a1')
         self.a2 = A('a2')

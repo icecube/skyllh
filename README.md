@@ -70,13 +70,22 @@ Several publications about the SkyLLH software are available:
 These guidelines should help new developers of SkyLLH to join the development
 process easily.
 
-## Code style
+## Pre-commit hooks
 
-- The code follows PEP8 coding style guidelines as close as possible.
+This repository uses [pre-commit](https://pre-commit.com) to run [ruff](https://docs.astral.sh/ruff/) for linting and formatting on every commit.
 
-- Code lines are maximum 80 characters wide.
+Install `pre-commit` and set up the hooks:
 
-- 4 spaces are used as one indentation level.
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+The hooks will now run automatically on `git commit`. To run them manually against all files:
+
+```bash
+pre-commit run --all-files
+```
 
 ## Branching
 

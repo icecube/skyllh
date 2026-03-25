@@ -1,13 +1,10 @@
-# -*- coding: utf-8 -*-
-
 """The time_integrated_ps analysis is a multi-dataset time-integrated single
 source analysis with a two-component likelihood function using a spacial and an
 energy event PDF.
 """
 
 import numpy as np
-
-from scipy.interpolate import splrep, BSpline
+from scipy.interpolate import BSpline, splrep
 
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF,
@@ -27,7 +24,6 @@ from skyllh.analyses.i3.publicdata_ps.signalpdf import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
 )
-
 from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
@@ -37,10 +33,6 @@ from skyllh.core.background_generator import (
 from skyllh.core.config import (
     Config,
 )
-
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
@@ -48,10 +40,12 @@ from skyllh.core.flux_model import (
     EpeakFunctionEnergyProfile,
     SteadyPointlikeFFM,
 )
+from skyllh.core.logging import (
+    get_logger,
+)
 from skyllh.core.minimizer import (
-    Minimizer,
     LBFGSMinimizerImpl,
-
+    Minimizer,
 )
 from skyllh.core.minimizers.iminuit import (
     IMinuitMinimizerImpl,
@@ -68,9 +62,6 @@ from skyllh.core.pdfratio import (
 )
 from skyllh.core.progressbar import (
     ProgressBar,
-)
-from skyllh.core.random import (
-    RandomStateService,
 )
 from skyllh.core.scrambling import (
     DataScrambler,
@@ -89,55 +80,34 @@ from skyllh.core.source_hypo_grouping import (
     SourceHypoGroup,
     SourceHypoGroupManager,
 )
-from skyllh.core.source_model import (
-    PointLikeSource,
-)
 from skyllh.core.test_statistic import (
     WilksTestStatistic,
-)
-from skyllh.core.timing import (
-    TimeLord,
 )
 from skyllh.core.trialdata import (
     TrialDataManager,
 )
 from skyllh.core.utils.analysis import (
-    create_trial_data_file,
     pointlikesource_to_data_field_array,
 )
-
 from skyllh.core.utils.tdm import (
     get_tdm_field_func_psi,
 )
-
-from skyllh.i3.config import (
-    add_icecube_specific_analysis_required_data_fields,
-)
-
-from skyllh.datasets.i3 import (
-    data_samples,
-)
-
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
 )
 from skyllh.i3.backgroundpdf import (
     DataBackgroundI3SpatialPDF,
 )
-
-from skyllh.scripting.argparser import (
-    create_argparser,
-)
-from skyllh.scripting.logging import (
-    setup_logging,
+from skyllh.i3.config import (
+    add_icecube_specific_analysis_required_data_fields,
 )
 
 cfg = Config()
 
 
 def set_epeak(analysis, e_peak):
-    """Change the peak energy. The shape stays the same but the spectrum is 
-    moved to higher/lower energies. 
+    """Change the peak energy. The shape stays the same but the spectrum is
+    moved to higher/lower energies.
 
     Parameters
     ----------
@@ -153,7 +123,7 @@ def set_epeak(analysis, e_peak):
 def flux_from_ns(analysis, e_peak, ns):
     """Get the flux at e_eak for a certain flux model (defined by e_peak)
       for a mean number of signal neutrinos ns
-    
+
     Parameters
     ----------
     analysis : instance of SingleSourceMultiDatasetLLHRatioAnalysis
@@ -166,9 +136,9 @@ def flux_from_ns(analysis, e_peak, ns):
     Returns
     -------
     flux : float
-        Flux (dN / dE) in (GeV cm^2 s)^-1 at peak energy. 
+        Flux (dN / dE) in (GeV cm^2 s)^-1 at peak energy.
     """
-    #set the fluxmodel to e_peak
+    # set the fluxmodel to e_peak
     set_epeak(analysis, e_peak)
 
     scaling_factor = analysis.calculate_fluxmodel_scaling_factor(ns, [ns, e_peak])
@@ -178,7 +148,7 @@ def flux_from_ns(analysis, e_peak, ns):
 
 def ns_from_flux(analysis, e_peak, flux):
     """Get the mean number of signal neutrinos ns for a certain flux model (defined by e_peak) for a flux at e_peak (1/GeV/cm2/s).
-    
+
     Parameters
     ----------
     analysis : instance of SingleSourceMultiDatasetLLHRatioAnalysis
@@ -194,7 +164,7 @@ def ns_from_flux(analysis, e_peak, flux):
         Mean number of signal neutrinos
     """
 
-    #set the fluxmodel to e_peak
+    # set the fluxmodel to e_peak
     set_epeak(analysis, e_peak)
 
     # reference flux at e_peak
@@ -203,7 +173,7 @@ def ns_from_flux(analysis, e_peak, flux):
     scaling_factor = flux / reference_flux
 
     scaling_factor_norm = analysis.calculate_fluxmodel_scaling_factor(1, [1, e_peak])
- 
+
     return scaling_factor / scaling_factor_norm
 
 
@@ -215,7 +185,7 @@ def create_analysis(
     source_energy_spectrum,
     refplflux_Phi0=1,
     ns_seed=10.0,
-    ns_min=0.,
+    ns_min=0.0,
     ns_max=1e3,
     e_peak_signal=5,
     e_peak_seed=3,
@@ -245,7 +215,7 @@ def create_analysis(
     source_energies : numpy array
         Energies in GeV for which source_energy_spectrum is given
     source_energy_spectrum : numpy array
-        The energy spectrum in GeV / cm^2 / s 
+        The energy spectrum in GeV / cm^2 / s
     refplflux_Phi0 : float
         The flux normalization to use for the reference power law flux model.
     ns_seed : float
@@ -260,7 +230,7 @@ def create_analysis(
         Seed value for minimizer for fitting energy peak.
     e_peak_min : float
         Lower bound for energy peak fit.
-    e_peak_max : float 
+    e_peak_max : float
         Upper bound for energy peak fit,
     kde_smoothing : bool
         Apply a KDE-based smoothing to the data-driven background pdf.
@@ -303,16 +273,13 @@ def create_analysis(
         logger_name = __name__
     logger = get_logger(logger_name)
 
-
     # Create the minimizer instance.
-    if minimizer_impl == "LBFGS":
+    if minimizer_impl == 'LBFGS':
         minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg))
-    elif minimizer_impl == "minuit":
+    elif minimizer_impl == 'minuit':
         minimizer = Minimizer(IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8))
     else:
-        raise NameError(
-            f"Minimizer implementation `{minimizer_impl}` is not supported "
-            "Please use `LBFGS` or `minuit`.")
+        raise NameError(f'Minimizer implementation `{minimizer_impl}` is not supported Please use `LBFGS` or `minuit`.')
 
     dtc_dict = None
     dtc_except_fields = None
@@ -328,7 +295,6 @@ def create_analysis(
 
     e_peak = np.log10(source_energies[np.argmax(source_energy_spectrum)])
 
-
     fluxmodel = SteadyPointlikeFFM(
         Phi0=refplflux_Phi0,
         energy_profile=EpeakFunctionEnergyProfile(
@@ -341,28 +307,17 @@ def create_analysis(
     )
 
     # Define the fit parameter ns.
-    param_ns = Parameter(
-        name='ns',
-        initial=ns_seed,
-        valmin=ns_min,
-        valmax=ns_max)
+    param_ns = Parameter(name='ns', initial=ns_seed, valmin=ns_min, valmax=ns_max)
 
     # Define the fit parameter e_peak.
-    param_e_peak = Parameter(
-        name='e_peak',
-        initial=e_peak_seed,
-        valmin=e_peak_min,
-        valmax=e_peak_max)
+    param_e_peak = Parameter(name='e_peak', initial=e_peak_seed, valmin=e_peak_min, valmax=e_peak_max)
 
     # Define the detector signal yield builder for the IceCube detector and this
     # source and flux model.
     # The sin(dec) binning will be taken by the builder automatically from the
     # Dataset instance.
-    e_peak_grid = param_e_peak.as_linear_grid(delta=0.04) 
-    detsigyield_builder =\
-        PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
-            cfg=cfg,
-            param_grid=e_peak_grid)
+    e_peak_grid = param_e_peak.as_linear_grid(delta=0.04)
+    detsigyield_builder = PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(cfg=cfg, param_grid=e_peak_grid)
 
     # Define the signal generation method.
     sig_gen_method = None
@@ -371,18 +326,16 @@ def create_analysis(
     # group for the single source.
     shg_mgr = SourceHypoGroupManager(
         SourceHypoGroup(
-            sources=source,
-            fluxmodel=fluxmodel,
-            detsigyield_builders=detsigyield_builder,
-            sig_gen_method=sig_gen_method))
+            sources=source, fluxmodel=fluxmodel, detsigyield_builders=detsigyield_builder, sig_gen_method=sig_gen_method
+        )
+    )
 
     # Define a detector model for the ns fit parameter.
     detector_model = DetectorModel('IceCube')
 
     # Define the parameter model mapper for the analysis, which will map global
     # parameters to local source parameters.
-    pmm = ParameterModelMapper(
-        models=[detector_model, source])
+    pmm = ParameterModelMapper(models=[detector_model, source])
     pmm.map_param(param_ns, models=detector_model)
     pmm.map_param(param_e_peak, models=source)
 
@@ -396,9 +349,7 @@ def create_analysis(
     data_scrambler = DataScrambler(UniformRAScramblingMethod())
 
     # Create background generation method.
-    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(
-        cfg=cfg,
-        data_scrambler=data_scrambler)
+    bkg_gen_method = FixedScrambledExpDataI3BkgGenMethod(cfg=cfg, data_scrambler=data_scrambler)
 
     # Create the Analysis instance.
     ana = Analysis(
@@ -406,50 +357,38 @@ def create_analysis(
         shg_mgr=shg_mgr,
         pmm=pmm,
         test_statistic=test_statistic,
-#        bkg_gen_method=bkg_gen_method,
+        #        bkg_gen_method=bkg_gen_method,
         sig_generator_cls=MultiDatasetSignalGenerator,
     )
 
     # Define the event selection method for pure optimization purposes.
     # We will use the same method for all datasets.
     event_selection_method = SpatialBoxEventSelectionMethod(
-        shg_mgr=shg_mgr,
-        delta_angle=np.deg2rad(evt_sel_delta_angle_deg))
+        shg_mgr=shg_mgr, delta_angle=np.deg2rad(evt_sel_delta_angle_deg)
+    )
 
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
-    for (ds_idx, ds) in enumerate(datasets):
+    for ds_idx, ds in enumerate(datasets):
         data = ds.load_and_prepare_data(
             keep_fields=keep_data_fields,
             dtc_dict=dtc_dict,
             dtc_except_fields=dtc_except_fields,
- #           compress=compress_data,
-            tl=tl)
+            #           compress=compress_data,
+            tl=tl,
+        )
 
         sin_dec_binning = ds.get_binning_definition('sin_dec')
         log_energy_binning = ds.get_binning_definition('log_energy')
 
         # Create the spatial PDF ratio instance for this dataset.
-        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
-            cfg=cfg,
-            dec_range=np.arcsin(sin_dec_binning.range))
-        spatial_bkgpdf = DataBackgroundI3SpatialPDF(
-            cfg=cfg,
-            data_exp=data.exp,
-            sin_dec_binning=sin_dec_binning)
-        spatial_pdfratio = SigOverBkgPDFRatio(
-            cfg=cfg,
-            sig_pdf=spatial_sigpdf,
-            bkg_pdf=spatial_bkgpdf)
+        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(cfg=cfg, dec_range=np.arcsin(sin_dec_binning.range))
+        spatial_bkgpdf = DataBackgroundI3SpatialPDF(cfg=cfg, data_exp=data.exp, sin_dec_binning=sin_dec_binning)
+        spatial_pdfratio = SigOverBkgPDFRatio(cfg=cfg, sig_pdf=spatial_sigpdf, bkg_pdf=spatial_bkgpdf)
 
         # Create the energy PDF ratio instance for this dataset.
         energy_sigpdfset = PDSignalEnergyPDFSet(
-            cfg=cfg,
-            ds=ds,
-            src_dec=source.dec,
-            fluxmodel=fluxmodel,
-            param_grid_set=e_peak_grid,
-            ppbar=ppbar
+            cfg=cfg, ds=ds, src_dec=source.dec, fluxmodel=fluxmodel, param_grid_set=e_peak_grid, ppbar=ppbar
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
         energy_bkgpdf = PDDataBackgroundI3EnergyPDF(
@@ -458,31 +397,24 @@ def create_analysis(
             logE_binning=log_energy_binning,
             sinDec_binning=sin_dec_binning,
             smoothing_filter=smoothing_filter,
-            kde_smoothing=kde_smoothing)
+            kde_smoothing=kde_smoothing,
+        )
 
-        energy_pdfratio = PDSigSetOverBkgPDFRatio(
-            cfg=cfg,
-            sig_pdf_set=energy_sigpdfset,
-            bkg_pdf=energy_bkgpdf)
+        energy_pdfratio = PDSigSetOverBkgPDFRatio(cfg=cfg, sig_pdf_set=energy_sigpdfset, bkg_pdf=energy_bkgpdf)
 
         pdfratio = spatial_pdfratio * energy_pdfratio
 
         # Create a trial data manager and add the required data fields.
         tdm = TrialDataManager()
-        tdm.add_source_data_field(
-            name='src_array',
-            func=pointlikesource_to_data_field_array)
-        tdm.add_data_field(
-            name='psi',
-            func=get_tdm_field_func_psi(),
-            dt='dec',
-            is_srcevt_data=True)
+        tdm.add_source_data_field(name='src_array', func=pointlikesource_to_data_field_array)
+        tdm.add_data_field(name='psi', func=get_tdm_field_func_psi(), dt='dec', is_srcevt_data=True)
 
         energy_cut_spline = create_energy_cut_spline(
             ds=ds,
             exp_data=data.exp,
             spl_smooth=ds.get_aux_data('spline_smoothing'),
-            cumulative_thr=ds.get_aux_data('cumulative_threshold'))
+            cumulative_thr=ds.get_aux_data('cumulative_threshold'),
+        )
 
         bkg_generator = DatasetBackgroundGenerator(
             cfg=cfg,
@@ -506,20 +438,17 @@ def create_analysis(
             tdm=tdm,
             event_selection_method=event_selection_method,
             bkg_generator=bkg_generator,
-            sig_generator=sig_generator)
+            sig_generator=sig_generator,
+        )
 
         pbar.increment()
     pbar.finish()
 
-    ana.construct_services(
-        ppbar=ppbar)
+    ana.construct_services(ppbar=ppbar)
 
-    ana.llhratio = ana.construct_llhratio(
-        minimizer=minimizer,
-        ppbar=ppbar)
+    ana.llhratio = ana.construct_llhratio(minimizer=minimizer, ppbar=ppbar)
 
     if construct_sig_generator is True:
         ana.construct_signal_generator()
 
     return ana
-

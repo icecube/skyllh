@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
-
 from scipy import (
     integrate,
     interpolate,
@@ -12,19 +9,14 @@ from skyllh.core.binning import (
 )
 
 
-class FctSpline1D(object):
+class FctSpline1D:
     """Class to represent a 1D function spline using the PchipInterpolator
     class from scipy.
 
     The evaluate the spline, use the ``__call__`` method.
     """
 
-    def __init__(
-            self,
-            f,
-            x_binedges,
-            norm=False,
-            **kwargs):
+    def __init__(self, f, x_binedges, norm=False, **kwargs):
         """Creates a new 1D function spline using the PchipInterpolator
         class from scipy.
 
@@ -46,24 +38,13 @@ class FctSpline1D(object):
 
         x = get_bincenters_from_binedges(self.x_binedges)
 
-        self.spl_f = interpolate.PchipInterpolator(
-            x, f, extrapolate=False
-        )
+        self.spl_f = interpolate.PchipInterpolator(x, f, extrapolate=False)
 
         self.norm = None
         if norm:
-            self.norm = integrate.quad(
-                self.__call__,
-                self.x_min,
-                self.x_max,
-                limit=200,
-                full_output=1
-            )[0]
+            self.norm = integrate.quad(self.__call__, self.x_min, self.x_max, limit=200, full_output=1)[0]
 
-    def __call__(
-            self,
-            x,
-            oor_value=0):
+    def __call__(self, x, oor_value=0):
         """Evaluates the spline at the given x values. For x-values
         outside the spline's range, the oor_value is returned.
 
@@ -85,16 +66,12 @@ class FctSpline1D(object):
 
         return f
 
-    def evaluate(
-            self,
-            *args,
-            **kwargs):
-        """Alias for the __call__ method.
-        """
+    def evaluate(self, *args, **kwargs):
+        """Alias for the __call__ method."""
         return self(*args, **kwargs)
 
 
-class FctSpline2D(object):
+class FctSpline2D:
     """Class to represent a 2D function spline using the RectBivariateSpline
     class from scipy.
 
@@ -104,12 +81,7 @@ class FctSpline2D(object):
     The evaluate the spline, use the ``__call__`` method.
     """
 
-    def __init__(
-            self,
-            f,
-            x_binedges,
-            y_binedges,
-            **kwargs):
+    def __init__(self, f, x_binedges, y_binedges, **kwargs):
         """Creates a new 2D function spline using the RectBivariateSpline
         class from scipy.
 
@@ -147,17 +119,15 @@ class FctSpline2D(object):
         z[m] = np.log10(f[m])
         z[np.invert(m)] = np.min(z[m]) - 3
 
-        self.spl_log10_f = interpolate.RectBivariateSpline(
-            x, y, z, kx=3, ky=1, s=0)
+        self.spl_log10_f = interpolate.RectBivariateSpline(x, y, z, kx=3, ky=1, s=0)
 
         # In case we have to renormalize when the evaluation is done...
         self._prepare_quadrature()
 
     def _prepare_quadrature(self, n=128):
         gx, gw = np.polynomial.legendre.leggauss(n)
-        self._qx = 0.5*(self.x_max - self.x_min)*gx + 0.5*(
-            self.x_max + self.x_min)
-        self._qw = 0.5*(self.x_max - self.x_min)*gw
+        self._qx = 0.5 * (self.x_max - self.x_min) * gx + 0.5 * (self.x_max + self.x_min)
+        self._qw = 0.5 * (self.x_max - self.x_min) * gw
 
     @staticmethod
     def _pow10(arr):
@@ -174,7 +144,8 @@ class FctSpline2D(object):
 
     def _eval_grid(self, x, y):
         """Evaluate on tensor grid with internal sort/unsort → 2D array."""
-        x = np.asarray(x); y = np.asarray(y)
+        x = np.asarray(x)
+        y = np.asarray(y)
 
         # sort as required by RectBivariateSpline(grid=True)
         ix = np.argsort(x) if (x.size >= 2 and not np.all(np.diff(x) >= 0)) else None
@@ -185,8 +156,10 @@ class FctSpline2D(object):
         f_sorted = self._pow10(self.spl_log10_f(xs, ys, grid=True))
 
         # unsort to original order
-        if ix is not None: f_sorted = f_sorted[np.argsort(ix), :]
-        if iy is not None: f_sorted = f_sorted[:, np.argsort(iy)]
+        if ix is not None:
+            f_sorted = f_sorted[np.argsort(ix), :]
+        if iy is not None:
+            f_sorted = f_sorted[:, np.argsort(iy)]
         return f_sorted
 
     def _renorm_per_y_grid(self, f2d, y, *, in_user_order=True):
@@ -197,7 +170,7 @@ class FctSpline2D(object):
         ys = y[iy] if iy is not None else y
 
         fyq = self._pow10(self.spl_log10_f(self._qx, ys, grid=True))  # (nq, ny)
-        Z = fyq.T @ self._qw                                          # (ny,)
+        Z = fyq.T @ self._qw  # (ny,)
         Z[Z == 0] = np.nan
         if iy is not None:
             Z = Z[np.argsort(iy)]  # back to user order
@@ -237,20 +210,19 @@ class FctSpline2D(object):
         renorm : bool | True
             Whether to renormalize the histogram along the x axis for each
             y-value. Useful when constructing the background energy PDF.
-        
+
         Returns
         -------
         f : numpy ndarray
             The numpy ndarray holding the evaluated values of the spline.
         """
-        x = np.asarray(x); y = np.asarray(y)
+        x = np.asarray(x)
+        y = np.asarray(y)
         m_x_oor, m_y_oor = self._mask_oor_axes(x, y)
 
         if not grid:
             if x.shape != y.shape:
-                raise ValueError(
-                    "For grid=False, x and y must have the same shape "
-                    "(paired points).")
+                raise ValueError('For grid=False, x and y must have the same shape (paired points).')
 
             m_oor = m_x_oor | m_y_oor
             f = np.empty_like(x, dtype=float)
@@ -274,6 +246,7 @@ class FctSpline2D(object):
         mx2d, my2d = np.meshgrid(m_x_oor, m_y_oor, indexing='ij')
         f2d[mx2d | my2d] = oor_value
         return f2d
+
 
 def clip_grl_start_times(grl_data):
     """Make sure that the start time of a run is not smaller than the stop time
@@ -299,11 +272,7 @@ def clip_grl_start_times(grl_data):
     grl_data['start'][1:] = new_start
 
 
-def psi_to_dec_and_ra(
-        rss,
-        src_dec,
-        src_ra,
-        psi):
+def psi_to_dec_and_ra(rss, src_dec, src_ra, psi):
     """Generates random declinations and right-ascension coordinates for the
     given source location and opening angle `psi`.
 
@@ -331,47 +300,41 @@ def psi_to_dec_and_ra(
     # Transform everything in radians and convert the source declination
     # to source zenith angle
     a = psi
-    b = np.pi/2 - src_dec
+    b = np.pi / 2 - src_dec
     c = src_ra
     # Random rotation angle for the 2D circle
-    t = rss.random.uniform(0, 2*np.pi, size=len(psi))
+    t = rss.random.uniform(0, 2 * np.pi, size=len(psi))
 
     # Parametrize the circle
     x = (
-        (np.sin(a)*np.cos(b)*np.cos(c)) * np.cos(t) +
-        (np.sin(a)*np.sin(c)) * np.sin(t) -
-        (np.cos(a)*np.sin(b)*np.cos(c))
+        (np.sin(a) * np.cos(b) * np.cos(c)) * np.cos(t)
+        + (np.sin(a) * np.sin(c)) * np.sin(t)
+        - (np.cos(a) * np.sin(b) * np.cos(c))
     )
     y = (
-        -(np.sin(a)*np.cos(b)*np.sin(c)) * np.cos(t) +
-        (np.sin(a)*np.cos(c)) * np.sin(t) +
-        (np.cos(a)*np.sin(b)*np.sin(c))
+        -(np.sin(a) * np.cos(b) * np.sin(c)) * np.cos(t)
+        + (np.sin(a) * np.cos(c)) * np.sin(t)
+        + (np.cos(a) * np.sin(b) * np.sin(c))
     )
-    z = (
-        (np.sin(a)*np.sin(b)) * np.cos(t) +
-        (np.cos(a)*np.cos(b))
-    )
+    z = (np.sin(a) * np.sin(b)) * np.cos(t) + (np.cos(a) * np.cos(b))
 
     # Convert back to right-ascension and declination.
     # This is to distinguish between diametrically opposite directions.
     zen = np.arccos(z)
     azi = np.arctan2(y, x)
 
-    dec = np.pi/2 - zen
+    dec = np.pi / 2 - zen
     ra = np.pi - azi
 
     return (dec, ra)
 
-def create_energy_cut_spline(
-        ds,
-        exp_data,
-        spl_smooth,
-        cumulative_thr=0):
+
+def create_energy_cut_spline(ds, exp_data, spl_smooth, cumulative_thr=0):
     """Create the spline for the declination-dependent energy cut
     that the signal generator needs for injection in the southern sky.
     Cut bins which do not exceed the defined `cumulative_thr` threshold
     to exclude isolated, low-statistics bins which would cause extreme
-    wiggles in the spline. 
+    wiggles in the spline.
 
     Parameters
     ----------
@@ -398,16 +361,13 @@ def create_energy_cut_spline(
 
     # Initialize array to store the minumum allowed energy
     # for eaach sin(dec) bin.
-    min_log_e = np.zeros(len(sindec_edges)-1, dtype=float)
-    for i in range(len(sindec_edges)-1):
+    min_log_e = np.zeros(len(sindec_edges) - 1, dtype=float)
+    for i in range(len(sindec_edges) - 1):
         # Select events in this declintion bin
-        mask = np.logical_and(
-            data_exp['sin_dec'] >= sindec_edges[i],
-            data_exp['sin_dec'] < sindec_edges[i+1])
+        mask = np.logical_and(data_exp['sin_dec'] >= sindec_edges[i], data_exp['sin_dec'] < sindec_edges[i + 1])
 
         # Make histogram along energy axis and compute the cum distribution
-        counts,_ = np.histogram(
-            data_exp['log_energy'][mask], bins=loge_binning.binedges)
+        counts, _ = np.histogram(data_exp['log_energy'][mask], bins=loge_binning.binedges)
         cumsum = np.cumsum(counts) / np.sum(counts)
 
         # Remove low-population energy bins to help the spline smoothness
@@ -418,8 +378,7 @@ def create_energy_cut_spline(
     del data_exp
 
     # Generate the energy spline as function of sin(dec)
-    sindec_centers = 0.5 * (sindec_edges[1:]+sindec_edges[:-1])
-    spline = interpolate.UnivariateSpline(
-        sindec_centers, min_log_e, k=2, s=spl_smooth)
+    sindec_centers = 0.5 * (sindec_edges[1:] + sindec_edges[:-1])
+    spline = interpolate.UnivariateSpline(sindec_centers, min_log_e, k=2, s=spl_smooth)
 
     return spline

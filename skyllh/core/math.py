@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-
-"""The ``math`` module contains classes for pure mathematical objects.
-"""
+"""The ``math`` module contains classes for pure mathematical objects."""
 
 import abc
 from copy import (
     deepcopy,
 )
+
 import numpy as np
 
 from skyllh.core.py import (
@@ -17,9 +15,7 @@ from skyllh.core.py import (
 )
 
 
-class MathFunction(
-        object,
-        metaclass=abc.ABCMeta):
+class MathFunction(metaclass=abc.ABCMeta):
     """This abstract base class provides an implementation for a mathematical
     function. Such a function has defined parameters, which are implemented as
     class properties. The tuple of parameter names is defined through the
@@ -27,14 +23,13 @@ class MathFunction(
     """
 
     def __init__(self, **kwargs):
-        super(MathFunction, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.param_names = ()
 
     @property
     def param_names(self):
-        """The tuple holding the names of the math function's parameters.
-        """
+        """The tuple holding the names of the math function's parameters."""
         return self._param_names
 
     @param_names.setter
@@ -42,37 +37,28 @@ class MathFunction(
         if not issequence(names):
             names = (names,)
         if not issequenceof(names, str):
-            raise TypeError(
-                'The param_names property must be a sequence of str!')
+            raise TypeError('The param_names property must be a sequence of str!')
         names = tuple(names)
         # Check if all the given names are actual properties of this
         # MathFunction class.
         for name in names:
             if not hasattr(self, name):
-                raise KeyError(
-                    f'The "{classname(self)}" class does not have an attribute '
-                    f'named "{name}"!')
+                raise KeyError(f'The "{classname(self)}" class does not have an attribute named "{name}"!')
             if not isproperty(self, name):
-                raise TypeError(
-                    f'The attribute "{classname(self)}" of "{name}" is not a '
-                    'property!')
+                raise TypeError(f'The attribute "{classname(self)}" of "{name}" is not a property!')
         self._param_names = names
 
     @property
     @abc.abstractmethod
     def math_function_str(self):
-        """The string showing the mathematical function of this MathFunction.
-        """
+        """The string showing the mathematical function of this MathFunction."""
         pass
 
     def __str__(self):
-        """Pretty string representation of this MathFunction instance.
-        """
+        """Pretty string representation of this MathFunction instance."""
         return self.math_function_str
 
-    def copy(
-            self,
-            newparams=None):
+    def copy(self, newparams=None):
         """Copies this MathFunction object by calling the copy.deepcopy
         function, and sets new parameters if requested.
 
@@ -91,9 +77,7 @@ class MathFunction(
 
         return f
 
-    def get_param(
-            self,
-            name):
+    def get_param(self, name):
         """Retrieves the value of the given parameter. It returns ``np.nan`` if
         the parameter does not exist.
 
@@ -114,9 +98,7 @@ class MathFunction(
 
         return value
 
-    def set_params(
-            self,
-            pdict):
+    def set_params(self, pdict):
         """Sets the parameters of the math function to the given parameter
         values.
 
@@ -132,8 +114,7 @@ class MathFunction(
             Flag if parameter values were actually updated.
         """
         if not isinstance(pdict, dict):
-            raise TypeError(
-                'The pdict argument must be of type dict!')
+            raise TypeError('The pdict argument must be of type dict!')
 
         updated = False
 

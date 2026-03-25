@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 
 from skyllh.core.py import (
@@ -8,17 +6,17 @@ from skyllh.core.py import (
 )
 
 
-class RandomStateService(
-        object):
+class RandomStateService:
     """The RandomStateService class provides a container for a
     numpy.random.RandomState object, initialized with a given seed. This service
     can then be passed to any function or method within skyllh that requires a
     random number generator.
     """
+
     def __init__(
-            self,
-            seed=None,
-            **kwargs,
+        self,
+        seed=None,
+        **kwargs,
     ):
         """Creates a new random state service. The ``random`` property can then
         be used to draw random numbers.
@@ -32,10 +30,7 @@ class RandomStateService(
         """
         super().__init__(**kwargs)
 
-        self._seed = int_cast(
-            seed,
-            'The seed argument must be None, or cast-able to type int!',
-            allow_None=True)
+        self._seed = int_cast(seed, 'The seed argument must be None, or cast-able to type int!', allow_None=True)
         self.random = np.random.RandomState(self._seed)
 
     @property
@@ -47,15 +42,13 @@ class RandomStateService(
 
     @property
     def random(self):
-        """The numpy.random.RandomState object.
-        """
+        """The numpy.random.RandomState object."""
         return self._random
 
     @random.setter
     def random(self, random):
         if not isinstance(random, np.random.RandomState):
-            raise TypeError(
-                'The random property must be of type numpy.random.RandomState!')
+            raise TypeError('The random property must be of type numpy.random.RandomState!')
         self._random = random
 
     def reseed(self, seed):
@@ -68,26 +61,21 @@ class RandomStateService(
             randomly. See the numpy documentation for numpy.random.RandomState
             what that means.
         """
-        self._seed = int_cast(
-            seed,
-            'The seed argument must be None or cast-able to type int!',
-            allow_None=True)
+        self._seed = int_cast(seed, 'The seed argument must be None or cast-able to type int!', allow_None=True)
         self.random.seed(self._seed)
 
 
-class RandomChoice(
-        object,
-):
+class RandomChoice:
     """This class provides an efficient numpy.random.choice functionality
     specialized for SkyLLH. The advantage is that it stores the cumulative
     distribution function (CDF), which is assumed to be constant.
     """
 
     def __init__(
-            self,
-            items,
-            probabilities,
-            **kwargs,
+        self,
+        items,
+        probabilities,
+        **kwargs,
     ):
         """Creates a new instance of RandomChoice holding the probabilities
         and their cumulative distribution function (CDF).
@@ -128,8 +116,8 @@ class RandomChoice(
         return self._probabilities
 
     def _assert_items(
-            self,
-            items,
+        self,
+        items,
     ):
         """Checks for the correct type and shape of the items.
 
@@ -146,18 +134,15 @@ class RandomChoice(
             If the items do not have the correct type and shape.
         """
         if not isinstance(items, np.ndarray):
-            raise TypeError(
-                'The items must be an instance of numpy.ndarray! '
-                f'Its current type is {classname(items)}!')
+            raise TypeError(f'The items must be an instance of numpy.ndarray! Its current type is {classname(items)}!')
 
         if items.ndim != 1:
-            raise ValueError(
-                'The items must be a 1-dimensional numpy.ndarray!')
+            raise ValueError('The items must be a 1-dimensional numpy.ndarray!')
 
     def _assert_probabilities(
-            self,
-            p,
-            n_items,
+        self,
+        p,
+        n_items,
     ):
         """Checks for correct values of the probabilities.
 
@@ -177,28 +162,24 @@ class RandomChoice(
         atol = max(atol, np.sqrt(np.finfo(p.dtype).eps))
 
         if p.ndim != 1:
-            raise ValueError(
-                'The probabilities must be provided as a 1-dimensional '
-                'numpy.ndarray!')
+            raise ValueError('The probabilities must be provided as a 1-dimensional numpy.ndarray!')
 
         if p.size != n_items:
             raise ValueError(
-                f'The size ({p.size}) of the probabilities array must match '
-                f'the number of items ({n_items})!')
+                f'The size ({p.size}) of the probabilities array must match the number of items ({n_items})!'
+            )
 
         if np.any(p < 0):
-            raise ValueError(
-                'The probabilities must be greater or equal zero!')
+            raise ValueError('The probabilities must be greater or equal zero!')
 
         p_sum = np.sum(p)
-        if abs(p_sum - 1.) > atol:
-            raise ValueError(
-                f'The sum of the probabilities ({p_sum}) must be 1!')
+        if abs(p_sum - 1.0) > atol:
+            raise ValueError(f'The sum of the probabilities ({p_sum}) must be 1!')
 
     def __call__(
-            self,
-            rss,
-            size,
+        self,
+        rss,
+        size,
     ):
         """Chooses ``size`` random items from ``self.items`` according to
         ``self.probabilities``.
@@ -222,10 +203,7 @@ class RandomChoice(
         # The np.searchsorted function is much faster when the values are
         # sorted. But we want to keep the randomness of the returned items.
         idxs_of_sort = np.argsort(uniform_values)
-        sorted_idxs = np.searchsorted(
-            self._cdf,
-            uniform_values[idxs_of_sort],
-            side='right')
+        sorted_idxs = np.searchsorted(self._cdf, uniform_values[idxs_of_sort], side='right')
         idxs = np.empty_like(sorted_idxs)
         idxs[idxs_of_sort] = sorted_idxs
         random_items = self._items[idxs]

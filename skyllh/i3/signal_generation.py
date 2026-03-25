@@ -1,20 +1,18 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 
 from skyllh.core.py import (
-    get_smallest_numpy_int_type,
     float_cast,
+    get_smallest_numpy_int_type,
     int_cast,
-)
-from skyllh.core.utils.coords import (
-    rotate_signal_events_on_sphere,
 )
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
 )
 from skyllh.core.source_model import (
     PointLikeSource,
+)
+from skyllh.core.utils.coords import (
+    rotate_signal_events_on_sphere,
 )
 
 
@@ -48,9 +46,9 @@ def source_sin_dec_shift_linear(x, w, L, U):
     """
     x = np.atleast_1d(x)
 
-    m = -2*w/(U-L)
-    b = w*(L+U)/(U-L)
-    S = m*x+b
+    m = -2 * w / (U - L)
+    b = w * (L + U) / (U - L)
+    S = m * x + b
 
     return S
 
@@ -86,8 +84,8 @@ def source_sin_dec_shift_cubic(x, w, L, U):
     # TODO: Make sure that this function does what it's supposed to do
     x = np.atleast_1d(x)
 
-    m = w / (x - 0.5*(L+U))**3
-    S = m * np.power(x-0.5*(L+U), 3)
+    m = w / (x - 0.5 * (L + U)) ** 3
+    S = m * np.power(x - 0.5 * (L + U), 3)
 
     return S
 
@@ -97,13 +95,15 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
     seen in the IceCube detector.
     """
 
+    _DEFAULT_SRC_SIN_DEC_HALF_BANDWIDTH = np.sin(np.radians(1))
+
     def __init__(
         self,
-        src_sin_dec_half_bandwidth=np.sin(np.radians(1)),
+        src_sin_dec_half_bandwidth=_DEFAULT_SRC_SIN_DEC_HALF_BANDWIDTH,
         src_sin_dec_shift_func=None,
         energy_range=None,
         src_batch_size=128,
-        **kwargs
+        **kwargs,
     ):
         """Constructs a new signal generation method instance for a point-like
         source detected with IceCube.
@@ -126,9 +126,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             The source processing batch size used for the signal event flux
             calculation.
         """
-        super().__init__(
-            energy_range=energy_range,
-            **kwargs)
+        super().__init__(energy_range=energy_range, **kwargs)
 
         self.src_sin_dec_half_bandwidth = src_sin_dec_half_bandwidth
 
@@ -147,10 +145,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
     @src_sin_dec_half_bandwidth.setter
     def src_sin_dec_half_bandwidth(self, v):
-        v = float_cast(
-            v,
-            'The src_sin_dec_half_bandwidth property must be cast-able to type '
-            'float!')
+        v = float_cast(v, 'The src_sin_dec_half_bandwidth property must be cast-able to type float!')
         self._src_sin_dec_half_bandwidth = v
 
     @property
@@ -164,9 +159,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
     @src_sin_dec_shift_func.setter
     def src_sin_dec_shift_func(self, func):
         if not callable(func):
-            raise TypeError(
-                'The src_sin_dec_shift_func property must be a callable '
-                'object!')
+            raise TypeError('The src_sin_dec_shift_func property must be a callable object!')
         self._src_sin_dec_shift_func = func
 
     @property
@@ -178,9 +171,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
     @src_batch_size.setter
     def src_batch_size(self, v):
-        v = int_cast(
-            v,
-            'The src_batch_size property must be cast-able to type int!')
+        v = int_cast(v, 'The src_batch_size property must be cast-able to type int!')
         self._src_batch_size = v
 
     def _get_src_dec_bands(self, src_dec, max_sin_dec_range):
@@ -209,16 +200,13 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         # Shift the source declination in order to be able to always create the
         # declination band via src_dec +/- half-bandwidth
         src_sin_dec = np.sin(src_dec)
-        src_sin_dec += self._src_sin_dec_shift_func(
-            src_sin_dec, self._src_sin_dec_half_bandwidth, *max_sin_dec_range)
+        src_sin_dec += self._src_sin_dec_shift_func(src_sin_dec, self._src_sin_dec_half_bandwidth, *max_sin_dec_range)
 
         src_sin_dec_band_min = src_sin_dec - self._src_sin_dec_half_bandwidth
         src_sin_dec_band_max = src_sin_dec + self._src_sin_dec_half_bandwidth
 
         # Calculate the solid angle of the declination band.
-        src_dec_band_omega = (
-            2 * np.pi * (src_sin_dec_band_max - src_sin_dec_band_min)
-        )
+        src_dec_band_omega = 2 * np.pi * (src_sin_dec_band_max - src_sin_dec_band_min)
 
         return (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega)
 
@@ -247,31 +235,24 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             The (N_selected_signal_events,)-shaped 1D ndarray holding the flux
             value of each signal candidate event.
         """
-        indices = np.arange(
-            0, len(data_mc),
-            dtype=get_smallest_numpy_int_type((0, len(data_mc)))
-        )
+        indices = np.arange(0, len(data_mc), dtype=get_smallest_numpy_int_type((0, len(data_mc))))
         n_sources = shg.n_sources
 
         # Get 1D array of source declination.
         src_dec = np.empty((n_sources,), dtype=np.float64)
-        for (k, source) in enumerate(shg.source_list):
+        for k, source in enumerate(shg.source_list):
             if not isinstance(source, PointLikeSource):
-                raise TypeError(
-                    'The source instance must be an instance of '
-                    'PointLikeSource!')
+                raise TypeError('The source instance must be an instance of PointLikeSource!')
             src_dec[k] = source.dec
 
         data_mc_sin_true_dec = data_mc['sin_true_dec']
         data_mc_true_energy = data_mc['true_energy']
 
         # Calculate the source declination bands and their solid angle.
-        max_sin_dec_range = (
-            np.min(data_mc_sin_true_dec),
-            np.max(data_mc_sin_true_dec)
+        max_sin_dec_range = (np.min(data_mc_sin_true_dec), np.max(data_mc_sin_true_dec))
+        (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega) = self._get_src_dec_bands(
+            src_dec, max_sin_dec_range
         )
-        (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega) =\
-            self._get_src_dec_bands(src_dec, max_sin_dec_range)
 
         # Get the flux model of this source hypo group (SHG).
         fluxmodel = shg.fluxmodel
@@ -281,55 +262,42 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         # Calculate conversion factor from the flux model unit into the internal
         # flux unit.
-        to_internal_flux_unit =\
-            fluxmodel.to_internal_flux_unit()
+        to_internal_flux_unit = fluxmodel.to_internal_flux_unit()
 
         # Select the events that belong to a given source.
-        ev_idx_arr = np.empty(
-            (0,),
-            dtype=get_smallest_numpy_int_type((0, len(data_mc))))
-        shg_src_idx_arr = np.empty(
-            (0,),
-            dtype=get_smallest_numpy_int_type((0, n_sources)))
-        flux_arr = np.empty(
-            (0,),
-            dtype=np.float32)
+        ev_idx_arr = np.empty((0,), dtype=get_smallest_numpy_int_type((0, len(data_mc))))
+        shg_src_idx_arr = np.empty((0,), dtype=get_smallest_numpy_int_type((0, n_sources)))
+        flux_arr = np.empty((0,), dtype=np.float32)
 
         src_batch_size = self._src_batch_size
         n_batches = int(np.ceil(n_sources / src_batch_size))
 
         for bi in range(n_batches):
-            src_start = bi*src_batch_size
-            src_end = np.min([(bi+1)*src_batch_size, n_sources])
+            src_start = bi * src_batch_size
+            src_end = np.min([(bi + 1) * src_batch_size, n_sources])
             bs = src_end - src_start
 
             src_slice = slice(src_start, src_end)
 
             # Create an event mask of shape (N_sources,N_events).
             ev_mask = np.logical_and(
-                (data_mc_sin_true_dec >=
-                    src_sin_dec_band_min[src_slice][:, np.newaxis]),
-                (data_mc_sin_true_dec <=
-                    src_sin_dec_band_max[src_slice][:, np.newaxis])
+                (data_mc_sin_true_dec >= src_sin_dec_band_min[src_slice][:, np.newaxis]),
+                (data_mc_sin_true_dec <= src_sin_dec_band_max[src_slice][:, np.newaxis]),
             )
 
             if self.energy_range is not None:
                 ev_mask &= np.logical_and(
-                    (data_mc_true_energy >= self.energy_range[0]),
-                    (data_mc_true_energy <= self.energy_range[1])
+                    (data_mc_true_energy >= self.energy_range[0]), (data_mc_true_energy <= self.energy_range[1])
                 )
 
             ev_idxs = np.tile(indices, bs)[ev_mask.ravel()]
-            shg_src_idxs = bi*src_batch_size + np.repeat(
-                np.arange(bs),
-                ev_mask.sum(axis=1)
-            )
+            shg_src_idxs = bi * src_batch_size + np.repeat(np.arange(bs), ev_mask.sum(axis=1))
             del ev_mask
 
             flux = (
-                fluxmodel(E=data_mc_true_energy[ev_idxs]).squeeze() *
-                to_internal_flux_unit /
-                src_dec_band_omega[shg_src_idxs]
+                fluxmodel(E=data_mc_true_energy[ev_idxs]).squeeze()
+                * to_internal_flux_unit
+                / src_dec_band_omega[shg_src_idxs]
             )
             if src_weights is not None:
                 flux *= src_weights[shg_src_idxs]
@@ -341,10 +309,10 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         return (ev_idx_arr, shg_src_idx_arr, flux_arr)
 
     def signal_event_post_sampling_processing(
-            self,
-            shg,
-            shg_sig_events_meta,
-            shg_sig_events,
+        self,
+        shg,
+        shg_sig_events_meta,
+        shg_sig_events,
     ):
         """Rotates the generated signal events to their source location for a
         given source hypothesis group.
@@ -391,7 +359,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
                 evt_true_ra=shg_src_sig_events['true_ra'],
                 evt_true_dec=shg_src_sig_events['true_dec'],
                 evt_reco_ra=shg_src_sig_events['ra'],
-                evt_reco_dec=shg_src_sig_events['dec']
+                evt_reco_dec=shg_src_sig_events['dec'],
             )
 
             shg_src_sig_events['ra'] = ra
