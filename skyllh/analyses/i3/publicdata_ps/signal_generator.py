@@ -47,14 +47,14 @@ class PDDatasetSignalGenerator(
     """
 
     def __init__(
-            self,
-            shg_mgr,
-            ds,
-            ds_idx,
-            energy_cut_spline=None,
-            cut_sindec=None,
-            energy_range=None,
-            **kwargs,
+        self,
+        shg_mgr,
+        ds,
+        ds_idx,
+        energy_cut_spline=None,
+        cut_sindec=None,
+        energy_range=None,
+        **kwargs,
     ):
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
@@ -88,8 +88,8 @@ class PDDatasetSignalGenerator(
         self.energy_cut_spline = energy_cut_spline
         self.cut_sindec = cut_sindec
         self.sm = PDSmearingMatrix(
-            pathfilenames=ds.get_abs_pathfilename_list(
-                    ds.get_aux_data_definition('smearing_datafile')))
+            pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
+        )
         self.energy_range = energy_range
 
     @property
@@ -111,34 +111,25 @@ class PDDatasetSignalGenerator(
         if r is not None:
             if not issequence(r) or len(r) != 2:
                 raise ValueError(
-                    'The energy_range property must be a 2-element sequence of '
-                    f' floats! Its current value is {r}!')
+                    f'The energy_range property must be a 2-element sequence of  floats! Its current value is {r}!'
+                )
             r = (
-                float_cast(
-                    r[0],
-                    'The first element of the energy_range '
-                    'sequence must be castable to type of float!'),
-                float_cast(
-                    r[1],
-                    'The second element of the energy_range '
-                    'sequence must be castable to type of float!')
+                float_cast(r[0], 'The first element of the energy_range sequence must be castable to type of float!'),
+                float_cast(r[1], 'The second element of the energy_range sequence must be castable to type of float!'),
             )
 
             # Convert the energy boundaries to the closest SM bin edges.
             idx0 = self.sm.get_log10_true_e_idx(np.log10(r[0]))
             idx1 = self.sm.get_log10_true_e_idx(np.log10(r[1]))
-            r = (self.sm.true_e_bin_edges[idx0],
-                 self.sm.true_e_bin_edges[idx1])
-            
+            r = (self.sm.true_e_bin_edges[idx0], self.sm.true_e_bin_edges[idx1])
+
             if r[0] >= r[1]:
                 raise ValueError(
-                    'The first element of the energy_range sequence must be '
-                    'strictly smaller than the second element!')
-            
-            self._logger.info(
-                f'Energy range for signal generation set to {r} '
-                'in log10(E/GeV).')
-        
+                    'The first element of the energy_range sequence must be strictly smaller than the second element!'
+                )
+
+            self._logger.info(f'Energy range for signal generation set to {r} in log10(E/GeV).')
+
         self._energy_range = r
         self._create_source_dependent_data_structures()
 
@@ -452,13 +443,7 @@ class PDDatasetSignalGenerator(
 
         return events
 
-    def generate_signal_events(
-            self,
-            rss,
-            mean,
-            poisson=True,
-            src_detsigyield_weights_service=None,
-            energy_range=None):
+    def generate_signal_events(self, rss, mean, poisson=True, src_detsigyield_weights_service=None, energy_range=None):
         """Generates ``mean`` number of signal events.
 
         Parameters
