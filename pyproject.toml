@@ -43,6 +43,7 @@ Issues = "https://github.com/icecube/skyllh/issues"
 dev = [
     "pre-commit",
     "pytest>=9.0.0",
+    "pyright",
 ]
 docs = [
     "sphinx<9.0.0",
@@ -82,3 +83,12 @@ quote-style = "single"
 minversion = "9.0"
 addopts = ["-ra"]
 testpaths = ["tests"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+
+include = [
+    "skyllh",
+    "tests",
+]
