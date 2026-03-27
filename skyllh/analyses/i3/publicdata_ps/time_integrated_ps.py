@@ -318,6 +318,9 @@ def create_analysis(
         sig_generator_cls=MultiDatasetSignalGenerator,
     )
 
+    # Set the energy range for signal generation if it is explicitly given.
+    ana.energy_range = energy_range
+
     # Define the data scrambler with its data scrambling method, which is used
     # for background generation.
     data_scrambler = DataScrambler(UniformRAScramblingMethod())
@@ -389,7 +392,6 @@ def create_analysis(
             ds=ds,
             ds_idx=ds_idx,
             energy_cut_spline=energy_cut_spline,
-            energy_range=energy_range,
         )
 
         ana.add_dataset(

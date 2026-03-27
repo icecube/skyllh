@@ -298,7 +298,88 @@ class MultiDatasetSignalGenerator(
         for sig_generator in filter(None, self.sig_generator_list):
             sig_generator.change_shg_mgr(shg_mgr=shg_mgr)
 
-    def generate_signal_events(self, rss, mean, poisson=True, **kwargs):
+    def fluxmodel_scaling_factor(self, per_source=False):
+        """Returns the scaling factor to convert a mean number of detected
+        signal events into a flux normalization.
+
+            flux_norm = mean_n_sig * scaling_factor
+                        or
+            mean_n_sig = flux_norm / scaling_factor
+
+        Parameters
+        ----------
+        per_source : bool
+            If set to True, return per-source scaling factors that sum to the global scaling factor. If set to False,
+            return the global scaling factor.
+
+        Returns
+        -------
+        scaling_factor : float | (n_sources,)-shaped numpy ndarray
+            The conversion factor between expected number of signal events and flux normalization for the currently
+            configured source hypothesis.
+        """
+        src_detsigyield_weights_service = self.ds_sig_weight_factors_service.src_detsigyield_weights_service
+
+        if self._src_params_recarray is None:
+            self._src_params_recarray = self.create_src_params_recarray(
+                src_detsigyield_weights_service=src_detsigyield_weights_service
+            )
+
+        src_detsigyield_weights_service.calculate(src_params_recarray=self._src_params_recarray)
+        (a_jk, _) = src_detsigyield_weights_service.get_weights()
+
+        # Apply optional per-dataset/source correction factors for specialized generators.
+        # The energy_range is required to be identical across all datasets.
+        a_jk_eff = np.array(a_jk, copy=True)
+        if self._sig_generator_list is not None:
+            ref_energy_range = None
+            ref_energy_range_ds_idx = None
+            for ds_idx, ds_sig_generator in enumerate(self._sig_generator_list):
+                if ds_sig_generator is None:
+                    continue
+                if not hasattr(ds_sig_generator, 'get_energy_range_correction_factors'):
+                    continue
+
+                # Compare user-configured energy ranges (if set).
+                configured_energy_range = getattr(ds_sig_generator, '_input_range', None)
+                if ref_energy_range_ds_idx is None:
+                    ref_energy_range = configured_energy_range
+                    ref_energy_range_ds_idx = ds_idx
+                else:
+                    if (ref_energy_range is None) != (configured_energy_range is None):
+                        raise ValueError(
+                            'A single shared energy_range must be used across all datasets. Found inconsistent '
+                            f'user configuration between dataset {ref_energy_range_ds_idx} ({ref_energy_range}) '
+                            f'and dataset {ds_idx} ({configured_energy_range}).'
+                        )
+                    if ref_energy_range is not None and tuple(ref_energy_range) != tuple(configured_energy_range):
+                        raise ValueError(
+                            'A single shared energy_range must be used across all datasets. Found inconsistent '
+                            f'user configuration between dataset {ref_energy_range_ds_idx} ({ref_energy_range}) '
+                            f'and dataset {ds_idx} ({configured_energy_range}).'
+                        )
+
+                correction_factors = ds_sig_generator.get_energy_range_correction_factors()
+                correction_factors = np.asarray(correction_factors, dtype=np.float64)
+                if correction_factors.shape != (self._shg_mgr.n_sources,):
+                    raise ValueError(
+                        f'The get_energy_range_correction_factors method of {classname(ds_sig_generator)} returned '
+                        f'an array of shape {correction_factors.shape}, expected ({self._shg_mgr.n_sources},)!'
+                    )
+                a_jk_eff[ds_idx] *= correction_factors
+
+        # ref_N is the expected number of detected signal events for the reference flux normalization.
+        ref_N = np.sum(a_jk_eff)
+
+        if per_source:
+            a_k = np.sum(a_jk_eff, axis=0)
+            return a_k / (ref_N**2)
+
+        scaling_factor = 1.0 / ref_N
+
+        return scaling_factor
+
+    def generate_signal_events(self, rss, mean, poisson=True):
         """Generates a given number of signal events distributed across the
         individual datasets.
 
@@ -684,9 +765,9 @@ class MCMultiDatasetSignalGenerator(
             a numpy ndarray is returned that contains the flux for each individual source.
         """
         logger.warning(
-            'The mu2flux method of the MCMultiDatasetSignalGenerator class is currently only implemented for the case '
-            'of a single source or for multiple sources with the same flux model. Multiple sources withdifferent flux '
-            'models are not correctly handled. This will be fixed in a future release.'
+            'The fluxmodel_scaling_factor method of the MCMultiDatasetSignalGenerator class is currently only '
+            'implemented for the case of a single source or for multiple sources with the same flux model.'
+            'Multiple sources withdifferent flux models are currently not correctly handled.'
         )
 
         # Calculate the expected mean number of signal events for each source of the source hypo group manager. For
