@@ -25,7 +25,11 @@ from skyllh.core.py import (
     classname,
     float_cast,
     int_cast,
+    issequence,
     module_classname,
+)
+from skyllh.core.signal_generation import (
+    HasEnergyRange,
 )
 from skyllh.core.signal_generator import (
     SignalGenerator,
@@ -40,6 +44,7 @@ from skyllh.core.utils.flux_model import (
 
 class PDDatasetSignalGenerator(
     SignalGenerator,
+    HasEnergyRange,
 ):
     """This class implements a signal generator for a single public data
     dataset.
@@ -52,6 +57,7 @@ class PDDatasetSignalGenerator(
         ds_idx,
         energy_cut_spline=None,
         cut_sindec=None,
+        energy_range=None,
         **kwargs,
     ):
         """Creates a new instance of the signal generator for generating
@@ -73,6 +79,9 @@ class PDDatasetSignalGenerator(
         cut_sindec : float
             The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
+        energy_range : 2-element tuple of float | None
+            The energy range in which signal events should be generated.
+            If set to None, the full energy range (1e2 - 1e9 GeV) is used.
         """
         super().__init__(shg_mgr=shg_mgr, **kwargs)
 
@@ -82,20 +91,87 @@ class PDDatasetSignalGenerator(
         self.ds_idx = ds_idx
         self.energy_cut_spline = energy_cut_spline
         self.cut_sindec = cut_sindec
-
         self.sm = PDSmearingMatrix(
             pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
         )
+        self.energy_range = energy_range
+
+    @property
+    def energy_range(self):
+        """The configured true-energy range for signal generation in GeV.
+
+        It is a 2-element tuple ``(E_min, E_max)`` in GeV. If no explicit
+        range was configured, the full available true-energy range of the
+        smearing matrix is returned in GeV.
+        """
+        if self._input_range is None:
+            return (10 ** self.sm.true_e_bin_edges[0], 10 ** self.sm.true_e_bin_edges[-1])
+        return self._input_range
+
+    @property
+    def _log10_energy_range(self):
+        """Internal true-energy range in log10(E/GeV) used for calculations.
+
+        For the public data analysis this matches bin edges of the smearing matrices.
+        It is not simply the log10 of the input energy range!
+        """
+        if self._energy_range_log10 is None:
+            return (self.sm.true_e_bin_edges[0], self.sm.true_e_bin_edges[-1])
+        return self._energy_range_log10
+
+    @energy_range.setter
+    def energy_range(self, r):
+        if hasattr(self, '_input_range') and self._input_range == r:
+            return
+
+        if r is not None:
+            if not issequence(r) or len(r) != 2:
+                raise ValueError(
+                    f'The energy_range property must be a 2-element sequence of  floats! Its current value is {r}!'
+                )
+            r = (
+                float_cast(r[0], 'The first element of the energy_range sequence must be castable to type of float!'),
+                float_cast(r[1], 'The second element of the energy_range sequence must be castable to type of float!'),
+            )
+
+            if r[0] <= 0 or r[1] <= 0:
+                raise ValueError('Both energy_range values must be strictly positive!')
+            if r[0] >= r[1]:
+                raise ValueError(
+                    'The first element of the energy_range sequence must be strictly smaller than the second element!'
+                )
+
+            self._input_range = r
+
+            # Convert the energy boundaries to the closest SM bin edges.
+            idx0 = self.sm.get_log10_true_e_idx(np.log10(r[0]))
+            idx1 = self.sm.get_log10_true_e_idx(np.log10(r[1]))
+            r_log10 = (self.sm.true_e_bin_edges[idx0], self.sm.true_e_bin_edges[idx1])
+
+            if r_log10[0] >= r_log10[1]:
+                raise ValueError(
+                    'The first element of the energy_range sequence must be strictly smaller than the second element!'
+                )
+
+            self._logger.info(
+                f'Energy range for signal generation set to {self._input_range} GeV '
+                f'(effective bin-aligned range: {r_log10} in log10(E/GeV)).'
+            )
+
+            self._energy_range_log10 = r_log10
+        else:
+            self._input_range = None
+            self._energy_range_log10 = None
 
         self._create_source_dependent_data_structures()
 
     def _create_source_dependent_data_structures(self):
-        """Creates the source dependent data structures needed by this signal
-        generator. These are:
+        """Creates the source dependent data structures needed by this signal generator. These are:
 
-            - source location in ra and dec
-            - effective area
-            - log10 true energy inv CDF spline
+        - source location in ra and dec
+        - effective area
+        - log10 true energy inv CDF spline
+        - energy range correction factors
 
         """
         n_sources = self.shg_mgr.n_sources
@@ -112,6 +188,10 @@ class PDDatasetSignalGenerator(
             dec_idx = self.sm.get_true_dec_idx(src.dec)
             (min_log_true_e, max_log_true_e) = self.sm.get_true_log_e_range_with_valid_log_e_pdfs(dec_idx)
 
+            if self._energy_range_log10 is not None:
+                min_log_true_e = max(min_log_true_e, self._log10_energy_range[0])
+                max_log_true_e = min(max_log_true_e, self._log10_energy_range[1])
+
             self._effA_arr[src_idx] = PDAeff(
                 pathfilenames=self.ds.get_abs_pathfilename_list(self.ds.get_aux_data_definition('eff_area_datafile')),
                 src_dec=src.dec,
@@ -119,12 +199,14 @@ class PDDatasetSignalGenerator(
                 max_log10enu=max_log_true_e,
             )
 
-            # Build the spline for the inverse CDF of the source flux's true
-            # energy probability distribution.
+            # Build the spline for the inverse CDF of the source flux's true energy probability distribution.
             fluxmodel = self.shg_mgr.get_fluxmodel_by_src_idx(src_idx=src_idx)
             self._log10_true_e_inv_cdf_spl_arr[src_idx] = self._create_inv_cdf_spline(
                 src_idx=src_idx, fluxmodel=fluxmodel, log_e_min=min_log_true_e, log_e_max=max_log_true_e
             )
+
+        # Cache correction factors so they are in sync with the current energy_range and source hypothesis.
+        self._energy_range_correction_factors = self._calculate_energy_range_correction_factors()
 
     @staticmethod
     def _eval_spline(x, spl):
@@ -399,7 +481,13 @@ class PDDatasetSignalGenerator(
 
         return events
 
-    def generate_signal_events(self, rss, mean, poisson=True, src_detsigyield_weights_service=None, **kwargs):
+    def generate_signal_events(
+        self,
+        rss,
+        mean,
+        poisson=True,
+        src_detsigyield_weights_service=None,
+    ):
         """Generates ``mean`` number of signal events.
 
         Parameters
@@ -471,6 +559,91 @@ class PDDatasetSignalGenerator(
                 signal_events_dict[self.ds_idx].append(src_events)
 
         return (n_signal, signal_events_dict)
+
+    def _calculate_flux_weight(self, src_idx, log_e_min, log_e_max):
+        """Calculates an unnormalized detectable flux weight for one source
+        and one true-energy range.
+        """
+        src = self._shg_mgr.source_list[src_idx]
+        fluxmodel = self.shg_mgr.get_fluxmodel_by_src_idx(src_idx=src_idx)
+
+        effA = PDAeff(
+            pathfilenames=self.ds.get_abs_pathfilename_list(self.ds.get_aux_data_definition('eff_area_datafile')),
+            src_dec=src.dec,
+            min_log10enu=log_e_min,
+            max_log10enu=log_e_max,
+        )
+
+        low_bin_edges = effA.log10_enu_binedges_lower
+        high_bin_edges = effA.log10_enu_binedges_upper
+
+        # Use the same energy-bin subset as PDAeff.det_prob.
+        m = (effA.log10_enu_bincenters >= log_e_min) & (effA.log10_enu_bincenters < log_e_max)
+        low_bin_edges = low_bin_edges[m]
+        high_bin_edges = high_bin_edges[m]
+
+        if low_bin_edges.size == 0:
+            return 0.0
+
+        flux_integral = fluxmodel.energy_profile.get_integral(E1=10**low_bin_edges, E2=10**high_bin_edges)
+
+        return np.sum(flux_integral * effA.det_prob)
+
+    def _calculate_energy_range_correction_factors(self):
+        """Calculates per-source correction factors for the configured
+        ``energy_range``.
+
+        The factors are 1 if no additional true-energy cut is applied. If a
+        cut is configured, each factor is the ratio between detectable flux in
+        the cut range and detectable flux in the full valid range of the
+        smearing matrix.
+        """
+        n_sources = self.shg_mgr.n_sources
+        correction_factors = np.ones((n_sources,), dtype=np.float64)
+
+        for src_idx, src in enumerate(self._shg_mgr.source_list):
+            dec_idx = self.sm.get_true_dec_idx(src.dec)
+            (valid_min_log_e, valid_max_log_e) = self.sm.get_true_log_e_range_with_valid_log_e_pdfs(dec_idx)
+
+            cut_min_log_e = valid_min_log_e
+            cut_max_log_e = valid_max_log_e
+            if self._energy_range_log10 is not None:
+                cut_min_log_e = max(cut_min_log_e, self._log10_energy_range[0])
+                cut_max_log_e = min(cut_max_log_e, self._log10_energy_range[1])
+
+            if cut_min_log_e >= cut_max_log_e:
+                correction_factors[src_idx] = 0.0
+                continue
+
+            full_weight = self._calculate_flux_weight(
+                src_idx=src_idx,
+                log_e_min=valid_min_log_e,
+                log_e_max=valid_max_log_e,
+            )
+            if full_weight <= 0:
+                correction_factors[src_idx] = 0.0
+                continue
+
+            cut_weight = self._calculate_flux_weight(
+                src_idx=src_idx,
+                log_e_min=cut_min_log_e,
+                log_e_max=cut_max_log_e,
+            )
+            correction_factors[src_idx] = cut_weight / full_weight
+
+        return correction_factors
+
+    def get_energy_range_correction_factors(self):
+        """Returns per-source correction factors for the configured
+        ``energy_range``.
+
+        The factors are computed when source-dependent structures are rebuilt
+        (e.g. after changing ``energy_range`` or source hypotheses) and cached
+        here for repeated use.
+        """
+        if not hasattr(self, '_energy_range_correction_factors'):
+            self._energy_range_correction_factors = self._calculate_energy_range_correction_factors()
+        return np.copy(self._energy_range_correction_factors)
 
 
 class TimeDependentPDDatasetSignalGenerator(

@@ -141,7 +141,7 @@ def flux_from_ns(analysis, e_peak, ns):
     # set the fluxmodel to e_peak
     set_epeak(analysis, e_peak)
 
-    scaling_factor = analysis.calculate_fluxmodel_scaling_factor(ns, [ns, e_peak])
+    scaling_factor = analysis.calculate_fluxmodel_scaling_factor() * ns
 
     return analysis.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile(E=10**e_peak).squeeze() * scaling_factor
 
@@ -172,7 +172,7 @@ def ns_from_flux(analysis, e_peak, flux):
 
     scaling_factor = flux / reference_flux
 
-    scaling_factor_norm = analysis.calculate_fluxmodel_scaling_factor(1, [1, e_peak])
+    scaling_factor_norm = analysis.calculate_fluxmodel_scaling_factor()
 
     return scaling_factor / scaling_factor_norm
 
