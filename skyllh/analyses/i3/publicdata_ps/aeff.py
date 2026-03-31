@@ -329,15 +329,16 @@ class PDAeff:
         def _eval_spl_func(x):
             return interpolate.splev(x, spl, der=0, ext=1)
 
-        norm = integrate.quad(_eval_spl_func, enu_range_min, enu_range_max, limit=200, full_output=1)[0]
-
         enu_min = np.atleast_1d(enu_min)
         enu_max = np.atleast_1d(enu_max)
 
         det_prob = np.empty((len(enu_min),), dtype=np.double)
         for i in range(len(enu_min)):
-            integral = integrate.quad(_eval_spl_func, enu_min[i], enu_max[i], limit=200, full_output=1)[0]
+            det_prob[i] = integrate.quad(_eval_spl_func, enu_min[i], enu_max[i], limit=200, full_output=1)[0]
 
-            det_prob[i] = integral / norm
+        # Normalize the detection probabilities to unity.
+        det_prob_sum = np.sum(det_prob)
+        if det_prob_sum > 0:
+            det_prob /= det_prob_sum
 
         return det_prob
