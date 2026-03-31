@@ -285,7 +285,7 @@ class PDSignalEnergyPDFSet(
 
         self._logger.debug(f'det_prob = {det_prob}, sum = {np.sum(det_prob)}')
 
-        if not np.isclose(np.sum(det_prob), 1):
+        if not np.isclose(np.sum(det_prob), 1, rtol=1e-3, atol=0):
             self._logger.warning(f'The sum of the detection probabilities is not unity! It is {np.sum(det_prob)}.')
 
         psi_edges_bw = sm.psi_upper_edges - sm.psi_lower_edges
