@@ -120,7 +120,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             ``source_sin_dec_shift_linear`` will be used.
         energy_range : 2-element tuple of float | None
             The energy range from which to take MC events into account for
-            signal event generation.
+            signal event generation, specified in true neutrino energy (GeV).
             If set to None, the entire energy range [0, +inf] is used.
         src_batch_size : int
             The source processing batch size used for the signal event flux

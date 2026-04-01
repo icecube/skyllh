@@ -224,9 +224,7 @@ def estimate_ps_sin_dec_sensitivity_curve(
 
             mean_ns_arr[sin_dec_idx, iter_idx] = mean_ns
             mean_ns_err_arr[sin_dec_idx, iter_idx] = mean_ns_err
-            flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor(
-                mean_ns=mean_ns, fitparam_values=np.array(fitparam_values)
-            )
+            flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor() * mean_ns
 
             # A new iteration is done, update the mu range using the previous
             # results.
@@ -277,9 +275,7 @@ def estimate_ps_sin_dec_sensitivity_curve(
 
                 mean_ns_arr[sin_dec_idx, iter_idx] = mean_ns
                 mean_ns_err_arr[sin_dec_idx, iter_idx] = mean_ns_err
-                flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor(
-                    mean_ns=mean_ns, fitparam_values=np.array(fitparam_values)
-                )
+                flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor() * mean_ns
 
         pbar_sin_dec.increment()
     pbar_sin_dec.finish()
@@ -414,9 +410,7 @@ def estimate_ps_sin_dec_discovery_potential_curve(
 
             mean_ns_arr[sin_dec_idx, iter_idx] = mean_ns
             mean_ns_err_arr[sin_dec_idx, iter_idx] = mean_ns_err
-            flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor(
-                mean_ns=mean_ns, fitparam_values=np.array(fitparam_values)
-            )
+            flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor() * mean_ns
 
             pbar.increment()
         pbar.finish()
