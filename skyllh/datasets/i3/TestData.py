@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Author: Dr. Martin Wolf <mail@martin-wolf.org>
 
 from skyllh.core.dataset import (
@@ -10,9 +9,9 @@ from skyllh.i3.dataset import (
 
 
 def create_dataset_collection(
-        cfg,
-        base_path=None,
-        sub_path_fmt=None,
+    cfg,
+    base_path=None,
+    sub_path_fmt=None,
 ):
     """Defines a dataset collection with a test dataset.
 
@@ -65,8 +64,6 @@ def create_dataset_collection(
         **ds_kwargs,
     )
 
-    dsc.add_datasets((
-        TestData,
-    ))
+    dsc.add_datasets((TestData,))
 
     return dsc

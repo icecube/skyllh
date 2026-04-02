@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
-
 """This test module tests classes, methods and functions of the core/parameters
 module.
 """
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 from skyllh.core.binning import (
     BinningDefinition,
@@ -21,73 +20,73 @@ from skyllh.core.parameters import (
     ParameterSet,
 )
 
+GAMMA_GRID = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
 
-GAMMA_GRID = [
-    1.,  1.1,  1.2,  1.3,  1.4,  1.5,  1.6,  1.7,  1.8,  1.9,  2.
-]
-
-ECUT_GRID = [
-    9., 9.1
-]
+ECUT_GRID = [9.0, 9.1]
 
 
 class Parameter_TestCase(unittest.TestCase):
-    """This test case tests the Parameter class.
-    """
+    """This test case tests the Parameter class."""
+
     def setUp(self):
         self.fixed_param_initial = 2.37
         self.floating_param_initial = 7.32
         self.floating_param_valmin = 7.1
         self.floating_param_valmax = 8
-        self.floating_param_grid = np.array([
-            7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 8.])
+        self.floating_param_grid = np.array([7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 8.0])
 
-        self.fixed_param = Parameter(
-            'fixed_param', self.fixed_param_initial)
+        self.fixed_param = Parameter('fixed_param', self.fixed_param_initial)
         self.floating_param = Parameter(
-            'floating_param', self.floating_param_initial,
+            'floating_param',
+            self.floating_param_initial,
             valmin=self.floating_param_valmin,
-            valmax=self.floating_param_valmax)
+            valmax=self.floating_param_valmax,
+        )
 
     def test__eq__(self):
-        fixed_param = Parameter(
-            'fixed_param', self.fixed_param_initial)
+        fixed_param = Parameter('fixed_param', self.fixed_param_initial)
         floating_param = Parameter(
-            'floating_param', self.floating_param_initial,
+            'floating_param',
+            self.floating_param_initial,
             valmin=self.floating_param_valmin,
-            valmax=self.floating_param_valmax)
+            valmax=self.floating_param_valmax,
+        )
 
         self.assertTrue(self.fixed_param == fixed_param)
         self.assertTrue(self.floating_param == floating_param)
 
         # Change the parameter name.
-        fixed_param = Parameter(
-            'fixed_param1', self.fixed_param_initial)
+        fixed_param = Parameter('fixed_param1', self.fixed_param_initial)
         self.assertFalse(self.fixed_param == fixed_param)
 
         # Change the initial value.
-        fixed_param = Parameter(
-            'fixed_param', self.fixed_param_initial+1)
+        fixed_param = Parameter('fixed_param', self.fixed_param_initial + 1)
         self.assertFalse(self.fixed_param == fixed_param)
 
         floating_param = Parameter(
-            'floating_param', self.floating_param_initial+0.2,
+            'floating_param',
+            self.floating_param_initial + 0.2,
             valmin=self.floating_param_valmin,
-            valmax=self.floating_param_valmax)
+            valmax=self.floating_param_valmax,
+        )
         self.assertFalse(self.floating_param == floating_param)
 
         # Change the valmin.
         floating_param = Parameter(
-            'floating_param', self.floating_param_initial,
-            valmin=self.floating_param_valmin-1,
-            valmax=self.floating_param_valmax)
+            'floating_param',
+            self.floating_param_initial,
+            valmin=self.floating_param_valmin - 1,
+            valmax=self.floating_param_valmax,
+        )
         self.assertFalse(self.floating_param == floating_param)
 
         # Change the valmax.
         floating_param = Parameter(
-            'floating_param', self.floating_param_initial,
+            'floating_param',
+            self.floating_param_initial,
             valmin=self.floating_param_valmin,
-            valmax=self.floating_param_valmax+1)
+            valmax=self.floating_param_valmax + 1,
+        )
         self.assertFalse(self.floating_param == floating_param)
 
     def test_name(self):
@@ -95,10 +94,8 @@ class Parameter_TestCase(unittest.TestCase):
         self.assertEqual(self.floating_param.name, 'floating_param')
 
     def test_initial(self):
-        np.testing.assert_almost_equal(
-            self.fixed_param.initial, self.fixed_param_initial)
-        np.testing.assert_almost_equal(
-            self.floating_param.initial, self.floating_param_initial)
+        np.testing.assert_almost_equal(self.fixed_param.initial, self.fixed_param_initial)
+        np.testing.assert_almost_equal(self.floating_param.initial, self.floating_param_initial)
 
     def test_isfixed(self):
         self.assertTrue(self.fixed_param.isfixed)
@@ -106,19 +103,15 @@ class Parameter_TestCase(unittest.TestCase):
 
     def test_valmin(self):
         self.assertEqual(self.fixed_param.valmin, None)
-        np.testing.assert_almost_equal(
-            self.floating_param.valmin, self.floating_param_valmin)
+        np.testing.assert_almost_equal(self.floating_param.valmin, self.floating_param_valmin)
 
     def test_valmax(self):
         self.assertEqual(self.fixed_param.valmax, None)
-        np.testing.assert_almost_equal(
-            self.floating_param.valmax, self.floating_param_valmax)
+        np.testing.assert_almost_equal(self.floating_param.valmax, self.floating_param_valmax)
 
     def test_value(self):
-        np.testing.assert_almost_equal(
-            self.fixed_param.value, self.fixed_param_initial)
-        np.testing.assert_almost_equal(
-            self.floating_param.value, self.floating_param_initial)
+        np.testing.assert_almost_equal(self.fixed_param.value, self.fixed_param_initial)
+        np.testing.assert_almost_equal(self.floating_param.value, self.floating_param_initial)
 
         # Try to change the value of a fixed parameter.
         with self.assertRaises(ValueError):
@@ -137,28 +130,22 @@ class Parameter_TestCase(unittest.TestCase):
     def test_as_linear_grid(self):
         grid_delta = 0.1
         param_grid_fixed = self.fixed_param.as_linear_grid(grid_delta)
-        np.testing.assert_array_almost_equal(
-            param_grid_fixed.grid, np.array([self.fixed_param_initial])) 
+        np.testing.assert_array_almost_equal(param_grid_fixed.grid, np.array([self.fixed_param_initial]))
         param_grid = self.floating_param.as_linear_grid(grid_delta)
-        np.testing.assert_almost_equal(
-            param_grid.grid, self.floating_param_grid)
-        
+        np.testing.assert_almost_equal(param_grid.grid, self.floating_param_grid)
+
     def test_change_fixed_value(self):
         with self.assertRaises(ValueError):
             self.floating_param.change_fixed_value(self.fixed_param_initial)
 
         self.fixed_param.change_fixed_value(self.floating_param_initial)
-        np.testing.assert_almost_equal(
-            self.fixed_param.initial, self.floating_param_initial)
-        np.testing.assert_almost_equal(
-            self.fixed_param.value, self.floating_param_initial)
+        np.testing.assert_almost_equal(self.fixed_param.initial, self.floating_param_initial)
+        np.testing.assert_almost_equal(self.fixed_param.value, self.floating_param_initial)
 
     def test_make_fixed(self):
         self.floating_param.make_fixed(self.fixed_param_initial)
-        np.testing.assert_almost_equal(
-            self.floating_param.initial, self.fixed_param_initial)
-        np.testing.assert_almost_equal(
-            self.floating_param.value, self.fixed_param_initial)
+        np.testing.assert_almost_equal(self.floating_param.initial, self.fixed_param_initial)
+        np.testing.assert_almost_equal(self.floating_param.value, self.fixed_param_initial)
 
     def test_make_floating(self):
         with self.assertRaises(ValueError):
@@ -170,27 +157,20 @@ class Parameter_TestCase(unittest.TestCase):
         # range of the floating_param. This should raise an exception when no
         # new initial value is specified.
         with self.assertRaises(ValueError):
-            self.fixed_param.make_floating(
-                valmin=self.floating_param_valmin,
-                valmax=self.floating_param_valmax)
+            self.fixed_param.make_floating(valmin=self.floating_param_valmin, valmax=self.floating_param_valmax)
 
         self.fixed_param.make_floating(
-            initial=self.floating_param_initial,
-            valmin=self.floating_param_valmin,
-            valmax=self.floating_param_valmax)
-        np.testing.assert_almost_equal(
-            self.fixed_param.initial, self.floating_param_initial)
-        np.testing.assert_almost_equal(
-            self.fixed_param.value, self.floating_param_initial)
-        np.testing.assert_almost_equal(
-            self.fixed_param.valmin, self.floating_param_valmin)
-        np.testing.assert_almost_equal(
-            self.fixed_param.valmax, self.floating_param_valmax)
+            initial=self.floating_param_initial, valmin=self.floating_param_valmin, valmax=self.floating_param_valmax
+        )
+        np.testing.assert_almost_equal(self.fixed_param.initial, self.floating_param_initial)
+        np.testing.assert_almost_equal(self.fixed_param.value, self.floating_param_initial)
+        np.testing.assert_almost_equal(self.fixed_param.valmin, self.floating_param_valmin)
+        np.testing.assert_almost_equal(self.fixed_param.valmax, self.floating_param_valmax)
 
 
 class ParameterSet_TestCase(unittest.TestCase):
-    """This test case tests the ParameterSet class.
-    """
+    """This test case tests the ParameterSet class."""
+
     def setUp(self):
         self.fixed_param = Parameter('p0', 2.3)
         self.floating_param = Parameter('p1', 1.1, valmin=0.5, valmax=1.6)
@@ -284,7 +264,7 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.assertEqual(len(self.paramset), 2)
 
     def test_iter(self):
-        for (i, param) in enumerate(self.paramset):
+        for i, param in enumerate(self.paramset):
             self.assertEqual(param.name, f'p{i}')
 
     def test_str(self):
@@ -373,11 +353,11 @@ class ParameterSet_TestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.paramset.add_param('p2')
         with self.assertRaises(KeyError):
-            param = Parameter('p0', 42.)
+            param = Parameter('p0', 42.0)
             self.paramset.add_param(param)
 
         # Add parameter at front.
-        param = Parameter('p2', 42.)
+        param = Parameter('p2', 42.0)
         self.paramset.add_param(param, atfront=True)
         self.assertEqual(self.paramset.params[0], param)
         self.assertEqual(self.paramset.params[1], self.fixed_param)
@@ -386,7 +366,7 @@ class ParameterSet_TestCase(unittest.TestCase):
         self.setUp()
 
         # Add parameter at end.
-        param = Parameter('p2', 42.)
+        param = Parameter('p2', 42.0)
         self.paramset.add_param(param)
         self.assertEqual(self.paramset.params[0], self.fixed_param)
         self.assertEqual(self.paramset.params[1], self.floating_param)
@@ -404,10 +384,10 @@ class ParameterSet_TestCase(unittest.TestCase):
 
 
 class ParameterGrid_TestCase(unittest.TestCase):
-    """This test case tests the ParameterGrid class.
-    """
+    """This test case tests the ParameterGrid class."""
+
     def setUp(self):
-        self.paramgrid_gamma1 = ParameterGrid('gamma1', [1.5, 2., 2.5, 3., 3.5])
+        self.paramgrid_gamma1 = ParameterGrid('gamma1', [1.5, 2.0, 2.5, 3.0, 3.5])
         self.paramgrid_gamma2 = ParameterGrid('gamma2', GAMMA_GRID)
         self.paramgrid_gamma3 = ParameterGrid('gamma3', [1.05, 1.15, 1.25, 1.35])
 
@@ -441,7 +421,7 @@ class ParameterGrid_TestCase(unittest.TestCase):
         # Test a value between two grid points.
         x = [2.1, 2.4, 2.2, 2.3]
         gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
-        np.testing.assert_almost_equal(gp, [2.0, 2.5, 2., 2.5])
+        np.testing.assert_almost_equal(gp, [2.0, 2.5, 2.0, 2.5])
 
         x = [1.051, 1.14]
         gp = self.paramgrid_gamma3.round_to_nearest_grid_point(x)
@@ -456,12 +436,12 @@ class ParameterGrid_TestCase(unittest.TestCase):
         # Test a value between two grid points.
         x = 2.4
         gp = self.paramgrid_gamma1.round_to_lower_grid_point(x)
-        np.testing.assert_almost_equal(gp, 2.)
+        np.testing.assert_almost_equal(gp, 2.0)
 
         # Test a value at a grid point.
-        x = 2.
+        x = 2.0
         gp = self.paramgrid_gamma1.round_to_lower_grid_point(x)
-        np.testing.assert_almost_equal(gp, 2.)
+        np.testing.assert_almost_equal(gp, 2.0)
 
         x = 1.6
         gp = self.paramgrid_gamma2.round_to_lower_grid_point(x)
@@ -478,7 +458,7 @@ class ParameterGrid_TestCase(unittest.TestCase):
         np.testing.assert_almost_equal(gp, 2.5)
 
         # Test a value at a grid point.
-        x = 2.
+        x = 2.0
         gp = self.paramgrid_gamma1.round_to_upper_grid_point(x)
         np.testing.assert_almost_equal(gp, 2.5)
 
@@ -492,36 +472,28 @@ class ParameterGrid_TestCase(unittest.TestCase):
 
 
 class ParameterGridSet_TestCase(unittest.TestCase):
-    """This test case tests the ParameterGridSet class.
-    """
+    """This test case tests the ParameterGridSet class."""
+
     def setUp(self):
-        """Setups this test case.
-        """
+        """Setups this test case."""
         self.paramgrid_gamma = ParameterGrid('gamma', GAMMA_GRID)
         self.paramgrid_Ecut = ParameterGrid('Ecut', ECUT_GRID)
 
-        self.paramgridset = ParameterGridSet(
-            (self.paramgrid_gamma, self.paramgrid_Ecut))
+        self.paramgridset = ParameterGridSet((self.paramgrid_gamma, self.paramgrid_Ecut))
 
     def test_ndim(self):
-        self.assertEqual(
-            self.paramgridset.ndim, 2)
+        self.assertEqual(self.paramgridset.ndim, 2)
 
     def test_param_names(self):
-        self.assertEqual(
-            self.paramgridset.params_name_list, ['gamma', 'Ecut'])
+        self.assertEqual(self.paramgridset.params_name_list, ['gamma', 'Ecut'])
 
     def test_parameter_permutation_dict_list(self):
         perm_dict_list = self.paramgridset.parameter_permutation_dict_list
 
         np.testing.assert_almost_equal(
-            [d['gamma'] for d in perm_dict_list],
-            np.repeat(np.array(GAMMA_GRID), len(ECUT_GRID))
+            [d['gamma'] for d in perm_dict_list], np.repeat(np.array(GAMMA_GRID), len(ECUT_GRID))
         )
-        np.testing.assert_almost_equal(
-            [d['Ecut'] for d in perm_dict_list],
-            list(ECUT_GRID)*len(GAMMA_GRID)
-        )
+        np.testing.assert_almost_equal([d['Ecut'] for d in perm_dict_list], list(ECUT_GRID) * len(GAMMA_GRID))
 
 
 class ParameterModelMapperTestCase(unittest.TestCase):
@@ -531,8 +503,7 @@ class ParameterModelMapperTestCase(unittest.TestCase):
         self.floating_param1 = Parameter('p2', 13, 10, 15)
         self.model0 = Model('m0')
         self.model1 = Model('m1')
-        self.pmm = ParameterModelMapper(
-            models=(self.model0, self.model1))
+        self.pmm = ParameterModelMapper(models=(self.model0, self.model1))
 
     def test_models(self):
         self.assertEqual(len(self.pmm.models), 2)
@@ -550,60 +521,38 @@ class ParameterModelMapperTestCase(unittest.TestCase):
         str(self.pmm)
 
     def test_unique_model_param_names(self):
-        self.pmm.map_param(
-            param=self.fixed_param0,
-            models=(self.model0,),
-            model_param_names='p')
-        self.pmm.map_param(
-            param=self.floating_param0,
-            models=(self.model1,),
-            model_param_names='p')
-        self.pmm.map_param(
-            param=self.floating_param1)
+        self.pmm.map_param(param=self.fixed_param0, models=(self.model0,), model_param_names='p')
+        self.pmm.map_param(param=self.floating_param0, models=(self.model1,), model_param_names='p')
+        self.pmm.map_param(param=self.floating_param1)
         names = self.pmm.unique_model_param_names
         self.assertEqual(len(names), 2)
         np.testing.assert_equal(names, ['p', 'p2'])
 
     def test_map_param(self):
-        self.pmm.map_param(
-            param=self.fixed_param0,
-            models=(self.model1,))
-        self.pmm.map_param(
-            param=self.floating_param0,
-            models=(self.model0, self.model1),
-            model_param_names='fp')
-        self.pmm.map_param(
-            param=self.floating_param1,
-            models=(self.model1,))
+        self.pmm.map_param(param=self.fixed_param0, models=(self.model1,))
+        self.pmm.map_param(param=self.floating_param0, models=(self.model0, self.model1), model_param_names='fp')
+        self.pmm.map_param(param=self.floating_param1, models=(self.model1,))
         self.assertEqual(self.pmm.n_global_params, 3)
         self.assertEqual(self.pmm.n_global_fixed_params, 1)
         self.assertEqual(self.pmm.n_global_floating_params, 2)
 
         # The models cannot be an empty set.
         with self.assertRaises(ValueError):
-            self.pmm.map_param(
-                param=self.fixed_param0,
-                models=(),
-                model_param_names='fp')
+            self.pmm.map_param(param=self.fixed_param0, models=(), model_param_names='fp')
         # A model parameter can only be defined once for a given model.
         with self.assertRaises(KeyError):
-            self.pmm.map_param(
-                param=self.fixed_param0,
-                models=(self.model0,),
-                model_param_names='fp')
+            self.pmm.map_param(param=self.fixed_param0, models=(self.model0,), model_param_names='fp')
 
     def test_create_model_params_dict(self):
         # Add some parameters to the model parameter mapper.
         self.test_map_param()
 
-        m0_param_dict = self.pmm.create_model_params_dict(
-            np.array([2.4, 11.1]), model=0)
+        m0_param_dict = self.pmm.create_model_params_dict(np.array([2.4, 11.1]), model=0)
         self.assertEqual(len(m0_param_dict), 1)
         self.assertTrue('fp' in m0_param_dict)
         self.assertAlmostEqual(m0_param_dict['fp'], 2.4)
 
-        m1_param_dict = self.pmm.create_model_params_dict(
-            np.array([2.4, 11.1]), model=1)
+        m1_param_dict = self.pmm.create_model_params_dict(np.array([2.4, 11.1]), model=1)
         self.assertEqual(len(m1_param_dict), 3)
         self.assertTrue('p0' in m1_param_dict)
         self.assertTrue('fp' in m1_param_dict)
@@ -616,8 +565,7 @@ class ParameterModelMapperTestCase(unittest.TestCase):
         # Add some parameters to the model parameter mapper.
         self.test_map_param()
 
-        mask = self.pmm.get_local_param_is_global_floating_param_mask(
-            ['p0', 'fp', 'p2'])
+        mask = self.pmm.get_local_param_is_global_floating_param_mask(['p0', 'fp', 'p2'])
         np.testing.assert_equal(mask, [False, True, True])
 
 

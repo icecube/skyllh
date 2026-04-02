@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """The tool module provides functionality to interface with an optional external
 python package (tool). The tool can be imported dynamically at run-time when
 needed.
@@ -18,8 +16,8 @@ from skyllh.core.py import (
 
 
 def assert_tool_version(
-        tool,
-        version,
+    tool,
+    version,
 ):
     """Asserts the required version of the tool. The tool module must have the
     attribute ``__version__``.
@@ -43,8 +41,7 @@ def assert_tool_version(
     """
     tool_module = get(tool)
     if not hasattr(tool_module, '__version__'):
-        raise KeyError(
-            f'The tool "{tool}" has no attribute "__version__"!')
+        raise KeyError(f'The tool "{tool}" has no attribute "__version__"!')
     tool_version_arr = tool_module.__version__.split('.')
     (comp_op, version) = (version[0:2], version[2:])
     version_arr = version.split('.')
@@ -56,23 +53,24 @@ def assert_tool_version(
                 raise ImportError(
                     f'The version ({".".join(tool_version_arr)}) of the tool '
                     f'"{tool}" is not lower or equal than version '
-                    f'{".".join(version_arr)}!')
+                    f'{".".join(version_arr)}!'
+                )
         elif comp_op == '==':
             if not (tool_vers_i == vers_i):
                 raise ImportError(
                     f'The version ({".".join(tool_version_arr)}) of the tool '
                     f'"{tool}" is not equal to the version '
-                    f'{".".join(version_arr)}!')
+                    f'{".".join(version_arr)}!'
+                )
         elif comp_op == '>=':
             if not (tool_vers_i >= vers_i):
                 raise ImportError(
                     f'The version ({".".join(tool_version_arr)}) of the tool '
                     f'"{tool}" is not greater or equal than version '
-                    f'{".".join(version_arr)}!')
+                    f'{".".join(version_arr)}!'
+                )
         else:
-            raise ValueError(
-                f'The version comparison operator "{comp_op}" for the tool '
-                f'"{tool}" is not supported!')
+            raise ValueError(f'The version comparison operator "{comp_op}" for the tool "{tool}" is not supported!')
 
 
 def is_available(name):
@@ -98,10 +96,7 @@ def is_available(name):
         return True
 
     spec = importlib.util.find_spec(name)
-    if spec is not None:
-        return True
-
-    return False
+    return spec is not None
 
 
 def get(name):
@@ -126,7 +121,7 @@ def get(name):
 
 
 def _get_tool_and_version(
-        tool,
+    tool,
 ):
     """Returns the tool and and version based on the input value for the tool.
 
@@ -143,16 +138,14 @@ def _get_tool_and_version(
     version : str | None
         The tool's version string, or ``None``, if no version was specified.
     """
-    if not (isinstance(tool, str) or isinstance(tool, tuple)):
+    if not (isinstance(tool, (str, tuple))):
         raise TypeError(
-            'The tool specification must be an instance of str or tuple! '
-            f'Its current type is {classname(tool)}!')
+            f'The tool specification must be an instance of str or tuple! Its current type is {classname(tool)}!'
+        )
 
     if isinstance(tool, tuple):
         if len(tool) != 2:
-            raise ValueError(
-                'The length of the tool tuple must be 2, but it is '
-                f'{len(tool)}!')
+            raise ValueError(f'The length of the tool tuple must be 2, but it is {len(tool)}!')
 
         (tool, version) = tool
 
@@ -160,12 +153,14 @@ def _get_tool_and_version(
             raise TypeError(
                 'The first element of the tool tuple must be an instance '
                 'of str! '
-                f'Its current type is {classname(tool)}!')
+                f'Its current type is {classname(tool)}!'
+            )
         if not isinstance(version, str):
             raise TypeError(
                 'The second element of the tool tuple must be an instance '
                 'of str! '
-                f'Its current type is {classname(version)}!')
+                f'Its current type is {classname(version)}!'
+            )
 
         return (tool, version)
 
@@ -192,6 +187,7 @@ def requires(*tools):
     ImportError
         If the version of a tool does not meet the requirements.
     """
+
     def decorator(f):
         def wrapper(*args, **kwargs):
             for tool in tools:
@@ -199,10 +195,13 @@ def requires(*tools):
                 if not is_available(tool):
                     raise ModuleNotFoundError(
                         f'The Python module "{tool}" is not available, but is '
-                        f'required by "{get_class_of_func(f)}.{f.__name__}"!')
+                        f'required by "{get_class_of_func(f)}.{f.__name__}"!'
+                    )
                 if version is not None:
                     assert_tool_version(tool, version)
 
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator

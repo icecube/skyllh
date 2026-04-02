@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
-
 from scipy import (
     interpolate,
 )
@@ -15,14 +12,14 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     psi_to_dec_and_ra,
 )
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.flux_model import (
     TimeFluxProfile,
 )
 from skyllh.core.livetime import (
     Livetime,
+)
+from skyllh.core.logging import (
+    get_logger,
 )
 from skyllh.core.py import (
     classname,
@@ -42,19 +39,20 @@ from skyllh.core.utils.flux_model import (
 
 
 class PDDatasetSignalGenerator(
-        SignalGenerator,
+    SignalGenerator,
 ):
     """This class implements a signal generator for a single public data
     dataset.
     """
+
     def __init__(
-            self,
-            shg_mgr,
-            ds,
-            ds_idx,
-            energy_cut_spline=None,
-            cut_sindec=None,
-            **kwargs,
+        self,
+        shg_mgr,
+        ds,
+        ds_idx,
+        energy_cut_spline=None,
+        cut_sindec=None,
+        **kwargs,
     ):
         """Creates a new instance of the signal generator for generating
         signal events from a specific public data dataset.
@@ -76,9 +74,7 @@ class PDDatasetSignalGenerator(
             The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
         """
-        super().__init__(
-            shg_mgr=shg_mgr,
-            **kwargs)
+        super().__init__(shg_mgr=shg_mgr, **kwargs)
 
         self._logger = get_logger(module_classname(self))
 
@@ -88,8 +84,8 @@ class PDDatasetSignalGenerator(
         self.cut_sindec = cut_sindec
 
         self.sm = PDSmearingMatrix(
-            pathfilenames=ds.get_abs_pathfilename_list(
-                    ds.get_aux_data_definition('smearing_datafile')))
+            pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
+        )
 
         self._create_source_dependent_data_structures()
 
@@ -104,85 +100,58 @@ class PDDatasetSignalGenerator(
         """
         n_sources = self.shg_mgr.n_sources
 
-        self._src_ra_arr = np.empty(
-            (n_sources,),
-            dtype=np.float64)
-        self._src_dec_arr = np.empty(
-            (n_sources,),
-            dtype=np.float64)
-        self._effA_arr = np.empty(
-            (n_sources,),
-            dtype=np.object_)
-        self._log10_true_e_inv_cdf_spl_arr = np.empty(
-            (n_sources,),
-            dtype=np.object_)
+        self._src_ra_arr = np.empty((n_sources,), dtype=np.float64)
+        self._src_dec_arr = np.empty((n_sources,), dtype=np.float64)
+        self._effA_arr = np.empty((n_sources,), dtype=np.object_)
+        self._log10_true_e_inv_cdf_spl_arr = np.empty((n_sources,), dtype=np.object_)
 
-        for (src_idx, src) in enumerate(self._shg_mgr.source_list):
+        for src_idx, src in enumerate(self._shg_mgr.source_list):
             self._src_ra_arr[src_idx] = src.ra
             self._src_dec_arr[src_idx] = src.dec
 
             dec_idx = self.sm.get_true_dec_idx(src.dec)
-            (min_log_true_e,
-             max_log_true_e) =\
-                self.sm.get_true_log_e_range_with_valid_log_e_pdfs(
-                    dec_idx)
+            (min_log_true_e, max_log_true_e) = self.sm.get_true_log_e_range_with_valid_log_e_pdfs(dec_idx)
 
             self._effA_arr[src_idx] = PDAeff(
-                pathfilenames=self.ds.get_abs_pathfilename_list(
-                    self.ds.get_aux_data_definition('eff_area_datafile')),
+                pathfilenames=self.ds.get_abs_pathfilename_list(self.ds.get_aux_data_definition('eff_area_datafile')),
                 src_dec=src.dec,
                 min_log10enu=min_log_true_e,
-                max_log10enu=max_log_true_e)
+                max_log10enu=max_log_true_e,
+            )
 
             # Build the spline for the inverse CDF of the source flux's true
             # energy probability distribution.
             fluxmodel = self.shg_mgr.get_fluxmodel_by_src_idx(src_idx=src_idx)
-            self._log10_true_e_inv_cdf_spl_arr[src_idx] =\
-                self._create_inv_cdf_spline(
-                    src_idx=src_idx,
-                    fluxmodel=fluxmodel,
-                    log_e_min=min_log_true_e,
-                    log_e_max=max_log_true_e)
+            self._log10_true_e_inv_cdf_spl_arr[src_idx] = self._create_inv_cdf_spline(
+                src_idx=src_idx, fluxmodel=fluxmodel, log_e_min=min_log_true_e, log_e_max=max_log_true_e
+            )
 
     @staticmethod
     def _eval_spline(x, spl):
-        """Evaluates the given spline at the given coordinates.
-        """
+        """Evaluates the given spline at the given coordinates."""
         x = np.asarray(x)
         if (x.any() < 0) or (x.any() > 1):
-            raise ValueError(
-                f'{x} is outside of the valid spline range. '
-                'The valid range is [0,1].')
+            raise ValueError(f'{x} is outside of the valid spline range. The valid range is [0,1].')
 
         values = interpolate.splev(x, spl, ext=3)
 
         return values
 
-    def _create_inv_cdf_spline(
-            self,
-            src_idx,
-            fluxmodel,
-            log_e_min,
-            log_e_max):
+    def _create_inv_cdf_spline(self, src_idx, fluxmodel, log_e_min, log_e_max):
         """Creates a spline for the inverse cumulative distribution function of
         the detectable true energy probability distribution.
         """
         effA = self._effA_arr[src_idx]
 
-        m = (effA.log10_enu_bincenters >= log_e_min) & (
-             effA.log10_enu_bincenters < log_e_max)
+        m = (effA.log10_enu_bincenters >= log_e_min) & (effA.log10_enu_bincenters < log_e_max)
         bin_centers = effA.log10_enu_bincenters[m]
         low_bin_edges = effA.log10_enu_binedges_lower[m]
         high_bin_edges = effA.log10_enu_binedges_upper[m]
 
         # Flux probability P(E_nu | gamma) per bin.
         flux_prob = fluxmodel.energy_profile.get_integral(
-            E1=10**low_bin_edges,
-            E2=10**high_bin_edges
-        ) / fluxmodel.energy_profile.get_integral(
-            E1=10**low_bin_edges[0],
-            E2=10**high_bin_edges[-1]
-        )
+            E1=10**low_bin_edges, E2=10**high_bin_edges
+        ) / fluxmodel.energy_profile.get_integral(E1=10 ** low_bin_edges[0], E2=10 ** high_bin_edges[-1])
 
         # Do the product and normalize again to a probability per bin.
         product = flux_prob * effA.det_prob
@@ -198,15 +167,13 @@ class PDDatasetSignalGenerator(
         prob_per_bin /= np.sum(prob_per_bin)
 
         # Compute the cumulative distribution CDF.
-        cum_per_bin = [
-            np.sum(prob_per_bin[:i])
-            for i in range(prob_per_bin.size+1)
-        ]
+        cum_per_bin = [np.sum(prob_per_bin[:i]) for i in range(prob_per_bin.size + 1)]
         if np.any(np.diff(cum_per_bin) == 0):
             raise ValueError(
                 'The cumulative sum of the true energy probability is not '
                 'monotonically increasing! Values of the cumsum are '
-                f'{cum_per_bin}.')
+                f'{cum_per_bin}.'
+            )
 
         bin_centers = bin_centers[to_keep]
         bin_centers = np.concatenate(([low_bin_edges[0]], bin_centers))
@@ -214,14 +181,7 @@ class PDDatasetSignalGenerator(
         # Build a spline for the inverse CDF.
         return interpolate.splrep(cum_per_bin, bin_centers, k=1, s=0)
 
-    def _draw_signal_events_for_source(
-            self,
-            rss,
-            src_dec,
-            src_ra,
-            dec_idx,
-            log10_true_e_inv_cdf_spl,
-            n_events):
+    def _draw_signal_events_for_source(self, rss, src_dec, src_ra, dec_idx, log10_true_e_inv_cdf_spl, n_events):
         """Generates `n_events` signal events for the given source location
         given the given inverse cumulative density function for the
         log10(E_true/GeV) distribution.
@@ -277,28 +237,20 @@ class PDDatasetSignalGenerator(
             ('time', int),
             ('azi', np.double),
             ('zen', np.double),
-            ('run', int)
+            ('run', int),
         ]
 
-        data = dict(
-            [(out_dt[0], np.empty(
-                (n_events,),
-                dtype=out_dt[1])
-              ) for out_dt in out_dtype]
-        )
+        data = dict([(out_dt[0], np.empty((n_events,), dtype=out_dt[1])) for out_dt in out_dtype])
 
         events = DataFieldRecordArray(data, copy=False)
 
         sm = self.sm
 
-        log_true_e = self._eval_spline(
-            rss.random.uniform(size=n_events), log10_true_e_inv_cdf_spl)
+        log_true_e = self._eval_spline(rss.random.uniform(size=n_events), log10_true_e_inv_cdf_spl)
 
         events['log_true_energy'] = log_true_e
 
-        log_true_e_idxs = (
-            np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1
-        )
+        log_true_e_idxs = np.digitize(log_true_e, bins=sm.true_e_bin_edges) - 1
 
         # Sample reconstructed energies given true neutrino energies.
         (log_e_idxs, log_e) = sm.sample_log_e(rss, dec_idx, log_true_e_idxs)
@@ -306,16 +258,13 @@ class PDDatasetSignalGenerator(
 
         # Sample reconstructed psi values given true neutrino energy and
         # reconstructed energy.
-        (psi_idxs, psi) = sm.sample_psi(
-            rss, dec_idx, log_true_e_idxs, log_e_idxs)
+        (psi_idxs, psi) = sm.sample_psi(rss, dec_idx, log_true_e_idxs, log_e_idxs)
 
         # Sample reconstructed ang_err values given true neutrino energy,
         # reconstructed energy, and psi.
-        (ang_err_idxs, ang_err) = sm.sample_ang_err(
-            rss, dec_idx, log_true_e_idxs, log_e_idxs, psi_idxs)
+        (_, ang_err) = sm.sample_ang_err(rss, dec_idx, log_true_e_idxs, log_e_idxs, psi_idxs)
 
-        isvalid = np.invert(
-            np.isnan(log_e) | np.isnan(psi) | np.isnan(ang_err))
+        isvalid = np.invert(np.isnan(log_e) | np.isnan(psi) | np.isnan(ang_err))
         events['isvalid'] = isvalid
 
         # Convert the psf into a set of (r.a. and dec.). Only use non-nan
@@ -336,23 +285,16 @@ class PDDatasetSignalGenerator(
 
         return events
 
-    def change_shg_mgr(
-            self,
-            shg_mgr):
+    def change_shg_mgr(self, shg_mgr):
         """Changes the source hypothesis group manager. This will recreate the
         internal source dependent data structures.
         """
-        super().change_shg_mgr(
-            shg_mgr=shg_mgr)
+        super().change_shg_mgr(shg_mgr=shg_mgr)
 
         self._create_source_dependent_data_structures()
 
     @staticmethod
-    def create_energy_filter_mask(
-            events,
-            spline,
-            cut_sindec,
-            logger):
+    def create_energy_filter_mask(events, spline, cut_sindec, logger):
         """Creates a mask for cutting all events below ``cut_sindec``
         that have an energy smaller than the energy spline at their
         declination.
@@ -378,22 +320,14 @@ class PDDatasetSignalGenerator(
             to cut.
         """
         if cut_sindec is None:
-            logger.warn(
-                'No `cut_sindec` has been specified. The energy cut will be '
-                'applied in [-90, 90] deg.')
+            logger.warning('No `cut_sindec` has been specified. The energy cut will be applied in [-90, 90] deg.')
             cut_sindec = np.sin(np.radians(90.1))
 
-        filter_mask = np.logical_and(
-            events['sin_dec'] < cut_sindec,
-            events['log_energy'] < spline(events['sin_dec']))
+        filter_mask = np.logical_and(events['sin_dec'] < cut_sindec, events['log_energy'] < spline(events['sin_dec']))
 
         return filter_mask
 
-    def generate_signal_events_for_source(
-            self,
-            rss,
-            src_idx,
-            n_events):
+    def generate_signal_events_for_source(self, rss, src_idx, n_events):
         """Generates ``n_events`` signal events for the given source location
         and flux model.
 
@@ -443,7 +377,8 @@ class PDDatasetSignalGenerator(
                 src_ra=src_ra,
                 dec_idx=dec_idx,
                 log10_true_e_inv_cdf_spl=log10_true_e_inv_cdf_spl,
-                n_events=n_evt)
+                n_events=n_evt,
+            )
 
             # Cut events that failed to be generated due to missing PDFs.
             # Also cut low energy events if generating in the southern sky.
@@ -451,10 +386,8 @@ class PDDatasetSignalGenerator(
 
             if self.energy_cut_spline is not None:
                 cut_mask = self.create_energy_filter_mask(
-                    events=events_,
-                    spline=self.energy_cut_spline,
-                    cut_sindec=self.cut_sindec,
-                    logger=self._logger)
+                    events=events_, spline=self.energy_cut_spline, cut_sindec=self.cut_sindec, logger=self._logger
+                )
                 events_ = events_[~cut_mask]
 
             if len(events_) > 0:
@@ -466,13 +399,7 @@ class PDDatasetSignalGenerator(
 
         return events
 
-    def generate_signal_events(
-            self,
-            rss,
-            mean,
-            poisson=True,
-            src_detsigyield_weights_service=None,
-            **kwargs):
+    def generate_signal_events(self, rss, mean, poisson=True, src_detsigyield_weights_service=None, **kwargs):
         """Generates ``mean`` number of signal events.
 
         Parameters
@@ -505,21 +432,17 @@ class PDDatasetSignalGenerator(
             dataset index for which the signal events have been generated.
         """
         if poisson:
-            mean = rss.random.poisson(
-                float_cast(
-                    mean,
-                    'The `mean` argument must be castable to type of float!'))
+            mean = rss.random.poisson(float_cast(mean, 'The `mean` argument must be castable to type of float!'))
 
-        n_events = int_cast(
-            mean,
-            'The `mean` argument must be castable to type of int!')
+        n_events = int_cast(mean, 'The `mean` argument must be castable to type of int!')
 
         if src_detsigyield_weights_service is None:
             raise ValueError(
                 'The src_detsigyield_weights_service argument must be provided '
-                f'for the signal generator {classname(self)}!')
+                f'for the signal generator {classname(self)}!'
+            )
 
-        (a_jk, a_jk_grads) = src_detsigyield_weights_service.get_weights()
+        (a_jk, _) = src_detsigyield_weights_service.get_weights()
 
         a_k = np.copy(a_jk[self.ds_idx])
         a_k /= np.sum(a_k)
@@ -551,7 +474,7 @@ class PDDatasetSignalGenerator(
 
 
 class TimeDependentPDDatasetSignalGenerator(
-        PDDatasetSignalGenerator,
+    PDDatasetSignalGenerator,
 ):
     """This time dependent signal generator for a public PS dataset generates
     events using the
@@ -560,15 +483,15 @@ class TimeDependentPDDatasetSignalGenerator(
     """
 
     def __init__(
-            self,
-            shg_mgr,
-            ds,
-            ds_idx,
-            livetime,
-            time_flux_profile,
-            energy_cut_spline=None,
-            cut_sindec=None,
-            **kwargs,
+        self,
+        shg_mgr,
+        ds,
+        ds_idx,
+        livetime,
+        time_flux_profile,
+        energy_cut_spline=None,
+        cut_sindec=None,
+        **kwargs,
     ):
         """
         Parameters
@@ -601,18 +524,15 @@ class TimeDependentPDDatasetSignalGenerator(
             The cut will be applied from this declination down.
         """
         super().__init__(
-            shg_mgr=shg_mgr,
-            ds=ds,
-            ds_idx=ds_idx,
-            energy_cut_spline=energy_cut_spline,
-            cut_sindec=cut_sindec,
-            **kwargs)
+            shg_mgr=shg_mgr, ds=ds, ds_idx=ds_idx, energy_cut_spline=energy_cut_spline, cut_sindec=cut_sindec, **kwargs
+        )
 
         if not isinstance(time_flux_profile, TimeFluxProfile):
             raise TypeError(
                 'The time_flux_profile argument must be an instance of '
                 'TimeFluxProfile! '
-                f'Its current type is {classname(time_flux_profile)}!')
+                f'Its current type is {classname(time_flux_profile)}!'
+            )
 
         self.livetime = livetime
         self._time_flux_profile = time_flux_profile
@@ -628,17 +548,17 @@ class TimeDependentPDDatasetSignalGenerator(
     def livetime(self, lt):
         if not isinstance(lt, Livetime):
             raise TypeError(
-                'The livetime property must be an instance of Livetime! '
-                f'Its current type is {classname(lt)}!')
+                f'The livetime property must be an instance of Livetime! Its current type is {classname(lt)}!'
+            )
         self._livetime = lt
 
     def generate_signal_events(
-            self,
-            rss,
-            mean,
-            poisson=True,
-            src_detsigyield_weights_service=None,
-            **kwargs,
+        self,
+        rss,
+        mean,
+        poisson=True,
+        src_detsigyield_weights_service=None,
+        **kwargs,
     ):
         """Generates ``mean`` number of signal events with times.
 
@@ -676,11 +596,11 @@ class TimeDependentPDDatasetSignalGenerator(
             mean=mean,
             poisson=poisson,
             src_detsigyield_weights_service=src_detsigyield_weights_service,
-            **kwargs)
+            **kwargs,
+        )
 
         # Create a scipy.stats.rv_continuous instance for the time flux profile.
-        time_rv = create_scipy_stats_rv_continuous_from_TimeFluxProfile(
-            profile=self._time_flux_profile)
+        time_rv = create_scipy_stats_rv_continuous_from_TimeFluxProfile(profile=self._time_flux_profile)
 
         # Optimized time injection version, based on csky implementation.
         # https://github.com/icecube/csky/blob/7e969639c5ef6dbb42872dac9b761e1e8b0ccbe2/csky/inj.py#L1122
@@ -688,11 +608,8 @@ class TimeDependentPDDatasetSignalGenerator(
         times = np.array([], dtype=np.float64)
         n_events = len(events)
         while len(times) < n_events:
-            new_times = time_rv.rvs(
-                size=(n_events - len(times)),
-                random_state=rss.random)
-            mask = self._livetime.is_on(
-                mjd=new_times)
+            new_times = time_rv.rvs(size=(n_events - len(times)), random_state=rss.random)
+            mask = self._livetime.is_on(mjd=new_times)
             new_times = new_times[mask]
 
             times = np.concatenate((times, new_times))

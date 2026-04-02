@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 
 from skyllh.core.scrambling import (
     DataScramblingMethod,
     TimeScramblingMethod,
 )
-
 from skyllh.i3.utils.coords import (
     azi_to_ra_transform,
     hor_to_equ_transform,
@@ -14,16 +11,17 @@ from skyllh.i3.utils.coords import (
 
 
 class I3TimeScramblingMethod(
-        TimeScramblingMethod,
+    TimeScramblingMethod,
 ):
     """The I3TimeScramblingMethod class provides a data scrambling method to
     perform time scrambling of the data,
     by drawing a MJD time from a given time generator.
     """
+
     def __init__(
-            self,
-            timegen,
-            **kwargs,
+        self,
+        timegen,
+        **kwargs,
     ):
         """Initializes a new I3 time scrambling instance.
 
@@ -32,18 +30,15 @@ class I3TimeScramblingMethod(
         timegen : TimeGenerator
             The time generator that should be used to generate random MJD times.
         """
-        super().__init__(
-            timegen=timegen,
-            hor_to_equ_transform=hor_to_equ_transform,
-            **kwargs)
+        super().__init__(timegen=timegen, hor_to_equ_transform=hor_to_equ_transform, **kwargs)
 
     # We override the scramble method because for IceCube we only need to change
     # the ``ra`` field.
     def scramble(
-            self,
-            rss,
-            dataset,
-            data,
+        self,
+        rss,
+        dataset,
+        data,
     ):
         """Draws a time from the time generator and calculates the right
         ascention coordinate from the azimuth angle according to the time.
@@ -74,16 +69,17 @@ class I3TimeScramblingMethod(
 
 
 class I3SeasonalVariationTimeScramblingMethod(
-        DataScramblingMethod,
+    DataScramblingMethod,
 ):
     """The I3SeasonalVariationTimeScramblingMethod class provides a data
     scrambling method to perform data coordinate scrambling based on a generated
     time, which follows seasonal variations within the experimental data.
     """
+
     def __init__(
-            self,
-            data,
-            **kwargs,
+        self,
+        data,
+        **kwargs,
     ):
         """Initializes a new seasonal time scrambling instance.
 
@@ -99,8 +95,7 @@ class I3SeasonalVariationTimeScramblingMethod(
         # the events to account for possible seasonal variations.
         self.run_weights = np.zeros((len(data.grl),), dtype=np.float64)
         n_events = len(data.exp['time'])
-        for (i, (start, stop)) in enumerate(
-                zip(data.grl['start'], data.grl['stop'])):
+        for i, (start, stop) in enumerate(zip(data.grl['start'], data.grl['stop'], strict=True)):
             mask = (data.exp['time'] >= start) & (data.exp['time'] < stop)
             self.run_weights[i] = len(data.exp[mask]) / n_events
         self.run_weights /= np.sum(self.run_weights)
@@ -108,10 +103,10 @@ class I3SeasonalVariationTimeScramblingMethod(
         self.grl = data.grl
 
     def scramble(
-            self,
-            rss,
-            dataset,
-            data,
+        self,
+        rss,
+        dataset,
+        data,
     ):
         """Scrambles the given data based on random MJD times, which are
         generated uniformely within the data runs, where the data runs are
@@ -134,20 +129,13 @@ class I3SeasonalVariationTimeScramblingMethod(
             The given DataFieldRecordArray holding the scrambled data.
         """
         # Get run indices based on their seasonal weights.
-        run_idxs = rss.random.choice(
-            self.grl['start'].size,
-            size=len(data['time']),
-            p=self.run_weights)
+        run_idxs = rss.random.choice(self.grl['start'].size, size=len(data['time']), p=self.run_weights)
 
         # Draw random times uniformely within the runs.
-        times = rss.random.uniform(
-            self.grl['start'][run_idxs],
-            self.grl['stop'][run_idxs])
+        times = rss.random.uniform(self.grl['start'][run_idxs], self.grl['stop'][run_idxs])
 
         # Get the correct right ascension.
         data['time'] = times
-        data['ra'] = azi_to_ra_transform(
-            azi=data['azi'],
-            mjd=times)
+        data['ra'] = azi_to_ra_transform(azi=data['azi'], mjd=times)
 
         return data

@@ -1,7 +1,0 @@
-astropy
-numpy
-pyarrow
-scipy
-iminuit
-matplotlib
-tqdm

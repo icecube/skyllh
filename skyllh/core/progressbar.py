@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from tqdm import tqdm
 
 from skyllh.core import (
@@ -10,20 +8,15 @@ from skyllh.core.py import (
 )
 
 
-class ProgressBar(
-        object):
+class ProgressBar:
     """This class provides an hierarchical progress bar for SkyLLH.
     For rendering it uses the tqdm Python package.
     In case of multiple layers of progress bars, it creates only a single
     progress bar, which gets updated whenever the deeper level progress bars
     are updated.
     """
-    def __init__(
-            self,
-            maxval,
-            startval=0,
-            parent=None,
-            **kwargs):
+
+    def __init__(self, maxval, startval=0, parent=None, **kwargs):
         """Creates a new ProgressBar instance.
 
         Parameters
@@ -45,8 +38,7 @@ class ProgressBar(
         Additional keyword arguments are passed to the constructor of the tqdm
         class.
         """
-        super().__init__(
-            **kwargs)
+        super().__init__(**kwargs)
 
         self._is_deactivated = False
         if parent is False:
@@ -62,24 +54,16 @@ class ProgressBar(
 
         self._tqdm = None
         if (self._parent is None) and self.is_shown:
-            self._tqdm = tqdm(
-                total=maxval,
-                initial=startval,
-                leave=True,
-                position=0,
-                **kwargs)
+            self._tqdm = tqdm(total=maxval, initial=startval, leave=True, position=0, **kwargs)
 
     @property
     def maxval(self):
-        """The maximal integer value the progress can reach.
-        """
+        """The maximal integer value the progress can reach."""
         return self._maxval
 
     @maxval.setter
     def maxval(self, v):
-        v = int_cast(
-            v,
-            'The maxval property must be castable to an integer value!')
+        v = int_cast(v, 'The maxval property must be castable to an integer value!')
         self._maxval = v
 
     @property
@@ -91,21 +75,18 @@ class ProgressBar(
 
     @startval.setter
     def startval(self, v):
-        v = int_cast(
-            v,
-            'The startval property must be castable to an integer value!')
+        v = int_cast(v, 'The startval property must be castable to an integer value!')
 
         if v >= self._maxval:
             raise ValueError(
-                f'The startval value ({v}) must be smaller than the value of '
-                f'the `maxval` property ({self._maxval})!')
+                f'The startval value ({v}) must be smaller than the value of the `maxval` property ({self._maxval})!'
+            )
 
         self._startval = v
 
     @property
     def val(self):
-        """(read-only) The current value of the progess.
-        """
+        """(read-only) The current value of the progress."""
         return self._val
 
     @property
@@ -126,11 +107,8 @@ class ProgressBar(
 
     @parent.setter
     def parent(self, pbar):
-        if pbar is not None:
-            if not isinstance(pbar, ProgressBar):
-                raise TypeError(
-                    'The parent property must be None, or an instance of '
-                    'ProgressBar!')
+        if pbar is not None and not isinstance(pbar, ProgressBar):
+            raise TypeError('The parent property must be None, or an instance of ProgressBar!')
         self._parent = pbar
 
     def add_sub_progress_bar(self, pbar):
@@ -138,8 +116,7 @@ class ProgressBar(
         of this progress bar.
         """
         if not isinstance(pbar, ProgressBar):
-            raise TypeError(
-                'The pbar argument must be an instance of ProgressBar!')
+            raise TypeError('The pbar argument must be an instance of ProgressBar!')
         self._sub_pbar_list.append(pbar)
 
     def remove_sub_progress_bars(self):
@@ -189,8 +166,7 @@ class ProgressBar(
         self._tqdm.update(dval)
 
     def trigger_rerendering(self):
-        """Triggers a rerendering / update of the most top progress bar.
-        """
+        """Triggers a rerendering / update of the most top progress bar."""
         if self._parent is not None:
             self._parent.trigger_rerendering()
             return

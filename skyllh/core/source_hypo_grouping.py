@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """This module contains classes for source hypothesis grouping functionalities.
 Same kind sources can be grouped to allow more efficient calculations in the
 analysis.
@@ -7,19 +5,19 @@ analysis.
 
 import numpy as np
 
+from skyllh.core.detsigyield import (
+    DetSigYieldBuilder,
+)
 from skyllh.core.display import (
-    add_leading_text_line_padding,
     INDENTATION_WIDTH,
+    add_leading_text_line_padding,
+)
+from skyllh.core.flux_model import (
+    FluxModel,
 )
 from skyllh.core.py import (
     classname,
     issequenceof,
-)
-from skyllh.core.detsigyield import (
-    DetSigYieldBuilder,
-)
-from skyllh.core.flux_model import (
-    FluxModel,
 )
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
@@ -32,20 +30,13 @@ from skyllh.core.types import (
 )
 
 
-class SourceHypoGroup(
-        SourceHypoGroup_t):
+class SourceHypoGroup(SourceHypoGroup_t):
     """The source hypothesis group class provides a data container to describe
     a group of sources that share the same flux model, detector signal yield,
     and signal generation methods.
     """
 
-    def __init__(
-            self,
-            sources,
-            fluxmodel,
-            detsigyield_builders,
-            sig_gen_method=None,
-            **kwargs):
+    def __init__(self, sources, fluxmodel, detsigyield_builders, sig_gen_method=None, **kwargs):
         """Constructs a new source hypothesis group.
 
         Parameters
@@ -76,8 +67,7 @@ class SourceHypoGroup(
 
     @property
     def source_list(self):
-        """The list of SourceModel instances for which the group is defined.
-        """
+        """The list of SourceModel instances for which the group is defined."""
         return self._source_list
 
     @source_list.setter
@@ -88,7 +78,8 @@ class SourceHypoGroup(
             raise TypeError(
                 'The source_list property must be an instance of SourceModel '
                 'or a sequence of SourceModel instances! '
-                f'Its current type is {classname(sources)}.')
+                f'Its current type is {classname(sources)}.'
+            )
         self._source_list = list(sources)
 
     @property
@@ -102,8 +93,8 @@ class SourceHypoGroup(
     def fluxmodel(self, fluxmodel):
         if not isinstance(fluxmodel, FluxModel):
             raise TypeError(
-                'The fluxmodel property must be an instance of FluxModel! '
-                f'Its current type is {classname(fluxmodel)}.')
+                f'The fluxmodel property must be an instance of FluxModel! Its current type is {classname(fluxmodel)}.'
+            )
         self._fluxmodel = fluxmodel
 
     @property
@@ -121,9 +112,7 @@ class SourceHypoGroup(
         if isinstance(builders, DetSigYieldBuilder):
             builders = [builders]
         if not issequenceof(builders, DetSigYieldBuilder):
-            raise TypeError(
-                'The detsigyield_builder_list property must be a sequence of '
-                'DetSigYieldBuilder instances!')
+            raise TypeError('The detsigyield_builder_list property must be a sequence of DetSigYieldBuilder instances!')
         self._detsigyield_builder_list = builders
 
     @property
@@ -138,12 +127,12 @@ class SourceHypoGroup(
 
     @sig_gen_method.setter
     def sig_gen_method(self, method):
-        if method is not None:
-            if not isinstance(method, SignalGenerationMethod):
-                raise TypeError(
-                    'The sig_gen_method property must be an instance of '
-                    'SignalGenerationMethod! '
-                    f'Its current type is {classname(method)}.')
+        if method is not None and not isinstance(method, SignalGenerationMethod):
+            raise TypeError(
+                'The sig_gen_method property must be an instance of '
+                'SignalGenerationMethod! '
+                f'Its current type is {classname(method)}.'
+            )
         self._sig_gen_method = method
 
     @property
@@ -154,12 +143,11 @@ class SourceHypoGroup(
         return len(self._source_list)
 
     def __str__(self):
-        """Pretty string representation of this SourceHypoGroup instance.
-        """
+        """Pretty string representation of this SourceHypoGroup instance."""
         s = f'{classname(self)}:\n'
 
         s1 = f'sources ({len(self._source_list)}):'
-        for (idx, source) in enumerate(self._source_list):
+        for idx, source in enumerate(self._source_list):
             s1 += '\n'
             s2 = f'{idx}: {source}'
             s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
@@ -169,7 +157,7 @@ class SourceHypoGroup(
         s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
         s1 += '\n'
         s1 += f'detector signal yield builders ({len(self._detsigyield_builder_list)}):\n'
-        s2 = '\n'.join((classname(builder) for builder in self._detsigyield_builder_list))
+        s2 = '\n'.join(classname(builder) for builder in self._detsigyield_builder_list)
         s1 += add_leading_text_line_padding(INDENTATION_WIDTH, s2)
         s1 += '\n'
         s1 += 'signal generation method:\n'
@@ -199,8 +187,7 @@ class SourceHypoGroup(
         return np.array(weights)
 
 
-class SourceHypoGroupManager(
-        object):
+class SourceHypoGroupManager:
     """The source hypothesis group manager provides the functionality to group
     sources of the same source hypothesis, i.e. spatial model and flux model,
     with an assigned detector signal yield implementation method.
@@ -208,10 +195,8 @@ class SourceHypoGroupManager(
     This helps to evaluate the log-likelihood ratio function in an efficient
     way.
     """
-    def __init__(
-            self,
-            src_hypo_groups=None,
-            **kwargs):
+
+    def __init__(self, src_hypo_groups=None, **kwargs):
         """Creates a new source hypothesis group manager instance.
 
         Parameters
@@ -236,15 +221,15 @@ class SourceHypoGroupManager(
                 raise TypeError(
                     'The src_hypo_groups argument must be an instance of '
                     'SourceHypoGroup, or a sequence of SourceHypoGroup '
-                    'instances!')
+                    'instances!'
+                )
             for shg in src_hypo_groups:
                 self._shg_list.append(shg)
                 self._extend_sidx_to_gidx_gsidx_map_arr(shg)
 
     @property
     def source_list(self):
-        """The list of defined SourceModel instances.
-        """
+        """The list of defined SourceModel instances."""
         source_list = []
         for shg in self._shg_list:
             source_list += shg.source_list
@@ -252,8 +237,7 @@ class SourceHypoGroupManager(
 
     @property
     def n_sources(self):
-        """(read-only) The total number of sources defined in all source groups.
-        """
+        """(read-only) The total number of sources defined in all source groups."""
         return self._sidx_to_gidx_gsidx_map_arr.shape[0]
 
     @property
@@ -265,8 +249,7 @@ class SourceHypoGroupManager(
 
     @property
     def n_shgs(self):
-        """The number of defined source hypothesis groups.
-        """
+        """The number of defined source hypothesis groups."""
         return len(self._shg_list)
 
     @property
@@ -277,12 +260,11 @@ class SourceHypoGroupManager(
         return self._shg_list
 
     def __str__(self):
-        """Pretty string representation of this SourceHypoGroupManager.
-        """
+        """Pretty string representation of this SourceHypoGroupManager."""
         s = f'{classname(self)}\n'
 
         s1 = 'Source Hypothesis Groups:'
-        for (idx, shg) in enumerate(self._shg_list):
+        for idx, shg in enumerate(self._shg_list):
             s1 += '\n'
             s1 += add_leading_text_line_padding(INDENTATION_WIDTH, f'{idx}: {shg}')
 
@@ -301,17 +283,11 @@ class SourceHypoGroupManager(
             extented.
         """
         arr = np.empty((shg.n_sources, 2), dtype=np.int32)
-        arr[:, 0] = self.n_src_hypo_groups-1  # Group index.
+        arr[:, 0] = self.n_src_hypo_groups - 1  # Group index.
         arr[:, 1] = np.arange(shg.n_sources)  # Group source index.
-        self._sidx_to_gidx_gsidx_map_arr = np.vstack(
-            (self._sidx_to_gidx_gsidx_map_arr, arr))
+        self._sidx_to_gidx_gsidx_map_arr = np.vstack((self._sidx_to_gidx_gsidx_map_arr, arr))
 
-    def create_source_hypo_group(
-            self,
-            sources,
-            fluxmodel,
-            detsigyield_builders,
-            sig_gen_method=None):
+    def create_source_hypo_group(self, sources, fluxmodel, detsigyield_builders, sig_gen_method=None):
         """Creates and adds a source hypothesis group to this source hypothesis
         group manager. A source hypothesis group shares sources of the same
         source model with the same flux model and hence the same detector signal
@@ -341,7 +317,8 @@ class SourceHypoGroupManager(
             sources=sources,
             fluxmodel=fluxmodel,
             detsigyield_builders=detsigyield_builders,
-            sig_gen_method=sig_gen_method)
+            sig_gen_method=sig_gen_method,
+        )
 
         # Add the group.
         self._shg_list.append(group)
@@ -402,7 +379,7 @@ class SourceHypoGroupManager(
             The (N_sources,)-shaped numpy ndarray of bool holding the mask for
             selecting the sources of the given source hypothesis group.
         """
-        return (self._sidx_to_gidx_gsidx_map_arr[:, 0] == shg_idx)
+        return self._sidx_to_gidx_gsidx_map_arr[:, 0] == shg_idx
 
     def get_src_idxs_of_shg(self, shg_idx):
         """Creates an array of indices of sources that belong to the given

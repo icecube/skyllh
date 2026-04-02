@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
-"""This file defines IceCube specific global configuration.
-"""
+"""This file defines IceCube specific global configuration."""
 
 from skyllh.core.datafields import (
     DataFieldStages as DFS,

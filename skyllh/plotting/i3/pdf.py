@@ -1,12 +1,8 @@
-# -*- coding: utf-8 -*-
-
-"""Plotting module to plot IceCube specific PDF objects.
-"""
+"""Plotting module to plot IceCube specific PDF objects."""
 
 import itertools
 
 import numpy as np
-
 from matplotlib.axes import (
     Axes,
 )
@@ -31,9 +27,9 @@ from skyllh.i3.pdf import (
 )
 
 
-class I3EnergyPDFPlotter(object):
-    """Plotter class to plot an I3EnergyPDF object.
-    """
+class I3EnergyPDFPlotter:
+    """Plotter class to plot an I3EnergyPDF object."""
+
     def __init__(self, tdm, pdf):
         """Creates a new plotter object for plotting an I3EnergyPDF object.
 
@@ -50,28 +46,24 @@ class I3EnergyPDFPlotter(object):
 
     @property
     def pdf(self):
-        """The PDF object to plot.
-        """
+        """The PDF object to plot."""
         return self._pdf
 
     @pdf.setter
     def pdf(self, obj):
         if not isinstance(obj, I3EnergyPDF):
-            raise TypeError(
-                'The pdf property must be an object of instance I3EnergyPDF!')
+            raise TypeError('The pdf property must be an object of instance I3EnergyPDF!')
         self._pdf = obj
 
     @property
     def tdm(self):
-        """The TrialDataManager that provides the data for the PDF evaluation.
-        """
+        """The TrialDataManager that provides the data for the PDF evaluation."""
         return self._tdm
 
     @tdm.setter
     def tdm(self, obj):
         if not isinstance(obj, TrialDataManager):
-            raise TypeError(
-                'The tdm property must be an instance of TrialDataManager!')
+            raise TypeError('The tdm property must be an instance of TrialDataManager!')
         self._tdm = obj
 
     def plot(self, src_hypo_group_manager, axes, **kwargs):
@@ -99,25 +91,23 @@ class I3EnergyPDFPlotter(object):
             The AxesImage instance showing the PDF ratio image.
         """
         if not isinstance(src_hypo_group_manager, SourceHypoGroupManager):
-            raise TypeError(
-                'The src_hypo_group_manager argument must be an instance of '
-                'SourceHypoGroupManager!')
+            raise TypeError('The src_hypo_group_manager argument must be an instance of SourceHypoGroupManager!')
         if not isinstance(axes, Axes):
-            raise TypeError(
-                'The axes argument must be an instance of '
-                'matplotlib.axes.Axes!')
+            raise TypeError('The axes argument must be an instance of matplotlib.axes.Axes!')
 
         # The I3EnergyPDF object has two axes, one for log10_energy and sin_dec.
         (xbinning, ybinning) = self._pdf.binnings
 
         pdf_values = np.zeros((xbinning.nbins, ybinning.nbins), dtype=np.float64)
-        events = DataFieldRecordArray(np.zeros(
-            (pdf_values.size,),
-            dtype=[('ix', np.int64), (xbinning.name, np.float64),
-                   ('iy', np.int64), (ybinning.name, np.float64)]))
-        for (i, ((ix, x), (iy, y))) in enumerate(itertools.product(
-                enumerate(xbinning.bincenters),
-                enumerate(ybinning.bincenters))):
+        events = DataFieldRecordArray(
+            np.zeros(
+                (pdf_values.size,),
+                dtype=[('ix', np.int64), (xbinning.name, np.float64), ('iy', np.int64), (ybinning.name, np.float64)],
+            )
+        )
+        for i, ((ix, x), (iy, y)) in enumerate(
+            itertools.product(enumerate(xbinning.bincenters), enumerate(ybinning.bincenters))
+        ):
             events['ix'][i] = ix
             events[xbinning.name][i] = x
             events['iy'][i] = iy
@@ -128,15 +118,20 @@ class I3EnergyPDFPlotter(object):
         event_pdf_values = self._pdf.get_prob(self._tdm)
         pdf_values[events['ix'], events['iy']] = event_pdf_values
 
-        (left, right, bottom, top) = (xbinning.lower_edge, xbinning.upper_edge,
-                                      ybinning.lower_edge, ybinning.upper_edge)
+        (left, right, bottom, top) = (
+            xbinning.lower_edge,
+            xbinning.upper_edge,
+            ybinning.lower_edge,
+            ybinning.upper_edge,
+        )
         img = axes.imshow(
             pdf_values.T,
             extent=(left, right, bottom, top),
             origin='lower',
             norm=LogNorm(),
             interpolation='none',
-            **kwargs)
+            **kwargs,
+        )
         axes.set_xlabel(xbinning.name)
         axes.set_ylabel(ybinning.name)
         axes.set_title(classname(self._pdf))

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """The ``signalpdf`` module contains possible signal PDF models for the
 likelihood function.
 """
@@ -9,18 +7,18 @@ import numpy as np
 from skyllh.core import (
     tool,
 )
-from skyllh.core.debugging import (
-    get_logger,
-)
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
     Linear1DGridManifoldInterpolationMethod,
 )
+from skyllh.core.logging import (
+    get_logger,
+)
 from skyllh.core.pdf import (
     PDF,
-    PDFSet,
     IsSignalPDF,
     MultiDimGridPDF,
+    PDFSet,
     SpatialPDF,
     TimePDF,
 )
@@ -39,9 +37,7 @@ from skyllh.core.utils.coords import (
 )
 
 
-class GaussianPSFPointLikeSourceSignalSpatialPDF(
-        SpatialPDF,
-        IsSignalPDF):
+class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     r"""This spatial signal PDF model describes the spatial PDF for a point
     source smeared with a 2D gaussian point-spread-function (PSF).
     Mathematically, it's the convolution of a point in the sky, i.e. the source
@@ -59,12 +55,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
     declination of the point-like sources, respectively.
     """
 
-    def __init__(
-            self,
-            ra_range=None,
-            dec_range=None,
-            pd_event_data_field_name=None,
-            **kwargs):
+    def __init__(self, ra_range=None, dec_range=None, pd_event_data_field_name=None, **kwargs):
         """Creates a new spatial signal PDF for point-like sources with a
         gaussian point-spread-function (PSF).
 
@@ -82,15 +73,11 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
             are stored.
         """
         if ra_range is None:
-            ra_range = (0, 2*np.pi)
+            ra_range = (0, 2 * np.pi)
         if dec_range is None:
-            dec_range = (-np.pi/2, np.pi/2)
+            dec_range = (-np.pi / 2, np.pi / 2)
 
-        super().__init__(
-            pmm=None,
-            ra_range=ra_range,
-            dec_range=dec_range,
-            **kwargs)
+        super().__init__(pmm=None, ra_range=ra_range, dec_range=dec_range, **kwargs)
 
         self.pd_event_data_field_name = pd_event_data_field_name
 
@@ -106,7 +93,8 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
         name = str_cast(
             name,
             'The pd_event_data_field_name property must be cast-able to type '
-            f'str! Its current type is {classname(name)}!')
+            f'str! Its current type is {classname(name)}!',
+        )
         self._pd_event_data_field_name = name
 
     def calculate_pd(self, tdm):
@@ -160,15 +148,11 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
 
         psi = angular_separation(src_ra, src_dec, ra, dec)
 
-        pd = 0.5/(np.pi*sigma_sq) * np.exp(-0.5*(psi**2/sigma_sq))
+        pd = 0.5 / (np.pi * sigma_sq) * np.exp(-0.5 * (psi**2 / sigma_sq))
 
         return pd
 
-    def get_pd(
-            self,
-            tdm,
-            params_recarray=None,
-            tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """Calculates the spatial signal probability density of each event for
         all sources.
 
@@ -221,7 +205,8 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
             if self._cfg.is_tracing_enabled:
                 logger.debug(
                     'Retrieve precalculated probability density values from '
-                    f'data field "{self._pd_event_data_field_name}"')
+                    f'data field "{self._pd_event_data_field_name}"'
+                )
             pd = tdm[self._pd_event_data_field_name]
             return (pd, dict())
 
@@ -230,9 +215,7 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(
         return (pd, dict())
 
 
-class RayleighPSFPointSourceSignalSpatialPDF(
-        SpatialPDF,
-        IsSignalPDF):
+class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     r"""This spatial signal PDF model describes the spatial PDF for a point-like
     source following a Rayleigh distribution in the opening angle between the
     source and reconstructed muon direction.
@@ -252,11 +235,8 @@ class RayleighPSFPointSourceSignalSpatialPDF(
     structured ndarray with the data fields ``ra`` and ``dec`` holding the
     right-ascension and declination of the point-like sources, respectively.
     """
-    def __init__(
-            self,
-            ra_range=None,
-            dec_range=None,
-            **kwargs):
+
+    def __init__(self, ra_range=None, dec_range=None, **kwargs):
         r"""Creates a new spatial signal PDF for point-like sources with a
         Rayleigh point-spread-function (PSF).
 
@@ -270,46 +250,29 @@ class RayleighPSFPointSourceSignalSpatialPDF(
             If set to None, the range (-pi/2, +pi/2) is used.
         """
         if ra_range is None:
-            ra_range = (0, 2*np.pi)
+            ra_range = (0, 2 * np.pi)
         if dec_range is None:
-            dec_range = (-np.pi/2, np.pi/2)
+            dec_range = (-np.pi / 2, np.pi / 2)
 
-        super().__init__(
-            pmm=None,
-            ra_range=ra_range,
-            dec_range=dec_range,
-            **kwargs
-        )
+        super().__init__(pmm=None, ra_range=ra_range, dec_range=dec_range, **kwargs)
 
         self._pd = None
 
-    def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs):
+    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """Pre-computes the probability density values once a new trial data is
         available.
         """
         get_data = tdm.get_data
 
-        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+        (_, evt_idxs) = tdm.src_evt_idxs
 
         psi = get_data('psi')
         sigma = get_data('ang_err')
         sigma_sq = np.take(sigma**2, evt_idxs)
 
-        self._pd = (
-            0.5/(np.pi*np.sin(psi)) *
-            (psi / sigma_sq) *
-            np.exp(-0.5*(psi**2/sigma_sq))
-        )
+        self._pd = 0.5 / (np.pi * np.sin(psi)) * (psi / sigma_sq) * np.exp(-0.5 * (psi**2 / sigma_sq))
 
-    def get_pd(
-            self,
-            tdm,
-            params_recarray=None,
-            tl=None):
+    def get_pd(self, tdm, params_recarray=None, tl=None):
         """Calculates the spatial signal probability density of each event for
         all sources.
 
@@ -344,8 +307,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(
             empty.
         """
         if self._pd is None:
-            raise ValueError(
-                'The PDF has not been initialized with trial data!')
+            raise ValueError('The PDF has not been initialized with trial data!')
 
         grads = dict()
 
@@ -353,8 +315,8 @@ class RayleighPSFPointSourceSignalSpatialPDF(
 
 
 class SignalTimePDF(
-        TimePDF,
-        IsSignalPDF,
+    TimePDF,
+    IsSignalPDF,
 ):
     """This class provides a signal time PDF class. It consists of
     a :class:`~skyllh.core.livetime.Livetime` instance and a
@@ -363,12 +325,7 @@ class SignalTimePDF(
     into account.
     """
 
-    def __init__(
-            self,
-            livetime,
-            time_flux_profile,
-            **kwargs
-    ):
+    def __init__(self, livetime, time_flux_profile, **kwargs):
         """Creates a new signal time PDF instance for a given time flux profile
         and detector live time.
 
@@ -386,18 +343,15 @@ class SignalTimePDF(
                 class when calculating the probability density values!
 
         """
-        super().__init__(
-            livetime=livetime,
-            time_flux_profile=time_flux_profile,
-            **kwargs)
+        super().__init__(livetime=livetime, time_flux_profile=time_flux_profile, **kwargs)
 
         self._pd = None
 
     def _calculate_pd(
-            self,
-            tdm,
-            params_recarray,
-            tl=None,
+        self,
+        tdm,
+        params_recarray,
+        tl=None,
     ):
         """Calculates the probability density values for the given trial data
         and source parameters.
@@ -430,10 +384,8 @@ class SignalTimePDF(
         pd = np.zeros((n_values,), dtype=np.float64)
 
         events_time = tdm.get_data('time')
-        for (src_idx, src_params_row) in enumerate(params_recarray):
-            params = dict(zip(
-                params_recarray.dtype.fields.keys(),
-                src_params_row))
+        for src_idx, src_params_row in enumerate(params_recarray):
+            params = dict(zip(params_recarray.dtype.fields.keys(), src_params_row, strict=True))
 
             # Update the time flux profile if its parameter values have changed
             # and recalculate self._I and self._S if an update was actually
@@ -452,28 +404,27 @@ class SignalTimePDF(
             on = self._livetime.is_on(times)
 
             pd_src = pd[src_m]
-            pd_src[on] = (
-                self._time_flux_profile(t=times[on]) / self._S
-            )
+            pd_src[on] = self._time_flux_profile(t=times[on]) / self._S
             pd[src_m] = pd_src
 
         return pd
 
     def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs,
+        self,
+        tdm,
+        tl=None,
+        **kwargs,
     ):
         # Check if this time PDF is not constant and does depend on any global
         # floating parameters. If that's not the case we can pre-calculate the
         # PDF values.
         is_constant = (
-            (self.param_set is None) or
-            (len(self.param_set.params_name_list) == 0) or
-            ((self.pmm is not None) and
-             np.all(~self.pmm.get_local_param_is_global_floating_param_mask(
-                 self.param_set.params_name_list)))
+            (self.param_set is None)
+            or (len(self.param_set.params_name_list) == 0)
+            or (
+                (self.pmm is not None)
+                and np.all(~self.pmm.get_local_param_is_global_floating_param_mask(self.param_set.params_name_list))
+            )
         )
         if not is_constant:
             self._pd = None
@@ -487,16 +438,13 @@ class SignalTimePDF(
         else:
             params_recarray = self.pmm.create_src_params_recarray()
 
-        self._pd = self._calculate_pd(
-            tdm=tdm,
-            params_recarray=params_recarray,
-            tl=tl)
+        self._pd = self._calculate_pd(tdm=tdm, params_recarray=params_recarray, tl=tl)
 
     def get_pd(
-            self,
-            tdm,
-            params_recarray,
-            tl=None,
+        self,
+        tdm,
+        params_recarray,
+        tl=None,
     ):
         """Calculates the signal time probability density of each event for the
         given set of time parameter values for each source.
@@ -531,26 +479,18 @@ class SignalTimePDF(
         if self._pd is not None:
             return (self._pd, dict())
 
-        pd = self._calculate_pd(
-            tdm=tdm,
-            params_recarray=params_recarray,
-            tl=tl)
+        pd = self._calculate_pd(tdm=tdm, params_recarray=params_recarray, tl=tl)
 
         return (pd, dict())
 
 
-class SignalMultiDimGridPDF(
-        MultiDimGridPDF,
-        IsSignalPDF):
+class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
     """This class provides a multi-dimensional signal PDF. The PDF is created
     from pre-calculated PDF data on a grid. The grid data is interpolated using
     a :class:`scipy.interpolate.RegularGridInterpolator` instance.
     """
 
-    def __init__(
-            self,
-            *args,
-            **kwargs):
+    def __init__(self, *args, **kwargs):
         """Creates a new PDF instance for a multi-dimensional PDF given
         as PDF values on a grid or as PDF values stored in a photospline table.
 
@@ -558,29 +498,27 @@ class SignalMultiDimGridPDF(
         :meth:`skyllh.core.pdf.MultiDimGridPDF.__init__` method for the
         documentation of possible arguments.
         """
-        super().__init__(
-            *args,
-            **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class SignalMultiDimGridPDFSet(
-        IsSignalPDF,
-        PDFSet,
-        PDF,
+    IsSignalPDF,
+    PDFSet,
+    PDF,
 ):
     """This class provides a set of MultiDimGridPDF instances that implements
     also the PDF interface.
     """
 
     def __init__(
-            self,
-            pmm,
-            param_set,
-            param_grid_set,
-            gridparams_pdfs,
-            interpol_method_cls=None,
-            use_same_photospline_bfi_for_all_pdfs=False,
-            **kwargs,
+        self,
+        pmm,
+        param_set,
+        param_grid_set,
+        gridparams_pdfs,
+        interpol_method_cls=None,
+        use_same_photospline_bfi_for_all_pdfs=False,
+        **kwargs,
     ):
         """Creates a new MultiDimGridPDFSet instance, which holds a set of
         MultiDimGridPDF instances, one for each point of a parameter grid set.
@@ -609,31 +547,23 @@ class SignalMultiDimGridPDFSet(
             This should be set to ``True`` if all photospline tables share the
             same binning. In that case the PDF evaluation will be accelerated.
         """
-        super().__init__(
-            pmm=pmm,
-            param_set=param_set,
-            param_grid_set=param_grid_set,
-            **kwargs)
+        super().__init__(pmm=pmm, param_set=param_set, param_grid_set=param_grid_set, **kwargs)
 
         if interpol_method_cls is None:
             interpol_method_cls = Linear1DGridManifoldInterpolationMethod
         self.interpol_method_cls = interpol_method_cls
 
-        self.use_same_photospline_bfi_for_all_pdfs =\
-            use_same_photospline_bfi_for_all_pdfs
+        self.use_same_photospline_bfi_for_all_pdfs = use_same_photospline_bfi_for_all_pdfs
 
         # Add the given MultiDimGridPDF instances to the PDF set.
-        for (gridparams, pdf) in gridparams_pdfs:
+        for gridparams, pdf in gridparams_pdfs:
             self.add_pdf(pdf, gridparams)
 
         # Create the interpolation method instance.
-        self._interpol_method = self._interpol_method_cls(
-            func=self._evaluate_pdfs,
-            param_grid_set=self.param_grid_set)
+        self._interpol_method = self._interpol_method_cls(func=self._evaluate_pdfs, param_grid_set=self.param_grid_set)
 
         # Save the parameter names needed for the interpolation for later usage.
-        self._interpol_param_names =\
-            self.param_grid_set.params_name_list
+        self._interpol_param_names = self.param_grid_set.params_name_list
 
         self._cache_eventdata = None
 
@@ -641,8 +571,7 @@ class SignalMultiDimGridPDFSet(
         # photospline.SplineTable instances.
         self.uses_photospline_SplineTable = False
         pdf = next(iter(self.items()))[1]
-        if tool.is_available('photospline') and\
-           isinstance(pdf.pdf, tool.get('photospline').SplineTable):
+        if tool.is_available('photospline') and isinstance(pdf.pdf, tool.get('photospline').SplineTable):
             self.uses_photospline_SplineTable = True
 
     @property
@@ -655,14 +584,12 @@ class SignalMultiDimGridPDFSet(
     @interpol_method_cls.setter
     def interpol_method_cls(self, cls):
         if not issubclass(cls, GridManifoldInterpolationMethod):
-            raise TypeError(
-                'The interpol_method_cls property must be a sub-class of '
-                'GridManifoldInterpolationMethod!')
+            raise TypeError('The interpol_method_cls property must be a sub-class of GridManifoldInterpolationMethod!')
         self._interpol_method_cls = cls
 
     def _get_pdf_for_interpol_param_values(
-            self,
-            interpol_param_values,
+        self,
+        interpol_param_values,
     ):
         """Retrieves the PDF for the given set of interpolation parameter
         values.
@@ -678,20 +605,19 @@ class SignalMultiDimGridPDFSet(
         pdf : instance of MultiDimGridPDF
             The requested PDF instance.
         """
-        gridparams = dict(
-            zip(self._interpol_param_names, interpol_param_values))
+        gridparams = dict(zip(self._interpol_param_names, interpol_param_values, strict=True))
 
         pdf = self.get_pdf(gridparams)
 
         return pdf
 
     def _evaluate_pdfs(
-            self,
-            tdm,
-            eventdata,
-            gridparams_recarray,
-            n_values,
-            tl=None,
+        self,
+        tdm,
+        eventdata,
+        gridparams_recarray,
+        n_values,
+        tl=None,
     ):
         """Evaluates the PDFs for the given event data. The particular PDF is
         selected based on the grid parameter values for each model.
@@ -723,50 +649,39 @@ class SignalMultiDimGridPDFSet(
         # Check for special case when a single set of parameters are provided.
         if len(gridparams_recarray) == 1:
             if self._cfg.is_tracing_enabled:
-                logger.debug(
-                    'Get PDF for '
-                    f'interpol_param_values={gridparams_recarray[0]}.')
-            pdf = self._get_pdf_for_interpol_param_values(
-                interpol_param_values=gridparams_recarray[0])
+                logger.debug(f'Get PDF for interpol_param_values={gridparams_recarray[0]}.')
+            pdf = self._get_pdf_for_interpol_param_values(interpol_param_values=gridparams_recarray[0])
 
-            pd = pdf.get_pd_with_eventdata(
-                tdm=tdm,
-                params_recarray=None,
-                eventdata=eventdata,
-                tl=tl)
+            pd = pdf.get_pd_with_eventdata(tdm=tdm, params_recarray=None, eventdata=eventdata, tl=tl)
 
             return pd
 
         pd = np.empty(n_values, dtype=np.float64)
 
-        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+        (src_idxs, _) = tdm.src_evt_idxs
 
         v_start = 0
-        for (sidx, interpol_param_values) in enumerate(gridparams_recarray):
-            pdf = self._get_pdf_for_interpol_param_values(
-                interpol_param_values=interpol_param_values)
+        for sidx, interpol_param_values in enumerate(gridparams_recarray):
+            pdf = self._get_pdf_for_interpol_param_values(interpol_param_values=interpol_param_values)
 
             # Determine the events that belong to the current source.
             evt_mask = src_idxs == sidx
 
             n = np.count_nonzero(evt_mask)
-            sl = slice(v_start, v_start+n)
+            sl = slice(v_start, v_start + n)
             pd[sl] = pdf.get_pd_with_eventdata(
-                tdm=tdm,
-                params_recarray=None,
-                eventdata=eventdata,
-                evt_mask=evt_mask,
-                tl=tl)
+                tdm=tdm, params_recarray=None, eventdata=eventdata, evt_mask=evt_mask, tl=tl
+            )
 
             v_start += n
 
         return pd
 
     def assert_is_valid_for_trial_data(
-            self,
-            tdm,
-            tl=None,
-            **kwargs,
+        self,
+        tdm,
+        tl=None,
+        **kwargs,
     ):
         """Checks if the PDFs of this PDFSet instance are valid for all the
         given trial data events.
@@ -789,16 +704,13 @@ class SignalMultiDimGridPDFSet(
         ValueError
             If some of the data is outside the axes range of the PDF.
         """
-        super().assert_is_valid_for_trial_data(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
+        super().assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
 
     def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs,
+        self,
+        tdm,
+        tl=None,
+        **kwargs,
     ):
         """This method is called whenever a new trial data is initialized. It
         calls the :meth:`~skyllh.core.pdf.PDFSet.initialize_for_new_trial`
@@ -813,41 +725,30 @@ class SignalMultiDimGridPDFSet(
         tl : instance of TimeLord | None
             The optional instance of TimeLord for measuring timing information.
         """
-        super().initialize_for_new_trial(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
+        super().initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
 
         # Get the first PDF of this PDFSet.
         pdf = next(iter(self.items()))[1]
 
         with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
-            self._cache_eventdata =\
-                MultiDimGridPDF.create_eventdata_for_sigpdf(
-                    tdm=tdm,
-                    axes=pdf.axes)
+            self._cache_eventdata = MultiDimGridPDF.create_eventdata_for_sigpdf(tdm=tdm, axes=pdf.axes)
 
-        if self.use_same_photospline_bfi_for_all_pdfs and\
-           self.uses_photospline_SplineTable:
-            with TaskTimer(
-                    tl,
-                    'Get and set basis function indices for all PDFs.'):
+        if self.use_same_photospline_bfi_for_all_pdfs and self.uses_photospline_SplineTable:
+            with TaskTimer(tl, 'Get and set basis function indices for all PDFs.'):
                 V = self._cache_eventdata.shape[0]
                 try:
-                    bfi = pdf.pdf.search_centers(
-                        [self._cache_eventdata[i] for i in range(0, V)]
-                    )
-                    for (_, pdf) in self.items():
+                    bfi = pdf.pdf.search_centers([self._cache_eventdata[i] for i in range(0, V)])
+                    for _, pdf in self.items():
                         pdf.basis_function_indices = bfi
                 except ValueError:
                     logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
-                    logger.info("Falling back to the slower photospline evaluation.")
+                    logger.info('Falling back to the slower photospline evaluation.')
 
     def get_pd(
-            self,
-            tdm,
-            params_recarray,
-            tl=None,
+        self,
+        tdm,
+        params_recarray,
+        tl=None,
     ):
         """Calculates the probability density for each event, given the given
         parameter values.
@@ -883,15 +784,13 @@ class SignalMultiDimGridPDFSet(
         # probability density w.r.t. each of the D parameters, which are defined
         # by the param_grid_set. The order of the D gradients is the same as
         # the parameter grids.
-        with TaskTimer(
-                tl,
-                'Call interpolate method to get probability densities for all '
-                'events.'):
+        with TaskTimer(tl, 'Call interpolate method to get probability densities for all events.'):
             if self._cfg.is_tracing_enabled:
                 logger.debug(
                     'Call interpol_method with '
                     f'params_recarray={params_recarray} of fields '
-                    f'{list(params_recarray.dtype.fields.keys())}.')
+                    f'{list(params_recarray.dtype.fields.keys())}.'
+                )
             (pd, grads_arr) = self._interpol_method(
                 tdm=tdm,
                 eventdata=self._cache_eventdata,
@@ -910,7 +809,7 @@ class SignalMultiDimGridPDFSet(
             # Loop through the local interpolation parameters and match them
             # with the global fit parameter fitparam_id.
             fitparam_id_contributes = False
-            for (pidx, pname) in enumerate(self._interpol_param_names):
+            for pidx, pname in enumerate(self._interpol_param_names):
                 if pname not in params_recarray.dtype.fields:
                     continue
                 p_gpidxs = params_recarray[f'{pname}:gpidx']
@@ -940,21 +839,21 @@ class SignalMultiDimGridPDFSet(
 
 
 class SignalSHGMappedMultiDimGridPDFSet(
-        IsSignalPDF,
-        PDFSet,
-        PDF,
+    IsSignalPDF,
+    PDFSet,
+    PDF,
 ):
     """This class provides a set of MultiDimGridPDF instances, one for one or
     more source hypothesis groups.
     """
 
     def __init__(
-            self,
-            shg_mgr,
-            pmm,
-            shgidxs_pdf_list,
-            use_same_photospline_bfi_for_all_pdfs=False,
-            **kwargs,
+        self,
+        shg_mgr,
+        pmm,
+        shgidxs_pdf_list,
+        use_same_photospline_bfi_for_all_pdfs=False,
+        **kwargs,
     ):
         """Creates a new SignalSHGMappedMultiDimGridPDFSet instance, which holds
         a set of MultiDimGridPDF instances, one for one or more source
@@ -977,28 +876,22 @@ class SignalSHGMappedMultiDimGridPDFSet(
             This should be set to ``True`` if all photospline tables share the
             same binning. In that case the PDF evaluation will be accelerated.
         """
-        super().__init__(
-            pmm=pmm,
-            param_set=None,
-            param_grid_set=None,
-            **kwargs)
+        super().__init__(pmm=pmm, param_set=None, param_grid_set=None, **kwargs)
 
         if not isinstance(shg_mgr, SourceHypoGroupManager):
             raise TypeError(
                 'The shg_mgr argument must be an instance of '
                 'SourceHypoGroupManager! '
-                f'Its current type is {classname(shg_mgr)}.')
+                f'Its current type is {classname(shg_mgr)}.'
+            )
         self._shg_mgr = shg_mgr
 
         self._shgidxs_list = []
-        for (shg_idxs, pdf) in shgidxs_pdf_list:
+        for shg_idxs, pdf in shgidxs_pdf_list:
             self._shgidxs_list.append(shg_idxs)
-            self.add_pdf(
-                pdf=pdf,
-                gridparams={'shg_idxs': shg_idxs})
+            self.add_pdf(pdf=pdf, gridparams={'shg_idxs': shg_idxs})
 
-        self.use_same_photospline_bfi_for_all_pdfs =\
-            use_same_photospline_bfi_for_all_pdfs
+        self.use_same_photospline_bfi_for_all_pdfs = use_same_photospline_bfi_for_all_pdfs
 
         self._cache_eventdata = None
 
@@ -1006,8 +899,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
         # photospline.SplineTable instances.
         self.uses_photospline_SplineTable = False
         pdf = next(iter(self.items()))[1]
-        if tool.is_available('photospline') and\
-           isinstance(pdf.pdf, tool.get('photospline').SplineTable):
+        if tool.is_available('photospline') and isinstance(pdf.pdf, tool.get('photospline').SplineTable):
             self.uses_photospline_SplineTable = True
 
     @property
@@ -1018,10 +910,10 @@ class SignalSHGMappedMultiDimGridPDFSet(
         return self._shg_mgr
 
     def initialize_for_new_trial(
-            self,
-            tdm,
-            tl=None,
-            **kwargs,
+        self,
+        tdm,
+        tl=None,
+        **kwargs,
     ):
         """This method is called whenever a new trial data is initialized. It
         calls the :meth:`~skyllh.core.pdf.PDFSet.initialize_for_new_trial`
@@ -1036,10 +928,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
         tl : instance of TimeLord | None
             The optional instance of TimeLord for measuring timing information.
         """
-        super().initialize_for_new_trial(
-            tdm=tdm,
-            tl=tl,
-            **kwargs)
+        super().initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
 
         # Get the first PDF of this PDFSet.
         pdf = next(iter(self.items()))[1]
@@ -1047,32 +936,24 @@ class SignalSHGMappedMultiDimGridPDFSet(
         with TaskTimer(tl, 'Create MultiDimGridPDFSet eventdata.'):
             # All PDFs of this PDFSet should have the same axes, so we use
             # the axes from the first PDF in this PDF set.
-            self._cache_eventdata =\
-                MultiDimGridPDF.create_eventdata_for_sigpdf(
-                    tdm=tdm,
-                    axes=pdf.axes)
+            self._cache_eventdata = MultiDimGridPDF.create_eventdata_for_sigpdf(tdm=tdm, axes=pdf.axes)
 
-        if self.use_same_photospline_bfi_for_all_pdfs and\
-           self.uses_photospline_SplineTable:
-            with TaskTimer(
-                    tl,
-                    'Get and set basis function indices for all PDFs.'):
+        if self.use_same_photospline_bfi_for_all_pdfs and self.uses_photospline_SplineTable:
+            with TaskTimer(tl, 'Get and set basis function indices for all PDFs.'):
                 V = self._cache_eventdata.shape[0]
                 try:
-                    bfi = pdf.pdf.search_centers(
-                        [self._cache_eventdata[i] for i in range(0, V)]
-                    )
-                    for (_, pdf) in self.items():
+                    bfi = pdf.pdf.search_centers([self._cache_eventdata[i] for i in range(0, V)])
+                    for _, pdf in self.items():
                         pdf.basis_function_indices = bfi
                 except ValueError:
                     logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
-                    logger.info("Falling back to the slower photospline evaluation.")
+                    logger.info('Falling back to the slower photospline evaluation.')
 
     def get_pd(
-            self,
-            tdm,
-            params_recarray,
-            tl=None,
+        self,
+        tdm,
+        params_recarray,
+        tl=None,
     ):
         """Calculates the probability density for each event, given the given
         parameter values.
@@ -1110,7 +991,6 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
         # Loop over the individual PDFs (via their key).
         for shg_idxs in self._shgidxs_list:
-
             src_mask = np.zeros((self._shg_mgr.n_sources,), dtype=np.bool_)
             for shg_idx in shg_idxs:
                 src_mask |= self._shg_mgr.get_src_mask_of_shg(shg_idx)
@@ -1122,10 +1002,8 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
             with TaskTimer(tl, f'Get PD values for PDF of SHG {shg_idxs}.'):
                 pd_pdf = pdf.get_pd_with_eventdata(
-                    tdm=tdm,
-                    params_recarray=params_recarray,
-                    eventdata=self._cache_eventdata,
-                    evt_mask=values_mask)
+                    tdm=tdm, params_recarray=params_recarray, eventdata=self._cache_eventdata, evt_mask=values_mask
+                )
 
             pd[values_mask] = pd_pdf
 

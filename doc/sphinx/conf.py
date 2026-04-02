@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
 #
@@ -12,12 +11,11 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import os
+import sys
 from datetime import (
     date,
 )
-import os
-import sys
-
 
 sys.path.insert(0, os.path.abspath('../../'))
 
@@ -25,14 +23,14 @@ sys.path.insert(0, os.path.abspath('../../'))
 
 year = date.today().year
 
-project = u'SkyLLH'
-copyright = u'%s, The IceCube Collaboration, T. Kontrimas, M. Wolf' % year
-author = u'The IceCube Collaboration'
+project = 'SkyLLH'
+copyright = f'{year}, The IceCube Collaboration, C. Bellenghi, T. Kontrimas, M. Wolf'
+author = 'The IceCube Collaboration'
 
 # The short X.Y version
-version = u'24.1.0'
+version = '24.1.0'
 # The full version, including alpha/beta/rc tags
-release = u''
+release = ''
 
 
 # -- General configuration ---------------------------------------------------
@@ -54,7 +52,7 @@ extensions = [
     'nbsphinx',
     'sphinxcontrib.apidoc',
     'sphinx_multiversion',
-    'sphinx_rtd_theme'
+    'sphinx_rtd_theme',
 ]
 
 # Extensions configuration.
@@ -74,15 +72,17 @@ autodoc_default_options = {
     'member-order': 'bysource',
     'special-members': True,
     'undoc-members': True,
-    'exclude-members': ','.join([
-        '__abstractmethods__',
-        '__dict__',
-        '__hash__',
-        '__init__',
-        '__module__',
-        '__str__',
-        '__weakref__',
-    ]),
+    'exclude-members': ','.join(
+        [
+            '__abstractmethods__',
+            '__dict__',
+            '__hash__',
+            '__init__',
+            '__module__',
+            '__str__',
+            '__weakref__',
+        ]
+    ),
     'show-inheritance': True,
 }
 
@@ -90,9 +90,10 @@ autosummary_generate = True
 
 napoleon_use_rtype = False
 
-intersphinx_mapping = {'numpy': ('https://numpy.org/doc/stable/', None),
-                       'scipy': ('https://docs.scipy.org/doc/scipy/',
-                                 None)}
+intersphinx_mapping = {
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+}
 
 nbsphinx_execute = 'never'
 
@@ -120,8 +121,7 @@ language = 'en'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = [
-    u'_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints', '_assets']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints', '_assets']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
@@ -171,15 +171,12 @@ latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     'papersize': 'a4paper',
-
     # The font size ('10pt', '11pt' or '12pt').
     #
     # 'pointsize': '10pt',
-
     # Additional stuff for the LaTeX preamble.
     #
     # 'preamble': '',
-
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
@@ -189,8 +186,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'SkyLLH.tex', u'SkyLLH Documentation',
-     u'The IceCube Collaboration', 'manual'),
+    (master_doc, 'SkyLLH.tex', 'SkyLLH Documentation', 'The IceCube Collaboration', 'manual'),
 ]
 
 
@@ -198,10 +194,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'skyllh', u'SkyLLH Documentation',
-     [author], 1)
-]
+man_pages = [(master_doc, 'skyllh', 'SkyLLH Documentation', [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -210,9 +203,15 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'SkyLLH', u'SkyLLH Documentation',
-     author, 'SkyLLH', 'One line description of project.',
-     'Miscellaneous'),
+    (
+        master_doc,
+        'SkyLLH',
+        'SkyLLH Documentation',
+        author,
+        'SkyLLH',
+        'One line description of project.',
+        'Miscellaneous',
+    ),
 ]
 
 

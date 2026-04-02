@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import abc
 
 from skyllh.core.background_generation import (
@@ -25,15 +23,16 @@ from skyllh.core.timing import (
 
 
 class BackgroundGenerator(
-        HasConfig,
-        metaclass=abc.ABCMeta,
+    HasConfig,
+    metaclass=abc.ABCMeta,
 ):
     """This is the abstract base class for all background generator classes in
     SkyLLH. It defines the interface for a background generator.
     """
+
     def __init__(
-            self,
-            **kwargs,
+        self,
+        **kwargs,
     ):
         """Constructs a new instance of BackgroundGenerator.
 
@@ -58,10 +57,10 @@ class BackgroundGenerator(
 
     @abc.abstractmethod
     def generate_background_events(
-            self,
-            rss,
-            tl=None,
-            **kwargs,
+        self,
+        rss,
+        tl=None,
+        **kwargs,
     ):
         """This method is supposed to generate a mean number of background
         events for the datasets of this background generator.
@@ -95,7 +94,7 @@ class BackgroundGenerator(
 
 
 class DatasetBackgroundGenerator(
-        BackgroundGenerator,
+    BackgroundGenerator,
 ):
     """This class provides a background generator for a particular dataset.
     It holds a background generation method which is used to generate the
@@ -103,11 +102,11 @@ class DatasetBackgroundGenerator(
     """
 
     def __init__(
-            self,
-            dataset,
-            data,
-            bkg_gen_method,
-            **kwargs,
+        self,
+        dataset,
+        data,
+        bkg_gen_method,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
@@ -126,8 +125,8 @@ class DatasetBackgroundGenerator(
     def dataset(self, ds):
         if not isinstance(ds, Dataset):
             raise TypeError(
-                'The dataset property must be an instance of Dataset! '
-                f'Its current type is {classname(ds)}.')
+                f'The dataset property must be an instance of Dataset! Its current type is {classname(ds)}.'
+            )
         self._dataset = ds
 
     @property
@@ -141,8 +140,8 @@ class DatasetBackgroundGenerator(
     def data(self, d):
         if not isinstance(d, DatasetData):
             raise TypeError(
-                'The data property must be an instance of DatasetData! '
-                f'Its current type is {classname(d)}.')
+                f'The data property must be an instance of DatasetData! Its current type is {classname(d)}.'
+            )
         self._data = d
 
     @property
@@ -154,12 +153,12 @@ class DatasetBackgroundGenerator(
 
     @bkg_gen_method.setter
     def bkg_gen_method(self, method):
-        if method is not None:
-            if not isinstance(method, BackgroundGenerationMethod):
-                raise TypeError(
-                    'The bkg_gen_method property must be an instance of '
-                    'BackgroundGenerationMethod! '
-                    f'Its current type is {classname(method)}.')
+        if method is not None and not isinstance(method, BackgroundGenerationMethod):
+            raise TypeError(
+                'The bkg_gen_method property must be an instance of '
+                'BackgroundGenerationMethod! '
+                f'Its current type is {classname(method)}.'
+            )
         self._bkg_gen_method = method
 
     def change_shg_mgr(self, shg_mgr):
@@ -171,14 +170,13 @@ class DatasetBackgroundGenerator(
         shg_mgr : instance of SourceHypoGroupManager
             The new instance of SourceHypoGroupManager.
         """
-        self._bkg_gen_method.change_shg_mgr(
-            shg_mgr=shg_mgr)
+        self._bkg_gen_method.change_shg_mgr(shg_mgr=shg_mgr)
 
     def generate_background_events(
-            self,
-            rss,
-            tl=None,
-            **kwargs,
+        self,
+        rss,
+        tl=None,
+        **kwargs,
     ):
         """Generates a mean number of background events for the dataset of this
         background generator.
@@ -211,17 +209,14 @@ class DatasetBackgroundGenerator(
             used.
         """
         (n_bkg, bkg_events) = self._bkg_gen_method.generate_events(
-            rss=rss,
-            dataset=self._dataset,
-            data=self._data,
-            tl=tl,
-            **kwargs)
+            rss=rss, dataset=self._dataset, data=self._data, tl=tl, **kwargs
+        )
 
         return ([n_bkg], [bkg_events])
 
 
 class MultiDatasetBackgroundGenerator(
-        BackgroundGenerator,
+    BackgroundGenerator,
 ):
     """This is a background generator class handling multiple datasets by using
     the individual background generator instances for each dataset. This is the
@@ -230,11 +225,11 @@ class MultiDatasetBackgroundGenerator(
     """
 
     def __init__(
-            self,
-            dataset_list,
-            data_list,
-            bkg_generator_list,
-            **kwargs,
+        self,
+        dataset_list,
+        data_list,
+        bkg_generator_list,
+        **kwargs,
     ):
         """Constructs a new instance of MultiDatasetBackgroundGenerator.
 
@@ -250,8 +245,7 @@ class MultiDatasetBackgroundGenerator(
             The list of BackgroundGenerator instances, one for each dataset.
             The order must match the order of ``dataset_list``.
         """
-        super().__init__(
-            **kwargs)
+        super().__init__(**kwargs)
 
         self.dataset_list = dataset_list
         self.data_list = data_list
@@ -270,7 +264,8 @@ class MultiDatasetBackgroundGenerator(
             raise TypeError(
                 'The dataset_list property must be a sequence of Dataset '
                 'instances! '
-                f'Its current type is {classname(datasets)}.')
+                f'Its current type is {classname(datasets)}.'
+            )
         self._dataset_list = list(datasets)
 
     @property
@@ -287,7 +282,8 @@ class MultiDatasetBackgroundGenerator(
             raise TypeError(
                 'The data_list property must be a sequence of DatasetData '
                 'instances! '
-                f'Its current type is {classname(datas)}.')
+                f'Its current type is {classname(datas)}.'
+            )
         self._data_list = datas
 
     @property
@@ -303,12 +299,13 @@ class MultiDatasetBackgroundGenerator(
             raise TypeError(
                 'The bkg_generator_list property must be a sequence of '
                 'BackgroundGenerator instances! '
-                f'Its current type is {classname(generators)}.')
+                f'Its current type is {classname(generators)}.'
+            )
         self._bkg_generator_list = generators
 
     def change_shg_mgr(
-            self,
-            shg_mgr,
+        self,
+        shg_mgr,
     ):
         """Calls the ``change_shg_mgr`` method of each individual dataset
         background generator.
@@ -319,15 +316,14 @@ class MultiDatasetBackgroundGenerator(
             The new instance of SourceHypoGroupManager.
         """
         for bkg_generator in self._bkg_generator_list:
-            bkg_generator.change_shg_mgr(
-                shg_mgr=shg_mgr)
+            bkg_generator.change_shg_mgr(shg_mgr=shg_mgr)
 
     def generate_background_events(
-            self,
-            rss,
-            mean_n_bkg_list=None,
-            tl=None,
-            **kwargs,
+        self,
+        rss,
+        mean_n_bkg_list=None,
+        tl=None,
+        **kwargs,
     ):
         """Generates a mean number of background events for each individual
         dataset of this multi-dataset background generator.
@@ -362,8 +358,8 @@ class MultiDatasetBackgroundGenerator(
         """
         if not isinstance(rss, RandomStateService):
             raise TypeError(
-                'The rss argument must be an instance of RandomStateService! '
-                f'Its current type is {classname(rss)}.')
+                f'The rss argument must be an instance of RandomStateService! Its current type is {classname(rss)}.'
+            )
 
         if mean_n_bkg_list is None:
             mean_n_bkg_list = [None] * len(self._bkg_generator_list)
@@ -371,24 +367,22 @@ class MultiDatasetBackgroundGenerator(
             raise TypeError(
                 'The mean_n_bkg_list argument must be a sequence of None '
                 'and/or floats! '
-                f'Its current type is {classname(mean_n_bkg_list)}.')
+                f'Its current type is {classname(mean_n_bkg_list)}.'
+            )
 
         if kwargs is None:
             kwargs = dict()
 
         n_bkg_events_list = []
         bkg_events_list = []
-        for (ds, bkg_generator, mean_n_bkg) in zip(
-                self._dataset_list, self._bkg_generator_list, mean_n_bkg_list):
+        for ds, bkg_generator, mean_n_bkg in zip(
+            self._dataset_list, self._bkg_generator_list, mean_n_bkg_list, strict=True
+        ):
             kwargs.update(mean=mean_n_bkg)
-            with TaskTimer(
-                    tl,
-                    f'Generating background events for dataset "{ds.name}".'):
-                (n_bkg_events_list_, bkg_events_list_) =\
-                    bkg_generator.generate_background_events(
-                        rss=rss,
-                        tl=tl,
-                        **kwargs)
+            with TaskTimer(tl, f'Generating background events for dataset "{ds.name}".'):
+                (n_bkg_events_list_, bkg_events_list_) = bkg_generator.generate_background_events(
+                    rss=rss, tl=tl, **kwargs
+                )
             n_bkg_events_list += n_bkg_events_list_
             bkg_events_list += bkg_events_list_
 
