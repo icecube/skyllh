@@ -1,91 +1,90 @@
 # Author: Dr. Martin Wolf <mail@martin-wolf.org>
 
-import matplotlib as mpl
+
 import numpy as np
 from matplotlib import (
     pyplot as plt,
 )
+from matplotlib.colors import LogNorm
+from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1.axes_divider import (
     make_axes_locatable,
 )
 
 
 def plot_ns_fit_vs_mean_ns_inj(
-    trials,
-    mean_n_sig_key='mean_n_sig',
-    ns_fit_key='ns',
-    rethist=False,
-    title='',
-    figsize=None,
-    line_color=None,
-    axis_fontsize=16,
-    title_fontsize=16,
-    tick_fontsize=16,
-    xlabel=None,
-    ylabel=None,
-    ylim=None,
-    ratio_ylim=None,
-):
+    trials: np.ndarray,
+    mean_n_sig_key: str = 'mean_n_sig',
+    ns_fit_key: str = 'ns',
+    rethist: bool = False,
+    title: str = '',
+    figsize: tuple | None = None,
+    line_color: str | None = None,
+    axis_fontsize: float = 16,
+    title_fontsize: float = 16,
+    tick_fontsize: float = 16,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    ylim: tuple | None = None,
+    ratio_ylim: tuple | None = None,
+) -> tuple[Figure, np.ndarray, np.ndarray, np.ndarray] | Figure:
     r"""Creates a 2D histogram plot showing the fit number of signal events vs.
     the mean number of injected signal events.
 
     Parameters
     ----------
-    trials : numpy record array
+    trials
         The record array holding the results of the trials.
-    mean_n_sig_key : str
+    mean_n_sig_key
         The name of the key for the mean number of injected signal events in the
         given trials record array.
-        Default is ``'mean_n_sig'``.
-    ns_fit_key : str
+    ns_fit_key
         The name of the key for the fitted number of signal events in the
         given trials record array.
-        Default is ``'ns'``.
-    rethist : bool
+    rethist
         If set to ``True``, the histogram data along with the histogram bin
         edges will be return as well.
-        Default is ``False``.
-    title : str
+    title
         The title of the plot.
-    figsize : tuple | None
+    figsize
         The two-element tuple (width,height) specifying the size of the figure.
         If set to None, the default size (12,10) will be used.
-    line_color : str | None
+    line_color
         The color of the lines.
         The default is '#E37222'.
-    axis_fontsize : float
+    axis_fontsize
         The font size of the axis labels.
-    title_fontsize : float
+    title_fontsize
         The font size of the plot title.
-    tick_fontsize : float
+    tick_fontsize
         The font size of the tick labels.
-    xlabel : str | None
+    xlabel
         The label of the x-axis in math syntax.
         Default is ``r'<n>_{\mathrm{sig,inj}}}'``.
-    ylabel : str | None
+    ylabel
         The label of if y-axis in math syntax.
         Default is ``r'n_\mathrm{sig,fit}'``.
-    ylim : tuple | None
+    ylim
         The (low,high)-two-element tuple specifying the y-axis limits of the
         main plot.
-    ratio_ylim : tuple | None
+    ratio_ylim
         The (low,high)-two-element tuple specifying the y-axis limits of the
         ratio plot in percentage.
         If set to None, the default (-100,100) will be used.
 
     Returns
     -------
-    fig : MPL Figure instance
+    fig
         The created matplotlib Figure instance.
-    hist : 2d ndarray
+    hist
         The histogram bin content.
         This will only be returned, when the ``rethist`` argument was set to
         ``True``.
-    xedges : 1d ndarray
+    xedges
         The histogram x-axis bin edges.
         This will only be returned, when the ``rethist`` argument was set to
         ``True``.
-    yedges : 1d ndarray
+    yedges
         The histogram y-axis bin edges.
         This will only be returned, when the ``rethist`` argument was set to
         ``True``.
@@ -141,7 +140,7 @@ def plot_ns_fit_vs_mean_ns_inj(
         trials[ns_fit_key],
         bins=[x_bins, y_bins],
         weights=hist_weights,
-        norm=mpl.colors.LogNorm(),
+        norm=LogNorm(),
         cmap=plt.get_cmap('GnBu'),
     )
 
@@ -221,81 +220,78 @@ def plot_ns_fit_vs_mean_ns_inj(
 
 
 def plot_gamma_fit_vs_mean_ns_inj(
-    trials,
-    gamma_inj=2,
-    mean_n_sig_key='mean_n_sig',
-    gamma_fit_key='gamma',
-    rethist=False,
-    title='',
-    figsize=None,
-    line_color=None,
-    axis_fontsize=16,
-    title_fontsize=16,
-    tick_fontsize=16,
-    xlabel=None,
-    ylabel=None,
-    ratio_ylim=None,
-):
+    trials: np.ndarray,
+    gamma_inj: float = 2,
+    mean_n_sig_key: str = 'mean_n_sig',
+    gamma_fit_key: str = 'gamma',
+    rethist: bool = False,
+    title: str = '',
+    figsize: tuple | None = None,
+    line_color: str | None = None,
+    axis_fontsize: float = 16,
+    title_fontsize: float = 16,
+    tick_fontsize: float = 16,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    ratio_ylim: tuple | None = None,
+) -> tuple[Figure, np.ndarray, np.ndarray, np.ndarray] | Figure:
     r"""Creates a 2D histogram plot showing the fit spectral index gamma vs.
     the mean number of injected signal events.
 
     Parameters
     ----------
-    trials : numpy record array
+    trials
         The record array holding the results of the trials.
-    gamma_inj : float
+    gamma_inj
         The spectral index with which signal events got injected into tha trial
         data set.
-    mean_n_sig_key : str
+    mean_n_sig_key
         The name of the key for the mean number of injected signal events in the
         given trials record array.
-        Default is ``'mean_n_sig'``.
-    gamma_fit_key : str
+    gamma_fit_key
         The name of the key for the fitted spectral index in the given trials
         record array.
-        Default is ``'gamma'``.
-    rethist : bool
+    rethist
         If set to ``True``, the histogram data along with the histogram bin
         edges will be return as well.
-        Default is ``False``.
-    title : str
+    title
         The title of the plot.
-    figsize : tuple | None
+    figsize
         The two-element tuple (width,height) specifying the size of the figure.
         If set to None, the default size (12,10) will be used.
-    line_color : str | None
+    line_color
         The color of the lines.
         The default is '#E37222'.
-    axis_fontsize : float
+    axis_fontsize
         The font size of the axis labels.
-    title_fontsize : float
+    title_fontsize
         The font size of the plot title.
-    tick_fontsize : float
+    tick_fontsize
         The font size of the tick labels.
-    xlabel : str | None
+    xlabel
         The label of the x-axis in math syntax.
         Default is ``r'<n>_{\mathrm{sig,inj}}}'``.
-    ylabel : str | None
+    ylabel
         The label of if y-axis in math syntax.
         Default is ``r'\gamma_\mathrm{fit}'``.
-    ratio_ylim : tuple | None
+    ratio_ylim
         The (low,high)-two-element tuple specifying the y-axis limits of the
         ratio plot in percentage.
         If set to None, the default (-100,100) will be used.
 
     Returns
     -------
-    fig : MPL Figure instance
+    fig
         The created matplotlib Figure instance.
-    hist : 2d ndarray
+    hist
         The histogram bin content.
         This will only be returned, when the ``rethist`` argument was set to
         ``True``.
-    xedges : 1d ndarray
+    xedges
         The histogram x-axis bin edges.
         This will only be returned, when the ``rethist`` argument was set to
         ``True``.
-    yedges : 1d ndarray
+    yedges
         The histogram y-axis bin edges.
         This will only be returned, when the ``rethist`` argument was set to
         ``True``.
@@ -351,7 +347,7 @@ def plot_gamma_fit_vs_mean_ns_inj(
         trials[gamma_fit_key],
         bins=[x_bins, y_bins],
         weights=hist_weights,
-        norm=mpl.colors.LogNorm(),
+        norm=LogNorm(),
         cmap=plt.get_cmap('GnBu'),
     )
 
