@@ -1,5 +1,3 @@
-# Author: Dr. Martin Wolf <mail@martin-wolf.org>
-
 """This module defines the base class for any model class used in SkyLLH."""
 
 from skyllh.core.py import (
