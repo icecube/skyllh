@@ -1,5 +1,3 @@
-# Author: Dr. Martin Wolf <mail@martin-wolf.org>
-
 from skyllh.core.dataset import (
     DatasetCollection,
 )
