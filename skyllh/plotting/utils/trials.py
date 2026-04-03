@@ -1,5 +1,3 @@
-# Author: Dr. Martin Wolf <mail@martin-wolf.org>
-
 import matplotlib as mpl
 import numpy as np
 from matplotlib import (
