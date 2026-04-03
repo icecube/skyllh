@@ -1,4 +1,8 @@
 import abc
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from skyllh.core.storage import DataFieldRecordArray
 
 from skyllh.core.background_generation import (
     BackgroundGenerationMethod,
@@ -17,9 +21,8 @@ from skyllh.core.py import (
 from skyllh.core.random import (
     RandomStateService,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.source_hypo_grouping import SourceHypoGroupManager
+from skyllh.core.timing import TaskTimer, TimeLord
 
 
 class BackgroundGenerator(
@@ -38,19 +41,19 @@ class BackgroundGenerator(
 
         Parameters
         ----------
-        bkg_gen_method : instance of BackgroundGenerationMethod
+        bkg_gen_method
             The optional background event generation method, which should be
             used to generate events.
         """
         super().__init__(**kwargs)
 
-    def change_shg_mgr(self, shg_mgr):
+    def change_shg_mgr(self, shg_mgr: SourceHypoGroupManager):
         """This method should be reimplemented when the background generator
         depends on the sources.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The new instance of SourceHypoGroupManager.
         """
         pass
@@ -58,19 +61,19 @@ class BackgroundGenerator(
     @abc.abstractmethod
     def generate_background_events(
         self,
-        rss,
-        tl=None,
+        rss: RandomStateService,
+        tl: TimeLord | None = None,
         **kwargs,
-    ):
+    ) -> 'tuple[list[int], list[DataFieldRecordArray]]':
         """This method is supposed to generate a mean number of background
         events for the datasets of this background generator.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService that should be used to generate
             random numbers from.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
         **kwargs
@@ -83,9 +86,9 @@ class BackgroundGenerator(
 
         Returns
         -------
-        n_bkg_list : list of int
+        n_bkg_list
             The number of generated background events.
-        bkg_events_list : list of instance of DataFieldRecordArray
+        bkg_events_list
             The list of instance of DataFieldRecordArray holding the generated
             background events. The number of events can be less than stated in
             `n_bkg_list` if an event selection method is used.
@@ -161,32 +164,32 @@ class DatasetBackgroundGenerator(
             )
         self._bkg_gen_method = method
 
-    def change_shg_mgr(self, shg_mgr):
+    def change_shg_mgr(self, shg_mgr: SourceHypoGroupManager):
         """Changes the SourceHypoGroupManager instance of the background
         generation method.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The new instance of SourceHypoGroupManager.
         """
         self._bkg_gen_method.change_shg_mgr(shg_mgr=shg_mgr)
 
     def generate_background_events(
         self,
-        rss,
-        tl=None,
+        rss: RandomStateService,
+        tl: TimeLord | None = None,
         **kwargs,
-    ):
+    ) -> 'tuple[list[int], list[DataFieldRecordArray]]':
         """Generates a mean number of background events for the dataset of this
         background generator.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService that should be used to generate
             random numbers from.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
         **kwargs
@@ -199,10 +202,10 @@ class DatasetBackgroundGenerator(
 
         Returns
         -------
-        n_bkg_list : list of int
+        n_bkg_list
             The list of length 1 holding the number of generated background
             events for the dataset.
-        bkg_events_list : list of instance of DataFieldRecordArray
+        bkg_events_list
             The list of length 1 holding the instance of DataFieldRecordArray
             holding the generated background events. The number of events can be
             less than stated in ``n_bkg_list`` if an event selection method is
@@ -226,22 +229,22 @@ class MultiDatasetBackgroundGenerator(
 
     def __init__(
         self,
-        dataset_list,
-        data_list,
-        bkg_generator_list,
+        dataset_list: list[Dataset],
+        data_list: list[DatasetData],
+        bkg_generator_list: 'list[BackgroundGenerator]',
         **kwargs,
     ):
         """Constructs a new instance of MultiDatasetBackgroundGenerator.
 
         Parameters
         ----------
-        dataset_list : list of instance of Dataset
+        dataset_list
             The list of Dataset instances for which background events should get
             generated for.
-        data_list : list of instance of DatasetData
+        data_list
             The list of DatasetData instances holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
-        bkg_generator_list : list of instance of BackgroundGenerator
+        bkg_generator_list
             The list of BackgroundGenerator instances, one for each dataset.
             The order must match the order of ``dataset_list``.
         """
@@ -305,39 +308,39 @@ class MultiDatasetBackgroundGenerator(
 
     def change_shg_mgr(
         self,
-        shg_mgr,
+        shg_mgr: SourceHypoGroupManager,
     ):
         """Calls the ``change_shg_mgr`` method of each individual dataset
         background generator.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The new instance of SourceHypoGroupManager.
         """
         for bkg_generator in self._bkg_generator_list:
             bkg_generator.change_shg_mgr(shg_mgr=shg_mgr)
 
-    def generate_background_events(
+    def generate_background_events(  # type: ignore[override]
         self,
-        rss,
-        mean_n_bkg_list=None,
-        tl=None,
+        rss: RandomStateService,
+        mean_n_bkg_list: list[float | None] | None = None,
+        tl: TimeLord | None = None,
         **kwargs,
-    ):
+    ) -> 'tuple[list[int], list[DataFieldRecordArray]]':
         """Generates a mean number of background events for each individual
         dataset of this multi-dataset background generator.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService that should be used to generate
             random numbers from.
-        mean_n_bkg_list : list of float | None
+        mean_n_bkg_list
             The mean number of background events that should be generated for
             each dataset. If set to None (the default), the individual
             background generator instance needs to obtain this number itself.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to collect
             timing information about this method.
         **kwargs
@@ -347,10 +350,10 @@ class MultiDatasetBackgroundGenerator(
 
         Returns
         -------
-        n_bkg_events_list : list of int
+        n_bkg_events_list
             The list holding the number of generated background events for each
             dataset.
-        bkg_events_list : list of instance of DataFieldRecordArray
+        bkg_events_list
             The list holding the instance of DataFieldRecordArray holding the
             generated background events of each dataset. The number of events
             can be less than stated in ``n_bkg_list`` if an event selection
@@ -361,9 +364,12 @@ class MultiDatasetBackgroundGenerator(
                 f'The rss argument must be an instance of RandomStateService! Its current type is {classname(rss)}.'
             )
 
-        if mean_n_bkg_list is None:
-            mean_n_bkg_list = [None] * len(self._bkg_generator_list)
-        if not issequenceof(mean_n_bkg_list, (type(None), float)):
+        _mean_n_bkg_list: list[float | None]
+        if mean_n_bkg_list is None:  # noqa SIM108
+            _mean_n_bkg_list = [None] * len(self._bkg_generator_list)
+        else:
+            _mean_n_bkg_list = mean_n_bkg_list
+        if not issequenceof(_mean_n_bkg_list, (type(None), float)):
             raise TypeError(
                 'The mean_n_bkg_list argument must be a sequence of None '
                 'and/or floats! '
@@ -373,10 +379,10 @@ class MultiDatasetBackgroundGenerator(
         if kwargs is None:
             kwargs = dict()
 
-        n_bkg_events_list = []
-        bkg_events_list = []
+        n_bkg_events_list: list[int] = []
+        bkg_events_list: list[DataFieldRecordArray] = []
         for ds, bkg_generator, mean_n_bkg in zip(
-            self._dataset_list, self._bkg_generator_list, mean_n_bkg_list, strict=True
+            self._dataset_list, self._bkg_generator_list, _mean_n_bkg_list, strict=True
         ):
             kwargs.update(mean=mean_n_bkg)
             with TaskTimer(tl, f'Generating background events for dataset "{ds.name}".'):

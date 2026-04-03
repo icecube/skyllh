@@ -1,4 +1,5 @@
 import abc
+from collections.abc import Sequence
 
 import numpy as np
 import scipy.signal
@@ -20,17 +21,17 @@ class HistSmoothingMethod(
         super().__init__(**kwargs)
 
     @abc.abstractmethod
-    def smooth(self, h):
+    def smooth(self, h: np.ndarray) -> np.ndarray:
         """This method is supposed to smooth the given histogram h.
 
         Parameters
         ----------
-        h : N-dimensional ndarray
+        h
             The ndarray holding histogram bin values.
 
         Returns
         -------
-        smoothed_h : N-dimensional ndarray
+        smoothed_h
             The array holding the smoothed histogram bin values.
         """
         pass
@@ -44,17 +45,17 @@ class NoHistSmoothingMethod(
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def smooth(self, h):
+    def smooth(self, h: np.ndarray) -> np.ndarray:
         """Does not perform any smoothing and just returns the input histogram.
 
         Parameters
         ----------
-        h : N-dimensional ndarray
+        h
             The ndarray holding histogram bin values.
 
         Returns
         -------
-        h : N-dimensional ndarray
+        h
             The input histogram array.
         """
         return h
@@ -69,14 +70,14 @@ class NeighboringBinHistSmoothingMethod(
 
     def __init__(
         self,
-        axis_kernel_arrays,
+        axis_kernel_arrays: Sequence[np.ndarray],
         **kwargs,
     ):
         """Constructs a new neighboring bin histogram smoothing method.
 
         Parameters
         ----------
-        axis_kernel_arrays: sequence of 1D ndarrays
+        axis_kernel_arrays
             The sequence of smoothing kernel arrays, one for each axis. If an
             axis should not get smoothed, the UNSMOOTH_AXIS constant should be
             used for that axis' smoothing kernel array.
@@ -100,19 +101,19 @@ class NeighboringBinHistSmoothingMethod(
         """
         return self._ndim
 
-    def smooth(self, h):
+    def smooth(self, h: np.ndarray) -> np.ndarray:
         """Smoothes the given histogram array h with the internal kernel array
         k. Both arrays must have the same dimensionality. The shape
         values of k must be smaller than or equal to the shape values of h.
 
         Parameters
         ----------
-        h : N-dimensional ndarray
+        h
             The ndarray holding histogram bin values.
 
         Returns
         -------
-        smoothed_h : N-dimensional ndarray.
+        smoothed_h
         """
         if h.ndim != self._ndim:
             raise ValueError(
@@ -166,12 +167,12 @@ class BlockSmoothingFilter(
     block is specified via the nbins argument.
     """
 
-    def __init__(self, nbins, **kwargs):
+    def __init__(self, nbins: int, **kwargs):
         """Creates a new BlockSmoothingFilter instance.
 
         Parameters
         ----------
-        nbins : int
+        nbins
             The number of neighboring bins into one direction of a histogram
             bin, which should be used to smooth that histogram bin.
         """
@@ -196,14 +197,14 @@ class GaussianSmoothingFilter(
 
     def __init__(
         self,
-        nbins,
+        nbins: int,
         **kwargs,
     ):
         """Creates a new GaussianSmoothingFilter instance.
 
         Parameters
         ----------
-        nbins : int
+        nbins
             The number of neighboring bins into one direction of a histogram
             bin, which should be used to smooth that histogram bin.
         """

@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 from astropy.coordinates import (
     SkyCoord,
@@ -80,44 +82,44 @@ def rotate_spherical_vector(ra1, dec1, ra2, dec2, ra3, dec3):
 
 
 def rotate_signal_events_on_sphere(
-    src_ra,
-    src_dec,
-    evt_true_ra,
-    evt_true_dec,
-    evt_reco_ra,
-    evt_reco_dec,
-):
+    src_ra: np.ndarray,
+    src_dec: np.ndarray,
+    evt_true_ra: np.ndarray,
+    evt_true_dec: np.ndarray,
+    evt_reco_ra: np.ndarray,
+    evt_reco_dec: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     """Rotate signal events on a sphere to a given source position preserving
     position angle and separation (great circle distance) between the event's
     true and reco directions.
 
     Parameters
     ----------
-    src_ra : instance of numpy.ndarray
+    src_ra
         The (N_events,)-shaped 1D numpy.ndarray holding the true right-ascension
         of the source.
-    src_dec : instance of numpy.ndarray
+    src_dec
         The (N_events,)-shaped 1D numpy.ndarray holding the true declination
         of the source.
-    evt_true_ra : instance of numpy.ndarray
+    evt_true_ra
         The (N_events,)-shaped 1D numpy.ndarray holding the true right-ascension
         of the MC event.
-    evt_true_dec : instance of numpy.ndarray
+    evt_true_dec
         The (N_events,)-shaped 1D numpy.ndarray holding the true declination of
         the MC event.
-    evt_reco_ra : instance of numpy.ndarray
+    evt_reco_ra
         The (N_events,)-shaped 1D numpy.ndarray holding the reconstructed
         right-ascension of the MC event.
-    evt_reco_dec : instance of numpy.ndarray
+    evt_reco_dec
         The (N_events,)-shaped 1D numpy.ndarray holding the reconstructed
         declination of the MC event.
 
     Returns
     -------
-    rot_evt_reco_ra : instance of numpy.ndarray
+    rot_evt_reco_ra
         The (N_events,)-shaped 1D numpy.ndarray holding the rotated
         reconstructed event right-ascension.
-    rot_evt_reco_dec : instance of numpy.ndarray
+    rot_evt_reco_dec
         The (N_events,)-shaped 1D numpy.ndarray holding the rotated
         reconstructed event declination.
     """
@@ -132,36 +134,39 @@ def rotate_signal_events_on_sphere(
     position_angle = v_evt_true.position_angle(v_evt_reco)
     separation = v_evt_true.separation(v_evt_reco)
 
-    v_rotated = v_source.directional_offset_by(position_angle, separation)
-    (rot_evt_reco_ra, rot_evt_reco_dec) = (v_rotated.ra.rad, v_rotated.dec.rad)
+    v_rotated: Any = v_source.directional_offset_by(position_angle, separation)
+    rot_evt_reco_ra: np.ndarray = v_rotated.ra.rad
+    rot_evt_reco_dec: np.ndarray = v_rotated.dec.rad
 
     return (rot_evt_reco_ra, rot_evt_reco_dec)
 
 
-def angular_separation(ra1, dec1, ra2, dec2, psi_floor=None):
+def angular_separation(
+    ra1: np.ndarray, dec1: np.ndarray, ra2: np.ndarray, dec2: np.ndarray, psi_floor: float | None = None
+) -> np.ndarray:
     """Calculates the angular separation on the sphere between two vectors on
     the sphere.
 
     Parameters
     ----------
-    ra1 : instance of numpy.ndarray
+    ra1
         The (N_events,)-shaped numpy.ndarray holding the right-ascension or
         longitude coordinate of the first vector in radians.
-    dec1 : instance of numpy.ndarray
+    dec1
         The (N_events,)-shaped numpy.ndarray holding declination or latitude
         coordinate of the first vector in radians.
-    ra2 : instance of numpy.ndarray
+    ra2
         The (N_events,)-shaped numpy.ndarray holding the right-ascension or
         longitude coordinate of the second vector in radians.
-    dec2 : instance of numpy.ndarray
+    dec2
         The (N_events,)-shaped numpy.ndarray holding declination coordinate of
         the second vector in radians.
-    psi_floor : float | None
+    psi_floor
         If not ``None``, specifies the floor value of psi.
 
     Returns
     -------
-    psi : instance of numpy.ndarray
+    psi
         The (N_events,)-shaped numpy.ndarray holding the calculated angular
         separation value of each event.
     """

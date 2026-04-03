@@ -109,21 +109,21 @@ class Config(
     def from_yaml(
         cls,
         pathfilename: str | None,
-    ):
+    ) -> 'Config':
         """Creates a new instance of Config holding the base configuration and
         updated by the configuration items contained in the yaml file using the
         :meth:`dict.update` method.
 
         Parameters
         ----------
-        pathfilename: str | None
+        pathfilename
             Path and filename to the yaml file containing the to-be-updated
             configuration items.
             If set to ``None``, nothing is done.
 
         Returns
         -------
-        cfg : instance of Config
+        cfg
             The instance of Config holding the base configuration and updated by
             the configuration given in the yaml file.
         """
@@ -149,19 +149,19 @@ class Config(
     def from_dict(
         cls,
         user_dict: dict[str, Any],
-    ):
+    ) -> 'Config':
         """Creates a new instance of Config holding the base configuration and
         updated by the given configuration dictionary using the
         :meth:`dict.update` method.
 
         Parameters
         ----------
-        user_dict: dict
+        user_dict
             The dictionary containing the to-be-updated configuration items.
 
         Returns
         -------
-        cfg : instance of Config
+        cfg
             The instance of Config holding the base configuration and updated by
             the given configuration dictionary.
         """
@@ -178,12 +178,12 @@ class Config(
 
     def disable_tracing(
         self,
-    ):
+    ) -> 'Config':
         """Disables the tracing mode of SkyLLH.
 
         Returns
         -------
-        self : instance of Config
+        self
             The updated instance of Config.
         """
         self['logging']['enable_tracing'] = False
@@ -192,12 +192,12 @@ class Config(
 
     def enable_tracing(
         self,
-    ):
+    ) -> 'Config':
         """Enables the tracing mode of SkyLLH.
 
         Returns
         -------
-        self : instance of Config
+        self
             The updated instance of Config.
         """
         self['logging']['enable_tracing'] = True
@@ -206,13 +206,13 @@ class Config(
 
     def get_wd(
         self,
-    ):
+    ) -> str:
         """Retrieves the absolute path to the working directory as configured in
         this configuration.
 
         Returns
         -------
-        wd : str
+        wd
             The absolute path to the project's working directory.
         """
         wd = os.path.abspath(self['project']['working_directory'])
@@ -221,19 +221,19 @@ class Config(
 
     def set_enable_tracing(
         self,
-        flag,
-    ):
+        flag: bool,
+    ) -> 'Config':
         """Sets the setting for tracing.
 
         Parameters
         ----------
-        flag : bool
+        flag
             The flag if tracing should be enabled (``True``) or disabled
             (``False``).
 
         Returns
         -------
-        self : instance of Config
+        self
             The updated instance of Config.
         """
         self['logging']['enable_tracing'] = flag
@@ -242,32 +242,32 @@ class Config(
 
     def set_internal_units(
         self,
-        angle_unit=None,
-        energy_unit=None,
-        length_unit=None,
-        time_unit=None,
-    ):
+        angle_unit: units.UnitBase | None = None,
+        energy_unit: units.UnitBase | None = None,
+        length_unit: units.UnitBase | None = None,
+        time_unit: units.UnitBase | None = None,
+    ) -> 'Config':
         """Sets the units used internally to compute quantities. These units
         must match the units used in the monte-carlo files.
 
         Parameters
         ----------
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The internal unit that should be used for angles.
             If set to ``None``, the unit is not changed.
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The internal unit that should be used for energy.
             If set to ``None``, the unit is not changed.
-        length_unit : instance of astropy.units.UnitBase | None
+        length_unit
             The internal unit that should be used for length.
             If set to ``None``, the unit is not changed.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The internal unit that should be used for time.
             If set to ``None``, the unit is not changed.
 
         Returns
         -------
-        self : instance of Config
+        self
             The updated instance of Config.
         """
         if angle_unit is not None:
@@ -294,19 +294,19 @@ class Config(
 
     def set_ncpu(
         self,
-        ncpu,
-    ):
+        ncpu: int,
+    ) -> 'Config':
         """Sets the global setting for the number of CPUs to use, when
         parallelization is available.
 
         Parameters
         ----------
-        ncpu : int
+        ncpu
             The number of CPUs.
 
         Returns
         -------
-        self : instance of Config
+        self
             The updated instance of Config.
         """
         self['multiproc']['ncpu'] = ncpu
@@ -315,16 +315,16 @@ class Config(
 
     def set_wd(
         self,
-        path=None,
-    ):
+        path: str | None = None,
+    ) -> str:
         """Sets the project's working directory configuration variable and adds
         it to the Python path variable.
 
         Parameters
         ----------
-        cfg : instance of Config
+        cfg
             The instance of Config holding the local configuration.
-        path : str | None
+        path
             The path of the project's working directory. This can be a path
             relative to the path given by ``os.path.getcwd``, the current
             working directory of the program.
@@ -333,7 +333,7 @@ class Config(
 
         Returns
         -------
-        wd : str
+        wd
             The absolute path to the project's working directory.
         """
         if path is None:
@@ -342,7 +342,7 @@ class Config(
         if self['project']['working_directory'] in sys.path:
             sys.path.remove(self['project']['working_directory'])
 
-        wd = os.path.abspath(path)
+        wd = os.path.abspath(str(path))
         self['project']['working_directory'] = wd
         sys.path.insert(0, wd)
 
@@ -350,14 +350,14 @@ class Config(
 
     def to_internal_time_unit(
         self,
-        time_unit,
+        time_unit: units.UnitBase,
     ):
         """Calculates the conversion factor from the given time unit to the
         internal time unit specified by this local configuration.
 
         Parameters
         ----------
-        time_unit : instance of astropy.units.UnitBase
+        time_unit
             The time unit from which to convert to the internal time unit.
         """
         internal_time_unit = self['units']['internal']['time']
@@ -365,19 +365,19 @@ class Config(
 
         return factor
 
-    def wd_filename(self, filename):
+    def wd_filename(self, filename: str) -> str:
         """Generates the fully qualified file name under the project's working
         directory of the given file.
 
         Parameters
         ----------
-        filename : str
+        filename
             The name of the file for which to generate the working directory
             path file name.
 
         Returns
         -------
-        pathfilename : str
+        pathfilename
             The generated fully qualified path file name of ``filename`` with
             the project's working directory prefixed.
         """
@@ -393,7 +393,7 @@ class HasConfig:
 
     def __init__(
         self,
-        cfg,
+        cfg: 'Config',
         *args,
         **kwargs,
     ):
@@ -401,7 +401,7 @@ class HasConfig:
 
         Parameters
         ----------
-        cfg : instance of Config
+        cfg
             The instance of Config holding the local configuration.
         """
         super().__init__(*args, **kwargs)

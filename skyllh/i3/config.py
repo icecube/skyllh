@@ -1,17 +1,18 @@
 """This file defines IceCube specific global configuration."""
 
+from skyllh.core.config import Config
 from skyllh.core.datafields import (
     DataFieldStages as DFS,
 )
 
 
-def add_icecube_specific_analysis_required_data_fields(cfg):
+def add_icecube_specific_analysis_required_data_fields(cfg: Config):
     """Adds IceCube specific data fields required by an IceCube analysis to
     the given local configuration.
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         The instance of Config holding the local configuration.
     """
     cfg['datafields']['azi'] = DFS.ANALYSIS_EXP

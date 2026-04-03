@@ -16,15 +16,20 @@ from scipy.stats import (
 )
 
 try:
-    from iminuit import minimize
-except Exception:
-    IMINUIT_LOADED = False
-else:
-    IMINUIT_LOADED = True
+    from iminuit import minimize  # type: ignore[import-untyped]
 
+    IMINUIT_LOADED = True
+except Exception:
+    minimize = None  # type: ignore[assignment]
+    IMINUIT_LOADED = False
+
+from collections.abc import Callable, Sequence
+
+from skyllh.core.analysis import Analysis
 from skyllh.core.logging import (
     get_logger,
 )
+from skyllh.core.parameters import ParameterModelMapper
 from skyllh.core.progressbar import (
     ProgressBar,
 )
@@ -34,15 +39,19 @@ from skyllh.core.py import (
     issequence,
     issequenceof,
 )
+from skyllh.core.random import RandomStateService
 from skyllh.core.session import (
     is_interactive_session,
 )
+from skyllh.core.source_hypo_grouping import SourceHypoGroupManager
 from skyllh.core.source_model import (
     PointLikeSource,
 )
 from skyllh.core.storage import (
     NPYFileLoader,
 )
+from skyllh.core.timing import TimeLord
+from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.utils.spline import (
     make_spline_1d,
 )
@@ -51,7 +60,9 @@ from skyllh.core.utils.spline import (
 """
 
 
-def pointlikesource_to_data_field_array(tdm, shg_mgr, pmm):
+def pointlikesource_to_data_field_array(
+    tdm: TrialDataManager, shg_mgr: SourceHypoGroupManager, pmm: ParameterModelMapper
+) -> np.ndarray:
     """Function to transform a list of PointLikeSource sources into a numpy
     record ndarray. The resulting numpy record ndarray contains the following
     fields:
@@ -65,17 +76,17 @@ def pointlikesource_to_data_field_array(tdm, shg_mgr, pmm):
 
     Parameters
     ----------
-    tdm : instance of TrialDataManager
+    tdm
         The TrialDataManager instance.
-    shg_mgr : instance of SourceHypoGroupManager
+    shg_mgr
         The instance of SourceHypoGroupManager that defines the sources.
-    pmm : instance of ParameterModelMapper
+    pmm
         The instance of ParameterModelMapper that defines the mapping of global
         parameters to local model parameters.
 
     Returns
     -------
-    arr : (N_sources,)-shaped numpy record ndarray
+    arr
         The numpy record ndarray holding the source parameters.
     """
     sources = shg_mgr.source_list
@@ -101,7 +112,9 @@ def pointlikesource_to_data_field_array(tdm, shg_mgr, pmm):
     return arr
 
 
-def calculate_pval_from_trials(ts_vals, ts_threshold, comp_operator='greater_equal'):
+def calculate_pval_from_trials(
+    ts_vals: np.ndarray, ts_threshold: float, comp_operator: str = 'greater_equal'
+) -> tuple[float, float]:
     """Calculates the percentage (p-value) of test-statistic trials that are
     above the given test-statistic critical value.
     In addition it calculates the standard deviation of the p-value assuming
@@ -109,11 +122,11 @@ def calculate_pval_from_trials(ts_vals, ts_threshold, comp_operator='greater_equ
 
     Parameters
     ----------
-    ts_vals : (n_trials,)-shaped 1D ndarray of float
+    ts_vals
         The ndarray holding the test-statistic values of the trials.
-    ts_threshold : float
+    ts_threshold
         The critical test-statistic value.
-    comp_operator: string, optional
+    comp_operator
         The comparison operator for p-value calculation. It can be set to one of
         the following options: 'greater' or 'greater_equal'.
 
@@ -133,21 +146,23 @@ def calculate_pval_from_trials(ts_vals, ts_threshold, comp_operator='greater_equ
     return (p, p_sigma)
 
 
-def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold, eta=3.0, n_max=500000):
+def calculate_pval_from_gammafit_to_trials(
+    ts_vals: np.ndarray, ts_threshold: float, eta: float = 3.0, n_max: int = 500000
+):
     """Calculates the probability (p-value) of test-statistic exceeding
     the given test-statistic threshold. This calculation relies on fitting
     a gamma distribution to a list of ts values.
 
     Parameters
     ----------
-    ts_vals : (n_trials,)-shaped 1D ndarray of float
+    ts_vals
         The ndarray holding the test-statistic values of the trials.
-    ts_threshold : float
+    ts_threshold
         The critical test-statistic value.
-    eta : float, optional
+    eta
         Test-statistic value at which the gamma function is truncated
         from below. Default = 3.0.
-    n_max : int, optional
+    n_max
         The maximum number of trials that should be used during
         fitting. Default = 500,000
 
@@ -179,7 +194,12 @@ def calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold, eta=3.0, n_max
 
 
 def calculate_pval_from_trials_mixed(
-    ts_vals, ts_threshold, switch_at_ts=3.0, eta=None, n_max=500000, comp_operator='greater_equal'
+    ts_vals: np.ndarray,
+    ts_threshold: float,
+    switch_at_ts: float = 3.0,
+    eta: float | None = None,
+    n_max: int = 500000,
+    comp_operator: str = 'greater_equal',
 ):
     """Calculates the probability (p-value) of test-statistic exceeding
     the given test-statistic threshold. This calculation relies on fitting
@@ -189,21 +209,21 @@ def calculate_pval_from_trials_mixed(
 
     Parameters
     ----------
-    ts_vals : (n_trials,)-shaped 1D ndarray of float
+    ts_vals
         The ndarray holding the test-statistic values of the trials.
-    ts_threshold : float
+    ts_threshold
         The critical test-statistic value.
-    switch_at_ts : float, optional
+    switch_at_ts
         Test-statistic value below which p-value is computed from trials
         directly. For thresholds greater than switch_at_ts the pvalue is
         calculated using a gamma fit.
-    eta : float, optional
+    eta
         Test-statistic value at which the gamma function is truncated
         from below. Default is None.
-    n_max : int, optional
+    n_max
         The maximum number of trials that should be used during
         fitting. Default = 500,000
-    comp_operator: string, optional
+    comp_operator
         The comparison operator for p-value calculation. It can be set to one of
         the following options: 'greater' or 'greater_equal'.
 
@@ -222,23 +242,23 @@ def calculate_pval_from_trials_mixed(
         return calculate_pval_from_gammafit_to_trials(ts_vals, ts_threshold, eta=eta, n_max=n_max)
 
 
-def truncated_gamma_logpdf(a, scale, eta, ts_above_eta, N_above_eta):
+def truncated_gamma_logpdf(a: float, scale: float, eta: float, ts_above_eta: np.ndarray, N_above_eta: int):
     """Calculates the -log(likelihood) of a sample of random numbers
     generated from a gamma pdf truncated from below at x=eta.
 
     Parameters
     ----------
-    a : float
+    a
         Shape parameter.
-    scale : float
+    scale
         Scale parameter.
-    eta : float
+    eta
         Test-statistic value at which the gamma function is truncated
         from below.
-    ts_above_eta : (n_trials,)-shaped 1D ndarray
+    ts_above_eta
         The ndarray holding the test-statistic values falling in
         the truncated gamma pdf.
-    N_above_eta : int
+    N_above_eta
         Number of test-statistic values falling in the truncated
         gamma pdf.
 
@@ -254,7 +274,7 @@ def truncated_gamma_logpdf(a, scale, eta, ts_above_eta, N_above_eta):
     return -logl
 
 
-def fit_truncated_gamma(vals, eta):
+def fit_truncated_gamma(vals: np.ndarray, eta: float) -> tuple[np.ndarray, float]:
     """
     Fits a truncated gamma function to a set of values.
     Returns the best-fit parameters and the normalization constant
@@ -262,15 +282,15 @@ def fit_truncated_gamma(vals, eta):
 
     Parameters
     ----------
-    vals : (n_trials,)-shaped 1D ndarray of float
-    eta : float
+    vals
+    eta
         Value at which the gamma function is truncated from below.
 
     Returns
     -------
-    pars : (2,)-shaped 1D array of float
+    pars
         `a` and `scale` parameters of the truncated gamma function.
-    norm : float
+    norm
         Normalization constant of the truncated gamma function.
     """
 
@@ -280,6 +300,7 @@ def fit_truncated_gamma(vals, eta):
             'This module is a requirement of the function '
             '"calculate_critical_ts_from_gamma"!'
         )
+    assert minimize is not None
 
     Ntot = len(vals)
     vals_eta = vals[vals > eta]
@@ -294,29 +315,29 @@ def fit_truncated_gamma(vals, eta):
     r = minimize(obj, x0, bounds=bounds)
     pars = r.x
 
-    norm = alpha / gamma.sf(eta, a=pars[0], scale=pars[1])
+    norm = float(alpha / gamma.sf(eta, a=pars[0], scale=pars[1]))
 
     return pars, norm
 
 
-def calculate_critical_ts_from_gamma(ts, h0_ts_quantile, eta=3.0):
+def calculate_critical_ts_from_gamma(ts: np.ndarray, h0_ts_quantile: float, eta: float = 3.0) -> float:
     """Calculates the critical test-statistic value corresponding
     to h0_ts_quantile by fitting the ts distribution with a truncated
     gamma function.
 
     Parameters
     ----------
-    ts : (n_trials,)-shaped 1D ndarray
+    ts
         The ndarray holding the test-statistic values of the trials.
-    h0_ts_quantile : float
+    h0_ts_quantile
         Null-hypothesis test statistic quantile.
-    eta : float, optional
+    eta
         Test-statistic value at which the gamma function is truncated
         from below.
 
     Returns
     -------
-    critical_ts : float
+    critical_ts
     """
     (pars, norm) = fit_truncated_gamma(vals=ts, eta=eta)
     critical_ts = gamma.ppf(1 - 1.0 / norm * h0_ts_quantile, a=pars[0], scale=pars[1])
@@ -330,32 +351,33 @@ def calculate_critical_ts_from_gamma(ts, h0_ts_quantile, eta=3.0):
             eta,
         )
 
-    return critical_ts
+    return float(critical_ts)
 
 
-def polynomial_fit(ns, p, p_weight, deg, p_thr):
+def polynomial_fit(ns: Sequence, p: Sequence, p_weight: Sequence, deg: int, p_thr: float) -> float:
     """Performs a polynomial fit on the p-values of test-statistic trials
-    associated to each ns..
+    associated to each ns.
     Using the fitted parameters it computes the number of signal events
     correponding to the given p-value critical value.
 
     Parameters
     ----------
-    ns : 1D array_like object
+    ns
         x-coordinates of the sample.
-    p : 1D array_like object
+    p
         y-coordinates of the sample.
-    p_weight : 1D array_like object
+    p_weight
         Weights to apply to the y-coordinates of the sample points. For gaussian
         uncertainties, use 1/sigma.
-    deg : int
+    deg
         Degree of the fitting polynomial function.
-    p_thr : float within [0,1]
+    p_thr
         The critical p-value.
 
     Returns
     -------
-    ns : float
+    x
+        The number of signal events corresponding to the given p-value critical value.
     """
     (params, _) = np.polyfit(ns, p, deg, w=p_weight, cov=True)
 
@@ -368,92 +390,90 @@ def polynomial_fit(ns, p, p_weight, deg, p_thr):
 
     if deg == 1:
         (a, b) = (params[0], params[1])
-        ns = (p_thr - b) / a
-        return ns
+        return float((p_thr - b) / a)
 
     elif deg == 2:
         (a, b, c) = (params[0], params[1], params[2])
-        ns = (-b + np.sqrt((b**2) - 4 * a * (c - p_thr))) / (2 * a)
-        return ns
+        return float((-b + np.sqrt((b**2) - 4 * a * (c - p_thr))) / (2 * a))
 
     else:
         raise ValueError('deg = %g is not valid. The order of the polynomial function must be 1 or 2.', deg)
 
 
 def estimate_mean_nsignal_for_ts_quantile(
-    ana,
-    rss,
-    p,
-    eps_p,
-    mu_range,
-    critical_ts=None,
-    h0_trials=None,
-    h0_ts_quantile=None,
-    min_dmu=0.5,
-    bkg_kwargs=None,
-    sig_kwargs=None,
-    ppbar=None,
-    tl=None,
-    pathfilename=None,
-):
+    ana: Analysis,
+    rss: RandomStateService,
+    p: float,
+    eps_p: float,
+    mu_range: Sequence,
+    critical_ts: float | None = None,
+    h0_trials: np.ndarray | None = None,
+    h0_ts_quantile: float | None = None,
+    min_dmu: float = 0.5,
+    bkg_kwargs: dict | None = None,
+    sig_kwargs: dict | None = None,
+    ppbar: ProgressBar | None = None,
+    tl: TimeLord | None = None,
+    pathfilename: str | None = None,
+) -> tuple[float, float | None]:
     """Calculates the mean number of signal events needed to be injected to
     reach a test statistic distribution with defined properties for the given
     analysis.
 
     Parameters
     ----------
-    ana : Analysis instance
+    ana
         The Analysis instance to use for the calculation.
-    rss : instance of RandomStateService
+    rss
         The RandomStateService instance to use for generating random numbers.
-    p : float
+    p
         Desired probability of signal test statistic for exceeding
         `h0_ts_quantile` part of null-hypothesis test statistic threshold.
-    eps_p : float
+    eps_p
         Precision in `p` as stopping condition for the calculation.
-    mu_range : 2-element sequence
+    mu_range
         The range of mu (lower,upper) to search for mean number of signal
         events.
-    critical_ts : float | None
+    critical_ts
         The critical test-statistic value that should be overcome by the signal
         distribution. If set to None, the null-hypothesis test-statistic
         distribution will be used to compute the critical TS value.
-    h0_trials : (n_h0_trials,)-shaped ndarray | None
+    h0_trials
         The structured ndarray holding the trials for the null-hypothesis.
         If set to `None`, the number of trials is calculated
         from binomial statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
         where `eps` is `min(5e-3, h0_ts_quantile/10)`.
-    h0_ts_quantile : float | None
+    h0_ts_quantile
         Null-hypothesis test statistic quantile.
         If set to None, the critical test-statistic value that should be
         overcome by the signal distribution MUST be given.
-    min_dmu : float
+    min_dmu
         The minimum delta mu to use for calculating the derivative dmu/dp.
         The default is ``0.5``.
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    sig_kwargs : dict | None
+    sig_kwargs
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`. If `poisson` is set to True, the actual number of
         generated signal events will be drawn from a Poisson distribution
         with the mean number of signal events, mu.
-    ppbar : instance of ProgressBar | None
+    ppbar
         The possible parent ProgressBar instance.
-    tl: instance of TimeLord | None
+    tl
         The optional TimeLord instance that should be used to collect timing
         information about this function.
-    pathfilename: string | None
+    pathfilename
         Trial data file path including the filename.
         If set to None, generatedtrials won't be saved.
 
     Returns
     -------
-    mu : float
+    mu
         Estimated mean number of signal events.
-    mu_err : None
+    mu_err
         Error estimate needs to be implemented.
     """
     logger = get_logger(__name__)
@@ -468,6 +488,7 @@ def estimate_mean_nsignal_for_ts_quantile(
             'the type of test to run.'
         )
     elif critical_ts is None:
+        assert h0_ts_quantile is not None
         n_trials_max = int(5.0e5)
         # Via binomial statistics, calcuate the minimum number of trials
         # needed to get the required precision on the critial TS value.
@@ -501,7 +522,7 @@ def estimate_mean_nsignal_for_ts_quantile(
                 np.save(pathfilename, h0_ts_vals)
         else:
             if h0_trials.size < n_trials_total:
-                if 'seed' not in h0_trials.dtype.names:
+                if h0_trials.dtype.names is None or 'seed' not in h0_trials.dtype.names:
                     logger.debug(
                         'Uploaded trials miss the rss_seed field. '
                         'Will not be possible to extend the trial file '
@@ -588,7 +609,8 @@ def estimate_mean_nsignal_for_ts_quantile(
         # Initially generate trials for a 5-times larger uncertainty ``eps_p``
         # to catch ns0 points far away from the desired propability quicker.
         dn_trials = max(100, int(n_trials / 5**2 + 0.5))
-        (ts_vals0, p0_sigma, delta_p) = ([], 2 * eps_p, 0)
+        ts_vals0: np.ndarray = np.array([])
+        (p0, p0_sigma, delta_p) = (0.0, 2 * eps_p, 0.0)
         while (delta_p < p0_sigma * 5) and (p0_sigma > eps_p):
             ts_vals0 = np.concatenate(
                 (
@@ -862,20 +884,20 @@ def estimate_mean_nsignal_for_ts_quantile(
 
 
 def estimate_sensitivity(
-    ana,
-    rss,
-    h0_trials=None,
-    h0_ts_quantile=0.5,
-    p=0.9,
-    eps_p=0.005,
-    mu_range=None,
-    min_dmu=0.5,
-    bkg_kwargs=None,
-    sig_kwargs=None,
-    ppbar=None,
-    tl=None,
-    pathfilename=None,
-):
+    ana: Analysis,
+    rss: RandomStateService,
+    h0_trials: np.ndarray | None = None,
+    h0_ts_quantile: float = 0.5,
+    p: float = 0.9,
+    eps_p: float = 0.005,
+    mu_range: Sequence | None = None,
+    min_dmu: float = 0.5,
+    bkg_kwargs: dict | None = None,
+    sig_kwargs: dict | None = None,
+    ppbar: ProgressBar | None = None,
+    tl: TimeLord | None = None,
+    pathfilename: str | None = None,
+) -> tuple[float, float | None]:
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -887,54 +909,54 @@ def estimate_sensitivity(
 
     Parameters
     ----------
-    ana : Analysis
+    ana
         The Analysis instance to use for sensitivity estimation.
-    rss : RandomStateService
+    rss
         The RandomStateService instance to use for generating random
         numbers.
-    h0_trials : (n_h0_ts_vals,)-shaped ndarray | None
+    h0_trials
         The strutured ndarray holding the trials for the null-hypothesis.
         If set to `None`, the number of trials is calculated from binomial
         statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
         where `eps` is `min(5e-3, h0_ts_quantile/10)`.
-    h0_ts_quantile : float, optional
+    h0_ts_quantile
         Null-hypothesis test statistic quantile that defines the critical value.
-    p : float, optional
+    p
         Desired probability of the signal test statistic value to exceed
         the null-hypothesis test statistic value threshold, which is defined
         through the `h0_ts_quantile` value.
-    eps_p : float, optional
+    eps_p
         Precision in `p` for execution to break.
-    mu_range : 2-element sequence | None
+    mu_range
         Range to search for the mean number of signal events.
         If set to None, the range (0, 10) will be used.
-    min_dmu : float
+    min_dmu
         The minimum delta mu to use for calculating the derivative dmu/dp.
         The default is ``0.5``.
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    sig_kwargs : dict | None
+    sig_kwargs
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`. If `poisson` is set to True, the actual number of
         generated signal events will be drawn from a Poisson distribution
         with the mean number of signal events, mu.
-    ppbar : instance of ProgressBar | None
+    ppbar
         The possible parent ProgressBar instance.
-    tl: instance of TimeLord | None
+    tl
         The optional TimeLord instance that should be used to collect timing
         information about this function.
-    pathfilename : string | None
+    pathfilename
         Trial data file path including the filename.
         If set to None, generated trials won't be saved.
 
     Returns
     -------
-    mu : float
+    mu
         Estimated median number of signal events to reach desired sensitivity.
-    mu_err : float
+    mu_err
         The uncertainty of the estimated mean number of signal events.
     """
     if mu_range is None:
@@ -960,20 +982,20 @@ def estimate_sensitivity(
 
 
 def estimate_discovery_potential(
-    ana,
-    rss,
-    h0_trials=None,
-    h0_ts_quantile=2.8665e-7,
-    p=0.5,
-    eps_p=0.005,
-    mu_range=None,
-    min_dmu=0.5,
-    bkg_kwargs=None,
-    sig_kwargs=None,
-    ppbar=None,
-    tl=None,
-    pathfilename=None,
-):
+    ana: Analysis,
+    rss: RandomStateService,
+    h0_trials: np.ndarray | None = None,
+    h0_ts_quantile: float = 2.8665e-7,
+    p: float = 0.5,
+    eps_p: float = 0.005,
+    mu_range: Sequence | None = None,
+    min_dmu: float = 0.5,
+    bkg_kwargs: dict | None = None,
+    sig_kwargs: dict | None = None,
+    ppbar: ProgressBar | None = None,
+    tl: TimeLord | None = None,
+    pathfilename: str | None = None,
+) -> tuple[float, float | None]:
     """Estimates the mean number of signal events that whould have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
@@ -985,54 +1007,54 @@ def estimate_discovery_potential(
 
     Parameters
     ----------
-    ana : Analysis
+    ana
         The Analysis instance to use for discovery potential estimation.
-    rss : RandomStateService
+    rss
         The RandomStateService instance to use for generating random
         numbers.
-    h0_trials : (n_h0_ts_vals,)-shaped ndarray | None
+    h0_trials
         The structured ndarray holding the trials for the null-hypothesis.
         If set to `None`, the number of trials is calculated from binomial
         statistics via `h0_ts_quantile*(1-h0_ts_quantile)/eps**2`,
         where `eps` is `min(5e-3, h0_ts_quantile/10)`.
-    h0_ts_quantile : float, optional
+    h0_ts_quantile
         Null-hypothesis test statistic quantile that defines the critical value.
-    p : float, optional
+    p
         Desired probability of the signal test statistic value to exceed the
         critical value.
-    eps_p : float, optional
+    eps_p
         Precision in `p` for execution to break.
-    mu_range : 2-element sequence | None
+    mu_range
         Range to search for the mean number of signal events.
         If set to None, the range (0, 10) will be used.
-    min_dmu : float
+    min_dmu
         The minimum delta mu to use for calculating the derivative dmu/dp.
         The default is ``0.5``.
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    sig_kwargs : dict | None
+    sig_kwargs
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`. If `poisson` is set to True, the actual number of
         generated signal events will be drawn from a Poisson distribution
         with the mean number of signal events, mu.
-    ppbar : instance of ProgressBar | None
+    ppbar
         The possible parent ProgressBar instance.
-    tl: instance of TimeLord | None
+    tl
         The optional TimeLord instance that should be used to collect timing
         information about this function.
-    pathfilename : string | None
+    pathfilename
         Trial data file path including the filename.
         If set to None, generated trials won't be saved.
 
     Returns
     -------
-    mu : float
+    mu
         Estimated mean number of injected signal events to reach the desired
         discovery potential.
-    mu_err : float
+    mu_err
         Estimated error of `mu`.
     """
     if mu_range is None:
@@ -1058,19 +1080,19 @@ def estimate_discovery_potential(
 
 
 def generate_mu_of_p_spline_interpolation(
-    ana,
-    rss,
-    h0_ts_vals,
-    h0_ts_quantile,
-    eps_p,
-    mu_range,
-    mu_step,
-    kind='cubic',
-    bkg_kwargs=None,
-    sig_kwargs=None,
-    ppbar=None,
-    tl=None,
-):
+    ana: Analysis,
+    rss: RandomStateService,
+    h0_ts_vals: np.ndarray | None,
+    h0_ts_quantile: float,
+    eps_p: float,
+    mu_range: Sequence,
+    mu_step: float,
+    kind: str = 'cubic',
+    bkg_kwargs: dict | None = None,
+    sig_kwargs: dict | None = None,
+    ppbar: ProgressBar | None = None,
+    tl: TimeLord | None = None,
+) -> Callable:
     """Generates a spline interpolation for mu(p) function for a pre-defined
     range of mu, where mu is the mean number of injected signal events and p the
     probability for the ts value larger than the ts value corresponding to the
@@ -1079,47 +1101,47 @@ def generate_mu_of_p_spline_interpolation(
 
     Parameters
     ----------
-    ana : instance of Analysis
+    ana
         The Analysis instance to use for the calculation.
-    rss : instance of RandomStateService
+    rss
         The RandomStateService instance to use for generating random numbers.
-    h0_ts_vals : (n_h0_ts_vals,)-shaped 1D ndarray | None
+    h0_ts_vals
         The 1D ndarray holding the test-statistic values for the
         null-hypothesis. If set to `None`, 100/(1-h0_ts_quantile)
         null-hypothesis trials will be generated.
-    h0_ts_quantile : float
+    h0_ts_quantile
         Null-hypothesis test statistic quantile, which should be exceeded by
         the alternative hypothesis ts value.
-    eps_p : float
+    eps_p
         The one sigma precision in `p` as stopping condition for the
         calculation for a single mu value.
-    mu_range : 2-element sequence
+    mu_range
         The range (lower,upper) of mean number of injected signal events to
         create the interpolation spline for.
-    mu_step : float
+    mu_step
         The step size of the mean number of signal events.
-    kind : str
+    kind
         The kind of spline to generate. Possble values are 'linear' and 'cubic'
         (default).
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    sig_kwargs : dict | None
+    sig_kwargs
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`. If `poisson` is set to True, the actual number of
         generated signal events will be drawn from a Poisson distribution
         with the mean number of signal events, mu.
-    ppbar : instance of ProgressBar | None
+    ppbar
         The possible parent ProgressBar instance.
-    tl: instance of TimeLord | None
+    tl
         The optional TimeLord instance that should be used to collect timing
         information about this function.
 
     Returns
     -------
-    spline : callable
+    spline
         The spline function mu(p).
     """
     logger = get_logger(__name__)
@@ -1156,7 +1178,8 @@ def generate_mu_of_p_spline_interpolation(
 
     for idx, mu in enumerate(mu_vals):
         p = None
-        (ts_vals, p_sigma) = ([], 2 * eps_p)
+        ts_vals: np.ndarray = np.array([])
+        p_sigma = 2 * eps_p
         while p_sigma > eps_p:
             ts_vals = np.concatenate(
                 (
@@ -1184,34 +1207,34 @@ def generate_mu_of_p_spline_interpolation(
 
 
 def create_trial_data_file(
-    ana,
-    rss,
-    n_trials,
+    ana: Analysis,
+    rss: RandomStateService,
+    n_trials: int,
     mean_n_sig=0,
     mean_n_sig_null=0,
-    mean_n_bkg_list=None,
-    minimizer_rss=None,
-    bkg_kwargs=None,
-    sig_kwargs=None,
-    pathfilename=None,
-    ncpu=None,
-    ppbar=None,
-    tl=None,
-):
+    mean_n_bkg_list: list[float] | None = None,
+    minimizer_rss: RandomStateService | None = None,
+    bkg_kwargs: dict | None = None,
+    sig_kwargs: dict | None = None,
+    pathfilename: str | None = None,
+    ncpu: int | None = None,
+    ppbar: ProgressBar | None = None,
+    tl: TimeLord | None = None,
+) -> tuple[int, np.ndarray, np.ndarray, np.ndarray]:
     """Creates and fills a trial data file with `n_trials` generated trials for
     each mean number of injected signal events specified by `mean_n_sig` for a
     given analysis.
 
     Parameters
     ----------
-    ana : instance of Analysis
+    ana
         The Analysis instance to use for the trial generation.
-    rss : instance of RandomStateService
+    rss
         The RandomStateService instance to use for generating random
         numbers.
-    n_trials : int
+    n_trials
         The number of trials to perform for each hypothesis test.
-    mean_n_sig : ndarray of float | float | 2- or 3-element sequence of float
+    mean_n_sig
         The array of mean number of injected signal events (MNOISEs) for which
         to generate trials. If this argument is not a ndarray, an array of
         MNOISEs is generated based on this argument.
@@ -1220,7 +1243,7 @@ def create_trial_data_file(
         MNOISEs with a step size of one.
         If a 3-element sequence of floats is given, it specifies the range plus
         the step size of the MNOISEs.
-    mean_n_sig_null : ndarray of float | float | 2- or 3-element sequence of float
+    mean_n_sig_null
         The array of the fixed mean number of signal events (FMNOSEs) for the
         null-hypothesis for which to generate trials. If this argument is not a
         ndarray, an array of FMNOSEs is generated based on this argument.
@@ -1229,50 +1252,53 @@ def create_trial_data_file(
         FMNOSEs with a step size of one.
         If a 3-element sequence of floats is given, it specifies the range plus
         the step size of the FMNOSEs.
-    mean_n_bkg_list : list of float | None
+    mean_n_bkg_list
         The mean number of background events that should be generated for
         each dataset. This parameter is passed to the ``do_trials`` method of
         the ``Analysis`` class. If set to None (the default), the background
         generation method needs to obtain this number itself.
-    minimizer_rss : instance of RandomStateService | None
+    minimizer_rss
         The instance of RandomStateService to use for generating random
         numbers for the minimizer, e.g. new initial fit parameter values.
         If set to ``None``, a rss with the same seed as ``rss`` will be
         initialized.
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    sig_kwargs : dict | None
+    sig_kwargs
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`.
-    pathfilename : string | None
+    pathfilename
         Trial data file path including the filename.
         If set to None generated trials won't be saved.
-    ncpu : int | None
+    ncpu
         The number of CPUs to use.
-    ppbar : instance of ProgressBar | None
+    ppbar
         The optional instance of the parent progress bar.
-    tl: instance of TimeLord | None
+    tl
         The instance of TimeLord that should be used to measure individual
         tasks.
 
     Returns
     -------
-    seed : int
+    seed
         The seed used to generate the trials.
-    mean_n_sig : 1d ndarray
+    mean_n_sig
         The array holding the mean number of signal events used to generate the
         trials.
-    mean_n_sig_null : 1d ndarray
+    mean_n_sig_null
         The array holding the fixed mean number of signal events for the
         null-hypothesis used to generate the trials.
-    trial_data : structured numpy ndarray
+    trial_data
         The generated trial data.
     """
     n_trials = int_cast(n_trials, 'The n_trials argument must be castable to type int!')
 
+    mean_n_sig_min: float = 0
+    mean_n_sig_max: float = 0
+    mean_n_sig_step: float = 1
     if not isinstance(mean_n_sig, np.ndarray):
         if not issequence(mean_n_sig):
             mean_n_sig = float_cast(mean_n_sig, 'The mean_n_sig argument must be castable to type float!')
@@ -1280,17 +1306,20 @@ def create_trial_data_file(
             mean_n_sig_max = mean_n_sig
             mean_n_sig_step = 1
         else:
-            mean_n_sig = float_cast(
+            _mean_n_sig_list: list[float] = float_cast(  # type: ignore[assignment]
                 mean_n_sig, 'The sequence elements of the mean_n_sig argument must be castable to float values!'
             )
-            if len(mean_n_sig) == 2:
-                (mean_n_sig_min, mean_n_sig_max) = mean_n_sig
+            if len(_mean_n_sig_list) == 2:
+                (mean_n_sig_min, mean_n_sig_max) = _mean_n_sig_list
                 mean_n_sig_step = 1
-            elif len(mean_n_sig) == 3:
-                (mean_n_sig_min, mean_n_sig_max, mean_n_sig_step) = mean_n_sig
+            elif len(_mean_n_sig_list) == 3:
+                (mean_n_sig_min, mean_n_sig_max, mean_n_sig_step) = _mean_n_sig_list
 
         mean_n_sig = np.arange(mean_n_sig_min, mean_n_sig_max + 1, mean_n_sig_step, dtype=np.float64)
 
+    mean_n_sig_null_min: float = 0
+    mean_n_sig_null_max: float = 0
+    mean_n_sig_null_step: float = 1
     if not isinstance(mean_n_sig_null, np.ndarray):
         if not issequence(mean_n_sig_null):
             mean_n_sig_null = float_cast(
@@ -1300,15 +1329,15 @@ def create_trial_data_file(
             mean_n_sig_null_max = mean_n_sig_null
             mean_n_sig_null_step = 1
         else:
-            mean_n_sig_null = float_cast(
+            _mean_n_sig_null_list: list[float] = float_cast(  # type: ignore[assignment]
                 mean_n_sig_null,
                 'The sequence elements of the mean_n_sig_null argument must be castable to float values!',
             )
-            if len(mean_n_sig_null) == 2:
-                (mean_n_sig_null_min, mean_n_sig_null_max) = mean_n_sig_null
+            if len(_mean_n_sig_null_list) == 2:
+                (mean_n_sig_null_min, mean_n_sig_null_max) = _mean_n_sig_null_list
                 mean_n_sig_null_step = 1
-            elif len(mean_n_sig_null) == 3:
-                (mean_n_sig_null_min, mean_n_sig_null_max, mean_n_sig_null_step) = mean_n_sig_null
+            elif len(_mean_n_sig_null_list) == 3:
+                (mean_n_sig_null_min, mean_n_sig_null_max, mean_n_sig_null_step) = _mean_n_sig_null_list
 
         mean_n_sig_null = np.arange(
             mean_n_sig_null_min, mean_n_sig_null_max + 1, mean_n_sig_null_step, dtype=np.float64
@@ -1350,20 +1379,21 @@ def create_trial_data_file(
         # Save the trial data to file.
         np.save(pathfilename, trial_data)
 
+    assert rss.seed is not None
     return (rss.seed, mean_n_sig, mean_n_sig_null, trial_data)
 
 
 def extend_trial_data_file(
-    ana,
-    rss,
-    n_trials,
-    trial_data,
+    ana: Analysis,
+    rss: RandomStateService,
+    n_trials: int,
+    trial_data: np.ndarray,
     mean_n_sig=0,
     mean_n_sig_null=0,
     mean_n_bkg_list=None,
-    bkg_kwargs=None,
-    sig_kwargs=None,
-    pathfilename=None,
+    bkg_kwargs: dict | None = None,
+    sig_kwargs: dict | None = None,
+    pathfilename: str | None = None,
     **kwargs,
 ):
     """Appends to the trial data file `n_trials` generated trials for each
@@ -1372,16 +1402,16 @@ def extend_trial_data_file(
 
     Parameters
     ----------
-    ana : instance of Analysis
+    ana
         The Analysis instance to use for sensitivity estimation.
-    rss : instance of RandomStateService
+    rss
         The RandomStateService instance to use for generating random
         numbers.
-    n_trials : int
+    n_trials
         The number of trials the trial data file needs to be extended by.
-    trial_data : structured numpy ndarray
+    trial_data
         The structured numpy ndarray holding the trials.
-    mean_n_sig : ndarray of float | float | 2- or 3-element sequence of float
+    mean_n_sig
         The array of mean number of injected signal events (MNOISEs) for which
         to generate trials. If this argument is not a ndarray, an array of
         MNOISEs is generated based on this argument.
@@ -1390,7 +1420,7 @@ def extend_trial_data_file(
         MNOISEs with a step size of one.
         If a 3-element sequence of floats is given, it specifies the range plus
         the step size of the MNOISEs.
-    mean_n_sig_null : ndarray of float | float | 2- or 3-element sequence of float
+    mean_n_sig_null
         The array of the fixed mean number of signal events (FMNOSEs) for the
         null-hypothesis for which to generate trials. If this argument is not a
         ndarray, an array of FMNOSEs is generated based on this argument.
@@ -1399,15 +1429,15 @@ def extend_trial_data_file(
         FMNOSEs with a step size of one.
         If a 3-element sequence of floats is given, it specifies the range plus
         the step size of the FMNOSEs.
-    bkg_kwargs : dict | None
+    bkg_kwargs
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
         `poisson`.
-    sig_kwargs : dict | None
+    sig_kwargs
         Additional keyword arguments for the `generate_signal_events` method
         of the `SignalGenerator` class. An usual keyword argument is
         `poisson`.
-    pathfilename : string | None
+    pathfilename
         Trial data file path including the filename.
 
     Additional keyword arguments
@@ -1450,7 +1480,9 @@ def extend_trial_data_file(
     return trial_data
 
 
-def calculate_upper_limit_distribution(ana, rss, pathfilename, n_bkg=5000, n_bins=100):
+def calculate_upper_limit_distribution(
+    ana: Analysis, rss: RandomStateService, pathfilename: str, n_bkg: int = 5000, n_bins: int = 100
+) -> dict:
     """Function to calculate upper limit distribution. It loads the trial data
     file containing test statistic distribution and calculates 10 percentile
     value for each mean number of injected signal event. Then it finds upper
@@ -1459,36 +1491,36 @@ def calculate_upper_limit_distribution(ana, rss, pathfilename, n_bkg=5000, n_bin
 
     Parameters
     ----------
-    ana : instance of Analysis
+    ana
         The Analysis instance to use for sensitivity estimation.
-    rss : instance of RandomStateService
+    rss
         The RandomStateService instance to use for generating random
         numbers.
-    pathfilename : string
+    pathfilename
         Trial data file path including the filename.
-    n_bkg : int, optional
+    n_bkg
         Number of times to perform background analysis trial.
-    n_bins : int, optional
+    n_bins
         Number of returned test statistic histograms bins.
 
     Returns
     -------
-    result : dict
+    result
         Result dictionary which contains the following fields:
 
-        ul : list of float
+        ul
             List of upper limit values.
-        mean : float
+        mean
             Mean of upper limit values.
-        median : float
+        median
             Median of upper limit values.
-        var : float
+        var
             Variance of upper limit values.
-        ts_hist : numpy ndarray
+        ts_hist
             2D array of test statistic histograms calculated by axis 1.
-        extent : list of float
+        extent
             Test statistic histogram boundaries.
-        q_values : list of float
+        q_values
             `q` percentile values of test statistic for different injected
             events means.
     """
@@ -1513,7 +1545,7 @@ def calculate_upper_limit_distribution(ana, rss, pathfilename, n_bkg=5000, n_bin
     # `ts_inv_f` interpolation boundary.
     ts_bkg = ts_bkg[ts_bkg >= min(trial_data_q_values)]
 
-    ul_list = map(ts_inv_f, ts_bkg)
+    ul_list = list(map(ts_inv_f, ts_bkg))
     ul_mean = np.mean(ul_list)
     ul_median = np.median(ul_list)
     ul_var = np.var(ul_list)

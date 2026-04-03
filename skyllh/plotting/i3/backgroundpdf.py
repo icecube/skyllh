@@ -8,6 +8,9 @@ from matplotlib.colors import (
     LogNorm,
 )
 
+from skyllh.core.parameters import (
+    ParameterModelMapper,
+)
 from skyllh.core.py import (
     classname,
 )
@@ -28,16 +31,16 @@ from skyllh.i3.backgroundpdf import (
 class BackgroundI3SpatialPDFPlotter:
     """Plotter class to plot an BackgroundI3SpatialPDF object."""
 
-    def __init__(self, tdm, pdf):
+    def __init__(self, tdm: TrialDataManager, pdf: BackgroundI3SpatialPDF):
         """Creates a new plotter object for plotting an BackgroundI3SpatialPDF
         object.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that provides the data for the PDF
             evaluation.
-        pdf : instance of BackgroundI3SpatialPDF
+        pdf
             The PDF object to plot.
         """
         self.tdm = tdm
@@ -65,21 +68,21 @@ class BackgroundI3SpatialPDFPlotter:
             raise TypeError('The tdm property must be an instance of TrialDataManager!')
         self._tdm = obj
 
-    def plot(self, src_hypo_group_manager, axes):
+    def plot(self, src_hypo_group_manager: SourceHypoGroupManager, pmm: ParameterModelMapper, axes: Axes):
         """Plots the spatial PDF. It uses the sin(dec) binning of the PDF to
         propperly represent the resolution of the PDF in the drawing.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        src_hypo_group_manager
             The instance of SourceHypoGroupManager that defines the source
             hypotheses.
-        axes : mpl.axes.Axes
+        axes
             The matplotlib Axes object on which the PDF should get drawn to.
 
         Returns
         -------
-        img : instance of mpl.AxesImage
+        img
             The AxesImage instance showing the PDF image.
         """
         if not isinstance(src_hypo_group_manager, SourceHypoGroupManager):
@@ -98,9 +101,9 @@ class BackgroundI3SpatialPDFPlotter:
         for i, sin_dec in enumerate(sin_dec_points):
             events['sin_dec'][i] = sin_dec
 
-        self._tdm.initialize_for_new_trial(src_hypo_group_manager, events)
+        self._tdm.initialize_trial(shg_mgr=src_hypo_group_manager, pmm=pmm, events=events)
 
-        event_probs = self._pdf.get_prob(self._tdm)
+        (event_probs, _) = self._pdf.get_pd(self._tdm)
 
         for i in range(len(events)):
             pdfprobs[0, i] = event_probs[i]

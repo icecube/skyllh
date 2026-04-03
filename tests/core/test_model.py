@@ -49,9 +49,9 @@ class ModelCollection_TestCase(unittest.TestCase):
 
         # Test that non-Model instances raises a TypeError.
         with self.assertRaises(TypeError):
-            modelcoll = ModelCollection.cast('A str instance.')
+            modelcoll = ModelCollection.cast('A str instance.')  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            modelcoll = ModelCollection.cast(('str1', 'str2'))
+            modelcoll = ModelCollection.cast(('str1', 'str2'))  # type: ignore[arg-type]
 
     def test_model_type(self):
         self.assertTrue(issubclass(self.modelcoll.model_type, Model))

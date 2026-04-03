@@ -13,6 +13,7 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
 from skyllh.core.binning import (
     get_bincenters_from_binedges,
 )
+from skyllh.core.dataset import Dataset
 from skyllh.core.flux_model import (
     FactorizedFluxModel,
 )
@@ -33,13 +34,13 @@ from skyllh.core.pdf import (
     PDFAxis,
     PDFSet,
 )
+from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
     classname,
     module_classname,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.timing import TaskTimer, TimeLord
+from skyllh.core.trialdata import TrialDataManager
 from skyllh.i3.dataset import (
     I3Dataset,
 )
@@ -53,7 +54,7 @@ class PDSignalEnergyPDF(
 
     def __init__(
         self,
-        f_e_spl,
+        f_e_spl: FctSpline1D,
         **kwargs,
     ):
         """Creates a new signal energy PDF instance for a particular spectral
@@ -61,7 +62,7 @@ class PDSignalEnergyPDF(
 
         Parameters
         ----------
-        f_e_spl : instance of FctSpline1D
+        f_e_spl
             The instance of FctSpline1D representing the spline of the energy
             PDF.
         """
@@ -93,26 +94,26 @@ class PDSignalEnergyPDF(
         if not np.isclose(integral, 1):
             raise ValueError(f'The integral over log10_reco_e of the energy term must be unity! But it is {integral}!')
 
-    def assert_is_valid_for_trial_data(self, tdm, tl=None):
+    def assert_is_valid_for_trial_data(self, tdm, tl=None, **kwargs):
         pass
 
-    def get_pd_by_log10_reco_e(self, log10_reco_e, tl=None):
+    def get_pd_by_log10_reco_e(self, log10_reco_e: np.ndarray, tl: TimeLord | None = None) -> np.ndarray:
         """Calculates the probability density for the given log10(E_reco/GeV)
         values using the spline representation of the PDF.
 
         Parameters
         ----------
-        log10_reco_e : instance of ndarray
+        log10_reco_e
             The (n_log10_reco_e,)-shaped numpy ndarray holding the
             log10(E_reco/GeV) values for which the energy PDF should get
             evaluated.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (n_log10_reco_e,)-shaped numpy ndarray with the probability
             density for each energy value.
         """
@@ -126,36 +127,42 @@ class PDSignalEnergyPDF(
 
         return pd
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self,
+        tdm: TrialDataManager,
+        params_recarray: np.ndarray | None = None,
+        tl: TimeLord | None = None,
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the probability density for all given trial data events
         and sources.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data events for
             which the probability density should be looked up.
             The following data fields must be present:
 
-            log_energy : float
+            log_energy
                 The base-10 logarithm of the reconstructed energy.
 
-        params_recarray : None
+        params_recarray
             Unused interface argument.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             for each trial data event and source.
-        grads : dict
+        grads
             The dictionary holding the gradient values for each global fit
             parameter. By definition this PDF does not depend on any fit
             parameters, hence, this is an empty dictionary.
         """
+        assert tdm.src_evt_idxs is not None
         evt_idxs = tdm.src_evt_idxs[1]
 
         log10_reco_e = np.take(tdm['log_energy'], evt_idxs)
@@ -167,7 +174,7 @@ class PDSignalEnergyPDF(
         return (pd, grads)
 
 
-class PDSignalEnergyPDFSet(
+class PDSignalEnergyPDFSet(  # type: ignore[misc]
     PDFSet,
     IsSignalPDF,
     PDF,
@@ -180,32 +187,32 @@ class PDSignalEnergyPDFSet(
 
     def __init__(
         self,
-        ds,
-        src_dec,
-        fluxmodel,
-        param_grid_set,
-        ncpu=None,
-        ppbar=None,
+        ds: Dataset,
+        src_dec: float,
+        fluxmodel: FactorizedFluxModel,
+        param_grid_set: ParameterGrid | ParameterGridSet,
+        ncpu: int | None = None,
+        ppbar: ProgressBar | None = None,
         **kwargs,
     ):
         """Creates a new PDSignalEnergyPDFSet instance for the public data.
 
         Parameters
         ----------
-        ds : instance of Dataset
+        ds
             The instance of Dataset that defines the dataset of the public data.
-        src_dec : float
+        src_dec
             The declination of the source in radians.
-        fluxmodel : instance of FactorizedFluxModel
+        fluxmodel
             The instance of FactorizedFluxModel that defines the source's flux
             model.
-        param_grid_set : instance of ParameterGrid | instance of ParameterGridSet
+        param_grid_set
             The parameter grid set defining the grids of the parameters this
             energy PDF set depends on.
-        ncpu : int | None
+        ncpu
             The number of CPUs to utilize. Global setting will take place if
             not specified, i.e. set to None.
-        ppbar : instance of ProgressBar | None
+        ppbar
             The instance of ProgressBar for the optional parent progress bar.
         """
         self._logger = get_logger(module_classname(self))

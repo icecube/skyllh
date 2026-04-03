@@ -25,7 +25,7 @@ class ConstPyQualifier_TestCase(unittest.TestCase):
     def test_call(self):
         a = const(A())
         self.assertTrue(hasattr(a, '__pyqualifiers__'))
-        self.assertTrue(ConstPyQualifier in a.__pyqualifiers__)
+        self.assertTrue(ConstPyQualifier in a.__pyqualifiers__)  # type: ignore[attr-defined]
 
     def test_check(self):
         a = const(A())

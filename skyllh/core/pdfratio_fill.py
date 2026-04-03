@@ -26,14 +26,14 @@ class PDFRatioFillMethod(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __call__(
         self,
-        ratios,
-        sig_pd_h,
-        bkg_pd_h,
-        sig_mask_mc_covered,
-        sig_mask_mc_covered_zero_physics,
-        bkg_mask_mc_covered,
-        bkg_mask_mc_covered_zero_physics,
-    ):
+        ratios: np.ndarray,
+        sig_pd_h: np.ndarray,
+        bkg_pd_h: np.ndarray,
+        sig_mask_mc_covered: np.ndarray,
+        sig_mask_mc_covered_zero_physics: np.ndarray,
+        bkg_mask_mc_covered: np.ndarray,
+        bkg_mask_mc_covered_zero_physics: np.ndarray,
+    ) -> np.ndarray:
         """The __call__ method is supposed to fill the ratio bins (array)
         with the signal / background ratio values. For bins (array elements),
         where the division is undefined, e.g. due to zero background, the fill
@@ -45,27 +45,27 @@ class PDFRatioFillMethod(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        ratios : ndarray of float
+        ratios
             The multi-dimensional array for the final ratio bins. The shape is
             the same as the sig_h and bkg_h ndarrays.
-        sig_pd_h : ndarray of float
+        sig_pd_h
             The multi-dimensional array (histogram) holding the signal
             probability densities.
-        bkg_pd_h : ndarray of float
+        bkg_pd_h
             The multi-dimensional array (histogram) holding the background
             probability densities.
-        sig_mask_mc_covered : ndarray of bool
+        sig_mask_mc_covered
             The mask array indicating which array elements of sig_pd_h have
             monte-carlo coverage.
-        sig_mask_mc_covered_zero_physics : ndarray of bool
+        sig_mask_mc_covered_zero_physics
             The mask array indicating which array elements of sig_pd_h have
             monte-carlo coverage but don't have physics contribution.
-        bkg_mask_mc_covered : ndarray of bool
+        bkg_mask_mc_covered
             The mask array indicating which array elements of bkg_pd_h have
             monte-carlo coverage.
             In case of experimental data as background, this mask indicate where
             (experimental data) background is available.
-        bkg_mask_mc_covered_zero_physics : ndarray of bool
+        bkg_mask_mc_covered_zero_physics
             The mask array ndicating which array elements of bkg_pd_h have
             monte-carlo coverage but don't have physics contribution.
             In case of experimental data as background, this mask contains only
@@ -73,7 +73,7 @@ class PDFRatioFillMethod(metaclass=abc.ABCMeta):
 
         Returns
         -------
-        ratios : ndarray
+        ratios
             The array holding the final ratio values.
         """
         return ratios
@@ -149,14 +149,14 @@ class MostSignalLikePDFRatioFillMethod(PDFRatioFillMethod):
     ratio for bins, where there is signal but no background coverage.
     """
 
-    def __init__(self, signallike_percentile=99.0, **kwargs):
+    def __init__(self, signallike_percentile: float = 99.0, **kwargs):
         """Creates the PDF ratio fill method object for filling PDF ratio bins,
         where there is signal MC coverage but no background (MC) coverage
         with the most signal-like ratio value.
 
         Parameters
         ----------
-        signallike_percentile : float in range [0., 100.], default 99.
+        signallike_percentile
             The percentile of signal-like ratios, which should be taken as the
             ratio value for ratios with no background probability.
         """

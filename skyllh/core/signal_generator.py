@@ -26,12 +26,8 @@ from skyllh.core.py import (
     int_cast,
     issequenceof,
 )
-from skyllh.core.random import (
-    RandomChoice,
-)
-from skyllh.core.services import (
-    DatasetSignalWeightFactorsService,
-)
+from skyllh.core.random import RandomChoice, RandomStateService
+from skyllh.core.services import DatasetSignalWeightFactorsService, SrcDetSigYieldWeightsService
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
@@ -52,14 +48,14 @@ class SignalGenerator(
 
     def __init__(
         self,
-        shg_mgr,
+        shg_mgr: SourceHypoGroupManager,
         **kwargs,
     ):
         """Constructs a new signal generator instance.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The SourceHypoGroupManager instance defining the source hypothesis
             groups.
         """
@@ -80,20 +76,20 @@ class SignalGenerator(
             raise TypeError('The shg_mgr property must be an instance of SourceHypoGroupManager!')
         self._shg_mgr = manager
 
-    def create_src_params_recarray(self, src_detsigyield_weights_service):
+    def create_src_params_recarray(self, src_detsigyield_weights_service: SrcDetSigYieldWeightsService) -> np.ndarray:
         """Creates the src_params_recarray structured ndarray of length
         N_sources holding the local source parameter names and values needed for
         the calculation of the detector signal yields.
 
         Parameters
         ----------
-        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+        src_detsigyield_weights_service
             The instance of SrcDetSigYieldWeightsService providing the product
             of the source weights with the detector signal yield.
 
         Returns
         -------
-        src_params_recarray : instance of numpy structured ndarray
+        src_params_recarray
             The structured numpy ndarray of length N_sources, holding the local
             parameter names and values of each source needed to calculate the
             detector signal yield.
@@ -135,36 +131,42 @@ class SignalGenerator(
         self.shg_mgr = shg_mgr
 
     @abc.abstractmethod
-    def generate_signal_events(self, rss, mean, poisson=True, src_detsigyield_weights_service=None):
+    def generate_signal_events(
+        self,
+        rss: RandomStateService,
+        mean: int | float,
+        poisson: bool = True,
+        src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
+    ) -> tuple[int, dict[int, DataFieldRecordArray]]:
         """This abstract method must be implemented by the derived class to
         generate a given number of signal events.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService providing the random number
             generator state.
-        mean : int | float
+        mean
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
             events.
-        poisson : bool
+        poisson
             If set to True, the actual number of generated signal events will
             be drawn from a Poisson distribution with the given mean value of
             signal events.
             If set to False, the argument ``mean`` specifies the actual number
             of generated signal events.
-        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService | None
+        src_detsigyield_weights_service
             The instance of SrcDetSigYieldWeightsService providing the weighting
             of the sources within the detector. This can be ``None`` if this
             signal generator does not need this information.
 
         Returns
         -------
-        n_signal : int
+        n_signal
             The number of generated signal events.
-        signal_events_dict : dict of DataFieldRecordArray
+        signal_events_dict
             The dictionary holding the DataFieldRecordArray instances with the
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
@@ -182,27 +184,33 @@ class MultiDatasetSignalGenerator(
     """
 
     def __init__(
-        self, shg_mgr, dataset_list, data_list, sig_generator_list=None, ds_sig_weight_factors_service=None, **kwargs
+        self,
+        shg_mgr: SourceHypoGroupManager,
+        dataset_list: list[Dataset],
+        data_list: list[DatasetData],
+        sig_generator_list: 'list[SignalGenerator] | None' = None,
+        ds_sig_weight_factors_service: DatasetSignalWeightFactorsService | None = None,
+        **kwargs,
     ):
         """Constructs a new signal generator handling multiple datasets.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager that defines the list of
             source hypothesis groups, i.e. the list of sources.
-        dataset_list : list of instance of Dataset
+        dataset_list
             The list of instance of Dataset for which signal events should get
             generated.
-        data_list : list of instance of DatasetData
+        data_list
             The list of instance of DatasetData holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
-        sig_generator_list : list of instance of SignalGenerator | None
+        sig_generator_list
             The optional list of instance of SignalGenerator holding
             signal generator instances for each individual dataset. This can be
             ``None`` if this signal generator does not require individual signal
             generators for each dataset.
-        ds_sig_weight_factors_service : instance of DatasetSignalWeightFactorsService
+        ds_sig_weight_factors_service
             The instance of DatasetSignalWeightFactorsService providing the
             dataset signal weight factor service for calculating the dataset
             signal weights.
@@ -352,7 +360,11 @@ class MultiDatasetSignalGenerator(
                             f'user configuration between dataset {ref_energy_range_ds_idx} ({ref_energy_range}) '
                             f'and dataset {ds_idx} ({configured_energy_range}).'
                         )
-                    if ref_energy_range is not None and tuple(ref_energy_range) != tuple(configured_energy_range):
+                    if (
+                        ref_energy_range is not None
+                        and configured_energy_range is not None
+                        and tuple(ref_energy_range) != tuple(configured_energy_range)
+                    ):
                         raise ValueError(
                             'A single shared energy_range must be used across all datasets. Found inconsistent '
                             f'user configuration between dataset {ref_energy_range_ds_idx} ({ref_energy_range}) '
@@ -382,21 +394,27 @@ class MultiDatasetSignalGenerator(
 
         return scaling_factor
 
-    def generate_signal_events(self, rss, mean, poisson=True):
+    def generate_signal_events(
+        self,
+        rss: RandomStateService,
+        mean: float | int,
+        poisson: bool = True,
+        src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
+    ) -> tuple[int, dict[int, DataFieldRecordArray]]:
         """Generates a given number of signal events distributed across the
         individual datasets.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService providing the random number
             generator state.
-        mean : float | int
+        mean
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
             events.
-        poisson : bool
+        poisson
             If set to True, the actual number of generated signal events will
             be drawn from a Poisson distribution with the given mean value of
             signal events.
@@ -405,9 +423,9 @@ class MultiDatasetSignalGenerator(
 
         Returns
         -------
-        n_signal : int
+        n_signal
             The number of actual generated signal events.
-        signal_events_dict : dict of DataFieldRecordArray
+        signal_events_dict
             The dictionary holding the DataFieldRecordArray instances with the
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
@@ -430,6 +448,7 @@ class MultiDatasetSignalGenerator(
 
         self._ds_sig_weight_factors_service.calculate()
         (ds_weights, _) = self._ds_sig_weight_factors_service.get_weights()
+        assert ds_weights is not None
 
         # Calculate the number of events that need to be generated for each
         # individual dataset. Due to rounding errors, it could happen that the
@@ -489,26 +508,26 @@ class MCMultiDatasetSignalGenerator(
 
     def __init__(
         self,
-        shg_mgr,
-        dataset_list,
-        data_list,
-        valid_event_field_ranges_dict_list=None,
+        shg_mgr: SourceHypoGroupManager,
+        dataset_list: list[Dataset],
+        data_list: list[DatasetData],
+        valid_event_field_ranges_dict_list: list[dict] | None = None,
         **kwargs,
     ):
         """Constructs a new signal generator instance.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The SourceHypoGroupManager instance defining the source hypothesis
             groups.
-        dataset_list : list of Dataset instances
+        dataset_list
             The list of Dataset instances for which signal events should get
             generated for.
-        data_list : list of DatasetData instances
+        data_list
             The list of DatasetData instances holding the actual data of each
             dataset. The order must match the order of ``dataset_list``.
-        valid_event_field_ranges_dict_list : list of dict | None
+        valid_event_field_ranges_dict_list
             If not ``None``, it specifies for each dataset event fields (key)
             and their valid value range as a 2-element tuple (value). If a
             generated signal event does not fall into a given field range, the
@@ -626,18 +645,18 @@ class MCMultiDatasetSignalGenerator(
 
     def _get_invalid_events_mask(
         self,
-        events,
-        valid_event_field_ranges_dict,
-    ):
+        events: DataFieldRecordArray,
+        valid_event_field_ranges_dict: dict,
+    ) -> np.ndarray:
         """Determines a boolean mask to select invalid events, which do not
         fulfill the given valid event field ranges.
 
         Parameters
         ----------
-        events : instance of DataFieldRecordArray
+        events
             The instance of DataFieldRecordArray of length N_events holding the
             events to check.
-        valid_event_field_ranges_dict : dict
+        valid_event_field_ranges_dict
             The dictionary holding the data field names (key) and their valid
             value ranges (value).
 
@@ -648,7 +667,7 @@ class MCMultiDatasetSignalGenerator(
 
         Returns
         -------
-        mask : instance of numpy.ndarray
+        mask
             The (N_events,)-shaped numpy.ndarray of bool, holding the mask of
             the invalid events.
         """
@@ -668,14 +687,14 @@ class MCMultiDatasetSignalGenerator(
 
     def _draw_valid_sig_events_for_dataset_and_shg(
         self,
-        rss,
-        mc,
-        n_signal,
-        ds_idx,
-        valid_event_field_ranges_dict,
+        rss: RandomStateService,
+        mc: DataFieldRecordArray,
+        n_signal: int,
+        ds_idx: int,
+        valid_event_field_ranges_dict: dict,
         shg,
-        shg_idx,
-    ):
+        shg_idx: int,
+    ) -> DataFieldRecordArray | None:
         """Draws n_signal valid signal events for the given dataset and source
         hypothesis group.
 
@@ -684,27 +703,27 @@ class MCMultiDatasetSignalGenerator(
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService which should be used to draw
             random numbers from.
-        mc : instance of DataFieldRecordArray
+        mc
             The instance of DataFieldRecordArray holding the monte-carlo events.
-        n_signal : int
+        n_signal
             The number of signal events to draw.
-        ds_idx : int
+        ds_idx
             The index of the dataset.
-        valid_event_field_ranges_dict : dict
+        valid_event_field_ranges_dict
             The dictionary holding the data field names (key) and their valid
             value ranges (value) for the requested dataset.
-        shg : instance of SourceHypothesisGroup
+        shg
             The instance of SourceHypothesisGroup for which signal events should
             get drawn.
-        shg_idx : int
+        shg_idx
             The index of the source hypothesis group.
 
         Returns
         -------
-        sig_events : instance of DataFieldRecordArray
+        sig_events
             The instance of DataFieldRecordArray holding the drawn valid signal
             events.
         """
@@ -746,7 +765,7 @@ class MCMultiDatasetSignalGenerator(
 
         self._construct_signal_candidates()
 
-    def fluxmodel_scaling_factor(self, per_source=False):
+    def fluxmodel_scaling_factor(self, per_source: bool = False) -> float | np.ndarray:
         """Scaling factor to convert a mean number of signal events (mu) into a flux normalization as per the
         definition of the flux models of the source hypothesis groups.
 
@@ -756,13 +775,13 @@ class MCMultiDatasetSignalGenerator(
 
         Parameters
         ----------
-        per_source : bool
+        per_source
             Flag if the scaling factors should be returned for each source individually (True), or as the sum of all
             these factors (False). The default is False.
 
         Returns
         -------
-        scaling_factor : float | (n_sources,)-shaped numpy ndarray
+        scaling_factor
             Dimensionless conversion factor (summed for all sources if `per_source = False`) to convert one detected
             signal event into a flux normalization for the given signal hypothesis. If `per_source` is set to True,
             a numpy ndarray is returned that contains the flux for each individual source.
@@ -802,21 +821,28 @@ class MCMultiDatasetSignalGenerator(
 
         return scaling_factor
 
-    def generate_signal_events(self, rss, mean, poisson=True, **kwargs):
+    def generate_signal_events(
+        self,
+        rss: RandomStateService,
+        mean: float | int,
+        poisson: bool = True,
+        src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
+        **kwargs,
+    ) -> tuple[int, dict[int, DataFieldRecordArray]]:
         """Generates a given number of signal events from the signal candidate
         monte-carlo events.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService providing the random number
             generator state.
-        mean : float | int
+        mean
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
             events.
-        poisson : bool
+        poisson
             If set to True, the actual number of generated signal events will
             be drawn from a Poisson distribution with the given mean value of
             signal events.
@@ -825,9 +851,9 @@ class MCMultiDatasetSignalGenerator(
 
         Returns
         -------
-        n_signal : int
+        n_signal
             The number of actual generated signal events.
-        signal_events_dict : dict of DataFieldRecordArray
+        signal_events_dict
             The dictionary holding the DataFieldRecordArray instances with the
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
@@ -894,7 +920,7 @@ class MCMultiDatasetSignalGenerator(
                     redrawn_shg_sig_events = self._draw_valid_sig_events_for_dataset_and_shg(
                         rss=rss,
                         mc=mc,
-                        n_signal=n_redraw_events,
+                        n_signal=int(n_redraw_events),
                         ds_idx=ds_idx,
                         valid_event_field_ranges_dict=valid_event_field_ranges_dict,
                         shg=shg,

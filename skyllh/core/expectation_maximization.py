@@ -3,37 +3,37 @@ from scipy.stats import norm
 
 
 def em_expectation_step(
-    ns,
-    mu,
-    sigma,
-    t,
-    sob,
-):
+    ns: np.ndarray | list,
+    mu: np.ndarray | list,
+    sigma: np.ndarray | list,
+    t: np.ndarray,
+    sob: np.ndarray,
+) -> tuple[np.ndarray, float]:
     """Expectation step of expectation maximization algorithm.
 
     Parameters
     ----------
-    ns : instance of ndarray
+    ns
         The (n_flares,)-shaped numpy ndarray holding the number of signal
         neutrinos, as weight for each gaussian flare.
-    mu : instance of ndarray
+    mu
         The (n_flares,)-shaped numpy ndarray holding the mean for each gaussian
         flare.
-    sigma: instance of ndarray
+    sigma
         The (n_flares,)-shaped numpy ndarray holding the sigma for each gaussian
         flare.
-    t : instance of ndarray
+    t
         The (n_events,)-shaped numpy ndarray holding the time of each event.
-    sob : instance of ndarray
+    sob
         The (n_events,)-shaped numpy ndarray holding the signal-over-background
         values of each event.
 
     Returns
     -------
-    expectations : instane of ndarray
+    expectations
         The (n_flares, n_events)-shaped numpy ndarray holding the expectation
         of each flare and event.
-    llh : float
+    llh
         The log-likelihood value, which is the sum of log of the signal and
         background expectations.
     """
@@ -43,7 +43,7 @@ def em_expectation_step(
     N = len(t)
     e_sig = np.empty((n_flares, N), dtype=np.float64)
     for i in range(n_flares):
-        e_sig[i] = norm(loc=mu[i], scale=sigma[i]).pdf(t)
+        e_sig[i] = norm(loc=mu[i], scale=sigma[i]).pdf(t)  # type: ignore[attr-defined]
         e_sig[i] *= sob
         e_sig[i] *= ns[i]
     e_bkg = (N - np.sum(ns)) / (np.max(t) - np.min(t)) / b_term
@@ -56,81 +56,81 @@ def em_expectation_step(
 
 
 def em_maximization_step(
-    e,
-    t,
-):
+    e: np.ndarray,
+    t: np.ndarray,
+) -> tuple[list[float], list[float], list[float]]:
     """The maximization step of the expectation maximization algorithm.
 
     Parameters
     ----------
-    e : instance of ndarray
+    e
         The (n_flares, n_events)-shaped numpy ndarray holding the expectation
         for each event and flare.
-    t : 1d ndarray of float
+    t
         The times of each event.
 
     Returns
     -------
-    mu : list of float
+    mu
         Best fit mean time of the gaussian flare.
-    sigma : list of float
+    sigma
         Best fit sigma of the gaussian flare.
-    ns : list of float
+    ns
         Best fit number of signal neutrinos, as weight for the gaussian flare.
     """
-    mu = []
-    sigma = []
-    ns = []
+    mu: list[float] = []
+    sigma: list[float] = []
+    ns: list[float] = []
     for i in range(e.shape[0]):
-        mu.append(np.average(t, weights=e[i]))
-        sigma.append(np.sqrt(np.average(np.square(t - mu[i]), weights=e[i])))
-        ns.append(np.sum(e[i]))
+        mu.append(float(np.average(t, weights=e[i])))
+        sigma.append(float(np.sqrt(np.average(np.square(t - mu[i]), weights=e[i]))))
+        ns.append(float(np.sum(e[i])))
     sigma = [max(1, s) for s in sigma]
 
     return (mu, sigma, ns)
 
 
 def em_fit(
-    x,
-    weights,
-    n=1,
-    tol=1.0e-200,
-    iter_max=500,
-    weight_thresh=0,
-    initial_width=5000,
-    remove_x=None,
-):
+    x: np.ndarray,
+    weights: np.ndarray,
+    n: int = 1,
+    tol: float = 1.0e-200,
+    iter_max: int = 500,
+    weight_thresh: float = 0,
+    initial_width: float = 5000,
+    remove_x: float | None = None,
+) -> tuple[list[float], list[float], list[float]]:
     """Perform the expectation maximization fit.
 
     Parameters
     ----------
-    x : array of float
+    x
         The quantity to run EM on (e.g. the time if EM should find time flares).
-    weights : array of float
+    weights
         The weights for each x value (e.g. the signal over background ratio).
-    n : int
+    n
         How many Gaussians flares we are looking for.
-    tol : float
+    tol
         The stopping criteria for the expectation maximization. This is the
         difference in the normalized likelihood over the last 20 iterations.
-    iter_max : int
+    iter_max
         The maximum number of iterations, even if stopping criteria tolerance
         (``tol``) is not yet reached.
-    weight_thresh : float
+    weight_thresh
         Set a minimum threshold for event weights. Events with smaller weights
         will be removed.
-    initial_width : float
+    initial_width
         The starting width for the gaussian flare in days.
-    remove_x : float | None
+    remove_x
         Specific x of event that should be removed.
 
     Returns
     -------
-    mu : list of float
+    mu
         The list of size ``n`` with the determined mean values.
-    sigma : list of float
+    sigma
         The list of size ``n`` with the standard deviation values.
-    ns : list of float
+    ns
         The list of size ``n`` with the normalization factor values.
     """
     if weight_thresh > 0:
@@ -171,4 +171,4 @@ def em_fit(
 
         (mu, sigma, ns) = em_maximization_step(e=e, t=x)
 
-    return (mu, sigma, ns)
+    return (list(map(float, mu)), list(map(float, sigma)), list(map(float, ns)))

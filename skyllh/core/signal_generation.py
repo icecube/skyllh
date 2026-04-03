@@ -4,6 +4,7 @@ from skyllh.core.py import (
     float_cast,
     issequence,
 )
+from skyllh.core.types import SourceHypoGroup_t
 
 
 class HasEnergyRange(metaclass=abc.ABCMeta):
@@ -11,7 +12,7 @@ class HasEnergyRange(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def energy_range(self):
+    def energy_range(self) -> 'tuple[float, float] | None':
         """Configured true-energy range as a 2-element tuple in GeV, or None."""
         pass
 
@@ -29,14 +30,14 @@ class SignalGenerationMethod(HasEnergyRange, metaclass=abc.ABCMeta):
 
     def __init__(
         self,
-        energy_range,
+        energy_range: tuple[float, float] | None,
         **kwargs,
     ):
         """Constructs a new signal generation method instance.
 
         Parameters
         ----------
-        energy_range : 2-element tuple of float | None
+        energy_range
             The energy range from which to take MC events into account for
             signal event generation, specified in true neutrino energy (GeV).
             If set to None, the entire energy range [0, +inf] is used.
@@ -46,7 +47,7 @@ class SignalGenerationMethod(HasEnergyRange, metaclass=abc.ABCMeta):
         self.energy_range = energy_range
 
     @property
-    def energy_range(self):
+    def energy_range(self) -> 'tuple[float, float] | None':
         """The 2-element tuple of floats holding the energy range from which to
         take MC events into account for signal event generation, in GeV.
         """
@@ -73,7 +74,7 @@ class SignalGenerationMethod(HasEnergyRange, metaclass=abc.ABCMeta):
     def calc_source_signal_mc_event_flux(
         self,
         data_mc,
-        shg,
+        shg: SourceHypoGroup_t,
     ):
         """This method is supposed to calculate the signal flux of each given
         MC event for each source hypothesis of the given source hypothesis
@@ -81,22 +82,22 @@ class SignalGenerationMethod(HasEnergyRange, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        data_mc : numpy record ndarray
+        data_mc
             The numpy record array holding all the MC events.
-        shg : instance of SourceHypoGroup
+        shg
             The source hypothesis group instance, which defines the list of
             sources, and their flux model.
 
         Returns
         -------
-        ev_idx_arr : ndarray
+        ev_idx_arr
             The (N_selected_signal_events,)-shaped 1D ndarray holding the index
             of the MC event.
-        shg_src_idx_arr : ndarray
+        shg_src_idx_arr
             The (N_selected_signal_events,)-shaped 1D ndarray holding the index
             of the source within the given source hypothesis group for each
             signal candidate event.
-        flux_arr : ndarray
+        flux_arr
             The (N_selected_signal_events,)-shaped 1D ndarray holding the flux
             value of each signal candidate event.
         """
@@ -104,7 +105,7 @@ class SignalGenerationMethod(HasEnergyRange, metaclass=abc.ABCMeta):
 
     def signal_event_post_sampling_processing(
         self,
-        shg,
+        shg: SourceHypoGroup_t,
         shg_sig_events_meta,
         shg_sig_events,
     ):
@@ -114,26 +115,26 @@ class SignalGenerationMethod(HasEnergyRange, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        shg : SourceHypoGroup instance
+        shg
             The source hypothesis group instance holding the sources and their
             locations.
-        shg_sig_events_meta : numpy record ndarray
+        shg_sig_events_meta
             The numpy record ndarray holding meta information about the
             generated signal events for the given source hypothesis group.
             The length of this array must be the same as shg_sig_events.
             It needs to contain the following data fields:
 
-                shg_src_idx : int
+                shg_src_idx
                     The source index within the source hypothesis group.
 
-        shg_sig_events : numpy record ndarray
+        shg_sig_events
             The numpy record ndarray holding the generated signal events for
             the given source hypothesis group and in the format of the original
             MC events.
 
         Returns
         -------
-        shg_sig_events : numpy record array
+        shg_sig_events
             The processed signal events. In the default implementation of this
             method this is just the shg_sig_events input array.
         """

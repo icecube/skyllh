@@ -1,13 +1,18 @@
 """Plotting module for core PDF ratio objects."""
 
 import itertools
+from typing import cast
 
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
+from matplotlib.image import AxesImage
 
+from skyllh.core.parameters import ParameterModelMapper
+from skyllh.core.pdf import PDF
 from skyllh.core.pdfratio import SigOverBkgPDFRatio
 from skyllh.core.py import classname
+from skyllh.core.source_hypo_grouping import SourceHypoGroupManager
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.trialdata import TrialDataManager
 
@@ -15,16 +20,16 @@ from skyllh.core.trialdata import TrialDataManager
 class SigOverBkgPDFRatioPlotter:
     """Plotter class to plot a SigOverBkgPDFRatio object."""
 
-    def __init__(self, tdm, pdfratio):
+    def __init__(self, tdm: TrialDataManager, pdfratio: SigOverBkgPDFRatio):
         """Creates a new plotter object for plotting a
-        SpatialSigOverBkgPDFRatio object.
+        SigOverBkgPDFRatio object.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that provides the data for the
             PDF ratio evaluation.
-        pdfratio : SpatialSigOverBkgPDFRatio
+        pdfratio
             The PDF ratio object to plot.
         """
         self.tdm = tdm
@@ -52,23 +57,34 @@ class SigOverBkgPDFRatioPlotter:
             raise TypeError('The tdm property must be an instance of TrialDataManager!')
         self._tdm = obj
 
-    def plot(self, src_hypo_group_manager, axes, source_idx=None, log=True, **kwargs):
+    def plot(
+        self,
+        src_hypo_group_manager: SourceHypoGroupManager,
+        pmm: ParameterModelMapper,
+        src_params_recarray: np.ndarray,
+        axes: Axes,
+        source_idx: int | None = None,
+        log: bool = True,
+        **kwargs,
+    ) -> AxesImage:
         """Plots the spatial PDF ratio. If the signal PDF depends on the source,
         source_idx specifies the index of the source for which the PDF should
         get plotted.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        src_hypo_group_manager
             The instance of SourceHypoGroupManager that defines the source
             hypotheses.
-        axes : mpl.axes.Axes
+        axes
             The matplotlib Axes object on which the PDF ratio should get drawn
             to.
-        source_idx : int | None
+        source_idx
             The index of the source for which the PDF ratio should get plotted.
             If set to None and the signal PDF depends on the source, index 0
             will be used.
+        log
+            Whether to use a logarithmic color scale for the PDF ratio image.
 
         Additional Keyword Arguments
         ----------------------------
@@ -77,7 +93,7 @@ class SigOverBkgPDFRatioPlotter:
 
         Returns
         -------
-        img : instance of mpl.AxesImage
+        img
             The AxesImage instance showing the PDF ratio image.
         """
         if not isinstance(axes, Axes):
@@ -90,8 +106,8 @@ class SigOverBkgPDFRatioPlotter:
         delta_ra_deg = 0.5
         delta_dec_deg = 0.5
 
-        raaxis = self._pdfratio.signalpdf.axes['ra']
-        decaxis = self._pdfratio.signalpdf.axes['dec']
+        raaxis = cast(PDF, self._pdfratio.sig_pdf).axes['ra']
+        decaxis = cast(PDF, self._pdfratio.sig_pdf).axes['dec']
 
         # Create a grid of ratio in right-ascention and declination and fill it
         # with PDF ratio values from events that fall into these bins.
@@ -131,9 +147,9 @@ class SigOverBkgPDFRatioPlotter:
             events['sin_dec'][i] = np.sin(dec)
             events['ang_err'][i] = np.deg2rad(0.5)
 
-        self._tdm.initialize_for_new_trial(src_hypo_group_manager, events)
+        self._tdm.initialize_trial(shg_mgr=src_hypo_group_manager, pmm=pmm, events=events)
 
-        event_ratios = self._pdfratio.get_ratio(self._tdm)
+        event_ratios = self._pdfratio.get_ratio(self._tdm, src_params_recarray)
 
         # Select only the ratios for the requested source.
         if event_ratios.ndim == 2:

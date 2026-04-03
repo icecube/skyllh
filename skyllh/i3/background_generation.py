@@ -1,12 +1,15 @@
 from skyllh.core.background_generation import (
     BackgroundGenerationMethod,
 )
+from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.py import (
     classname,
 )
+from skyllh.core.random import RandomStateService
 from skyllh.core.scrambling import (
     DataScrambler,
 )
+from skyllh.core.storage import DataFieldRecordArray
 
 
 class FixedScrambledExpDataI3BkgGenMethod(
@@ -20,7 +23,7 @@ class FixedScrambledExpDataI3BkgGenMethod(
 
     def __init__(
         self,
-        data_scrambler,
+        data_scrambler: DataScrambler,
         **kwargs,
     ):
         """Creates a new background generation method instance to generate
@@ -29,7 +32,7 @@ class FixedScrambledExpDataI3BkgGenMethod(
 
         Parameters
         ----------
-        data_scrambler : instance of DataScrambler
+        data_scrambler
             The DataScrambler instance to use to generate scrambled experimental
             data.
         """
@@ -52,34 +55,34 @@ class FixedScrambledExpDataI3BkgGenMethod(
             )
         self._data_scrambler = scrambler
 
-    def generate_events(
+    def generate_events(  # type: ignore[override]
         self,
-        rss,
-        dataset,
-        data,
+        rss: RandomStateService,
+        dataset: Dataset,
+        data: DatasetData,
         **kwargs,
-    ):
+    ) -> tuple[int, DataFieldRecordArray]:
         """Generates background events from the given data, by scrambling the
         experimental data. The number of events is equal to the size of the
         given dataset.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService that should be used to generate
             random numbers from. It is used to scramble the experimental data.
-        dataset : instance of Dataset
+        dataset
             The Dataset instance describing the dataset for which background
             events should get generated.
-        data : instance of DatasetData
+        data
             The DatasetData instance holding the data of the dataset for which
             background events should get generated.
 
         Returns
         -------
-        n_bkg : int
+        n_bkg
             The number of generated background events.
-        bkg_events : instance of DataFieldRecordArray
+        bkg_events
             The instance of DataFieldRecordArray holding the generated
             background events.
         """

@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import numpy as np
 from scipy import (
     interpolate,
@@ -12,6 +14,7 @@ from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
 from skyllh.analyses.i3.publicdata_ps.utils import (
     psi_to_dec_and_ra,
 )
+from skyllh.core.dataset import Dataset
 from skyllh.core.flux_model import (
     TimeFluxProfile,
 )
@@ -28,12 +31,15 @@ from skyllh.core.py import (
     issequence,
     module_classname,
 )
+from skyllh.core.random import RandomStateService
+from skyllh.core.services import SrcDetSigYieldWeightsService
 from skyllh.core.signal_generation import (
     HasEnergyRange,
 )
 from skyllh.core.signal_generator import (
     SignalGenerator,
 )
+from skyllh.core.source_hypo_grouping import SourceHypoGroupManager
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
@@ -52,12 +58,12 @@ class PDDatasetSignalGenerator(
 
     def __init__(
         self,
-        shg_mgr,
-        ds,
-        ds_idx,
-        energy_cut_spline=None,
-        cut_sindec=None,
-        energy_range=None,
+        shg_mgr: SourceHypoGroupManager,
+        ds: Dataset,
+        ds_idx: int,
+        energy_cut_spline: interpolate.UnivariateSpline | None = None,
+        cut_sindec: float | None = None,
+        energy_range: tuple[float, float] | None = None,
         **kwargs,
     ):
         """Creates a new instance of the signal generator for generating
@@ -65,21 +71,21 @@ class PDDatasetSignalGenerator(
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager defining the source
             hypothesis groups.
-        ds : instance of Dataset
+        ds
             The instance of Dataset for which signal events should get
             generated.
-        ds_idx : int
+        ds_idx
             The index of the dataset.
-        energy_cut_spline : scipy.interpolate.UnivariateSpline
+        energy_cut_spline
             A spline of E(sin_dec) that defines the declination
             dependent energy cut in the IceCube southern sky.
-        cut_sindec : float
+        cut_sindec
             The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
-        energy_range : 2-element tuple of float | None
+        energy_range
             The energy range in which signal events should be generated.
             If set to None, the full energy range (1e2 - 1e9 GeV) is used.
         """
@@ -103,7 +109,7 @@ class PDDatasetSignalGenerator(
         self.energy_range = energy_range
 
     @property
-    def energy_range(self):
+    def energy_range(self) -> tuple[float, float]:
         """The configured true-energy range for signal generation in GeV.
 
         It is a 2-element tuple ``(E_min, E_max)`` in GeV. If no explicit
@@ -215,17 +221,17 @@ class PDDatasetSignalGenerator(
         self._energy_range_correction_factors = self._calculate_energy_range_correction_factors()
 
     @staticmethod
-    def _eval_spline(x, spl):
+    def _eval_spline(x, spl) -> np.ndarray:
         """Evaluates the given spline at the given coordinates."""
         x = np.asarray(x)
         if (x.any() < 0) or (x.any() > 1):
             raise ValueError(f'{x} is outside of the valid spline range. The valid range is [0,1].')
 
-        values = interpolate.splev(x, spl, ext=3)
+        values = np.asarray(interpolate.splev(x, spl, ext=3))
 
         return values
 
-    def _create_inv_cdf_spline(self, src_idx, fluxmodel, log_e_min, log_e_max):
+    def _create_inv_cdf_spline(self, src_idx: int, fluxmodel, log_e_min, log_e_max):
         """Creates a spline for the inverse cumulative distribution function of
         the detectable true energy probability distribution.
         """
@@ -269,7 +275,15 @@ class PDDatasetSignalGenerator(
         # Build a spline for the inverse CDF.
         return interpolate.splrep(cum_per_bin, bin_centers, k=1, s=0)
 
-    def _draw_signal_events_for_source(self, rss, src_dec, src_ra, dec_idx, log10_true_e_inv_cdf_spl, n_events):
+    def _draw_signal_events_for_source(
+        self,
+        rss: RandomStateService,
+        src_dec: float,
+        src_ra: float,
+        dec_idx: int,
+        log10_true_e_inv_cdf_spl,
+        n_events: int,
+    ) -> DataFieldRecordArray:
         """Generates `n_events` signal events for the given source location
         given the given inverse cumulative density function for the
         log10(E_true/GeV) distribution.
@@ -279,24 +293,24 @@ class PDDatasetSignalGenerator(
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService to use for drawing random
             numbers.
-        src_dec : float
+        src_dec
             The declination of the source in radians.
-        src_ra : float
+        src_ra
             The right-ascention of the source in radians.
-        dec_idx : int
+        dec_idx
             The SM's declination bin index of the source's declination.
-        log10_true_e_inv_cdf_spl : instance of scipy.interpolate.splrep
+        log10_true_e_inv_cdf_spl
             The linear spline interpolation representation of the inverse
             cummulative density function of the log10(E_true/GeV) distribution.
-        n_events : int
+        n_events
             The number of events to generate.
 
         Returns
         -------
-        events : instance of DataFieldRecordArray of size `n_events`
+        events
             The instance of DataFieldRecordArray of length `n_events` holding
             the event data. It contains the following data fields:
 
@@ -385,28 +399,30 @@ class PDDatasetSignalGenerator(
         self._create_source_dependent_data_structures()
 
     @staticmethod
-    def create_energy_filter_mask(events, spline, cut_sindec, logger):
+    def create_energy_filter_mask(
+        events: DataFieldRecordArray, spline: interpolate.UnivariateSpline, cut_sindec: float | None, logger
+    ) -> np.ndarray:
         """Creates a mask for cutting all events below ``cut_sindec``
         that have an energy smaller than the energy spline at their
         declination.
 
         Parameters
         ----------
-        events : instance of DataFieldRecordArray
+        events
             The instance of DataFieldRecordArray holding the generated signal
             events.
-        spline : instance of scipy.interpolate.UnivariateSpline
+        spline
             A spline of E(sin_dec) that defines the declination
             dependent energy cut in the IceCube southern sky.
-        cut_sindec : float
+        cut_sindec
             The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
-        logger : instance of logging.Logger
+        logger
             The Logger instance.
 
         Returns
         -------
-        filter_mask : instance of numpy ndarray
+        filter_mask
             The (len(events),)-shaped numpy ndarray with the mask of the events
             to cut.
         """
@@ -418,23 +434,25 @@ class PDDatasetSignalGenerator(
 
         return filter_mask
 
-    def generate_signal_events_for_source(self, rss, src_idx, n_events):
+    def generate_signal_events_for_source(
+        self, rss: RandomStateService, src_idx: int, n_events: int
+    ) -> DataFieldRecordArray | None:
         """Generates ``n_events`` signal events for the given source location
         and flux model.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService providing the random number
             generator state.
-        src_idx : int
+        src_idx
             The index of the source.
-        n_events : int
+        n_events
             Number of signal events to be generated.
 
         Returns
         -------
-        events : instance of DataFieldRecordArray
+        events
             The numpy record array holding the event data.
             It contains the following data fields:
 
@@ -492,46 +510,46 @@ class PDDatasetSignalGenerator(
 
     def generate_signal_events(
         self,
-        rss,
-        mean,
-        poisson=True,
-        src_detsigyield_weights_service=None,
-    ):
+        rss: RandomStateService,
+        mean: int | float,
+        poisson: bool = True,
+        src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
+        **kwargs,
+    ) -> tuple[int, dict[int, DataFieldRecordArray]]:
         """Generates ``mean`` number of signal events.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService providing the random number
             generator state.
-        mean : int | float
+        mean
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
             events.
-        poisson : bool
+        poisson
             If set to True, the actual number of generated signal events will
             be drawn from a Poisson distribution with the given mean value of
             signal events.
             If set to False, the argument ``mean`` specifies the actual number
             of generated signal events.
-        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+        src_detsigyield_weights_service
             The instance of SrcDetSigYieldWeightsService providing the weighting
             of the sources within the detector.
 
         Returns
         -------
-        n_signal : int
+        n_signal
             The number of generated signal events.
-        signal_events_dict : dict of DataFieldRecordArray
+        signal_events_dict
             The dictionary holding the DataFieldRecordArray instances with the
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
         """
-        if poisson:
-            mean = rss.random.poisson(float_cast(mean, 'The `mean` argument must be castable to type of float!'))
+        _mean = rss.random.poisson(float(mean)) if poisson else mean
 
-        n_events = int_cast(mean, 'The `mean` argument must be castable to type of int!')
+        n_events = int_cast(_mean, 'The `mean` argument must be castable to type of int!')
 
         if src_detsigyield_weights_service is None:
             raise ValueError(
@@ -541,6 +559,7 @@ class PDDatasetSignalGenerator(
 
         (a_jk, _) = src_detsigyield_weights_service.get_weights()
 
+        assert a_jk is not None
         a_k = np.copy(a_jk[self.ds_idx])
         a_k /= np.sum(a_k)
 
@@ -588,7 +607,9 @@ class PDDatasetSignalGenerator(
         if not np.any(m):
             return 0.0
 
-        flux_integral = fluxmodel.energy_profile.get_integral(E1=10 ** overlap_low[m], E2=10 ** overlap_high[m])
+        flux_integral = cast(Any, fluxmodel).energy_profile.get_integral(
+            E1=10 ** overlap_low[m], E2=10 ** overlap_high[m]
+        )
 
         aeff_for_dec = self._get_cached_aeff_for_source(src_idx=src_idx, src_dec=src.dec)[m]
 
@@ -687,30 +708,30 @@ class TimeDependentPDDatasetSignalGenerator(
 
     def __init__(
         self,
-        shg_mgr,
-        ds,
-        ds_idx,
-        livetime,
-        time_flux_profile,
+        shg_mgr: SourceHypoGroupManager,
+        ds: Dataset,
+        ds_idx: int,
+        livetime: Livetime,
+        time_flux_profile: TimeFluxProfile,
         energy_cut_spline=None,
-        cut_sindec=None,
+        cut_sindec: float | None = None,
         **kwargs,
     ):
         """
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager that defines the list of
             source hypothesis groups, i.e. the list of sources.
-        ds : instance of Dataset
+        ds
             The instance of Dataset for which signal events should get
             generated.
-        ds_idx : int
+        ds_idx
             The index of the dataset.
-        livetime : instance of Livetime
+        livetime
             The instance of Livetime providing the live-time information of the
             dataset.
-        time_flux_profile : instance of TimeFluxProfile
+        time_flux_profile
             The instance of TimeFluxProfile providing the time profile of the
             source(s).
 
@@ -719,10 +740,10 @@ class TimeDependentPDDatasetSignalGenerator(
                 At this time the some time profile will be used for all
                 sources!
 
-        energy_cut_spline : scipy.interpolate.UnivariateSpline
+        energy_cut_spline
             A spline of E(sin_dec) that defines the declination
             dependent energy cut in the IceCube southern sky.
-        cut_sindec : float
+        cut_sindec
             The sine of the declination to start applying the energy cut.
             The cut will be applied from this declination down.
         """
@@ -757,39 +778,39 @@ class TimeDependentPDDatasetSignalGenerator(
 
     def generate_signal_events(
         self,
-        rss,
-        mean,
-        poisson=True,
-        src_detsigyield_weights_service=None,
+        rss: RandomStateService,
+        mean: int | float,
+        poisson: bool = True,
+        src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
         **kwargs,
-    ):
+    ) -> tuple[int, dict[int, DataFieldRecordArray]]:
         """Generates ``mean`` number of signal events with times.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService providing the random number
             generator state.
-        mean : int | float
+        mean
             The mean number of signal events. If the ``poisson`` argument is set
             to True, the actual number of generated signal events will be drawn
             from a Poisson distribution with this given mean value of signal
             events.
-        poisson : bool
+        poisson
             If set to True, the actual number of generated signal events will
             be drawn from a Poisson distribution with the given mean value of
             signal events.
             If set to False, the argument ``mean`` specifies the actual number
             of generated signal events.
-        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+        src_detsigyield_weights_service
             The instance of SrcDetSigYieldWeightsService providing the weighting
             of the sources within the detector.
 
         Returns
         -------
-        n_signal : int
+        n_signal
             The number of generated signal events.
-        signal_events_dict : dict of DataFieldRecordArray
+        signal_events_dict
             The dictionary holding the DataFieldRecordArray instances with the
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.

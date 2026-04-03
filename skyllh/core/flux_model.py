@@ -10,6 +10,7 @@ class. It describes a mathematical function for the differential flux:
 """
 
 import abc
+from collections.abc import Callable
 
 import numpy as np
 import scipy.special
@@ -42,6 +43,10 @@ from skyllh.core.source_model import (
     IsPointlike,
 )
 
+# numpy deprecated the np.trapz function in favor of np.trapezoid, but to maintain compatibility with older numpy
+# versions, we define _trapezoid as np.trapz if np.trapezoid is not available.
+_trapezoid = np.trapezoid if hasattr(np, 'trapezoid') else np.trapz  # type: ignore
+
 
 class FluxProfile(MathFunction, HasConfig, metaclass=abc.ABCMeta):
     """The abstract base class for a flux profile math function."""
@@ -57,12 +62,12 @@ class FluxProfile(MathFunction, HasConfig, metaclass=abc.ABCMeta):
 class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for a spatial flux profile function."""
 
-    def __init__(self, angle_unit=None, **kwargs):
+    def __init__(self, angle_unit: units.UnitBase | None = None, **kwargs):
         """Creates a new SpatialFluxProfile instance.
 
         Parameters
         ----------
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The used unit for angles.
             If set to ``Ǹone``, the configured default angle unit for fluxes is
             used.
@@ -87,24 +92,26 @@ class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         self._angle_unit = unit
 
     @abc.abstractmethod
-    def __call__(self, ra, dec, unit=None):
+    def __call__(
+        self, ra: float | np.ndarray, dec: float | np.ndarray, unit: units.UnitBase | None = None
+    ) -> np.ndarray:
         """This method is supposed to return the spatial profile value for the
         given celestrial coordinates.
 
         Parameters
         ----------
-        ra : float | 1d numpy ndarray of float
+        ra
             The right-ascention coordinate.
-        dec : float | 1d numpy ndarray of float
+        dec
             The declination coordinate.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given celestrial angles.
             If ``None``, the set angle unit of this SpatialFluxProfile is
             assumed.
 
         Returns
         -------
-        values : 1D numpy ndarray
+        values
             The spatial profile values.
         """
         pass
@@ -117,14 +124,14 @@ class UnitySpatialFluxProfile(SpatialFluxProfile):
 
     def __init__(
         self,
-        angle_unit=None,
+        angle_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new UnitySpatialFluxProfile instance.
 
         Parameters
         ----------
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The used unit for angles.
             If set to ``Ǹone``, the configured default angle unit for fluxes is
             used.
@@ -138,22 +145,24 @@ class UnitySpatialFluxProfile(SpatialFluxProfile):
         """
         return '1'
 
-    def __call__(self, ra, dec, unit=None):
+    def __call__(
+        self, ra: float | np.ndarray, dec: float | np.ndarray, unit: units.UnitBase | None = None
+    ) -> np.ndarray:
         """Returns 1 as numpy ndarray in same shape as ra and dec.
 
         Parameters
         ----------
-        ra : float | 1d numpy ndarray of float
+        ra
             The right-ascention coordinate.
-        dec : float | 1d numpy ndarray of float
+        dec
             The declination coordinate.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given celestrial angles.
             By the definition of this class this argument is ignored.
 
         Returns
         -------
-        values : 1D numpy ndarray
+        values
             1 in same shape as ra and dec.
         """
         (ra, dec) = np.atleast_1d(ra, dec)
@@ -170,9 +179,9 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
 
     def __init__(
         self,
-        ra,
-        dec,
-        angle_unit=None,
+        ra: float | None,
+        dec: float | None,
+        angle_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new spatial flux profile for a point at equatorial
@@ -180,15 +189,15 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
 
         Parameters
         ----------
-        ra : float | None
+        ra
             The right-ascention of the point.
             In case it is None, the evaluation of this spatial flux profile will
             return zero, unless evaluated for ra=None.
-        dec : float | None
+        dec
             The declination of the point.
             In case it is None, the evaluation of this spatial flux profile will
             return zero, unless evaluated for dec=None.
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The used unit for angles.
             If set to ``Ǹone``, the configured default angle unit for fluxes is
             used.
@@ -238,26 +247,28 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
 
         return s
 
-    def __call__(self, ra, dec, unit=None):
+    def __call__(
+        self, ra: float | np.ndarray, dec: float | np.ndarray, unit: units.UnitBase | None = None
+    ) -> np.ndarray:
         """Returns a numpy ndarray in same shape as ra and dec with 1 if
         `ra` equals `self.ra` and `dec` equals `self.dec`, and 0 otherwise.
 
         Parameters
         ----------
-        ra : float | 1d numpy ndarray of float
+        ra
             The right-ascention coordinate at which to evaluate the spatial flux
             profile. The unit must be the internally used angle unit.
-        dec : float | 1d numpy ndarray of float
+        dec
             The declination coordinate at which to evaluate the spatial flux
             profile. The unit must be the internally used angle unit.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given celestrial angles.
             If set to ``None``, the set angle unit of this SpatialFluxProfile
             instance is assumed.
 
         Returns
         -------
-        value : 1D numpy ndarray of int8
+        value
             A numpy ndarray in same shape as ra and dec with 1 if `ra`
             equals `self.ra` and `dec` equals `self.dec`, and 0 otherwise.
         """
@@ -278,13 +289,13 @@ class PointSpatialFluxProfile(SpatialFluxProfile):
 class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
     """The abstract base class for an energy flux profile function."""
 
-    def __init__(self, energy_unit=None, **kwargs):
+    def __init__(self, energy_unit: units.UnitBase | None = None, **kwargs):
         """Creates a new energy flux profile with a given energy unit to be used
         for flux calculation.
 
         Parameters
         ----------
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
@@ -308,32 +319,32 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         self._energy_unit = unit
 
     @abc.abstractmethod
-    def __call__(self, E, unit=None):
+    def __call__(self, E: float | np.ndarray, unit: units.UnitBase | None = None) -> np.ndarray:
         """This method is supposed to return the energy profile value for the
         given energy value.
 
         Parameters
         ----------
-        E : float | 1d numpy ndarray of float
+        E
             The energy value for which to retrieve the energy profile value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energy.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             is assumed.
 
         Returns
         -------
-        values : 1D numpy ndarray of float
+        values
             The energy profile values for the given energies.
         """
         pass
 
     def get_integral(
         self,
-        E1,
-        E2,
-        unit=None,
-    ):
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """This is the default implementation for calculating the integral value
         of this energy flux profile in the range ``[E1, E2]``.
 
@@ -346,18 +357,18 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        E1 : float | 1d numpy ndarray of float
+        E1
             The lower energy bound of the integration.
-        E2 : float | 1d numpy ndarray of float
+        E2
             The upper energy bound of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : instance of ndarray
+        integral
             The (n,)-shaped numpy ndarray holding the integral values of the
             given integral ranges.
         """
@@ -380,12 +391,12 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
 class UnityEnergyFluxProfile(EnergyFluxProfile):
     """Energy flux profile for the constant function 1."""
 
-    def __init__(self, energy_unit=None, **kwargs):
+    def __init__(self, energy_unit: units.UnitBase | None = None, **kwargs):
         """Creates a new UnityEnergyFluxProfile instance.
 
         Parameters
         ----------
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
@@ -399,20 +410,20 @@ class UnityEnergyFluxProfile(EnergyFluxProfile):
         """
         return '1'
 
-    def __call__(self, E, unit=None):
+    def __call__(self, E: float | np.ndarray, unit: units.UnitBase | None = None) -> np.ndarray:
         """Returns 1 as numpy ndarray in some shape as E.
 
         Parameters
         ----------
-        E : float | 1D numpy ndarray of float
+        E
             The energy value for which to retrieve the energy profile value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             By definition of this specific class, this argument is ignored.
 
         Returns
         -------
-        values : 1D numpy ndarray of int8
+        values
             1 in same shape as E.
         """
         E = np.atleast_1d(E)
@@ -421,24 +432,26 @@ class UnityEnergyFluxProfile(EnergyFluxProfile):
 
         return values
 
-    def get_integral(self, E1, E2, unit=None):
+    def get_integral(
+        self, E1: float | np.ndarray, E2: float | np.ndarray, unit: units.UnitBase | None = None
+    ) -> np.ndarray:
         """Computes the integral of this energy flux profile in the range
         [``E1``, ``E2``], which by definition is ``E2 - E1``.
 
         Parameters
         ----------
-        E1 : float | 1d numpy ndarray of float
+        E1
             The lower energy bound of the integration.
-        E2 : float | 1d numpy ndarray of float
+        E2
             The upper energy bound of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : 1d ndarray of float
+        integral
             The integral values of the given integral ranges.
         """
         E1 = np.atleast_1d(E1)
@@ -466,17 +479,17 @@ class PowerLawEnergyFluxProfile(
 
     """
 
-    def __init__(self, E0, gamma, energy_unit=None, **kwargs):
+    def __init__(self, E0: float, gamma: float, energy_unit: units.UnitBase | None = None, **kwargs):
         """Creates a new power law flux profile with the reference energy ``E0``
         and spectral index ``gamma``.
 
         Parameters
         ----------
-        E0 : castable to float
+        E0
             The reference energy.
-        gamma : castable to float
+        gamma
             The spectral index.
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
@@ -524,22 +537,22 @@ class PowerLawEnergyFluxProfile(
 
         return s
 
-    def __call__(self, E, unit=None):
+    def __call__(self, E: float | np.ndarray, unit: units.UnitBase | None = None) -> np.ndarray:
         """Returns the power law values for the given energies as numpy ndarray
         in same shape as E.
 
         Parameters
         ----------
-        E : float | 1D numpy ndarray of float
+        E
             The energy value for which to retrieve the energy profile value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        values : 1D numpy ndarray of float
+        values
             The energy profile values for the given energies.
         """
         E = np.atleast_1d(E)
@@ -551,24 +564,26 @@ class PowerLawEnergyFluxProfile(
 
         return value
 
-    def get_integral(self, E1, E2, unit=None):
+    def get_integral(
+        self, E1: float | np.ndarray, E2: float | np.ndarray, unit: units.UnitBase | None = None
+    ) -> np.ndarray:
         """Computes the integral value of this power-law energy flux profile in
         the range ``[E1, E2]``.
 
         Parameters
         ----------
-        E1 : float | 1d numpy ndarray of float
+        E1
             The lower energy bound of the integration.
-        E2 : float | 1d numpy ndarray of float
+        E2
             The upper energy bound of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : 1d ndarray of float
+        integral
             The integral values of the given integral ranges.
         """
         E1 = np.atleast_1d(E1)
@@ -604,10 +619,10 @@ class CutoffPowerLawEnergyFluxProfile(
 
     def __init__(
         self,
-        E0,
-        gamma,
-        Ecut,
-        energy_unit=None,
+        E0: float,
+        gamma: float,
+        Ecut: float,
+        energy_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new cut-off power law flux profile with the reference
@@ -615,13 +630,13 @@ class CutoffPowerLawEnergyFluxProfile(
 
         Parameters
         ----------
-        E0 : castable to float
+        E0
             The reference energy.
-        gamma : castable to float
+        gamma
             The spectral index.
-        Ecut : castable to float
+        Ecut
             The cut-off energy.
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
@@ -651,24 +666,24 @@ class CutoffPowerLawEnergyFluxProfile(
 
     def __call__(
         self,
-        E,
-        unit=None,
-    ):
+        E: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Returns the cut-off power law values for the given energies as
         numpy ndarray in the same shape as E.
 
         Parameters
         ----------
-        E : float | instance of numpy ndarray
+        E
             The energy value(s) for which to retrieve the energy profile value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        values : instance of numpy ndarray
+        values
             The energy profile values for the given energies.
         """
         E = np.atleast_1d(E)
@@ -683,10 +698,10 @@ class CutoffPowerLawEnergyFluxProfile(
 
     def get_integral(
         self,
-        E1,
-        E2,
-        unit=None,
-    ):
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """This falls back to the default implementation for the CutoffPowerLawEnergyFluxProfile
         to avoid using the inhereted function
         .. note::
@@ -698,18 +713,18 @@ class CutoffPowerLawEnergyFluxProfile(
 
         Parameters
         ----------
-        E1 : float | 1d numpy ndarray of float
+        E1
             The lower energy bound of the integration.
-        E2 : float | 1d numpy ndarray of float
+        E2
             The upper energy bound of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : instance of ndarray
+        integral
             The (n,)-shaped numpy ndarray holding the integral values of the
             given integral ranges.
         """
@@ -726,7 +741,7 @@ class CutoffPowerLawEnergyFluxProfile(
         for i, (E1_i, E2_i) in enumerate(zip(E1, E2, strict=True)):
             # integration for log(energy) for hopefully better numerical stability
             tmp_e = np.linspace(np.log10(E1_i), np.log10(E2_i), 5000)
-            tmp_int = np.trapz(np.log(10) * self(10**tmp_e) * 10**tmp_e, tmp_e)
+            tmp_int = _trapezoid(np.log(10) * self(10**tmp_e) * 10**tmp_e, tmp_e)
 
             # make sure it is always positive (probably not an issue any more with np.trapz.
             # used to be an issue using the spline integrate self.function.integrate)
@@ -749,22 +764,22 @@ class LogParabolaPowerLawEnergyFluxProfile(
 
     def __init__(
         self,
-        E0,
-        alpha,
-        beta,
-        energy_unit=None,
+        E0: float,
+        alpha: float,
+        beta: float,
+        energy_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """
         Parameters
         ----------
-        E0 : castable to float
+        E0
             The reference energy.
-        alpha : float
+        alpha
             The alpha parameter of the log-parabola spectral index.
-        beta : float
+        beta
             The beta parameter of the log-parabola spectral index.
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
@@ -806,24 +821,24 @@ class LogParabolaPowerLawEnergyFluxProfile(
 
     def __call__(
         self,
-        E,
-        unit=None,
-    ):
+        E: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Returns the log-parabola power-law values for the given energies as
         numpy ndarray in the same shape as E.
 
         Parameters
         ----------
-        E : float | instance of numpy ndarray
+        E
             The energy value(s) for which to retrieve the energy profile value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        values : instance of numpy ndarray
+        values
             The energy profile values for the given energies.
         """
         E = np.atleast_1d(E)
@@ -847,23 +862,23 @@ class PhotosplineEnergyFluxProfile(
     def __init__(
         self,
         splinetable,
-        crit_log10_energy_lower,
-        crit_log10_energy_upper,
-        energy_unit=None,
+        crit_log10_energy_lower: float,
+        crit_log10_energy_upper: float,
+        energy_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new instance of PhotosplineEnergyFluxProfile.
 
         Parameters
         ----------
-        splinetable : instance of photospline.SplineTable
+        splinetable
             The instance of photospline.SplineTable representing the energy flux
             profile as a spline.
-        crit_log10_energy_lower : float
+        crit_log10_energy_lower
             The lower edge of the spline's supported energy range in log10(E).
-        crit_log10_energy_upper : float
+        crit_log10_energy_upper
             The upper edge of the spline's supported energy range in log10(E).
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
@@ -918,13 +933,13 @@ class PhotosplineEnergyFluxProfile(
 class FunctionEnergyFluxProfile(EnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument."""
 
-    def __init__(self, function, energy_unit=None, **kwargs):
+    def __init__(self, function: Callable, energy_unit: units.UnitBase | None = None, **kwargs):
         """Creates a new flux profile following a given function.
 
         Parameters
         ----------
-        function : callable function, takes energy as argument
-        energy_unit : instance of astropy.units.UnitBase | None
+        function
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
@@ -933,22 +948,22 @@ class FunctionEnergyFluxProfile(EnergyFluxProfile):
 
         self.function = function
 
-    def __call__(self, E, unit=None):
+    def __call__(self, E: float | np.ndarray, unit: units.UnitBase | None = None) -> np.ndarray:
         """Returns the function values for the given energies as numpy ndarray
         in same shape as E.
 
         Parameters
         ----------
-        E : float | 1D numpy ndarray of float
+        E
             The energy value for which to retrieve the energy profile value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        values : 1D numpy ndarray of float
+        values
             The energy profile values for the given energies.
         """
         E = np.atleast_1d(E)
@@ -967,15 +982,17 @@ class EpeakFunctionEnergyProfile(FunctionEnergyFluxProfile):
     will be optimized.
     """
 
-    def __init__(self, function, e_peak_orig, e_peak_offset, energy_unit=None, **kwargs):
+    def __init__(
+        self, function: Callable, e_peak_orig, e_peak_offset, energy_unit: units.UnitBase | None = None, **kwargs
+    ):
         """Creates a new  flux profile with the peak energy ``E0``.
 
         Parameters
         ----------
-        function : callable function, takes energy as argument
-        e_peak_orig : log10(energy) for which the original array reaches its peak value
-        e_peak_offset : log10(energy) to which the peak flux should be shifted
-        energy_unit : instance of astropy.units.UnitBase | None
+        function
+        e_peak_orig
+        e_peak_offset
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
@@ -1011,22 +1028,22 @@ class EpeakFunctionEnergyProfile(FunctionEnergyFluxProfile):
         e = float_cast(e, 'Property e must be castable to type float!')
         self._e_peak_orig = e
 
-    def __call__(self, E, unit=None):
+    def __call__(self, E: float | np.ndarray, unit: units.UnitBase | None = None) -> np.ndarray:
         """Returns the function values for the given energies as numpy ndarray
         in same shape as E.
 
         Parameters
         ----------
-        E : float | 1D numpy ndarray of float
+        E
             The energy value for which to retrieve the energy profile value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        values : 1D numpy ndarray of float
+        values
             The energy profile values for the given energies.
         """
         E = np.atleast_1d(E)
@@ -1047,10 +1064,10 @@ class EpeakFunctionEnergyProfile(FunctionEnergyFluxProfile):
 
     def get_integral(
         self,
-        E1,
-        E2,
-        unit=None,
-    ):
+        E1: float | np.ndarray,
+        E2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """This is the default implementation for calculating the integral value
         of this energy flux profile in the range ``[E1, E2]``.
 
@@ -1063,18 +1080,18 @@ class EpeakFunctionEnergyProfile(FunctionEnergyFluxProfile):
 
         Parameters
         ----------
-        E1 : float | 1d numpy ndarray of float
+        E1
             The lower energy bound of the integration.
-        E2 : float | 1d numpy ndarray of float
+        E2
             The upper energy bound of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given energies.
             If set to ``None``, the set energy unit of this EnergyFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : instance of ndarray
+        integral
             The (n,)-shaped numpy ndarray holding the integral values of the
             given integral ranges.
         """
@@ -1092,7 +1109,7 @@ class EpeakFunctionEnergyProfile(FunctionEnergyFluxProfile):
             # integration for log(energy) for hopefully better numerical stability
 
             tmp_e = np.linspace(np.log10(E1_i), np.log10(E2_i))
-            tmp_int = np.trapz(np.log(10) * self(10**tmp_e) * 10**tmp_e, tmp_e)
+            tmp_int = _trapezoid(np.log(10) * self(10**tmp_e) * 10**tmp_e, tmp_e)
 
             # make sure it is always positive (probably not an issue any more with np.trapz.
             # used to be an issue using the spline integrate self.function.integrate)
@@ -1114,20 +1131,22 @@ class TimeFluxProfile(
 ):
     """The abstract base class for a time flux profile function."""
 
-    def __init__(self, t_start=-np.inf, t_stop=np.inf, time_unit=None, **kwargs):
+    def __init__(
+        self, t_start: float = -np.inf, t_stop: float = np.inf, time_unit: units.UnitBase | None = None, **kwargs
+    ):
         """Creates a new time flux profile instance.
 
         Parameters
         ----------
-        t_start : float
+        t_start
             The start time of the time profile.
             If set to -inf, it means, that the profile starts at the beginning
             of the entire time-span of the dataset.
-        t_stop : float
+        t_stop
             The stop time of the time profile.
             If set to +inf, it means, that the profile ends at the end of the
             entire time-span of the dataset.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
@@ -1187,41 +1206,41 @@ class TimeFluxProfile(
             )
         self._time_unit = unit
 
-    def get_total_integral(self):
+    def get_total_integral(self) -> 'float | np.ndarray':
         """Calculates the total integral of the time profile from t_start to
         t_stop.
 
         Returns
         -------
-        integral : float
+        integral
             The integral value of the entire time profile.
             The value is in the set time unit of this TimeFluxProfile instance.
         """
-        integral = self.get_integral(self._t_start, self._t_stop).squeeze()
+        integral = np.asarray(self.get_integral(self._t_start, self._t_stop)).squeeze()
 
         return integral
 
     @abc.abstractmethod
     def __call__(
         self,
-        t,
-        unit=None,
-    ):
+        t: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """This method is supposed to return the time profile value for the
         given times.
 
         Parameters
         ----------
-        t : float | 1D numpy ndarray of float
+        t
             The time(s) for which to get the time flux profile values.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
 
         Returns
         -------
-        values : 1D numpy ndarray of float
+        values
             The time profile values.
         """
         pass
@@ -1229,17 +1248,17 @@ class TimeFluxProfile(
     @abc.abstractmethod
     def move(
         self,
-        dt,
-        unit=None,
+        dt: float,
+        unit: units.UnitBase | None = None,
     ):
         """Abstract method to move the time profile by the given amount of time.
 
         Parameters
         ----------
-        dt : float
+        dt
             The time difference of how far to move the time profile in time.
             This can be a positive or negative time shift value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given time difference.
             If set to ``Ǹone``, the set time unit of this TimeFluxProfile
             instance is assumed.
@@ -1249,27 +1268,27 @@ class TimeFluxProfile(
     @abc.abstractmethod
     def get_integral(
         self,
-        t1,
-        t2,
-        unit=None,
-    ):
+        t1: float | np.ndarray,
+        t2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> 'float | np.ndarray':
         """This method is supposed to calculate the integral of the time profile
         from time ``t1`` to time ``t2``.
 
         Parameters
         ----------
-        t1 : float | array of float
+        t1
             The start time of the integration.
-        t2 : float | array of float
+        t2
             The end time of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``Ǹone``, the set time unit of this TimeFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : array of float
+        integral
             The integral value(s) of the time profile. The values are in the
             set time unit of this TimeFluxProfile instance.
         """
@@ -1283,14 +1302,14 @@ class UnityTimeFluxProfile(
 
     def __init__(
         self,
-        time_unit=None,
+        time_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new instance of UnityTimeFluxProfile.
 
         Parameters
         ----------
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
@@ -1303,22 +1322,22 @@ class UnityTimeFluxProfile(
 
     def __call__(
         self,
-        t,
-        unit=None,
-    ):
+        t: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Returns 1 as numpy ndarray in same shape as t.
 
         Parameters
         ----------
-        t : float | 1D numpy ndarray of float
+        t
             The time(s) for which to get the time flux profile values.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             By definition of this specific class, this argument is ignored.
 
         Returns
         -------
-        values : 1D numpy ndarray of int8
+        values
             1 in same shape as ``t``.
         """
         t = np.atleast_1d(t)
@@ -1329,8 +1348,8 @@ class UnityTimeFluxProfile(
 
     def move(
         self,
-        dt,
-        unit=None,
+        dt: float,
+        unit: units.UnitBase | None = None,
     ):
         """Moves the time profile by the given amount of time. By definition
         this method does nothing, because the profile is 1 over the entire
@@ -1338,10 +1357,10 @@ class UnityTimeFluxProfile(
 
         Parameters
         ----------
-        dt : float
+        dt
             The time difference of how far to move the time profile in time.
             This can be a positive or negative time shift value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given time difference.
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
@@ -1350,31 +1369,31 @@ class UnityTimeFluxProfile(
 
     def get_integral(
         self,
-        t1,
-        t2,
-        unit=None,
-    ):
+        t1: float | np.ndarray,
+        t2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> 'float | np.ndarray':
         """Calculates the integral of the time profile from time t1 to time t2.
 
         Parameters
         ----------
-        t1 : float | array of float
+        t1
             The start time of the integration.
-        t2 : float | array of float
+        t2
             The end time of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : array of float
+        integral
             The integral value(s) of the time profile. The values are in the
             set time unit of this TimeFluxProfile instance.
         """
         if (unit is not None) and (unit != self._time_unit):
-            time_unit_conv_factor = unit.to(self._time_unit)
+            time_unit_conv_factor = float(unit.to(self._time_unit))  # type: ignore[arg-type]
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
 
@@ -1400,21 +1419,21 @@ class BoxTimeFluxProfile(
     @classmethod
     def from_start_and_stop_time(
         cls,
-        start,
-        stop,
-        time_unit=None,
+        start: float,
+        stop: float,
+        time_unit: units.UnitBase | None = None,
         **kwargs,
-    ):
+    ) -> 'BoxTimeFluxProfile':
         """Constructs a BoxTimeFluxProfile instance from the given start and
         stop time.
 
         Parameters
         ----------
-        start : float
+        start
             The start time of the box profile.
-        stop : float
+        stop
             The stop time of the box profile.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
@@ -1424,7 +1443,7 @@ class BoxTimeFluxProfile(
 
         Returns
         -------
-        profile : instance of BoxTimeFluxProfile
+        profile
             The newly created instance of BoxTimeFluxProfile.
         """
         t0 = 0.5 * (start + stop)
@@ -1436,20 +1455,20 @@ class BoxTimeFluxProfile(
 
     def __init__(
         self,
-        t0,
-        tw,
-        time_unit=None,
+        t0: float,
+        tw: float,
+        time_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new box-shaped time profile instance.
 
         Parameters
         ----------
-        t0 : float
+        t0
             The mid time of the box profile.
-        tw : float
+        tw
             The width of the box profile.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
@@ -1503,24 +1522,24 @@ class BoxTimeFluxProfile(
 
     def __call__(
         self,
-        t,
-        unit=None,
-    ):
+        t: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Returns 1 for all t within the interval [t0-tw/2; t0+tw/2], and 0
         otherwise.
 
         Parameters
         ----------
-        t : float | 1D numpy ndarray of float
+        t
             The time(s) for which to get the time flux profile values.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
 
         Returns
         -------
-        values : 1D numpy ndarray of int8
+        values
             The value(s) of the time flux profile for the given time(s).
         """
         t = np.atleast_1d(t)
@@ -1536,25 +1555,25 @@ class BoxTimeFluxProfile(
 
     def cdf(
         self,
-        t,
-        unit=None,
-    ):
+        t: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Calculates the cumulative distribution function value for the given
         time values ``t``.
 
         Parameters
         ----------
-        t : float | instance of numpy ndarray
+        t
             The (N_times,)-shaped numpy ndarray holding the time values for
             which to calculate the CDF values.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``None``, the set time unit of this TimeFluxProfile is
             assumed.
 
         Returns
         -------
-        values : instance of numpy ndarray
+        values
             The (N_times,)-shaped numpy ndarray holding the cumulative
             distribution function values for each time ``t``.
         """
@@ -1578,50 +1597,50 @@ class BoxTimeFluxProfile(
 
     def move(
         self,
-        dt,
-        unit=None,
+        dt: float,
+        unit: units.UnitBase | None = None,
     ):
         """Moves the box-shaped time profile by the time difference dt.
 
         Parameters
         ----------
-        dt : float
+        dt
             The time difference of how far to move the time profile in time.
             This can be a positive or negative time shift value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of ``dt``.
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
         """
         if (unit is not None) and (unit != self._time_unit):
-            dt = dt * unit.to(self._time_unit)
+            dt = dt * unit.to(self._time_unit)  # type: ignore[assignment]
 
         self._t_start += dt
         self._t_stop += dt
 
     def get_integral(
         self,
-        t1,
-        t2,
-        unit=None,
-    ):
+        t1: float | np.ndarray,
+        t2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Calculates the integral of the box-shaped time flux profile from
         time t1 to time t2.
 
         Parameters
         ----------
-        t1 : float | array of float
+        t1
             The start time(s) of the integration.
-        t2 : float | array of float
+        t2
             The end time(s) of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : array of float
+        integral
             The integral value(s). The values are in the set time unit of this
             TimeFluxProfile instance.
         """
@@ -1658,19 +1677,21 @@ class GaussianTimeFluxProfile(
             The one-sigma width of the gaussian profile.
     """
 
-    def __init__(self, t0, sigma_t, tol=1e-12, time_unit=None, **kwargs):
+    def __init__(
+        self, t0: float, sigma_t: float, tol: float = 1e-12, time_unit: units.UnitBase | None = None, **kwargs
+    ):
         """Creates a new gaussian-shaped time flux profile instance.
 
         Parameters
         ----------
-        t0 : float
+        t0
             The mid time of the gaussian profile.
-        sigma_t : float
+        sigma_t
             The one-sigma width of the gaussian profile.
-        tol : float
+        tol
             The tolerance of the gaussian value. This defines the start and end
             time of the gaussian profile.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
@@ -1700,7 +1721,7 @@ class GaussianTimeFluxProfile(
         The unit of the value is the set time unit of this TimeFluxProfile
         instance.
         """
-        return 0.5 * (self._t_start + self._t_stop)
+        return 0.5 * (self.t_start + self.t_stop)
 
     @t0.setter
     def t0(self, t):
@@ -1724,23 +1745,23 @@ class GaussianTimeFluxProfile(
 
     def __call__(
         self,
-        t,
-        unit=None,
-    ):
+        t: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Returns the gaussian profile value for the given time ``t``.
 
         Parameters
         ----------
-        t : float | 1D numpy ndarray of float
+        t
             The time(s) for which to get the time flux profile values.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``None``, the set time unit of this TimeFluxProfile is
             assumed.
 
         Returns
         -------
-        values : 1D numpy ndarray of float
+        values
             The value(s) of the time flux profile for the given time(s).
         """
         t = np.atleast_1d(t)
@@ -1753,7 +1774,7 @@ class GaussianTimeFluxProfile(
 
         s = self._sigma_t
         twossq = 2 * s * s
-        t0 = 0.5 * (self._t_stop + self._t_start)
+        t0 = 0.5 * (self.t_stop + self.t_start)
         dt = t[m] - t0
 
         values = np.zeros_like(t)
@@ -1763,25 +1784,25 @@ class GaussianTimeFluxProfile(
 
     def cdf(
         self,
-        t,
-        unit=None,
-    ):
+        t: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Calculates the cumulative distribution function values for the given
         time values ``t``.
 
         Parameters
         ----------
-        t : float | instance of numpy ndarray
+        t
             The (N_times,)-shaped numpy ndarray holding the time values for
             which to calculate the CDF values.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``None``, the set time unit of this TimeFluxProfile is
             assumed.
 
         Returns
         -------
-        values : instance of numpy ndarray
+        values
             The (N_times,)-shaped numpy ndarray holding the cumulative
             distribution function values for each time ``t``.
         """
@@ -1805,59 +1826,59 @@ class GaussianTimeFluxProfile(
 
     def move(
         self,
-        dt,
-        unit=None,
+        dt: float,
+        unit: units.UnitBase | None = None,
     ):
         """Moves the gaussian time profile by the given amount of time.
 
         Parameters
         ----------
-        dt : float
+        dt
             The time difference of how far to move the time profile in time.
             This can be a positive or negative time shift value.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given time difference.
             If set to ``None``, the set time unit of this TimeFluxProfile is
             assumed.
         """
         if (unit is not None) and (unit != self._time_unit):
-            dt = dt * unit.to(self._time_unit)
+            dt = dt * unit.to(self._time_unit)  # type: ignore[assignment]
 
         self._t_start += dt
         self._t_stop += dt
 
     def get_integral(
         self,
-        t1,
-        t2,
-        unit=None,
-    ):
+        t1: float | np.ndarray,
+        t2: float | np.ndarray,
+        unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Calculates the integral of the gaussian time profile from time ``t1``
         to time ``t2``.
 
         Parameters
         ----------
-        t1 : float | array of float
+        t1
             The start time(s) of the integration.
-        t2 : float | array of float
+        t2
             The end time(s) of the integration.
-        unit : instance of astropy.units.UnitBase | None
+        unit
             The unit of the given times.
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
 
         Returns
         -------
-        integral : array of float
+        integral
             The integral value(s). The values are in the set time unit of
             this TimeFluxProfile instance.
         """
         if (unit is not None) and (unit != self._time_unit):
-            time_unit_conv_factor = unit.to(self._time_unit)
+            time_unit_conv_factor = float(unit.to(self._time_unit))  # type: ignore[arg-type]
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
 
-        t0 = 0.5 * (self._t_stop + self._t_start)
+        t0 = 0.5 * (self.t_stop + self.t_start)
         sigma_t = self._sigma_t
 
         c1 = np.sqrt(np.pi / 2) * sigma_t
@@ -1889,40 +1910,47 @@ class FluxModel(
     """
 
     @staticmethod
-    def get_default_units(cfg):
+    def get_default_units(cfg: Config) -> dict:
         """Returns the configured default units for flux models.
 
         Parameters
         ----------
-        cfg : instance of Config
+        cfg
             The instance of Config holding the local configuration.
 
         Returns
         -------
-        units_dict : dict
+        units_dict
             The dictionary holding the configured default units used for flux
             models.
         """
         return cfg['units']['defaults']['fluxes']
 
-    def __init__(self, angle_unit=None, energy_unit=None, length_unit=None, time_unit=None, **kwargs):
+    def __init__(
+        self,
+        angle_unit: units.UnitBase | None = None,
+        energy_unit: units.UnitBase | None = None,
+        length_unit: units.UnitBase | None = None,
+        time_unit: units.UnitBase | None = None,
+        **kwargs,
+    ):
         """Creates a new FluxModel instance and defines the user-defined units.
 
         Parameters
         ----------
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The used unit for angles.
             If set to ``None``, the configured default angle unit for fluxes is
             used.
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The used unit for energy.
             If set to ``None``, the configured default energy unit for fluxes is
             used.
-        length_unit : instance of astropy.units.UnitBase | None
+        length_unit
             The used unit for length.
             If set to ``None``, the configured default length unit for fluxes is
             used.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes is
             used.
@@ -2030,45 +2058,54 @@ class FluxModel(
         return f'{self.math_function_str} {self.unit_str}'
 
     @abc.abstractmethod
-    def __call__(self, ra=None, dec=None, E=None, t=None, angle_unit=None, energy_unit=None, time_unit=None):
+    def __call__(
+        self,
+        ra: float | np.ndarray | None = None,
+        dec: float | np.ndarray | None = None,
+        E: float | np.ndarray | None = None,
+        t: float | np.ndarray | None = None,
+        angle_unit: units.UnitBase | None = None,
+        energy_unit: units.UnitBase | None = None,
+        time_unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """The call operator to retrieve a flux value for a given celestrial
         position, energy, and observation time.
 
         Parameters
         ----------
-        ra : float | (Ncoord,)-shaped 1D numpy ndarray of float
+        ra
             The right-ascention coordinate for which to retrieve the flux value.
-        dec : float | (Ncoord,)-shaped 1D numpy ndarray of float
+        dec
             The declination coordinate for which to retrieve the flux value.
-        E : float | (Nenergy,)-shaped 1D numpy ndarray of float
+        E
             The energy for which to retrieve the flux value.
-        t : float | (Ntime,)-shaped 1D numpy ndarray of float
+        t
             The observation time for which to retrieve the flux value.
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The unit of the given angles.
             If ``None``, the set angle unit of the flux model is assumed.
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The unit of the given energies.
             If ``None``, the set energy unit of the flux model is assumed.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The unit of the given times.
             If ``None``, the set time unit of the flux model is assumed.
 
         Returns
         -------
-        flux : (Ncoord,Nenergy,Ntime)-shaped ndarray of float
+        flux
             The flux values are in unit of the set flux model units
             [energy]^{-1} [angle]^{-2} [length]^{-2} [time]^{-1}.
         """
         pass
 
-    def to_internal_flux_unit(self):
+    def to_internal_flux_unit(self) -> float:
         """Calculates the conversion factor to convert the flux unit of this
         flux model instance to the SkyLLH internally used flux unit.
 
         Returns
         -------
-        factor : float
+        factor
             The conversion factor.
         """
         self_flux_unit = 1 / (self.angle_unit**2 * self.energy_unit * self.length_unit**2 * self.time_unit)
@@ -2081,7 +2118,7 @@ class FluxModel(
             * internal_units['time']
         )
 
-        factor = (self_flux_unit).to(internal_flux_unit).value
+        factor = (self_flux_unit).to(internal_flux_unit).value  # type: ignore[union-attr]
 
         return factor
 
@@ -2097,14 +2134,14 @@ class NullFluxModel(
     def __init__(
         self,
         *args,
-        cfg=None,
+        cfg: Config | None = None,
         **kwargs,
     ):
         """Creates a new instance of NullFluxModel.
 
         Parameters
         ----------
-        cfg : instance of Config | None
+        cfg
             The instance of Config holding the local configuration. Since this
             flux model does nothing, this argument is optional. If not provided
             the default configuration is used.
@@ -2114,6 +2151,7 @@ class NullFluxModel(
 
         super().__init__(*args, cfg=cfg, **kwargs)
 
+    @property
     def math_function_str(self):
         """Since this is a dummy flux model, calling this method will raise a
         NotImplementedError.
@@ -2151,35 +2189,35 @@ class FactorizedFluxModel(
 
     def __init__(
         self,
-        Phi0,
-        spatial_profile,
-        energy_profile,
-        time_profile,
-        length_unit=None,
+        Phi0: float,
+        spatial_profile: 'SpatialFluxProfile | None',
+        energy_profile: 'EnergyFluxProfile | None',
+        time_profile: 'TimeFluxProfile | None',
+        length_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new factorized flux model.
 
         Parameters
         ----------
-        Phi0 : float
+        Phi0
             The flux normalization constant.
-        spatial_profile : instance of SpatialFluxProfile | None
+        spatial_profile
             The SpatialFluxProfile instance providing the spatial profile
             function of the flux.
             If set to None, an instance of UnitySpatialFluxProfile will be used,
             which represents the constant function 1.
-        energy_profile : instance of EnergyFluxProfile | None
+        energy_profile
             The EnergyFluxProfile instance providing the energy profile
             function of the flux.
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
-        time_profile : instance of TimeFluxProfile | None
+        time_profile
             The TimeFluxProfile instance providing the time profile function
             of the flux.
             If set to None, an instance of UnityTimeFluxProfile will be used,
             which represents the constant function 1.
-        length_unit : instance of astropy.units.UnitBase | None
+        length_unit
             The used unit for length.
             If set to ``None``, the configured default length unit for fluxes is
             used.
@@ -2330,47 +2368,47 @@ class FactorizedFluxModel(
 
     @param_names.setter
     def param_names(self, names):
-        super(FactorizedFluxModel, type(self)).param_names.fset(self, names)
+        super(FactorizedFluxModel, type(self)).param_names.fset(self, names)  # type: ignore[union-attr]
 
     def __call__(
         self,
-        ra=None,
-        dec=None,
-        E=None,
-        t=None,
-        angle_unit=None,
-        energy_unit=None,
-        time_unit=None,
-    ):
+        ra: float | np.ndarray | None = None,
+        dec: float | np.ndarray | None = None,
+        E: float | np.ndarray | None = None,
+        t: float | np.ndarray | None = None,
+        angle_unit: units.UnitBase | None = None,
+        energy_unit: units.UnitBase | None = None,
+        time_unit: units.UnitBase | None = None,
+    ) -> np.ndarray:
         """Calculates the flux values for the given celestrial positions,
         energies, and observation times.
 
         Parameters
         ----------
-        ra: float | (Ncoord,)-shaped 1d numpy ndarray of float | None
+        ra
             The right-ascention coordinate for which to retrieve the flux value.
-        dec : float | (Ncoord,)-shaped 1d numpy ndarray of float | None
+        dec
             The declination coordinate for which to retrieve the flux value.
-        E : float | (Nenergy,)-shaped 1d numpy ndarray of float | None
+        E
             The energy for which to retrieve the flux value.
-        t : float | (Ntime,)-shaped 1d numpy ndarray of float | None
+        t
             The observation time for which to retrieve the flux value.
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The unit of the given angles.
             If ``None``, the set angle unit of the spatial flux profile is
             assumed.
-        energy_unit : instance of astropy.units.UnitBase | None
+        energy_unit
             The unit of the given energies.
             If ``None``, the set energy unit of the energy flux profile is
             assumed.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The unit of the given times.
             If ``None``, the set time unit of the time flux profile is
             assumed.
 
         Returns
         -------
-        flux : (Ncoord,Nenergy,Ntime)-shaped ndarray of float
+        flux
             The flux values are in unit
             [energy]^{-1} [angle]^{-2} [length]^{-2} [time]^{-1}.
         """
@@ -2398,18 +2436,18 @@ class FactorizedFluxModel(
 
         return flux
 
-    def get_param(self, name):
+    def get_param(self, name: str) -> float:
         """Retrieves the value of the given parameter. It returns ``np.nan`` if
         the parameter does not exist.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the parameter.
 
         Returns
         -------
-        value : float | np.nan
+        value
             The value of the parameter.
         """
         for obj in (super(), self._spatial_profile, self._energy_profile, self._time_profile):
@@ -2419,19 +2457,19 @@ class FactorizedFluxModel(
 
         return np.nan
 
-    def set_params(self, pdict):
+    def set_params(self, pdict: dict) -> bool:
         """Sets the parameters of the flux model. For this factorized flux model
         it means that it sets the parameters of the spatial, energy, and time
         profiles.
 
         Parameters
         ----------
-        pdict : dict
+        pdict
             The flux parameter dictionary.
 
         Returns
         -------
-        updated : bool
+        updated
             Flag if parameter values were actually updated.
         """
         updated = False
@@ -2456,39 +2494,39 @@ class PointlikeFFM(
 
     def __init__(
         self,
-        Phi0,
-        energy_profile,
-        time_profile,
-        ra=None,
-        dec=None,
-        angle_unit=None,
-        length_unit=None,
+        Phi0: float,
+        energy_profile: 'EnergyFluxProfile | None',
+        time_profile: 'TimeFluxProfile | None',
+        ra: float | None = None,
+        dec: float | None = None,
+        angle_unit: units.UnitBase | None = None,
+        length_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new factorized flux model for a point-like source.
 
         Parameters
         ----------
-        Phi0 : float
+        Phi0
             The flux normalization constant in unit of flux.
-        energy_profile : instance of EnergyFluxProfile | None
+        energy_profile
             The EnergyFluxProfile instance providing the energy profile
             function of the flux.
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
-        time_profile : instance of TimeFluxProfile | None
+        time_profile
             The TimeFluxProfile instance providing the time profile function
             of the flux.
             If set to None, an instance of UnityTimeFluxProfile will be used,
             which represents the constant function 1.
-        ra : float | None
+        ra
             The right-ascention of the point.
-        dec : float | None
+        dec
             The declination of the point.
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The unit for angles used for the flux unit.
             If set to ``None``, the configured internal angle unit is used.
-        length_unit : instance of astropy.units.UnitBase | None
+        length_unit
             The unit for length used for the flux unit.
             If set to ``None``, the configured internal length unit is used.
         """
@@ -2547,13 +2585,13 @@ class SteadyPointlikeFFM(
 
     def __init__(
         self,
-        Phi0,
-        energy_profile,
-        ra=None,
-        dec=None,
-        angle_unit=None,
-        length_unit=None,
-        time_unit=None,
+        Phi0: float,
+        energy_profile: 'EnergyFluxProfile | None',
+        ra: float | None = None,
+        dec: float | None = None,
+        angle_unit: units.UnitBase | None = None,
+        length_unit: units.UnitBase | None = None,
+        time_unit: units.UnitBase | None = None,
         **kwargs,
     ):
         """Creates a new factorized flux model for a point-like source with no
@@ -2561,26 +2599,26 @@ class SteadyPointlikeFFM(
 
         Parameters
         ----------
-        Phi0 : float
+        Phi0
             The flux normalization constant.
-        energy_profile : instance of EnergyFluxProfile | None
+        energy_profile
             The EnergyFluxProfile instance providing the energy profile
             function of the flux.
             If set to None, an instance of UnityEnergyFluxProfile will be used,
             which represents the constant function 1.
-        ra : float | None
+        ra
             The right-ascention of the point.
-        dec : float | None
+        dec
             The declination of the point.
-        angle_unit : instance of astropy.units.UnitBase | None
+        angle_unit
             The unit for angles used for the flux unit.
             If set to ``None``, the configured default angle unit for fluxes
             is used.
-        length_unit : instance of astropy.units.UnitBase | None
+        length_unit
             The unit for length used for the flux unit.
             If set to ``None``, the configured default length unit for fluxes
             is used.
-        time_unit : instance of astropy.units.UnitBase | None
+        time_unit
             The used unit for time.
             If set to ``None``, the configured default time unit for fluxes
             is used.

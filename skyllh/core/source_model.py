@@ -4,6 +4,8 @@ modeled by a derived class. The most common one is the PointLikeSource source
 model for a point-like source at a given location in the sky.
 """
 
+from collections.abc import Callable, Sequence
+
 import numpy as np
 
 from skyllh.core.model import (
@@ -26,16 +28,18 @@ class SourceModel(
     relative weight w.r.t. other sources.
     """
 
-    def __init__(self, name=None, classification=None, weight=None, **kwargs):
+    def __init__(
+        self, name: str | None = None, classification: str | None = None, weight: float | None = None, **kwargs
+    ):
         """Creates a new source model instance.
 
         Parameters
         ----------
-        name : str | None
+        name
             The name of the source model.
-        classification : str | None
+        classification
             The astronomical classification of the source.
-        weight : float | None
+        weight
             The relative weight of the source w.r.t. other sources.
             If set to None, unity will be used.
         """
@@ -74,17 +78,18 @@ class SourceModelCollection(
     """
 
     @staticmethod
-    def cast(obj, errmsg=None, **kwargs):
+    def cast(  # type: ignore[override]
+        obj: 'SourceModel | Sequence[SourceModel] | SourceModelCollection | None', errmsg: str | None = None, **kwargs
+    ) -> 'SourceModelCollection':
         """Casts the given object to a SourceModelCollection object. If the cast
         fails, a TypeError with the given error message is raised.
 
         Parameters
         ----------
-        obj : SourceModel | sequence of SourceModel | SourceModelCollection |
-                None
+        obj
             The object that should be casted to SourceModelCollection.
             If set to None, an empty SourceModelCollection is created.
-        errmsg : str | None
+        errmsg
             The error message if the cast fails.
             If set to None, a generic error message will be used.
 
@@ -114,15 +119,15 @@ class SourceModelCollection(
             errmsg = f'Cast of object "{obj!s}" of type "{typename(obj)}" to SourceModelCollection failed!'
         raise TypeError(errmsg)
 
-    def __init__(self, sources=None, source_type=None, **kwargs):
+    def __init__(self, sources=None, source_type: type | None = None, **kwargs):
         """Creates a new source collection.
 
         Parameters
         ----------
-        sources : sequence of source_type instances | None
+        sources
             The sequence of sources this collection should be initalized with.
             If set to None, an empty SourceModelCollection instance is created.
-        source_type : type | None
+        source_type
             The type of the source.
             If set to None (default), SourceModel will be used.
         """
@@ -151,12 +156,12 @@ class IsPointlike:
 
     def __init__(
         self,
-        ra_func_instance=None,
-        get_ra_func=None,
-        set_ra_func=None,
-        dec_func_instance=None,
-        get_dec_func=None,
-        set_dec_func=None,
+        ra_func_instance: object | None = None,
+        get_ra_func: Callable | None = None,
+        set_ra_func: Callable | None = None,
+        dec_func_instance: object | None = None,
+        get_dec_func: Callable | None = None,
+        set_dec_func: Callable | None = None,
         **kwargs,
     ):
         """Constructor method. Gets called when the an instance of a class is
@@ -164,25 +169,25 @@ class IsPointlike:
 
         Parameters
         ----------
-        ra_func_instance : object
+        ra_func_instance
             The instance object the right-ascention property's getter and setter
             functions are defined in.
-        get_ra_func : callable
+        get_ra_func
             The callable object of the getter function of the right-ascention
             property. It must have the call signature
             `__call__(ra_func_instance)`.
-        set_ra_func : callable
+        set_ra_func
             The callable object of the setter function of the right-ascention
             property. It must have the call signature
             `__call__(ra_func_instance, value)`.
-        dec_func_instance : object
+        dec_func_instance
             The instance object the declination property's getter and setter
             functions are defined in.
-        get_dec_func : object
+        get_dec_func
             The callable object of the getter function of the declination
             property. It must have the call signature
             `__call__(dec_func_instance)`.
-        set_dec_func : object
+        set_dec_func
             The callable object of the setter function of the declination
             property. It must have the call signature
             `__call__(dec_func_instance, value)`.
@@ -200,21 +205,25 @@ class IsPointlike:
     @property
     def ra(self):
         """The right-ascention coordinate of the point-like source."""
+        assert self._get_ra_func is not None
         return self._get_ra_func(self._ra_func_instance)
 
     @ra.setter
     def ra(self, v):
         v = float_cast(v, 'The ra property must be castable to type float!')
+        assert self._set_ra_func is not None
         self._set_ra_func(self._ra_func_instance, v)
 
     @property
     def dec(self):
         """The declination coordinate of the point-like source."""
+        assert self._get_dec_func is not None
         return self._get_dec_func(self._dec_func_instance)
 
     @dec.setter
     def dec(self, v):
         v = float_cast(v, 'The dec property must be castable to type float!')
+        assert self._set_dec_func is not None
         self._set_dec_func(self._dec_func_instance, v)
 
 
@@ -223,19 +232,19 @@ class PointLikeSource(SourceModel, IsPointlike):
     object in the sky at a given location (right-ascention and declination).
     """
 
-    def __init__(self, ra, dec, name=None, weight=None, **kwargs):
+    def __init__(self, ra: float, dec: float, name: str | None = None, weight: float | None = None, **kwargs):
         """Creates a new PointLikeSource instance for defining a point-like
         source.
 
         Parameters
         ----------
-        ra : float
+        ra
             The right-ascention coordinate of the source in radians.
-        dec : float
+        dec
             The declination coordinate of the source in radians.
-        name : str | None
+        name
             The name of the source.
-        weight : float | None
+        weight
             The relative weight of the source w.r.t. other sources.
             If set to None, unity will be used.
         """

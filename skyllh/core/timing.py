@@ -17,16 +17,16 @@ from skyllh.core.py import (
 
 
 class TaskRecord:
-    def __init__(self, name, start_times, end_times):
+    def __init__(self, name: str, start_times: list[float], end_times: list[float]):
         """Creates a new TaskRecord instance.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the task.
-        start_times : list of float
+        start_times
             The start times of the task in seconds.
-        end_times : list of float
+        end_times
             The end times of the task in seconds.
         """
         self.name = name
@@ -77,12 +77,12 @@ class TaskRecord:
         """(read-only) The number of times this task was executed."""
         return len(self._start_times)
 
-    def join(self, tr):
+    def join(self, tr: 'TaskRecord'):
         """Joins this TaskRecord with the given TaskRecord instance.
 
         Parameters
         ----------
-        tr : instance of TaskRecord
+        tr
             The instance of TaskRecord that should be joined with this
             TaskRecord instance.
         """
@@ -113,44 +113,44 @@ class TimeLord:
         self._task_records.append(tr)
         self._task_records_name_idx_map[tr.name] = len(self._task_records) - 1
 
-    def get_task_record(self, name):
+    def get_task_record(self, name: str) -> 'TaskRecord':
         """Retrieves a task record of the given name.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the task record.
 
         Returns
         -------
-        task_record : instance of TaskRecord
+        task_record
             The instance of TaskRecord with the requested name.
         """
         return self._task_records[self._task_records_name_idx_map[name]]
 
-    def has_task_record(self, name):
+    def has_task_record(self, name: str) -> bool:
         """Checks if this TimeLord instance has a task record of the given name.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the task record.
 
         Returns
         -------
-        check : bool
+        check
             ``True`` if this TimeLord instance has a task record of the given
             name, and ``False`` otherwise.
         """
         return name in self._task_records_name_idx_map
 
-    def join(self, tl):
+    def join(self, tl: 'TimeLord'):
         """Joins a given TimeLord instance with this TimeLord instance. Tasks
         of the same name will be updated and new tasks will be added.
 
         Parameters
         ----------
-        tl : instance of TimeLord
+        tl
             The instance of TimeLord whos tasks should be joined with the tasks
             of this TimeLord instance.
         """
@@ -198,20 +198,20 @@ class TimeLord:
 
 
 class TaskTimer:
-    def __init__(self, time_lord, name):
+    def __init__(self, time_lord: 'TimeLord | None', name: str):
         """
         Parameters
         ----------
-        time_lord : instance of TimeLord
+        time_lord
             The TimeLord instance that keeps track of the recorded tasks.
-        name : str
+        name
             The name of the task.
         """
         self.time_lord = time_lord
         self.name = name
 
-        self._start = None
-        self._end = None
+        self._start: float | None = None
+        self._end: float | None = None
 
     @property
     def time_lord(self):
@@ -238,8 +238,11 @@ class TaskTimer:
         self._name = name
 
     @property
-    def duration(self):
+    def duration(self) -> float:
         """The duration in seconds the task was executed."""
+        assert self._end is not None and self._start is not None, (
+            'TaskTimer must be used as a context manager before accessing duration'
+        )
         return self._end - self._start
 
     def __enter__(self):
@@ -254,4 +257,5 @@ class TaskTimer:
         if self._time_lord is None:
             return
 
+        assert self._start is not None
         self._time_lord.add_task_record(TaskRecord(name=self._name, start_times=[self._start], end_times=[self._end]))

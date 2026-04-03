@@ -90,10 +90,10 @@ def create_tdm(n_sources, n_selected_events):
     )
 
     def tdm_broadcast_params_recarray_to_values_array(params_recarray):
-        return TrialDataManager.broadcast_params_recarray_to_values_array(tdm, params_recarray)
+        return TrialDataManager.broadcast_params_recarray_to_values_array(tdm, params_recarray)  # type: ignore[attr]
 
     def tdm_broadcast_arrays_to_values_array(arrays):
-        return TrialDataManager.broadcast_arrays_to_values_array(tdm, arrays)
+        return TrialDataManager.broadcast_arrays_to_values_array(tdm, arrays)  # type: ignore[attr]
 
     def tdm_broadcast_sources_array_to_values_array(*args, **kwargs):
         return TrialDataManager.broadcast_sources_array_to_values_array(tdm, *args, **kwargs)
@@ -101,7 +101,7 @@ def create_tdm(n_sources, n_selected_events):
     def tdm_broadcast_sources_arrays_to_values_arrays(*args, **kwargs):
         return TrialDataManager.broadcast_sources_arrays_to_values_arrays(tdm, *args, **kwargs)
 
-    tdm.__class__ = TrialDataManager
+    tdm.__class__ = TrialDataManager  # type: ignore[assignment]
     tdm.trial_data_state_id = 1
     tdm.get_n_values = lambda: n_sources * n_selected_events
     tdm.src_evt_idxs = (

@@ -36,8 +36,8 @@ class SourceModelCollectionTestCase(
         self.dec = 1
 
     def test_SourceModelCollection(self):
-        source_model1 = SourceModel(self.ra, self.dec)
-        source_model2 = SourceModel(self.ra, self.dec)
+        source_model1 = SourceModel(self.ra, self.dec)  # type: ignore[arg-type]
+        source_model2 = SourceModel(self.ra, self.dec)  # type: ignore[arg-type]
 
         source_collection_casted = SourceModelCollection.cast(
             source_model1, 'Could not cast SourceModel to SourceCollection'
@@ -57,8 +57,8 @@ class SourceCatalogTestCase(
         self.name = 'MySourceCatalog'
         self.ra = 0.1
         self.dec = 1.1
-        self.source1 = SourceModel(self.ra, self.dec)
-        self.source2 = SourceModel(self.ra, self.dec)
+        self.source1 = SourceModel(self.ra, self.dec)  # type: ignore[arg-type]
+        self.source2 = SourceModel(self.ra, self.dec)  # type: ignore[arg-type]
 
         self.catalog = SourceCatalog(name=self.name, sources=[self.source1, self.source2], source_type=SourceModel)
 

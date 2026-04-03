@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 import numpy as np
 
 from skyllh.core.py import (
@@ -5,34 +7,34 @@ from skyllh.core.py import (
 )
 
 
-def get_bincenters_from_binedges(edges):
+def get_bincenters_from_binedges(edges: np.ndarray) -> np.ndarray:
     """Calculates the bin center values from the given bin edge values.
 
     Parameters
     ----------
-    edges : 1D numpy ndarray
+    edges
         The (n+1,)-shaped 1D ndarray holding the bin edge values.
 
     Returns
     -------
-    bincenters : 1D numpy ndarray
+    bincenters
         The (n,)-shaped 1D ndarray holding the bin center values.
     """
     return 0.5 * (edges[:-1] + edges[1:])
 
 
-def get_binedges_from_bincenters(centers):
+def get_binedges_from_bincenters(centers: np.ndarray) -> np.ndarray:
     """Calculates the bin edges from the given bin center values. The bin center
     values must be evenly spaced.
 
     Parameters
     ----------
-    centers : 1D numpy ndarray
+    centers
         The (n,)-shaped 1D ndarray holding the bin center values.
 
     Returns
     -------
-    edges : 1D numpy ndarray
+    edges
         The (n+1,)-shaped 1D ndarray holding the bin edge values.
     """
     d = np.diff(centers)
@@ -47,7 +49,7 @@ def get_binedges_from_bincenters(centers):
     return edges
 
 
-def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
+def get_bin_indices_from_lower_and_upper_binedges(le: np.ndarray, ue: np.ndarray, values: np.ndarray) -> np.ndarray:
     """Returns the bin indices for the given values which must fall into bins
     defined by the given lower and upper bin edges.
 
@@ -55,16 +57,16 @@ def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
 
     Parameters
     ----------
-    le : (m,)-shaped 1D numpy ndarray
+    le
         The lower bin edges.
-    ue : (m,)-shaped 1D numpy ndarray
+    ue
         The upper bin edges.
-    values : (n,)-shaped 1D numpy ndarray
+    values
         The values for which to get the bin indices.
 
     Returns
     -------
-    idxs : (n,)-shaped 1D numpy ndarray
+    idxs
         The bin indices of the given values.
     """
     if len(le) != len(ue):
@@ -93,15 +95,15 @@ class BinningDefinition:
     binning definitions for an analysis.
     """
 
-    def __init__(self, name, binedges):
+    def __init__(self, name: str, binedges: np.ndarray | Sequence):
         """Creates a new binning definition object.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the binning definition.
-        binedges : sequence of float
-            The sequence of the bin edges, which should be used for the binning.
+        binedges
+            The bin edges, which should be used for the binning.
         """
         self.name = name
         self.binedges = binedges
@@ -112,7 +114,7 @@ class BinningDefinition:
         s += str(self._binedges)
         return s
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Checks if object ``other`` is equal to this BinningDefinition object."""
         if not isinstance(other, BinningDefinition):
             raise TypeError(
@@ -123,7 +125,7 @@ class BinningDefinition:
         if self.name != other.name:
             return False
 
-        return np.all(self.binedges == other.binedges)
+        return bool(np.all(self.binedges == other.binedges))
 
     @property
     def name(self):
@@ -178,23 +180,23 @@ class BinningDefinition:
         """The tuple (lower_edge, upper_edge) of the binning."""
         return (self.lower_edge, self.upper_edge)
 
-    def any_data_out_of_range(self, data):
+    def any_data_out_of_range(self, data: np.ndarray) -> bool:
         """Checks if any of the given data is outside the range of this binning
         definition.
 
         Parameters
         ----------
-        data : instance of ndarray
+        data
             The 1D ndarray with the data values to check.
 
         Returns
         -------
-        outofrange : bool
+        outofrange
             True if any data value is outside the binning range.
             False otherwise.
         """
         outofrange = np.any((data < self.lower_edge) | (data > self.upper_edge))
-        return outofrange
+        return bool(outofrange)
 
     def get_binwidth_from_value(self, value):
         """Returns the width of the bin the given value falls into."""
@@ -204,18 +206,18 @@ class BinningDefinition:
 
         return bin_width
 
-    def get_out_of_range_data(self, data):
+    def get_out_of_range_data(self, data: np.ndarray) -> np.ndarray:
         """Returns the data values which are outside the range of this binning
         definition.
 
         Parameters
         ----------
-        data : instance of numpy.ndarray
+        data
             The 1D ndarray with the data values to check.
 
         Returns
         -------
-        oor_data : instance of numpy.ndarray
+        oor_data
             The 1D ndarray with data outside the range of this binning
             definition.
         """
@@ -224,21 +226,21 @@ class BinningDefinition:
 
         return oor_data
 
-    def get_subset(self, lower_edge, upper_edge):
+    def get_subset(self, lower_edge: float, upper_edge: float) -> 'BinningDefinition':
         """Creates a new BinningDefinition instance which contains only a subset
         of the bins of this BinningDefinition instance. The range of the subset
         is given by a lower and upper edge value.
 
         Parameters
         ----------
-        lower_edge : float
+        lower_edge
             The lower edge value of the subset.
-        upper_edge : float
+        upper_edge
             The upper edge value of the subset.
 
         Returns
         -------
-        binning : instance of BinningDefinition
+        binning
             The new instance of BinningDefinition holding the binning subset.
         """
 
@@ -291,17 +293,17 @@ class UsesBinning:
         """(read-only) The number of dimensions that uses binning."""
         return len(self._binnings)
 
-    def has_same_binning_as(self, obj):
+    def has_same_binning_as(self, obj: 'UsesBinning') -> bool:
         """Checks if this object has the same binning as the given object.
 
         Parameters
         ----------
-        obj : instance of UsesBinning
+        obj
             The object that should be checked for same binning.
 
         Returns
         -------
-        check : bool
+        check
             True if ``obj`` uses the same binning, False otherwise.
         """
         if not isinstance(obj, UsesBinning):
@@ -315,14 +317,14 @@ class UsesBinning:
 
         return True
 
-    def add_binning(self, binning, name=None):
+    def add_binning(self, binning: 'BinningDefinition', name: str | None = None):
         """Adds the given binning definition to the list of binnings.
 
         Parameters
         ----------
-        binning : instance of BinningDefinition
+        binning
             The binning definition to add.
-        name : str | (default) None
+        name
             The name of the binning. If not None and it's different to the
             name of the given binning definition, a copy of the
             BinningDefinition object is made and the new name is set.
@@ -344,18 +346,18 @@ class UsesBinning:
         self._binnings.append(binning)
         self._binning_name2idx[binning.name] = len(self._binnings) - 1
 
-    def get_binning(self, name):
+    def get_binning(self, name: str | int) -> 'BinningDefinition':
         """Retrieves the binning definition of the given name.
 
         Parameters
         ----------
-        name : str | int
+        name
             The name of the binning definition. A string specifies the name and
             an integer the dimension index.
 
         Returns
         -------
-        binning : instance of BinningDefinition
+        binning
             The binning definition of the given name.
         """
         if isinstance(name, str):
