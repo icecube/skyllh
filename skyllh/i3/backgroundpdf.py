@@ -1,9 +1,7 @@
 import numpy as np
 import scipy.interpolate
 
-from skyllh.core.binning import (
-    UsesBinning,
-)
+from skyllh.core.binning import BinningDefinition, UsesBinning
 from skyllh.core.pdf import (
     IsBackgroundPDF,
     SpatialPDF,
@@ -14,12 +12,12 @@ from skyllh.core.py import (
     issequence,
     issequenceof,
 )
+from skyllh.core.smoothing import SmoothingFilter
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.timing import TaskTimer, TimeLord
+from skyllh.core.trialdata import TrialDataManager
 from skyllh.i3.pdf import (
     I3EnergyPDF,
 )
@@ -40,23 +38,23 @@ class BackgroundI3SpatialPDF(
 
     def __init__(
         self,
-        data_sin_dec,
-        data_weights,
-        sin_dec_binning,
-        spline_order_sin_dec,
+        data_sin_dec: np.ndarray,
+        data_weights: np.ndarray,
+        sin_dec_binning: BinningDefinition,
+        spline_order_sin_dec: int,
         **kwargs,
     ):
         """Creates a new IceCube spatial background PDF object.
 
         Parameters
         ----------
-        data_sin_dec : 1d ndarray
+        data_sin_dec
             The array holding the sin(dec) values of the events.
-        data_weights : 1d ndarray
+        data_weights
             The array holding the weight of each event used for histogramming.
-        sin_dec_binning : BinningDefinition
+        sin_dec_binning
             The binning definition for the sin(declination) axis.
-        spline_order_sin_dec : int
+        spline_order_sin_dec
             The order of the spline function for the logarithmic values of the
             spatial background PDF along the sin(dec) axis.
         """
@@ -116,17 +114,17 @@ class BackgroundI3SpatialPDF(
     def spline_order_sin_dec(self, order):
         self._spline_order_sin_dec = int_cast(order, 'The spline_order_sin_dec property must be castable to type int!')
 
-    def add_events(self, events):
+    def add_events(self, events: np.ndarray):
         """Add events to spatial background PDF object and recalculate
         logarithmic spline function.
 
         Parameters
         ----------
-        events : numpy record ndarray
+        events
             The array holding the event data. The following data fields must
             exist:
 
-                sin_dec : float
+                sin_dec
                     The sin(declination) value of the event.
 
         """
@@ -162,31 +160,33 @@ class BackgroundI3SpatialPDF(
 
         self._pd = 0.5 / np.pi * np.exp(log_spline_val)
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(  # type: ignore[override]
+        self, tdm: TrialDataManager, params_recarray: None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the spatial background probability on the sphere of each
         event.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial event data for which
             to calculate the PDF values. The following data fields must exist:
 
-                sin_dec : float
+                sin_dec
                     The sin(declination) value of the event.
 
-        params_recarray : None
+        params_recarray
             Unused interface parameter.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (N_events,)-shaped numpy ndarray holding the background
             probability density value for each event.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each global fit parameter.
             The background PDF does not depend on any global fit parameter,
@@ -204,9 +204,9 @@ class DataBackgroundI3SpatialPDF(
 
     def __init__(
         self,
-        data_exp,
-        sin_dec_binning,
-        spline_order_sin_dec=2,
+        data_exp: DataFieldRecordArray,
+        sin_dec_binning: BinningDefinition,
+        spline_order_sin_dec: int = 2,
         **kwargs,
     ):
         """Constructs a new IceCube spatial background PDF from experimental
@@ -214,16 +214,16 @@ class DataBackgroundI3SpatialPDF(
 
         Parameters
         ----------
-        data_exp : instance of DataFieldRecordArray
+        data_exp
             The instance of DataFieldRecordArray holding the experimental data.
             The following data fields must exist:
 
-                sin_dec : float
+                sin_dec
                     The sin(declination) of the data event.
 
-        sin_dec_binning : BinningDefinition
+        sin_dec_binning
             The binning definition for the sin(declination).
-        spline_order_sin_dec : int
+        spline_order_sin_dec
             The order of the spline function for the logarithmic values of the
             spatial background PDF along the sin(dec) axis.
             The default is 2.
@@ -257,10 +257,10 @@ class MCBackgroundI3SpatialPDF(
 
     def __init__(
         self,
-        data_mc,
-        physics_weight_field_names,
-        sin_dec_binning,
-        spline_order_sin_dec=2,
+        data_mc: DataFieldRecordArray,
+        physics_weight_field_names: str | list[str],
+        sin_dec_binning: BinningDefinition,
+        spline_order_sin_dec: int = 2,
         **kwargs,
     ):
         """Constructs a new IceCube spatial background PDF from monte-carlo
@@ -268,21 +268,21 @@ class MCBackgroundI3SpatialPDF(
 
         Parameters
         ----------
-        data_mc : instance of DataFieldRecordArray
+        data_mc
             The array holding the monte-carlo data. The following data fields
             must exist:
 
-                sin_dec : float
+                sin_dec
                     The sine of the reconstructed declination of the data event.
 
-        physics_weight_field_names : str | list of str
+        physics_weight_field_names
             The name or the list of names of the monte-carlo data fields, which
             should be used as event weights. If a list is given, the weight
             values of all the fields will be summed to construct the final event
             weight.
-        sin_dec_binning : BinningDefinition
+        sin_dec_binning
             The binning definition for the sin(declination).
-        spline_order_sin_dec : int
+        spline_order_sin_dec
             The order of the spline function for the logarithmic values of the
             spatial background PDF along the sin(dec) axis.
             The default is 2.
@@ -293,7 +293,7 @@ class MCBackgroundI3SpatialPDF(
             )
 
         if not issequence(physics_weight_field_names):
-            physics_weight_field_names = [physics_weight_field_names]
+            physics_weight_field_names = [physics_weight_field_names]  # type: ignore[assignment]
         if not issequenceof(physics_weight_field_names, str):
             raise TypeError(
                 'The physics_weight_field_names argument must be of type str '
@@ -331,10 +331,10 @@ class DataBackgroundI3EnergyPDF(
 
     def __init__(
         self,
-        data_exp,
-        log10_energy_binning,
-        sin_dec_binning,
-        smoothing_filter=None,
+        data_exp: DataFieldRecordArray,
+        log10_energy_binning: BinningDefinition,
+        sin_dec_binning: BinningDefinition,
+        smoothing_filter: SmoothingFilter | None = None,
         **kwargs,
     ):
         """Constructs a new IceCube energy background PDF from experimental
@@ -342,21 +342,21 @@ class DataBackgroundI3EnergyPDF(
 
         Parameters
         ----------
-        data_exp : instance of DataFieldRecordArray
+        data_exp
             The array holding the experimental data. The following data fields
             must exist:
 
-                log_energy : float
+                log_energy
                     The logarithm of the reconstructed energy value of the data
                     event.
-                sin_dec : float
+                sin_dec
                     The sine of the reconstructed declination of the data event.
 
-        log10_energy_binning : instance of BinningDefinition
+        log10_energy_binning
             The binning definition for the binning in log10(E).
-        sin_dec_binning : instance of BinningDefinition
+        sin_dec_binning
             The binning definition for the sin(declination).
-        smoothing_filter : instance of SmoothingFilter | None
+        smoothing_filter
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         """
@@ -397,11 +397,11 @@ class MCBackgroundI3EnergyPDF(
 
     def __init__(
         self,
-        data_mc,
-        physics_weight_field_names,
-        log10_energy_binning,
-        sin_dec_binning,
-        smoothing_filter=None,
+        data_mc: DataFieldRecordArray,
+        physics_weight_field_names: str | list[str],
+        log10_energy_binning: BinningDefinition,
+        sin_dec_binning: BinningDefinition,
+        smoothing_filter: SmoothingFilter | None = None,
         **kwargs,
     ):
         """Constructs a new IceCube energy background PDF from monte-carlo
@@ -409,28 +409,28 @@ class MCBackgroundI3EnergyPDF(
 
         Parameters
         ----------
-        data_mc : instance of DataFieldRecordArray
+        data_mc
             The array holding the monte-carlo data. The following data fields
             must exist:
 
-                log_energy : float
+                log_energy
                     The logarithm of the reconstructed energy value of the data
                     event.
-                sin_dec : float
+                sin_dec
                     The sine of the reconstructed declination of the data event.
-                mcweight: float
+                mcweight
                     The monte-carlo weight of the event.
 
-        physics_weight_field_names : str | list of str
+        physics_weight_field_names
             The name or the list of names of the monte-carlo data fields, which
             should be used as physics event weights. If a list is given, the
             weight values of all the fields will be summed to construct the
             final event physics weight.
-        log10_energy_binning : BinningDefinition
+        log10_energy_binning
             The binning definition for the binning in log10(E).
-        sin_dec_binning : BinningDefinition
+        sin_dec_binning
             The binning definition for the sin(declination).
-        smoothing_filter : SmoothingFilter instance | None
+        smoothing_filter
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         """
@@ -442,7 +442,7 @@ class MCBackgroundI3EnergyPDF(
             )
 
         if not issequence(physics_weight_field_names):
-            physics_weight_field_names = [physics_weight_field_names]
+            physics_weight_field_names = [physics_weight_field_names]  # type: ignore[assignment]
         if not issequenceof(physics_weight_field_names, str):
             raise TypeError(
                 'The physics_weight_field_names argument must be '

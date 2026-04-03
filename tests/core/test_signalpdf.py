@@ -53,7 +53,7 @@ def create_tdm(n_sources, n_selected_events):
             return np.array([0, 5, 9.7])
         raise ValueError(f'Value n_selected_events={n_selected_events} is not supported!')
 
-    tdm.__class__ = TrialDataManager
+    tdm.__class__ = TrialDataManager  # type: ignore[assignment]
     tdm.trial_data_state_id = 1
     tdm.get_n_values = lambda: n_sources * n_selected_events
     tdm.src_evt_idxs = (
@@ -102,7 +102,7 @@ class SignalTimePDFTestCase(
 
     def test_get_pd(self):
         tdm = create_tdm(n_sources=self.pmm.n_sources, n_selected_events=3)
-        src_params_recarray = self.pmm.create_src_params_recarray(gflp_values=[])
+        src_params_recarray = self.pmm.create_src_params_recarray(gflp_values=np.array([]))  # type: ignore[arg-type]
 
         (pd, grads) = self.sig_time_pdf.get_pd(tdm=tdm, params_recarray=src_params_recarray)
 

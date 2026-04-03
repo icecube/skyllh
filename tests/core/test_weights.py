@@ -41,13 +41,13 @@ class SimpleDetSigYieldWithoutGrads(DetSigYield):
     def __init__(self, scale=1, **kwargs):
         self._scale = scale
 
-    def sources_to_recarray(self, sources):
-        recarr = np.empty((len(sources),), dtype=[('dec', np.double)])
-        for i, src in enumerate(sources):
+    def sources_to_recarray(self, sources):  # type: ignore[override]
+        recarr = np.empty((len(sources),), dtype=[('dec', np.double)])  # type: ignore[arg-type]
+        for i, src in enumerate(sources):  # type: ignore[arg-type]
             recarr[i]['dec'] = src.dec
         return recarr
 
-    def __call__(self, src_recarray, src_params_recarray):
+    def __call__(self, src_recarray, src_params_recarray):  # type: ignore[override]
         """
         Parameters
         ----------
@@ -162,7 +162,7 @@ class NoDetSigYieldBuilder(DetSigYieldBuilder):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def construct_detsigyield(self, **kwargs):
+    def construct_detsigyield(self, **kwargs):  # type: ignore[override]
         pass
 
 
@@ -207,7 +207,7 @@ def create_DetSigYieldService(shg_mgr, detsigyield_arr):
         ]
     )
 
-    detsigyield_service.__class__ = DetSigYieldService
+    detsigyield_service.__class__ = DetSigYieldService  # type: ignore[assignment]
     detsigyield_service.arr = detsigyield_arr
     detsigyield_service.shg_mgr = shg_mgr
     detsigyield_service.n_datasets = detsigyield_arr.shape[0]
@@ -238,6 +238,8 @@ class TestSourceDetectorWeights(unittest.TestCase):
         src_params_recarray = type(self)._pmm.create_src_params_recarray(gflp_values)
         src_detsigyield_weights_service.calculate(src_params_recarray)
         (a_jk, a_jk_grads) = src_detsigyield_weights_service.get_weights()
+        assert a_jk is not None
+        assert a_jk_grads is not None
 
         self.assertIsInstance(a_jk, np.ndarray, 'instance of a_jk')
 
@@ -266,6 +268,8 @@ class TestSourceDetectorWeights(unittest.TestCase):
         src_params_recarray = type(self)._pmm.create_src_params_recarray(gflp_values)
         src_detsigyield_weights_service.calculate(src_params_recarray)
         (a_jk, a_jk_grads) = src_detsigyield_weights_service.get_weights()
+        assert a_jk is not None
+        assert a_jk_grads is not None
 
         self.assertIsInstance(a_jk, np.ndarray, 'instance of a_jk')
 
@@ -300,6 +304,8 @@ class TestSourceDetectorWeights(unittest.TestCase):
         src_params_recarray = type(self)._pmm.create_src_params_recarray(gflp_values)
         src_detsigyield_weights_service.calculate(src_params_recarray)
         (a_jk, a_jk_grads) = src_detsigyield_weights_service.get_weights()
+        assert a_jk is not None
+        assert a_jk_grads is not None
 
         self.assertIsInstance(a_jk, np.ndarray, 'instance of a_jk')
 
@@ -347,6 +353,8 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
         src_detsigyield_weights_service.calculate(src_params_recarray)
         ds_sig_weight_factors_service.calculate()
         (f_j, f_j_grads) = ds_sig_weight_factors_service.get_weights()
+        assert f_j is not None
+        assert f_j_grads is not None
 
         self.assertIsInstance(f_j, np.ndarray, 'instance of f_j')
 
@@ -380,6 +388,8 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
         src_detsigyield_weights_service.calculate(src_params_recarray)
         ds_sig_weight_factors_service.calculate()
         (f_j, f_j_grads) = ds_sig_weight_factors_service.get_weights()
+        assert f_j is not None
+        assert f_j_grads is not None
 
         self.assertIsInstance(f_j, np.ndarray, 'instance of f_j')
 
@@ -417,6 +427,8 @@ class TestDatasetSignalWeightFactors(unittest.TestCase):
         src_detsigyield_weights_service.calculate(src_params_recarray)
         ds_sig_weight_factors_service.calculate()
         (f_j, f_j_grads) = ds_sig_weight_factors_service.get_weights()
+        assert f_j is not None
+        assert f_j_grads is not None
 
         self.assertIsInstance(f_j, np.ndarray, 'instance of f_j')
 

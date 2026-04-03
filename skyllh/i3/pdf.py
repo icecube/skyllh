@@ -1,11 +1,10 @@
 import numpy as np
 
-from skyllh.core.binning import (
-    UsesBinning,
-)
+from skyllh.core.binning import BinningDefinition, UsesBinning
 from skyllh.core.logging import (
     get_logger,
 )
+from skyllh.core.parameters import ParameterModelMapper
 from skyllh.core.pdf import (
     EnergyPDF,
     PDFAxis,
@@ -20,9 +19,8 @@ from skyllh.core.smoothing import (
     NoHistSmoothingMethod,
     SmoothingFilter,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.timing import TaskTimer, TimeLord
+from skyllh.core.trialdata import TrialDataManager
 
 logger = get_logger(__name__)
 
@@ -41,41 +39,41 @@ class I3EnergyPDF(
 
     def __init__(
         self,
-        pmm,
-        data_log10_energy,
-        data_sin_dec,
-        data_mcweight,
-        data_physicsweight,
-        log10_energy_binning,
-        sin_dec_binning,
-        smoothing_filter,
+        pmm: ParameterModelMapper | None,
+        data_log10_energy: np.ndarray,
+        data_sin_dec: np.ndarray,
+        data_mcweight: np.ndarray,
+        data_physicsweight: np.ndarray,
+        log10_energy_binning: BinningDefinition,
+        sin_dec_binning: BinningDefinition,
+        smoothing_filter: SmoothingFilter | None,
         **kwargs,
     ):
         """Creates a new IceCube energy PDF object.
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper | None
+        pmm
             The instance of ParameterModelMapper defining the global parameters
             and their mapping to local model/source parameters.
             It can be ``None``, if the PDF does not depend on any parameters.
-        data_log10_energy : 1d ndarray
+        data_log10_energy
             The array holding the log10(E) values of the events.
-        data_sin_dec : 1d ndarray
+        data_sin_dec
             The array holding the sin(dec) values of the events.
-        data_mcweight : 1d ndarray
+        data_mcweight
             The array holding the monte-carlo weights of the events.
             The final data weight will be the product of data_mcweight and
             data_physicsweight.
-        data_physicsweight : 1d ndarray
+        data_physicsweight
             The array holding the physics weights of the events.
             The final data weight will be the product of data_mcweight and
             data_physicsweight.
-        log10_energy_binning : instance of BinningDefinition
+        log10_energy_binning
             The binning definition for the log10(E) axis.
-        sin_dec_binning : instance of BinningDefinition
+        sin_dec_binning
             The binning definition for the sin(declination) axis.
-        smoothing_filter : instance of SmoothingFilter | None
+        smoothing_filter
             The smoothing filter to use for smoothing the energy histogram.
             If ``None``, no smoothing will be applied.
         """
@@ -205,23 +203,23 @@ class I3EnergyPDF(
         mask = self._hist_mask_mc_covered & ~self._hist_mask_mc_covered_zero_physics
         return mask
 
-    def assert_is_valid_for_trial_data(self, tdm, tl=None, **kwargs):
+    def assert_is_valid_for_trial_data(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Checks if this energy PDF is valid for all the given trial events.
         It checks if all the data is within the log10(E) and sin(dec) binning
         range.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data events.
             The following data fields must exist:
 
-            log_energy : float
+            log_energy
                 The base-10 logarithm of the energy value of the data event.
-            dec : float
+            dec
                 The declination of the data event.
 
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
 
         Raises
@@ -254,33 +252,35 @@ class I3EnergyPDF(
                 f'The following data values are out of range: {oor_data}'
             )
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(  # type: ignore[override]
+        self, tdm: TrialDataManager, params_recarray: None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the energy probability density of each event.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the data events for which the
             probability density should be calculated.
             The following data fields must exist:
 
-            log_energy : float
+            log_energy
                 The base-10 logarithm of the energy value of the event.
-            sin_dec : float
+            sin_dec
                 The sin(declination) value of the event.
 
-        params_recarray : None
+        params_recarray
             Unused interface parameter.
-        tl : TimeLord instance | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of ndarray
+        pd
             The 1D (N_events,)-shaped numpy ndarray with the energy probability
             density for each event.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each fit parameter. The key of the dictionary is the id
             of the global fit parameter. Because this energy PDF does not depend

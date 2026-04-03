@@ -3,7 +3,7 @@
 import numpy as np
 
 
-def azi_to_ra_transform(azi, mjd):
+def azi_to_ra_transform(azi: float | np.ndarray, mjd: float | np.ndarray) -> float | np.ndarray:
     """Rotates the given IceCube azimuth angles into right-ascention angles for
     the given MJD times. This function is IceCube specific and assumes that the
     detector is located excently at the South Pole and neglects all astronomical
@@ -11,14 +11,14 @@ def azi_to_ra_transform(azi, mjd):
 
     Parameters
     ----------
-    azi : instance of numpy.ndarray
+    azi
         The array with the azimuth angles.
-    mjd : instance of numpy.ndarray
+    mjd
         The array with the MJD times for each azimuth angle.
 
     Returns
     -------
-    ra : instance of numpy.ndarray
+    ra
         The right-ascention values.
     """
     # sidereal day = length * solar day
@@ -31,19 +31,19 @@ def azi_to_ra_transform(azi, mjd):
     return ra
 
 
-def ra_to_azi_transform(ra, mjd):
+def ra_to_azi_transform(ra: float | np.ndarray, mjd: float | np.ndarray) -> float | np.ndarray:
     """Rotates the given right-ascention angles to local IceCube azimuth angles.
 
     Parameters
     ----------
-    ra : instance of numpy.ndarray
+    ra
         The array with the right-ascention angles.
-    mjd : instance of numpy.ndarray
+    mjd
         The array with the MJD times for each right-ascention angle.
 
     Returns
     -------
-    azi : instance of numpy.ndarray
+    azi
         The azimuth angle for each right-ascention angle.
     """
     # Use the azi_to_ra_transform function because it is symmetric.
@@ -52,7 +52,9 @@ def ra_to_azi_transform(ra, mjd):
     return azi
 
 
-def hor_to_equ_transform(azi, zen, mjd):
+def hor_to_equ_transform(
+    azi: float | np.ndarray, zen: float | np.ndarray, mjd: float | np.ndarray
+) -> tuple[float | np.ndarray, float | np.ndarray]:
     """Transforms the coordinate from the horizontal system (azimuth, zenith)
     into the equatorial system (right-ascention, declination) for detector at
     the South Pole and neglecting all astronomical effects like Earth
@@ -60,18 +62,18 @@ def hor_to_equ_transform(azi, zen, mjd):
 
     Parameters
     ----------
-    azi : instance of numpy.ndarray
+    azi
         The azimuth angle.
-    zen : instance of numpy.ndarray
+    zen
         The zenith angle.
-    mjd : instance of numpy.ndarray
+    mjd
         The time in MJD.
 
     Returns
     -------
-    ra : instance of numpy.ndarray
+    ra
         The right-ascention angle.
-    dec : instance of numpy.ndarray
+    dec
         The declination angle.
     """
     ra = azi_to_ra_transform(azi, mjd)

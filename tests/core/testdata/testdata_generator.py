@@ -136,6 +136,6 @@ def generate_testdata():
 
 if __name__ == '__main__':
     testdata = generate_testdata()
-    np.save('exp_testdata.npy', testdata.get('exp_testdata'))
-    np.save('mc_testdata.npy', testdata.get('mc_testdata'))
-    np.save('livetime_testdata.npy', testdata.get('livetime_testdata'))
+    np.save('exp_testdata.npy', testdata['exp_testdata'])
+    np.save('mc_testdata.npy', testdata['mc_testdata'])
+    np.save('livetime_testdata.npy', testdata['livetime_testdata'])

@@ -2,20 +2,25 @@
 MultiDimGridPDF instances.
 """
 
+from collections.abc import Callable
+
 import numpy as np
 
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.dataset import Dataset, DatasetData
+from skyllh.core.parameters import ParameterModelMapper
 from skyllh.core.pdf import (
     MultiDimGridPDF,
 )
 from skyllh.core.py import (
     classname,
 )
+from skyllh.core.timing import TimeLord
 
 
-def get_kde_pdf_sig_spatial_norm_factor_func(log10_psi_name='log10_psi'):
+def get_kde_pdf_sig_spatial_norm_factor_func(log10_psi_name: str = 'log10_psi'):
     """Returns the standard normalization factor function for the spatial
     signal MultiDimGridPDF, which is created from KDE PDF values.
     It can be used for the ``norm_factor_func`` argument of the
@@ -24,7 +29,7 @@ def get_kde_pdf_sig_spatial_norm_factor_func(log10_psi_name='log10_psi'):
 
     Parameters
     ----------
-    log10_psi_name : str
+    log10_psi_name
         The name of the event data field for the log10(psi) values.
     """
 
@@ -60,16 +65,16 @@ def get_kde_pdf_bkg_norm_factor_func():
 
 
 def create_MultiDimGridPDF_from_photosplinetable(
-    multidimgridpdf_cls,
-    pmm,
-    ds,
-    data,
-    info_key,
-    splinetable_key,
-    kde_pdf_axis_name_map_key='KDE_PDF_axis_name_map',
-    norm_factor_func=None,
-    cache_pd_values=False,
-    tl=None,
+    multidimgridpdf_cls: type[MultiDimGridPDF],
+    pmm: ParameterModelMapper,
+    ds: Dataset,
+    data: DatasetData,
+    info_key: str,
+    splinetable_key: str,
+    kde_pdf_axis_name_map_key: str = 'KDE_PDF_axis_name_map',
+    norm_factor_func: Callable | None = None,
+    cache_pd_values: bool = False,
+    tl: TimeLord | None = None,
     **kwargs,
 ):
     """
@@ -79,38 +84,38 @@ def create_MultiDimGridPDF_from_photosplinetable(
 
     Parameters
     ----------
-    multidimgridpdf_cls : subclass of MultiDimGridPDF
+    multidimgridpdf_cls
         The MultiDimGridPDF class, which should be used.
-    pmm : instance of ParameterModelMapper
+    pmm
         The instance of ParameterModelMapper, which defines the mapping of
         global parameters to local model parameters.
-    ds : instance of Dataset
+    ds
         The instance of Dataset the PDF applies to.
-    data : instance of DatasetData
+    data
         The instance of DatasetData that holds the experimental and monte-carlo
         data of the dataset.
-    info_key : str
+    info_key
         The auxiliary data name for the file containing PDF information.
-    splinetable_key : str
+    splinetable_key
         The auxiliary data name for the name of the file containing the
         photospline spline table.
-    kde_pdf_axis_name_map_key : str
+    kde_pdf_axis_name_map_key
         The auxiliary data name for the KDE PDF axis name map.
-    norm_factor_func : callable | None
+    norm_factor_func
         The function that calculates a possible required normalization
         factor for the PDF value based on the event properties.
         For more information about this argument see the documentation of the
         :meth:`skyllh.core.pdf.MultiDimGridPDF.__init__` method.
-    cache_pd_values : bool
+    cache_pd_values
         Flag if the probability density values should get cached by the
         MultiDimGridPDF class.
-    tl : instance of TimeLord | None
+    tl
         The optional instance of TimeLord to use for measuring timing
         information.
 
     Returns
     -------
-    pdf : instance of ``multidimgridpdf_cls``
+    pdf
         The created PDF instance of MultiDimGridPDF.
     """
     if not issubclass(multidimgridpdf_cls, MultiDimGridPDF):
@@ -157,16 +162,16 @@ def create_MultiDimGridPDF_from_photosplinetable(
 
 
 def create_MultiDimGridPDF_from_kde_pdf(
-    multidimgridpdf_cls,
-    pmm,
-    ds,
-    data,
-    numerator_key,
-    denumerator_key=None,
-    kde_pdf_axis_name_map_key='KDE_PDF_axis_name_map',
-    norm_factor_func=None,
-    cache_pd_values=False,
-    tl=None,
+    multidimgridpdf_cls: type[MultiDimGridPDF],
+    pmm: ParameterModelMapper,
+    ds: Dataset,
+    data: DatasetData,
+    numerator_key: str,
+    denumerator_key: str | None = None,
+    kde_pdf_axis_name_map_key: str = 'KDE_PDF_axis_name_map',
+    norm_factor_func: Callable | None = None,
+    cache_pd_values: bool = False,
+    tl: TimeLord | None = None,
     **kwargs,
 ):
     """Creates a MultiDimGridPDF instance with pdf values taken from KDE PDF
@@ -174,38 +179,38 @@ def create_MultiDimGridPDF_from_kde_pdf(
 
     Parameters
     ----------
-    multidimgridpdf_cls : subclass of MultiDimGridPDF
+    multidimgridpdf_cls
         The MultiDimGridPDF class, which should be used.
-    pmm : instance of ParameterModelMapper
+    pmm
         The instance of ParameterModelMapper, which defines the mapping of
         global parameters to local model parameters.
-    ds : instance of Dataset
+    ds
         The instance of Dataset the PDF applies to.
-    data : instance of DatasetData
+    data
         The instance of DatasetData that holds the auxiliary data of the
         dataset.
-    numerator_key : str
+    numerator_key
         The auxiliary data name for the PDF numerator array.
-    denumerator_key : str | None
+    denumerator_key
         The auxiliary data name for the PDF denumerator array.
         This can be ``None``, if no denumerator array is required.
-    kde_pdf_axis_name_map_key : str
+    kde_pdf_axis_name_map_key
         The auxiliary data name for the KDE PDF axis name map.
-    norm_factor_func : callable | None
+    norm_factor_func
         The function that calculates a possible required normalization
         factor for the PDF value based on the event properties.
         For more information about this argument see the documentation of the
         :meth:`skyllh.core.pdf.MultiDimGridPDF.__init__` method.
-    cache_pd_values : bool
+    cache_pd_values
         Flag if the probability density values should get cached by the
         MultiDimGridPDF class.
-    tl : instance of TimeLord | None
+    tl
         The optional instance of TimeLord to use for measuring timing
         information.
 
     Returns
     -------
-    pdf : instance of ``multidimgridpdf_cls``
+    pdf
         The created PDF instance of MultiDimGridPDF.
     """
     if not issubclass(multidimgridpdf_cls, MultiDimGridPDF):

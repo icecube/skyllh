@@ -1,33 +1,37 @@
 """Plotting module to plot IceCube specific PDF ratio objects."""
 
 import itertools
+from typing import cast
 
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
+from matplotlib.image import AxesImage
 
+from skyllh.core.parameters import ParameterModelMapper
 from skyllh.core.py import classname
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
 from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.trialdata import TrialDataManager
+from skyllh.i3.pdf import I3EnergyPDF
 from skyllh.i3.pdfratio import SplinedI3EnergySigSetOverBkgPDFRatio
 
 
 class SplinedI3EnergySigSetOverBkgPDFRatioPlotter:
-    """Plotter class to plot an I3EnergySigSetOverBkgPDFRatioSpline object."""
+    """Plotter class to plot an SplinedI3EnergySigSetOverBkgPDFRatio object."""
 
-    def __init__(self, tdm, pdfratio):
+    def __init__(self, tdm: TrialDataManager, pdfratio: SplinedI3EnergySigSetOverBkgPDFRatio):
         """Creates a new plotter object for plotting an
-        I3EnergySigSetOverBkgPDFRatioSpline object.
+        SplinedI3EnergySigSetOverBkgPDFRatio object.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that provides the data for the
             PDF ratio evaluation.
-        pdfratio : I3EnergySigSetOverBkgPDFRatioSpline
+        pdfratio
             The PDF ratio object to plot.
         """
         self.tdm = tdm
@@ -55,18 +59,25 @@ class SplinedI3EnergySigSetOverBkgPDFRatioPlotter:
             raise TypeError('The tdm property must be an instance of TrialDataManager!')
         self._tdm = obj
 
-    def plot(self, src_hypo_group_manager, axes, fitparams, **kwargs):
+    def plot(
+        self,
+        src_hypo_group_manager: SourceHypoGroupManager,
+        pmm: ParameterModelMapper,
+        src_params_recarray: np.ndarray,
+        axes: Axes,
+        **kwargs,
+    ) -> AxesImage:
         """Plots the PDF ratio for the given set of fit paramater values.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        src_hypo_group_manager
             The instance of SourceHypoGroupManager that defines the source
             hypotheses.
-        axes : mpl.axes.Axes
+        axes
             The matplotlib Axes object on which the PDF ratio should get drawn
             to.
-        fitparams : dict
+        fitparams
             The dictionary with the set of fit paramater values.
 
         Additional Keyword Arguments
@@ -76,20 +87,18 @@ class SplinedI3EnergySigSetOverBkgPDFRatioPlotter:
 
         Returns
         -------
-        img : instance of mpl.AxesImage
+        img
             The AxesImage instance showing the PDF ratio image.
         """
         if not isinstance(src_hypo_group_manager, SourceHypoGroupManager):
             raise TypeError('The src_hypo_group_manager argument must be an instance of SourceHypoGroupManager!')
         if not isinstance(axes, Axes):
             raise TypeError('The axes argument must be an instance of matplotlib.axes.Axes!')
-        if not isinstance(fitparams, dict):
-            raise TypeError('The fitparams argument must be an instance of dict!')
 
         # Get the binning for the axes. We use the background PDF to get it
         # from. By construction, all PDFs use the same binning. We know that
         # the PDFs are 2-dimensional.
-        (xbinning, ybinning) = self._pdfratio.backgroundpdf.binnings
+        (xbinning, ybinning) = cast(I3EnergyPDF, self._pdfratio.bkg_pdf).binnings
 
         # Create a 2D array with the ratio values. We put one event into each
         # bin.
@@ -108,9 +117,9 @@ class SplinedI3EnergySigSetOverBkgPDFRatioPlotter:
             events['iy'][i] = iy
             events[ybinning.name][i] = y
 
-        self._tdm.initialize_for_new_trial(src_hypo_group_manager, events)
+        self._tdm.initialize_trial(shg_mgr=src_hypo_group_manager, pmm=pmm, events=events)
 
-        event_ratios = self.pdfratio.get_ratio(self._tdm, fitparams)
+        event_ratios = self.pdfratio.get_ratio(self._tdm, src_params_recarray)
         for i in range(len(events)):
             ratios[events['ix'][i], events['iy'][i]] = event_ratios[i]
 

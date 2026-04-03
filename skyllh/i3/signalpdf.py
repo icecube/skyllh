@@ -3,6 +3,7 @@ import numpy as np
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.config import Config
 from skyllh.core.flux_model import (
     FluxModel,
 )
@@ -19,18 +20,20 @@ from skyllh.core.pdf import (
     IsSignalPDF,
     PDFSet,
 )
+from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
     classname,
 )
 from skyllh.core.smoothing import (
     SmoothingFilter,
 )
+from skyllh.core.storage import DataFieldRecordArray
 from skyllh.i3.pdf import (
     I3EnergyPDF,
 )
 
 
-class SignalI3EnergyPDFSet(
+class SignalI3EnergyPDFSet(  # type: ignore[misc]
     PDFSet,
     IsSignalPDF,
     PDF,
@@ -43,15 +46,15 @@ class SignalI3EnergyPDFSet(
 
     def __init__(
         self,
-        cfg,
-        data_mc,
-        log10_energy_binning,
-        sin_dec_binning,
-        fluxmodel,
-        param_grid_set,
-        smoothing_filter=None,
-        ncpu=None,
-        ppbar=None,
+        cfg: Config,
+        data_mc: DataFieldRecordArray,
+        log10_energy_binning: BinningDefinition,
+        sin_dec_binning: BinningDefinition,
+        fluxmodel: FluxModel,
+        param_grid_set: ParameterGridSet | ParameterGrid,
+        smoothing_filter: SmoothingFilter | None = None,
+        ncpu: int | None = None,
+        ppbar: ProgressBar | None = None,
         **kwargs,
     ):
         """Creates a new IceCube energy signal PDF for a given flux model and
@@ -62,44 +65,43 @@ class SignalI3EnergyPDFSet(
 
         Parameters
         ----------
-        cfg : instance of Config
+        cfg
             The instance of Config holding the local configuration.
-        data_mc : instance of DataFieldRecordArray
+        data_mc
             The instance of DataFieldRecordArray holding the monte-carlo data.
             The following data fields must exist:
 
-            true_energy : float
+            true_energy
                 The true energy value of the data event.
-            log_energy : float
+            log_energy
                 The base10-logarithm of the reconstructed energy value of the
                 data event.
-            sin_dec : float
+            sin_dec
                 The declination of the data event.
-            mcweight : float
+            mcweight
                 The monte-carlo weight value of the data events in unit
                 GeV cm^2 sr.
 
-        log10_energy_binning : instance of BinningDefinition
+        log10_energy_binning
             The binning definition for the reconstructed energy binning in
             log10(E).
-        sin_dec_binning : instance of BinningDefinition
+        sin_dec_binning
             The binning definition for the binning in sin(declination).
-        fluxmodel : instance of FluxModel
+        fluxmodel
             The flux model to use to create the signal energy PDF.
-        param_grid_set : instance of ParameterGridSet |
-                         instance of ParameterGrid
+        param_grid_set
             The set of parameter grids. A ParameterGrid instance for each
             energy parameter, for which an I3EnergyPDF object needs to be
             created.
-        smoothing_filter : instance of SmoothingFilter | None
+        smoothing_filter
             The smoothing filter to use for smoothing the energy histogram.
             If ``None``, no smoothing will be applied.
-        ncpu : int | None
+        ncpu
             The number of CPUs to use to create the different I3EnergyPDF
             instances for the different parameter grid values.
             If set to ``None``, the configured default number of CPUs will be
             used.
-        ppbar : instance of ProgressBar | None
+        ppbar
             The instance of ProgressBar of the optional parent progress bar.
         """
         if isinstance(param_grid_set, ParameterGrid):
@@ -145,51 +147,51 @@ class SignalI3EnergyPDFSet(
         # Create I3EnergyPDF objects for all permutations of the parameter
         # grid values.
         def create_I3EnergyPDF(
-            cfg,
-            data_log10_energy,
-            data_sin_dec,
-            data_mcweight,
-            data_true_energy,
-            log10_energy_binning,
-            sin_dec_binning,
-            smoothing_filter,
-            fluxmodel,
-            flux_unit_conv_factor,
-            gridparams,
-        ):
+            cfg: Config,
+            data_log10_energy: np.ndarray,
+            data_sin_dec: np.ndarray,
+            data_mcweight: np.ndarray,
+            data_true_energy: np.ndarray,
+            log10_energy_binning: BinningDefinition,
+            sin_dec_binning: BinningDefinition,
+            smoothing_filter: SmoothingFilter | None,
+            fluxmodel: FluxModel,
+            flux_unit_conv_factor: float,
+            gridparams: dict,
+        ) -> I3EnergyPDF:
             """Creates an I3EnergyPDF object for the given flux model and flux
             parameters.
 
             Parameters
             ----------
-            cfg : instance of Config
+            cfg
                 The instance of Config holding the local configuration.
-            data_log10_energy : 1d ndarray
+            data_log10_energy
                 The base-10 logarithm of the reconstructed energy value of the
                 data events.
-            data_sin_dec : 1d ndarray
+            data_sin_dec
                 The sin(dec) value of the the data events.
-            data_mcweight : 1d ndarray
+            data_mcweight
                 The monte-carlo weight value of the data events.
-            data_true_energy : 1d ndarray
+            data_true_energy
                 The true energy value of the data events.
-            log10_energy_binning : instance of BinningDefinition
+            log10_energy_binning
                 The binning definition for the binning in log10(E).
-            sin_dec_binning : instance of BinningDefinition
+            sin_dec_binning
                 The binning definition for the sin(declination).
-            smoothing_filter : instance of SmoothingFilter | None
+            smoothing_filter
                 The smoothing filter to use for smoothing the energy histogram.
                 If ``None``, no smoothing will be applied.
-            fluxmodel : instance of FluxModel
+            fluxmodel
                 The flux model to use to create the signal event weights.
-            flux_unit_conv_factor : float
+            flux_unit_conv_factor
                 The factor to convert the flux unit into the internal flux unit.
-            gridparams : dict
+            gridparams
                 The dictionary holding the specific signal flux parameters.
 
             Returns
             -------
-            i3energypdf : instance of I3EnergyPDF
+            i3energypdf
                 The created I3EnergyPDF instance for the given flux model and
                 flux parameters.
             """

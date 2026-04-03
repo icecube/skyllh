@@ -1,11 +1,14 @@
 """The livetime module provides general functionality for detector up-time."""
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from skyllh.core.py import (
     classname,
     issequence,
 )
+from skyllh.core.random import RandomStateService
 
 
 class Livetime:
@@ -14,34 +17,32 @@ class Livetime:
     """
 
     @staticmethod
-    def get_integrated_livetime(livetime):
+    def get_integrated_livetime(livetime: 'float | Livetime') -> float:
         """Gets the integrated live-time from the given livetime argument, which
         is either a scalar value or an instance of Livetime.
 
         Parameters
         ----------
-        livetime : float | Livetime instance
+        livetime
             The live-time in days as float, or an instance of Livetime.
 
         Returns
         -------
-        intgrated_livetime : float
+        integrated_livetime
             The integrated live-time.
         """
-        intgrated_livetime = livetime
-
         if isinstance(livetime, Livetime):
-            intgrated_livetime = livetime.livetime
+            return float(livetime.livetime)
 
-        return intgrated_livetime
+        return float(livetime)
 
-    def __init__(self, uptime_mjd_intervals_arr, **kwargs):
+    def __init__(self, uptime_mjd_intervals_arr: np.ndarray, **kwargs):
         """Creates a new Livetime object from a (N,2)-shaped ndarray holding
         the uptime intervals.
 
         Parameters
         ----------
-        uptime_mjd_intervals_arr : (N,2)-shaped ndarray
+        uptime_mjd_intervals_arr
             The (N,2)-shaped ndarray holding the start and end times of each
             up-time interval.
 
@@ -60,13 +61,13 @@ class Livetime:
 
         self.uptime_mjd_intervals_arr = uptime_mjd_intervals_arr
 
-    def assert_mjd_intervals_integrity(self, arr):
+    def assert_mjd_intervals_integrity(self, arr: np.ndarray):
         """Checks if the given MJD interval array conforms with all its
         data requirements.
 
         Parameters
         ----------
-        arr : instance of numpy ndarray
+        arr
             The (N,2)-shaped numpy ndarray holding the up-time intervals.
 
         Raises
@@ -158,14 +159,14 @@ class Livetime:
         s = f'{classname(self)}(time_window=({self.time_window[0]:.6f}, {self.time_window[1]:.6f}))'
         return s
 
-    def _get_onoff_intervals(self):
+    def _get_onoff_intervals(self) -> np.ndarray:
         """A view on the uptime intervals where each time is a lower bin edge.
         Hence, odd array elements (bins) are on-time intervals, and even array
         elements are off-time intervals.
 
         Returns
         -------
-        onoff_intervals : instance of numpy ndarray
+        onoff_intervals
             The (n_uptime_intervals*2,)-shaped numpy ndarray holding the time
             edges of the uptime intervals.
         """
@@ -173,7 +174,7 @@ class Livetime:
 
         return onoff_intervals
 
-    def _get_onoff_interval_indices(self, mjds):
+    def _get_onoff_interval_indices(self, mjds: np.ndarray) -> np.ndarray:
         """Retrieves the indices of the on-time and off-time intervals, which
         correspond to the given MJD values.
 
@@ -187,12 +188,12 @@ class Livetime:
 
         Parameters
         ----------
-        mjds : numpy array of floats
+        mjds
             The array of MJD values.
 
         Returns
         -------
-        idxs : numpy array of ints
+        idxs
             The array of the on-off-time interval indices that correspond to the
             given MJD values.
         """
@@ -205,37 +206,39 @@ class Livetime:
 
         return idxs
 
-    def get_uptime_intervals_between(self, t_start, t_end):
+    def get_uptime_intervals_between(self, t_start: float, t_end: float) -> np.ndarray:
         """Creates a (N,2)-shaped ndarray holding the on-time detector intervals
         between the given time range from t_start to t_end.
 
         Parameters
         ----------
-        t_start : float
+        t_start
             The MJD start time of the time range to consider. This might be the
             lower bound of the first on-time interval.
-        t_end : float
+        t_end
             The MJD end time of the time range to consider. This might be the
             upper bound of the last on-time interval.
 
         Returns
         -------
-        ontime_intervals : (N,2)-shaped ndarray
+        ontime_intervals
             The (N,2)-shaped ndarray holding the on-time detector intervals.
         """
         onoff_intervals = self._get_onoff_intervals()
 
-        (t_start_idx, t_end_idx) = self._get_onoff_interval_indices((t_start, t_end))
+        (t_start_idx, t_end_idx) = self._get_onoff_interval_indices(np.array([t_start, t_end]))
+        t_start_f: float = t_start
+        t_end_f: float = t_end
         if t_start_idx % 2 == 0:
             # t_start is during off-time. Use the next on-time lower edge as
             # first on-time edge.
-            t_start = onoff_intervals[t_start_idx]
+            t_start_f = float(onoff_intervals[t_start_idx])
         else:
             t_start_idx -= 1
         if t_end_idx % 2 == 0:
             # t_end is during off-time. Use the previous on-time upper edge as
             # the last on-time edge.
-            t_end = onoff_intervals[t_end_idx - 1]
+            t_end_f = float(onoff_intervals[t_end_idx - 1])
         else:
             t_end_idx += 1
 
@@ -244,8 +247,8 @@ class Livetime:
 
         ontime_intervals_flat = np.empty((N_ontime_intervals * 2,), dtype=np.float64)
         # Set the first and last on-time interval edges.
-        ontime_intervals_flat[0] = t_start
-        ontime_intervals_flat[-1] = t_end
+        ontime_intervals_flat[0] = t_start_f
+        ontime_intervals_flat[-1] = t_end_f
         if N_ontime_intervals > 1:
             # Fill also the interval edges of the intermediate on-time bins.
             ontime_intervals_flat[1:-1] = onoff_intervals[t_start_idx + 1 : t_end_idx - 1]
@@ -254,18 +257,18 @@ class Livetime:
 
         return ontime_intervals
 
-    def get_livetime_upto(self, mjd):
+    def get_livetime_upto(self, mjd: float | np.ndarray) -> float | np.ndarray:
         """Calculates the cumulative detector livetime up to the given time.
 
         Parameters
         ----------
-        mjd : float | array of floats
+        mjd
             The time in MJD up to which the detector livetime should be
             calculated.
 
         Returns
         -------
-        livetimes : float | ndarray of floats
+        livetimes
             The ndarray holding the cumulative detector livetime corresponding
             to the the given MJD times.
         """
@@ -305,18 +308,18 @@ class Livetime:
 
         return livetimes
 
-    def is_on(self, mjd):
+    def is_on(self, mjd: float | Sequence[float] | np.ndarray) -> np.ndarray:
         """Checks if the detector is on at the given MJD time. MJD times
         outside any live-time interval will be masked as False.
 
         Parameters
         ----------
-        mjd : float | sequence of float
+        mjd
             The time in MJD.
 
         Returns
         -------
-        is_on : array of bool
+        is_on
             True if the detector was on at the given time.
         """
         mjd = np.atleast_1d(mjd)
@@ -331,37 +334,37 @@ class Livetime:
 
         return is_on
 
-    def draw_ontimes(self, rss, size, t_min=None, t_max=None):
+    def draw_ontimes(
+        self, rss: RandomStateService, size: int, t_min: float | None = None, t_max: float | None = None
+    ) -> np.ndarray:
         """Draws random MJD times based on the detector on-time intervals.
 
         Parameters
         ----------
-        rss : RandomStateService
+        rss
             The skyllh RandomStateService instance to use for drawing random
             numbers from.
-        size : int
+        size
             The number of random MJD times to generate.
-        t_min : float
+        t_min
             The optional minimal time to consider. If set to ``None``, the
             start time of this Livetime instance will be used.
-        t_max : float
+        t_max
             The optional maximal time to consider. If set to ``None``, the
             end time of this Livetime instance will be used.
 
         Returns
         -------
-        ontimes : ndarray
+        ontimes
             The 1d array holding the generated MJD times.
         """
         uptime_intervals_arr = self._uptime_mjd_intervals_arr
 
         if t_min is not None or t_max is not None:
-            if t_min is None:
-                t_min = self.time_start
-            if t_max is None:
-                t_max = self.time_stop
+            t_min_val = float(t_min) if t_min is not None else float(self.time_start)
+            t_max_val = float(t_max) if t_max is not None else float(self.time_stop)
 
-            uptime_intervals_arr = self.get_uptime_intervals_between(t_min, t_max)
+            uptime_intervals_arr = self.get_uptime_intervals_between(t_min_val, t_max_val)
 
         onoff_intervals = np.reshape(uptime_intervals_arr, (uptime_intervals_arr.size,))
 

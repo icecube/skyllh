@@ -10,6 +10,9 @@ from matplotlib.colors import (
     LogNorm,
 )
 
+from skyllh.core.parameters import (
+    ParameterModelMapper,
+)
 from skyllh.core.py import (
     classname,
 )
@@ -30,15 +33,15 @@ from skyllh.i3.pdf import (
 class I3EnergyPDFPlotter:
     """Plotter class to plot an I3EnergyPDF object."""
 
-    def __init__(self, tdm, pdf):
+    def __init__(self, tdm: TrialDataManager, pdf: I3EnergyPDF):
         """Creates a new plotter object for plotting an I3EnergyPDF object.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that provides the data for the
             PDF evaluation.
-        pdf : I3EnergyPDF
+        pdf
             The PDF object to plot.
         """
         self.tdm = tdm
@@ -66,18 +69,18 @@ class I3EnergyPDFPlotter:
             raise TypeError('The tdm property must be an instance of TrialDataManager!')
         self._tdm = obj
 
-    def plot(self, src_hypo_group_manager, axes, **kwargs):
+    def plot(self, src_hypo_group_manager: SourceHypoGroupManager, pmm: ParameterModelMapper, axes: Axes, **kwargs):
         """Plots the PDF object.
 
         Parameters
         ----------
-        src_hypo_group_manager : instance of SourceHypoGroupManager
+        src_hypo_group_manager
             The instance of SourceHypoGroupManager that defines the source
             hypotheses.
-        axes : mpl.axes.Axes
+        axes
             The matplotlib Axes object on which the PDF ratio should get drawn
             to.
-        fitparams : dict
+        fitparams
             The dictionary with the set of fit paramater values.
 
         Additional Keyword Arguments
@@ -87,7 +90,7 @@ class I3EnergyPDFPlotter:
 
         Returns
         -------
-        img : instance of mpl.AxesImage
+        img
             The AxesImage instance showing the PDF ratio image.
         """
         if not isinstance(src_hypo_group_manager, SourceHypoGroupManager):
@@ -113,9 +116,9 @@ class I3EnergyPDFPlotter:
             events['iy'][i] = iy
             events[ybinning.name][i] = y
 
-        self._tdm.initialize_for_new_trial(src_hypo_group_manager, events)
+        self._tdm.initialize_trial(shg_mgr=src_hypo_group_manager, pmm=pmm, events=events)
 
-        event_pdf_values = self._pdf.get_prob(self._tdm)
+        (event_pdf_values, _) = self._pdf.get_pd(self._tdm)
         pdf_values[events['ix'], events['iy']] = event_pdf_values
 
         (left, right, bottom, top) = (

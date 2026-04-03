@@ -156,6 +156,7 @@ class TestSignalGenerator(unittest.TestCase):
         self.assertTrue(isinstance(arr, np.ndarray))
 
         # Check field names.
+        assert arr.dtype.fields is not None
         field_names = arr.dtype.fields.keys()
         self.assertTrue(
             ('ds_idx' in field_names)
@@ -237,10 +238,10 @@ class TestMultiDatasetSignalGeneratorEnergyRangeConsistency(unittest.TestCase):
     @staticmethod
     def _make_sig_gen(configured_ranges):
         sig_gen = MultiDatasetSignalGenerator.__new__(MultiDatasetSignalGenerator)
-        sig_gen._shg_mgr = _DummyShgMgr(n_sources=2)
+        sig_gen._shg_mgr = _DummyShgMgr(n_sources=2)  # type: ignore[assignment]
         sig_gen._src_params_recarray = np.zeros((2,), dtype=_GAMMA_RECARRAY_DTYPE)
         src_service = _DummySrcDetSigYieldWeightsService(a_jk=np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64))
-        sig_gen._ds_sig_weight_factors_service = _DummyDatasetSignalWeightFactorsService(src_service=src_service)
+        sig_gen._ds_sig_weight_factors_service = _DummyDatasetSignalWeightFactorsService(src_service=src_service)  # type: ignore[assignment]
         sig_gen._sig_generator_list = [
             _DummyDatasetSigGenerator(configured_energy_range=r, correction_factors=[1.0, 1.0])
             for r in configured_ranges
@@ -280,7 +281,7 @@ class TestMultiDatasetSignalGeneratorKwargPolicy(unittest.TestCase):
         sig_gen._src_params_recarray = np.zeros((1,), dtype=_GAMMA_RECARRAY_DTYPE)
 
         src_service = _DummySrcDetSigYieldWeightsService(a_jk=np.array([[1.0], [1.0]], dtype=np.float64))
-        sig_gen._ds_sig_weight_factors_service = _DummyDatasetSignalWeightFactorsService(
+        sig_gen._ds_sig_weight_factors_service = _DummyDatasetSignalWeightFactorsService(  # type: ignore[assignment]
             src_service=src_service,
             ds_weights=np.array([0.5, 0.5], dtype=np.float64),
         )
@@ -302,7 +303,7 @@ class TestMultiDatasetSignalGeneratorKwargPolicy(unittest.TestCase):
         rss = _DummyRSS()
 
         with self.assertRaises(TypeError):
-            sig_gen.generate_signal_events(rss=rss, mean=10, poisson=False, energy_range=(1e2, 1e3))
+            sig_gen.generate_signal_events(rss=rss, mean=10, poisson=False, energy_range=(1e2, 1e3))  # type: ignore[arg-type]
 
         self.assertIsNone(ds_gen_0.last_generate_kwargs)
         self.assertIsNone(ds_gen_1.last_generate_kwargs)

@@ -2,17 +2,17 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 
-def make_spline_1d(x, y, kind='linear', **kwargs):
+def make_spline_1d(x: np.ndarray, y: np.ndarray, kind: str = 'linear', **kwargs):
     """Creates a 1D spline for the function y(x) using
     :class:`scipy.interpolate.interp1d`.
 
     Parameters
     ----------
-    x : array_like
+    x
         The x values.
-    y : array_like
+    y
         The y values.
-    kind : str
+    kind
         The kind of the spline. See the :class:`scipy.interpolate.interp1d`
         documentation for possible values. Default is ``'linear'``.
     **kwargs
@@ -52,17 +52,17 @@ class CatmullRomRegular1DSpline:
 
     def __init__(
         self,
-        x,
-        y,
+        x: np.ndarray,
+        y: np.ndarray,
         **kwargs,
     ):
         """Creates a new CatmullRom1DSpline instance.
 
         Parameters
         ----------
-        x : instance of ndarray
+        x
             The x values of the data points.
-        y : instance of ndarray
+        y
             The y values of the data points.
         """
         super().__init__(**kwargs)
@@ -93,19 +93,19 @@ class CatmullRomRegular1DSpline:
 
     def _eval_for_valid_x(
         self,
-        x,
-    ):
+        x: np.ndarray,
+    ) -> np.ndarray:
         """Evaluates the spline given valid x-values in data coordinates.
 
         Parameters
         ----------
-        x : instance of ndarray
+        x
             The instance of ndarray holding the valid values for which the
             spline should get evaluated.
 
         Returns
         -------
-        y : instance of ndarray
+        y
             The instance of ndarray with the spline values at the given x
             values.
         """
@@ -159,20 +159,20 @@ class CatmullRomRegular1DSpline:
 
     def __call__(
         self,
-        x,
+        x: np.ndarray,
         oor_value=np.nan,
-    ):
+    ) -> np.ndarray:
         """Evaluates the spline given x-values in data coordinates.
 
         Parameters
         ----------
-        x : instance of ndarray
+        x
             The instance of ndarray holding the values for which the spline
             should get evaluated.
 
         Returns
         -------
-        y : instance of ndarray
+        y
             The instance of ndarray with the spline values at the given x
             values.
         """
@@ -187,32 +187,32 @@ class CatmullRomRegular1DSpline:
 
     def _calc_tj(
         self,
-        ti,
-        Pi_x,
-        Pi_y,
-        Pj_x,
-        Pj_y,
-    ):
+        ti: float,
+        Pi_x: float,
+        Pi_y: float,
+        Pj_x: float,
+        Pj_y: float,
+    ) -> float:
         """Calculates the next segment coefficient ``tj`` given the previous
         segment coefficient ``ti`` and the previous and next data point
         ``(Pi_x, Pi_y)`` and ``(Pj_x, Pj_y)``, respectively.
 
         Parameters
         ----------
-        ti : float
+        ti
             The previous segment coefficient.
-        Pi_x : float
+        Pi_x
             The x-value of the previous data point.
-        Pi_y : float
+        Pi_y
             The y-value of the previous data point.
-        Pj_x : float
+        Pj_x
             The x-value of the next data point.
-        Pj_y : float
+        Pj_y
             The y-value of the next data point.
 
         Returns
         -------
-        tj : float
+        tj
             The next segment coefficient.
         """
         dx = Pj_x - Pi_x
@@ -223,8 +223,8 @@ class CatmullRomRegular1DSpline:
 
     def _calc_segment_coefficients(
         self,
-        Px,
-        Py,
+        Px: np.ndarray,
+        Py: np.ndarray,
     ):
         """Calculates the segment coefficients t1, t2, and t3 given the 4
         data (control) points of the segment. The coefficient t0 is 0 by
@@ -232,10 +232,10 @@ class CatmullRomRegular1DSpline:
 
         Parameters
         ----------
-        Px : instance of ndarray
+        Px
             The (4,)-shaped numpy ndarray holding the 4 x-values of the
             segment's data points.
-        Py : instance of ndarray
+        Py
             The (4,)-shaped numpy ndarray holding the 4 y-values of the
             segment's data points.
         """

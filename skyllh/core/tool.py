@@ -6,6 +6,7 @@ needed.
 import importlib
 import importlib.util
 import sys
+from types import ModuleType
 
 import numpy as np
 
@@ -16,17 +17,17 @@ from skyllh.core.py import (
 
 
 def assert_tool_version(
-    tool,
-    version,
+    tool: str,
+    version: str,
 ):
     """Asserts the required version of the tool. The tool module must have the
     attribute ``__version__``.
 
     Parameters
     ----------
-    tool : str
+    tool
         The name of the tool.
-    version : str
+    version
         The required version of the tool in the format ``"<COMP>X.Y.Z"``, where
         ``<COMP>`` is one of ``<=``, ``==``, and ``>=``.
 
@@ -73,17 +74,17 @@ def assert_tool_version(
             raise ValueError(f'The version comparison operator "{comp_op}" for the tool "{tool}" is not supported!')
 
 
-def is_available(name):
+def is_available(name: str) -> bool:
     """Checks if the given Python package is available for import.
 
     Parameters
     ----------
-    name : str
+    name
         The name of the Python package.
 
     Returns
     -------
-    check : bool
+    check
         ``True`` if the given Python package is available, ``False`` otherwise.
 
     Raises
@@ -99,18 +100,18 @@ def is_available(name):
     return spec is not None
 
 
-def get(name):
+def get(name: str) -> ModuleType:
     """Returns the module object of the given tool. This will import the Python
     package if it was not yet imported.
 
     Parameters
     ----------
-    name : str
+    name
         The name of the Python package.
 
     Returns
     -------
-    module : Python module
+    module
         The (imported) Python module object.
     """
     if name in sys.modules:
@@ -121,21 +122,21 @@ def get(name):
 
 
 def _get_tool_and_version(
-    tool,
-):
+    tool: str | tuple[str, str],
+) -> tuple[str, str | None]:
     """Returns the tool and and version based on the input value for the tool.
 
     Parameters
     ----------
-    tool : str | (str, str)
+    tool
         Either the tool name or the tuple with the tool name and required
         version string.
 
     Returns
     -------
-    tool : str
+    tool
         The name of the tool.
-    version : str | None
+    version
         The tool's version string, or ``None``, if no version was specified.
     """
     if not (isinstance(tool, (str, tuple))):

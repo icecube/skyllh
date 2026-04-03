@@ -1,7 +1,11 @@
 import abc
+from collections.abc import Callable
 
 import numpy as np
 
+from skyllh.core.dataset import Dataset
+from skyllh.core.random import RandomStateService
+from skyllh.core.storage import DataFieldRecordArray
 from skyllh.core.times import (
     TimeGenerator,
 )
@@ -18,27 +22,27 @@ class DataScramblingMethod(
     @abc.abstractmethod
     def scramble(
         self,
-        rss,
-        dataset,
-        data,
-    ):
+        rss: RandomStateService,
+        dataset: Dataset,
+        data: DataFieldRecordArray,
+    ) -> DataFieldRecordArray:
         """The scramble method implements the actual scrambling of the given
         data, which is method dependent. The scrambling must be performed
         in-place, i.e. it alters the data inside the given data array.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The random state service providing the random number
             generator (RNG).
-        dataset : instance of Dataset
+        dataset
             The instance of Dataset for which the data should get scrambled.
-        data : instance of DataFieldRecordArray
+        data
             The DataFieldRecordArray containing the to be scrambled data.
 
         Returns
         -------
-        data : instance of DataFieldRecordArray
+        data
             The given DataFieldRecordArray holding the scrambled data.
         """
 
@@ -57,7 +61,7 @@ class UniformRAScramblingMethod(
 
     def __init__(
         self,
-        ra_range=None,
+        ra_range: tuple | None = None,
         **kwargs,
     ):
         r"""Initializes a new RAScramblingMethod instance.
@@ -92,26 +96,26 @@ class UniformRAScramblingMethod(
 
     def scramble(
         self,
-        rss,
-        dataset,
-        data,
-    ):
+        rss: RandomStateService,
+        dataset: Dataset,
+        data: DataFieldRecordArray,
+    ) -> DataFieldRecordArray:
         """Scrambles the given data uniformly in right-ascention.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The random state service providing the random number
             generator (RNG).
-        dataset : instance of Dataset
+        dataset
             The instance of Dataset for which the data should get scrambled.
-        data : instance of DataFieldRecordArray
+        data
             The DataFieldRecordArray instance containing the to be scrambled
             data.
 
         Returns
         -------
-        data : instance of DataFieldRecordArray
+        data
             The given DataFieldRecordArray holding the scrambled data.
         """
         dt = data['ra'].dtype
@@ -131,17 +135,17 @@ class TimeScramblingMethod(DataScramblingMethod):
 
     def __init__(
         self,
-        timegen,
-        hor_to_equ_transform,
+        timegen: TimeGenerator,
+        hor_to_equ_transform: Callable,
         **kwargs,
     ):
         """Initializes a new time scramling method instance.
 
         Parameters
         ----------
-        timegen : instance of TimeGenerator
+        timegen
             The time generator that should be used to generate random MJD times.
-        hor_to_equ_transform : callable
+        hor_to_equ_transform
             The transformation function to transform coordinates from the
             horizontal system into the equatorial system.
 
@@ -185,10 +189,10 @@ class TimeScramblingMethod(DataScramblingMethod):
 
     def scramble(
         self,
-        rss,
-        dataset,
-        data,
-    ):
+        rss: RandomStateService,
+        dataset: Dataset,
+        data: DataFieldRecordArray,
+    ) -> DataFieldRecordArray:
         """Scrambles the given data based on random MJD times, which are
         generated from a TimeGenerator instance. The event's right-ascention and
         declination coordinates are calculated via a horizontal-to-equatorial
@@ -196,25 +200,25 @@ class TimeScramblingMethod(DataScramblingMethod):
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The random state service providing the random number
             generator (RNG).
-        dataset : instance of Dataset
+        dataset
             The instance of Dataset for which the data should get scrambled.
-        data : instance of DataFieldRecordArray
+        data
             The DataFieldRecordArray instance containing the to be scrambled
             data.
 
         Returns
         -------
-        data : instance of DataFieldRecordArray
+        data
             The given DataFieldRecordArray holding the scrambled data.
         """
         mjds = self.timegen.generate_times(rss, len(data))
 
         data['time'] = mjds
 
-        (data['ra'], data['dec']) = self.hor_to_equ_transform(data['azi'], data['zen'], mjds)
+        (data['ra'], data['dec']) = self.hor_to_equ_transform(data['azi'], data['zen'], mjds)  # type: ignore[misc]
 
         return data
 
@@ -222,7 +226,7 @@ class TimeScramblingMethod(DataScramblingMethod):
 class DataScrambler:
     def __init__(
         self,
-        method,
+        method: 'DataScramblingMethod',
         **kwargs,
     ):
         """Creates a data scrambler instance with a given defined scrambling
@@ -230,7 +234,7 @@ class DataScrambler:
 
         Parameters
         ----------
-        method : instance of DataScramblingMethod
+        method
             The instance of DataScramblingMethod that defines the method of
             the data scrambling.
         """
@@ -253,11 +257,11 @@ class DataScrambler:
 
     def scramble_data(
         self,
-        rss,
-        dataset,
-        data,
-        copy=False,
-    ):
+        rss: RandomStateService,
+        dataset: Dataset,
+        data: DataFieldRecordArray,
+        copy: bool = False,
+    ) -> DataFieldRecordArray:
         """Scrambles the given data by calling the scramble method of the
         scrambling method class, that was configured for the data scrambler.
         If the ``inplace_scrambling`` property is set to False, a copy of the
@@ -265,21 +269,21 @@ class DataScrambler:
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The random state service providing the random number generator
             (RNG).
-        dataset : instance of Dataset
+        dataset
             The instance of Dataset for which the data should get scrambled.
-        data : instance of DataFieldRecordArray
+        data
             The instance of DataFieldRecordArray holding the data, which should
             get scrambled.
-        copy : bool
+        copy
             Flag if a copy of the given data should be made before scrambling
             the data. The default is False.
 
         Returns
         -------
-        data : instance of DataFieldRecordArray
+        data
             The given DataFieldRecordArray instance with the scrambled data.
             If the ``inplace_scrambling`` property is set to True, this output
             array is the same array as the input array, otherwise it's a new

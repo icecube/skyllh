@@ -123,8 +123,8 @@ class DetSigYieldService:
 
     def get_builder_to_shgidxs_dict(
         self,
-        ds_idx,
-    ):
+        ds_idx: int,
+    ) -> dict:
         """Creates a dictionary with the builder instance as key and the list of
         source hypo group indices to which the builder applies as value.
         Hence, SHGs using the same builder instance can be grouped for
@@ -132,12 +132,12 @@ class DetSigYieldService:
 
         Parameters
         ----------
-        ds_idx : int
+        ds_idx
             The index of the dataset for which the same builders apply.
 
         Returns
         -------
-        builder_shgidxs_dict : dict
+        builder_shgidxs_dict
             The dictionary with the builder instance as key and the list of
             source hypo group indices to which the builder applies as value.
         """
@@ -165,8 +165,8 @@ class DetSigYieldService:
 
     def construct_detsigyield_array(
         self,
-        ppbar=None,
-    ):
+        ppbar: ProgressBar | None = None,
+    ) -> np.ndarray:
         """Creates a (N_datasets, N_source_hypo_groups)-shaped numpy ndarray of
         object holding the constructed DetSigYield instances.
 
@@ -178,12 +178,12 @@ class DetSigYieldService:
 
         Parameters
         ----------
-        ppbar : instance of ProgressBar | None
+        ppbar
             The instance of ProgressBar of the optional parent progress bar.
 
         Returns
         -------
-        detsigyield_arr : instance of numpy.ndarray
+        detsigyield_arr
             The (N_datasets, N_source_hypo_groups)-shaped numpy ndarray of
             object holding the constructed DetSigYield instances.
         """
@@ -247,15 +247,15 @@ class SrcDetSigYieldWeightsService:
 
     @staticmethod
     def create_src_recarray_list_list(
-        detsigyield_service,
-    ):
+        detsigyield_service: 'DetSigYieldService',
+    ) -> list[list[np.ndarray]]:
         """Creates a list of numpy record ndarrays, one for each source
         hypothesis group suited for evaluating the detector signal yield
         instance of that source hypothesis group.
 
         Parameters
         ----------
-        detsigyield_service : instance of DetSigYieldService
+        detsigyield_service
             The instance of DetSigYieldService providing the
             (N_datasets, N_source_hypo_groups)-shaped 2D ndarray of
             DetSigYield instances, one for each dataset and source hypothesis
@@ -263,7 +263,7 @@ class SrcDetSigYieldWeightsService:
 
         Returns
         -------
-        src_recarray_list_list : list of list of numpy record ndarrays
+        src_recarray_list_list
             The (N_datasets,N_source_hypo_groups)-shaped list of list of the
             source numpy record ndarrays, one for each dataset and source
             hypothesis group combination, which is needed for
@@ -286,20 +286,20 @@ class SrcDetSigYieldWeightsService:
 
     @staticmethod
     def create_src_weight_array_list(
-        shg_mgr,
-    ):
+        shg_mgr: SourceHypoGroupManager,
+    ) -> list[np.ndarray]:
         """Creates a list of numpy 1D ndarrays holding the source weights, one
         for each source hypothesis group.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager defining the source
             hypothesis groups with their sources.
 
         Returns
         -------
-        src_weight_array_list : list of numpy 1D ndarrays
+        src_weight_array_list
             The list of 1D numpy ndarrays holding the source weights, one for
             each source hypothesis group.
         """
@@ -308,14 +308,14 @@ class SrcDetSigYieldWeightsService:
 
     def __init__(
         self,
-        detsigyield_service,
+        detsigyield_service: 'DetSigYieldService',
         **kwargs,
     ):
         """Creates a new SrcDetSigYieldWeightsService instance.
 
         Parameters
         ----------
-        detsigyield_service : instance of DetSigYieldService
+        detsigyield_service
             The instance of DetSigYieldService providing the
             (N_datasets, N_source_hypo_groups)-shaped array of DetSigYield
             instances, one instance for each combination of dataset and source
@@ -394,14 +394,14 @@ class SrcDetSigYieldWeightsService:
 
     def change_shg_mgr(
         self,
-        shg_mgr,
+        shg_mgr: SourceHypoGroupManager,
     ):
         """Re-creates the internal source numpy record arrays needed for the
         detector signal yield calculation.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The new SourceHypoGroupManager instance.
         """
         if id(shg_mgr) != id(self._detsigyield_service.shg_mgr):
@@ -416,7 +416,7 @@ class SrcDetSigYieldWeightsService:
 
         self._src_weight_array_list = type(self).create_src_weight_array_list(shg_mgr=self._detsigyield_service.shg_mgr)
 
-    def calculate(self, src_params_recarray):
+    def calculate(self, src_params_recarray: np.ndarray):
         """Calculates the source detector signal yield weights for each source
         and their derivative w.r.t. each global floating parameter. The result
         is stored internally as:
@@ -433,7 +433,7 @@ class SrcDetSigYieldWeightsService:
 
         Parameters
         ----------
-        src_params_recarray : instance of numpy record ndarray
+        src_params_recarray
             The numpy record ndarray of length N_sources holding the local
             source parameters. See the documentation of
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
@@ -474,17 +474,17 @@ class SrcDetSigYieldWeightsService:
 
             sidx += shg_n_src
 
-    def get_weights(self):
+    def get_weights(self) -> tuple[np.ndarray | None, defaultdict | None]:
         """Returns the source detector signal yield weights and their
         derivatives w.r.t. the global fit parameters.
 
         Returns
         -------
-        a_jk : instance of ndarray
+        a_jk
             The (N_datasets, N_sources)-shaped numpy ndarray holding the
             source detector signal yield weight for each combination of
             dataset and source.
-        a_jk_grads : dict
+        a_jk_grads
             The dictionary holding the (N_datasets, N_sources)-shaped numpy
             ndarray with the derivatives w.r.t. the global fit parameter
             the SrcDetSigYieldWeightsService depend on. The dictionary's key
@@ -501,7 +501,7 @@ class DatasetSignalWeightFactorsService:
     :class:`~SrcDetSigYieldWeightsService` class.
     """
 
-    def __init__(self, src_detsigyield_weights_service):
+    def __init__(self, src_detsigyield_weights_service: 'SrcDetSigYieldWeightsService'):
         r"""Creates a new DatasetSignalWeightFactors instance.
 
         Parameters
@@ -548,6 +548,9 @@ class DatasetSignalWeightFactorsService:
         """
         (a_jk, a_jk_grads) = self._src_detsigyield_weights_service.get_weights()
 
+        assert a_jk is not None, 'SrcDetSigYieldWeightsService.calculate() must be called before get_weights()'
+        assert a_jk_grads is not None, 'SrcDetSigYieldWeightsService.calculate() must be called before get_weights()'
+
         a_j = np.sum(a_jk, axis=1)
         a = np.sum(a_jk)
 
@@ -567,15 +570,15 @@ class DatasetSignalWeightFactorsService:
             a_grads = np.sum(a_jk_grads[gpidx])
             self._f_j_grads[gpidx] = (a_j_grads * a - a_j * a_grads) / a**2
 
-    def get_weights(self):
+    def get_weights(self) -> tuple[np.ndarray | None, dict]:
         """Returns the
 
         Returns
         -------
-        f_j : instance of ndarray
+        f_j
             The (N_datasets,)-shaped 1D numpy ndarray holding the dataset
             signal weight factor for each dataset.
-        f_j_grads : dict
+        f_j_grads
             The dictionary holding the (N_datasets,)-shaped numpy
             ndarray with the derivatives w.r.t. the global fit parameter
             the DatasetSignalWeightFactorsService depend on.

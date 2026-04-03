@@ -15,7 +15,7 @@ class RandomStateService:
 
     def __init__(
         self,
-        seed=None,
+        seed: int | None = None,
         **kwargs,
     ):
         """Creates a new random state service. The ``random`` property can then
@@ -23,7 +23,7 @@ class RandomStateService:
 
         Parameters
         ----------
-        seed : int | None
+        seed
             The seed to use. If None, the random number generator will be seeded
             randomly. See the numpy documentation for numpy.random.RandomState
             what that means.
@@ -51,12 +51,12 @@ class RandomStateService:
             raise TypeError('The random property must be of type numpy.random.RandomState!')
         self._random = random
 
-    def reseed(self, seed):
+    def reseed(self, seed: int | None):
         """Reseeds the random number generator with the given seed.
 
         Parameters
         ----------
-        seed : int | None
+        seed
             The seed to use. If None, the random number generator will be seeded
             randomly. See the numpy documentation for numpy.random.RandomState
             what that means.
@@ -73,8 +73,8 @@ class RandomChoice:
 
     def __init__(
         self,
-        items,
-        probabilities,
+        items: np.ndarray,
+        probabilities: np.ndarray,
         **kwargs,
     ):
         """Creates a new instance of RandomChoice holding the probabilities
@@ -82,10 +82,10 @@ class RandomChoice:
 
         Parameters
         ----------
-        items : instance of numpy.ndarray
+        items
             The (N,)-shaped numpy.ndarray holding the items from which to
             choose.
-        probabilities : instance of numpy.ndarray
+        probabilities
             The (N,)-shaped numpy.ndarray holding the probability for each item.
         """
         super().__init__(**kwargs)
@@ -117,13 +117,13 @@ class RandomChoice:
 
     def _assert_items(
         self,
-        items,
+        items: np.ndarray,
     ):
         """Checks for the correct type and shape of the items.
 
         Parameters
         ----------
-        items : The (N,)-shaped numpy.ndarray holding the items from which to
+        items
             choose.
 
         Raises
@@ -141,16 +141,16 @@ class RandomChoice:
 
     def _assert_probabilities(
         self,
-        p,
-        n_items,
+        p: np.ndarray,
+        n_items: int,
     ):
         """Checks for correct values of the probabilities.
 
         Parameters
         ----------
-        p : instance of numpy.ndarray
+        p
             The (N,)-shaped numpy.ndarray holding the probability for each item.
-        n_items : int
+        n_items
             The number of items.
 
         Raises
@@ -178,23 +178,23 @@ class RandomChoice:
 
     def __call__(
         self,
-        rss,
-        size,
-    ):
+        rss: 'RandomStateService',
+        size: int,
+    ) -> np.ndarray:
         """Chooses ``size`` random items from ``self.items`` according to
         ``self.probabilities``.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The instance of RandomStateService from which random numbers are
             drawn from.
-        size : int
+        size
             The number of items to draw.
 
         Returns
         -------
-        random_items : instance of numpy.ndarray
+        random_items
             The (size,)-shaped numpy.ndarray holding the randomly selected items
             from ``self.items``.
         """

@@ -11,61 +11,63 @@ from skyllh.core.flux_model import (
 )
 
 
-def get_dOmega(dec_min, dec_max):
+def get_dOmega(dec_min: float | np.ndarray, dec_max: float | np.ndarray) -> float | np.ndarray:
     """Calculates the solid angle given two declination angles.
 
     Parameters
     ----------
-    dec_min : float | array of float
+    dec_min
         The smaller declination angle.
-    dec_max : float | array of float
+    dec_max
         The larger declination angle.
 
     Returns
     -------
-    solidangle : float | array of float
+    solidangle
         The solid angle corresponding to the two given declination angles.
     """
     return 2 * np.pi * (np.sin(dec_max) - np.sin(dec_min))
 
 
-def southpole_zen2dec(zen):
+def southpole_zen2dec(zen: np.ndarray) -> np.ndarray:
     """Converts zenith angles at the South Pole to declination angles.
 
     Parameters
     ----------
-    zen : (n,)-shaped 1d numpy ndarray
+    zen
         The numpy ndarray holding the zenith angle values in radians.
 
     Returns
     -------
-    dec : (n,)-shaped 1d numpy ndarray
+    dec
         The numpy ndarray holding the declination angle values in radians.
     """
     dec = zen - np.pi / 2
     return dec
 
 
-def get_flux_atmo_decnu_log10enu(flux_pathfilename, log10_enu_max=9):
+def get_flux_atmo_decnu_log10enu(
+    flux_pathfilename: str, log10_enu_max: float = 9
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Constructs the atmospheric flux map function
     f_atmo(log10(E_nu/GeV),dec_nu) in unit 1/(GeV cm^2 sr s).
 
     Parameters
     ----------
-    flux_pathfilename : str
+    flux_pathfilename
         The pathfilename of the file containing the MCEq fluxes.
-    log10_enu_max : float
+    log10_enu_max
         The log10(E/GeV) value of the maximum neutrino energy to be considered.
 
     Returns
     -------
-    flux_atmo : (n_dec, n_e_grid)-shaped 2D numpy ndarray
-        The numpy ndarray holding the the atmospheric neutrino flux function in
+    flux_atmo
+        The (n_dec, n_e_grid)-shaped 2D numpy ndarray holding the the atmospheric neutrino flux function in
         unit 1/(GeV cm^2 sr s).
-    decnu_binedges : (n_decnu+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the dec_nu bin edges.
-    log10_enu_binedges : (n_enu+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the neutrino energy bin edges in log10.
+    decnu_binedges
+        The (n_decnu+1,)-shaped 1D numpy ndarray holding the dec_nu bin edges.
+    log10_enu_binedges
+        The (n_enu+1,)-shaped 1D numpy ndarray holding the neutrino energy bin edges in log10.
     """
     with open(flux_pathfilename, 'rb') as f:
         ((e_grid, zenith_angle_binedges), flux_def) = pickle.load(f)
@@ -104,7 +106,7 @@ def get_flux_atmo_decnu_log10enu(flux_pathfilename, log10_enu_max=9):
     return (f_atmo, decnu_binedges, log10_enu_binedges)
 
 
-def get_flux_astro_decnu_log10enu(decnu_binedges, log10_enu_binedges):
+def get_flux_astro_decnu_log10enu(decnu_binedges: np.ndarray, log10_enu_binedges: np.ndarray) -> np.ndarray:
     """Constructs the astrophysical neutrino flux function
     f_astro(log10(E_nu/GeV),dec_nu) in unit 1/(GeV cm^2 sr s).
 
@@ -112,16 +114,16 @@ def get_flux_astro_decnu_log10enu(decnu_binedges, log10_enu_binedges):
 
     Parameters
     ----------
-    decnu_binedges : (n_decnu+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the dec_nu bin edges.
-    log10_enu_binedges : (n_enu+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the log10 values of the neutrino energy bin
+    decnu_binedges
+        The (n_decnu+1,)-shaped 1D numpy ndarray holding the dec_nu bin edges.
+    log10_enu_binedges
+        The (n_enu+1,)-shaped 1D numpy ndarray holding the log10 values of the neutrino energy bin
         edges in GeV.
 
     Returns
     -------
-    f_astro : (n_decnu, n_log10enu)-shaped 2D numpy ndarray
-        The numpy ndarray holding the astrophysical flux values in unit
+    f_astro
+        The (n_decnu, n_log10enu)-shaped 2D numpy ndarray holding the astrophysical flux values in unit
         1/(GeV cm^2 sr s).
 
     References
@@ -141,25 +143,27 @@ def get_flux_astro_decnu_log10enu(decnu_binedges, log10_enu_binedges):
     return f_astro
 
 
-def convert_flux_bkg_to_pdf_bkg(f_bkg, decnu_binedges, log10_enu_binedges):
+def convert_flux_bkg_to_pdf_bkg(
+    f_bkg: np.ndarray, decnu_binedges: np.ndarray, log10_enu_binedges: np.ndarray
+) -> np.ndarray:
     """Converts the given background flux function f_bkg into a background flux
     PDF in unit 1/(log10(E/GeV) rad).
 
     Parameters
     ----------
-    f_bkg : (n_decnu, n_enu)-shaped 2D numpy ndarray
-        The numpy ndarray holding the background flux values in unit
+    f_bkg
+        The (n_decnu, n_enu)-shaped 2D numpy ndarray holding the background flux values in unit
         1/(GeV cm^2 s sr).
-    decnu_binedges : (n_decnu+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the dec_nu bin edges in radians.
-    log10_enu_binedges : (n_enu+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the log10 values of the neutrino energy bin
+    decnu_binedges
+        The (n_decnu+1,)-shaped 1D numpy ndarray holding the dec_nu bin edges in radians.
+    log10_enu_binedges
+        The (n_enu+1,)-shaped 1D numpy ndarray holding the log10 values of the neutrino energy bin
         edges in GeV.
 
     Returns
     -------
-    p_bkg : (n_decnu, n_enu)-shaped 2D numpy ndarray
-        The numpy ndarray holding the background flux pdf values.
+    p_bkg
+        The (n_decnu, n_enu)-shaped 2D numpy ndarray holding the background flux pdf values.
     """
     d_decnu = np.diff(decnu_binedges)
     d_log10_enu = np.diff(log10_enu_binedges)
@@ -174,26 +178,28 @@ def convert_flux_bkg_to_pdf_bkg(f_bkg, decnu_binedges, log10_enu_binedges):
     return p_bkg
 
 
-def get_pd_atmo_decnu_Enu(flux_pathfilename, log10_true_e_max=9):
+def get_pd_atmo_decnu_Enu(
+    flux_pathfilename: str, log10_true_e_max: float = 9
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Constructs the atmospheric neutrino PDF p_atmo(E_nu,dec_nu) in unit
     1/(GeV rad).
 
     Parameters
     ----------
-    flux_pathfilename : str
+    flux_pathfilename
         The pathfilename of the file containing the MCEq flux.
-    log10_true_e_max : float
+    log10_true_e_max
         The log10(E/GeV) value of the maximum true energy to be considered.
 
     Returns
     -------
-    pd_atmo : (n_dec, n_e_grid)-shaped 2D numpy ndarray
-        The numpy ndarray holding the the atmospheric neutrino PDF in unit
+    pd_atmo
+        The (n_decnu, n_e_grid)-shaped 2D numpy ndarray holding the the atmospheric neutrino PDF in unit
         1/(GeV rad).
-    decnu_binedges : (n_decnu+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the dec_nu bin edges.
-    log10_e_grid_edges : (n_e_grid+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the energy bin edges in log10.
+    decnu_binedges
+        The (n_decnu+1,)-shaped 1D numpy ndarray holding the dec_nu bin edges.
+    log10_e_grid_edges
+        The (n_e_grid+1,)-shaped 1D numpy ndarray holding the energy bin edges in log10.
     """
     with open(flux_pathfilename, 'rb') as f:
         ((e_grid, zenith_angle_binedges), flux_def) = pickle.load(f)
@@ -242,23 +248,23 @@ def get_pd_atmo_decnu_Enu(flux_pathfilename, log10_true_e_max=9):
     return (pd_atmo, decnu_binedges, log10_e_grid_edges)
 
 
-def get_pd_atmo_E_nu_sin_dec_nu(flux_pathfilename):
+def get_pd_atmo_E_nu_sin_dec_nu(flux_pathfilename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Constructs the atmospheric energy PDF p_atmo(E_nu|sin(dec_nu)) in
     unit 1/GeV.
 
     Parameters
     ----------
-    flux_pathfilename : str
+    flux_pathfilename
         The pathfilename of the file containing the MCEq flux.
 
     Returns
     -------
-    pd_atmo : (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray
-        The numpy ndarray holding the the atmospheric energy PDF in unit 1/GeV.
-    sin_dec_binedges : numpy ndarray
+    pd_atmo
+        The (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray holding the the atmospheric energy PDF in unit 1/GeV.
+    sin_dec_binedges
         The (n_sin_dec+1,)-shaped 1D numpy ndarray holding the sin(dec) bin
         edges.
-    log10_e_grid_edges : numpy ndarray
+    log10_e_grid_edges
         The (n_e_grid+1,)-shaped 1D numpy ndarray holding the energy bin edges
         in log10.
     """
@@ -307,23 +313,23 @@ def get_pd_atmo_E_nu_sin_dec_nu(flux_pathfilename):
     return (pd_atmo, sin_dec_binedges, log10_e_grid_edges)
 
 
-def get_pd_astro_E_nu_sin_dec_nu(sin_dec_binedges, log10_e_grid_edges):
+def get_pd_astro_E_nu_sin_dec_nu(sin_dec_binedges: np.ndarray, log10_e_grid_edges: np.ndarray) -> np.ndarray:
     """Constructs the astrophysical energy PDF p_astro(E_nu|sin(dec_nu)) in
     unit 1/GeV.
     It uses the best fit from the IceCube publication [1].
 
     Parameters
     ----------
-    sin_dec_binedges : (n_sin_dec+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the sin(dec) bin edges.
-    log10_e_grid_edges : (n_e_grid+1,)-shaped 1D numpy ndarray
-        The numpy ndarray holding the log10 values of the energy bin edges in
+    sin_dec_binedges
+        The (n_sin_dec+1,)-shaped 1D numpy ndarray holding the sin(dec) bin edges.
+    log10_e_grid_edges
+        The (n_e_grid+1,)-shaped 1D numpy ndarray holding the log10 values of the energy bin edges in
         GeV of the energy grid.
 
     Returns
     -------
-    pd_astro : (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray
-        The numpy ndarray holding the energy probability density values
+    pd_astro
+        The (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray holding the energy probability density values
         p(E_nu|sin_dec_nu) in unit 1/GeV.
 
     References
@@ -350,26 +356,26 @@ def get_pd_astro_E_nu_sin_dec_nu(sin_dec_binedges, log10_e_grid_edges):
     return pd_astro
 
 
-def get_pd_bkg_E_nu_sin_dec_nu(pd_atmo, pd_astro, log10_e_grid_edges):
+def get_pd_bkg_E_nu_sin_dec_nu(pd_atmo: np.ndarray, pd_astro: np.ndarray, log10_e_grid_edges: np.ndarray) -> np.ndarray:
     """Constructs the total background flux probability density
     p_bkg(E_nu|sin(dec_nu)) in unit 1/GeV.
 
     Parameters
     ----------
-    pd_atmo : (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray
-        The numpy ndarray holding the probability density values
+    pd_atmo
+        The (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray holding the probability density values
         p(E_nu|sin(dec_nu)) in 1/GeV of the atmospheric flux.
-    pd_astro : (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray
-        The numpy ndarray holding the probability density values
+    pd_astro
+        The (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray holding the probability density values
         p(E_nu|sin(dec_nu)) in 1/GeV of the astrophysical flux.
-    log10_e_grid_edges : (n_e_grid+1,)-shaped numpy ndarray
-        The numpy ndarray holding the log10 values of the energy grid bin edges
+    log10_e_grid_edges
+        The (n_e_grid+1,)-shaped 1D numpy ndarray holding the log10 values of the energy grid bin edges
         in GeV.
 
     Returns
     -------
-    pd_bkg : (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray
-        The numpy ndarray holding total background probability density values
+    pd_bkg
+        The (n_sin_dec, n_e_grid)-shaped 2D numpy ndarray holding total background probability density values
         p_bkg(E_nu|sin(dec_nu)) in unit 1/GeV.
     """
     pd_bkg = pd_atmo + pd_astro

@@ -1,48 +1,61 @@
 import numpy as np
 
+from skyllh.core.random import RandomStateService
 from skyllh.core.storage import create_FileLoader
 
 
-def load_smearing_histogram(pathfilenames):
+def load_smearing_histogram(
+    pathfilenames: str | list[str],
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
     """Loads the 5D smearing histogram from the given data file.
 
     Parameters
     ----------
-    pathfilenames : str | list of str
-        The file name of the data file.
+    pathfilenames
+        The file name(s) of the data file(s).
 
     Returns
     -------
-    histogram : 5d ndarray
+    histogram
         The 5d histogram array holding the probability values of the smearing
         matrix.
         The axes are (true_e, true_dec, reco_e, psi, ang_err).
-    true_e_bin_edges : 1d ndarray
+    true_e_bin_edges
         The ndarray holding the bin edges of the true energy axis.
-    true_dec_bin_edges : 1d ndarray
+    true_dec_bin_edges
         The ndarray holding the bin edges of the true declination axis in
         radians.
-    reco_e_lower_edges : 3d ndarray
+    reco_e_lower_edges
         The 3d ndarray holding the lower bin edges of the reco energy axis.
         For each pair of true_e and true_dec different reco energy bin edges
         are provided.
         The shape is (n_true_e, n_true_dec, n_reco_e).
-    reco_e_upper_edges : 3d ndarray
+    reco_e_upper_edges
         The 3d ndarray holding the upper bin edges of the reco energy axis.
         For each pair of true_e and true_dec different reco energy bin edges
         are provided.
         The shape is (n_true_e, n_true_dec, n_reco_e).
-    psi_lower_edges : 4d ndarray
+    psi_lower_edges
         The 4d ndarray holding the lower bin edges of the psi axis in radians.
         The shape is (n_true_e, n_true_dec, n_reco_e, n_psi).
-    psi_upper_edges : 4d ndarray
+    psi_upper_edges
         The 4d ndarray holding the upper bin edges of the psi axis in radians.
         The shape is (n_true_e, n_true_dec, n_reco_e, n_psi).
-    ang_err_lower_edges : 5d ndarray
+    ang_err_lower_edges
         The 5d ndarray holding the lower bin edges of the angular error axis
         in radians.
         The shape is (n_true_e, n_true_dec, n_reco_e, n_psi, n_ang_err).
-    ang_err_upper_edges : 5d ndarray
+    ang_err_upper_edges
         The 5d ndarray holding the upper bin edges of the angular error axis
         in radians.
         The shape is (n_true_e, n_true_dec, n_reco_e, n_psi, n_ang_err).
@@ -292,18 +305,18 @@ class PDSmearingMatrix:
 
         return pdf
 
-    def get_true_dec_idx(self, true_dec):
+    def get_true_dec_idx(self, true_dec: float) -> int:
         """Returns the true declination index for the given true declination
         value.
 
         Parameters
         ----------
-        true_dec : float
+        true_dec
             The true declination value in radians.
 
         Returns
         -------
-        true_dec_idx : int
+        true_dec_idx
             The index of the declination bin for the given declination value.
         """
         if (true_dec < self.true_dec_bin_edges[0]) or (true_dec > self.true_dec_bin_edges[-1]):
@@ -311,16 +324,16 @@ class PDSmearingMatrix:
 
         true_dec_idx = np.digitize(true_dec, self.true_dec_bin_edges) - 1
 
-        return true_dec_idx
+        return int(true_dec_idx)
 
-    def get_log10_true_e_idx(self, log10_true_e, upper_edge=False):
+    def get_log10_true_e_idx(self, log10_true_e: float, upper_edge: bool = False) -> int:
         """Returns the true-energy bin index or edge index for a log10 value.
 
         Parameters
         ----------
-        log10_true_e : float
+        log10_true_e
             The log10 value of the true energy.
-        upper_edge : bool
+        upper_edge
             If False (default), return the bin index whose lower edge is
             less than or equal to ``log10_true_e`` and whose upper edge is
             strictly greater than ``log10_true_e``.
@@ -330,7 +343,7 @@ class PDSmearingMatrix:
 
         Returns
         -------
-        log10_true_e_idx : int
+        log10_true_e_idx
             If ``upper_edge`` is False, the index of the true log10 energy
             bin for the given log10 true energy value.
             If ``upper_edge`` is True, the index of the corresponding upper
@@ -346,28 +359,28 @@ class PDSmearingMatrix:
             )
 
         if upper_edge:
-            return np.digitize(log10_true_e, self._true_e_bin_edges, right=True)
+            return int(np.digitize(log10_true_e, self._true_e_bin_edges, right=True))
 
         log10_true_e_idx = np.digitize(log10_true_e, self._true_e_bin_edges) - 1
 
-        return log10_true_e_idx
+        return int(log10_true_e_idx)
 
-    def get_reco_e_idx(self, true_e_idx, true_dec_idx, reco_e):
+    def get_reco_e_idx(self, true_e_idx: int, true_dec_idx: int, reco_e: float) -> int | None:
         """Returns the bin index for the given reco energy value given the
         given true energy and true declination bin indices.
 
         Parameters
         ----------
-        true_e_idx : int
+        true_e_idx
             The index of the true energy bin.
-        true_dec_idx : int
+        true_dec_idx
             The index of the true declination bin.
-        reco_e : float
+        reco_e
             The reco energy value for which the bin index should get returned.
 
         Returns
         -------
-        reco_e_idx : int | None
+        reco_e_idx
             The index of the reco energy bin the given reco energy value falls
             into. It returns None if the value is out of range.
         """
@@ -383,25 +396,25 @@ class PDSmearingMatrix:
 
         return reco_e_idx
 
-    def get_psi_idx(self, true_e_idx, true_dec_idx, reco_e_idx, psi):
+    def get_psi_idx(self, true_e_idx: int, true_dec_idx: int, reco_e_idx: int, psi: float) -> int | None:
         """Returns the bin index for the given psi value given the
         true energy, true declination and reco energy bin indices.
 
         Parameters
         ----------
-        true_e_idx : int
+        true_e_idx
             The index of the true energy bin.
-        true_dec_idx : int
+        true_dec_idx
             The index of the true declination bin.
-        reco_e_idx : int
+        reco_e_idx
             The index of the reco energy bin.
-        psi : float
+        psi
             The psi value in radians for which the bin index should get
             returned.
 
         Returns
         -------
-        psi_idx : int | None
+        psi_idx
             The index of the psi bin the given psi value falls into.
             It returns None if the value is out of range.
         """
@@ -417,27 +430,29 @@ class PDSmearingMatrix:
 
         return psi_idx
 
-    def get_ang_err_idx(self, true_e_idx, true_dec_idx, reco_e_idx, psi_idx, ang_err):
+    def get_ang_err_idx(
+        self, true_e_idx: int, true_dec_idx: int, reco_e_idx: int, psi_idx: int, ang_err: float
+    ) -> int | None:
         """Returns the bin index for the given angular error value given the
         true energy, true declination, reco energy, and psi bin indices.
 
         Parameters
         ----------
-        true_e_idx : int
+        true_e_idx
             The index of the true energy bin.
-        true_dec_idx : int
+        true_dec_idx
             The index of the true declination bin.
-        reco_e_idx : int
+        reco_e_idx
             The index of the reco energy bin.
-        psi_idx : int
+        psi_idx
             The index of the psi bin.
-        ang_err : float
+        ang_err
             The angular error value in radians for which the bin index should
             get returned.
 
         Returns
         -------
-        ang_err_idx : int | None
+        ang_err_idx
             The index of the angular error bin the given angular error value
             falls into. It returns None if the value is out of range.
         """
@@ -453,20 +468,20 @@ class PDSmearingMatrix:
 
         return ang_err_idx
 
-    def get_true_log_e_range_with_valid_log_e_pdfs(self, dec_idx):
+    def get_true_log_e_range_with_valid_log_e_pdfs(self, dec_idx: int) -> tuple[float, float]:
         """Determines the true log energy range for which log_e PDFs are
         available for the given declination bin.
 
         Parameters
         ----------
-        dec_idx : int
+        dec_idx
             The declination bin index.
 
         Returns
         -------
-        min_log_true_e : float
+        min_log_true_e
             The minimum true log energy value.
-        max_log_true_e : float
+        max_log_true_e
             The maximum true log energy value.
         """
         m = np.sum((self.reco_e_upper_edges[:, dec_idx] - self.reco_e_lower_edges[:, dec_idx] > 0), axis=1) != 0
@@ -475,7 +490,9 @@ class PDSmearingMatrix:
 
         return (min_log_true_e, max_log_true_e)
 
-    def get_log_e_pdf(self, log_true_e_idx, dec_idx):
+    def get_log_e_pdf(
+        self, log_true_e_idx: int, dec_idx: int
+    ) -> tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None, np.ndarray | None]:
         """Retrieves the log_e PDF from the given true energy bin index and
         source bin index.
         Returns (None, None, None, None) if any of the bin indices are less then
@@ -483,20 +500,20 @@ class PDSmearingMatrix:
 
         Parameters
         ----------
-        log_true_e_idx : int
+        log_true_e_idx
             The index of the true energy bin.
-        dec_idx : int
+        dec_idx
             The index of the declination bin.
 
         Returns
         -------
-        pdf : 1d ndarray
+        pdf
             The log_e pdf values.
-        lower_bin_edges : 1d ndarray
+        lower_bin_edges
             The lower bin edges of the energy pdf histogram.
-        upper_bin_edges : 1d ndarray
+        upper_bin_edges
             The upper bin edges of the energy pdf histogram.
-        bin_widths : 1d ndarray
+        bin_widths
             The bin widths of the energy pdf histogram.
         """
         if log_true_e_idx < 0 or dec_idx < 0:
@@ -518,7 +535,9 @@ class PDSmearingMatrix:
 
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
-    def get_psi_pdf(self, log_true_e_idx, dec_idx, log_e_idx):
+    def get_psi_pdf(
+        self, log_true_e_idx: int, dec_idx: int, log_e_idx: int
+    ) -> tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None, np.ndarray | None]:
         """Retrieves the psi PDF from the given true energy bin index, the
         source bin index, and the log_e bin index.
         Returns (None, None, None, None) if any of the bin indices are less then
@@ -526,22 +545,22 @@ class PDSmearingMatrix:
 
         Parameters
         ----------
-        log_true_e_idx : int
+        log_true_e_idx
             The index of the true energy bin.
-        dec_idx : int
+        dec_idx
             The index of the declination bin.
-        log_e_idx : int
+        log_e_idx
             The index of the log_e bin.
 
         Returns
         -------
-        pdf : 1d ndarray
+        pdf
             The psi pdf values.
-        lower_bin_edges : 1d ndarray
+        lower_bin_edges
             The lower bin edges of the psi pdf histogram.
-        upper_bin_edges : 1d ndarray
+        upper_bin_edges
             The upper bin edges of the psi pdf histogram.
-        bin_widths : 1d ndarray
+        bin_widths
             The bin widths of the psi pdf histogram.
         """
         if log_true_e_idx < 0 or dec_idx < 0 or log_e_idx < 0:
@@ -563,7 +582,9 @@ class PDSmearingMatrix:
 
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
-    def get_ang_err_pdf(self, log_true_e_idx, dec_idx, log_e_idx, psi_idx):
+    def get_ang_err_pdf(
+        self, log_true_e_idx: int, dec_idx: int, log_e_idx: int, psi_idx: int
+    ) -> tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None, np.ndarray | None]:
         """Retrieves the angular error PDF from the given true energy bin index,
         the source bin index, the log_e bin index, and the psi bin index.
         Returns (None, None, None, None) if any of the bin indices are less then
@@ -571,24 +592,24 @@ class PDSmearingMatrix:
 
         Parameters
         ----------
-        log_true_e_idx : int
+        log_true_e_idx
             The index of the true energy bin.
-        dec_idx : int
+        dec_idx
             The index of the declination bin.
-        log_e_idx : int
+        log_e_idx
             The index of the log_e bin.
-        psi_idx : int
+        psi_idx
             The index of the psi bin.
 
         Returns
         -------
-        pdf : 1d ndarray
+        pdf
             The ang_err pdf values.
-        lower_bin_edges : 1d ndarray
+        lower_bin_edges
             The lower bin edges of the ang_err pdf histogram.
-        upper_bin_edges : 1d ndarray
+        upper_bin_edges
             The upper bin edges of the ang_err pdf histogram.
-        bin_widths : 1d ndarray
+        bin_widths
             The bin widths of the ang_err pdf histogram.
         """
         if log_true_e_idx < 0 or dec_idx < 0 or log_e_idx < 0 or psi_idx < 0:
@@ -617,26 +638,28 @@ class PDSmearingMatrix:
 
         return (pdf, lower_bin_edges, upper_bin_edges, bin_widths)
 
-    def sample_log_e(self, rss, dec_idx, log_true_e_idxs):
+    def sample_log_e(
+        self, rss: RandomStateService, dec_idx: int, log_true_e_idxs: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Samples log energy values for the given source declination and true
         energy bins.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The RandomStateService which should be used for drawing random
             numbers from.
-        dec_idx : int
+        dec_idx
             The index of the source declination bin.
-        log_true_e_idxs : 1d ndarray of int
+        log_true_e_idxs
             The bin indices of the true energy bins.
 
         Returns
         -------
-        log_e_idx : 1d ndarray of int
+        log_e_idx
             The bin indices of the log_e pdf corresponding to the sampled
             log_e values.
-        log_e : 1d ndarray of float
+        log_e
             The sampled log_e values.
         """
         n_evt = len(log_true_e_idxs)
@@ -649,7 +672,7 @@ class PDSmearingMatrix:
             b_size = np.count_nonzero(m)
             (pdf, low_bin_edges, up_bin_edges, bin_widths) = self.get_log_e_pdf(b_log_true_e_idx, dec_idx)
 
-            if pdf is None:
+            if pdf is None or low_bin_edges is None or up_bin_edges is None or bin_widths is None:
                 log_e_idx[m] = -1
                 log_e[m] = np.nan
                 continue
@@ -662,28 +685,30 @@ class PDSmearingMatrix:
 
         return (log_e_idx, log_e)
 
-    def sample_psi(self, rss, dec_idx, log_true_e_idxs, log_e_idxs):
+    def sample_psi(
+        self, rss: RandomStateService, dec_idx: int, log_true_e_idxs: np.ndarray, log_e_idxs: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Samples psi values for the given source declination, true
         energy bins, and log_e bins.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The RandomStateService which should be used for drawing random
             numbers from.
-        dec_idx : int
+        dec_idx
             The index of the source declination bin.
-        log_true_e_idxs : 1d ndarray of int
+        log_true_e_idxs
             The bin indices of the true energy bins.
-        log_e_idxs : 1d ndarray of int
+        log_e_idxs
             The bin indices of the log_e bins.
 
         Returns
         -------
-        psi_idx : 1d ndarray of int
+        psi_idx
             The bin indices of the psi pdf corresponding to the sampled psi
             values.
-        psi : 1d ndarray of float
+        psi
             The sampled psi values in radians.
         """
         if len(log_true_e_idxs) != len(log_e_idxs):
@@ -704,7 +729,7 @@ class PDSmearingMatrix:
                     b_log_true_e_idx, dec_idx, bb_log_e_idx
                 )
 
-                if pdf is None:
+                if pdf is None or low_bin_edges is None or up_bin_edges is None or bin_widths is None:
                     psi_idx[mm] = -1
                     psi[mm] = np.nan
                     continue
@@ -717,30 +742,37 @@ class PDSmearingMatrix:
 
         return (psi_idx, psi)
 
-    def sample_ang_err(self, rss, dec_idx, log_true_e_idxs, log_e_idxs, psi_idxs):
+    def sample_ang_err(
+        self,
+        rss: RandomStateService,
+        dec_idx: int,
+        log_true_e_idxs: np.ndarray,
+        log_e_idxs: np.ndarray,
+        psi_idxs: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Samples ang_err values for the given source declination, true
         energy bins, log_e bins, and psi bins.
 
         Parameters
         ----------
-        rss : instance of RandomStateService
+        rss
             The RandomStateService which should be used for drawing random
             numbers from.
-        dec_idx : int
+        dec_idx
             The index of the source declination bin.
-        log_true_e_idxs : 1d ndarray of int
+        log_true_e_idxs
             The bin indices of the true energy bins.
-        log_e_idxs : 1d ndarray of int
+        log_e_idxs
             The bin indices of the log_e bins.
-        psi_idxs : 1d ndarray of int
+        psi_idxs
             The bin indices of the psi bins.
 
         Returns
         -------
-        ang_err_idx : 1d ndarray of int
+        ang_err_idx
             The bin indices of the angular error pdf corresponding to the
             sampled angular error values.
-        ang_err : 1d ndarray of float
+        ang_err
             The sampled angular error values in radians.
         """
         if (len(log_true_e_idxs) != len(log_e_idxs)) and (len(log_e_idxs) != len(psi_idxs)):
@@ -764,7 +796,7 @@ class PDSmearingMatrix:
                         b_log_true_e_idx, dec_idx, bb_log_e_idx, bbb_psi_idx
                     )
 
-                    if pdf is None:
+                    if pdf is None or low_bin_edges is None or up_bin_edges is None or bin_widths is None:
                         ang_err_idx[mmm] = -1
                         ang_err[mmm] = np.nan
                         continue

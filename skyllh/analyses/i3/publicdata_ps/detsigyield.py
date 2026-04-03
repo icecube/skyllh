@@ -11,16 +11,20 @@ from skyllh.core import (
 from skyllh.core.binning import (
     BinningDefinition,
 )
+from skyllh.core.dataset import Dataset, DatasetData
 from skyllh.core.flux_model import (
     FactorizedFluxModel,
 )
 from skyllh.core.livetime import (
     Livetime,
 )
+from skyllh.core.parameters import ParameterGrid
+from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
     classname,
     issequence,
 )
+from skyllh.core.source_hypo_grouping import SourceHypoGroup
 from skyllh.i3.detsigyield import (
     SingleParamFluxPointLikeSourceI3DetSigYield,
     SingleParamFluxPointLikeSourceI3DetSigYieldBuilder,
@@ -48,10 +52,10 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
     def __init__(
         self,
-        param_grid,
-        spline_order_sinDec=2,
-        spline_order_param=2,
-        ncpu=None,
+        param_grid: ParameterGrid,
+        spline_order_sinDec: int = 2,
+        spline_order_param: int = 2,
+        ncpu: int | None = None,
         **kwargs,
     ):
         """Creates a new IceCube detector signal yield builder instance for
@@ -61,18 +65,16 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         Parameters
         ----------
-        param_grid : instance of ParameterGrid
+        param_grid
             The instance of ParameterGrid which defines the grid of parameter
             values.
-        spline_order_sinDec : int
+        spline_order_sinDec
             The order of the spline function for the logarithmic values of the
             detector signal yield along the sin(dec) axis.
-            The default is 2.
-        spline_order_param : int
+        spline_order_param
             The order of the spline function for the logarithmic values of the
             detector signal yield along the parameter axis.
-            The default is 2.
-        ncpu : int | None
+        ncpu
             The number of CPUs to utilize. If set to ``None``, global setting
             will take place.
         """
@@ -85,11 +87,11 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             **kwargs,
         )
 
-    def assert_types_of_construct_detsigyield_arguments(self, shgs, **kwargs):
+    def assert_types_of_construct_detsigyield_arguments(self, dataset, data, shgs, ppbar, **kwargs):
         """Checks the correct types of the arguments for the
         ``construct_detsigyield`` method.
         """
-        super().assert_types_of_construct_detsigyield_arguments(shgs=shgs, **kwargs)
+        super().assert_types_of_construct_detsigyield_arguments(dataset, data, shgs, ppbar, **kwargs)
 
         if not issequence(shgs):
             shgs = [shgs]
@@ -101,27 +103,29 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
                     f'Its current type is {classname(shg.fluxmodel)}!'
                 )
 
-    def construct_detsigyield(self, dataset, data, shg, ppbar=None):
+    def construct_detsigyield(
+        self, dataset: Dataset, data: DatasetData, shg: SourceHypoGroup, ppbar: ProgressBar | None = None
+    ) -> SingleParamFluxPointLikeSourceI3DetSigYield:
         """Constructs a detector signal yield 2-dimensional log spline
         function for the given flux model with varying parameter values.
 
         Parameters
         ----------
-        dataset : instance of Dataset
+        dataset
             The Dataset instance holding the sin(dec) binning definition.
-        data : instance of DatasetData
+        data
             The instance of DatasetData holding the monte-carlo event data.
             This implementation loads the effective area from the provided
             public data and hence does not need monte-carlo data.
-        shg : instance of SourceHypoGroup
+        shg
             The instance of SourceHypoGroup (i.e. sources and flux model) for
             which the detector signal yield should get constructed.
-        ppbar : ProgressBar instance | None
+        ppbar
             The instance of ProgressBar of the optional parent progress bar.
 
         Returns
         -------
-        detsigyield : instance of SingleParamFluxPointLikeSourceI3DetSigYield
+        detsigyield
             The DetSigYield instance for a point-like source with a flux model
             of a single parameter.
         """
@@ -133,6 +137,7 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
         )
 
         # Get integrated live-time in days.
+        assert data.livetime is not None
         livetime_days = Livetime.get_integrated_livetime(data.livetime)
 
         to_internal_time_unit_factor = self._cfg.to_internal_time_unit(time_unit=units.day)
@@ -153,27 +158,31 @@ class PDSingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
 
         # Calculate the detector signal yield in sin_dec vs gamma.
         def _create_hist(
-            energy_bin_edges_lower,
-            energy_bin_edges_upper,
-            aeff,
-            fluxmodel,
-            to_internal_flux_unit_factor,
-        ):
+            energy_bin_edges_lower: np.ndarray,
+            energy_bin_edges_upper: np.ndarray,
+            aeff: np.ndarray,
+            fluxmodel: FactorizedFluxModel,
+            to_internal_flux_unit_factor: float,
+        ) -> np.ndarray:
             """Creates a histogram of the detector signal yield for the given
             sin(dec) binning.
 
             Parameters
             ----------
-            energy_bin_edges_lower : 1d ndarray
+            energy_bin_edges_lower
                 The array holding the lower bin edges in E_nu/GeV.
-            energy_bin_edges_upper : 1d ndarray
+            energy_bin_edges_upper
                 The array holding the upper bin edges in E_nu/GeV.
-            aeff : (n_bins_sin_dec, n_bins_log_energy)-shaped 2d ndarray
-                The effective area binned data array.
+            aeff
+                The (n_bins_sin_dec, n_bins_log_energy)-shaped 2d ndarray holding the effective area binned data array.
+            fluxmodel
+                The flux model for which the detector signal yield should get calculated.
+            to_internal_flux_unit_factor
+                The factor to convert the flux model unit into the internal flux unit.
 
             Returns
             -------
-            h : instance of ndarray
+            h
                 The (n_bins_sin_dec,)-shaped 1d numpy ndarray containing the
                 detector signal yield values for the different sin_dec bins and
                 the given flux model.

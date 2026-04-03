@@ -60,7 +60,7 @@ class I3TimeScramblingMethodTestCase(unittest.TestCase):
 
         i3timescramblingmethod = I3TimeScramblingMethod(timegen)
         rss = RandomStateService(seed=1)
-        data = i3timescramblingmethod.scramble(rss=rss, dataset=None, data=exp_data)
+        data = i3timescramblingmethod.scramble(rss=rss, dataset=None, data=exp_data)  # type: ignore[arg-type]
 
         np.testing.assert_allclose(data['time'], self.scrambled_data['time'])
         np.testing.assert_allclose(data['ra'], self.scrambled_data['ra'])
