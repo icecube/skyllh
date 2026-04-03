@@ -28,9 +28,8 @@ from skyllh.core.smoothing import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.timing import TaskTimer, TimeLord
+from skyllh.core.trialdata import TrialDataManager
 
 
 class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
@@ -49,44 +48,43 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
 
     def __init__(
         self,
-        data_logE,
-        data_sinDec,
-        data_mcweight,
-        data_physicsweight,
-        logE_binning,
-        sinDec_binning,
-        smoothing_filter,
-        kde_smoothing=False,
+        data_logE: np.ndarray,
+        data_sinDec: np.ndarray,
+        data_mcweight: np.ndarray,
+        data_physicsweight: np.ndarray,
+        logE_binning: BinningDefinition,
+        sinDec_binning: BinningDefinition,
+        smoothing_filter: SmoothingFilter | None = None,
+        kde_smoothing: bool = False,
         **kwargs,
     ):
         """Creates a new IceCube energy PDF object for the public data.
 
         Parameters
         ----------
-        data_logE : instance of ndarray
+        data_logE
             The 1d ndarray holding the log10(E) values of the events.
-        data_sinDec : instance of ndarray
+        data_sinDec
             The 1d ndarray holding the sin(dec) values of the events.
-        data_mcweight : instance of ndarray
+        data_mcweight
             The 1d ndarray holding the monte-carlo weights of the events.
             The final data weight will be the product of data_mcweight and
             data_physicsweight.
-        data_physicsweight : instance of ndarray
+        data_physicsweight
             The 1d ndarray holding the physics weights of the events.
             The final data weight will be the product of data_mcweight and
             data_physicsweight.
-        logE_binning : instance of BinningDefinition
+        logE_binning
             The binning definition for the log10(E) axis.
-        sinDec_binning : instance of BinningDefinition
+        sinDec_binning
             The binning definition for the sin(declination) axis.
-        smoothing_filter : instance of SmoothingFilter | None
+        smoothing_filter
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
-        kde_smoothing : bool
+        kde_smoothing
             Apply a kde smoothing to the energy pdf for each bin in sin(dec).
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
-            Default: False.
         """
         super().__init__(pmm=None, **kwargs)
 
@@ -255,21 +253,21 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
         with TaskTimer(tl, 'Evaluating logE-sinDec histogram.'):
             self._pd = self._pdf_spline(tdm['log_energy'], tdm['sin_dec'], grid=False)
 
-    def assert_is_valid_for_trial_data(self, tdm, tl=None):
+    def assert_is_valid_for_trial_data(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs) -> None:
         """Checks if this energy PDF covers the entire value range of the trail
         data events.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data events.
             The following data fields need to exist:
 
-                log_energy : float
+                log_energy
                     The base-10 logarithm of the reconstructed energy value.
-                sin_dec : float
+                sin_dec
                     The sine of the declination value of the event.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to measure timing information.
 
         Raises
@@ -308,34 +306,36 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
                 f'{sindecmu_axis.vmax:g}!'
             )
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self, tdm: TrialDataManager, params_recarray: np.ndarray | None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the energy probability density (in 1/log10(E/GeV)) of each
         trial data event.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the data events for which the
             probability should be calculated for. The following data fields must
             exist:
 
-            log_energy : float
+            log_energy
                 The base-10 logarithm of the energy value of the event.
-            sin_dec : float
+            sin_dec
                 The sin(declination) value of the event.
 
-        params_recarray : None
+        params_recarray
             Unused interface parameter.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of ndarray
+        pd
             The (N_selected_events,)-shaped numpy ndarray holding the energy
             probability density value for each trial data event.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each global fit parameter. By definition this PDF does not
             depend on any fit parameter, hence, this dictionary is empty.
@@ -350,34 +350,41 @@ class PDDataBackgroundI3EnergyPDF(PDBackgroundI3EnergyPDF):
     the experimental data of the public data.
     """
 
-    def __init__(self, data_exp, logE_binning, sinDec_binning, smoothing_filter=None, kde_smoothing=False, **kwargs):
+    def __init__(
+        self,
+        data_exp: DataFieldRecordArray,
+        logE_binning: BinningDefinition,
+        sinDec_binning: BinningDefinition,
+        smoothing_filter: SmoothingFilter | None = None,
+        kde_smoothing: bool = False,
+        **kwargs,
+    ):
         """Constructs a new IceCube energy background PDF from experimental
         data.
 
         Parameters
         ----------
-        data_exp : instance of DataFieldRecordArray
+        data_exp
             The array holding the experimental data. The following data fields
             must exist:
 
-            log_energy : float
+            log_energy
                 The base-10 logarithm of the reconstructed energy value of the
                 data event.
-            sin_dec : float
+            sin_dec
                 The sine of the reconstructed declination of the data event.
 
-        logE_binning : instance of BinningDefinition
+        logE_binning
             The binning definition for the binning in log10(E).
-        sinDec_binning : instance of BinningDefinition
+        sinDec_binning
             The binning definition for the sin(declination).
-        smoothing_filter : instance of SmoothingFilter | None
+        smoothing_filter
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
-        kde_smoothing : bool
+        kde_smoothing
             Apply a kde smoothing to the energy pdf for each bin in sin(dec).
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
-            Default: False.
         """
         if not isinstance(data_exp, DataFieldRecordArray):
             raise TypeError(
@@ -411,20 +418,26 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
     data and a monte-carlo background flux model.
     """
 
-    def __init__(self, pdf_log10emu_sindecmu, log10emu_binning, sindecmu_binning, **kwargs):
+    def __init__(
+        self,
+        pdf_log10emu_sindecmu: np.ndarray,
+        log10emu_binning: BinningDefinition,
+        sindecmu_binning: BinningDefinition,
+        **kwargs,
+    ):
         """Constructs a new background energy PDF with the given PDF data and
         binning.
 
         Parameters
         ----------
-        pdf_log10emu_sindecmu : instance of numpy ndarray
+        pdf_log10emu_sindecmu
             The (n_log10emu, n_sindecmu)-shaped 2D numpy ndarray holding the
             PDF values in unit 1/log10(E_mu/GeV).
             A copy of this data will be created and held within this class
             instance.
-        log10emu_binning : instance of BinningDefinition
+        log10emu_binning
             The binning definition for the binning in log10(E_mu/GeV).
-        sindecmu_binning : instance of BinningDefinition
+        sindecmu_binning
             The binning definition for the binning in sin(dec_mu).
         """
         if not isinstance(pdf_log10emu_sindecmu, np.ndarray):
@@ -456,21 +469,21 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
         self.add_binning(log10emu_binning, name='log_energy')
         self.add_binning(sindecmu_binning, name='sin_dec')
 
-    def assert_is_valid_for_trial_data(self, tdm, tl=None):
+    def assert_is_valid_for_trial_data(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs) -> None:
         """Checks if this energy PDF covers the entire value range of the trail
         data events.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data events.
             The following data fields need to exist:
 
-                log_energy : float
+                log_energy
                     The base-10 logarithm of the reconstructed energy value.
-                sin_dec : float
+                sin_dec
                     The sine of the declination value of the event.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to measure timing information.
 
         Raises
@@ -480,7 +493,7 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             PDF.
         """
         log10emu = tdm['log_energy']
-        log10emu_axis = self.get_axis(0)
+        log10emu_axis = self._axes[0]
         if np.min(log10emu) < log10emu_axis.vmin:
             raise ValueError(
                 f'The minimum log10emu value {np.min(log10emu):g} of the trial '
@@ -491,11 +504,11 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             raise ValueError(
                 f'The maximum log10emu value {np.max(log10emu):g} of the trial '
                 'data is larger than the maximum value of the PDF '
-                f'{log10emu_axis.vmax}:g!'
+                f'{log10emu_axis.vmax:g}!'
             )
 
         sindecmu = tdm['sin_dec']
-        sindecmu_axis = self.get_axis(1)
+        sindecmu_axis = self._axes[1]
         if np.min(sindecmu) < sindecmu_axis.vmin:
             raise ValueError(
                 f'The minimum sindecmu value {np.min(sindecmu):g} of the trial '
@@ -509,32 +522,34 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
                 f'{sindecmu_axis.vmax:g}!'
             )
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self, tdm: TrialDataManager, params_recarray: np.ndarray | None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """Gets the probability density for the given trial data events.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data events.
             The following data fields need to exist:
 
-                log_energy : float
+                log_energy
                     The base-10 logarithm of the reconstructed energy value.
-                sin_dec : float
+                sin_dec
                     The sine of the declination value of the event.
 
-        params_recarray : None
+        params_recarray
             Unused interface argument.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of ndarray
+        pd
             The (N_selected_events,)-shaped numpy ndarray holding the
             probability density value for each event.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each global fit parameter. By definition this PDF does not
             depend on any fit parameter, hence, this dictionary is empty.
