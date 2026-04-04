@@ -9,13 +9,11 @@ from typing import (
     Any,
 )
 
+import yaml
 from astropy import (
     units,
 )
 
-from skyllh.core import (
-    tool,
-)
 from skyllh.core.datafields import (
     DataFieldStages as DFS,
 )
@@ -108,7 +106,6 @@ class Config(
         super().__init__(copy.deepcopy(_BASECONFIG))
 
     @classmethod
-    @tool.requires('yaml')
     def from_yaml(
         cls,
         pathfilename: str,
@@ -134,8 +131,6 @@ class Config(
 
         if pathfilename is None:
             return cfg
-
-        yaml = tool.get('yaml')
 
         with open(pathfilename) as f:
             user_config_dict = yaml.load(f, Loader=yaml.SafeLoader)
