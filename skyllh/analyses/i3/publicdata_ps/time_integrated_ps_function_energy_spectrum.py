@@ -3,6 +3,8 @@ source analysis with a two-component likelihood function using a spacial and an
 energy event PDF.
 """
 
+from typing import cast
+
 import numpy as np
 from scipy.interpolate import BSpline, splrep
 
@@ -25,6 +27,9 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
 )
 from skyllh.core.analysis import (
+    SingleSourceMultiDatasetLLHRatioAnalysis,
+)
+from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
 from skyllh.core.background_generator import (
@@ -33,11 +38,13 @@ from skyllh.core.background_generator import (
 from skyllh.core.config import (
     Config,
 )
+from skyllh.core.dataset import Dataset
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
 from skyllh.core.flux_model import (
     EpeakFunctionEnergyProfile,
+    FactorizedFluxModel,
     SteadyPointlikeFFM,
 )
 from skyllh.core.logging import (
@@ -80,9 +87,11 @@ from skyllh.core.source_hypo_grouping import (
     SourceHypoGroup,
     SourceHypoGroupManager,
 )
+from skyllh.core.source_model import PointLikeSource
 from skyllh.core.test_statistic import (
     WilksTestStatistic,
 )
+from skyllh.core.timing import TimeLord
 from skyllh.core.trialdata import (
     TrialDataManager,
 )
@@ -105,62 +114,73 @@ from skyllh.i3.config import (
 cfg = Config()
 
 
-def set_epeak(analysis, e_peak):
+def set_epeak(analysis: SingleSourceMultiDatasetLLHRatioAnalysis, e_peak: float) -> None:
     """Change the peak energy. The shape stays the same but the spectrum is
     moved to higher/lower energies.
 
     Parameters
     ----------
-    analysis : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    analysis
         Analysis instance with the defined flux model and signal generator
-    e_peak : float
+    e_peak
         Peak energy of the flux model (this defines the reference flux)
     """
-    analysis.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile.e_peak = e_peak
+    cast(
+        EpeakFunctionEnergyProfile,
+        cast(FactorizedFluxModel, analysis.shg_mgr.get_fluxmodel_by_src_idx(0)).energy_profile,
+    ).e_peak = e_peak
+    assert analysis.sig_generator is not None
     analysis.sig_generator.change_shg_mgr(analysis.shg_mgr)
 
 
-def flux_from_ns(analysis, e_peak, ns):
+def flux_from_ns(analysis: SingleSourceMultiDatasetLLHRatioAnalysis, e_peak: float, ns: float) -> float:
     """Get the flux at e_eak for a certain flux model (defined by e_peak)
       for a mean number of signal neutrinos ns
 
     Parameters
     ----------
-    analysis : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    analysis
         Analysis instance with the defined flux model and signal generator
-    e_peak : float
+    e_peak
         Peak energy of the flux model (this defines the reference flux)
-    ns : float
+    ns
         Mean number of detected signal neutrinos
 
     Returns
     -------
-    flux : float
+    flux
         Flux (dN / dE) in (GeV cm^2 s)^-1 at peak energy.
     """
     # set the fluxmodel to e_peak
     set_epeak(analysis, e_peak)
 
-    scaling_factor = analysis.calculate_fluxmodel_scaling_factor(ns, [ns, e_peak])
+    scaling_factor = analysis.calculate_fluxmodel_scaling_factor(ns, np.array([ns, e_peak]))
 
-    return analysis.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile(E=10**e_peak).squeeze() * scaling_factor
+    return (
+        float(
+            cast(FactorizedFluxModel, analysis.shg_mgr.get_fluxmodel_by_src_idx(0))
+            .energy_profile(E=10**e_peak)
+            .squeeze()
+        )
+        * scaling_factor
+    )
 
 
-def ns_from_flux(analysis, e_peak, flux):
+def ns_from_flux(analysis: SingleSourceMultiDatasetLLHRatioAnalysis, e_peak: float, flux: float) -> float:
     """Get the mean number of signal neutrinos ns for a certain flux model (defined by e_peak) for a flux at e_peak (1/GeV/cm2/s).
 
     Parameters
     ----------
-    analysis : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    analysis
         Analysis instance with the defined flux model and signal generator
-    e_peak : float
+    e_peak
         Peak energy of the flux model (this defines the reference flux)
-    flux : float
+    flux
         Flux in 1/(GeV cm2 s)
 
     Returns
     -------
-    ns : float
+    ns
         Mean number of signal neutrinos
     """
 
@@ -168,99 +188,100 @@ def ns_from_flux(analysis, e_peak, flux):
     set_epeak(analysis, e_peak)
 
     # reference flux at e_peak
-    reference_flux = analysis.shg_mgr.get_fluxmodel_by_src_idx(0).energy_profile(E=10**e_peak).squeeze()
+    reference_flux = (
+        cast(FactorizedFluxModel, analysis.shg_mgr.get_fluxmodel_by_src_idx(0)).energy_profile(E=10**e_peak).squeeze()
+    )
 
     scaling_factor = flux / reference_flux
 
-    scaling_factor_norm = analysis.calculate_fluxmodel_scaling_factor(1, [1, e_peak])
+    scaling_factor_norm = analysis.calculate_fluxmodel_scaling_factor(1, np.array([1, e_peak]))
 
-    return scaling_factor / scaling_factor_norm
+    return float(scaling_factor / scaling_factor_norm)
 
 
 def create_analysis(
-    cfg,
-    datasets,
-    source,
-    source_energies,
-    source_energy_spectrum,
-    refplflux_Phi0=1,
-    ns_seed=10.0,
-    ns_min=0.0,
-    ns_max=1e3,
-    e_peak_signal=5,
-    e_peak_seed=3,
-    e_peak_min=1.06,
-    e_peak_max=10.06,
-    kde_smoothing=False,
-    minimizer_impl='minuit',
-    compress_data=False,
-    keep_data_fields=None,
-    evt_sel_delta_angle_deg=10,
-    construct_sig_generator=True,
-    tl=None,
-    ppbar=None,
-    logger_name=None,
-):
+    cfg: Config,
+    datasets: list[Dataset],
+    source: PointLikeSource,
+    source_energies: np.ndarray,
+    source_energy_spectrum: np.ndarray,
+    refplflux_Phi0: float = 1,
+    ns_seed: float = 10.0,
+    ns_min: float = 0.0,
+    ns_max: float = 1e3,
+    e_peak_signal: float = 5,
+    e_peak_seed: float = 3,
+    e_peak_min: float = 1.06,
+    e_peak_max: float = 10.06,
+    kde_smoothing: bool = False,
+    minimizer_impl: str = 'minuit',
+    compress_data: bool = False,
+    keep_data_fields: list[str] | None = None,
+    evt_sel_delta_angle_deg: float = 10,
+    construct_sig_generator: bool = True,
+    tl: TimeLord | None = None,
+    ppbar: ProgressBar | None = None,
+    logger_name: str | None = None,
+) -> SingleSourceMultiDatasetLLHRatioAnalysis:
     """Creates the Analysis instance for this particular analysis.
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         The instance of Config holding the local configuration.
-    datasets : list of Dataset instances
+    datasets
         The list of Dataset instances, which should be used in the
         analysis.
-    source : PointLikeSource instance
+    source
         The PointLikeSource instance defining the point source position.
-    source_energies : numpy array
+    source_energies
         Energies in GeV for which source_energy_spectrum is given
-    source_energy_spectrum : numpy array
+    source_energy_spectrum
         The energy spectrum in GeV / cm^2 / s
-    refplflux_Phi0 : float
+    refplflux_Phi0
         The flux normalization to use for the reference power law flux model.
-    ns_seed : float
+    ns_seed
         Value to seed the minimizer with for the ns fit.
-    ns_min : float
+    ns_min
         Lower bound for ns fit.
-    ns_max : float
+    ns_max
         Upper bound for ns fit.
-    e_peak_signal : float
+    e_peak_signal
         Default energy peak value for the signal generator.
-    e_peak_seed : float
+    e_peak_seed
         Seed value for minimizer for fitting energy peak.
-    e_peak_min : float
+    e_peak_min
         Lower bound for energy peak fit.
-    e_peak_max : float
+    e_peak_max
         Upper bound for energy peak fit,
-    kde_smoothing : bool
+    kde_smoothing
         Apply a KDE-based smoothing to the data-driven background pdf.
-        Default: False.
-    minimizer_impl : str
+    minimizer_impl
         Minimizer implementation to be used. Supported options are ``"LBFGS"``
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
         ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module).
-        Default: "LBFGS".
-    compress_data : bool
+        Default
+    compress_data
         Flag if the data should get converted from float64 into float32.
-    keep_data_fields : list of str | None
+    keep_data_fields
         List of additional data field names that should get kept when loading
         the data.
-    evt_sel_delta_angle_deg : float
+    evt_sel_delta_angle_deg
         The delta angle in degrees for the event selection optimization methods.
-    construct_sig_generator : bool
+    construct_sig_generator
         Flag if the signal generator should be constructed (``True``) or not
         (``False``).
-    tl : TimeLord instance | None
+    tl
         The TimeLord instance to use to time the creation of the analysis.
-    ppbar : ProgressBar instance | None
+    ppbar
         The instance of ProgressBar for the optional parent progress bar.
-    logger_name : str | None
+    logger_name
         The name of the logger to be used. If set to ``None``, ``__name__`` will
         be used.
 
     Returns
     -------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The Analysis instance for this analysis.
     """
 
@@ -291,7 +312,7 @@ def create_analysis(
 
     energy_spectrum_spline = splrep(source_energies, source_energy_spectrum / source_energies / source_energies, k=1)
 
-    spline_eval = BSpline(*energy_spectrum_spline)
+    spline_eval = BSpline(*energy_spectrum_spline)  # type: ignore[arg-type]
 
     e_peak = np.log10(source_energies[np.argmax(source_energy_spectrum)])
 
@@ -382,7 +403,9 @@ def create_analysis(
         log_energy_binning = ds.get_binning_definition('log_energy')
 
         # Create the spatial PDF ratio instance for this dataset.
-        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(cfg=cfg, dec_range=np.arcsin(sin_dec_binning.range))
+        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
+            cfg=cfg, dec_range=tuple(np.arcsin(sin_dec_binning.range))
+        )
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(cfg=cfg, data_exp=data.exp, sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(cfg=cfg, sig_pdf=spatial_sigpdf, bkg_pdf=spatial_bkgpdf)
 

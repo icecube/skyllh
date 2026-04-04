@@ -24,6 +24,9 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
 )
 from skyllh.core.analysis import (
+    SingleSourceMultiDatasetLLHRatioAnalysis,
+)
+from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
 from skyllh.core.background_generator import (
@@ -32,6 +35,7 @@ from skyllh.core.background_generator import (
 from skyllh.core.config import (
     Config,
 )
+from skyllh.core.dataset import Dataset
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
@@ -117,96 +121,95 @@ from skyllh.i3.config import (
 
 
 def create_analysis(
-    cfg,
-    datasets,
-    source,
-    refplflux_Phi0=1,
-    refplflux_E0=1e3,
-    refplflux_gamma=2.0,
-    refplflux_Ec=np.inf,
-    ns_seed=10.0,
-    ns_min=0.0,
-    ns_max=1e3,
-    gamma_seed=3.0,
-    gamma_min=1.0,
-    gamma_max=4.0,
-    kde_smoothing=False,
-    minimizer_impl='LBFGS',
-    minimizer_max_rep=100,
-    compress_data=False,
-    keep_data_fields=None,
-    evt_sel_delta_angle_deg=10,
-    construct_sig_generator=True,
-    tl=None,
-    ppbar=None,
-    logger_name=None,
-):
+    cfg: Config,
+    datasets: list[Dataset],
+    source: PointLikeSource,
+    refplflux_Phi0: float = 1,
+    refplflux_E0: float = 1e3,
+    refplflux_gamma: float = 2.0,
+    refplflux_Ec: float = np.inf,
+    ns_seed: float = 10.0,
+    ns_min: float = 0.0,
+    ns_max: float = 1e3,
+    gamma_seed: float | None = 3.0,
+    gamma_min: float = 1.0,
+    gamma_max: float = 4.0,
+    kde_smoothing: bool = False,
+    minimizer_impl: str = 'LBFGS',
+    minimizer_max_rep: int = 100,
+    compress_data: bool = False,
+    keep_data_fields: list[str] | None = None,
+    evt_sel_delta_angle_deg: float = 10,
+    construct_sig_generator: bool = True,
+    tl: TimeLord | None = None,
+    ppbar: ProgressBar | None = None,
+    logger_name: str | None = None,
+) -> SingleSourceMultiDatasetLLHRatioAnalysis:
     """Creates the Analysis instance for this particular analysis.
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         The instance of Config holding the local configuration.
-    datasets : list of Dataset instances
+    datasets
         The list of Dataset instances, which should be used in the
         analysis.
-    source : PointLikeSource instance
+    source
         The PointLikeSource instance defining the point source position.
-    refplflux_Phi0 : float
+    refplflux_Phi0
         The flux normalization to use for the reference power law flux model.
-    refplflux_E0 : float
+    refplflux_E0
         The reference energy to use for the reference power law flux model.
-    refplflux_gamma : float
+    refplflux_gamma
         The spectral index to use for the reference power law flux model.
-    refplflux_Ec: float,
+    refplflux_Ec
         The cutoff energy for the cutoff power law flux model.
-    ns_seed : float
+    ns_seed
         Value to seed the minimizer with for the ns fit.
-    ns_min : float
+    ns_min
         Lower bound for ns fit.
-    ns_max : float
+    ns_max
         Upper bound for ns fit.
-    gamma_seed : float | None
+    gamma_seed
         Value to seed the minimizer with for the gamma fit. If set to None,
         the refplflux_gamma value will be set as gamma_seed.
-    gamma_min : float
+    gamma_min
         Lower bound for gamma fit.
-    gamma_max : float
+    gamma_max
         Upper bound for gamma fit.
-    kde_smoothing : bool
+    kde_smoothing
         Apply a KDE-based smoothing to the data-driven background pdf.
-        Default: False.
-    minimizer_impl : str
+        Default
+    minimizer_impl
         Minimizer implementation to be used. Supported options are ``"LBFGS"``
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module),
         ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module),
         or ``"crs"`` (global CRS minimizer by nlopt, not gradient based).
-        Default: "LBFGS".
-    minimizer_max_rep : int
+    minimizer_max_rep
         In case the minimization process did not converge at the first time
         this option specifies the maximum number of repetitions with
         different initials. Default is 100.
-    compress_data : bool
+    compress_data
         Flag if the data should get converted from float64 into float32.
-    keep_data_fields : list of str | None
+    keep_data_fields
         List of additional data field names that should get kept when loading
         the data.
-    evt_sel_delta_angle_deg : float
+    evt_sel_delta_angle_deg
         The delta angle in degrees for the event selection optimization methods.
-    construct_sig_generator : bool
+    construct_sig_generator
         Flag if the signal generator should be constructed (``True``) or not
         (``False``).
-    tl : TimeLord instance | None
+    tl
         The TimeLord instance to use to time the creation of the analysis.
-    ppbar : ProgressBar instance | None
+    ppbar
         The instance of ProgressBar for the optional parent progress bar.
-    logger_name : str | None
+    logger_name
         The name of the logger to be used. If set to ``None``, ``__name__`` will
         be used.
 
     Returns
     -------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The Analysis instance for this analysis.
     """
     add_icecube_specific_analysis_required_data_fields(cfg)
@@ -265,6 +268,8 @@ def create_analysis(
     param_ns = Parameter(name='ns', initial=ns_seed, valmin=ns_min, valmax=ns_max)
 
     # Define the fit parameter gamma.
+    if gamma_seed is None:
+        gamma_seed = refplflux_gamma
     if gamma_max > 4.0:
         logger.warning(
             'You are allowing `gamma` values larger than 4.0. '
@@ -337,7 +342,9 @@ def create_analysis(
         log_energy_binning = ds.get_binning_definition('log_energy')
 
         # Create the spatial PDF ratio instance for this dataset.
-        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(cfg=cfg, dec_range=np.arcsin(sin_dec_binning.range))
+        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
+            cfg=cfg, dec_range=tuple(np.arcsin(sin_dec_binning.range))
+        )
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(cfg=cfg, data_exp=data.exp, sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(cfg=cfg, sig_pdf=spatial_sigpdf, bkg_pdf=spatial_bkgpdf)
 
