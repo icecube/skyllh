@@ -1,0 +1,18 @@
+skyllh.scripting package
+========================
+
+.. automodule:: skyllh.scripting
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+skyllh.scripting.argparser module
+---------------------------------
+
+.. automodule:: skyllh.scripting.argparser
+   :members:
+   :show-inheritance:
+   :undoc-members:

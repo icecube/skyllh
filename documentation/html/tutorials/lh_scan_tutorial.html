@@ -1,0 +1,486 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Producing a Liklihood scan using IceCube 14-year public data &mdash; SkyLLH  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            SkyLLH
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/index.html">Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq/index.html">Frequently Ask Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/skyllh.html">skyllh package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notes.html">Notes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../dev_docs/logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev_docs/unit_tests.html">Unit tests</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SkyLLH</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Producing a Liklihood scan using IceCube 14-year public data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/lh_scan_tutorial.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Producing-a-Liklihood-scan-using-IceCube-14-year-public-data">
+<h1>Producing a Liklihood scan using IceCube 14-year public data<a class="headerlink" href="#Producing-a-Liklihood-scan-using-IceCube-14-year-public-data" title="Link to this heading"></a></h1>
+<p>This tutorial shows how to produce a liklihood scan using SkyLLH.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;/Users/amithan/skyllh_14/skyllh&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>For a more details on the <code class="docutils literal notranslate"><span class="pre">create_dataset_collection</span></code>, <code class="docutils literal notranslate"><span class="pre">PointLikeSource</span></code>, <code class="docutils literal notranslate"><span class="pre">create_analysis</span></code>, <code class="docutils literal notranslate"><span class="pre">initialize_trial</span></code> and <code class="docutils literal notranslate"><span class="pre">unblind</span></code> functions see ‘here the url for the 14 year tutorial’.</p>
+<p>First we have to create a configuration instance.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">skyllh.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>Importing dataset definition of the public 14-year point-source data set and we can get a list of data sets via the access operator <code class="docutils literal notranslate"><span class="pre">[dataset1,</span> <span class="pre">dataset2,</span> <span class="pre">...]</span></code> of the <code class="docutils literal notranslate"><span class="pre">dsc</span></code> instance: For more details on the <code class="docutils literal notranslate"><span class="pre">create_dataset_collection</span></code> function see ‘url’</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">skyllh.datasets.i3.PublicData_14y_ps</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_dataset_collection</span>
+
+<span class="n">dsc</span> <span class="o">=</span> <span class="n">create_dataset_collection</span><span class="p">(</span>
+    <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+    <span class="n">base_path</span><span class="o">=</span><span class="s1">&#39;/Users/amithan/Downloads/&#39;</span><span class="p">,</span>
+    <span class="n">sub_path_fmt</span><span class="o">=</span><span class="s1">&#39;PublicData_14y&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">dsc</span><span class="o">.</span><span class="n">dataset_names</span><span class="p">)</span>
+<span class="n">datasets</span> <span class="o">=</span> <span class="n">dsc</span><span class="p">[</span><span class="s1">&#39;IC40&#39;</span><span class="p">,</span> <span class="s1">&#39;IC59&#39;</span><span class="p">,</span> <span class="s1">&#39;IC79&#39;</span><span class="p">,</span> <span class="s1">&#39;IC86_I-XI&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&#39;IC40&#39;, &#39;IC59&#39;, &#39;IC79&#39;, &#39;IC86_I&#39;, &#39;IC86_I-XI&#39;, &#39;IC86_II&#39;, &#39;IC86_III&#39;, &#39;IC86_IV&#39;, &#39;IC86_IX&#39;, &#39;IC86_V&#39;, &#39;IC86_VI&#39;, &#39;IC86_VII&#39;, &#39;IC86_VIII&#39;, &#39;IC86_X&#39;, &#39;IC86_XI&#39;]
+</pre></div></div>
+</div>
+<p>Defining the Source: Here we use NGC 1068 as the source</p>
+<p>Once the source is defined the <code class="docutils literal notranslate"><span class="pre">create_analysis</span></code> function can create the analysis instance</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">skyllh.core.source_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">PointLikeSource</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skyllh.analyses.i3.publicdata_ps.time_integrated_ps</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_analysis</span>
+
+<span class="n">src_ra</span> <span class="o">=</span> <span class="mf">40.67</span>  <span class="c1"># degrees</span>
+<span class="n">src_dec</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.01</span>  <span class="c1"># degrees</span>
+
+<span class="n">source</span> <span class="o">=</span> <span class="n">PointLikeSource</span><span class="p">(</span>
+    <span class="n">ra</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">src_ra</span><span class="p">),</span>
+    <span class="n">dec</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">src_dec</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">ana</span> <span class="o">=</span> <span class="n">create_analysis</span><span class="p">(</span>
+    <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+    <span class="n">datasets</span><span class="o">=</span><span class="n">datasets</span><span class="p">,</span>
+    <span class="n">source</span><span class="o">=</span><span class="n">source</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 33/33 [00:13&lt;00:00,  2.39it/s]
+100%|██████████| 33/33 [00:21&lt;00:00,  1.57it/s]
+100%|██████████| 33/33 [00:08&lt;00:00,  3.91it/s]
+100%|██████████| 33/33 [00:08&lt;00:00,  4.09it/s]
+100%|██████████| 4/4 [03:36&lt;00:00, 54.22s/it]
+100%|██████████| 136/136 [00:00&lt;00:00, 2140.32it/s]
+</pre></div></div>
+</div>
+<p>Initializing the analysis instance and unbliding the data.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">skyllh.core.random</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomStateService</span>
+
+<span class="n">rss</span> <span class="o">=</span> <span class="n">RandomStateService</span><span class="p">(</span><span class="mi">3090</span><span class="p">)</span>
+<span class="n">TS</span><span class="p">,</span> <span class="n">bestfit_params</span><span class="p">,</span> <span class="n">minimizer_status</span> <span class="o">=</span> <span class="n">ana</span><span class="o">.</span><span class="n">unblind</span><span class="p">(</span><span class="n">rss</span><span class="p">)</span>
+<span class="n">ns_bf</span> <span class="o">=</span> <span class="n">bestfit_params</span><span class="p">[</span><span class="s1">&#39;ns&#39;</span><span class="p">]</span>
+<span class="n">gamma_bf</span> <span class="o">=</span> <span class="n">bestfit_params</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unblinded results: TS=</span><span class="si">{</span><span class="n">TS</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, ns=</span><span class="si">{</span><span class="n">ns_bf</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, gamma=</span><span class="si">{</span><span class="n">gamma_bf</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Minimizer status: </span><span class="si">{</span><span class="n">minimizer_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">events_list</span> <span class="o">=</span> <span class="p">[</span> <span class="n">data</span><span class="o">.</span><span class="n">exp</span> <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">ana</span><span class="o">.</span><span class="n">data_list</span> <span class="p">]</span>
+<span class="n">ana</span><span class="o">.</span><span class="n">initialize_trial</span><span class="p">(</span><span class="n">events_list</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">skyllh.core.random</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomStateService</span>
+<span class="n">rss</span> <span class="o">=</span> <span class="n">RandomStateService</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">status</span><span class="p">)</span> <span class="o">=</span> <span class="n">ana</span><span class="o">.</span><span class="n">unblind</span><span class="p">(</span><span class="n">rss</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;TS = </span><span class="si">{</span><span class="n">ts</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;ns = </span><span class="si">{</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">]</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;gamma = </span><span class="si">{</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;gamma&quot;</span><span class="p">]</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+TS = 29.154
+ns = 80.09
+gamma = 3.21
+</pre></div></div>
+</div>
+<section id="Evaluating-the-log-likelihood-ratio-function">
+<h2>Evaluating the log-likelihood ratio function<a class="headerlink" href="#Evaluating-the-log-likelihood-ratio-function" title="Link to this heading"></a></h2>
+<p>Sometimes it is useful to be able to evaluate the log-likelihood ratio function, e.g. for creating a likelihood contour plot. Because SkyLLH’s structure is based on the mathematical structure of the likelihood function, the <code class="docutils literal notranslate"><span class="pre">Analysis</span></code> instance has the property <code class="docutils literal notranslate"><span class="pre">llhratio</span></code> which is the class instance of the used log-likelihood ratio function. This instance has the method <code class="docutils literal notranslate"><span class="pre">evaluate</span></code>. The method takes an array of the fit parameter values as argument at which the LLH ratio function will be
+evaluated. It returns the value of the LLH ratio function at the given point and its gradients w.r.t. the fit parameters.</p>
+<p>In our case this is the number of signal events, <span class="math notranslate nohighlight">\(n_{\mathrm{s}}\)</span> and the spectral index <span class="math notranslate nohighlight">\(\gamma\)</span>. If we evaluate the LLH ratio function at the maximum, the gradients should be close to zero.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">help</span><span class="p">(</span><span class="n">ana</span><span class="o">.</span><span class="n">llhratio</span><span class="o">.</span><span class="n">evaluate</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Help on method evaluate in module skyllh.core.llhratio:
+
+evaluate(fitparam_values, src_params_recarray=None, tl=None) method of skyllh.core.llhratio.MultiDatasetTCLLHRatio instance
+    Evaluates the composite log-likelihood-ratio function and returns its
+    value and global fit parameter gradients.
+
+    Parameters
+    ----------
+    fitparam_values : instance of numpy ndarray
+        The (N_fitparams,)-shaped numpy 1D ndarray holding the current
+        values of the global fit parameters.
+    src_params_recarray : instance of numpy record ndarray | None
+        The numpy record ndarray of length N_sources holding the parameter
+        names and values of all sources.
+        See the documentation of the
+        :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
+        method for more information about this array.
+        It case it is ``None``, it will be created automatically from the
+        ``fitparam_values`` argument using the
+        :class:`~skyllh.core.parameters.ParameterModelMapper` instance.
+    tl : instance of TimeLord | None
+        The optional instance of TimeLord that should be used for timing
+        measurements.
+
+    Returns
+    -------
+    log_lambda : float
+        The calculated log-lambda value of the composite
+        log-likelihood-ratio function.
+    grads : instance of numpy ndarray
+        The (N_fitparams,)-shaped 1D ndarray holding the gradient value of
+        the composite log-likelihood-ratio function for each global fit
+        parameter.
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">llhratio_value</span><span class="p">,</span> <span class="p">(</span><span class="n">grad_ns</span><span class="p">,</span> <span class="n">grad_gamma</span><span class="p">))</span> <span class="o">=</span> <span class="n">ana</span><span class="o">.</span><span class="n">llhratio</span><span class="o">.</span><span class="n">evaluate</span><span class="p">([</span><span class="mf">80.09</span><span class="p">,</span> <span class="mf">3.21</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;llhratio_value = </span><span class="si">{</span><span class="n">llhratio_value</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;grad_ns = </span><span class="si">{</span><span class="n">grad_ns</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;grad_gamma = </span><span class="si">{</span><span class="n">grad_gamma</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+llhratio_value = 14.577
+grad_ns = 0.000
+grad_gamma = -0.021
+</pre></div></div>
+</div>
+<p>Using the <code class="docutils literal notranslate"><span class="pre">evaluate</span></code> method of the <code class="docutils literal notranslate"><span class="pre">LLHRatio</span></code> class we can scan the log-likelihood ratio space and create a contour plot showing the best fit and the 68%, 90%, and 95% quantile assuming Wilks-theorem.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">flux_min</span><span class="p">,</span> <span class="n">flux_max</span><span class="p">,</span> <span class="n">flux_step</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">15</span><span class="p">,</span> <span class="o">-</span><span class="mi">12</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+<span class="p">(</span><span class="n">gamma_min</span><span class="p">,</span> <span class="n">gamma_max</span><span class="p">,</span> <span class="n">gamma_step</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+
+<span class="n">flux_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">flux_min</span><span class="p">,</span> <span class="n">flux_max</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">flux_max</span><span class="o">-</span><span class="n">flux_min</span><span class="p">)</span><span class="o">/</span><span class="n">flux_step</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">flux_vals</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">flux_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">flux_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+<span class="n">gamma_edges_flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">gamma_min</span><span class="p">,</span> <span class="n">gamma_max</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">gamma_max</span><span class="o">-</span><span class="n">gamma_min</span><span class="p">)</span><span class="o">/</span><span class="n">gamma_step</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">gamma_vals_flux</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">gamma_edges_flux</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">gamma_edges_flux</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+<span class="n">flux_scaling_factor</span> <span class="o">=</span> <span class="n">ana</span><span class="o">.</span><span class="n">calculate_fluxmodel_scaling_factor</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;ns&#39;</span><span class="p">],</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]])</span>
+
+<span class="n">delta_ts_flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">flux_vals</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">gamma_vals_flux</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">flux_i</span><span class="p">,</span> <span class="n">flux</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">flux_vals</span><span class="p">):</span>
+    <span class="n">ns</span> <span class="o">=</span> <span class="n">flux</span> <span class="o">/</span> <span class="n">flux_scaling_factor</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">gamma_i</span><span class="p">,</span> <span class="n">gamma</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gamma_vals_flux</span><span class="p">):</span>
+
+        <span class="n">delta_ts_flux</span><span class="p">[</span><span class="n">flux_i</span><span class="p">,</span> <span class="n">gamma_i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ana</span><span class="o">.</span><span class="n">calculate_test_statistic</span><span class="p">(</span><span class="n">ana</span><span class="o">.</span><span class="n">llhratio</span><span class="o">.</span><span class="n">evaluate</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;ns&#39;</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]])[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;ns&#39;</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]])</span> <span class="o">-</span>
+            <span class="n">ana</span><span class="o">.</span><span class="n">calculate_test_statistic</span><span class="p">(</span><span class="n">ana</span><span class="o">.</span><span class="n">llhratio</span><span class="o">.</span><span class="n">evaluate</span><span class="p">([</span><span class="n">ns</span><span class="p">,</span> <span class="n">gamma</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">ns</span><span class="p">,</span> <span class="n">gamma</span><span class="p">])</span>
+        <span class="p">)</span>
+
+<span class="c1"># Determine the best fit flux and gamma values from the scan.</span>
+<span class="n">index_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">delta_ts_flux</span><span class="p">)</span>
+<span class="n">flux_i_max</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">index_max</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">gamma_vals_flux</span><span class="p">))</span>
+<span class="n">gamma_i_max_flux</span> <span class="o">=</span> <span class="n">index_max</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">gamma_vals_flux</span><span class="p">)</span>
+<span class="n">flux_best</span> <span class="o">=</span> <span class="n">flux_vals</span><span class="p">[</span><span class="n">flux_i_max</span><span class="p">]</span>
+<span class="n">gamma_best_flux</span> <span class="o">=</span> <span class="n">gamma_vals_flux</span><span class="p">[</span><span class="n">gamma_i_max_flux</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">chi2_68_quantile_flux</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">0.68</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">chi2_90_quantile_flux</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">0.90</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">chi2_95_quantile_flux</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The contours are computed assuming that the Wilks theorem holds true. That is the TS distribution follows the <span class="math notranslate nohighlight">\(\chi^2\)</span> distribution with 2 degrees of freedom</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">gamma_edges_flux</span><span class="p">,</span> <span class="n">flux_edges</span><span class="p">,</span> <span class="n">delta_ts_flux</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;GnBu_r&#39;</span><span class="p">)</span>
+<span class="n">cbar</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+<span class="n">cbar</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$\Delta$TS&#39;</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">([</span><span class="n">gamma_best_flux</span><span class="p">],</span> <span class="p">[</span><span class="n">flux_best</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Best Fit&#39;</span><span class="p">)</span>
+<span class="n">contour_68</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="n">gamma_vals_flux</span><span class="p">,</span> <span class="n">flux_vals</span><span class="p">,</span> <span class="n">delta_ts_flux</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="p">[</span><span class="n">chi2_68_quantile_flux</span><span class="p">],</span>
+           <span class="n">colors</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">linestyles</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">contour_90</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="n">gamma_vals_flux</span><span class="p">,</span> <span class="n">flux_vals</span><span class="p">,</span> <span class="n">delta_ts_flux</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="p">[</span><span class="n">chi2_90_quantile_flux</span><span class="p">],</span>
+           <span class="n">colors</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">linestyles</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">contour_95</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="n">gamma_vals_flux</span><span class="p">,</span> <span class="n">flux_vals</span><span class="p">,</span> <span class="n">delta_ts_flux</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="p">[</span><span class="n">chi2_95_quantile_flux</span><span class="p">],</span>
+           <span class="n">colors</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">linestyles</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;Spectral Index $\gamma$&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;Flux at 1TeV [GeV$^{-1}$ cm$^{-2}$ s$^{-1}$]&#39;</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mf">5e-15</span><span class="p">,</span> <span class="mf">1e-13</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">clabel</span><span class="p">(</span><span class="n">contour_68</span><span class="p">,</span>
+          <span class="n">fmt</span><span class="o">=</span><span class="p">{</span><span class="n">chi2_68_quantile_flux</span><span class="p">:</span> <span class="s1">&#39;68% CL&#39;</span><span class="p">},</span>
+          <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+          <span class="n">inline</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+          <span class="n">inline_spacing</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+          <span class="n">manual</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">clabel</span><span class="p">(</span><span class="n">contour_90</span><span class="p">,</span>
+          <span class="n">fmt</span><span class="o">=</span><span class="p">{</span><span class="n">chi2_90_quantile_flux</span><span class="p">:</span> <span class="s1">&#39;90% CL&#39;</span><span class="p">},</span>
+          <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+          <span class="n">inline</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+          <span class="n">inline_spacing</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+          <span class="n">manual</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">clabel</span><span class="p">(</span><span class="n">contour_95</span><span class="p">,</span>
+          <span class="n">fmt</span><span class="o">=</span><span class="p">{</span><span class="n">chi2_95_quantile_flux</span><span class="p">:</span> <span class="s1">&#39;95% CL&#39;</span><span class="p">},</span>
+          <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+          <span class="n">inline</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+          <span class="n">inline_spacing</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+          <span class="n">manual</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper right&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_lh_scan_tutorial_23_0.png" src="../_images/tutorials_lh_scan_tutorial_23_0.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, The IceCube Collaboration, C. Bellenghi, T. Kontrimas, M. Wolf.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: documentation
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../283/merge/html/index.html">283/merge</a></dd>
+      <dd><a href="../../../coords/html/index.html">coords</a></dd>
+      <dd><a href="../../../dm/html/index.html">dm</a></dd>
+      <dd><a href="lh_scan_tutorial.html">documentation</a></dd>
+      <dd><a href="../../../feature/differential_sensitivity/html/index.html">feature/differential_sensitivity</a></dd>
+      <dd><a href="../../../fix169_fix203/html/index.html">fix169_fix203</a></dd>
+      <dd><a href="../../../fix230/html/index.html">fix230</a></dd>
+      <dd><a href="../../../llh_module/html/index.html">llh_module</a></dd>
+      <dd><a href="../../../master/html/index.html">master</a></dd>
+      <dd><a href="../../../refactor/pyright/html/index.html">refactor/pyright</a></dd>
+      <dd><a href="../../../remove_author/html/index.html">remove_author</a></dd>
+      <dd><a href="../../../remove_cluster/html/index.html">remove_cluster</a></dd>
+      <dd><a href="../../../signal_gen_method/html/index.html">signal_gen_method</a></dd>
+      <dd><a href="../../../stack_public/html/index.html">stack_public</a></dd>
+    </dl>
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v19_09_15/html/index.html">v19_09_15</a></dd>
+      <dd><a href="../../../v20_01_09/html/index.html">v20_01_09</a></dd>
+      <dd><a href="../../../v20_03_12/html/index.html">v20_03_12</a></dd>
+      <dd><a href="../../../v20_11_02/html/index.html">v20_11_02</a></dd>
+      <dd><a href="../../../v21_10_18_temp/html/index.html">v21_10_18_temp</a></dd>
+      <dd><a href="../../../v21_10_20/html/index.html">v21_10_20</a></dd>
+      <dd><a href="../../../v22_04_28/html/index.html">v22_04_28</a></dd>
+      <dd><a href="../../../v22_04_28a/html/index.html">v22_04_28a</a></dd>
+      <dd><a href="../../../v23.0.0/html/index.html">v23.0.0</a></dd>
+      <dd><a href="../../../v23.1.0/html/index.html">v23.1.0</a></dd>
+      <dd><a href="../../../v23.1.1/html/index.html">v23.1.1</a></dd>
+      <dd><a href="../../../v23.2.0/html/index.html">v23.2.0</a></dd>
+      <dd><a href="../../../v23.2.1/html/index.html">v23.2.1</a></dd>
+      <dd><a href="../../../v23.2.1.rc1/html/index.html">v23.2.1.rc1</a></dd>
+      <dd><a href="../../../v24.1.0/html/index.html">v24.1.0</a></dd>
+      <dd><a href="../../../v24.1.1a/html/index.html">v24.1.1a</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

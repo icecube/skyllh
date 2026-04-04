@@ -1,0 +1,18 @@
+skyllh.plotting.utils package
+=============================
+
+.. automodule:: skyllh.plotting.utils
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+skyllh.plotting.utils.trials module
+-----------------------------------
+
+.. automodule:: skyllh.plotting.utils.trials
+   :members:
+   :show-inheritance:
+   :undoc-members:

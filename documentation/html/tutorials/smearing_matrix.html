@@ -1,0 +1,899 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smearing Matrix and Effective Area &mdash; SkyLLH  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            SkyLLH
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/index.html">Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq/index.html">Frequently Ask Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/skyllh.html">skyllh package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notes.html">Notes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../dev_docs/logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev_docs/unit_tests.html">Unit tests</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SkyLLH</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Smearing Matrix and Effective Area</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/smearing_matrix.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Smearing-Matrix-and-Effective-Area">
+<h1>Smearing Matrix and Effective Area<a class="headerlink" href="#Smearing-Matrix-and-Effective-Area" title="Link to this heading"></a></h1>
+<p>The tutorial shows how to access instrument response functions in the form of smearing matrices and effective areas from IceCube 14-year public data release using SkyLLH.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.colors</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogNorm</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;/Users/amithan/skyllh_14/skyllh&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Here we start by importing the helper class <code class="docutils literal notranslate"><span class="pre">PDSmearingMatrix</span></code>. This class provides the user all the necessary tools to be able to access the smearing matrix realted to the chosen detector configuration.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">skyllh.analyses.i3.publicdata_ps.smearing_matrix</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDSmearingMatrix</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">help</span><span class="p">(</span><span class="n">PDSmearingMatrix</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Help on class PDSmearingMatrix in module skyllh.analyses.i3.publicdata_ps.smearing_matrix:
+
+class PDSmearingMatrix(builtins.object)
+ |  PDSmearingMatrix(pathfilenames, **kwargs)
+ |
+ |  This class is a helper class for dealing with the smearing matrix
+ |  provided by the public data.
+ |
+ |  Methods defined here:
+ |
+ |  __init__(self, pathfilenames, **kwargs)
+ |      Creates a smearing matrix instance by loading the smearing matrix
+ |      from the given file.
+ |
+ |  get_ang_err_idx(self, true_e_idx, true_dec_idx, reco_e_idx, psi_idx, ang_err)
+ |      Returns the bin index for the given angular error value given the
+ |      true energy, true declination, reco energy, and psi bin indices.
+ |
+ |      Parameters
+ |      ----------
+ |      true_e_idx : int
+ |          The index of the true energy bin.
+ |      true_dec_idx : int
+ |          The index of the true declination bin.
+ |      reco_e_idx : int
+ |          The index of the reco energy bin.
+ |      psi_idx : int
+ |          The index of the psi bin.
+ |      ang_err : float
+ |          The angular error value in radians for which the bin index should
+ |          get returned.
+ |
+ |      Returns
+ |      -------
+ |      ang_err_idx : int | None
+ |          The index of the angular error bin the given angular error value
+ |          falls into. It returns None if the value is out of range.
+ |
+ |  get_ang_err_pdf(self, log_true_e_idx, dec_idx, log_e_idx, psi_idx)
+ |      Retrieves the angular error PDF from the given true energy bin index,
+ |      the source bin index, the log_e bin index, and the psi bin index.
+ |      Returns (None, None, None, None) if any of the bin indices are less then
+ |      zero, or if the sum of all pdf bins is zero.
+ |
+ |      Parameters
+ |      ----------
+ |      log_true_e_idx : int
+ |          The index of the true energy bin.
+ |      dec_idx : int
+ |          The index of the declination bin.
+ |      log_e_idx : int
+ |          The index of the log_e bin.
+ |      psi_idx : int
+ |          The index of the psi bin.
+ |
+ |      Returns
+ |      -------
+ |      pdf : 1d ndarray
+ |          The ang_err pdf values.
+ |      lower_bin_edges : 1d ndarray
+ |          The lower bin edges of the ang_err pdf histogram.
+ |      upper_bin_edges : 1d ndarray
+ |          The upper bin edges of the ang_err pdf histogram.
+ |      bin_widths : 1d ndarray
+ |          The bin widths of the ang_err pdf histogram.
+ |
+ |  get_log10_true_e_idx(self, log10_true_e)
+ |      Returns the bin index for the given true log10 energy value.
+ |
+ |      Parameters
+ |      ----------
+ |      log10_true_e : float
+ |          The log10 value of the true energy.
+ |
+ |      Returns
+ |      -------
+ |      log10_true_e_idx : int
+ |          The index of the true log10 energy bin for the given log10 true
+ |          energy value.
+ |
+ |  get_log_e_pdf(self, log_true_e_idx, dec_idx)
+ |      Retrieves the log_e PDF from the given true energy bin index and
+ |      source bin index.
+ |      Returns (None, None, None, None) if any of the bin indices are less then
+ |      zero, or if the sum of all pdf bins is zero.
+ |
+ |      Parameters
+ |      ----------
+ |      log_true_e_idx : int
+ |          The index of the true energy bin.
+ |      dec_idx : int
+ |          The index of the declination bin.
+ |
+ |      Returns
+ |      -------
+ |      pdf : 1d ndarray
+ |          The log_e pdf values.
+ |      lower_bin_edges : 1d ndarray
+ |          The lower bin edges of the energy pdf histogram.
+ |      upper_bin_edges : 1d ndarray
+ |          The upper bin edges of the energy pdf histogram.
+ |      bin_widths : 1d ndarray
+ |          The bin widths of the energy pdf histogram.
+ |
+ |  get_psi_idx(self, true_e_idx, true_dec_idx, reco_e_idx, psi)
+ |      Returns the bin index for the given psi value given the
+ |      true energy, true declination and reco energy bin indices.
+ |
+ |      Parameters
+ |      ----------
+ |      true_e_idx : int
+ |          The index of the true energy bin.
+ |      true_dec_idx : int
+ |          The index of the true declination bin.
+ |      reco_e_idx : int
+ |          The index of the reco energy bin.
+ |      psi : float
+ |          The psi value in radians for which the bin index should get
+ |          returned.
+ |
+ |      Returns
+ |      -------
+ |      psi_idx : int | None
+ |          The index of the psi bin the given psi value falls into.
+ |          It returns None if the value is out of range.
+ |
+ |  get_psi_pdf(self, log_true_e_idx, dec_idx, log_e_idx)
+ |      Retrieves the psi PDF from the given true energy bin index, the
+ |      source bin index, and the log_e bin index.
+ |      Returns (None, None, None, None) if any of the bin indices are less then
+ |      zero, or if the sum of all pdf bins is zero.
+ |
+ |      Parameters
+ |      ----------
+ |      log_true_e_idx : int
+ |          The index of the true energy bin.
+ |      dec_idx : int
+ |          The index of the declination bin.
+ |      log_e_idx : int
+ |          The index of the log_e bin.
+ |
+ |      Returns
+ |      -------
+ |      pdf : 1d ndarray
+ |          The psi pdf values.
+ |      lower_bin_edges : 1d ndarray
+ |          The lower bin edges of the psi pdf histogram.
+ |      upper_bin_edges : 1d ndarray
+ |          The upper bin edges of the psi pdf histogram.
+ |      bin_widths : 1d ndarray
+ |          The bin widths of the psi pdf histogram.
+ |
+ |  get_reco_e_idx(self, true_e_idx, true_dec_idx, reco_e)
+ |      Returns the bin index for the given reco energy value given the
+ |      given true energy and true declination bin indices.
+ |
+ |      Parameters
+ |      ----------
+ |      true_e_idx : int
+ |          The index of the true energy bin.
+ |      true_dec_idx : int
+ |          The index of the true declination bin.
+ |      reco_e : float
+ |          The reco energy value for which the bin index should get returned.
+ |
+ |      Returns
+ |      -------
+ |      reco_e_idx : int | None
+ |          The index of the reco energy bin the given reco energy value falls
+ |          into. It returns None if the value is out of range.
+ |
+ |  get_true_dec_idx(self, true_dec)
+ |      Returns the true declination index for the given true declination
+ |      value.
+ |
+ |      Parameters
+ |      ----------
+ |      true_dec : float
+ |          The true declination value in radians.
+ |
+ |      Returns
+ |      -------
+ |      true_dec_idx : int
+ |          The index of the declination bin for the given declination value.
+ |
+ |  get_true_log_e_range_with_valid_log_e_pdfs(self, dec_idx)
+ |      Determines the true log energy range for which log_e PDFs are
+ |      available for the given declination bin.
+ |
+ |      Parameters
+ |      ----------
+ |      dec_idx : int
+ |          The declination bin index.
+ |
+ |      Returns
+ |      -------
+ |      min_log_true_e : float
+ |          The minimum true log energy value.
+ |      max_log_true_e : float
+ |          The maximum true log energy value.
+ |
+ |  sample_ang_err(self, rss, dec_idx, log_true_e_idxs, log_e_idxs, psi_idxs)
+ |      Samples ang_err values for the given source declination, true
+ |      energy bins, log_e bins, and psi bins.
+ |
+ |      Parameters
+ |      ----------
+ |      rss : instance of RandomStateService
+ |          The RandomStateService which should be used for drawing random
+ |          numbers from.
+ |      dec_idx : int
+ |          The index of the source declination bin.
+ |      log_true_e_idxs : 1d ndarray of int
+ |          The bin indices of the true energy bins.
+ |      log_e_idxs : 1d ndarray of int
+ |          The bin indices of the log_e bins.
+ |      psi_idxs : 1d ndarray of int
+ |          The bin indices of the psi bins.
+ |
+ |      Returns
+ |      -------
+ |      ang_err_idx : 1d ndarray of int
+ |          The bin indices of the angular error pdf corresponding to the
+ |          sampled angular error values.
+ |      ang_err : 1d ndarray of float
+ |          The sampled angular error values in radians.
+ |
+ |  sample_log_e(self, rss, dec_idx, log_true_e_idxs)
+ |      Samples log energy values for the given source declination and true
+ |      energy bins.
+ |
+ |      Parameters
+ |      ----------
+ |      rss : instance of RandomStateService
+ |          The RandomStateService which should be used for drawing random
+ |          numbers from.
+ |      dec_idx : int
+ |          The index of the source declination bin.
+ |      log_true_e_idxs : 1d ndarray of int
+ |          The bin indices of the true energy bins.
+ |
+ |      Returns
+ |      -------
+ |      log_e_idx : 1d ndarray of int
+ |          The bin indices of the log_e pdf corresponding to the sampled
+ |          log_e values.
+ |      log_e : 1d ndarray of float
+ |          The sampled log_e values.
+ |
+ |  sample_psi(self, rss, dec_idx, log_true_e_idxs, log_e_idxs)
+ |      Samples psi values for the given source declination, true
+ |      energy bins, and log_e bins.
+ |
+ |      Parameters
+ |      ----------
+ |      rss : instance of RandomStateService
+ |          The RandomStateService which should be used for drawing random
+ |          numbers from.
+ |      dec_idx : int
+ |          The index of the source declination bin.
+ |      log_true_e_idxs : 1d ndarray of int
+ |          The bin indices of the true energy bins.
+ |      log_e_idxs : 1d ndarray of int
+ |          The bin indices of the log_e bins.
+ |
+ |      Returns
+ |      -------
+ |      psi_idx : 1d ndarray of int
+ |          The bin indices of the psi pdf corresponding to the sampled psi
+ |          values.
+ |      psi : 1d ndarray of float
+ |          The sampled psi values in radians.
+ |
+ |  ----------------------------------------------------------------------
+ |  Readonly properties defined here:
+ |
+ |  log10_reco_e_binedges_lower
+ |      (read-only) The upper bin edges of the log10 reco energy axes.
+ |
+ |  log10_reco_e_binedges_upper
+ |      (read-only) The upper bin edges of the log10 reco energy axes.
+ |
+ |  log10_true_enu_binedges
+ |      (read-only) The (n_log10_true_enu+1,)-shaped 1D numpy ndarray holding
+ |      the bin edges of the log10 true neutrino energy.
+ |
+ |  max_log10_psi
+ |      (read-only) The maximum log10 value of the psi axis.
+ |
+ |  max_log10_reco_e
+ |      (read-only) The maximum value of the reconstructed energy axis.
+ |
+ |  min_log10_psi
+ |      (read-only) The minimum log10 value of the psi axis.
+ |
+ |  min_log10_reco_e
+ |      (read-only) The minimum value of the reconstructed energy axis.
+ |
+ |  n_log10_true_e_bins
+ |      (read-only) The number of log10 true energy bins.
+ |
+ |  n_true_dec_bins
+ |      (read-only) The number of true declination bins.
+ |
+ |  pdf
+ |      (read-only) The probability-density-function
+ |      P(E_reco,psi,ang_err|E_nu,dec_nu), which, by definition, is the
+ |      histogram property divided by the 3D bin volumes for E_reco, psi, and
+ |      ang_err.
+ |
+ |  true_dec_bin_centers
+ |      (read-only) The (n_true_dec,)-shaped 1D ndarray holding the bin
+ |      center values of the true declination.
+ |
+ |  true_dec_bin_edges
+ |      (read-only) The (n_true_dec+1,)-shaped 1D numpy ndarray holding the
+ |      bin edges of the true declination.
+ |
+ |  true_e_bin_centers
+ |      (read-only) The (n_true_e,)-shaped 1D numpy ndarray holding the bin
+ |      center values of the true energy.
+ |
+ |  true_e_bin_edges
+ |      (read-only) The (n_true_e+1,)-shaped 1D numpy ndarray holding the
+ |      bin edges of the true energy.
+ |
+ |      Depricated! Use log10_true_enu_binedges instead!
+ |
+ |  ----------------------------------------------------------------------
+ |  Data descriptors defined here:
+ |
+ |  __dict__
+ |      dictionary for instance variables (if defined)
+ |
+ |  __weakref__
+ |      list of weak references to the object (if defined)
+
+</pre></div></div>
+</div>
+<p>As input, the filepath to the respective smearing data file provided in the public release needs to be entered. Here in this example, the smearing file for the IC86-VI is chosen. But the same steps can be used to retrieve the smearing matrices for the rest of the smearing data files.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">smearing_matrix</span> <span class="o">=</span> <span class="n">PDSmearingMatrix</span><span class="p">(</span>
+    <span class="s1">&#39;/Users/amithan/Downloads/PublicData_14y/irfs/IC86_VI_smearing.csv&#39;</span>
+     <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Some of the useful objects of the <code class="docutils literal notranslate"><span class="pre">PDSmearingMatrix</span></code> that can be readily used, are</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">smearing_matrix.histogram</span></code> – Returns a 5d histogram array holding the probability values of the smearing matrix. The axes are (true_energy, true_declination, reco_energy, psi, angular_error)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">smearing_matrix.pdf</span></code> – Returns The probability-density-function P(E_reco,psi,ang_err|E_nu,dec_nu), which, by definition, is the histogram property divided by the 3D bin volumes for E_reco, psi, and ang_err.</p></li>
+</ul>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">recon_probs</span> <span class="o">=</span> <span class="n">smearing_matrix</span><span class="o">.</span><span class="n">histogram</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<p>To access the Effective area, from the Public Data, the class <code class="docutils literal notranslate"><span class="pre">PDAeff</span></code> can be used. This creates an effective area instance by loading the effective area data from the given file.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">skyllh.analyses.i3.publicdata_ps.aeff</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDAeff</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">help</span><span class="p">(</span><span class="n">PDAeff</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Help on class PDAeff in module skyllh.analyses.i3.publicdata_ps.aeff:
+
+class PDAeff(builtins.object)
+ |  PDAeff(pathfilenames, src_dec=None, min_log10enu=None, max_log10enu=None, **kwargs)
+ |
+ |  This class provides a representation of the effective area provided by
+ |  the public data.
+ |
+ |  Methods defined here:
+ |
+ |  __init__(self, pathfilenames, src_dec=None, min_log10enu=None, max_log10enu=None, **kwargs)
+ |      Creates an effective area instance by loading the effective area
+ |      data from the given file.
+ |
+ |      Parameters
+ |      ----------
+ |      pathfilenames : str | list of str
+ |          The path file names of the effective area data file(s) which should
+ |          be used for this public data effective area instance.
+ |      src_dec : float | None
+ |          The source declination in radians for which detection probabilities
+ |          should get pre-calculated using the ``get_detection_prob_for_decnu``
+ |          method.
+ |      min_log10enu : float | None
+ |          The minimum log10(E_nu/GeV) value that should be used for
+ |          calculating the detection probability.
+ |          If None, the lowest available neutrino energy bin edge of the
+ |          effective area is used.
+ |      max_log10enu : float | None
+ |          The maximum log10(E_nu/GeV) value that should be used for
+ |          calculating the detection probability.
+ |          If None, the highest available neutrino energy bin edge of the
+ |          effective area is used.
+ |
+ |  create_sin_decnu_log10_enu_spline(self)
+ |      DEPRECATED!
+ |      Creates a FctSpline2D object representing a 2D spline of the
+ |      effective area in sin(dec_nu)-log10(E_nu/GeV)-space.
+ |
+ |      Returns
+ |      -------
+ |      spl : FctSpline2D instance
+ |          The FctSpline2D instance representing a spline in the
+ |          sin(dec_nu)-log10(E_nu/GeV)-space.
+ |
+ |  get_aeff_for_decnu(self, decnu)
+ |      Retrieves the effective area as function of log10_enu.
+ |
+ |      Parameters
+ |      ----------
+ |      decnu : float
+ |          The true neutrino declination.
+ |
+ |      Returns
+ |      -------
+ |      aeff : (n,)-shaped numpy ndarray
+ |          The effective area in cm^2 for the given true neutrino declination
+ |          as a function of log10 true neutrino energy.
+ |
+ |  get_detection_prob_for_decnu(self, decnu, enu_min, enu_max, enu_range_min, enu_range_max)
+ |      Calculates the detection probability for given true neutrino energy
+ |      ranges for a given neutrino declination.
+ |
+ |      Parameters
+ |      ----------
+ |      decnu : float
+ |          The neutrino declination in radians.
+ |      enu_min : float | ndarray of float
+ |          The minimum energy in GeV.
+ |      enu_max : float | ndarray of float
+ |          The maximum energy in GeV.
+ |      enu_range_min : float
+ |          The minimum energy in GeV of the entire energy range.
+ |      enu_range_max : float
+ |          The maximum energy in GeV of the entire energy range.
+ |
+ |      Returns
+ |      -------
+ |      det_prob : ndarray of float
+ |          The neutrino energy detection probabilities for the given true
+ |          enegry ranges.
+ |
+ |  ----------------------------------------------------------------------
+ |  Readonly properties defined here:
+ |
+ |  aeff_decnu_log10enu
+ |      (read-only) The effective area in cm^2 as (n_decnu,n_log10enu)-shaped
+ |      2D numpy ndarray.
+ |
+ |  decnu_bincenters
+ |      (read-only) The bin center values of the neutrino declination axis in
+ |      radians.
+ |
+ |  decnu_binedges
+ |      (read-only) The bin edges of the neutrino declination axis in
+ |      radians.
+ |
+ |  log10_enu_bincenters
+ |      (read-only) The bin center values of the log10(E_nu/GeV) neutrino
+ |      energy axis.
+ |
+ |  log10_enu_binedges
+ |      (read-only) The bin edges of the log10(E_nu/GeV) neutrino energy
+ |      axis.
+ |
+ |  log10_enu_binedges_lower
+ |      (read-only) The lower binedges of the log10(E_nu/GeV) neutrino energy
+ |      axis.
+ |
+ |  log10_enu_binedges_upper
+ |      (read-only) The upper binedges of the log10(E_nu/GeV) neutrino energy
+ |      axis.
+ |
+ |  n_decnu_bins
+ |      (read-only) The number of bins of the neutrino declination axis.
+ |
+ |  n_log10_enu_bins
+ |      (read-only) The number of bins of the log10 neutrino energy axis.
+ |
+ |  sin_decnu_binedges
+ |      (read-only) The sin of the bin edges of the neutrino declination
+ |      in radians.
+ |
+ |  ----------------------------------------------------------------------
+ |  Data descriptors defined here:
+ |
+ |  __dict__
+ |      dictionary for instance variables (if defined)
+ |
+ |  __weakref__
+ |      list of weak references to the object (if defined)
+
+</pre></div></div>
+</div>
+<p>As inputs the class <code class="docutils literal notranslate"><span class="pre">PDAeff</span></code> takes,</p>
+<ul class="simple">
+<li><p>The filepath of the effective area data file provided in the public data. Here in this example, the eefective area file for the IC86-VI is chosen. But the same steps can be used to access thr effective areas for the rest of the data files.</p></li>
+<li><p>Source declination in radians. For this example, NGC 1068 is the chosen source.</p></li>
+<li><p>Minimum log10 neutrino energy. If None, the lowest available neutrino energy bin edge of the effective area is used.</p></li>
+<li><p>Maximum log10 neutrino energy. If None, the highest available neutrino energy bin edge of the effective area is used.</p></li>
+</ul>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">src_ra</span> <span class="o">=</span> <span class="mf">40.67</span>  <span class="c1"># degrees</span>
+<span class="n">src_dec</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.01</span>  <span class="c1"># degrees</span>
+
+<span class="n">effective_area</span> <span class="o">=</span> <span class="n">PDAeff</span><span class="p">(</span>
+   <span class="s1">&#39;/Users/amithan/Downloads/PublicData_14y/irfs/IC86_VI_effectiveArea.csv&#39;</span><span class="p">,</span>
+   <span class="n">src_dec</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">src_dec</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">dir</span><span class="p">(</span><span class="n">effective_area</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&#39;__class__&#39;,
+ &#39;__delattr__&#39;,
+ &#39;__dict__&#39;,
+ &#39;__dir__&#39;,
+ &#39;__doc__&#39;,
+ &#39;__eq__&#39;,
+ &#39;__format__&#39;,
+ &#39;__ge__&#39;,
+ &#39;__getattribute__&#39;,
+ &#39;__gt__&#39;,
+ &#39;__hash__&#39;,
+ &#39;__init__&#39;,
+ &#39;__init_subclass__&#39;,
+ &#39;__le__&#39;,
+ &#39;__lt__&#39;,
+ &#39;__module__&#39;,
+ &#39;__ne__&#39;,
+ &#39;__new__&#39;,
+ &#39;__reduce__&#39;,
+ &#39;__reduce_ex__&#39;,
+ &#39;__repr__&#39;,
+ &#39;__setattr__&#39;,
+ &#39;__sizeof__&#39;,
+ &#39;__str__&#39;,
+ &#39;__subclasshook__&#39;,
+ &#39;__weakref__&#39;,
+ &#39;_aeff_decnu_log10enu&#39;,
+ &#39;_decnu_binedges&#39;,
+ &#39;_decnu_binedges_lower&#39;,
+ &#39;_decnu_binedges_upper&#39;,
+ &#39;_log10_enu_binedges&#39;,
+ &#39;_log10_enu_binedges_lower&#39;,
+ &#39;_log10_enu_binedges_upper&#39;,
+ &#39;aeff_decnu_log10enu&#39;,
+ &#39;create_sin_decnu_log10_enu_spline&#39;,
+ &#39;decnu_bincenters&#39;,
+ &#39;decnu_binedges&#39;,
+ &#39;det_prob&#39;,
+ &#39;get_aeff_for_decnu&#39;,
+ &#39;get_detection_prob_for_decnu&#39;,
+ &#39;log10_enu_bincenters&#39;,
+ &#39;log10_enu_binedges&#39;,
+ &#39;log10_enu_binedges_lower&#39;,
+ &#39;log10_enu_binedges_upper&#39;,
+ &#39;n_decnu_bins&#39;,
+ &#39;n_log10_enu_bins&#39;,
+ &#39;sin_decnu_binedges&#39;]
+</pre></div></div>
+</div>
+<p>Some useful objects of the class <code class="docutils literal notranslate"><span class="pre">PDAeff</span></code> class are</p>
+<p><code class="docutils literal notranslate"><span class="pre">effective_area.sin_decnu_binedges</span></code> returns the sin of the bin edges of the neutrino declination in radians.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sin_nu_dec</span> <span class="o">=</span> <span class="n">effective_area</span><span class="o">.</span><span class="n">sin_decnu_binedges</span>
+</pre></div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">effective_area.log10_enu_binedges</span></code> returns the bin edges of the log10(E_nu/GeV) neutrino energy axis.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">log_10_enu_edges</span> <span class="o">=</span> <span class="n">effective_area</span><span class="o">.</span><span class="n">log10_enu_binedges</span>
+</pre></div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">effective_area.log10_enu_bincenters</span></code> returns the bin center values of the log10(E_nu/GeV) neutrino energy axis.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">log_10_enu</span> <span class="o">=</span> <span class="n">effective_area</span><span class="o">.</span><span class="n">log10_enu_bincenters</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">enu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">log_10_enu</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">effective_area.decnu_bincenters</span></code> returns the bin center values of the neutrino declination axis in radians.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">nu_dec</span> <span class="o">=</span> <span class="n">effective_area</span><span class="o">.</span><span class="n">decnu_bincenters</span>
+</pre></div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">effective_area.get_aeff_for_decnu</span></code> returns the effective area as a function of log10 neutrino energy, given the input of neutrino declination.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">eff_area</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span> <span class="n">effective_area</span><span class="o">.</span><span class="n">get_aeff_for_decnu</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">nu_dec</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">log_10_enu_edges</span><span class="p">,</span> <span class="n">sin_nu_dec</span><span class="p">,</span> <span class="n">eff_area</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;GnBu&#39;</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">LogNorm</span><span class="p">())</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;IC86-VI Effective Area&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Effective Area [cm²]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;log10(E_nu / GeV)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;True Sin(Declination)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_smearing_matrix_28_0.png" src="../_images/tutorials_smearing_matrix_28_0.png" />
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">effective_area.get_detection_prob_for_decnu</span></code> returns the detection probability for each neutrino declination for a certain given true energy range.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">detection_prob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span> <span class="n">effective_area</span><span class="o">.</span><span class="n">get_detection_prob_for_decnu</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">enu</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">enu</span><span class="p">[</span><span class="mi">10</span><span class="p">],</span><span class="n">enu</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">enu</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">nu_dec</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, The IceCube Collaboration, C. Bellenghi, T. Kontrimas, M. Wolf.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: documentation
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../283/merge/html/index.html">283/merge</a></dd>
+      <dd><a href="../../../coords/html/index.html">coords</a></dd>
+      <dd><a href="../../../dm/html/index.html">dm</a></dd>
+      <dd><a href="smearing_matrix.html">documentation</a></dd>
+      <dd><a href="../../../feature/differential_sensitivity/html/index.html">feature/differential_sensitivity</a></dd>
+      <dd><a href="../../../fix169_fix203/html/index.html">fix169_fix203</a></dd>
+      <dd><a href="../../../fix230/html/index.html">fix230</a></dd>
+      <dd><a href="../../../llh_module/html/index.html">llh_module</a></dd>
+      <dd><a href="../../../master/html/index.html">master</a></dd>
+      <dd><a href="../../../refactor/pyright/html/index.html">refactor/pyright</a></dd>
+      <dd><a href="../../../remove_author/html/index.html">remove_author</a></dd>
+      <dd><a href="../../../remove_cluster/html/index.html">remove_cluster</a></dd>
+      <dd><a href="../../../signal_gen_method/html/index.html">signal_gen_method</a></dd>
+      <dd><a href="../../../stack_public/html/index.html">stack_public</a></dd>
+    </dl>
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v19_09_15/html/index.html">v19_09_15</a></dd>
+      <dd><a href="../../../v20_01_09/html/index.html">v20_01_09</a></dd>
+      <dd><a href="../../../v20_03_12/html/index.html">v20_03_12</a></dd>
+      <dd><a href="../../../v20_11_02/html/index.html">v20_11_02</a></dd>
+      <dd><a href="../../../v21_10_18_temp/html/index.html">v21_10_18_temp</a></dd>
+      <dd><a href="../../../v21_10_20/html/index.html">v21_10_20</a></dd>
+      <dd><a href="../../../v22_04_28/html/index.html">v22_04_28</a></dd>
+      <dd><a href="../../../v22_04_28a/html/index.html">v22_04_28a</a></dd>
+      <dd><a href="../../../v23.0.0/html/index.html">v23.0.0</a></dd>
+      <dd><a href="../../../v23.1.0/html/index.html">v23.1.0</a></dd>
+      <dd><a href="../../../v23.1.1/html/index.html">v23.1.1</a></dd>
+      <dd><a href="../../../v23.2.0/html/index.html">v23.2.0</a></dd>
+      <dd><a href="../../../v23.2.1/html/index.html">v23.2.1</a></dd>
+      <dd><a href="../../../v23.2.1.rc1/html/index.html">v23.2.1.rc1</a></dd>
+      <dd><a href="../../../v24.1.0/html/index.html">v24.1.0</a></dd>
+      <dd><a href="../../../v24.1.1a/html/index.html">v24.1.1a</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
