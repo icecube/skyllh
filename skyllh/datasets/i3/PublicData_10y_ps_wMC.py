@@ -2,16 +2,18 @@
 
 import numpy as np
 
+from skyllh.core.config import Config
+from skyllh.core.dataset import DatasetCollection
 from skyllh.datasets.i3 import (
     PublicData_10y_ps,
 )
 
 
 def create_dataset_collection(
-    cfg,
-    base_path=None,
-    sub_path_fmt=None,
-):
+    cfg: Config,
+    base_path: str | None = None,
+    sub_path_fmt: str | None = None,
+) -> DatasetCollection:
     """Defines the dataset collection for IceCube's 10-year
     point-source public data, which is available at
     http://icecube.wisc.edu/data-releases/20210126_PS-IC40-IC86_VII.zip, and
@@ -19,20 +21,20 @@ def create_dataset_collection(
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         The instance of Config holding the local configuration.
-    base_path : str | None
+    base_path
         The base path of the data files. The actual path of a data file is
         assumed to be of the structure <base_path>/<sub_path>/<file_name>.
         If None, use the default path ``cfg['repository']['base_path']``.
-    sub_path_fmt : str | None
+    sub_path_fmt
         The sub path format of the data files of the public data sample.
         If None, use the default sub path format
         'icecube_10year_ps'.
 
     Returns
     -------
-    dsc : DatasetCollection
+    dsc
         The dataset collection containing all the seasons as individual
         I3Dataset objects.
     """

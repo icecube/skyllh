@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 import numpy as np
 from scipy import (
     integrate,
@@ -16,27 +18,29 @@ from skyllh.core.storage import (
 )
 
 
-def load_effective_area_array(pathfilenames):
+def load_effective_area_array(
+    pathfilenames: str | Sequence[str],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Loads the (nbins_decnu, nbins_log10enu)-shaped 2D effective
     area array from the given data file.
 
     Parameters
     ----------
-    pathfilename : str | list of str
-        The file name of the data file.
+    pathfilenames
+        The file name(s) of the data file(s).
 
     Returns
     -------
-    aeff_decnu_log10enu : (nbins_decnu, nbins_log10enu)-shaped 2D ndarray
+    aeff_decnu_log10enu
         The ndarray holding the effective area for each
         (dec_nu,log10(E_nu/GeV)) bin.
-    decnu_binedges_lower : (nbins_decnu,)-shaped ndarray
+    decnu_binedges_lower
         The ndarray holding the lower bin edges of the dec_nu axis.
-    decnu_binedges_upper : (nbins_decnu,)-shaped ndarray
+    decnu_binedges_upper
         The ndarray holding the upper bin edges of the dec_nu axis.
-    log10_enu_binedges_lower : (nbins_log10enu,)-shaped ndarray
+    log10_enu_binedges_lower
         The ndarray holding the lower bin edges of the log10(E_nu/GeV) axis.
-    log10_enu_binedges_upper : (nbins_log10enu,)-shaped ndarray
+    log10_enu_binedges_upper
         The ndarray holding the upper bin edges of the log10(E_nu/GeV) axis.
     """
     loader = create_FileLoader(pathfilenames=pathfilenames)
@@ -98,25 +102,32 @@ class PDAeff:
     the public data.
     """
 
-    def __init__(self, pathfilenames, src_dec=None, min_log10enu=None, max_log10enu=None, **kwargs):
+    def __init__(
+        self,
+        pathfilenames: str | list[str],
+        src_dec: float | None = None,
+        min_log10enu: float | None = None,
+        max_log10enu: float | None = None,
+        **kwargs,
+    ):
         """Creates an effective area instance by loading the effective area
         data from the given file.
 
         Parameters
         ----------
-        pathfilenames : str | list of str
-            The path file names of the effective area data file(s) which should
+        pathfilenames
+            The path file name(s) of the effective area data file(s) which should
             be used for this public data effective area instance.
-        src_dec : float | None
+        src_dec
             The source declination in radians for which detection probabilities
             should get pre-calculated using the ``get_detection_prob_for_decnu``
             method.
-        min_log10enu : float | None
+        min_log10enu
             The minimum log10(E_nu/GeV) value that should be used for
             calculating the detection probability.
             If None, the lowest available neutrino energy bin edge of the
             effective area is used.
-        max_log10enu : float | None
+        max_log10enu
             The maximum log10(E_nu/GeV) value that should be used for
             calculating the detection probability.
             If None, the highest available neutrino energy bin edge of the
@@ -188,7 +199,7 @@ class PDAeff:
         return get_bincenters_from_binedges(self._decnu_binedges)
 
     @property
-    def n_decnu_bins(self):
+    def n_decnu_bins(self) -> int:
         """(read-only) The number of bins of the neutrino declination axis."""
         return len(self._decnu_binedges) - 1
 
@@ -221,7 +232,7 @@ class PDAeff:
         return get_bincenters_from_binedges(self._log10_enu_binedges)
 
     @property
-    def n_log10_enu_bins(self):
+    def n_log10_enu_bins(self) -> int:
         """(read-only) The number of bins of the log10 neutrino energy axis."""
         return len(self._log10_enu_binedges) - 1
 
@@ -232,31 +243,31 @@ class PDAeff:
         """
         return self._aeff_decnu_log10enu
 
-    def create_sin_decnu_log10_enu_spline(self):
+    def create_sin_decnu_log10_enu_spline(self) -> FctSpline2D:
         """DEPRECATED!
         Creates a FctSpline2D object representing a 2D spline of the
         effective area in sin(dec_nu)-log10(E_nu/GeV)-space.
 
         Returns
         -------
-        spl : FctSpline2D instance
+        spl
             The FctSpline2D instance representing a spline in the
             sin(dec_nu)-log10(E_nu/GeV)-space.
         """
         spl = FctSpline2D(self._aeff_decnu_log10enu, self.sin_decnu_binedges, self.log10_enu_binedges)
         return spl
 
-    def get_aeff_for_decnu(self, decnu):
+    def get_aeff_for_decnu(self, decnu: float) -> np.ndarray:
         """Retrieves the effective area as function of log10_enu.
 
         Parameters
         ----------
-        decnu : float
+        decnu
             The true neutrino declination.
 
         Returns
         -------
-        aeff : (n,)-shaped numpy ndarray
+        aeff
             The effective area in cm^2 for the given true neutrino declination
             as a function of log10 true neutrino energy.
         """
@@ -266,26 +277,33 @@ class PDAeff:
 
         return aeff
 
-    def get_detection_prob_for_decnu(self, decnu, enu_min, enu_max, enu_range_min, enu_range_max):
+    def get_detection_prob_for_decnu(
+        self,
+        decnu: float,
+        enu_min: float | np.ndarray,
+        enu_max: float | np.ndarray,
+        enu_range_min: float,
+        enu_range_max: float,
+    ) -> np.ndarray:
         """Calculates the detection probability for given true neutrino energy
         ranges for a given neutrino declination.
 
         Parameters
         ----------
-        decnu : float
+        decnu
             The neutrino declination in radians.
-        enu_min : float | ndarray of float
+        enu_min
             The minimum energy in GeV.
-        enu_max : float | ndarray of float
+        enu_max
             The maximum energy in GeV.
-        enu_range_min : float
+        enu_range_min
             The minimum energy in GeV of the entire energy range.
-        enu_range_max : float
+        enu_range_max
             The maximum energy in GeV of the entire energy range.
 
         Returns
         -------
-        det_prob : ndarray of float
+        det_prob
             The neutrino energy detection probabilities for the given true
             enegry ranges.
         """
