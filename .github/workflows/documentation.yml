@@ -1,5 +1,4 @@
-# This workflow builds sphinx documentation and deploys static html files to the gh-pages branch.
-# Based on https://github.com/marketplace/actions/github-pages-action#%EF%B8%8F-static-site-generators-with-python
+# This workflow builds sphinx documentation and deploys static html files to GitHub Pages.
 
 name: Documentation
 
@@ -8,13 +7,13 @@ on:
     branches:
       - master
       - docs
-  pull_request:
-    branches:
-      - master
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -48,15 +47,31 @@ jobs:
       - name: Install pandoc
         run: sudo apt-get -y install pandoc
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
       - name: Build documentation
         run: |
           cd ./doc/sphinx
           make html-multiversion
           cp _assets/gh-pages-redirect.html _build/index.html
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./doc/sphinx/_build
-          force_orphan: true
+          path: ./doc/sphinx/_build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
