@@ -108,7 +108,7 @@ class Config(
     @classmethod
     def from_yaml(
         cls,
-        pathfilename: str,
+        pathfilename: str | None,
     ):
         """Creates a new instance of Config holding the base configuration and
         updated by the configuration items contained in the yaml file using the
@@ -133,7 +133,14 @@ class Config(
             return cfg
 
         with open(pathfilename) as f:
-            user_config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+            user_config_dict = yaml.safe_load(f)
+        if user_config_dict is None:
+            user_config_dict = {}
+        elif not isinstance(user_config_dict, dict):
+            raise TypeError(
+                f'YAML configuration in "{pathfilename}" must be a mapping, got {type(user_config_dict).__name__}.'
+            )
+
         cfg.update(user_config_dict)
 
         return cfg
