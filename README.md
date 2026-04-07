@@ -122,7 +122,7 @@ complementary pre-defined common analyses and datasets for the
 
 # Contributors
 
-- [Martin Wolf](https://github.com/martwo) - [mail@martin-wolf.org](mailto:mail@martin-wolf.org)
+- [Martin Wolf](https://github.com/martwo) - [martin.wolf@tum.de](mailto:martin.wolf@tum.de)
 - [Tomas Kontrimas](https://github.com/tomaskontrimas) - [tomas.kontrimas@tum.de](mailto:tomas.kontrimas@tum.de)
 - [Chiara Bellenghi](https://github.com/chiarabellenghi) - [chiara.bellenghi@tum.de](mailto:chiara.bellenghi@tum.de)
 - [Martina Karl](https://github.com/mskarl) - [martina.karl@eso.org](mailto:martina.karl@eso.org)
