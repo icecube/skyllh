@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "GPL-3+"}
 authors = [
-    {name = "Martin Wolf", email = "martin.wolf@icecube.wisc.edu"},
+    {name = "Martin Wolf", email = "martin.wolf@tum.de"},
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
