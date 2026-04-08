@@ -30,6 +30,7 @@ dependencies = [
     "astropy",
     "matplotlib",
     "numpy",
+    "pyyaml",
     "scipy",
     "tqdm",
 ]
