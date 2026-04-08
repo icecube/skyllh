@@ -1,6 +1,6 @@
 # SkyLLH
 
-[![Tests](https://github.com/icecube/skyllh/actions/workflows/pythonpackage.yml/badge.svg)](#)
+[![CI](https://github.com/icecube/skyllh/actions/workflows/ci.yml/badge.svg)](#)
 [![Docs](https://github.com/icecube/skyllh/actions/workflows/documentation.yml/badge.svg)](https://icecube.github.io/skyllh/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 [![PyPI - Version](https://img.shields.io/pypi/v/skyllh)](https://pypi.org/project/skyllh/)
@@ -122,7 +122,7 @@ complementary pre-defined common analyses and datasets for the
 
 # Contributors
 
-- [Martin Wolf](https://github.com/martwo) - [mail@martin-wolf.org](mailto:mail@martin-wolf.org)
+- [Martin Wolf](https://github.com/martwo) - [martin.wolf@tum.de](mailto:martin.wolf@tum.de)
 - [Tomas Kontrimas](https://github.com/tomaskontrimas) - [tomas.kontrimas@tum.de](mailto:tomas.kontrimas@tum.de)
 - [Chiara Bellenghi](https://github.com/chiarabellenghi) - [chiara.bellenghi@tum.de](mailto:chiara.bellenghi@tum.de)
 - [Martina Karl](https://github.com/mskarl) - [martina.karl@eso.org](mailto:martina.karl@eso.org)

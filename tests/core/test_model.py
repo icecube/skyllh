@@ -1,5 +1,3 @@
-# Author: Martin Wolf <mail@martin-wolf.org>
-
 """This test module tests classes, methods and functions of the ``core.model``
 module.
 """

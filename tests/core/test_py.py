@@ -1,5 +1,3 @@
-# Author: Dr. Martin Wolf <mail@martin-wolf.org>
-
 import unittest
 
 from skyllh.core.py import ConstPyQualifier, NamedObjectCollection, const, issequenceof

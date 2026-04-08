@@ -1,5 +1,3 @@
-# Author: Dr. Martin Wolf <mail@martin-wolf.org>
-
 """This module provides classes for defining source catalogs."""
 
 from skyllh.core.py import (
