@@ -1,5 +1,3 @@
-# Author: Dr. Martin Wolf <mail@martin-wolf.org>
-
 import numpy as np
 
 from skyllh.datasets.i3 import (
