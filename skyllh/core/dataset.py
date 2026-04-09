@@ -71,6 +71,7 @@ class DatasetOrigin:
         username=None,
         password=None,
         post_transfer_func=None,
+        url=None,
         **kwargs,
     ):
         """Creates a new instance to define the origin of a dataset.
@@ -95,7 +96,8 @@ class DatasetOrigin:
             connect to the remote host.
         filename : str | None
             If the origin is not a directory but a file, this specifies the
-            filename.
+            filename. When ``url`` is set this becomes the local filename used
+            when saving the downloaded file.
         host : str | None
             The name or IP of the remote host.
         port : int | None
@@ -115,6 +117,12 @@ class DatasetOrigin:
 
             where ``ds`` is an instance of ``Dataset``, and ``dst_path`` is the
             destination path.
+        url : str | None
+            An optional complete download URL (e.g. an API endpoint with query
+            parameters). When set, the ``transfer_func`` should use this URL
+            directly instead of constructing one from ``host``, ``base_path``,
+            and ``sub_path``. The ``filename`` field then serves as the local
+            filename for the downloaded file.
         """
         super().__init__(**kwargs)
 
@@ -127,6 +135,7 @@ class DatasetOrigin:
         self.username = username
         self.password = password
         self.post_transfer_func = post_transfer_func
+        self.url = url
 
     @property
     def base_path(self):
@@ -258,6 +267,22 @@ class DatasetOrigin:
                 f'The property post_transfer_func must be a callable object! Its current type is {classname(obj)}!'
             )
         self._post_transfer_func = obj
+
+    @property
+    def url(self):
+        """The optional complete download URL. When set, the transfer function
+        should use this URL directly instead of constructing one from ``host``,
+        ``base_path``, and ``sub_path``.
+        """
+        return self._url
+
+    @url.setter
+    def url(self, obj):
+        if obj is not None and not isinstance(obj, str):
+            raise TypeError(
+                f'The property url must be None, or an instance of str! Its current type is {classname(obj)}!'
+            )
+        self._url = obj
 
     def __str__(self):
         """Pretty string representation of this class."""
@@ -457,7 +482,7 @@ class DatasetTransfer(
 
         # Unzip the dataset file.
         zip_file = os.path.join(dst_path, ds.origin.filename)
-        cmd = f'unzip "{zip_file}" -d "{dst_path}"'
+        cmd = f'unzip -q -o "{zip_file}" -d "{dst_path}"'
         DatasetTransfer.execute_system_command(cmd, logger)
 
         # Remove the zip file.
@@ -634,8 +659,7 @@ class WGETDatasetTransfer(
             The password for the user name required to connect to the remote
             host.
         """
-        cls = get_class_of_func(self.transfer)
-        logger = get_logger(f'{classname(cls)}.transfer')
+        logger = get_logger(module_class_method_name(self, 'transfer'))
 
         host = origin.host
         port = origin.port
@@ -655,7 +679,7 @@ class WGETDatasetTransfer(
                 dst_path = os.path.join(dst_base_path, dst_sub_path)
             DatasetTransfer.ensure_dst_path(dst_path)
 
-            cmd = 'wget '
+            cmd = 'wget -q '
             if username is None:
                 # No user name is specified.
                 pass
@@ -665,16 +689,25 @@ class WGETDatasetTransfer(
             else:
                 # Only a user name is specified.
                 cmd += f'--user={username} '
-            cmd += f'{self.protocol}://{host}'
-            if port is not None:
-                cmd += f':{port}'
-            if path[0:1] != '/':
-                cmd += '/'
-            cmd += f'{path} -P {dst_path}'
+            if origin.url is not None:
+                # Use the full URL directly; save with an explicit output path
+                # so the local filename matches origin.filename regardless of
+                # what the server sends in the URL path or Content-Disposition.
+                output_file = os.path.join(dst_path, os.path.basename(file))
+                cmd += f'"{origin.url}" -O "{output_file}"'
+            else:
+                cmd += f'{self.protocol}://{host}'
+                if port is not None:
+                    cmd += f':{port}'
+                if path[0:1] != '/':
+                    cmd += '/'
+                cmd += f'{path} -P {dst_path}'
+            logger.info('Downloading "%s" into "%s".', file, dst_path)
             try:
                 DatasetTransfer.execute_system_command(cmd, logger)
             except SystemCommandError as err:
                 raise DatasetTransferError(str(err)) from err
+            logger.info('Download of "%s" completed.', file)
 
 
 class Dataset(
@@ -1438,7 +1471,11 @@ class Dataset(
         )
 
         if self.origin.post_transfer_func is not None:
-            self.origin.post_transfer_func(ds=self, dst_path=base_path)
+            if not self.origin.is_directory and self.origin.sub_path:
+                post_dst_path = os.path.join(base_path, self.origin.sub_path)
+            else:
+                post_dst_path = base_path
+            self.origin.post_transfer_func(ds=self, dst_path=post_dst_path)
 
         return True
 
