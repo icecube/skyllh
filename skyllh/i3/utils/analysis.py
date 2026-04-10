@@ -105,7 +105,6 @@ def generate_ps_sin_dec_h0_ts_values(
 def estimate_ps_sin_dec_sensitivity_curve(
     ana,
     rss,
-    fitparam_values,
     sin_dec_arr,
     h0_ts_vals_arr,
     eps_p=0.0075,
@@ -128,9 +127,6 @@ def estimate_ps_sin_dec_sensitivity_curve(
     rss : RandomStateService instance
         The instance of RandomStateService to use for generating random numbers
         from.
-    fitparam_values : array_like
-        The fit parameter values for which to convert the mean number of signal
-        events into a flux.
     sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray
         The ndarray holding the sin(dec) values for which to estimate the
         point-source sensitivity.
@@ -286,7 +282,6 @@ def estimate_ps_sin_dec_sensitivity_curve(
 def estimate_ps_sin_dec_discovery_potential_curve(
     ana,
     rss,
-    fitparam_values,
     sin_dec_arr,
     h0_ts_vals_arr,
     h0_ts_quantile=2.7e-3,
@@ -310,9 +305,6 @@ def estimate_ps_sin_dec_discovery_potential_curve(
     rss : RandomStateService instance
         The instance of RandomStateService to use for generating random numbers
         from.
-    fitparam_values : array_like
-        The fit parameter values for which to convert the mean number of signal
-        events into a flux.
     sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray
         The ndarray holding the sin(dec) values for which to estimate the
         point-source sensitivity.
