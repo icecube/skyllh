@@ -568,26 +568,24 @@ class PDDatasetSignalGenerator(
         fluxmodel = self.shg_mgr.get_fluxmodel_by_src_idx(src_idx=src_idx)
 
         effA = PDAeff(
-            pathfilenames=self.ds.get_abs_pathfilename_list(self.ds.get_aux_data_definition('eff_area_datafile')),
-            src_dec=src.dec,
-            min_log10enu=log_e_min,
-            max_log10enu=log_e_max,
+            pathfilenames=self.ds.get_abs_pathfilename_list(self.ds.get_aux_data_definition('eff_area_datafile'))
         )
 
-        low_bin_edges = effA.log10_enu_binedges_lower
-        high_bin_edges = effA.log10_enu_binedges_upper
+        low_all = effA.log10_enu_binedges_lower
+        high_all = effA.log10_enu_binedges_upper
 
-        # Use the same energy-bin subset as PDAeff.det_prob.
-        m = (effA.log10_enu_bincenters >= log_e_min) & (effA.log10_enu_bincenters < log_e_max)
-        low_bin_edges = low_bin_edges[m]
-        high_bin_edges = high_bin_edges[m]
-
-        if low_bin_edges.size == 0:
+        # Compute overlap of each Aeff bin with the chosen E range to include partial boundary bins consistently.
+        overlap_low = np.maximum(low_all, log_e_min)
+        overlap_high = np.minimum(high_all, log_e_max)
+        m = overlap_high > overlap_low
+        if not np.any(m):
             return 0.0
 
-        flux_integral = fluxmodel.energy_profile.get_integral(E1=10**low_bin_edges, E2=10**high_bin_edges)
+        flux_integral = fluxmodel.energy_profile.get_integral(E1=10 ** overlap_low[m], E2=10 ** overlap_high[m])
 
-        return np.sum(flux_integral * effA.det_prob)
+        aeff_for_dec = effA.get_aeff_for_decnu(src.dec)[m]
+
+        return float(np.sum(flux_integral * aeff_for_dec))
 
     def _calculate_energy_range_correction_factors(self):
         """Calculates per-source correction factors for the configured
@@ -620,7 +618,7 @@ class PDDatasetSignalGenerator(
                 log_e_min=valid_min_log_e,
                 log_e_max=valid_max_log_e,
             )
-            if full_weight <= 0:
+            if full_weight <= 0:  # This should never happen, but well...
                 correction_factors[src_idx] = 0.0
                 continue
 
@@ -629,7 +627,14 @@ class PDDatasetSignalGenerator(
                 log_e_min=cut_min_log_e,
                 log_e_max=cut_max_log_e,
             )
-            correction_factors[src_idx] = cut_weight / full_weight
+
+            ratio = cut_weight / full_weight
+            if ratio > 1.0 + 1e-6 or ratio < -1e-6:
+                self._logger.warning(
+                    'Energy-range correction factor outside [0,1] for source index '
+                    f'{src_idx}: {ratio:.6g}. Clipping to [0,1].'
+                )
+            correction_factors[src_idx] = np.clip(ratio, 0.0, 1.0)
 
         return correction_factors
 
