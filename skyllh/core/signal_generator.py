@@ -370,6 +370,9 @@ class MultiDatasetSignalGenerator(
 
         # ref_N is the expected number of detected signal events for the reference flux normalization.
         ref_N = np.sum(a_jk_eff)
+        assert ref_N > 0, (
+            'The expected number of detected signal events for the reference flux normalization must be greater than zero!'
+        )
 
         if per_source:
             a_k = np.sum(a_jk_eff, axis=0)
