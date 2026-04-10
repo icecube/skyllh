@@ -112,7 +112,7 @@ class PDDatasetSignalGenerator(
     def _log10_energy_range(self):
         """Internal true-energy range in log10(E/GeV) used for calculations.
 
-        For the public data analysis this matches bin edges of the smearing matrices.
+        For the public data analysis, this matches bin edges of the smearing matrices.
         It is not simply the log10 of the input energy range!
         """
         if self._energy_range_log10 is None:
@@ -127,7 +127,7 @@ class PDDatasetSignalGenerator(
         if r is not None:
             if not issequence(r) or len(r) != 2:
                 raise ValueError(
-                    f'The energy_range property must be a 2-element sequence of  floats! Its current value is {r}!'
+                    f'The energy_range property must be a 2-element sequence of floats! Its current value is {r}!'
                 )
             r = (
                 float_cast(r[0], 'The first element of the energy_range sequence must be castable to type of float!'),

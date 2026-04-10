@@ -744,7 +744,7 @@ class MCMultiDatasetSignalGenerator(
         self._construct_signal_candidates()
 
     def fluxmodel_scaling_factor(self, per_source=False):
-        """scaling factor to convert a mean number of signal events (mu) into a flux normalization as per the
+        """Scaling factor to convert a mean number of signal events (mu) into a flux normalization as per the
         definition of the flux models of the source hypothesis groups.
 
             flux_norm = mu * scaling_factor
@@ -766,15 +766,15 @@ class MCMultiDatasetSignalGenerator(
         """
         logger.warning(
             'The fluxmodel_scaling_factor method of the MCMultiDatasetSignalGenerator class is currently only '
-            'implemented for the case of a single source or for multiple sources with the same flux model.'
-            'Multiple sources withdifferent flux models are currently not correctly handled.'
+            'implemented for the case of a single source or for multiple sources with the same flux model. '
+            'Multiple sources with different flux models are currently not correctly handled.'
         )
 
         # Calculate the expected mean number of signal events for each source of the source hypo group manager. For
         # each source we can calculate the flux that would correspond to the given mean number of signal events `mu`.
         # The total flux for all sources is then just the sum.
 
-        # ref_N is the total signal events are expected on average for the reference fluxes.
+        # ref_N is the total number of signal events expected on average for the reference fluxes.
         ref_N = self._sig_candidates_weight_sum
 
         # The mu_fluxes array is the flux of each source for mu mean detected signal events.

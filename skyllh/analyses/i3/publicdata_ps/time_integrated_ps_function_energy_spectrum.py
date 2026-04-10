@@ -121,7 +121,7 @@ def set_epeak(analysis, e_peak):
 
 
 def flux_from_ns(analysis, e_peak, ns):
-    """Get the flux at e_eak for a certain flux model (defined by e_peak)
+    """Get the flux at e_peak for a certain flux model (defined by e_peak)
       for a mean number of signal neutrinos ns
 
     Parameters

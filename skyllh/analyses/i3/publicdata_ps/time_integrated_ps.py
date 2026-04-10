@@ -161,7 +161,7 @@ def create_analysis(
         The spectral index to use for the reference power law flux model.
     refplflux_Ec: float,
         The cutoff energy for the cutoff power law flux model.
-    energy_range: tuple of floats (low energy, high energy) | None
+    energy_range: 2-element tuple of float (low energy, high energy) | None
         The energy range for signal generation. Both low and high energies are
         given in GeV. If set to ``None``, the entire energy range of the
         dataset is used.
