@@ -146,7 +146,7 @@ class PDDatasetSignalGenerator(
             # Convert the energy boundaries to the closest SM bin edges.
             idx0 = self.sm.get_log10_true_e_idx(np.log10(r[0]))
             idx1 = self.sm.get_log10_true_e_idx(np.log10(r[1]))
-            r_log10 = (self.sm.true_e_bin_edges[idx0], self.sm.true_e_bin_edges[idx1])
+            r_log10 = (self.sm.true_e_bin_edges[idx0], self.sm.true_e_bin_edges[idx1 + 1])
 
             if r_log10[0] >= r_log10[1]:
                 raise ValueError(

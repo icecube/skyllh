@@ -148,9 +148,9 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 37)
-        np.testing.assert_allclose(res['ts'], 30.87705934223367, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 34.8896272404197, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 2.2829856920449303, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 45.0702251350808, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 37.164648250914794, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 2.2344058859850557, rtol=1e-5)
 
     def test_energy_range_consistency(self):
         """Passing energy_range to create_analysis gives the same result as setting it via the
