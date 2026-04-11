@@ -92,6 +92,7 @@ class AnalysisTestCase(unittest.TestCase):
 
 class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
     ENERGY_RANGE = (1e3, 1e6)
+    ENERGY_RANGE_ALT = (1e4, 1e7)
 
     @classmethod
     def setUpClass(cls):
@@ -128,6 +129,14 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
             source=cls.source,
         )
         cls.ana_post_set.energy_range = cls.ENERGY_RANGE
+
+        # Analysis 3: dedicated instance for the energy_range change-and-restore test.
+        cls.ana_mutable = create_analysis(
+            cfg=cls.cfg,
+            datasets=cls.datasets,
+            source=cls.source,
+            energy_range=cls.ENERGY_RANGE,
+        )
 
     def setUp(self):
         self.tl = TimeLord()
@@ -171,6 +180,32 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         np.testing.assert_allclose(res1['ts'], res2['ts'], rtol=1e-10)
         np.testing.assert_allclose(res1['ns'], res2['ns'], rtol=1e-10)
         np.testing.assert_allclose(res1['gamma'], res2['gamma'], rtol=1e-10)
+
+    def test_energy_range_change_after_trial(self):
+        """Changing energy_range mid-use and restoring it reproduces the original do_trial result."""
+        # First trial with initial energy_range.
+        rss1 = RandomStateService(seed=1)
+        res1 = self.ana_mutable.do_trial(rss=rss1, mean_n_sig=40)[0]
+
+        # Change energy_range and run a trial with the new range.
+        self.ana_mutable.energy_range = self.ENERGY_RANGE_ALT
+        rss_mid = RandomStateService(seed=2)
+        res_mid = self.ana_mutable.do_trial(rss=rss_mid, mean_n_sig=40)[0]
+
+        np.testing.assert_equal(res_mid['n_sig'], 32)
+        np.testing.assert_allclose(res_mid['ts'], 122.26568287997864, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ns'], 36.13892006776112, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['gamma'], 1.9415738885001714, rtol=1e-5)
+
+        # Restore original energy_range and re-run with the same seed.
+        self.ana_mutable.energy_range = self.ENERGY_RANGE
+        rss3 = RandomStateService(seed=1)
+        res3 = self.ana_mutable.do_trial(rss=rss3, mean_n_sig=40)[0]
+
+        np.testing.assert_equal(res1['n_sig'], res3['n_sig'])
+        np.testing.assert_allclose(res1['ts'], res3['ts'], rtol=1e-10)
+        np.testing.assert_allclose(res1['ns'], res3['ns'], rtol=1e-10)
+        np.testing.assert_allclose(res1['gamma'], res3['gamma'], rtol=1e-10)
 
     def test_mu2flux_flux2mu_consistency(self):
         """mu2flux and flux2mu are mutual inverses, and both analyses agree on all flux values."""
