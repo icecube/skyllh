@@ -179,14 +179,13 @@ class FctSpline2D:
 
     def _renorm_per_y_pairs(self, x, y, f):
         """Renormalize paired evaluations so each value is divided by Z(y_i)."""
-        # Compute Z for each distinct y present (no sorting needed for outputs;
-        # np.unique returns a sorted list, but we map back via 'inv').
+        # np.unique returns sorted unique values, which satisfies the ordering
+        # requirement of RectBivariateSpline for grid=True evaluation.
+        # A single batched grid=True call replaces the previous per-y loop,
+        # reducing O(n_unique_y) spline calls to one.
         uniq_y, inv = np.unique(y, return_inverse=True)
-        Z = np.empty_like(uniq_y, dtype=float)
-        for k, yk in enumerate(uniq_y):
-            yq = np.full(self._qx.shape, yk, dtype=float)
-            vals = self._pow10(self.spl_log10_f(self._qx, yq, grid=False))  # (nq,)
-            Z[k] = np.dot(vals, self._qw)
+        vals = self._pow10(self.spl_log10_f(self._qx, uniq_y, grid=True))  # (nq, n_uniq_y)
+        Z = vals.T @ self._qw  # (n_uniq_y,)
         Z[Z == 0] = np.nan
         f /= Z[inv]
         return f
