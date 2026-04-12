@@ -162,6 +162,7 @@ class PDSigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio):
         (ratio, grads) = self._interpolmethod(tdm=tdm, eventdata=None, params_recarray=src_params_recarray)
 
         # Cache the ratio and gradient values.
+        self._cache_tdm_trial_data_state_id = tdm.trial_data_state_id
         self._cache_fitparams_hash = fitparams_hash
         self._cache_ratio = ratio
         self._cache_grads = grads
