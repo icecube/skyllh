@@ -6,7 +6,22 @@ from skyllh.core.py import (
 )
 
 
-class SignalGenerationMethod(metaclass=abc.ABCMeta):
+class HasEnergyRange(metaclass=abc.ABCMeta):
+    """Capability interface for components exposing an energy_range property."""
+
+    @property
+    @abc.abstractmethod
+    def energy_range(self):
+        """Configured true-energy range as a 2-element tuple in GeV, or None."""
+        pass
+
+    @energy_range.setter
+    @abc.abstractmethod
+    def energy_range(self, r):
+        pass
+
+
+class SignalGenerationMethod(HasEnergyRange, metaclass=abc.ABCMeta):
     """This is a base class for a source and detector specific signal generation
     method, that calculates the source flux for a given monte-carlo event, which
     is needed to calculate the MC event weights for the signal generator.
@@ -23,7 +38,7 @@ class SignalGenerationMethod(metaclass=abc.ABCMeta):
         ----------
         energy_range : 2-element tuple of float | None
             The energy range from which to take MC events into account for
-            signal event generation.
+            signal event generation, specified in true neutrino energy (GeV).
             If set to None, the entire energy range [0, +inf] is used.
         """
         super().__init__(**kwargs)
@@ -33,7 +48,7 @@ class SignalGenerationMethod(metaclass=abc.ABCMeta):
     @property
     def energy_range(self):
         """The 2-element tuple of floats holding the energy range from which to
-        take MC events into account for signal event generation.
+        take MC events into account for signal event generation, in GeV.
         """
         return self._energy_range
 
