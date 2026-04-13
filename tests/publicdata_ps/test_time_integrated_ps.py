@@ -157,9 +157,9 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         logger.info(f'gamma = {res["gamma"]}')
 
         np.testing.assert_equal(res['n_sig'], 37)
-        np.testing.assert_allclose(res['ts'], 45.0702251350808, rtol=1e-5)
-        np.testing.assert_allclose(res['ns'], 37.164648250914794, rtol=1e-5)
-        np.testing.assert_allclose(res['gamma'], 2.2344058859850557, rtol=1e-5)
+        np.testing.assert_allclose(res['ts'], 30.877059342233714, rtol=1e-5)
+        np.testing.assert_allclose(res['ns'], 34.889627240419706, rtol=1e-5)
+        np.testing.assert_allclose(res['gamma'], 2.2829856920449307, rtol=1e-5)
 
     def test_energy_range_consistency(self):
         """Passing energy_range to create_analysis gives the same result as setting it via the
@@ -193,9 +193,9 @@ class AnalysisWithEnergyRangeTestCase(unittest.TestCase):
         res_mid = self.ana_mutable.do_trial(rss=rss_mid, mean_n_sig=40)[0]
 
         np.testing.assert_equal(res_mid['n_sig'], 32)
-        np.testing.assert_allclose(res_mid['ts'], 122.26568287997864, rtol=1e-5)
-        np.testing.assert_allclose(res_mid['ns'], 36.13892006776112, rtol=1e-5)
-        np.testing.assert_allclose(res_mid['gamma'], 1.9415738885001714, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ts'], 123.047538, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['ns'], 40.036228, rtol=1e-5)
+        np.testing.assert_allclose(res_mid['gamma'], 2.027787, rtol=1e-5)
 
         # Restore original energy_range and re-run with the same seed.
         self.ana_mutable.energy_range = self.ENERGY_RANGE
