@@ -597,6 +597,8 @@ class PDDatasetSignalGenerator(
     def _get_cached_full_aeff(self):
         """Returns the dataset-level effective area, loading it only once."""
         if self._aeff_full is None:
+            # Re-load it here because in _create_source_dependent_data_structures it was loaded
+            # for a specific source declination and energy range only.
             self._aeff_full = PDAeff(pathfilenames=self._aeff_pathfilenames)
         return self._aeff_full
 
