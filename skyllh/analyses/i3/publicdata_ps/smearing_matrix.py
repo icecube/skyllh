@@ -337,7 +337,13 @@ class PDSmearingMatrix:
             edge in ``true_e_bin_edges``.
         """
         if (log10_true_e < self.true_e_bin_edges[0]) or (log10_true_e > self.true_e_bin_edges[-1]):
-            raise ValueError(f'The log10 true energy value {log10_true_e} is not supported by the smearing matrix!')
+            min_log10 = self.true_e_bin_edges[0]
+            max_log10 = self.true_e_bin_edges[-1]
+            raise ValueError(
+                f'The log10 true energy value {log10_true_e} is not supported by the smearing matrix! '
+                f'The supported range is [{min_log10}, {max_log10}] in log10(E/GeV) '
+                f'([{10**min_log10:.1e}, {10**max_log10:.1e}] GeV).'
+            )
 
         if upper_edge:
             return np.digitize(log10_true_e, self._true_e_bin_edges, right=True)
