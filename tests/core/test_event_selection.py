@@ -25,7 +25,8 @@ from skyllh.core.source_model import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
-from tests.core.testdata.testdata_generator import (
+
+from .testdata.testdata_generator import (
     generate_testdata,
 )
 
