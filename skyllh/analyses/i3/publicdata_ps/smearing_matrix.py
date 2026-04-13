@@ -313,22 +313,34 @@ class PDSmearingMatrix:
 
         return true_dec_idx
 
-    def get_log10_true_e_idx(self, log10_true_e):
-        """Returns the bin index for the given true log10 energy value.
+    def get_log10_true_e_idx(self, log10_true_e, upper_edge=False):
+        """Returns the true-energy bin index or edge index for a log10 value.
 
         Parameters
         ----------
         log10_true_e : float
             The log10 value of the true energy.
+        upper_edge : bool
+            If False (default), return the bin index whose lower edge is
+            less than or equal to ``log10_true_e`` and whose upper edge is
+            strictly greater than ``log10_true_e``.
+            If True, return the enclosing upper-edge index. This is useful
+            to align an upper range boundary to the nearest bin edge without
+            adding +1 at the call site.
 
         Returns
         -------
         log10_true_e_idx : int
-            The index of the true log10 energy bin for the given log10 true
-            energy value.
+            If ``upper_edge`` is False, the index of the true log10 energy
+            bin for the given log10 true energy value.
+            If ``upper_edge`` is True, the index of the corresponding upper
+            edge in ``true_e_bin_edges``.
         """
         if (log10_true_e < self.true_e_bin_edges[0]) or (log10_true_e > self.true_e_bin_edges[-1]):
             raise ValueError(f'The log10 true energy value {log10_true_e} is not supported by the smearing matrix!')
+
+        if upper_edge:
+            return np.digitize(log10_true_e, self._true_e_bin_edges, right=True)
 
         log10_true_e_idx = np.digitize(log10_true_e, self._true_e_bin_edges) - 1
 
