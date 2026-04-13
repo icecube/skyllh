@@ -318,7 +318,7 @@ def create_analysis(
         sig_generator_cls=MultiDatasetSignalGenerator,
     )
 
-    # Set the energy range for signal generation if it is explicitly given.
+    # Set the energy range for signal generation.
     ana.energy_range = energy_range
 
     # Define the data scrambler with its data scrambling method, which is used
