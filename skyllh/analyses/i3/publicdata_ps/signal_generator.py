@@ -94,6 +94,12 @@ class PDDatasetSignalGenerator(
         self.sm = PDSmearingMatrix(
             pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
         )
+
+        # Cache effective-area data reused for correction-factor calculations.
+        self._aeff_pathfilenames = ds.get_abs_pathfilename_list(ds.get_aux_data_definition('eff_area_datafile'))
+        self._aeff_full = None
+        self._aeff_for_src_cache = {}
+
         self.energy_range = energy_range
 
     @property
@@ -193,7 +199,7 @@ class PDDatasetSignalGenerator(
                 max_log_true_e = min(max_log_true_e, self._log10_energy_range[1])
 
             self._effA_arr[src_idx] = PDAeff(
-                pathfilenames=self.ds.get_abs_pathfilename_list(self.ds.get_aux_data_definition('eff_area_datafile')),
+                pathfilenames=self._aeff_pathfilenames,
                 src_dec=src.dec,
                 min_log10enu=min_log_true_e,
                 max_log10enu=max_log_true_e,
@@ -372,6 +378,9 @@ class PDDatasetSignalGenerator(
         internal source dependent data structures.
         """
         super().change_shg_mgr(shg_mgr=shg_mgr)
+
+        # Source indices/declinations can change with a new hypothesis.
+        self._aeff_for_src_cache = {}
 
         self._create_source_dependent_data_structures()
 
@@ -567,9 +576,7 @@ class PDDatasetSignalGenerator(
         src = self._shg_mgr.source_list[src_idx]
         fluxmodel = self.shg_mgr.get_fluxmodel_by_src_idx(src_idx=src_idx)
 
-        effA = PDAeff(
-            pathfilenames=self.ds.get_abs_pathfilename_list(self.ds.get_aux_data_definition('eff_area_datafile'))
-        )
+        effA = self._get_cached_full_aeff()
 
         low_all = effA.log10_enu_binedges_lower
         high_all = effA.log10_enu_binedges_upper
@@ -583,9 +590,25 @@ class PDDatasetSignalGenerator(
 
         flux_integral = fluxmodel.energy_profile.get_integral(E1=10 ** overlap_low[m], E2=10 ** overlap_high[m])
 
-        aeff_for_dec = effA.get_aeff_for_decnu(src.dec)[m]
+        aeff_for_dec = self._get_cached_aeff_for_source(src_idx=src_idx, src_dec=src.dec)[m]
 
         return float(np.sum(flux_integral * aeff_for_dec))
+
+    def _get_cached_full_aeff(self):
+        """Returns the dataset-level effective area, loading it only once."""
+        if self._aeff_full is None:
+            self._aeff_full = PDAeff(pathfilenames=self._aeff_pathfilenames)
+        return self._aeff_full
+
+    def _get_cached_aeff_for_source(self, src_idx, src_dec):
+        """Returns cached Aeff(log10E) values for one source declination."""
+        cached = self._aeff_for_src_cache.get(src_idx)
+        if (cached is not None) and (cached[0] == src_dec):
+            return cached[1]
+
+        aeff_for_dec = self._get_cached_full_aeff().get_aeff_for_decnu(src_dec)
+        self._aeff_for_src_cache[src_idx] = (src_dec, aeff_for_dec)
+        return aeff_for_dec
 
     def _calculate_energy_range_correction_factors(self):
         """Calculates per-source correction factors for the configured
