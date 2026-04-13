@@ -1,8 +1,5 @@
 import numpy as np
-from scipy import (
-    integrate,
-    interpolate,
-)
+from scipy import interpolate
 
 from skyllh.core.binning import (
     get_bincenters_from_binedges,
@@ -42,7 +39,9 @@ class FctSpline1D:
 
         self.norm = None
         if norm:
-            self.norm = integrate.quad(self.__call__, self.x_min, self.x_max, limit=200, full_output=1)[0]
+            # The spline is defined only in the `x` (bincenters) interval by construction.
+            # We chose to not extrapolate oor values.
+            self.norm = float(self.spl_f.integrate(x[0], x[-1]))
 
     def __call__(self, x, oor_value=0):
         """Evaluates the spline at the given x values. For x-values
