@@ -50,6 +50,9 @@ from skyllh.core.services import (
     DetSigYieldService,
     SrcDetSigYieldWeightsService,
 )
+from skyllh.core.signal_generation import (
+    HasEnergyRange,
+)
 from skyllh.core.signal_generator import (
     MultiDatasetSignalGenerator,
     SignalGenerator,
@@ -134,6 +137,9 @@ class Analysis(
         self._bkg_generator = None
         self._sig_generator_list = []
         self._sig_generator = None
+
+        self.sig_gen_energy_range = None
+        self.sig_gen_energy_range_is_set = False
 
     @property
     def shg_mgr(self):
@@ -337,6 +343,77 @@ class Analysis(
         """
         return self._sig_generator
 
+    def _iter_energy_range_capable(self):
+        """Yields all unique components exposing the energy_range capability."""
+        seen = set()
+
+        for shg in self._shg_mgr.shg_list:
+            method = shg.sig_gen_method
+            if isinstance(method, HasEnergyRange):
+                method_id = id(method)
+                if method_id not in seen:
+                    seen.add(method_id)
+                    yield method
+
+        if isinstance(self._sig_generator, HasEnergyRange):
+            sig_gen_id = id(self._sig_generator)
+            if sig_gen_id not in seen:
+                seen.add(sig_gen_id)
+                yield self._sig_generator
+
+        if self._sig_generator is not None:
+            for generator in getattr(self._sig_generator, 'sig_generator_list', []) or []:
+                if isinstance(generator, HasEnergyRange):
+                    gen_id = id(generator)
+                    if gen_id not in seen:
+                        seen.add(gen_id)
+                        yield generator
+
+        for generator in self._sig_generator_list:
+            if isinstance(generator, HasEnergyRange):
+                gen_id = id(generator)
+                if gen_id not in seen:
+                    seen.add(gen_id)
+                    yield generator
+
+    def _apply_energy_range(self, value):
+        for component in self._iter_energy_range_capable():
+            component.energy_range = value
+
+    @property
+    def energy_range(self):
+        """Configured true-energy range for signal generation in GeV.
+
+        When explicitly set on the analysis, this property returns that exact
+        value. Otherwise, it infers a shared value from compatible components.
+        """
+        if self.sig_gen_energy_range_is_set:
+            return self.sig_gen_energy_range
+
+        marker = object()
+        inferred = marker
+        for component in self._iter_energy_range_capable():
+            component_range = component.energy_range
+            if inferred is marker:
+                inferred = component_range
+                continue
+            if component_range != inferred:
+                raise ValueError(
+                    'Inconsistent energy_range configuration detected across signal generation components. '
+                    'Set analysis.energy_range explicitly to enforce one shared range.'
+                )
+
+        if inferred is marker:
+            return None
+
+        return inferred
+
+    @energy_range.setter
+    def energy_range(self, value):
+        self.sig_gen_energy_range = value
+        self.sig_gen_energy_range_is_set = True
+        self._apply_energy_range(value)
+
     @property
     def tdm_list(self):
         """The list of instance of TrialDataManager. One for each dataset."""
@@ -468,6 +545,9 @@ class Analysis(
         self._bkg_generator_list.append(bkg_generator)
         self._sig_generator_list.append(sig_generator)
 
+        if sig_generator is not None and self.sig_gen_energy_range_is_set and isinstance(sig_generator, HasEnergyRange):
+            sig_generator.energy_range = self.sig_gen_energy_range
+
     def get_livetime(self, dataset_key=None, unit=None):
         """Retrieves the numeric livetime of the given dataset in the specified
         unit. The dataset can be specified either through its index or its name.
@@ -565,6 +645,9 @@ class Analysis(
             ds_sig_weight_factors_service=self.ds_sig_weight_factors_service,
             **kwargs,
         )
+
+        if self.sig_gen_energy_range_is_set:
+            self._apply_energy_range(self.sig_gen_energy_range)
 
     @abc.abstractmethod
     def initialize_trial(self, events_list, n_events_list=None):
@@ -709,6 +792,9 @@ class Analysis(
 
         if self._sig_generator is not None:
             self._sig_generator.change_shg_mgr(shg_mgr=shg_mgr)
+
+        if self.sig_gen_energy_range_is_set:
+            self._apply_energy_range(self.sig_gen_energy_range)
 
     def do_trial_with_given_bkg_and_sig_pseudo_data(
         self,
@@ -1627,43 +1713,74 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
 
         self.change_shg_mgr(shg_mgr=self._shg_mgr, update_detsigyield_service=update_detsigyield_service)
 
-    def calculate_fluxmodel_scaling_factor(self, mean_ns, fitparam_values):
-        """Calculates the factor the source's fluxmodel has to be scaled
-        in order to obtain the given mean number of signal events in the
+    def calculate_fluxmodel_scaling_factor(self, per_source=False):
+        """Calculates the factor the source's fluxmodel has to be scaled in order to obtain one signal event in the
         detector.
+
+        The conversion is delegated to the configured signal generator. This scaling factor can then be multiplied
+        by any number of signal events to get the corresponding flux model normalization. Or the other way around,
+        it can be divided for a given flux model normalization to get the corresponding number of signal events in
+        the detector.
+
+            flux_norm = scaling_factor * mean_n_sig
+
+                            and
+
+            mean_n_sig = flux_norm / scaling_factor
 
         Parameters
         ----------
-        mean_ns : float
-            The mean number of signal events in the detector for which the
-            scaling factor is calculated.
-        fitparam_values : instance of numpy ndarray
-            The (N_fitparam,)-shaped 1D ndarray holding the values of the global
-            fit parameters, that should be used for the flux calculation.
-            The order of the values must match the order the fit parameters were
-            defined in the parameter model mapper.
+        per_source : bool
+            Whether to return the scaling factor for each source separately. Default is False.
 
         Returns
         -------
-        factor : float
-            The factor the source's fluxmodel needs to be scaled in order to
-            obtain the given mean number of signal events in the detector.
+        float | (n_sources,)-shaped numpy ndarray
+            The factor(s) the source's fluxmodel needs to be scaled in order to obtain 1 signal event in the detector.
         """
-        src_params_recarray = self._pmm.create_src_params_recarray(gflp_values=fitparam_values)
+        if self._sig_generator is None:
+            self.construct_signal_generator()
 
-        # Calculate the detector signal yield, i.e. the mean number of signal
-        # events in the detector, for the given reference flux model.
-        mean_ns_ref = 0
+        if not hasattr(self._sig_generator, 'fluxmodel_scaling_factor'):
+            raise RuntimeError(
+                'The configured signal generator does not implement the fluxmodel_scaling_factor interface!'
+            )
 
-        detsigyields = self.detsigyield_service.arr[:, 0]
-        for j, detsigyield in enumerate(detsigyields):
-            src_recarray = self.src_detsigyield_weights_service.src_recarray_list_list[j][0]
-            (Yj, _) = detsigyield(src_recarray=src_recarray, src_params_recarray=src_params_recarray)
-            mean_ns_ref += Yj[0]
+        return self._sig_generator.fluxmodel_scaling_factor(per_source=per_source)
 
-        factor = mean_ns / mean_ns_ref
+    def mu2flux(self, mu, per_source=False):
+        """Converts the given number of signal events in the detector to the corresponding flux model normalization.
 
-        return factor
+        Parameters
+        ----------
+        mu : float
+            The number of signal events in the detector to convert.
+        per_source : bool
+            Whether to return the flux normalization for each source separately. Default is False.
+
+        Returns
+        -------
+        float | (n_sources,)-shaped numpy ndarray
+            The corresponding flux model normalization(s) for the given number of signal events in the detector.
+        """
+        return self.calculate_fluxmodel_scaling_factor(per_source=per_source) * mu
+
+    def flux2mu(self, flux_norm, per_source=False):
+        """Converts the given flux model normalization to the corresponding number of signal events in the detector.
+
+        Parameters
+        ----------
+        flux_norm : float
+            The flux model normalization to convert.
+        per_source : bool
+            Whether to return the number of signal events for each source separately. Default is False.
+
+        Returns
+        -------
+        float | (n_sources,)-shaped numpy ndarray
+            The corresponding number of signal events in the detector for the given flux model normalization.
+        """
+        return flux_norm / self.calculate_fluxmodel_scaling_factor(per_source=per_source)
 
 
 class MultiSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):

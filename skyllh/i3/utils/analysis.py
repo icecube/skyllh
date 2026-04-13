@@ -105,7 +105,6 @@ def generate_ps_sin_dec_h0_ts_values(
 def estimate_ps_sin_dec_sensitivity_curve(
     ana,
     rss,
-    fitparam_values,
     sin_dec_arr,
     h0_ts_vals_arr,
     eps_p=0.0075,
@@ -128,9 +127,6 @@ def estimate_ps_sin_dec_sensitivity_curve(
     rss : RandomStateService instance
         The instance of RandomStateService to use for generating random numbers
         from.
-    fitparam_values : array_like
-        The fit parameter values for which to convert the mean number of signal
-        events into a flux.
     sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray
         The ndarray holding the sin(dec) values for which to estimate the
         point-source sensitivity.
@@ -224,9 +220,7 @@ def estimate_ps_sin_dec_sensitivity_curve(
 
             mean_ns_arr[sin_dec_idx, iter_idx] = mean_ns
             mean_ns_err_arr[sin_dec_idx, iter_idx] = mean_ns_err
-            flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor(
-                mean_ns=mean_ns, fitparam_values=np.array(fitparam_values)
-            )
+            flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor() * mean_ns
 
             # A new iteration is done, update the mu range using the previous
             # results.
@@ -277,9 +271,7 @@ def estimate_ps_sin_dec_sensitivity_curve(
 
                 mean_ns_arr[sin_dec_idx, iter_idx] = mean_ns
                 mean_ns_err_arr[sin_dec_idx, iter_idx] = mean_ns_err
-                flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor(
-                    mean_ns=mean_ns, fitparam_values=np.array(fitparam_values)
-                )
+                flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor() * mean_ns
 
         pbar_sin_dec.increment()
     pbar_sin_dec.finish()
@@ -290,7 +282,6 @@ def estimate_ps_sin_dec_sensitivity_curve(
 def estimate_ps_sin_dec_discovery_potential_curve(
     ana,
     rss,
-    fitparam_values,
     sin_dec_arr,
     h0_ts_vals_arr,
     h0_ts_quantile=2.7e-3,
@@ -314,9 +305,6 @@ def estimate_ps_sin_dec_discovery_potential_curve(
     rss : RandomStateService instance
         The instance of RandomStateService to use for generating random numbers
         from.
-    fitparam_values : array_like
-        The fit parameter values for which to convert the mean number of signal
-        events into a flux.
     sin_dec_arr : (n_sin_dec,)-shaped 1D ndarray
         The ndarray holding the sin(dec) values for which to estimate the
         point-source sensitivity.
@@ -414,9 +402,7 @@ def estimate_ps_sin_dec_discovery_potential_curve(
 
             mean_ns_arr[sin_dec_idx, iter_idx] = mean_ns
             mean_ns_err_arr[sin_dec_idx, iter_idx] = mean_ns_err
-            flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor(
-                mean_ns=mean_ns, fitparam_values=np.array(fitparam_values)
-            )
+            flux_scaling_arr[sin_dec_idx, iter_idx] = ana.calculate_fluxmodel_scaling_factor() * mean_ns
 
             pbar.increment()
         pbar.finish()

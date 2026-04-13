@@ -129,9 +129,12 @@ class FctSpline2D:
         self._qx = 0.5 * (self.x_max - self.x_min) * gx + 0.5 * (self.x_max + self.x_min)
         self._qw = 0.5 * (self.x_max - self.x_min) * gw
 
+    _LOG10 = np.log(10.0)
+
     @staticmethod
     def _pow10(arr):
-        return np.power(10.0, arr)
+        # Alternative optimized version of np.power(10, arr), ~3x faster.
+        return np.exp(FctSpline2D._LOG10 * arr)
 
     def _mask_oor_axes(self, x, y):
         m_x = (x < self.x_min) | (x > self.x_max)
@@ -179,14 +182,13 @@ class FctSpline2D:
 
     def _renorm_per_y_pairs(self, x, y, f):
         """Renormalize paired evaluations so each value is divided by Z(y_i)."""
-        # Compute Z for each distinct y present (no sorting needed for outputs;
-        # np.unique returns a sorted list, but we map back via 'inv').
+        # np.unique returns sorted unique values, which satisfies the ordering
+        # requirement of RectBivariateSpline for grid=True evaluation.
+        # A single batched grid=True call replaces the previous per-y loop,
+        # reducing O(n_unique_y) spline calls to one.
         uniq_y, inv = np.unique(y, return_inverse=True)
-        Z = np.empty_like(uniq_y, dtype=float)
-        for k, yk in enumerate(uniq_y):
-            yq = np.full(self._qx.shape, yk, dtype=float)
-            vals = self._pow10(self.spl_log10_f(self._qx, yq, grid=False))  # (nq,)
-            Z[k] = np.dot(vals, self._qw)
+        vals = self._pow10(self.spl_log10_f(self._qx, uniq_y, grid=True))  # (nq, n_uniq_y)
+        Z = vals.T @ self._qw  # (n_uniq_y,)
         Z[Z == 0] = np.nan
         f /= Z[inv]
         return f
