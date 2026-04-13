@@ -323,7 +323,6 @@ class LBFGSMinimizerImpl(MinimizerImpl):
         ftol=1e-6,
         pgtol=1e-5,
         maxls=100,
-        iprint=-1,
         **kwargs,
     ):
         """Creates a new L-BGF-S minimizer instance to minimize the given
@@ -337,16 +336,12 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             The gradient value tolerance.
         maxls : int
             The maximum number of line search steps for an iteration.
-        iprint : int
-            Controls the frequency of output. See scipy documentation for more
-            information.
         """
         super().__init__(**kwargs)
 
         self._ftol = ftol
         self._pgtol = pgtol
         self._maxls = maxls
-        self._iprint = iprint
 
         self._fmin_l_bfgs_b = scipy.optimize.fmin_l_bfgs_b
 
@@ -425,8 +420,9 @@ class LBFGSMinimizerImpl(MinimizerImpl):
             kwargs['pgtol'] = self._pgtol
         if 'maxls' not in kwargs:
             kwargs['maxls'] = self._maxls
-        if 'iprint' not in kwargs:
-            kwargs['iprint'] = self._iprint
+        # Remove deprecated iprint/disp options if passed (removed in SciPy 1.18)
+        kwargs.pop('iprint', None)
+        kwargs.pop('disp', None)
 
         func_provides_grads = kwargs.pop('func_provides_grads', True)
 
