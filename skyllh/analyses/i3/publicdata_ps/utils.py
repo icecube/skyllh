@@ -134,7 +134,7 @@ class FctSpline2D:
     @staticmethod
     def _pow10(arr):
         # Alternative optimized version of np.power(10, arr), ~3x faster.
-        return np.exp(arr * FctSpline2D._LOG10)
+        return np.exp(FctSpline2D._LOG10 * arr)
 
     def _mask_oor_axes(self, x, y):
         m_x = (x < self.x_min) | (x > self.x_max)
