@@ -143,3 +143,5 @@ profile.html
 
 # Local temporary data repositories
 .repository
+
+.DS_Store
