@@ -76,6 +76,7 @@ autodoc_default_options = {
     'exclude-members': ','.join(
         [
             '__abstractmethods__',
+            '__annotate_func__',
             '__dict__',
             '__hash__',
             '__init__',

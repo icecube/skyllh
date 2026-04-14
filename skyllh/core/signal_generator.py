@@ -300,7 +300,7 @@ class MultiDatasetSignalGenerator(
 
     def fluxmodel_scaling_factor(self, per_source=False):
         """Returns the scaling factor to convert a mean number of detected
-        signal events into a flux normalization.
+        signal events into a flux normalization::
 
             flux_norm = mean_n_sig * scaling_factor
                         or
@@ -748,7 +748,7 @@ class MCMultiDatasetSignalGenerator(
 
     def fluxmodel_scaling_factor(self, per_source=False):
         """Scaling factor to convert a mean number of signal events (mu) into a flux normalization as per the
-        definition of the flux models of the source hypothesis groups.
+        definition of the flux models of the source hypothesis groups::
 
             flux_norm = mu * scaling_factor
                         or

@@ -338,12 +338,14 @@ class MCDataSamplingBkgGenMethod(
 
             1. If the dataset has changed, calculate the background event
                probability for each MC event and cache it.
-            1.1. Calculate the mean number of bkg events for the entire MC.
-            1.2. Pre-select MC events if a pre event selection method is set.
-            1.3. Calculate the background drawing probability of each selected
-                 MC event.
-            1.4. Calculate the mean number of bkg events for the selected MC
-                 events.
+
+               a. Calculate the mean number of bkg events for the entire MC.
+               b. Pre-select MC events if a pre event selection method is set.
+               c. Calculate the background drawing probability of each selected
+                  MC event.
+               d. Calculate the mean number of bkg events for the selected MC
+                  events.
+
             2. Draw the bkg events based on the calculated bkg event
                probability.
             3. Scramble the drawn background events if a data scrambler is set.
