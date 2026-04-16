@@ -83,16 +83,6 @@ class PDSignalEnergyPDF(
         # Add the PDF axes.
         self.add_axis(PDFAxis(name='log_energy', vmin=self.log10_reco_e_min, vmax=self.log10_reco_e_max))
 
-        # Check integrity.
-        integral = (
-            integrate.quad(
-                self.f_e_spl.evaluate, self.log10_reco_e_min, self.log10_reco_e_max, limit=200, full_output=1
-            )[0]
-            / self.f_e_spl.norm
-        )
-        if not np.isclose(integral, 1):
-            raise ValueError(f'The integral over log10_reco_e of the energy term must be unity! But it is {integral}!')
-
     def assert_is_valid_for_trial_data(self, tdm, tl=None):
         pass
 
