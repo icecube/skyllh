@@ -40,7 +40,7 @@ class FctSpline1D:
         self.norm = None
         if norm:
             # The spline is defined only in the `x` (bincenters) interval by construction.
-            # We chose to not extrapolate oor values.
+            # We choose not to extrapolate out-of-range values.
             self.norm = float(self.spl_f.integrate(x[0], x[-1]))
 
     def __call__(self, x, oor_value=0):
