@@ -1,5 +1,4 @@
 import numpy as np
-from scipy import integrate
 
 from skyllh.analyses.i3.publicdata_ps.aeff import (
     PDAeff,
