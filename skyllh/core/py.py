@@ -3,6 +3,8 @@ import functools
 import inspect
 import sys
 from collections import OrderedDict
+from collections.abc import Callable, Sequence
+from typing import Any, Literal, cast, overload
 
 import numpy as np
 
@@ -19,48 +21,48 @@ class PyQualifier:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, obj):
+    def __call__(self, obj: object) -> object:
         """Declares the given Python object to be qualified with the
         PyQualifier class of `self`. It adds the class of `self` to the
         `__pyqualifiers__` tuple of the given object.
 
         Parameters
         ----------
-        obj : object
+        obj
             The Python object that should get qualified.
 
         Returns
         -------
-        obj : object
+        obj
             The given object, but modified to be declared for this Python
             qualifier.
         """
         if not hasattr(obj, '__pyqualifiers__'):
-            obj.__pyqualifiers__ = ()
+            obj.__pyqualifiers__ = ()  # type: ignore[attr-defined]
 
-        obj.__pyqualifiers__ += (self.__class__,)
+        obj.__pyqualifiers__ = *obj.__pyqualifiers__, self.__class__  # type: ignore[attr-defined]
 
         return obj
 
-    def check(self, obj):
+    def check(self, obj: object) -> bool:
         """Checks if the given Python object is declared with the PyQualifier
         class of the `self` object.
 
         Parameters
         ----------
-        obj : object
+        obj
             The Python object to check.
 
         Returns
         -------
-        check : bool
+        check
             The check result. `True` if the object is declared for this Python
             qualifier, and `False` otherwise.
         """
         if not hasattr(obj, '__pyqualifiers__'):
             return False
 
-        return self.__class__ in obj.__pyqualifiers__
+        return self.__class__ in obj.__pyqualifiers__  # type: ignore[attr-defined]
 
 
 class ConstPyQualifier(PyQualifier):
@@ -73,18 +75,18 @@ class ConstPyQualifier(PyQualifier):
 const = ConstPyQualifier()
 
 
-def get_class_of_func(f):
+def get_class_of_func(f: Callable) -> type | None:
     """Determines the class object that defined the given method or function
     ``f``.
 
     Parameters
     ----------
-    f : function | method
+    f
         The function or method whose parent class should be determined.
 
     Returns
     -------
-    cls : class | None
+    cls
         The class object which defines the given function or method. ``None``
         is returned when no class could be determined.
     """
@@ -127,33 +129,33 @@ def module_classname(obj):
     return f'{obj.__module__}.{classname(obj)}'
 
 
-def module_class_method_name(obj, meth_name):
+def module_class_method_name(obj: object, meth_name: str):
     """Returns the module, class, and method name of the given instance ``obj``.
 
     Parameters
     ----------
-    obj : instance of object
+    obj
         The object instance.
-    meth_name : str
+    meth_name
         The name of the method.
     """
     return f'{module_classname(obj)}.{meth_name}'
 
 
-def get_byte_size_prefix(size):
+def get_byte_size_prefix(size: int) -> tuple[float, str]:
     """Determines the biggest size prefix for the given size in bytes such that
     the new size is still greater one.
 
     Parameters
     ----------
-    size : int
+    size
         The size in bytes.
 
     Returns
     -------
-    newsize : float
+    newsize
         The new byte size accounting for the byte prefix.
-    prefix : str
+    prefix
         The biggest byte size prefix.
     """
     prefix_factor_list = [('', 1), ('K', 1024), ('M', 1024**2), ('G', 1024**3), ('T', 1024**4)]
@@ -170,7 +172,7 @@ def get_byte_size_prefix(size):
     return (newsize, prefix)
 
 
-def getsizeof(objects):
+def getsizeof(objects) -> int:
     """Determines the size in bytes the given objects have in memory.
     If an object is a sequence, the size of the elements of the sequence will
     be estimated as well and added to the result. This does not account for the
@@ -178,11 +180,11 @@ def getsizeof(objects):
 
     Parameters
     ----------
-    objects : sequence of instances of object | instance of object.
+    objects
 
     Returns
     -------
-    memsize : int
+    memsize
         The memory size in bytes of the given objects.
     """
     if not issequence(objects):
@@ -198,7 +200,7 @@ def getsizeof(objects):
     return memsize
 
 
-def issequence(obj):
+def issequence(obj) -> bool:
     """Checks if the given object ``obj`` is a sequence or not. The definition of
     a sequence in this case is, that the function ``len`` is defined for the
     object.
@@ -209,7 +211,7 @@ def issequence(obj):
 
     Returns
     -------
-    check : bool
+    check
         ``True`` if the given object is a sequence. ``False`` if the given
         object is an instance of str or not a sequence.
 
@@ -225,20 +227,19 @@ def issequence(obj):
     return True
 
 
-def issequenceof(obj, T, pyqualifiers=None):
+def issequenceof(obj: object, T, pyqualifiers: 'PyQualifier | Sequence[PyQualifier] | None' = None) -> bool:
     """Checks if the given object ``obj`` is a sequence with items being
     instances of type ``T``, possibly qualified with the given Python
     qualifiers.
 
     Parameters
     ----------
-    obj : instance of object
+    obj
         The Python object to check.
-    T : type | tuple of types
+    T
         The type each item of the sequence should be. If a tuple of types is
         given, each item can be one of the given types.
-    pyqualifiers : instance of PyQualifier |
-            sequence of instances of PyQualifier | None
+    pyqualifiers
         One or more instances of PyQualifier. Each instance acts as a filter
         for each item.
         If any of the filters return `False` for any of the items, this check
@@ -246,41 +247,44 @@ def issequenceof(obj, T, pyqualifiers=None):
 
     Returns
     -------
-    check : bool
+    check
         The result of the check.
     """
+    _pyqualifiers: Sequence[PyQualifier]
     if pyqualifiers is None:
-        pyqualifiers = tuple()
-    elif not issequence(pyqualifiers):
-        pyqualifiers = (pyqualifiers,)
+        _pyqualifiers = ()
+    elif isinstance(pyqualifiers, PyQualifier):
+        _pyqualifiers = (pyqualifiers,)
+    else:
+        _pyqualifiers = pyqualifiers
 
     if not issequence(obj):
         return False
 
-    for item in obj:
+    for item in cast(Any, obj):
         if not isinstance(item, T):
             return False
-        for pyqualifier in pyqualifiers:
+        for pyqualifier in _pyqualifiers:
             if not pyqualifier.check(item):
                 return False
 
     return True
 
 
-def issequenceofsubclass(obj, T):
+def issequenceofsubclass(obj: object, T: type) -> bool:
     """Checks if the given object ``obj`` is a sequence with items being
     sub-classes of class T.
 
     Parameters
     ----------
-    obj : instance of object
+    obj
         The object to check.
-    T : class
+    T
         The base class of the items of the given object.
 
     Returns
     -------
-    check : bool
+    check
         ``True`` if the given object is a sequence of instances which are
         sub-classes of class ``T``. ``False`` if ``obj`` is not a sequence or
         any item is not a sub-class of class ``T``.
@@ -288,23 +292,23 @@ def issequenceofsubclass(obj, T):
     if not issequence(obj):
         return False
 
-    return all(issubclass(item, T) for item in obj)
+    return all(issubclass(item, T) for item in cast(Any, obj))
 
 
-def isproperty(obj, name):
+def isproperty(obj: object, name: str) -> bool:
     """Checks if the given attribute is of type property. The attribute must
     exist in ``obj``.
 
     Parameters
     ----------
-    obj : object
+    obj
         The Python object whose attribute to check for being a property.
-    name : str
+    name
         The name of the attribute.
 
     Returns
     -------
-    check : bool
+    check
         True if the given attribute is of type property, False otherwise.
 
     Raises
@@ -316,19 +320,19 @@ def isproperty(obj, name):
     return isinstance(attr, property)
 
 
-def func_has_n_args(func, n):
+def func_has_n_args(func: Callable, n: int) -> bool:
     """Checks if the given function `func` has `n` arguments.
 
     Parameters
     ----------
-    func : callable
+    func
         The function to check.
-    n : int
+    n
         The number of arguments the function must have.
 
     Returns
     -------
-    check : bool
+    check
         True if the given function has `n` arguments. False otherwise.
     """
     check = len(inspect.signature(func).parameters) == n
@@ -347,7 +351,11 @@ def bool_cast(v, errmsg):
     return v
 
 
-def int_cast(v, errmsg, allow_None=False):
+@overload
+def int_cast(v, errmsg: str, allow_None: Literal[False] = ...) -> int: ...
+@overload
+def int_cast(v, errmsg: str, allow_None: Literal[True]) -> int | None: ...
+def int_cast(v, errmsg, allow_None=False) -> int | None:
     """Casts the given value to an integer value. If the cast is impossible, a
     TypeError is raised with the given error message. If `allow_None` is set to
     `True` the value `v` can also be `None`.
@@ -363,19 +371,27 @@ def int_cast(v, errmsg, allow_None=False):
     return v
 
 
-def float_cast(v, errmsg, allow_None=False):
+@overload
+def float_cast(v: Sequence, errmsg: str, allow_None: Literal[False] = ...) -> list[float]: ...
+@overload
+def float_cast(v: Sequence, errmsg: str, allow_None: Literal[True]) -> list[float | None]: ...
+@overload
+def float_cast(v: float | int | str | bool, errmsg: str, allow_None: Literal[False] = ...) -> float: ...
+@overload
+def float_cast(v: float | int | str | bool | None, errmsg: str, allow_None: Literal[True]) -> float | None: ...
+def float_cast(v, errmsg: str, allow_None: bool = False) -> float | list[float] | list[float | None] | None:
     """Casts the given value to a float. If the cast is impossible, a TypeError
     is raised with the given error message. If `allow_None` is set to `True`
     the value `v` can also be `None`.
 
     Parameters
     ----------
-    v : to_float_castable object | sequence of to_float_castable objects
+    v
         The object that should get casted to a float. This can also be a
         sequence of objects that should get casted to floats.
-    errmsg : str
+    errmsg
         The error message in case the cast failed.
-    allow_None : bool
+    allow_None
         Flag if ``None`` is allowed as value for v. If yes, the casted result is
         ``None``.
 
@@ -439,25 +455,25 @@ def list_of_cast(t, v, errmsg):
     return v
 
 
-def get_smallest_numpy_int_type(values):
+def get_smallest_numpy_int_type(values: int | Sequence[int]) -> np.ndarray:
     """Returns the smallest numpy integer type that can represent the given
     integer values.
 
     Parameters
     ----------
-    values : int | sequence of int
+    values
         The integer value(s) that need to be representable by the returned
         integer type.
 
     Returns
     -------
-    inttype : numpy integer type
+    inttype
         The smallest numpy integer type that can represent the given values.
     """
-    values = np.atleast_1d(values)
+    _values = np.atleast_1d(values)
 
-    vmin = np.min(values)
-    vmax = np.max(values)
+    vmin = np.min(_values)
+    vmax = np.max(_values)
 
     if vmin < 0:  # noqa: SIM108
         types = [np.int8, np.int16, np.int32, np.int64]
@@ -472,19 +488,19 @@ def get_smallest_numpy_int_type(values):
     raise ValueError(f'No integer type spans [{vmin}, {vmax}]!')
 
 
-def get_number_of_float_decimals(value):
+def get_number_of_float_decimals(value: float) -> int:
     """Determines the number of significant decimals the given float number has.
     The maximum number of supported decimals is 16.
 
     Parameters
     ----------
-    value : float
+    value
         The float value whose number of significant decimals should get
         determined.
 
     Returns
     -------
-    decimals : int
+    decimals
         The number of decimals of value which are non-zero.
 
     Raises
@@ -504,25 +520,22 @@ def get_number_of_float_decimals(value):
     return 0
 
 
-def make_dict_hash(d):
+def make_dict_hash(d: dict | None) -> int:
     """Creates a hash value for the given dictionary.
 
     Parameters
     ----------
-    d : dict | None
+    d
         The dictionary holding (name: value) pairs.
         If set to None, an empty dictionary is used.
 
     Returns
     -------
-    hash : int
+    hash
         The hash of the dictionary.
     """
     if d is None:
         d = {}
-
-    if not isinstance(d, dict):
-        raise TypeError('The d argument must be of type dict!')
 
     # A note on the ordering of Python dictionary items: The items are ordered
     # internally according to the hash value of their keys. Hence, if we don't
@@ -540,16 +553,16 @@ class ObjectCollection:
     well.
     """
 
-    def __init__(self, objs=None, obj_type=None):
+    def __init__(self, objs=None, obj_type: type | None = None):
         """Constructor of the ObjectCollection class. Must be called by the
         derived class.
 
         Parameters
         ----------
-        objs : instance of obj_type | sequence of obj_type instances | None
+        objs
             The sequence of objects of type ``obj_type`` with which this
             collection should get initialized with.
-        obj_type : type | None
+        obj_type
             The type of the objects, which can be added to the collection.
             If set to None, the type will be determined from the given objects.
             If no objects are given, the object type will be `object`.
@@ -598,7 +611,7 @@ class ObjectCollection:
     def __iter__(self):
         return iter(self._objects)
 
-    def __add__(self, other):
+    def __add__(self, other) -> 'ObjectCollection':
         """Implementation to support the operation ``oc = self + other``, where
         ``self`` is this ObjectCollection object and ``other`` something useful
         else. This creates a copy ``oc`` of ``self`` and adds ``other``
@@ -606,11 +619,11 @@ class ObjectCollection:
 
         Parameters
         ----------
-        other : obj_type | ObjectCollection of obj_type
+        other
 
         Returns
         -------
-        oc : ObjectCollection
+        oc
             The new ObjectCollection object with object from self and other.
         """
         oc = self.copy()
@@ -630,13 +643,13 @@ class ObjectCollection:
         oc._objects = copy.copy(self._objects)
         return oc
 
-    def add(self, obj):
+    def add(self, obj) -> 'ObjectCollection':
         """Adds the given object, sequence of objects, or object collection to
         this object collection.
 
         Parameters
         ----------
-        obj : obj_type instance | sequence of obj_type |
+        obj
               ObjectCollection of obj_type
             An instance of ``obj_type`` that should be added to the collection.
             If given an ObjectCollection for objects of type obj_type, it will
@@ -644,7 +657,7 @@ class ObjectCollection:
 
         Returns
         -------
-        self : ObjectCollection
+        self
             The instance of this ObjectCollection, in order to be able to chain
             several ``add`` calls.
         """
@@ -673,35 +686,35 @@ class ObjectCollection:
 
     __iadd__ = add
 
-    def index(self, obj):
+    def index(self, obj) -> int:
         """Gets the index of the given object instance within this object
         collection.
 
         Parameters
         ----------
-        obj : obj_type instance
+        obj
             The instance of obj_type whose index should get retrieved.
 
         Returns
         -------
-        idx : int
+        idx
             The index of the object within this object collection.
         """
         return self._objects.index(obj)
 
-    def pop(self, index=None):
+    def pop(self, index: int | None = None):
         """Removes and returns the object at the given index (default last).
         Raises IndexError if the collection is empty or index is out of range.
 
         Parameters
         ----------
-        index : int | None
+        index
             The index of the object to remove. If set to None, the index of the
             last object is used.
 
         Returns
         -------
-        obj : obj_type
+        obj
             The removed object.
         """
         if index is None:
@@ -716,16 +729,16 @@ class NamedObjectCollection(ObjectCollection):
     tracked w.r.t. its name.
     """
 
-    def __init__(self, objs=None, obj_type=None, **kwargs):
+    def __init__(self, objs=None, obj_type: type | None = None, **kwargs):
         """Creates a new NamedObjectCollection instance. Must be called by the
         derived class.
 
         Parameters
         ----------
-        objs : instance of obj_type | sequence of instances of obj_type | None
+        objs
             The sequence of objects of type ``obj_type`` with which this
             collection should get initialized with.
-        obj_type : type
+        obj_type
             The type of the objects, which can be added to the collection.
             This type must have an attribute named ``name``.
         """
@@ -747,20 +760,20 @@ class NamedObjectCollection(ObjectCollection):
         """
         return list(self._obj_name_to_idx.keys())
 
-    def _create_obj_name_to_idx_dict(self, start=None, end=None):
+    def _create_obj_name_to_idx_dict(self, start: int | None = None, end: int | None = None) -> dict:
         """Creates the dictionary {obj.name: index} for object in the interval
         [`start`, `end`).
 
         Parameters
         ----------
-        start : int | None
+        start
             The object start index position, which is inclusive.
-        end : int | None
+        end
             The object end index position, which is exclusive.
 
         Returns
         -------
-        obj_name_to_idx : dict
+        obj_name_to_idx
             The dictionary {obj.name: index}.
         """
         if start is None:
@@ -768,35 +781,35 @@ class NamedObjectCollection(ObjectCollection):
 
         return OrderedDict([(o.name, start + idx) for (idx, o) in enumerate(self._objects[start:end])])
 
-    def __contains__(self, name):
+    def __contains__(self, name: str) -> bool:
         """Returns ``True`` if an object of the given name exists in this
         NamedObjectCollection instance, ``False`` otherwise.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the object.
 
         Returns
         -------
-        check : bool
+        check
             ``True`` if an object of name ``name`` exists in this
             NamedObjectCollection instance, ``False`` otherwise.
         """
         return name in self._obj_name_to_idx
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str | int):
         """Returns an object based on its name or index.
 
         Parameters
         ----------
-        key : str | int
+        key
             The object identification. Either its name or its index position
             within the object collection.
 
         Returns
         -------
-        obj : instance of obj_type
+        obj
             The requested object.
 
         Raises
@@ -808,12 +821,12 @@ class NamedObjectCollection(ObjectCollection):
             key = self.get_index_by_name(key)
         return super().__getitem__(key)
 
-    def add(self, obj):
+    def add(self, obj) -> 'NamedObjectCollection':
         """Adds the given object to this named object collection.
 
         Parameters
         ----------
-        obj : obj_type instance | NamedObjectCollection of obj_type
+        obj
             An instance of ``obj_type`` that should be added to this named
             object collection.
             If a NamedObjectCollection instance for objects of type ``obj_type``
@@ -822,7 +835,7 @@ class NamedObjectCollection(ObjectCollection):
 
         Returns
         -------
-        self : NamedObjectCollection
+        self
             The instance of this NamedObjectCollection, in order to be able to
             chain several ``add`` calls.
         """
@@ -836,36 +849,36 @@ class NamedObjectCollection(ObjectCollection):
 
     __iadd__ = add
 
-    def get_index_by_name(self, name):
+    def get_index_by_name(self, name: str) -> int:
         """Gets the index of the object with the given name within this named
         object collection.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the object whose index should get retrieved.
 
         Returns
         -------
-        idx : int
+        idx
             The index of the object within this named object collection.
         """
         return self._obj_name_to_idx[name]
 
-    def pop(self, index=None):
+    def pop(self, index: int | str | None = None):
         """Removes and returns the object at the given index (default last).
         Raises IndexError if the collection is empty or index is out of range.
 
         Parameters
         ----------
-        index : int | str | None
+        index
             The index of the object to remove. If set to None, the index of the
             last object is used.
             If a str instance is given, it specifies the name of the object.
 
         Returns
         -------
-        obj : obj_type instance
+        obj
             The removed object.
         """
         if isinstance(index, str):

@@ -50,21 +50,21 @@ class MathFunction(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def math_function_str(self):
+    def math_function_str(self) -> 'str | None':
         """The string showing the mathematical function of this MathFunction."""
         pass
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Pretty string representation of this MathFunction instance."""
-        return self.math_function_str
+        return self.math_function_str or ''
 
-    def copy(self, newparams=None):
+    def copy(self, newparams: dict | None = None):
         """Copies this MathFunction object by calling the copy.deepcopy
         function, and sets new parameters if requested.
 
         Parameters
         ----------
-        newparams : dict | None
+        newparams
             The dictionary with the new parameter values to set, where the
             dictionary key is the parameter name and the dictionary value is the
             new value of the parameter.
@@ -77,18 +77,18 @@ class MathFunction(metaclass=abc.ABCMeta):
 
         return f
 
-    def get_param(self, name):
+    def get_param(self, name: str) -> float:
         """Retrieves the value of the given parameter. It returns ``np.nan`` if
         the parameter does not exist.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the parameter.
 
         Returns
         -------
-        value : float | np.nan
+        value
             The value of the parameter.
         """
         if name not in self._param_names:
@@ -98,19 +98,19 @@ class MathFunction(metaclass=abc.ABCMeta):
 
         return value
 
-    def set_params(self, pdict):
+    def set_params(self, pdict: dict) -> bool:
         """Sets the parameters of the math function to the given parameter
         values.
 
         Parameters
         ----------
-        pdict : dict (name: value)
+        pdict
             The dictionary holding the names of the parameters and their new
             values.
 
         Returns
         -------
-        updated : bool
+        updated
             Flag if parameter values were actually updated.
         """
         if not isinstance(pdict, dict):

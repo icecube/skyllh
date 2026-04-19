@@ -1,4 +1,5 @@
 import abc
+from collections.abc import Callable, Sequence
 
 from skyllh.core.config import (
     Config,
@@ -22,6 +23,7 @@ from skyllh.core.py import (
     issequence,
     issequenceof,
 )
+from skyllh.core.source_model import SourceModel
 from skyllh.core.types import (
     SourceHypoGroup_t,
 )
@@ -48,10 +50,10 @@ class DetSigYield(
 
     def __init__(
         self,
-        param_names,
-        dataset,
-        fluxmodel,
-        livetime,
+        param_names: Sequence[str],
+        dataset: Dataset,
+        fluxmodel: FluxModel,
+        livetime: float | Livetime,
         **kwargs,
     ):
         """Constructs a new detector signal yield object. It takes
@@ -60,14 +62,14 @@ class DetSigYield(
 
         Parameters
         ----------
-        param_names : sequence of str
+        param_names
             The sequence of parameter names this detector signal yield depends
             on. These are either fixed or floating parameters.
-        dataset : Dataset instance
+        dataset
             The Dataset instance holding the monte-carlo event data.
-        fluxmodel : FluxModel
+        fluxmodel
             The flux model instance. Must be an instance of FluxModel.
-        livetime : float | Livetime
+        livetime
             The live-time in days to use for the detector signal yield.
         """
         super().__init__(**kwargs)
@@ -142,7 +144,7 @@ class DetSigYield(
     @abc.abstractmethod
     def sources_to_recarray(
         self,
-        sources,
+        sources: SourceModel | Sequence[SourceModel],
     ):
         """This method is supposed to convert a (list of) source model(s) into
         a numpy record array that is understood by the detector signal yield
@@ -157,12 +159,12 @@ class DetSigYield(
 
         Parameters
         ----------
-        sources : SourceModel | sequence of SourceModel
+        sources
             The source model(s) containing the information of the source(s).
 
         Returns
         -------
-        recarr : numpy record ndarray
+        recarr
             The generated (N_sources,)-shaped 1D numpy record ndarray holding
             the information for each source.
         """
@@ -179,12 +181,12 @@ class DetSigYield(
 
         Parameters
         ----------
-        src_recarray : (N_sources,)-shaped numpy record ndarray
+        src_recarray
             The numpy record array containing the information of the sources.
             The required fields of this record array are implementation
             dependent. In the most generic case for a point-like source, it
             must contain the following three fields: ra, dec.
-        src_params_recarray : (N_sources,)-shaped numpy record ndarray
+        src_params_recarray
             The numpy record ndarray containing the parameter values of the
             sources. The parameter values can be different for the different
             sources.
@@ -197,10 +199,10 @@ class DetSigYield(
 
         Returns
         -------
-        detsigyield : (N_sources,)-shaped 1D ndarray of float
+        detsigyield
             The array with the mean number of signal in the detector for each
             given source.
-        grads : dict
+        grads
             The dictionary holding the gradient values for each global fit
             parameter. The key is the global fit parameter index and the value
             is the (N_sources,)-shaped numpy ndarray holding the gradient value
@@ -257,7 +259,7 @@ class DetSigYieldBuilder(
                 f'The ppbar argument must be an instance of ProgressBar! Its current type is {classname(ppbar)}.'
             )
 
-    def get_detsigyield_construction_factory(self):
+    def get_detsigyield_construction_factory(self) -> Callable | None:
         """This method is supposed to return a callable with the call-signature
 
         .. code::
@@ -277,7 +279,7 @@ class DetSigYieldBuilder(
 
         Returns
         -------
-        factory : callable | None
+        factory
             This default implementation returns ``None``, indicating that a
             factory is not supported by this builder.
         """
@@ -286,11 +288,11 @@ class DetSigYieldBuilder(
     @abc.abstractmethod
     def construct_detsigyield(
         self,
-        dataset,
-        data,
-        shg,
-        ppbar=None,
-    ):
+        dataset: Dataset,
+        data: DatasetData,
+        shg: SourceHypoGroup_t,
+        ppbar: ProgressBar | None = None,
+    ) -> 'DetSigYield':
         """Abstract method to construct the DetSigYield instance.
         This method must be called by the derived class method implementation
         to ensure the compatibility check of the given flux model with the
@@ -298,19 +300,19 @@ class DetSigYieldBuilder(
 
         Parameters
         ----------
-        dataset : instance of Dataset
+        dataset
             The instance of Dataset holding possible dataset specific settings.
-        data : instance of DatasetData
+        data
             The instance of DatasetData holding the monte-carlo event data.
-        shg : instance of SourceHypoGroup
+        shg
             The instance of SourceHypoGroup (i.e. sources and flux model) for
             which the detector signal yield should be constructed.
-        ppbar : instance of ProgressBar | None
+        ppbar
             The instance of ProgressBar of the optional parent progress bar.
 
         Returns
         -------
-        detsigyield : instance of DetSigYield
+        detsigyield
             An instance derived from DetSigYield.
         """
         pass
@@ -323,14 +325,14 @@ class NullDetSigYieldBuilder(DetSigYieldBuilder):
 
     def __init__(
         self,
-        cfg=None,
+        cfg: Config | None = None,
         **kwargs,
     ):
         """Creates a new instance of NullDetSigYieldBuilder.
 
         Parameters
         ----------
-        cfg : instance of Config | None
+        cfg
             The instance of Config holding the local configuration. Since this
             detector signal yield builder does nothing, this argument is
             optional. If not provided the default configuration is used.

@@ -103,11 +103,11 @@ class Parameter_TestCase(unittest.TestCase):
 
     def test_valmin(self):
         self.assertEqual(self.fixed_param.valmin, None)
-        np.testing.assert_almost_equal(self.floating_param.valmin, self.floating_param_valmin)
+        np.testing.assert_almost_equal(self.floating_param.valmin, self.floating_param_valmin)  # type: ignore[arg-type]
 
     def test_valmax(self):
         self.assertEqual(self.fixed_param.valmax, None)
-        np.testing.assert_almost_equal(self.floating_param.valmax, self.floating_param_valmax)
+        np.testing.assert_almost_equal(self.floating_param.valmax, self.floating_param_valmax)  # type: ignore[arg-type]
 
     def test_value(self):
         np.testing.assert_almost_equal(self.fixed_param.value, self.fixed_param_initial)
@@ -164,8 +164,8 @@ class Parameter_TestCase(unittest.TestCase):
         )
         np.testing.assert_almost_equal(self.fixed_param.initial, self.floating_param_initial)
         np.testing.assert_almost_equal(self.fixed_param.value, self.floating_param_initial)
-        np.testing.assert_almost_equal(self.fixed_param.valmin, self.floating_param_valmin)
-        np.testing.assert_almost_equal(self.fixed_param.valmax, self.floating_param_valmax)
+        np.testing.assert_almost_equal(self.fixed_param.valmin, self.floating_param_valmin)  # type: ignore[arg-type]
+        np.testing.assert_almost_equal(self.fixed_param.valmax, self.floating_param_valmax)  # type: ignore[arg-type]
 
 
 class ParameterSet_TestCase(unittest.TestCase):
@@ -351,7 +351,7 @@ class ParameterSet_TestCase(unittest.TestCase):
 
     def test_add_param(self):
         with self.assertRaises(TypeError):
-            self.paramset.add_param('p2')
+            self.paramset.add_param('p2')  # type: ignore[arg-type]
         with self.assertRaises(KeyError):
             param = Parameter('p0', 42.0)
             self.paramset.add_param(param)
@@ -419,16 +419,16 @@ class ParameterGrid_TestCase(unittest.TestCase):
         np.testing.assert_almost_equal(gp, [3.5])
 
         # Test a value between two grid points.
-        x = [2.1, 2.4, 2.2, 2.3]
+        x = np.array([2.1, 2.4, 2.2, 2.3])
         gp = self.paramgrid_gamma1.round_to_nearest_grid_point(x)
         np.testing.assert_almost_equal(gp, [2.0, 2.5, 2.0, 2.5])
 
-        x = [1.051, 1.14]
+        x = np.array([1.051, 1.14])
         gp = self.paramgrid_gamma3.round_to_nearest_grid_point(x)
         np.testing.assert_almost_equal(gp, [1.05, 1.15])
 
         # Test a value on a grid point.
-        x = [1.05, 1.35]
+        x = np.array([1.05, 1.35])
         gp = self.paramgrid_gamma3.round_to_nearest_grid_point(x)
         np.testing.assert_almost_equal(gp, [1.05, 1.35])
 
@@ -447,7 +447,7 @@ class ParameterGrid_TestCase(unittest.TestCase):
         gp = self.paramgrid_gamma2.round_to_lower_grid_point(x)
         np.testing.assert_almost_equal(gp, 1.6)
 
-        x = [1.05, 1.15, 1.25, 1.35]
+        x = np.array([1.05, 1.15, 1.25, 1.35])
         gp = self.paramgrid_gamma3.round_to_lower_grid_point(x)
         np.testing.assert_almost_equal(gp, [1.05, 1.15, 1.25, 1.35])
 
@@ -466,7 +466,7 @@ class ParameterGrid_TestCase(unittest.TestCase):
         gp = self.paramgrid_gamma2.round_to_upper_grid_point(x)
         np.testing.assert_almost_equal(gp, 1.7)
 
-        x = [1.05, 1.15, 1.25, 1.35]
+        x = np.array([1.05, 1.15, 1.25, 1.35])
         gp = self.paramgrid_gamma3.round_to_upper_grid_point(x)
         np.testing.assert_almost_equal(gp, [1.15, 1.25, 1.35, 1.45])
 

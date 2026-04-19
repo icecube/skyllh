@@ -4,6 +4,8 @@ likelihood function.
 
 import numpy as np
 
+from skyllh.core.flux_model import TimeFluxProfile
+from skyllh.core.livetime import Livetime
 from skyllh.core.pdf import (
     IsBackgroundPDF,
     MultiDimGridPDF,
@@ -12,6 +14,8 @@ from skyllh.core.pdf import (
 from skyllh.core.py import (
     classname,
 )
+from skyllh.core.timing import TimeLord
+from skyllh.core.trialdata import TrialDataManager
 
 
 class BackgroundMultiDimGridPDF(MultiDimGridPDF, IsBackgroundPDF):
@@ -34,30 +38,30 @@ class BackgroundMultiDimGridPDF(MultiDimGridPDF, IsBackgroundPDF):
 class BackgroundTimePDF(TimePDF, IsBackgroundPDF):
     """This class provides a background time PDF class."""
 
-    def __init__(self, livetime, time_flux_profile, **kwargs):
+    def __init__(self, livetime: Livetime, time_flux_profile: TimeFluxProfile, **kwargs):
         """Creates a new signal time PDF instance for a given time flux profile
         and detector live time.
 
         Parameters
         ----------
-        livetime : instance of Livetime
+        livetime
             An instance of Livetime, which provides the detector live-time
             information.
-        time_flux_profile : instance of TimeFluxProfile
+        time_flux_profile
             The signal's time flux profile.
         """
         super().__init__(pmm=None, livetime=livetime, time_flux_profile=time_flux_profile, **kwargs)
 
         self._pd = None
 
-    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
+    def initialize_for_new_trial(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Initializes the background time PDF with new trial data. Because this
         PDF does not depend on any parameters, the probability density values
         can be pre-computed here.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data for
             which to calculate the PDF value. The following data fields must
             exist:
@@ -65,7 +69,7 @@ class BackgroundTimePDF(TimePDF, IsBackgroundPDF):
             ``'time'`` : float
                 The MJD time of the event.
 
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
         """
@@ -79,11 +83,13 @@ class BackgroundTimePDF(TimePDF, IsBackgroundPDF):
 
         self._pd[on] = self._time_flux_profile(t=times[on]) / self._S
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self, tdm: TrialDataManager, params_recarray: np.ndarray | None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data for
             which to calculate the PDF value. The following data fields must
             exist:
@@ -91,18 +97,18 @@ class BackgroundTimePDF(TimePDF, IsBackgroundPDF):
             ``'time'`` : float
                 The MJD time of the event.
 
-        params_recarray : None
+        params_recarray
             Unused interface argument.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (N_events,)-shaped numpy ndarray holding the background
             probability density value for each event.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each global fit parameter.
             The background PDF does not depend on any global fit parameter,

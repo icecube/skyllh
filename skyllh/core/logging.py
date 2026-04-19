@@ -2,15 +2,17 @@ import logging
 import os.path
 import sys
 
+from skyllh.core.config import Config
 
-def _resolve_log_level(level, default=logging.INFO):
+
+def _resolve_log_level(level: int | str | None, default: int = logging.INFO):
     """Converts a logging level representation into a numeric level.
 
     Parameters
     ----------
-    level : int | str | None
+    level
         The level representation.
-    default : int
+    default
         Default level if ``level`` is None.
 
     Returns
@@ -36,18 +38,18 @@ def _resolve_log_level(level, default=logging.INFO):
     raise TypeError(f'The logging level must be int, str, or None! Its current type is {type(level)}.')
 
 
-def get_logger(name):
+def get_logger(name: str) -> logging.Logger:
     """Retrieves the logger with the given name from the Python logging system.
 
     Parameters
     ----------
-    name : str
+    name
         The name of the logger.
         Logger hierarchy is defined using dots as separators.
 
     Returns
     -------
-    logger : logging.Logger
+    logger
         The Logger instance.
     """
     logger = logging.getLogger(name)
@@ -55,54 +57,54 @@ def get_logger(name):
 
 
 def setup_logger(
-    cfg,
-    name,
-    log_level=None,
-    log_format=None,
-    console=False,
-    console_level=None,
+    cfg: Config,
+    name: str,
+    log_level: int | str | None = None,
+    log_format: str | None = None,
+    console: bool = False,
+    console_level: int | None = None,
     stream=None,
-    log_file=None,
-    file_level=None,
-    file_mode='a',
-    propagate=False,
-    clear_existing_handlers=False,
+    log_file: str | None = None,
+    file_level: int | None = None,
+    file_mode: str = 'a',
+    propagate: bool = False,
+    clear_existing_handlers: bool = False,
 ):
     """Sets up a logger with the given local configuration and a name.
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         Local configuration.
-    name : str
+    name
         The name of the logger to set up.
         Logger hierarchy is defined using dots as separators.
-    log_level : int | str | None
+    log_level
         The log level of the logger.
         If None, the log level is taken from the configuration.
-    log_format : str | None
+    log_format
         The format of log records in the final output.
         If None, the log format is taken from the configuration.
-    console : bool
+    console
         Whether to set up a console handler for the logger. Default: False.
-    console_level : int | None
+    console_level
         The log level of the console handler. If None, it uses `log_level`.
-    stream : data stream | None
+    stream
         The stream to which the console handler will write.
         If None, it defaults to `sys.stderr`.
-    log_file : str | None
+    log_file
         If not ``None``, file handlers for DEBUG messages will be installed
         and those messages will be stored in the given file.
-    file_level : int | None
+    file_level
         The log level of the file handler. If None, it uses `log_level`.
-    file_mode : str
+    file_mode
         File opening mode. Default is 'a' for appending.
-    propagate : bool
+    propagate
         Whether the logger should propagate messages to ancestor loggers.
-        Default: False.
-    clear_existing_handlers : bool
+        Default
+    clear_existing_handlers
         Optionally clear handlers before setting up new ones.
-        Default: False.
+        Default
     """
     logger = logging.getLogger(name)
 
@@ -166,31 +168,39 @@ def setup_logger(
     return logger
 
 
-def setup_logging(cfg, name, log_format=None, log_level=None, console=True, log_file=None, reconfigure=False):
+def setup_logging(
+    cfg: Config,
+    name: str,
+    log_format: str | None = None,
+    log_level: int | str | None = None,
+    console: bool = True,
+    log_file: str | None = None,
+    reconfigure: bool = False,
+):
     """Initializes package and script loggers and returns the script logger.
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         The instance of Config holding the local configuration.
-    name : str
+    name
         The name of the user-defined logger to set up.
-    log_format : str | None
+    log_format
         The format template of the log message. If ``None``, the format
         is taken from ``cfg['logging']['log_format']``.
-    log_level : int | str | None
+    log_level
         The log level of the loggers. If ``None``, it is taken from the
         configuration.
-    console : bool
+    console
         Whether to set up console handlers for the loggers. Default: True.
-    log_file : str | None
+    log_file
         If not ``None``, a file handler for log messages will be installed
         for both loggers using this path.
-    reconfigure : bool
+    reconfigure
         Rebuild logging setup from scratch for this run/session.
         Especially useful in interactive environments like Jupyter notebooks
         to avoid duplicate log messages due to multiple logging handlers.
-        Default: False.
+        Default
 
     Returns
     -------

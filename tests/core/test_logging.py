@@ -4,19 +4,21 @@ import os
 import tempfile
 import unittest
 
+from skyllh.core.config import Config
 from skyllh.core.logging import setup_logging
 
 
 class SetupLoggingTestCase(unittest.TestCase):
     def setUp(self):
         # Configure a base log_format for testing
-        self.cfg = {
-            'logging': {
-                'log_level': 'INFO',
-                'log_format': '%(levelname)s:%(name)s:%(message)s',
-            },
-            'project': {'working_directory': '.'},
-        }
+        self.cfg = Config.from_dict(
+            {
+                'logging': {
+                    'log_level': 'INFO',
+                    'log_format': '%(levelname)s:%(name)s:%(message)s',
+                },
+            }
+        )
         self.user_logger_name = 'skyllh.tests.setup_logging'
 
         self._reset_logger('skyllh')

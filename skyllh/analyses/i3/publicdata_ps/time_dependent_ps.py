@@ -2,6 +2,8 @@
 dataset.
 """
 
+from typing import cast
+
 import numpy as np
 
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
@@ -24,6 +26,9 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
 )
 from skyllh.core.analysis import (
+    SingleSourceMultiDatasetLLHRatioAnalysis,
+)
+from skyllh.core.analysis import (
     SingleSourceMultiDatasetLLHRatioAnalysis as Analysis,
 )
 from skyllh.core.background_generator import (
@@ -35,6 +40,7 @@ from skyllh.core.backgroundpdf import (
 from skyllh.core.config import (
     Config,
 )
+from skyllh.core.dataset import Dataset
 from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
@@ -47,6 +53,7 @@ from skyllh.core.flux_model import (
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
 )
+from skyllh.core.llhratio import MultiDatasetTCLLHRatio, ZeroSigH0SingleDatasetTCLLHRatio
 from skyllh.core.logging import (
     get_logger,
 )
@@ -68,6 +75,7 @@ from skyllh.core.parameters import (
     Parameter,
     ParameterModelMapper,
 )
+from skyllh.core.pdf import PDF
 from skyllh.core.pdfratio import (
     SigOverBkgPDFRatio,
 )
@@ -97,6 +105,9 @@ from skyllh.core.source_hypo_grouping import (
 from skyllh.core.source_model import (
     PointLikeSource,
 )
+from skyllh.core.storage import (
+    DataFieldRecordArray,
+)
 from skyllh.core.test_statistic import (
     WilksTestStatistic,
 )
@@ -125,6 +136,7 @@ from skyllh.i3.backgroundpdf import (
 from skyllh.i3.config import (
     add_icecube_specific_analysis_required_data_fields,
 )
+from skyllh.i3.dataset import I3DatasetData
 from skyllh.i3.livetime import (
     I3Livetime,
 )
@@ -137,31 +149,29 @@ TXS_0506_PLUS056_ALERT_TIME = 58018.8711856
 
 
 def create_signal_time_pdf(
-    cfg,
-    grl,
-    gauss=None,
-    box=None,
-):
+    cfg: Config,
+    grl: np.ndarray,
+    gauss: dict | None = None,
+    box: dict | None = None,
+) -> PDF:
     """Creates the signal time PDF, either a gaussian or a box shaped PDF.
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         The instance of Config holding the local configuration.
-    grl : instance of numpy structured ndarray
+    grl
         The structured numpy ndarray holding the good-run-list data.
-    gauss : dict | None
+    gauss
         None or dictionary with {"mu": float, "sigma": float}.
-    box : dict | None
+    box
         None or dictionary with {"start": float, "stop": float}.
 
     Returns
     -------
-    pdf : instance of PDF
+    pdf
         The created time PDF instance.
     """
-    if (gauss is None) and (box is None):
-        raise TypeError('Either gauss or box have to be specified as time pdf.')
 
     livetime = I3Livetime.from_grl_data(grl_data=grl)
 
@@ -169,6 +179,8 @@ def create_signal_time_pdf(
         time_flux_profile = GaussianTimeFluxProfile(t0=gauss['mu'], sigma_t=gauss['sigma'], cfg=cfg)
     elif box is not None:
         time_flux_profile = BoxTimeFluxProfile.from_start_and_stop_time(start=box['start'], stop=box['stop'], cfg=cfg)
+    else:
+        raise TypeError('Either gauss or box have to be specified as time pdf.')
 
     pdf = SignalTimePDF(
         cfg=cfg,
@@ -180,19 +192,19 @@ def create_signal_time_pdf(
 
 
 def change_signal_time_pdf_of_llhratio_function(
-    ana,
-    gauss=None,
-    box=None,
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    gauss: dict | None = None,
+    box: dict | None = None,
 ):
     """Changes the signal time PDF of the log-likelihood ratio function.
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis instance.
-    gauss : dict | None
+    gauss
         None or dictionary with {"mu": float, "sigma": float}.
-    box : dict | None
+    box
         None or dictionary with {"start": float, "stop": float}.
     """
     cfg = ana.cfg
@@ -200,48 +212,52 @@ def change_signal_time_pdf_of_llhratio_function(
 
     time_sigpdf = create_signal_time_pdf(cfg=cfg, grl=grl, gauss=gauss, box=box)
 
-    pdfratio = ana.llhratio.llhratio_list[0].pdfratio
+    pdfratio = cast(
+        ZeroSigH0SingleDatasetTCLLHRatio, cast(MultiDatasetTCLLHRatio, ana.llhratio).llhratio_list[0]
+    ).pdfratio
 
     # pdfratio is an instance of PDFRatioProduct.
     # The first item is the PDF ratio product of the spatial and energy PDF
     # ratios. The second item is the time PDF ratio.
-    pdfratio.pdfratio2.sig_pdf = time_sigpdf
+    pdfratio.pdfratio2.sig_pdf = time_sigpdf  # type: ignore[attr-defined]
 
     # TODO: Change detector signal yield with flare livetime in sample
     # (1 / grl_norm in pdf), rebuild the histograms if it is changed.
 
 
 def get_energy_spatial_signal_over_background(
-    ana,
-    fitparam_values,
-    tl=None,
-):
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    fitparam_values: np.ndarray,
+    tl: TimeLord | None = None,
+) -> np.ndarray:
     """Returns the signal over background ratio for
     (spatial_signal * energy_signal) / (spatial_background * energy_background).
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis instance.
-    fitparam_values : instance of ndarray
+    fitparam_values
         The (N_fitparams,)-shaped numpy ndarray holding the values of the global
         fit parameters, e.g. ns and gamma.
-    tl : instance of TimeLord | None
+    tl
         The optional instance of TimeLord for measuring timing behavior.
 
     Returns
     -------
-    ratio : 1d ndarray
+    ratio
         Product of spatial and energy signal over background pdfs.
     """
     tdm = ana.tdm_list[0]
 
-    pdfratio = ana.llhratio.llhratio_list[0].pdfratio
+    pdfratio = cast(
+        ZeroSigH0SingleDatasetTCLLHRatio, cast(MultiDatasetTCLLHRatio, ana.llhratio).llhratio_list[0]
+    ).pdfratio
 
     # pdfratio is an instance of PDFRatioProduct.
     # The first item is the PDF ratio product of the spatial and energy PDF
     # ratios. The second item is the time PDF ratio.
-    pdfratio = pdfratio.pdfratio1
+    pdfratio = pdfratio.pdfratio1  # type: ignore[attr-defined]
 
     src_params_recarray = ana.pmm.create_src_params_recarray(gflp_values=fitparam_values)
 
@@ -251,16 +267,16 @@ def get_energy_spatial_signal_over_background(
 
 
 def change_fluxmodel_gamma(
-    ana,
-    gamma,
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    gamma: float,
 ):
     """Sets the given gamma value to the flux model of the single source.
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis that should be used.
-    gamma : float
+    gamma
         Spectral index for the flux model.
     """
     ana.shg_mgr.shg_list[0].fluxmodel.set_params({'gamma': gamma})
@@ -268,16 +284,16 @@ def change_fluxmodel_gamma(
 
 
 def change_time_flux_profile_params(
-    ana,
-    params,
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    params: dict,
 ):
     """Changes the parameters of the source's time flux profile.
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis that should be used.
-    params : dict
+    params
         The dictionary with the parameter names and values to be set.
     """
     # Note: In the future the primary storage place for the time flux profile
@@ -286,31 +302,31 @@ def change_time_flux_profile_params(
 
 
 def calculate_TS(
-    ana,
-    em_results,
-    rss,
-):
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    em_results: np.ndarray,
+    rss: RandomStateService,
+) -> tuple[float | None, dict | None, np.ndarray | None]:
     """Calculate the best TS value from the expectation maximization gamma scan
     results.
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis that should be used.
-    em_results : instance of structured ndarray
+    em_results
         The numpy structured ndarray holding the EM results (from the gamma
         scan).
-    rss : instance of RandomStateService
+    rss
         The instance of RandomStateService that should be used to generate
         random numbers from.
 
     Returns
     -------
-    max_TS : float
+    max_TS
         The maximal TS value of all maximized time hypotheses.
-    best_em_result : instance of numpy structured ndarray
+    best_em_result
         The row of ``em_results`` that corresponds to the best fit.
-    best_fitparam_values : instance of numpy ndarray
+    best_fitparam_values
         The instance of numpy ndarray holding the fit parameter values of the
         overall best fit result.
     """
@@ -333,42 +349,42 @@ def calculate_TS(
 
 
 def run_gamma_scan_for_single_flare(
-    ana,
-    remove_time=None,
-    gamma_min=1,
-    gamma_max=5,
-    n_gamma=51,
-    ppbar=None,
-):
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    remove_time: float | None = None,
+    gamma_min: float = 1,
+    gamma_max: float = 5,
+    n_gamma: int = 51,
+    ppbar: ProgressBar | None = None,
+) -> np.ndarray:
     """Runs ``em_fit`` for different gamma values in the signal energy PDF.
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis that should be used.
-    remove_time : float
+    remove_time
         Time information of event that should be removed.
-    gamma_min : float
+    gamma_min
         Lower bound for gamma scan.
-    gamma_max : float
+    gamma_max
         Upper bound for gamma scan.
-    n_gamma : int
+    n_gamma
         Number of steps for gamma scan.
-    ppbar : instance of ProgressBar | None
+    ppbar
         The optional parent instance of ProgressBar.
 
     Returns
     -------
-    em_results : instance of numpy structured ndarray
+    em_results
         The numpy structured ndarray with fields
 
-        gamma : float
+        gamma
             The spectral index value.
-        mu : float
+        mu
             The determined mean value of the gauss curve.
-        sigma : float
+        sigma
             The determined standard deviation of the gauss curve.
-        ns_em : float
+        ns_em
             The scaling factor of the flare.
     """
     em_results_dt = [
@@ -403,28 +419,28 @@ def run_gamma_scan_for_single_flare(
 
 
 def unblind_single_flare(
-    ana,
-    remove_time=None,
-):
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    remove_time: float | None = None,
+) -> tuple[float | None, dict | None, np.ndarray | None]:
     """Run EM for a single flare on unblinded data.
     Similar to the original analysis, remove the alert event.
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis that should be used.
-    remove_time : float
+    remove_time
         Time of the event that should be removed.
         In the case of the TXS analysis:
         ``remove_time=TXS_0506_PLUS056_ALERT_TIME``.
 
     Returns
     -------
-    max_TS : float
+    max_TS
         The maximal TS value of all maximized time hypotheses.
-    best_em_result : instance of numpy structured ndarray
+    best_em_result
         The EM result from the gamma scan corresponding to the best fit.
-    best_fitparam_values : instance of numpy ndarray
+    best_fitparam_values
         The instance of numpy ndarray holding the fit parameter values of the
         overall best fit result.
     """
@@ -440,83 +456,83 @@ def unblind_single_flare(
 
 
 def do_trial_with_em(
-    ana,
-    rss,
-    mean_n_sig=0,
-    gamma_src=2,
-    gamma_min=1,
-    gamma_max=5,
-    n_gamma=21,
-    gauss=None,
-    box=None,
-    tl=None,
-    ppbar=None,
-):
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    rss: RandomStateService,
+    mean_n_sig: float = 0,
+    gamma_src: float = 2,
+    gamma_min: float = 1,
+    gamma_max: float = 5,
+    n_gamma: int = 21,
+    gauss: dict | None = None,
+    box: dict | None = None,
+    tl: TimeLord | None = None,
+    ppbar: ProgressBar | None = None,
+) -> np.ndarray:
     """Performs a trial using the expectation maximization algorithm.
     It runs a gamma scan and does the EM for each gamma value.
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis instance that should be used to perform the trial.
-    rss : instance of RandomStateService
+    rss
         The instance of RandomStateService that should be used to generate
         random numbers.
-    mean_n_sig : float
+    mean_n_sig
         The mean number of signal events that should be generated.
-    gamma_src : float
+    gamma_src
         The spectral index of the source.
-    gamma_min : float
+    gamma_min
         Lower bound of the gamma scan.
-    gamma_max : float
+    gamma_max
         Upper bound of the gamma scan.
-    n_gamma : int
+    n_gamma
         Number of steps of the gamma scan.
-    gauss : dict | None
+    gauss
         Properties of the Gaussian time PDF.
         None or dictionary with {"mu": float, "sigma": float}.
-    box : dict | None
+    box
         Properties of the box time PDF.
         None or dictionary with {"start": float, "stop": float}.
-    tl : instance of TimeLord | None
+    tl
         The optional instance of TimeLord to measure timing information.
-    ppbar : instance of ProgressBar | None
+    ppbar
         The optional parent instance of ProgressBar.
 
     Returns
     -------
-    trial : instance of structured ndarray
+    trial
         The numpy structured ndarray of length 1 with the following fields:
 
-        seed : numpy.int64
+        seed
             The seed value used to generate the trial.
-        mean_n_sig : numpy.float64
+        mean_n_sig
             The mean number of signal events of the trial.
-        n_sig : numpy.int64
+        n_sig
             The actual number of signal events in the trial.
-        gamma_src : numpy.float64
+        gamma_src
             The spectral index of the source.
-        mu_sig : numpy.float64
+        mu_sig
             The mean value of the Gaussian time PDF of the source.
-        sigma_sig : numpy.float64
+        sigma_sig
             The sigma value of the Gaussian time PDF of the source.
-        start_sig : numpy.float64
+        start_sig
             The start time of the box time PDF of the source.
-        stop_sig : numpy.float64
+        stop_sig
             The stop time of the box time PDF of the source.
-        ts : numpy.float64
+        ts
             The test-statistic value of the trial.
-        ns_fit : numpy.float64
+        ns_fit
             The fitted number of signal events.
-        ns_em : numpy.float64
+        ns_em
             The scaling factor of the flare.
-        gamma_fit : numpy.float64
+        gamma_fit
             The fitted spectral index of the trial.
-        gamma_em : numpy.float64
+        gamma_em
             The spectral index of the best EM trial.
-        mu_fit : numpy.float64
+        mu_fit
             The fitted mean value of the Gaussian time PDF.
-        sigma_fit : numpy.float64
+        sigma_fit
             The fitted sigma value of the Gaussian time PDF.
     """
     trial_dt = [
@@ -540,13 +556,19 @@ def do_trial_with_em(
     trial = np.empty((1,), dtype=trial_dt)
 
     (n_sig, n_events_list, events_list) = ana.generate_pseudo_data(rss=rss, mean_n_sig=mean_n_sig, tl=tl)
-    ana.initialize_trial(events_list, n_events_list)
+    ana.initialize_trial(
+        cast(list[DataFieldRecordArray], events_list),
+        cast(list[int | None], n_events_list),
+    )
 
     em_results = run_gamma_scan_for_single_flare(
         ana=ana, gamma_min=gamma_min, gamma_max=gamma_max, n_gamma=n_gamma, ppbar=ppbar
     )
 
     (max_ts, best_em_result, best_fitparams) = calculate_TS(ana=ana, em_results=em_results, rss=rss)
+    assert max_ts is not None
+    assert best_em_result is not None
+    assert best_fitparams is not None
 
     trial[0] = (
         rss.seed,
@@ -570,91 +592,91 @@ def do_trial_with_em(
 
 
 def do_trials_with_em(
-    ana,
-    n=1000,
-    ncpu=None,
-    seed=1,
-    mean_n_sig=0,
-    gamma_src=2,
-    gamma_min=1,
-    gamma_max=4,
-    n_gamma=21,
-    gauss=None,
-    box=None,
-    tl=None,
-    ppbar=None,
-):
+    ana: SingleSourceMultiDatasetLLHRatioAnalysis,
+    n: int = 1000,
+    ncpu: int | None = None,
+    seed: int = 1,
+    mean_n_sig: float = 0,
+    gamma_src: float = 2,
+    gamma_min: float = 1,
+    gamma_max: float = 4,
+    n_gamma: int = 21,
+    gauss: dict | None = None,
+    box: dict | None = None,
+    tl: TimeLord | None = None,
+    ppbar: ProgressBar | None = None,
+) -> np.ndarray:
     """Performs ``n_trials`` trials using the expectation maximization
     algorithm. For each trial it runs a gamma scan and does the EM for each
     gamma value.
 
     Parameters
     ----------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The analysis instance that should be used to perform the trials.
-    n : int
+    n
         The number of trials to generate.
-    ncpu : int | None
+    ncpu
         The number of CPUs to use to generate the trials. If set to ``None``
         the configured default value will be used.
-    mean_n_sig : float
+    mean_n_sig
         The mean number of signal events that should be generated.
-    gamma_src : float
+    gamma_src
         The spectral index of the source.
-    gamma_min : float
+    gamma_min
         Lower bound of the gamma scan.
-    gamma_max : float
+    gamma_max
         Upper bound of the gamma scan.
-    n_gamma : int
+    n_gamma
         Number of steps of the gamma scan.
-    seed : int
+    seed
         The seed for the random number generator.
-    gauss : dict | None
+    gauss
         Properties of the Gaussian time PDF.
         None or dictionary with {"mu": float, "sigma": float}.
-    box : dict | None
+    box
         Properties of the box time PDF.
         None or dictionary with {"start": float, "stop": float}.
-    tl : instance of TimeLord | None
+    tl
         The optional instance of TimeLord to measure timing information.
-    ppbar : instance of ProgressBar | None
+    ppbar
         The optional parent instance of ProgressBar.
 
     Returns
     -------
-    trials : instance of numpy structured ndarray
+    trials
         The numpy structured ndarray of length ``n_trials`` with the results for
         each trial. The array has the following fields:
 
-        seed : numpy.int64
+        seed
             The seed value used to generate the trial.
-        mean_n_sig : numpy.float64
+        mean_n_sig
             The mean number of signal events of the trial.
-        n_sig : numpy.int64
+        n_sig
             The actual number of signal events in the trial.
-        gamma_src : numpy.float64
+        gamma_src
             The spectral index of the source.
-        mu_sig : numpy.float64
+        mu_sig
             The mean value of the Gaussian time PDF of the source.
-        sigma_sig : numpy.float64
+        sigma_sig
             The sigma value of the Gaussian time PDF of the source.
-        start_sig : numpy.float64
+        start_sig
             The start time of the box time PDF of the source.
-        stop_sig : numpy.float64
+        stop_sig
             The stop time of the box time PDF of the source.
-        ts : numpy.float64
+        ts
             The test-statistic value of the trial.
-        ns_fit : numpy.float64
+        ns_fit
             The fitted number of signal events.
-        ns_em : numpy.float64
+        ns_em
             The scaling factor of the flare.
-        gamma_fit : numpy.float64
+        gamma_fit
             The fitted spectral index of the trial.
-        gamma_em : numpy.float64
+        gamma_em
             The spectral index of the best EM trial.
-        mu_fit : numpy.float64
+        mu_fit
             The fitted mean value of the Gaussian time PDF.
-        sigma_fit : numpy.float64
+        sigma_fit
             The fitted sigma value of the Gaussian time PDF.
     """
     rss = RandomStateService(seed=seed)
@@ -695,103 +717,104 @@ def do_trials_with_em(
             trials = np.empty((n,), dtype=result.dtype)
         trials[i] = result[0]
 
+    assert trials is not None
     return trials
 
 
 def create_analysis(
-    cfg,
-    datasets,
-    source,
+    cfg: Config,
+    datasets: list[Dataset],
+    source: PointLikeSource,
     box=None,
     gauss=None,
-    refplflux_Phi0=1,
-    refplflux_E0=1e3,
-    refplflux_gamma=2.0,
-    ns_seed=10.0,
-    ns_min=0.0,
-    ns_max=1e3,
-    gamma_seed=3.0,
-    gamma_min=1.0,
-    gamma_max=5.0,
-    kde_smoothing=False,
+    refplflux_Phi0: float = 1,
+    refplflux_E0: float = 1e3,
+    refplflux_gamma: float = 2.0,
+    ns_seed: float = 10.0,
+    ns_min: float = 0.0,
+    ns_max: float = 1e3,
+    gamma_seed: float | None = 3.0,
+    gamma_min: float = 1.0,
+    gamma_max: float = 5.0,
+    kde_smoothing: bool = False,
     minimizer_impl='LBFGS',
-    compress_data=False,
-    keep_data_fields=None,
-    evt_sel_delta_angle_deg=10,
-    construct_bkg_generator=True,
-    construct_sig_generator=True,
-    tl=None,
-    ppbar=None,
-    logger_name=None,
-):
+    compress_data: bool = False,
+    keep_data_fields: list[str] | None = None,
+    evt_sel_delta_angle_deg: float = 10,
+    construct_bkg_generator: bool = True,
+    construct_sig_generator: bool = True,
+    tl: TimeLord | None = None,
+    ppbar: ProgressBar | None = None,
+    logger_name: str | None = None,
+) -> SingleSourceMultiDatasetLLHRatioAnalysis:
     """Creates the Analysis instance for this particular analysis.
 
     Parameters
     ----------
-    cfg : instance of Config
+    cfg
         The instance of Config holding the local configuration.
-    datasets : list of Dataset instances
+    datasets
         The list of Dataset instances, which should be used in the
         analysis.
-    source : PointLikeSource instance
+    source
         The PointLikeSource instance defining the point source position.
-    box : None or dictionary with start, stop
+    box
         None if no box shaped time pdf, else dictionary of the format
         ``{'start': float, 'stop': float}``.
-    gauss : None or dictionary with mu, sigma
+    gauss
         None if no gaussian time pdf, else dictionary of the format
         ``{'mu': float, 'sigma': float}``.
-    refplflux_Phi0 : float
+    refplflux_Phi0
         The flux normalization to use for the reference power law flux model.
-    refplflux_E0 : float
+    refplflux_E0
         The reference energy to use for the reference power law flux model.
-    refplflux_gamma : float
+    refplflux_gamma
         The spectral index to use for the reference power law flux model.
-    ns_seed : float
+    ns_seed
         Value to seed the minimizer with for the ns fit.
-    ns_min : float
+    ns_min
         Lower bound for ns fit.
-    ns_max : float
+    ns_max
         Upper bound for ns fit.
-    gamma_seed : float | None
+    gamma_seed
         Value to seed the minimizer with for the gamma fit. If set to None,
         the refplflux_gamma value will be set as gamma_seed.
-    gamma_min : float
+    gamma_min
         Lower bound for gamma fit.
-    gamma_max : float
+    gamma_max
         Upper bound for gamma fit.
-    kde_smoothing : bool
+    kde_smoothing
         Apply a KDE-based smoothing to the data-driven background pdf.
-        Default: False.
-    minimizer_impl : str | "LBFGS"
+        Default
+    minimizer_impl
         Minimizer implementation to be used. Supported options are "LBFGS"
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module), or
         "minuit" (Minuit minimizer used by the :mod:`iminuit` module).
-        Default: "LBFGS".
-    compress_data : bool
+        Default
+    compress_data
         Flag if the data should get converted from float64 into float32.
-    keep_data_fields : list of str | None
+    keep_data_fields
         List of additional data field names that should get kept when loading
         the data.
-    evt_sel_delta_angle_deg : float
+    evt_sel_delta_angle_deg
         The delta angle in degrees for the event selection optimization methods.
-    construct_bkg_generator : bool
+    construct_bkg_generator
         Flag if the background generator should be constructed (``True``) or not
         (``False``).
-    construct_sig_generator : bool
+    construct_sig_generator
         Flag if the signal generator should be constructed (``True``) or not
         (``False``).
-    tl : TimeLord instance | None
+    tl
         The TimeLord instance to use to time the creation of the analysis.
-    ppbar : ProgressBar instance | None
+    ppbar
         The instance of ProgressBar for the optional parent progress bar.
-    logger_name : str | None
+    logger_name
         The name of the logger to be used. If set to ``None``, ``__name__`` will
         be used.
 
     Returns
     -------
-    ana : instance of SingleSourceMultiDatasetLLHRatioAnalysis
+    ana
         The Analysis instance for this analysis.
     """
     add_icecube_specific_analysis_required_data_fields(cfg)
@@ -847,6 +870,8 @@ def create_analysis(
     param_ns = Parameter(name='ns', initial=ns_seed, valmin=ns_min, valmax=ns_max)
 
     # Define the fit parameter gamma.
+    if gamma_seed is None:
+        gamma_seed = refplflux_gamma
     if gamma_max > 4.0:
         logger.warning(
             'You are allowing `gamma` values larger than 4.0. '
@@ -904,20 +929,25 @@ def create_analysis(
     # Add the data sets to the analysis.
     pbar = ProgressBar(len(datasets), parent=ppbar).start()
     for ds_idx, ds in enumerate(datasets):
-        data = ds.load_and_prepare_data(
-            keep_fields=keep_data_fields, dtc_dict=dtc_dict, dtc_except_fields=dtc_except_fields, tl=tl
+        data = cast(
+            I3DatasetData,
+            ds.load_and_prepare_data(
+                keep_fields=keep_data_fields, dtc_dict=dtc_dict, dtc_except_fields=dtc_except_fields, tl=tl
+            ),
         )
 
         # Some runs might overlap slightly. So we need to clip those runs.
-        clip_grl_start_times(grl_data=data.grl)
+        clip_grl_start_times(grl_data=cast(np.ndarray, data.grl))
 
-        livetime = I3Livetime.from_grl_data(grl_data=data.grl)
+        livetime = I3Livetime.from_grl_data(grl_data=cast(np.ndarray, data.grl))
 
         sin_dec_binning = ds.get_binning_definition('sin_dec')
         log_energy_binning = ds.get_binning_definition('log_energy')
 
         # Create the spatial PDF ratio instance for this dataset.
-        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(cfg=cfg, dec_range=np.arcsin(sin_dec_binning.range))
+        spatial_sigpdf = RayleighPSFPointSourceSignalSpatialPDF(
+            cfg=cfg, dec_range=tuple(np.arcsin(sin_dec_binning.range))
+        )
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(cfg=cfg, data_exp=data.exp, sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(cfg=cfg, sig_pdf=spatial_sigpdf, bkg_pdf=spatial_bkgpdf)
 
@@ -948,7 +978,7 @@ def create_analysis(
                     start=livetime.time_start, stop=livetime.time_stop, cfg=cfg
                 ),
             )
-            time_sigpdf = create_signal_time_pdf(cfg=cfg, grl=data.grl, gauss=gauss, box=box)
+            time_sigpdf = create_signal_time_pdf(cfg=cfg, grl=cast(np.ndarray, data.grl), gauss=gauss, box=box)
             time_pdfratio = SigOverBkgPDFRatio(
                 cfg=cfg,
                 sig_pdf=time_sigpdf,
@@ -980,6 +1010,7 @@ def create_analysis(
             cumulative_thr=ds.get_aux_data('cumulative_threshold'),
         )
 
+        assert time_flux_profile is not None
         sig_generator = TimeDependentPDDatasetSignalGenerator(
             cfg=cfg,
             shg_mgr=shg_mgr,

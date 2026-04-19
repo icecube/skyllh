@@ -1,3 +1,8 @@
+from collections.abc import Callable, Sequence
+from typing import Any, cast
+
+import numpy as np
+
 from skyllh.core import (
     tool,
 )
@@ -15,7 +20,7 @@ class CRSMinimizerImpl(
     @tool.requires('nlopt')
     def __init__(
         self,
-        ftol=1e-6,
+        ftol: float = 1e-6,
         **kwargs,
     ):
         """Creates a new CRS minimizer instance to minimize a given
@@ -23,7 +28,7 @@ class CRSMinimizerImpl(
 
         Parameters
         ----------
-        ftol : float
+        ftol
             The function value tolerance as absolute value.
         """
         super().__init__(**kwargs)
@@ -32,24 +37,24 @@ class CRSMinimizerImpl(
 
     def minimize(
         self,
-        initials,
-        bounds,
-        func,
-        func_args=None,
+        initials: np.ndarray,
+        bounds: np.ndarray,
+        func: Callable,
+        func_args: Sequence | None = None,
         **kwargs,
-    ):
+    ) -> tuple[np.ndarray, float, dict]:
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials`` and within the given parameter bounds
         ``bounds``.
 
         Parameters
         ----------
-        initials : 1D numpy ndarray
+        initials
             The ndarray holding the initial values of all the fit parameters.
-        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+        bounds
             The ndarray holding the boundary values (vmin, vmax) of the fit
             parameters.
-        func : callable
+        func
             The function that should get minimized.
             The call signature must be
 
@@ -60,7 +65,7 @@ class CRSMinimizerImpl(
             the function gradient for each fit parameter, if the
             ``func_provides_grads`` keyword argument option is set to True.
             If set to False, ``func`` must return only the function value.
-        func_args : sequence | None
+        func_args
             Optional sequence of arguments for ``func``.
 
         Additional Keyword Arguments
@@ -78,12 +83,12 @@ class CRSMinimizerImpl(
 
         Returns
         -------
-        xmin : 1D ndarray
+        xmin
             The array containing the function arguments at the function's
             minimum.
-        fmin : float
+        fmin
             The function value at its minimum.
-        res : dictionary
+        res
             A dictionary with additional information.
         """
         if func_args is None:
@@ -91,7 +96,7 @@ class CRSMinimizerImpl(
         if kwargs is None:
             kwargs = dict()
 
-        nlopt = tool.get('nlopt')
+        nlopt = cast(Any, tool.get('nlopt'))
 
         opt = nlopt.opt(nlopt.GN_CRS2_LM, 2)
 
@@ -139,12 +144,12 @@ class CRSMinimizerImpl(
 
         return (x, val, res)
 
-    def get_message(self, status):
+    def get_message(self, status: int):
         """returns the message belonging to the minimizer status
 
         Parameters
         ----------
-        status : int
+        status
             The number of the minimizer status
         """
 
@@ -164,41 +169,41 @@ class CRSMinimizerImpl(
 
         return message[status]
 
-    def get_niter(self, status):
+    def get_niter(self, status: dict) -> int:
         """Returns the number of iterations needed to find the minimum.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        niter : int
+        niter
             The number of iterations needed to find the minimum.
         """
         return status['nfev']
 
-    def has_converged(self, status):
+    def has_converged(self, status: dict) -> bool:
         """Analyzes the status information dictionary if the minimization
         process has converged. By definition the minimization process has
         converged if ``status['is_valid']`` equals True.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        converged : bool
+        converged
             The flag if the minimization has converged (True), or not (False).
         """
         return bool(status['success'])
 
-    def is_repeatable(self, status):
+    def is_repeatable(self, status: dict) -> bool:
         """Checks if the minimization process can be repeated to get a better
         result.
 
@@ -207,13 +212,13 @@ class CRSMinimizerImpl(
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the last
             minimization process.
 
         Returns
         -------
-        repeatable : bool
+        repeatable
             The flag if the minimization process can be repeated to obtain a
             better minimum.
         """

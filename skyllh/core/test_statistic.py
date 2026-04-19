@@ -6,6 +6,10 @@ import abc
 
 import numpy as np
 
+from skyllh.core.llhratio import TCLLHRatio
+from skyllh.core.parameters import ParameterModelMapper
+from skyllh.core.timing import TimeLord
+
 
 class TestStatistic(metaclass=abc.ABCMeta):
     """This is the abstract base class for a test statistic class."""
@@ -15,25 +19,25 @@ class TestStatistic(metaclass=abc.ABCMeta):
         super().__init__(**kwargs)
 
     @abc.abstractmethod
-    def __call__(self, pmm, log_lambda, fitparam_values, **kwargs):
+    def __call__(self, pmm: ParameterModelMapper, log_lambda: float, fitparam_values: np.ndarray, **kwargs) -> float:
         """This method is supposed to evaluate the test-statistic function.
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
+        pmm
             The ParameterModelMapper instance that defines the global
             parameter set.
-        log_lambda : float
+        log_lambda
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_values : instance of numpy ndarray
+        fitparam_values
             The (N_fitparam,)-shaped 1D numpy ndarray holding the
             global fit parameter values of the log-likelihood ratio
             function for the given log_lambda value.
 
         Returns
         -------
-        TS : float
+        TS
             The calculated test-statistic value.
         """
         pass
@@ -51,12 +55,12 @@ class WilksTestStatistic(TestStatistic):
     :math:`\hat{n}_{\text{s}} < 0`, and positive otherwise.
     """
 
-    def __init__(self, ns_param_name='ns', **kwargs):
+    def __init__(self, ns_param_name: str = 'ns', **kwargs):
         """Constructs the test-statistic function instance.
 
         Parameters
         ----------
-        ns_param_name : str
+        ns_param_name
             The name of the global fit parameter for the number of signal
             events in the detector, ns.
         """
@@ -71,25 +75,25 @@ class WilksTestStatistic(TestStatistic):
         """
         return self._ns_param_name
 
-    def __call__(self, pmm, log_lambda, fitparam_values, **kwargs):
+    def __call__(self, pmm: ParameterModelMapper, log_lambda: float, fitparam_values: np.ndarray, **kwargs) -> float:
         """Evaluates the test-statistic function.
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
+        pmm
             The ParameterModelMapper instance that defines the global
             parameter set.
-        log_lambda : float
+        log_lambda
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_values : instance of numpy ndarray
+        fitparam_values
             The (N_fitparam,)-shaped 1D numpy ndarray holding the
             global fit parameter values of the log-likelihood ratio
             function for the given log_lambda value.
 
         Returns
         -------
-        TS : float
+        TS
             The calculated test-statistic value.
         """
         ns_pidx = pmm.get_gflp_idx(name=self._ns_param_name)
@@ -102,7 +106,7 @@ class WilksTestStatistic(TestStatistic):
 
         TS = 2 * sgn_ns * log_lambda
 
-        return TS
+        return float(TS)
 
 
 class LLHRatioZeroNsTaylorWilksTestStatistic(TestStatistic):
@@ -140,12 +144,12 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(TestStatistic):
     being its second derivative w.r.t. ns.
     """
 
-    def __init__(self, ns_param_name='ns', **kwargs):
+    def __init__(self, ns_param_name: str = 'ns', **kwargs):
         """Constructs the test-statistic function instance.
 
         Parameters
         ----------
-        ns_param_name : str
+        ns_param_name
             The name of the global fit parameter for the number of signal
             events in the detector, ns.
         """
@@ -160,34 +164,43 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(TestStatistic):
         """
         return self._ns_param_name
 
-    def __call__(self, pmm, log_lambda, fitparam_values, llhratio, grads, tl=None, **kwargs):
+    def __call__(  # type: ignore[override]
+        self,
+        pmm: ParameterModelMapper,
+        log_lambda: float,
+        fitparam_values: np.ndarray,
+        llhratio: TCLLHRatio,
+        grads: np.ndarray,
+        tl: TimeLord | None = None,
+        **kwargs,
+    ) -> float:
         """Evaluates the test-statistic function.
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
+        pmm
             The ParameterModelMapper instance that defines the global
             parameter set.
-        log_lambda : float
+        log_lambda
             The value of the log-likelihood ratio function. Usually, this is its
             maximum.
-        fitparam_values : instance of numpy ndarray
+        fitparam_values
             The (N_fitparam,)-shaped 1D numpy ndarray holding the
             global fit parameter values of the log-likelihood ratio
             function for the given log_lambda value.
-        llhratio : instance of LLHRatio
+        llhratio
             The log-likelihood ratio function, which should be used for the
             test-statistic function.
-        grads : instance of numpy ndarray
+        grads
             The (N_fitparam,)-shaped 1D numpy ndarray holding the
             values of the first derivative of the log-likelihood ratio function
             w.r.t. each global fit parameter.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to measure timing information.
 
         Returns
         -------
-        TS : float
+        TS
             The calculated test-statistic value.
         """
         ns_pidx = pmm.get_gflp_idx(name=self._ns_param_name)
@@ -196,7 +209,7 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(TestStatistic):
 
         if ns == 0:
             nsgrad = grads[ns_pidx]
-            nsgrad2 = llhratio.calculate_ns_grad2(fitparam_values=fitparam_values, ns_pidx=ns_pidx, tl=tl)
+            nsgrad2 = llhratio.calculate_ns_grad2(ns=float(ns), src_params_recarray=np.empty(0), ns_pidx=ns_pidx, tl=tl)  # type: ignore[call-arg]
 
             TS = -2 * nsgrad**2 / (4 * nsgrad2)
 

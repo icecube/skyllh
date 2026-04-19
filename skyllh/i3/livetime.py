@@ -17,24 +17,24 @@ class I3Livetime(Livetime):
     """
 
     @classmethod
-    def from_grl_data(cls, grl_data):
+    def from_grl_data(cls, grl_data: np.ndarray) -> 'I3Livetime':
         """Creates an I3LiveTime instance from the given good-run-list (GRL)
         data.
 
         Parameters
         ----------
-        grl_data : instance of numpy structured ndarray.
+        grl_data
             The numpy structured ndarray of length N_runs holding the start end
             end times of the good runs. The following fields need to exist:
 
-            start : float
+            start
                 The MJD of the run start.
-            end : float
+            end
                 The MJD of the run stop.
 
         Returns
         -------
-        livetime : instance of I3Livetime
+        livetime
             The created instance of I3Livetime for the provided GRL data.
         """
         uptime_mjd_intervals_arr = np.hstack(
@@ -46,7 +46,7 @@ class I3Livetime(Livetime):
         return livetime
 
     @staticmethod
-    def from_grl_files(pathfilenames):
+    def from_grl_files(pathfilenames: str | list[str]) -> 'I3Livetime':
         """Loads an I3Livetime instance from the given good-run-list (GRL) data
         file. The data file needs to contain the following data fields:
 
@@ -57,12 +57,12 @@ class I3Livetime(Livetime):
 
         Parameters
         ----------
-        pathfilenames : str | list of str
-            The list of fully qualified file names of the GRL data files.
+        pathfilenames
+            The list of fully qualified file name(s) of the GRL data file(s).
 
         Returns
         -------
-        livetime : instance of I3Livetime
+        livetime
             The created instance of I3Livetime for the provided GRL data.
         """
         grl_data = create_FileLoader(pathfilenames).load_data()
@@ -76,19 +76,19 @@ class I3Livetime(Livetime):
         return livetime
 
     @staticmethod
-    def from_I3Dataset(ds):
+    def from_I3Dataset(ds: I3Dataset) -> 'I3Livetime':
         """Loads an I3Livetime instance from a given I3Dataset instance, which
         must have a good-run-list (GRL) files defined.
 
         Parameters
         ----------
-        ds : I3Dataset instance
+        ds
             The instance of I3Dataset which defined the good-run-list (GRL)
             files for the dataset.
 
         Returns
         -------
-        livetime : instance of I3Livetime
+        livetime
             The created instance of I3Livetime for the GRL data from the
             provided dataset.
         """

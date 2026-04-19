@@ -4,6 +4,7 @@ from numpy.lib.recfunctions import (
     repack_fields,
 )
 
+from skyllh.core.interpolate import GridManifoldInterpolationMethod
 from skyllh.core.multiproc import (
     IsParallelizable,
     parallelize,
@@ -15,9 +16,12 @@ from skyllh.core.pdfratio_fill import (
     MostSignalLikePDFRatioFillMethod,
     PDFRatioFillMethod,
 )
+from skyllh.core.progressbar import ProgressBar
 from skyllh.core.py import (
     make_dict_hash,
 )
+from skyllh.core.timing import TimeLord
+from skyllh.core.trialdata import TrialDataManager
 
 
 class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizable):
@@ -35,10 +39,10 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
         self,
         sig_pdf_set,
         bkg_pdf,
-        fillmethod=None,
-        interpolmethod_cls=None,
-        ncpu=None,
-        ppbar=None,
+        fillmethod: PDFRatioFillMethod | None = None,
+        interpolmethod_cls: type[GridManifoldInterpolationMethod] | None = None,
+        ncpu: int | None = None,
+        ppbar: ProgressBar | None = None,
         **kwargs,
     ):
         """Creates a new IceCube signal-over-background energy PDF ratio spline
@@ -46,25 +50,25 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
         Parameters
         ----------
-        sig_pdf_set : class instance derived from PDFSet (for PDF type
+        sig_pdf_set
                        I3EnergyPDF), IsSignalPDF, and UsesBinning
             The PDF set, which provides signal energy PDFs for a set of
             discrete signal parameters.
-        bkg_pdf : class instance derived from I3EnergyPDF, and
+        bkg_pdf
                         IsBackgroundPDF
             The background energy PDF object.
-        fillmethod : instance of PDFRatioFillMethod | None
+        fillmethod
             An instance of class derived from PDFRatioFillMethod that implements
             the desired ratio fill method.
             If set to None (default), the default ratio fill method
             MostSignalLikePDFRatioFillMethod will be used.
-        interpolmethod_cls : class of GridManifoldInterpolationMethod
+        interpolmethod_cls
             The class implementing the parameter interpolation method for
             the PDF ratio manifold grid.
-        ncpu : int | None
+        ncpu
             The number of CPUs to use to create the ratio splines for the
             different sets of signal parameters.
-        ppbar : ProgressBar instance | None
+        ppbar
             The instance of ProgressBar of the optional parent progress bar.
 
         Raises
@@ -92,7 +96,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
             Returns
             -------
-            log_ratio_spline : instance of RegularGridInterpolator
+            log_ratio_spline
                 The spline of the logarithmic PDF ratio values.
             """
             # Get the signal PDF for the given signal parameters.
@@ -149,7 +153,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
             self._gridparams_hash_log_ratio_spline_dict[gridparams_hash] = log_ratio_spline
 
         # Save the list of data field names.
-        self._data_field_names = [binning.name for binning in self._bkg_pdf.binnings]
+        self._data_field_names = [binning.name for binning in self._bkg_pdf.binnings]  # type: ignore[attr-defined]
 
         # Construct the instance for the parameter interpolation method.
         self._interpolmethod = self._interpolmethod_cls(
@@ -180,20 +184,26 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
             raise TypeError('The fillmethod property must be an instance of PDFRatioFillMethod!')
         self._fillmethod = obj
 
-    def _create_cache(self, trial_data_state_id, interpol_params_recarray, ratio, grads):
+    def _create_cache(
+        self,
+        trial_data_state_id: int | None,
+        interpol_params_recarray: np.ndarray | None,
+        ratio: np.ndarray | None,
+        grads: np.ndarray | None,
+    ):
         """Creates a cache dictionary holding cache data.
 
         Parameters
         ----------
-        trial_data_state_id : int | None
+        trial_data_state_id
             The trial data state ID of the TrialDataManager.
-        interpol_params_recarray : instance of numpy record ndarray | None
+        interpol_params_recarray
             The numpy record ndarray of length N_sources holding the parameter
             names and values necessary for the interpolation for all sources.
-        ratio : instance of numpy ndarray
+        ratio
             The (N_values,)-shaped numpy ndarray holding the PDF ratio values
             for all sources and trial events.
-        grads : instance of numpy ndarray
+        grads
             The (D,N_values)-shaped numpy ndarray holding the gradients for each
             PDF ratio value w.r.t. each interpolation parameter.
         """
@@ -218,18 +228,20 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
         return np.all(self._cache['interpol_params_recarray'] == interpol_params_recarray)
 
-    def _get_spline_for_param_values(self, interpol_param_values):
+    def _get_spline_for_param_values(
+        self, interpol_param_values: np.ndarray
+    ) -> scipy.interpolate.RegularGridInterpolator:
         """Retrieves the spline for a given set of parameter values.
 
         Parameters
         ----------
-        interpol_param_values : instance of numpy ndarray
+        interpol_param_values
             The (N_interpol_params,)-shaped numpy ndarray holding the values of
             the interpolation parameters.
 
         Returns
         -------
-        spline : instance of scipy.interpolate.RegularGridInterpolator
+        spline
             The requested spline instance.
         """
         gridparams = dict(zip(self._interpol_param_names, interpol_param_values, strict=True))
@@ -239,37 +251,40 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
         return spline
 
-    def _evaluate_splines(self, tdm, eventdata, gridparams_recarray, n_values):
+    def _evaluate_splines(
+        self, tdm: TrialDataManager, eventdata: np.ndarray, gridparams_recarray: np.ndarray, n_values: int
+    ) -> np.ndarray:
         """For each set of parameter values given by ``gridparams_recarray``,
         the spline is retrieved and evaluated for the events suitable for that
         source model.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data and the event
             mapping to the sources via the ``src_evt_idx`` property.
-        eventdata : instance of numpy ndarray
+        eventdata
             The (V,N_events)-shaped numpy ndarray holding the event data, where
             N_events is the number of events, and V the dimensionality of the
             event data.
-        gridparams_recarray : instance of numpy structured ndarray
+        gridparams_recarray
             The numpy structured ndarray of length N_sources with the parameter
             names and values needed for the interpolation on the grid for all
             sources. If the length of this record array is 1, the set of
             parameters will be used for all sources.
-        n_values : int
+        n_values
             The size of the output array.
 
         Returns
         -------
-        values : instance of ndarray
+        values
             The (N_values,)-shaped numpy ndarray holding the values for each set
             of parameter values of the ``gridparams_recarray``. The length of
             the array depends on the ``src_evt_idx`` property of the
             TrialDataManager. In the worst case it is
             ``N_sources * N_selected_events``.
         """
+        assert tdm.src_evt_idxs is not None
         (src_idxs, evt_idxs) = tdm.src_evt_idxs
 
         # Check for special case when a single set of parameters are provided.
@@ -300,7 +315,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
         return values
 
-    def _create_interpol_params_recarray(self, src_params_recarray):
+    def _create_interpol_params_recarray(self, src_params_recarray: np.ndarray) -> np.ndarray:
         """Creates the params_recarray needed for the interpolation. It selects
         The interpolation parameters from the ``params_recarray`` argument.
         If all parameters have the same value for all sources, the length will
@@ -308,13 +323,13 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
         Parameters
         ----------
-        src_params_recarray : instance of numpy record ndarray
+        src_params_recarray
             The numpy record ndarray of length N_sources holding all local
             parameter names and values.
 
         Returns
         -------
-        interpol_params_recarray : instance of numpy record ndarray
+        interpol_params_recarray
             The numpy record ndarray of length N_sources or 1 holding only the
             parameters needed for the interpolation.
         """
@@ -330,16 +345,16 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
         return interpol_params_recarray
 
-    def _calculate_ratio_and_grads(self, tdm, interpol_params_recarray):
+    def _calculate_ratio_and_grads(self, tdm: TrialDataManager, interpol_params_recarray: np.ndarray):
         """Calculates the ratio values and ratio gradients for all the sources
         and trial events given the source parameter values.
         The result is stored in the class member variable ``_cache``.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data.
-        interpol_params_recarray : instance of numpy record ndarray
+        interpol_params_recarray
             The numpy record ndarray of length N_sources holding the parameter
             names and values for all sources.
             It must contain only the parameters necessary for the interpolation.
@@ -364,7 +379,9 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
             grads=grads,
         )
 
-    def get_ratio(self, tdm, src_params_recarray, tl=None):
+    def get_ratio(
+        self, tdm: TrialDataManager, src_params_recarray: np.ndarray, tl: TimeLord | None = None
+    ) -> np.ndarray:
         """Retrieves the PDF ratio values for each given trial event data, given
         the given set of fit parameters. This method is called during the
         likelihood maximization process.
@@ -373,21 +390,21 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial event data for which
             the PDF ratio values should get calculated.
-        src_params_recarray : instance of numpy record ndarray | None
+        src_params_recarray
             The (N_sources,)-shaped numpy record ndarray holding the parameter
             names and values of the sources. See the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             for more information.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratio : instance of numpy ndarray
+        ratio
             The (N_values,)-shaped numpy ndarray of float holding the PDF ratio
             value for each source and trial event.
         """
@@ -404,35 +421,42 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
 
         return self._cache['ratio']
 
-    def get_gradient(self, tdm, src_params_recarray, fitparam_id, tl=None):
+    def get_gradient(
+        self,
+        tdm: TrialDataManager,
+        src_params_recarray: np.ndarray | None,
+        fitparam_id: int,
+        tl: TimeLord | None = None,
+    ) -> np.ndarray:
         """Retrieves the PDF ratio gradient for the given fit parameter
         ``fitparam_id``.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial event data for which
             the PDF ratio gradient values should get calculated.
-        src_params_recarray : instance of numpy record ndarray | None
+        src_params_recarray
             The (N_sources,)-shaped numpy record ndarray holding the local
             parameter names and values of all sources. See the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
-        fitparam_id : int
+        fitparam_id
             The ID of the global fit parameter for which the gradient should
             get calculated.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        grad : instance of ndarray
+        grad
             The (N_values,)-shaped numpy ndarray holding the gradient values
             for all sources and trial events w.r.t. the given global fit
             parameter.
         """
         # Select only the parameters necessary for the interpolation.
+        assert src_params_recarray is not None
         interpol_params_recarray = self._create_interpol_params_recarray(src_params_recarray)
 
         # Calculate the gradients if necessary.

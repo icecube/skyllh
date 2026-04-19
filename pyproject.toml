@@ -7,7 +7,7 @@ name = "skyllh"
 dynamic = ["version"]
 description = "The SkyLLH framework is an open-source Python3-based package licensed under the GPLv3 license. It provides a modular framework for implementing custom likelihood functions and executing log-likelihood ratio hypothesis tests. The idea is to provide a class structure tied to the mathematical objects of the likelihood functions."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "GPL-3+"}
 authors = [
     {name = "Martin Wolf", email = "martin.wolf@tum.de"},
@@ -19,7 +19,6 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: POSIX",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -27,7 +26,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
-    "astropy",
+    "astropy>=7.0",
     "matplotlib",
     "numpy",
     "pyyaml",
@@ -44,6 +43,7 @@ Issues = "https://github.com/icecube/skyllh/issues"
 dev = [
     "pre-commit",
     "pytest>=9.0.0",
+    "pyright",
 ]
 docs = [
     "sphinx<9.0.0",
@@ -64,7 +64,7 @@ extras = [
 include = ["skyllh*"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
@@ -83,3 +83,12 @@ quote-style = "single"
 minversion = "9.0"
 addopts = ["-ra"]
 testpaths = ["tests"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+
+include = [
+    "skyllh",
+    "tests",
+]

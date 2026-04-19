@@ -3,6 +3,8 @@ import copy
 import os.path
 import pickle
 import sys
+from collections.abc import Sequence
+from typing import Any, cast, overload
 
 import numpy as np
 
@@ -25,16 +27,16 @@ from skyllh.core.py import (
 _FILE_LOADER_REG = dict()
 
 
-def register_FileLoader(formats, fileloader_cls):
+def register_FileLoader(formats: str | Sequence[str], fileloader_cls: type['FileLoader']):
     """Registers the given file formats (file extensions) to the given
     FileLoader class.
 
     Parameters
     ----------
-    formats : str | list of str
+    formats
         The list of file name extensions that should be mapped to the FileLoader
         class.
-    fileloader_cls : instance of FileLoader
+    fileloader_cls
         The subclass of FileLoader that should be used for the given file
         formats.
     """
@@ -51,14 +53,14 @@ def register_FileLoader(formats, fileloader_cls):
         _FILE_LOADER_REG[fmt] = fileloader_cls
 
 
-def create_FileLoader(pathfilenames, **kwargs):
+def create_FileLoader(pathfilenames: str | Sequence[str], **kwargs) -> 'FileLoader':
     """Creates the appropriate FileLoader object for the given file names.
     It looks up the FileLoader class from the FileLoader registry for the
     file name extension of the first file name in the given list.
 
     Parameters
     ----------
-    pathfilenames : str | sequence of str
+    pathfilenames
         The sequence of fully qualified file names of the files that should be
         loaded.
 
@@ -69,7 +71,7 @@ def create_FileLoader(pathfilenames, **kwargs):
 
     Returns
     -------
-    fileloader : FileLoader
+    fileloader
         The appropriate FileLoader instance for the given type of data files.
     """
     if isinstance(pathfilenames, str):
@@ -100,13 +102,13 @@ def assert_file_exists(pathfilename):
 class FileLoader(metaclass=abc.ABCMeta):
     """Abstract base class for a FileLoader class."""
 
-    def __init__(self, pathfilenames, **kwargs):
+    def __init__(self, pathfilenames: str | Sequence[str], **kwargs):
         """Creates a new FileLoader instance.
 
         Parameters
         ----------
-        pathfilenames : str | sequence of str
-            The sequence of fully qualified file names of the data files that
+        pathfilenames
+            The sequence of fully qualified file name(s) of the data file(s) that
             need to be loaded.
         """
         super().__init__(**kwargs)
@@ -127,7 +129,7 @@ class FileLoader(metaclass=abc.ABCMeta):
         self._pathfilename_list = list(pathfilenames)
 
     @abc.abstractmethod
-    def load_data(self, **kwargs):
+    def load_data(self, **kwargs) -> Any:
         """This method is supposed to load the data from the file."""
         pass
 
@@ -139,32 +141,32 @@ class NPYFileLoader(FileLoader):
     several data files.
     """
 
-    def __init__(self, pathfilenames, **kwargs):
+    def __init__(self, pathfilenames: str | Sequence[str], **kwargs):
         """Creates a new NPYFileLoader instance.
 
         Parameters
         ----------
-        pathfilenames : str | sequence of str
+        pathfilenames
             The sequence of fully qualified file names of the data files that
             need to be loaded.
         """
         super().__init__(pathfilenames=pathfilenames, **kwargs)
 
     def _load_file_memory_efficiently(
-        self, pathfilename, keep_fields, dtype_conversions, dtype_conversion_except_fields
-    ):
+        self, pathfilename: str, keep_fields: list[str] | None, dtype_conversions, dtype_conversion_except_fields
+    ) -> 'DataFieldRecordArray':
         """Loads a single file in a memory efficient way.
 
         Parameters
         ----------
-        pathfilename : str
+        pathfilename
             The fully qualified file name of the to-be-loaded file.
-        keep_fields : list of str | None
+        keep_fields
             The list of field names which should be kept.
 
         Returns
         -------
-        data : DataFieldRecordArray instance
+        data
             An instance of DataFieldRecordArray holding the data.
         """
         assert_file_exists(pathfilename)
@@ -239,25 +241,29 @@ class NPYFileLoader(FileLoader):
 
         return data
 
-    def load_data(
-        self, keep_fields=None, dtype_conversions=None, dtype_conversion_except_fields=None, efficiency_mode=None
-    ):
+    def load_data(  # type: ignore[override]
+        self,
+        keep_fields: str | Sequence[str] | None = None,
+        dtype_conversions: dict | None = None,
+        dtype_conversion_except_fields: str | Sequence[str] | None = None,
+        efficiency_mode: str | None = None,
+    ) -> 'DataFieldRecordArray':
         """Loads the data from the files specified through their fully qualified
         file names.
 
         Parameters
         ----------
-        keep_fields : str | sequence of str | None
+        keep_fields
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
-        dtype_conversions : dict | None
+        dtype_conversions
             If not None, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_conversion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields
             The sequence of field names whose data type should not get
             converted.
-        efficiency_mode : str | None
+        efficiency_mode
             The efficiency mode the data should get loaded with. Possible values
             are:
 
@@ -275,7 +281,7 @@ class NPYFileLoader(FileLoader):
 
         Returns
         -------
-        data : instance of DataFieldRecordArray
+        data
             The DataFieldRecordArray holding the loaded data.
 
         Raises
@@ -342,12 +348,12 @@ class ParquetFileLoader(FileLoader):
     """
 
     @tool.requires('pyarrow', 'pyarrow.parquet')
-    def __init__(self, pathfilenames, **kwargs):
+    def __init__(self, pathfilenames: str | Sequence[str], **kwargs):
         """Creates a new file loader instance for parquet data files.
 
         Parameters
         ----------
-        pathfilenames : str | sequence of str
+        pathfilenames
             The sequence of fully qualified file names of the data files that
             need to be loaded.
         """
@@ -358,35 +364,35 @@ class ParquetFileLoader(FileLoader):
 
     def load_data(
         self,
-        keep_fields=None,
-        dtype_conversions=None,
-        dtype_conversion_except_fields=None,
-        copy=False,
+        keep_fields: str | Sequence[str] | None = None,
+        dtype_conversions: dict | None = None,
+        dtype_conversion_except_fields: str | Sequence[str] | None = None,
+        copy: bool = False,
         **kwargs,
-    ):
+    ) -> 'DataFieldRecordArray':
         """Loads the data from the files specified through their fully qualified
         file names.
 
         Parameters
         ----------
-        keep_fields : str | sequence of str | None
+        keep_fields
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
-        dtype_conversions : dict | None
+        dtype_conversions
             If not ``None``, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_conversion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields
             The sequence of field names whose data type should not get
             converted.
-        copy : bool
+        copy
             If set to ``True``, the column data from the pyarrow.Table instance
             will be copied into the DataFieldRecordArray. This should not be
             necessary.
 
         Returns
         -------
-        data : instance of DataFieldRecordArray
+        data
             The DataFieldRecordArray holding the loaded data.
         """
         assert_file_exists(self.pathfilename_list[0])
@@ -414,15 +420,15 @@ class PKLFileLoader(FileLoader):
     `pickle.load` function for loading the data from the file.
     """
 
-    def __init__(self, pathfilenames, pkl_encoding=None, **kwargs):
+    def __init__(self, pathfilenames: str | Sequence[str], pkl_encoding: str | None = None, **kwargs):
         """Creates a new file loader instance for a pickled data file.
 
         Parameters
         ----------
-        pathfilenames : str | sequence of str
+        pathfilenames
             The sequence of fully qualified file names of the data files that
             need to be loaded.
-        pkl_encoding : str | None
+        pkl_encoding
             The encoding of the pickled data files. If None, the default
             encodings 'ASCII' and 'latin1' will be tried to load the data.
         """
@@ -450,7 +456,7 @@ class PKLFileLoader(FileLoader):
 
         Returns
         -------
-        data : Python object | list of Python objects
+        data
             The de-pickled Python object. If more than one file was specified,
             this is a list of Python objects, i.e. one object for each file.
             The file <-> object mapping order is preserved.
@@ -501,17 +507,23 @@ class TextFileLoader(FileLoader):
     first line of the text file for a table header.
     """
 
-    def __init__(self, pathfilenames, header_comment='#', header_separator=None, **kwargs):
+    def __init__(
+        self,
+        pathfilenames: str | Sequence[str],
+        header_comment: str = '#',
+        header_separator: str | None = None,
+        **kwargs,
+    ):
         """Creates a new file loader instance for a text data file.
 
         Parameters
         ----------
-        pathfilenames : str | sequence of str
+        pathfilenames
             The sequence of fully qualified file names of the data files that
             need to be loaded.
-        header_comment : str
+        header_comment
             The character that defines a comment line in the text file.
-        header_separator : str | None
+        header_separator
             The separator of the header field names. If None, it assumes
             whitespaces.
         """
@@ -544,18 +556,18 @@ class TextFileLoader(FileLoader):
             raise TypeError('The header_separator property must be None or of type str!')
         self._header_separator = s
 
-    def _extract_column_names(self, line):
+    def _extract_column_names(self, line: str) -> list[str] | None:
         """Tries to extract the column names of the data table based on the
         given line.
 
         Parameters
         ----------
-        line : str
+        line
             The text line containing the column names.
 
         Returns
         -------
-        names : list of str | None
+        names
             The column names.
             It returns None, if the column names cannot be extracted.
         """
@@ -578,28 +590,34 @@ class TextFileLoader(FileLoader):
 
         return names
 
-    def _load_file(self, pathfilename, keep_fields, dtype_conversions, dtype_conversion_except_fields):
+    def _load_file(
+        self,
+        pathfilename: str,
+        keep_fields: str | Sequence[str] | None,
+        dtype_conversions: dict | None,
+        dtype_conversion_except_fields: str | Sequence[str] | None,
+    ) -> 'DataFieldRecordArray':
         """Loads the given file.
 
         Parameters
         ----------
-        pathfilename : str
+        pathfilename
             The fully qualified file name of the data file that
             need to be loaded.
-        keep_fields : str | sequence of str | None
+        keep_fields
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
-        dtype_conversions : dict | None
+        dtype_conversions
             If not None, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_conversion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields
             The sequence of field names whose data type should not get
             converted.
 
         Returns
         -------
-        data : DataFieldRecordArray instance
+        data
             The DataFieldRecordArray instance holding the loaded data.
         """
         assert_file_exists(pathfilename)
@@ -637,26 +655,32 @@ class TextFileLoader(FileLoader):
 
         return data
 
-    def load_data(self, keep_fields=None, dtype_conversions=None, dtype_conversion_except_fields=None, **kwargs):
+    def load_data(
+        self,
+        keep_fields: str | Sequence[str] | None = None,
+        dtype_conversions: dict | None = None,
+        dtype_conversion_except_fields: str | Sequence[str] | None = None,
+        **kwargs,
+    ) -> 'DataFieldRecordArray':
         """Loads the data from the data files specified through their fully
         qualified file names.
 
         Parameters
         ----------
-        keep_fields : str | sequence of str | None
+        keep_fields
             Load the data into memory only for these data fields. If set to
             ``None``, all in-file-present data fields are loaded into memory.
-        dtype_conversions : dict | None
+        dtype_conversions
             If not None, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_conversion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields
             The sequence of field names whose data type should not get
             converted.
 
         Returns
         -------
-        data : instance of DataFieldRecordArray
+        data
             The DataFieldRecordArray holding the loaded data.
 
         Raises
@@ -709,9 +733,7 @@ class TextFileLoader(FileLoader):
         return data
 
 
-class DataTableAccessor(
-    metaclass=abc.ABCMeta,
-):
+class DataTableAccessor(metaclass=abc.ABCMeta):
     """This class provides an interface wrapper to access the data table of a
     particular format in a unified way.
     """
@@ -720,45 +742,43 @@ class DataTableAccessor(
         super().__init__(**kwargs)
 
     @abc.abstractmethod
-    def get_column(self, data, name):
+    def get_column(self, data: Any, name: str) -> np.ndarray:
         """This method is supposed to return a numpy.ndarray holding the data of
         the column with name ``name``.
 
         Parameters
         ----------
-        data : any
+        data
             The data table.
-        name : str
+        name
             The name of the column.
 
         Returns
         -------
-        arr : instance of numpy.ndarray
+        arr
             The column data as numpy ndarray.
         """
         pass
 
     @abc.abstractmethod
-    def get_field_names(self, data):
+    def get_field_names(self, data) -> list:
         """This method is supposed to return a list of field names."""
         pass
 
     @abc.abstractmethod
-    def get_field_name_to_dtype_dict(self, data):
+    def get_field_name_to_dtype_dict(self, data) -> dict:
         """This method is supposed to return a dictionary with field name and
         numpy dtype instance for each field.
         """
         pass
 
     @abc.abstractmethod
-    def get_length(self, data):
+    def get_length(self, data) -> int:
         """This method is supposed to return the length of the data table."""
         pass
 
 
-class NDArrayDataTableAccessor(
-    DataTableAccessor,
-):
+class NDArrayDataTableAccessor(DataTableAccessor):
     """This class provides an interface wrapper to access the data table stored
     as a structured numpy ndarray.
     """
@@ -766,14 +786,14 @@ class NDArrayDataTableAccessor(
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def get_column(self, data, name):
+    def get_column(self, data: np.ndarray, name: str):
         """Gets the column data from the structured ndarray.
 
         Parameters
         ----------
-        data : instance of numpy.ndarray
+        data
             The structured numpy ndarray holding the table data.
-        name : str
+        name
             The name of the column.
         """
         return data[name]
@@ -794,9 +814,7 @@ class NDArrayDataTableAccessor(
         return length
 
 
-class DictDataTableAccessor(
-    DataTableAccessor,
-):
+class DictDataTableAccessor(DataTableAccessor):
     """This class provides an interface wrapper to access the data table stored
     as a Python dictionary.
     """
@@ -804,14 +822,14 @@ class DictDataTableAccessor(
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def get_column(self, data, name):
+    def get_column(self, data: dict, name: str):
         """Gets the column data from the dictionary.
 
         Parameters
         ----------
-        data : dict
+        data
             The dictionary holding the table data.
-        name : str
+        name
             The name of the column.
         """
         return data[name]
@@ -834,9 +852,7 @@ class DictDataTableAccessor(
         return length
 
 
-class ParquetDataTableAccessor(
-    DataTableAccessor,
-):
+class ParquetDataTableAccessor(DataTableAccessor):
     """This class provides an interface wrapper to access the data table stored
     as a Parquet table.
     """
@@ -844,14 +860,14 @@ class ParquetDataTableAccessor(
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def get_column(self, data, name):
+    def get_column(self, data, name: str):
         """Gets the column data from the Parquet table.
 
         Parameters
         ----------
-        data : instance of pyarrow.Table
+        data
             The instance of pyarrow.Table holding the table data.
-        name : str
+        name
             The name of the column.
         """
         return data[name].to_numpy()
@@ -871,20 +887,18 @@ class ParquetDataTableAccessor(
         return len(data)
 
 
-class DataFieldRecordArrayDataTableAccessor(
-    DataTableAccessor,
-):
+class DataFieldRecordArrayDataTableAccessor(DataTableAccessor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def get_column(self, data, name):
+    def get_column(self, data, name: str):
         """Gets the column data from the Parquet table.
 
         Parameters
         ----------
-        data : instance of pyarrow.Table
+        data
             The instance of pyarrow.Table holding the table data.
-        name : str
+        name
             The name of the column.
         """
         return data[name]
@@ -913,18 +927,18 @@ class DataFieldRecordArray:
 
     def __init__(
         self,
-        data,
-        data_table_accessor=None,
-        keep_fields=None,
-        dtype_conversions=None,
-        dtype_conversion_except_fields=None,
-        copy=True,
+        data: Any | None,
+        data_table_accessor: 'DataTableAccessor | None' = None,
+        keep_fields: str | Sequence[str] | None = None,
+        dtype_conversions: dict | None = None,
+        dtype_conversion_except_fields: str | Sequence[str] | None = None,
+        copy: bool = True,
     ):
         """Creates a DataFieldRecordArray from the given data.
 
         Parameters
         ----------
-        data : any | None
+        data
             The tabulated data in any format. The only requirement is that
             there is a DataTableAccessor instance available for the given data
             format. Supported data types are:
@@ -941,21 +955,21 @@ class DataFieldRecordArray:
 
             If set to `None`, the DataFieldRecordArray instance is initialized
             with no data and the length of the array is set to 0.
-        data_table_accessor : instance of DataTableAccessor | None
+        data_table_accessor
             The instance of DataTableAccessor which provides column access to
             ``data``. If set to ``None``, an appropriate ``DataTableAccessor``
             instance will be selected based on the type of ``data``.
-        keep_fields : str | sequence of str | None
+        keep_fields
             If not None (default), this specifies the data fields that should
             get kept from the given data. Otherwise all data fields get kept.
-        dtype_conversions : dict | None
+        dtype_conversions
             If not None, this dictionary defines how data fields of specific
             data types get converted into the specified data types.
             This can be used to use less memory.
-        dtype_conversion_except_fields : str | sequence of str | None
+        dtype_conversion_except_fields
             The sequence of field names whose data type should not get
             converted.
-        copy : bool
+        copy
             Flag if the input data should get copied. Default is True. If a
             DataFieldRecordArray instance is provided, this option is set to
             ``True`` automatically.
@@ -1000,9 +1014,10 @@ class DataFieldRecordArray:
             else:
                 raise TypeError(f'No TableDataAccessor instance has been specified for the data of type {type(data)}!')
 
-        field_names = data_table_accessor.get_field_names(data)
-        fname2dtype = data_table_accessor.get_field_name_to_dtype_dict(data)
-        length = data_table_accessor.get_length(data)
+        _dta = cast(DataTableAccessor, data_table_accessor)
+        field_names = _dta.get_field_names(data)
+        fname2dtype = _dta.get_field_name_to_dtype_dict(data)
+        length = _dta.get_length(data)
 
         for fname in field_names:
             # Ignore fields that should not get kept.
@@ -1021,9 +1036,9 @@ class DataFieldRecordArray:
                 # Create a ndarray with the final data type and then assign the
                 # values from the data, which technically is a copy.
                 field_arr = np.empty((length,), dtype=dt)
-                np.copyto(field_arr, data_table_accessor.get_column(data, fname))
+                np.copyto(field_arr, _dta.get_column(data, fname))
             else:
-                field_arr = data_table_accessor.get_column(data, fname)
+                field_arr = _dta.get_column(data, fname)
 
             if self._len is None:
                 self._len = len(field_arr)
@@ -1044,29 +1059,33 @@ class DataFieldRecordArray:
         self._field_name_list = list(self._data_fields.keys())
         self._indices = None
 
-    def __contains__(self, name):
+    def __contains__(self, name: str) -> bool:
         """Checks if the given field exists in this DataFieldRecordArray
         instance.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the field.
 
         Returns
         -------
-        check : bool
+        check
             True, if the given field exists in this DataFieldRecordArray
             instance, False otherwise.
         """
         return name in self._data_fields
 
-    def __getitem__(self, name):
+    @overload
+    def __getitem__(self, name: str) -> np.ndarray: ...
+    @overload
+    def __getitem__(self, name: np.ndarray) -> 'DataFieldRecordArray': ...
+    def __getitem__(self, name: str | np.ndarray) -> 'np.ndarray | DataFieldRecordArray':
         """Implements data field value access.
 
         Parameters
         ----------
-        name : str | numpy ndarray of int or bool
+        name
             The name of the data field. If a numpy ndarray is given, it must
             contain the indices for which to retrieve a data selection of the
             entire DataFieldRecordArray. A numpy ndarray of bools can be given
@@ -1079,7 +1098,7 @@ class DataFieldRecordArray:
 
         Returns
         -------
-        data : numpy ndarray | instance of DataFieldRecordArray
+        data
             The requested field data or a DataFieldRecordArray holding the
             requested selection of the entire data.
         """
@@ -1091,17 +1110,21 @@ class DataFieldRecordArray:
 
         return self._data_fields[name]
 
-    def __setitem__(self, name, arr):
+    @overload
+    def __setitem__(self, name: str, arr: np.ndarray) -> None: ...
+    @overload
+    def __setitem__(self, name: np.ndarray, arr: 'DataFieldRecordArray') -> None: ...
+    def __setitem__(self, name: str | np.ndarray, arr: 'np.ndarray | DataFieldRecordArray') -> None:
         """Implements data field value assignment. If values are assigned to a
         data field that does not exist yet, it  will be added via the
         ``append_field`` method.
 
         Parameters
         ----------
-        name : str | numpy ndarray of int or bool
+        name
             The name of the data field, or a numpy ndarray holding the indices
             or mask of a selection of this DataFieldRecordArray.
-        arr : numpy ndarray | instance of DataFieldRecordArray
+        arr
             The numpy ndarray holding the field values. It must be of the same
             length as this DataFieldRecordArray. If `name` is a numpy ndarray,
             `arr` must be a DataFieldRecordArray.
@@ -1113,10 +1136,12 @@ class DataFieldRecordArray:
             DataFieldRecordArray instance.
         """
         if isinstance(name, np.ndarray):
+            assert isinstance(arr, DataFieldRecordArray)
             self.set_selection(name, arr)
             return
 
         # Check if a new field is supposed to be added.
+        assert isinstance(arr, np.ndarray)
         if name not in self:
             self.append_field(name, arr)
             return
@@ -1129,21 +1154,18 @@ class DataFieldRecordArray:
                 'instance!'
             )
 
-        if not isinstance(arr, np.ndarray):
-            raise TypeError('When setting a field directly, the data must be provided as a numpy ndarray!')
-
         self._data_fields[name] = arr
 
-    def __len__(self):
-        return self._len
+    def __len__(self) -> int:
+        return self._len or 0
 
-    def __sizeof__(self):
+    def __sizeof__(self) -> int:
         """Calculates the size in bytes of this DataFieldRecordArray instance
         in memory.
 
         Returns
         -------
-        memsize : int
+        memsize
             The memory size in bytes that this DataFieldRecordArray instance
             has.
         """
@@ -1197,16 +1219,17 @@ class DataFieldRecordArray:
         DataFieldRecordArray.
         """
         if self._indices is None:
-            self._indices = np.arange(self._len)
+            _len = int(self._len) if self._len is not None else 0
+            self._indices = np.arange(_len)
         return self._indices
 
-    def append(self, arr):
+    def append(self, arr: 'DataFieldRecordArray'):
         """Appends the given DataFieldRecordArray to this DataFieldRecordArray
         instance.
 
         Parameters
         ----------
-        arr : instance of DataFieldRecordArray
+        arr
             The instance of DataFieldRecordArray that should get appended to
             this DataFieldRecordArray. It must contain the same data fields.
             Additional data fields are ignored.
@@ -1217,17 +1240,17 @@ class DataFieldRecordArray:
         for fname in self._field_name_list:
             self._data_fields[fname] = np.append(self._data_fields[fname], arr[fname])
 
-        self._len += len(arr)
+        self._len = int(self._len or 0) + len(arr)
         self._indices = None
 
-    def append_field(self, name, data):
+    def append_field(self, name: str, data: np.ndarray):
         """Appends a field and its data to this DataFieldRecordArray instance.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the new data field.
-        data : numpy ndarray
+        data
             The numpy ndarray holding the data. The length of the ndarray must
             match the current length of this DataFieldRecordArray instance.
 
@@ -1254,13 +1277,13 @@ class DataFieldRecordArray:
         self._data_fields[name] = data
         self._field_name_list.append(name)
 
-    def as_numpy_record_array(self):
+    def as_numpy_record_array(self) -> np.ndarray:
         """Creates a numpy record ndarray instance holding the data of this
         DataFieldRecordArray instance.
 
         Returns
         -------
-        arr : instance of numpy record ndarray
+        arr
             The numpy recarray ndarray holding the data of this
             DataFieldRecordArray instance.
         """
@@ -1272,25 +1295,25 @@ class DataFieldRecordArray:
 
         return arr
 
-    def copy(self, keep_fields=None):
+    def copy(self, keep_fields: str | Sequence[str] | None = None):
         """Creates a new DataFieldRecordArray that is a copy of this
         DataFieldRecordArray instance.
 
         Parameters
         ----------
-        keep_fields : str | sequence of str | None
+        keep_fields
             If not None (default), this specifies the data fields that should
             get kept from this DataFieldRecordArray. Otherwise all data fields
             get kept.
         """
         return DataFieldRecordArray(self, keep_fields=keep_fields)
 
-    def remove_field(self, name):
+    def remove_field(self, name: str):
         """Removes the given field from this array.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field that is to be removed.
         """
         self._data_fields.pop(name)
@@ -1300,14 +1323,14 @@ class DataFieldRecordArray:
         """Returns the numpy dtype object of the given data field."""
         return self._data_fields[name].dtype
 
-    def set_field_dtype(self, name, dt):
+    def set_field_dtype(self, name: str, dt: np.ndarray):
         """Sets the data type of the given field.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field.
-        dt : numpy.dtype
+        dt
             The dtype instance defining the new data type.
         """
         if name not in self:
@@ -1317,15 +1340,15 @@ class DataFieldRecordArray:
 
         self._data_fields[name] = self._data_fields[name].astype(dt, copy=False)
 
-    def convert_dtypes(self, conversions, except_fields=None):
+    def convert_dtypes(self, conversions: dict, except_fields: Sequence[str] | None = None):
         """Converts the data type of the data fields of this
         DataFieldRecordArray. This method can be used to compress the data.
 
         Parameters
         ----------
-        conversions : dict of `old_dtype` -> `new_dtype`
+        conversions
             The dictionary with the old dtype as key and the new dtype as value.
-        except_fields : sequence of str | None
+        except_fields
             The sequence of field names, which should not get converted.
         """
         if not isinstance(conversions, dict):
@@ -1345,18 +1368,18 @@ class DataFieldRecordArray:
                 new_dtype = conversions[old_dtype]
                 _data_fields[fname] = _data_fields[fname].astype(new_dtype)
 
-    def get_selection(self, indices):
+    def get_selection(self, indices: np.ndarray) -> 'DataFieldRecordArray':
         """Creates an DataFieldRecordArray that contains a selection of the data
         of this DataFieldRecordArray instance.
 
         Parameters
         ----------
-        indices : (N,)-shaped numpy ndarray of int or bool
+        indices
             The numpy ndarray holding the indices for which to select the data.
 
         Returns
         -------
-        data_field_array : instance of DataFieldRecordArray
+        data_field_array
             The DataFieldRecordArray that contains the selection of the
             original DataFieldRecordArray. The selection data is a copy of the
             original data.
@@ -1368,16 +1391,16 @@ class DataFieldRecordArray:
             data[fname] = self._data_fields[fname][indices]
         return DataFieldRecordArray(data, copy=False)
 
-    def set_selection(self, indices, arr):
+    def set_selection(self, indices: np.ndarray, arr: 'DataFieldRecordArray'):
         """Sets a selection of the data of this DataFieldRecordArray instance
         to the data given in arr.
 
         Parameters
         ----------
-        indices : (N,)-shaped numpy ndarray of int or bool
+        indices
             The numpy ndarray holding the indices or mask for which to set the
             data.
-        arr : instance of DataFieldRecordArray
+        arr
             The instance of DataFieldRecordArray holding the selection data.
             It must have the same fields defined as this DataFieldRecordArray
             instance.
@@ -1388,14 +1411,14 @@ class DataFieldRecordArray:
         for fname in self._field_name_list:
             self._data_fields[fname][indices] = arr[fname]
 
-    def rename_fields(self, conversions, must_exist=False):
+    def rename_fields(self, conversions: dict, must_exist: bool = False):
         """Renames the given fields of this array.
 
         Parameters
         ----------
-        conversions : dict of `old_name` -> `new_name`
+        conversions
             The dictionary holding the old and new names of the data fields.
-        must_exist : bool
+        must_exist
             Flag if the given fields must exist. If set to ``True`` and a field
             does not exist, a KeyError is raised.
 
@@ -1413,13 +1436,13 @@ class DataFieldRecordArray:
 
         self._field_name_list = list(self._data_fields.keys())
 
-    def tidy_up(self, keep_fields):
+    def tidy_up(self, keep_fields: str | Sequence[str]):
         """Removes all fields that are not specified through the keep_fields
         argument.
 
         Parameters
         ----------
-        keep_fields : str | sequence of str
+        keep_fields
             The field name(s), that should not be removed.
 
         Raises
@@ -1440,17 +1463,17 @@ class DataFieldRecordArray:
             if fname not in keep_fields:
                 self.remove_field(fname)
 
-    def sort_by_field(self, name):
+    def sort_by_field(self, name: str) -> np.ndarray:
         """Sorts the data along the given field name in ascending order.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the field along the events should get sorted.
 
         Returns
         -------
-        sorted_idxs : (n_events,)-shaped numpy ndarray
+        sorted_idxs
             The numpy ndarray holding the indices of the sorted array.
 
         Raises

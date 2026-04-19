@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 
 from skyllh.core.py import (
@@ -8,6 +10,7 @@ from skyllh.core.py import (
 from skyllh.core.signal_generation import (
     SignalGenerationMethod,
 )
+from skyllh.core.source_hypo_grouping import SourceHypoGroup
 from skyllh.core.source_model import (
     PointLikeSource,
 )
@@ -16,7 +19,7 @@ from skyllh.core.utils.coords import (
 )
 
 
-def source_sin_dec_shift_linear(x, w, L, U):
+def source_sin_dec_shift_linear(x: np.ndarray, w: float, L: float, U: float) -> np.ndarray:
     """Calculates the shift of the sine of the source declination, in order to
     allow the construction of the source sine declination band with
     sin(dec_src) +/- w. This shift function, S(x), is implemented as a line
@@ -28,18 +31,18 @@ def source_sin_dec_shift_linear(x, w, L, U):
 
     Parameters
     ----------
-    x : 1D numpy ndarray
+    x
         The sine of the source declination for each source.
-    w : float
+    w
         The half size of the sin(dec)-window.
-    L : float
+    L
         The lower value of the allowed sin(dec) range.
-    U : float
+    U
         The upper value of the allowed sin(dec) range.
 
     Returns
     -------
-    S : 1D numpy ndarray
+    S
         The sin(dec) shift of the sin(dec) values of the given sources, such
         that ``sin(dec_src) + S`` is the new sin(dec) of the source, and
         ``sin(dec_src) + S +/- w`` is always within the sin(dec) range [L, U].
@@ -53,7 +56,7 @@ def source_sin_dec_shift_linear(x, w, L, U):
     return S
 
 
-def source_sin_dec_shift_cubic(x, w, L, U):
+def source_sin_dec_shift_cubic(x: np.ndarray, w: float, L: float, U: float) -> np.ndarray:
     """Calculates the shift of the sine of the source declination, in order to
     allow the construction of the source sine declination band with
     sin(dec_src) +/- w. This shift function, S(x), is implemented as a cubic
@@ -65,18 +68,18 @@ def source_sin_dec_shift_cubic(x, w, L, U):
 
     Parameters
     ----------
-    x : 1D numpy ndarray
+    x
         The sine of the source declination for each source.
-    w : float
+    w
         The half size of the sin(dec)-window.
-    L : float
+    L
         The lower value of the allowed sin(dec) range.
-    U : float
+    U
         The upper value of the allowed sin(dec) range.
 
     Returns
     -------
-    S : 1D numpy ndarray
+    S
         The sin(dec) shift of the sin(dec) values of the given sources, such
         that ``sin(dec_src) + S`` is the new sin(dec) of the source, and
         ``sin(dec_src) + S +/- w`` is always within the sin(dec) range [L, U].
@@ -99,10 +102,10 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
     def __init__(
         self,
-        src_sin_dec_half_bandwidth=_DEFAULT_SRC_SIN_DEC_HALF_BANDWIDTH,
-        src_sin_dec_shift_func=None,
-        energy_range=None,
-        src_batch_size=128,
+        src_sin_dec_half_bandwidth: float = _DEFAULT_SRC_SIN_DEC_HALF_BANDWIDTH,
+        src_sin_dec_shift_func: Callable | None = None,
+        energy_range: tuple[float, float] | None = None,
+        src_batch_size: int = 128,
         **kwargs,
     ):
         """Constructs a new signal generation method instance for a point-like
@@ -110,19 +113,19 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         Parameters
         ----------
-        src_sin_dec_half_bandwidth : float
+        src_sin_dec_half_bandwidth
             The half-width of the sin(dec) band to take MC events from around a
             source. The default is sin(1deg), i.e. a 1deg half-bandwidth.
-        src_sin_dec_shift_func : callable | None
+        src_sin_dec_shift_func
             The function that provides the source sin(dec) shift needed for
             constructing the source declination bands from where to draw
             monte-carlo events from. If set to None, the default function
             ``source_sin_dec_shift_linear`` will be used.
-        energy_range : 2-element tuple of float | None
+        energy_range
             The energy range from which to take MC events into account for
             signal event generation, specified in true neutrino energy (GeV).
             If set to None, the entire energy range [0, +inf] is used.
-        src_batch_size : int
+        src_batch_size
             The source processing batch size used for the signal event flux
             calculation.
         """
@@ -174,27 +177,29 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
         v = int_cast(v, 'The src_batch_size property must be cast-able to type int!')
         self._src_batch_size = v
 
-    def _get_src_dec_bands(self, src_dec, max_sin_dec_range):
+    def _get_src_dec_bands(
+        self, src_dec: np.ndarray, max_sin_dec_range: tuple
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculates the minimum and maximum sin(dec) values for each source
         to use with a specified maximal sin(dec) range, which should get
         determined from the available MC data itself.
 
         Parameters
         ----------
-        src_dec : 1D ndarray
+        src_dec
             The declination values of the sources.
-        max_sin_dec_range : 2-element tuple of floats
+        max_sin_dec_range
             The maximal sin(dec) range from where MC events are available.
 
         Returns
         -------
-        src_sin_dec_band_min : (N_sources,)-shaped 1D ndarray
+        src_sin_dec_band_min
             The array holding the lower value of the sin(dec) band for each
             source.
-        src_sin_dec_band_max : (N_sources,)-shaped 1D ndarray
+        src_sin_dec_band_max
             The array holding the upper value of the sin(dec) band for each
             source.
-        src_dec_band_omega : (N_sources,)-shaped 1D ndarray
+        src_dec_band_omega
             The solid angle of the declination band for each source.
         """
         # Shift the source declination in order to be able to always create the
@@ -210,28 +215,30 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         return (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega)
 
-    def calc_source_signal_mc_event_flux(self, data_mc, shg):
+    def calc_source_signal_mc_event_flux(  # type: ignore[override]
+        self, data_mc: np.ndarray, shg: SourceHypoGroup
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculates the signal flux of each given MC event for each source
         hypothesis of the given source hypothesis group.
 
         Parameters
         ----------
-        data_mc : numpy record ndarray
+        data_mc
             The numpy record array holding the MC events of a dataset.
-        shg : SourceHypoGroup instance
+        shg
             The source hypothesis group, which defines the list of sources, and
             their flux model.
 
         Returns
         -------
-        ev_idx_arr : ndarray
+        ev_idx_arr
             The (N_selected_signal_events,)-shaped 1D ndarray holding the index
             of the MC event.
-        shg_src_idx_arr : ndarray
+        shg_src_idx_arr
             The (N_selected_signal_events,)-shaped 1D ndarray holding the index
             of the source within the given source hypothesis group for each
             signal candidate event.
-        flux_arr : ndarray
+        flux_arr
             The (N_selected_signal_events,)-shaped 1D ndarray holding the flux
             value of each signal candidate event.
         """
@@ -308,21 +315,21 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         return (ev_idx_arr, shg_src_idx_arr, flux_arr)
 
-    def signal_event_post_sampling_processing(
+    def signal_event_post_sampling_processing(  # type: ignore[override]
         self,
-        shg,
-        shg_sig_events_meta,
-        shg_sig_events,
-    ):
+        shg: SourceHypoGroup,
+        shg_sig_events_meta: np.ndarray,
+        shg_sig_events: np.ndarray,
+    ) -> np.ndarray:
         """Rotates the generated signal events to their source location for a
         given source hypothesis group.
 
         Parameters
         ----------
-        shg : SourceHypoGroup instance
+        shg
             The source hypothesis group instance holding the sources and their
             locations.
-        shg_sig_events_meta : numpy record ndarray
+        shg_sig_events_meta
             The numpy record ndarray holding meta information about the
             generated signal events for the given source hypothesis group.
             The length of this array must be the same as shg_sig_events.
@@ -331,14 +338,14 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
             - 'shg_src_idx': int
                 The source index within the source hypothesis group.
 
-        shg_sig_events : numpy record ndarray
+        shg_sig_events
             The numpy record ndarray holding the generated signal events for
             the given source hypothesis group and in the format of the original
             MC events.
 
         Returns
         -------
-        shg_sig_events : numpy record ndarray
+        shg_sig_events
             The numpy record ndarray with the processed MC signal events.
         """
         # Get the unique source indices of that source hypo group.

@@ -3,6 +3,9 @@ The minimizers/iminuit module provides a SkyLLH interface to the iminuit
 minimizer.
 """
 
+from collections.abc import Callable, Sequence
+from typing import Any, cast
+
 import numpy as np
 
 from skyllh.core import (
@@ -31,21 +34,21 @@ class FuncWithGradsFunctor(
 
     def __init__(
         self,
-        func,
-        func_args=None,
+        func: Callable,
+        func_args: Sequence | None = None,
         **kwargs,
     ):
         """Initializes a new functor instance for the given function ``func``.
 
         Parameters
         ----------
-        func : callable
+        func
             The function with call signature
 
                 ``__call__(x, *args)``
 
             returning the a two-element tuple (f, grads).
-        func_args : tuple | None
+        func_args
             The optional positional arguments for the function ``func``.
         """
         super().__init__(**kwargs)
@@ -109,7 +112,7 @@ class IMinuitMinimizerImpl(
     @tool.requires('iminuit')
     def __init__(
         self,
-        ftol=1e-6,
+        ftol: float = 1e-6,
         **kwargs,
     ):
         """Creates a new IMinuit minimizer instance to minimize a given
@@ -117,7 +120,7 @@ class IMinuitMinimizerImpl(
 
         Parameters
         ----------
-        ftol : float
+        ftol
             The function value tolerance as absolute value.
         """
         super().__init__(**kwargs)
@@ -126,24 +129,24 @@ class IMinuitMinimizerImpl(
 
     def minimize(
         self,
-        initials,
-        bounds,
-        func,
-        func_args=None,
+        initials: np.ndarray,
+        bounds: np.ndarray,
+        func: Callable,
+        func_args: Sequence | None = None,
         **kwargs,
-    ):
+    ) -> tuple[np.ndarray, float, dict]:
         """Minimizes the given function ``func`` with the given initial function
         argument values ``initials`` and within the given parameter bounds
         ``bounds``.
 
         Parameters
         ----------
-        initials : 1D numpy ndarray
+        initials
             The ndarray holding the initial values of all the fit parameters.
-        bounds : 2D (N_fitparams,2)-shaped numpy ndarray
+        bounds
             The ndarray holding the boundary values (vmin, vmax) of the fit
             parameters.
-        func : callable
+        func
             The function that should get minimized.
             The call signature must be
 
@@ -154,7 +157,7 @@ class IMinuitMinimizerImpl(
             the function gradient for each fit parameter, if the
             ``func_provides_grads`` keyword argument option is set to True.
             If set to False, ``func`` must return only the function value.
-        func_args : sequence | None
+        func_args
             Optional sequence of arguments for ``func``.
 
         Additional Keyword Arguments
@@ -172,12 +175,12 @@ class IMinuitMinimizerImpl(
 
         Returns
         -------
-        xmin : 1D ndarray
+        xmin
             The array containing the function arguments at the function's
             minimum.
-        fmin : float
+        fmin
             The function value at its minimum.
-        res : iminuit.OptimizeResult
+        res
             The iminuit OptimizeResult dictionary with additional information.
         """
         if func_args is None:
@@ -185,7 +188,7 @@ class IMinuitMinimizerImpl(
         if kwargs is None:
             kwargs = dict()
 
-        iminuit = tool.get('iminuit')
+        iminuit = cast(Any, tool.get('iminuit'))
 
         func_provides_grads = kwargs.pop('func_provides_grads', True)
 
@@ -204,41 +207,41 @@ class IMinuitMinimizerImpl(
 
         return (res.x, res.fun, res)
 
-    def get_niter(self, status):
+    def get_niter(self, status: dict) -> int:
         """Returns the number of iterations needed to find the minimum.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        niter : int
+        niter
             The number of iterations needed to find the minimum.
         """
         return status['nfev']
 
-    def has_converged(self, status):
+    def has_converged(self, status: dict) -> bool:
         """Analyzes the status information dictionary if the minimization
         process has converged. By definition the minimization process has
         converged if ``status['is_valid']`` equals True.
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the minimization
             process.
 
         Returns
         -------
-        converged : bool
+        converged
             The flag if the minimization has converged (True), or not (False).
         """
         return bool(status['success'])
 
-    def is_repeatable(self, status):
+    def is_repeatable(self, status: dict) -> bool:
         """Checks if the minimization process can be repeated to get a better
         result.
 
@@ -247,13 +250,13 @@ class IMinuitMinimizerImpl(
 
         Parameters
         ----------
-        status : dict
+        status
             The dictionary with the status information about the last
             minimization process.
 
         Returns
         -------
-        repeatable : bool
+        repeatable
             The flag if the minimization process can be repeated to obtain a
             better minimum.
         """

@@ -6,22 +6,27 @@ then be used by different analysis objects, like PDF objects.
 """
 
 from collections import OrderedDict
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
 from skyllh.core import display as dsp
+from skyllh.core.event_selection import EventSelectionMethod
 from skyllh.core.logging import (
     get_logger,
 )
+from skyllh.core.parameters import ParameterModelMapper
 from skyllh.core.py import (
     classname,
     func_has_n_args,
     int_cast,
     issequenceof,
 )
+from skyllh.core.source_hypo_grouping import SourceHypoGroupManager
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
+from skyllh.core.timing import TimeLord
 
 logger = get_logger(__name__)
 
@@ -33,17 +38,24 @@ class DataField:
     """
 
     def __init__(
-        self, name, func, global_fitparam_names=None, dt=None, is_src_field=False, is_srcevt_data=False, **kwargs
+        self,
+        name: str,
+        func: Callable,
+        global_fitparam_names: str | Sequence[str] | None = None,
+        dt: np.dtype | str | None = None,
+        is_src_field: bool = False,
+        is_srcevt_data: bool = False,
+        **kwargs,
     ):
         """Creates a new instance of DataField that might depend on fit
         parameters.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field. It serves as the identifier for the
             data field.
-        func : callable
+        func
             The function that calculates the values of this data field. The call
             signature must be
 
@@ -54,20 +66,20 @@ class DataField:
             ``pmm`` is the instance of ParameterModelMapper, and
             ``global_fitparams_dict`` is the dictionary with the current global
             fit parameter names and values.
-        global_fitparam_names : str | sequence of str | None
+        global_fitparam_names
             The sequence of str instances specifying the names of the global fit
             parameters this data field depends on. If set to None, the data
             field does not depend on any fit parameters.
-        dt : numpy dtype | str | None
+        dt
             If specified it defines the data type this data field should have.
             If a str instance is given, it defines the name of the data field
             whose data type should be taken for this data field.
-        is_src_field : bool
+        is_src_field
             Flag if this data field is a source data field (``True``) and values
             should be stored within this DataField instance, instead of the
             events DataFieldRecordArray instance of the TrialDataManager
             (``False``).
-        is_srcevt_data : bool
+        is_srcevt_data
             Flag if the data field will hold source-event data, i.e. data of
             length N_values. In that case the data cannot be stored within the
             events attribute of the TrialDataManager, but must be stored in the
@@ -100,7 +112,7 @@ class DataField:
 
         # Define the member variable that holds the numpy ndarray with the data
         # field values.
-        self._values = None
+        self._values: np.ndarray | None = None
 
         # Define the most efficient `calculate` method for this kind of data
         # field.
@@ -204,48 +216,49 @@ class DataField:
             values = values.astype(dt, copy=False)
         return values
 
-    def _calc_source_values(self, tdm, shg_mgr, pmm):
+    def _calc_source_values(self, tdm: 'TrialDataManager', shg_mgr: SourceHypoGroupManager, pmm: ParameterModelMapper):
         """Calculates the data field values utilizing the defined external
         function. The data field values solely depend on fixed source
         parameters.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance this data field is part of and is
             holding the event data.
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager, which defines the source
             hypothesis groups.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper, which defines the global
             parameters and their mapping to local source parameters.
         """
-        self._values = self._func(tdm=tdm, shg_mgr=shg_mgr, pmm=pmm)
+        _func_result = self._func(tdm=tdm, shg_mgr=shg_mgr, pmm=pmm)
 
-        if not isinstance(self._values, np.ndarray):
+        if not isinstance(_func_result, np.ndarray):
             raise TypeError(
                 f'The calculation function for the data field "{self._name}" '
                 'must return an instance of numpy.ndarray! '
-                f'Currently it is of type "{classname(self._values)}".'
+                f'Currently it is of type "{classname(_func_result)}".'
             )
 
+        self._values = _func_result
         # Convert the data type.
         self._values = self._convert_to_desired_dtype(tdm, self._values)
 
-    def _calc_static_values(self, tdm, shg_mgr, pmm):
+    def _calc_static_values(self, tdm: 'TrialDataManager', shg_mgr: SourceHypoGroupManager, pmm: ParameterModelMapper):
         """Calculates the data field values utilizing the defined external
         function, that are static and only depend on source parameters.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance this data field is part of and is
             holding the event data.
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager, which defines the source
             hypothesis groups.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper, which defines the global
             parameters and their mapping to local source parameters.
         """
@@ -273,31 +286,39 @@ class DataField:
         else:
             # Set the data values. This will add the data field to the
             # DataFieldRecordArray if it does not exist yet.
+            assert tdm.events is not None
             tdm.events[self._name] = values
 
-    def _calc_global_fitparam_dependent_values(self, tdm, shg_mgr, pmm, global_fitparams_dict):
+    def _calc_global_fitparam_dependent_values(
+        self,
+        tdm: 'TrialDataManager',
+        shg_mgr: SourceHypoGroupManager,
+        pmm: ParameterModelMapper,
+        global_fitparams_dict: dict,
+    ):
         """Calculate data field values utilizing the defined external
         function, that depend on fit parameter values. We check if the fit
         parameter values have changed.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance this data field is part of and is
             holding the event data.
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager, which defines the source
             hypothesis groups.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper defining the mapping of the
             global parameters to local source parameters.
-        global_fitparams_dict : dict
+        global_fitparams_dict
             The dictionary holding the current global fit parameter names and
             values.
         """
         # Determine if we need to calculate the values.
         calc_values = False
 
+        assert tdm.events is not None
         if self._name not in tdm.events:
             calc_values = True
         else:
@@ -350,12 +371,12 @@ class TrialDataManager:
     Hence, data fields are calculated only once.
     """
 
-    def __init__(self, index_field_name=None, **kwargs):
+    def __init__(self, index_field_name: str | None = None, **kwargs):
         """Creates a new TrialDataManager instance.
 
         Parameters
         ----------
-        index_field_name : str | None
+        index_field_name
             The name of the field that should be used as primary index field.
             If provided, the events will be sorted along this data field. This
             might be useful for run-time performance.
@@ -461,6 +482,7 @@ class TrialDataManager:
     @property
     def n_selected_events(self):
         """(read-only) The number of selected events which should get evaluated."""
+        assert self._events is not None
         return len(self._events)
 
     @property
@@ -469,6 +491,8 @@ class TrialDataManager:
         of the trial data, but must be considered for the test-statistic value.
         It is the difference of n_events and n_selected_events.
         """
+        assert self._events is not None
+        assert self._n_events is not None
         return self._n_events - len(self._events)
 
     @property
@@ -486,17 +510,17 @@ class TrialDataManager:
         """
         return self._trial_data_state_id
 
-    def __contains__(self, name):
+    def __contains__(self, name: str) -> bool:
         """Checks if the given data field is defined in this data field manager.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field.
 
         Returns
         -------
-        check : bool
+        check
             True if the data field is defined in this data field manager,
             False otherwise.
         """
@@ -562,19 +586,19 @@ class TrialDataManager:
 
         return s
 
-    def broadcast_sources_array_to_values_array(self, arr):
+    def broadcast_sources_array_to_values_array(self, arr: np.ndarray) -> np.ndarray:
         """Broadcasts the given 1d numpy ndarray of length 1 or N_sources to a
         numpy ndarray of length N_values.
 
         Parameters
         ----------
-        arr : instance of ndarray
+        arr
             The (N_sources,)- or (1,)-shaped numpy ndarray holding values for
             each source.
 
         Returns
         -------
-        out_arr : instance of ndarray
+        out_arr
             The (N_values,)-shaped numpy ndarray holding the source values
             broadcasted to each event value.
         """
@@ -591,6 +615,7 @@ class TrialDataManager:
 
         out_arr = np.empty((n_values,), dtype=arr.dtype)
 
+        assert self.src_evt_idxs is not None
         src_idxs = self.src_evt_idxs[0]
         v_start = 0
         for src_idx, src_value in enumerate(arr):
@@ -601,18 +626,18 @@ class TrialDataManager:
 
         return out_arr
 
-    def broadcast_sources_arrays_to_values_arrays(self, arrays):
+    def broadcast_sources_arrays_to_values_arrays(self, arrays: Sequence[np.ndarray]) -> list[np.ndarray]:
         """Broadcasts the 1d numpy ndarrays to the values array.
 
         Parameters
         ----------
-        arrays : sequence of numpy 1d ndarrays
+        arrays
             The sequence of (N_sources,)-shaped numpy ndarrays holding the
             parameter values.
 
         Returns
         -------
-        out_arrays : list of numpy 1d ndarrays
+        out_arrays
             The list of (N_values,)-shaped numpy ndarrays holding the
             broadcasted array values.
         """
@@ -620,27 +645,28 @@ class TrialDataManager:
 
         return out_arrays
 
-    def broadcast_selected_events_arrays_to_values_arrays(self, arrays):
+    def broadcast_selected_events_arrays_to_values_arrays(self, arrays: Sequence[np.ndarray]) -> list[np.ndarray]:
         """Broadcasts the given arrays of length N_selected_events to arrays
         of length N_values.
 
         Parameters
         ----------
-        arrays : sequence of instance of ndarray
+        arrays
             The sequence of instance of ndarray with the arrays to be
             broadcasted.
 
         Returns
         -------
-        out_arrays : list of instance of ndarray
+        out_arrays
             The list of broadcasted numpy ndarray instances.
         """
+        assert self._src_evt_idxs is not None
         evt_idxs = self._src_evt_idxs[1]
         out_arrays = [np.take(arr, evt_idxs) for arr in arrays]
 
         return out_arrays
 
-    def change_shg_mgr(self, shg_mgr, pmm):
+    def change_shg_mgr(self, shg_mgr: SourceHypoGroupManager, pmm: ParameterModelMapper):
         """This method is called when the source hypothesis group manager has
         changed. Hence, the source data fields need to get recalculated.
 
@@ -649,16 +675,24 @@ class TrialDataManager:
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager that defines the source
             hypothesis groups.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper that defines the global
             parameters and their mapping to local source parameter.
         """
         self.calculate_source_data_fields(shg_mgr=shg_mgr, pmm=pmm)
 
-    def initialize_trial(self, shg_mgr, pmm, events, n_events=None, evt_sel_method=None, tl=None):
+    def initialize_trial(
+        self,
+        shg_mgr: SourceHypoGroupManager,
+        pmm: ParameterModelMapper,
+        events: DataFieldRecordArray,
+        n_events: int | None = None,
+        evt_sel_method: EventSelectionMethod | None = None,
+        tl: TimeLord | None = None,
+    ):
         """Initializes the trial data manager for a new trial. It sets the raw
         events, calculates pre-event-selection data fields, performs a possible
         event selection and calculates the static data fields for the left-over
@@ -666,23 +700,23 @@ class TrialDataManager:
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager that defines the source
             hypothesis groups.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper, that defines the global
             parameters and their mapping to local source parameters.
-        events : DataFieldRecordArray instance
+        events
             The DataFieldRecordArray instance holding the entire raw events.
-        n_events : int | None
+        n_events
             The total number of events of the data set this trial data manager
             corresponds to.
             If None, the number of events is taken from the number of events
             present in the ``events`` array.
-        evt_sel_method : instance of EventSelectionMethod | None
+        evt_sel_method
             The optional event selection method that should be used to select
             potential signal events.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used for timing
             measurements.
         """
@@ -694,6 +728,7 @@ class TrialDataManager:
         # Save the number of sources.
         self._n_sources = shg_mgr.n_sources
 
+        assert self._events is not None
         if n_events is None:
             n_events = len(self._events)
         self.n_events = n_events
@@ -704,7 +739,10 @@ class TrialDataManager:
 
         if evt_sel_method is not None:
             logger.debug(f'Performing event selection method "{classname(evt_sel_method)}".')
-            (selected_events, src_evt_idxs) = evt_sel_method.select_events(events=self._events, tl=tl)
+            assert self._events is not None
+            _sel_result = evt_sel_method.select_events(events=self._events, tl=tl)
+            selected_events = _sel_result[0]
+            src_evt_idxs = _sel_result[1]
             logger.debug(f'Selected {len(selected_events)} out of {len(self._events)} events.')
             self.events = selected_events
             self._src_evt_idxs = src_evt_idxs
@@ -712,76 +750,86 @@ class TrialDataManager:
         # Sort the events by the index field, if a field was provided.
         if self._index_field_name is not None:
             logger.debug(f'Sorting events in index field "{self._index_field_name}"')
+            assert self._events is not None
             sorted_idxs = self._events.sort_by_field(self._index_field_name)
             # If event indices are stored, we need to re-assign also those event
             # indices according to the new order.
             if self._src_evt_idxs is not None:
-                self._src_evt_idxs[1] = np.take(sorted_idxs, self._src_evt_idxs[1])
+                self._src_evt_idxs = (
+                    self._src_evt_idxs[0],
+                    np.take(sorted_idxs, self._src_evt_idxs[1]),
+                )
 
         # Create the src_evt_idxs property data in case it was not provided by
         # the event selection. In that case all events are selected for all
         # sources. This simplifies the implementations of the PDFs.
         if self._src_evt_idxs is None:
+            assert self._n_sources is not None
+            _n_sources = int(self._n_sources)
+            _n_sel_events = self.n_selected_events
             self._src_evt_idxs = (
-                np.repeat(np.arange(self.n_sources), self.n_selected_events),
-                np.tile(np.arange(self.n_selected_events), self.n_sources),
+                np.repeat(np.arange(_n_sources), _n_sel_events),
+                np.tile(np.arange(_n_sel_events), _n_sources),
             )
 
         # Now calculate all the static data fields. This will increment the
         # trial data state ID.
         self.calculate_static_data_fields(shg_mgr=shg_mgr, pmm=pmm)
 
-    def get_n_values(self):
+    def get_n_values(self) -> int:
         """Returns the expected size of the values array after a PDF
         evaluation, which will include PDF values for all trial data events and
         all sources.
 
         Returns
         -------
-        n : int
+        n
             The length of the expected values array after a PDF evaluation.
         """
+        assert self._src_evt_idxs is not None
         return len(self._src_evt_idxs[0])
 
-    def get_values_mask_for_source_mask(self, src_mask):
+    def get_values_mask_for_source_mask(self, src_mask: np.ndarray) -> np.ndarray:
         """Creates a boolean mask for the values array where entries belonging
         to the sources given by the source mask are selected.
 
         Parameters
         ----------
-        src_mask : instance of numpy ndarray
+        src_mask
             The (N_sources,)-shaped numpy ndarray holding the boolean selection
             of the sources.
 
         Returns
         -------
-        values_mask : instance of numpy ndarray
+        values_mask
             The (N_values,)-shaped numpy ndarray holding the boolean selection
             of the values.
         """
+        assert self.src_evt_idxs is not None
+        assert self._n_sources is not None
         tdm_src_idxs = self.src_evt_idxs[0]
-        src_idxs = np.arange(self.n_sources)[src_mask]
+        src_idxs = np.arange(self._n_sources)[src_mask]
 
         values_mask = np.zeros((self.get_n_values(),), dtype=np.bool_)
 
         def make_values_mask(src_idx):
-            global values_mask
+            nonlocal values_mask
             values_mask |= tdm_src_idxs == src_idx
 
         np.vectorize(make_values_mask)(src_idxs)
 
         return values_mask
 
-    def add_source_data_field(self, name, func, dt=None):
+    def add_source_data_field(self, name: str, func: Callable, dt: np.dtype | str | None = None):
         """Adds a new data field to the manager. The data field must depend
         solely on source parameters.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field. It serves as the identifier for the
             data field.
-        func : callable
+        func
             The function that calculates the data field values. The call
             signature must be
 
@@ -790,7 +838,7 @@ class TrialDataManager:
             where ``tdm`` is the TrialDataManager instance holding the event
             data, ``shg_mgr`` is the instance of SourceHypoGroupManager,
             and ``pmm`` is the instance of ParameterModelMapper.
-        dt : numpy dtype | str | None
+        dt
             If specified it defines the data type this data field should have.
             If a str instance is given, it defines the name of the data field
             whose data type should be taken for the data field.
@@ -802,15 +850,23 @@ class TrialDataManager:
 
         self._source_data_fields_dict[name] = data_field
 
-    def add_data_field(self, name, func, global_fitparam_names=None, dt=None, pre_evt_sel=False, is_srcevt_data=False):
+    def add_data_field(
+        self,
+        name: str,
+        func: Callable,
+        global_fitparam_names: str | Sequence[str] | None = None,
+        dt: np.dtype | str | None = None,
+        pre_evt_sel: bool = False,
+        is_srcevt_data: bool = False,
+    ):
         """Adds a new data field to the manager.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field. It serves as the identifier for the
             data field.
-        func : callable
+        func
             The function that calculates the data field values. The call
             signature must be
 
@@ -822,19 +878,19 @@ class TrialDataManager:
             ``global_fitparams_dict`` is the dictionary with the current global
             fit parameter names and values.
             The shape of the returned array must be (N_selected_events,).
-        global_fitparam_names : str | sequence of str | None
+        global_fitparam_names
             The sequence of str instances specifying the names of the global fit
             parameters this data field depends on. If set to ``None``, it means
             that the data field does not depend on any fit parameters.
-        dt : numpy dtype | str | None
+        dt
             If specified it defines the data type this data field should have.
             If a str instance is given, it defines the name of the data field
             whose data type should be taken for the data field.
-        pre_evt_sel : bool
+        pre_evt_sel
             Flag if this data field should get calculated before potential
             signal events get selected (True), or afterwards (False).
             Default is False.
-        is_srcevt_data : bool
+        is_srcevt_data
             Flag if this data field contains source-event data, hence the length
             of the data array will be N_values.
             Default is False.
@@ -871,16 +927,16 @@ class TrialDataManager:
         else:
             self._global_fitparam_data_fields_dict[name] = data_field
 
-    def calculate_source_data_fields(self, shg_mgr, pmm):
+    def calculate_source_data_fields(self, shg_mgr: SourceHypoGroupManager, pmm: ParameterModelMapper):
         """Calculates the data values of the data fields that solely depend on
         source parameters.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper, that defines the global
             parameters and their mapping to local source parameters.
         """
@@ -892,17 +948,17 @@ class TrialDataManager:
 
         self._trial_data_state_id += 1
 
-    def calculate_pre_evt_sel_static_data_fields(self, shg_mgr, pmm):
+    def calculate_pre_evt_sel_static_data_fields(self, shg_mgr: SourceHypoGroupManager, pmm: ParameterModelMapper):
         """Calculates the data values of the data fields that should be
         available for the event selection method and do not depend on any fit
         parameters.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper, that defines the global
             parameters and their mapping to local source parameters.
         """
@@ -914,16 +970,16 @@ class TrialDataManager:
 
         self._trial_data_state_id += 1
 
-    def calculate_static_data_fields(self, shg_mgr, pmm):
+    def calculate_static_data_fields(self, shg_mgr: SourceHypoGroupManager, pmm: ParameterModelMapper):
         """Calculates the data values of the data fields that do not depend on
         any source or fit parameters.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper, that defines the global
             parameters and their mapping to local source parameters.
         """
@@ -935,19 +991,21 @@ class TrialDataManager:
 
         self._trial_data_state_id += 1
 
-    def calculate_global_fitparam_data_fields(self, shg_mgr, pmm, global_fitparams_dict):
+    def calculate_global_fitparam_data_fields(
+        self, shg_mgr: SourceHypoGroupManager, pmm: ParameterModelMapper, global_fitparams_dict: dict
+    ):
         """Calculates the data values of the data fields that depend on global
         fit parameter values.
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager, which defines the groups of
             source hypotheses.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper, that defines the global
             parameters and their mapping to local source parameters.
-        global_fitparams_dict : dict
+        global_fitparams_dict
             The dictionary holding the current global fit parameter names and
             values.
         """
@@ -959,7 +1017,7 @@ class TrialDataManager:
 
         self._trial_data_state_id += 1
 
-    def get_data(self, name):
+    def get_data(self, name: str) -> np.ndarray:
         """Gets the data for the given data field name. The data is stored
         either in the raw events DataFieldRecordArray or in one of the
         additional defined data fields. Data from the raw events
@@ -967,12 +1025,12 @@ class TrialDataManager:
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field for which to retrieve the data.
 
         Returns
         -------
-        data : instance of numpy ndarray
+        data
             The numpy ndarray holding the data of the requested data field.
             The length of the array is either N_sources, N_selected_events, or
             N_values.
@@ -1000,17 +1058,17 @@ class TrialDataManager:
 
         raise KeyError(f'The data field "{name}" is not defined!')
 
-    def get_dtype(self, name):
+    def get_dtype(self, name: str) -> np.dtype:
         """Gets the data type of the given data field.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field whose data type should get retrieved.
 
         Returns
         -------
-        dt : numpy dtype
+        dt
             The numpy dtype object of the given data field.
 
         Raises
@@ -1022,52 +1080,52 @@ class TrialDataManager:
 
         return dt
 
-    def is_event_data_field(self, name):
+    def is_event_data_field(self, name: str) -> bool:
         """Checks if the given data field is an events data field, i.e. its
         length is N_selected_events.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field.
 
         Returns
         -------
-        check : bool
+        check
             ``True`` if the given data field contains event data, ``False``
             otherwise.
         """
         return self._events is not None and name in self._events.field_name_list
 
-    def is_source_data_field(self, name):
+    def is_source_data_field(self, name: str) -> bool:
         """Checks if the given data field is a source data field, i.e. its
         length is N_sources.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field.
 
         Returns
         -------
-        check : bool
+        check
             ``True`` if the given data field contains source data, ``False``
             otherwise.
         """
         return name in self._source_data_fields_dict
 
-    def is_srcevt_data_field(self, name):
+    def is_srcevt_data_field(self, name: str) -> bool:
         """Checks if the given data field is a source-event data field, i.e. its
         length is N_values.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the data field.
 
         Returns
         -------
-        check : bool
+        check
             ``True`` if the given data field contains source-event data,
             ``False`` otherwise.
         """

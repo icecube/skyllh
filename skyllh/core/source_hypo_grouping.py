@@ -3,6 +3,8 @@ Same kind sources can be grouped to allow more efficient calculations in the
 analysis.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from skyllh.core.detsigyield import (
@@ -36,24 +38,31 @@ class SourceHypoGroup(SourceHypoGroup_t):
     and signal generation methods.
     """
 
-    def __init__(self, sources, fluxmodel, detsigyield_builders, sig_gen_method=None, **kwargs):
+    def __init__(
+        self,
+        sources: SourceModel | Sequence[SourceModel],
+        fluxmodel: FluxModel,
+        detsigyield_builders: DetSigYieldBuilder | Sequence[DetSigYieldBuilder],
+        sig_gen_method: SignalGenerationMethod | None = None,
+        **kwargs,
+    ):
         """Constructs a new source hypothesis group.
 
         Parameters
         ----------
-        sources : SourceModel | sequence of SourceModel
+        sources
             The source or sequence of sources that define the source group.
-        fluxmodel : instance of FluxModel
+        fluxmodel
             The FluxModel instance that applies to the list of sources of the
             group.
-        detsigyield_builders : sequence of DetSigYieldBuilder instances
+        detsigyield_builders
             The sequence of detector signal yield builder instances,
             which should be used to create the detector signal
             yield for the sources of this group. Each element is the
             detector signal yield builder for the particular dataset, if
             several datasets are used. If this list contains only one builder,
             it should be used for all datasets.
-        sig_gen_method : SignalGenerationMethod instance | None
+        sig_gen_method
             The instance of SignalGenerationMethod that implements the signal
             generation for the specific detector and source hypothesis. It can
             be set to None, which means, no signal can be generated. Useful for
@@ -168,12 +177,12 @@ class SourceHypoGroup(SourceHypoGroup_t):
 
         return s
 
-    def get_source_weights(self):
+    def get_source_weights(self) -> np.ndarray | None:
         """Gets the weight from each source of this source hypothesis group.
 
         Returns
         -------
-        weights : numpy ndarray | None
+        weights
             The (N_sources,)-shaped numpy ndarray holding the theoretical
             weight of each source.
             It is ``None`` if any of the individual source weights is None.
@@ -196,13 +205,12 @@ class SourceHypoGroupManager:
     way.
     """
 
-    def __init__(self, src_hypo_groups=None, **kwargs):
+    def __init__(self, src_hypo_groups: 'SourceHypoGroup | Sequence[SourceHypoGroup] | None' = None, **kwargs):
         """Creates a new source hypothesis group manager instance.
 
         Parameters
         ----------
-        src_hypo_groups : SourceHypoGroup instance |
-                          sequence of SourceHypoGroup instances | None
+        src_hypo_groups
             The SourceHypoGroup instances to initialize the manager with.
         """
         super().__init__(**kwargs)
@@ -272,13 +280,13 @@ class SourceHypoGroupManager:
 
         return s
 
-    def _extend_sidx_to_gidx_gsidx_map_arr(self, shg):
+    def _extend_sidx_to_gidx_gsidx_map_arr(self, shg: 'SourceHypoGroup'):
         """Extends the source index to (group index, group source index) map
         array by one source hypo group.
 
         Parameters
         ----------
-        shg : SourceHypoGroup instance
+        shg
             The SourceHypoGroup instance for which the map array should get
             extented.
         """
@@ -287,7 +295,13 @@ class SourceHypoGroupManager:
         arr[:, 1] = np.arange(shg.n_sources)  # Group source index.
         self._sidx_to_gidx_gsidx_map_arr = np.vstack((self._sidx_to_gidx_gsidx_map_arr, arr))
 
-    def create_source_hypo_group(self, sources, fluxmodel, detsigyield_builders, sig_gen_method=None):
+    def create_source_hypo_group(
+        self,
+        sources: SourceModel | Sequence[SourceModel],
+        fluxmodel: FluxModel,
+        detsigyield_builders: Sequence[DetSigYieldBuilder],
+        sig_gen_method: SignalGenerationMethod | None = None,
+    ):
         """Creates and adds a source hypothesis group to this source hypothesis
         group manager. A source hypothesis group shares sources of the same
         source model with the same flux model and hence the same detector signal
@@ -295,19 +309,19 @@ class SourceHypoGroupManager:
 
         Parameters
         ----------
-        sources : SourceModel | sequence of SourceModel
+        sources
             The source or sequence of sources that define the source group.
-        fluxmodel : instance of FluxModel
+        fluxmodel
             The FluxModel instance that applies to the list of sources of the
             group.
-        detsigyield_builders : sequence of DetSigYieldBuilder instances
+        detsigyield_builders
             The sequence of detector signal yield builder instances,
             which should be used to create the detector signal
             yield for the sources of this group. Each element is the
             detector signal yield builder for the particular dataset, if
             several datasets are used. If this list contains only one builder,
             it should be used for all datasets.
-        sig_gen_method : instance of SignalGenerationMethod | None
+        sig_gen_method
             The SignalGenerationMethod instance that implements the detector
             and source hypothesis specific signal generation.
             It can be set to None which means no signal can be generated.
@@ -327,72 +341,72 @@ class SourceHypoGroupManager:
         # array.
         self._extend_sidx_to_gidx_gsidx_map_arr(group)
 
-    def get_fluxmodel_by_src_idx(self, src_idx):
+    def get_fluxmodel_by_src_idx(self, src_idx: int) -> FluxModel:
         """Retrieves the FluxModel instance for the source specified by its
         source index.
 
         Parameters
         ----------
-        src_idx : int
+        src_idx
             The index of the source, which must be in the range
             [0, N_sources-1].
 
         Returns
         -------
-        fluxmodel : instance of FluxModel
+        fluxmodel
             The FluxModel instance that applies to the specified source.
         """
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx, 0]
         return self._shg_list[gidx]._fluxmodel
 
-    def get_detsigyield_builder_list_by_src_idx(self, src_idx):
+    def get_detsigyield_builder_list_by_src_idx(self, src_idx: int) -> list[DetSigYieldBuilder]:
         """Retrieves the list of DetSigYieldBuilder instances for the source
         specified by its source index.
 
         Parameters
         ----------
-        src_idx : int
+        src_idx
             The index of the source, which must be in the range
             [0, N_sources-1].
 
         Returns
         -------
-        detsigyield_builder_list : list of DetSigYieldBuilder instances
+        detsigyield_builder_list
             The list of DetSigYieldBuilder instances that apply to the
             specified source.
         """
         gidx = self._sidx_to_gidx_gsidx_map_arr[src_idx, 0]
         return self._shg_list[gidx]._detsigyield_builder_list
 
-    def get_src_mask_of_shg(self, shg_idx):
+    def get_src_mask_of_shg(self, shg_idx: int) -> np.ndarray:
         """Creates a source mask for the sources of the ``shg_idx`` th source
         hypothesis group.
 
         Parameters
         ----------
-        shg_idx : int
+        shg_idx
             The index of the source hypothesis group.
 
         Returns
         -------
-        src_mask : instance of numpy ndarray
+        src_mask
             The (N_sources,)-shaped numpy ndarray of bool holding the mask for
             selecting the sources of the given source hypothesis group.
         """
         return self._sidx_to_gidx_gsidx_map_arr[:, 0] == shg_idx
 
-    def get_src_idxs_of_shg(self, shg_idx):
+    def get_src_idxs_of_shg(self, shg_idx: int) -> np.ndarray:
         """Creates an array of indices of sources that belong to the given
         source hypothesis group.
 
         Parameters
         ----------
-        shg_idx : int
+        shg_idx
             The index of the source hypothesis group.
 
         Returns
         -------
-        src_idxs : instance of numpy ndarray
+        src_idxs
             The numpy ndarray of int holding the indices of the sources that
             belong to the given source hypothesis group.
         """

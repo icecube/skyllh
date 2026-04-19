@@ -2,17 +2,28 @@
 likelihood function.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from skyllh.core import (
     tool,
 )
+from skyllh.core.flux_model import TimeFluxProfile
 from skyllh.core.interpolate import (
     GridManifoldInterpolationMethod,
     Linear1DGridManifoldInterpolationMethod,
 )
+from skyllh.core.livetime import Livetime
 from skyllh.core.logging import (
     get_logger,
+)
+from skyllh.core.parameters import (
+    Parameter,
+    ParameterGrid,
+    ParameterGridSet,
+    ParameterModelMapper,
+    ParameterSet,
 )
 from skyllh.core.pdf import (
     PDF,
@@ -29,9 +40,8 @@ from skyllh.core.py import (
 from skyllh.core.source_hypo_grouping import (
     SourceHypoGroupManager,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.timing import TaskTimer, TimeLord
+from skyllh.core.trialdata import TrialDataManager
 from skyllh.core.utils.coords import (
     angular_separation,
 )
@@ -55,19 +65,25 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     declination of the point-like sources, respectively.
     """
 
-    def __init__(self, ra_range=None, dec_range=None, pd_event_data_field_name=None, **kwargs):
+    def __init__(
+        self,
+        ra_range: tuple | None = None,
+        dec_range: tuple | None = None,
+        pd_event_data_field_name: str | None = None,
+        **kwargs,
+    ):
         """Creates a new spatial signal PDF for point-like sources with a
         gaussian point-spread-function (PSF).
 
         Parameters
         ----------
-        ra_range : 2-element tuple | None
+        ra_range
             The range in right-ascension this spatial PDF is valid for.
             If set to None, the range (0, 2pi) is used.
-        dec_range : 2-element tuple | None
+        dec_range
             The range in declination this spatial PDF is valid for.
             If set to None, the range (-pi/2, +pi/2) is used.
-        pd_event_data_field_name : str | None
+        pd_event_data_field_name
             The probability density values can be pre-calculated by the user.
             This specifies the name of the event data field, where these values
             are stored.
@@ -97,35 +113,35 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         )
         self._pd_event_data_field_name = name
 
-    def calculate_pd(self, tdm):
+    def calculate_pd(self, tdm: TrialDataManager) -> np.ndarray:
         """Calculates the gaussian PSF probability density values for all events
         and sources.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data for
             which to calculate the PDF values. The following data fields need to
             be present:
 
-            src_array : numpy record ndarray
+            src_array
                 The numpy record ndarray with the following data fields:
 
-                ra : float
+                ra
                     The right-ascension of the point-like source.
-                dec : float
+                dec
                     The declination of the point-like source.
 
-            ra : float
+            ra
                 The right-ascension in radian of the data event.
-            dec : float
+            dec
                 The declination in radian of the data event.
-            ang_err: float
+            ang_err
                 The reconstruction uncertainty in radian of the data event.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             for each event. The length of this 1D array depends on the number
             of sources and the events belonging to those sources. In the worst
@@ -138,7 +154,9 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         dec = get_data('dec')
         sigma = get_data('ang_err')
 
-        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+        _src_evt_idxs = tdm.src_evt_idxs
+        assert _src_evt_idxs is not None
+        (src_idxs, evt_idxs) = _src_evt_idxs
         src_ra = np.take(src_array['ra'], src_idxs)
         src_dec = np.take(src_array['dec'], src_idxs)
 
@@ -152,47 +170,49 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
         return pd
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self, tdm: TrialDataManager, params_recarray: np.ndarray | None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the spatial signal probability density of each event for
         all sources.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data for
             which to calculate the PDF values. The following data fields need to
             be present:
 
-            src_array : numpy record ndarray
+            src_array
                 The numpy record ndarray with the following data fields:
 
-                ra : float
+                ra
                     The right-ascension of the point-like source.
-                dec : float
+                dec
                     The declination of the point-like source.
 
-            ra : float
+            ra
                 The right-ascension in radian of the data event.
-            dec : float
+            dec
                 The declination in radian of the data event.
-            ang_err: float
+            ang_err
                 The reconstruction uncertainty in radian of the data event.
 
             In case the probability density values were pre-calculated,
-        params_recarray : None
+        params_recarray
             Unused interface argument.
-        tl : TimeLord instance | None
+        tl
             The optional TimeLord instance to use for measuring timing
             information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             for each event. The length of this 1D array depends on the number
             of sources and the events belonging to those sources. In the worst
             case the length is N_sources * N_trial_events.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each fit parameter. By definition this PDF does not depend
             on any fit parameters and hence, this dictionary is empty.
@@ -236,7 +256,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
     right-ascension and declination of the point-like sources, respectively.
     """
 
-    def __init__(self, ra_range=None, dec_range=None, **kwargs):
+    def __init__(self, ra_range: tuple | None = None, dec_range: tuple | None = None, **kwargs):
         r"""Creates a new spatial signal PDF for point-like sources with a
         Rayleigh point-spread-function (PSF).
 
@@ -264,6 +284,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         """
         get_data = tdm.get_data
 
+        assert tdm.src_evt_idxs is not None
         (_, evt_idxs) = tdm.src_evt_idxs
 
         psi = get_data('psi')
@@ -272,35 +293,37 @@ class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
 
         self._pd = 0.5 / (np.pi * np.sin(psi)) * (psi / sigma_sq) * np.exp(-0.5 * (psi**2 / sigma_sq))
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self, tdm: TrialDataManager, params_recarray: np.ndarray | None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the spatial signal probability density of each event for
         all sources.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data for
             which to calculate the PDF values. The following data fields need to
             be present:
 
-            psi : float
+            psi
                 The opening angle in radian between the source direction and the
                 reconstructed muon direction.
-            ang_err: float
+            ang_err
                 The reconstruction uncertainty in radian of the data event.
 
-        params_recarray : None
+        params_recarray
             Unused interface argument.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to use for measuring timing
             information.
 
         Returns
         -------
-        pd : (N_values,)-shaped numpy ndarray
+        pd
             The (N_values,)-shaped 1D numpy ndarray holding the probability
             density value for each event and source in unit 1/rad.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each global fit parameter. By definition this PDF does not
             depend on any global fit parameters and hence, this dictionary is
@@ -325,16 +348,16 @@ class SignalTimePDF(
     into account.
     """
 
-    def __init__(self, livetime, time_flux_profile, **kwargs):
+    def __init__(self, livetime: Livetime, time_flux_profile: TimeFluxProfile, **kwargs):
         """Creates a new signal time PDF instance for a given time flux profile
         and detector live time.
 
         Parameters
         ----------
-        livetime : instance of Livetime
+        livetime
             An instance of Livetime, which provides the detector live-time
             information.
-        time_flux_profile : instance of TimeFluxProfile
+        time_flux_profile
             The signal's time flux profile.
 
             .. note::
@@ -349,42 +372,45 @@ class SignalTimePDF(
 
     def _calculate_pd(
         self,
-        tdm,
-        params_recarray,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        params_recarray: np.ndarray,
+        tl: TimeLord | None = None,
+    ) -> np.ndarray:
         """Calculates the probability density values for the given trial data
         and source parameters.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data.
             The following data fields must exist:
 
             ``'time'`` : float
                 The time of the event.
 
-        params_recarray : instance of structured ndarray
+        params_recarray
             The structured numpy ndarray of length N_sources holding the local
             parameter names and values of the sources.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             values for each trial data event and source.
         """
-        (src_idxs, evt_idxs) = tdm.src_evt_idxs
+        _src_evt_idxs = tdm.src_evt_idxs
+        assert _src_evt_idxs is not None
+        (src_idxs, evt_idxs) = _src_evt_idxs
         n_values = len(evt_idxs)
 
         pd = np.zeros((n_values,), dtype=np.float64)
 
         events_time = tdm.get_data('time')
         for src_idx, src_params_row in enumerate(params_recarray):
+            assert params_recarray.dtype.fields is not None
             params = dict(zip(params_recarray.dtype.fields.keys(), src_params_row, strict=True))
 
             # Update the time flux profile if its parameter values have changed
@@ -434,6 +460,7 @@ class SignalTimePDF(
         # pre-calculate the PDF values.
 
         if self.pmm is None:
+            assert tdm.n_sources is not None
             params_recarray = np.empty((tdm.n_sources,), dtype=[])
         else:
             params_recarray = self.pmm.create_src_params_recarray()
@@ -442,16 +469,16 @@ class SignalTimePDF(
 
     def get_pd(
         self,
-        tdm,
-        params_recarray,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        params_recarray: np.ndarray | None = None,
+        tl: TimeLord | None = None,
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the signal time probability density of each event for the
         given set of time parameter values for each source.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data for
             which to calculate the PDF value. The following data fields must
             exist:
@@ -459,19 +486,19 @@ class SignalTimePDF(
             ``'time'`` : float
                 The time of the event.
 
-        params_recarray : instance of numpy structured ndarray
+        params_recarray
             The numpy structured ndarray holding the local parameter values for
             each source.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (N_values,)-shaped 1D numpy ndarray holding the probability
             density value for each trial event and source.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each global fit parameter.
         """
@@ -479,6 +506,7 @@ class SignalTimePDF(
         if self._pd is not None:
             return (self._pd, dict())
 
+        assert params_recarray is not None
         pd = self._calculate_pd(tdm=tdm, params_recarray=params_recarray, tl=tl)
 
         return (pd, dict())
@@ -512,12 +540,12 @@ class SignalMultiDimGridPDFSet(
 
     def __init__(
         self,
-        pmm,
-        param_set,
-        param_grid_set,
+        pmm: ParameterModelMapper,
+        param_set: Parameter | Sequence[Parameter] | ParameterSet,
+        param_grid_set: ParameterGrid | ParameterGridSet,
         gridparams_pdfs,
-        interpol_method_cls=None,
-        use_same_photospline_bfi_for_all_pdfs=False,
+        interpol_method_cls: type[GridManifoldInterpolationMethod] | None = None,
+        use_same_photospline_bfi_for_all_pdfs: bool = False,
         **kwargs,
     ):
         """Creates a new MultiDimGridPDFSet instance, which holds a set of
@@ -525,23 +553,23 @@ class SignalMultiDimGridPDFSet(
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper that defines the mapping of
             the global parameters to local model parameters.
-        param_set : instance of Parameter | sequence of instance of Parameter | instance of ParameterSet
+        param_set
             The set of parameters defining the parameters of this PDF.
-        param_grid_set : ParameterGrid instance | ParameterGridSet instance
+        param_grid_set
             The set of ParameterGrid instances, which define the grid values of
             the model parameters, the given MultiDimGridPDF instances belong to.
-        gridparams_pdfs : sequence of (dict, MultiDimGridPDF) tuples
+        gridparams_pdfs
             The sequence of 2-element tuples which define the mapping of grid
             values to PDF instances.
-        interpol_method_cls : subclass of GridManifoldInterpolationMethod
+        interpol_method_cls
             The class specifying the interpolation method. This must be a
             subclass of ``GridManifoldInterpolationMethod``.
             If set to None, the default grid manifold interpolation method
             ``Linear1DGridManifoldInterpolationMethod`` will be used.
-        use_same_photospline_bfi_for_all_pdfs : bool
+        use_same_photospline_bfi_for_all_pdfs
             Flag if the same basis function indices (bfi) should be used for
             all PDFs when photospline tables are used. Default is ``False``.
             This should be set to ``True`` if all photospline tables share the
@@ -589,20 +617,20 @@ class SignalMultiDimGridPDFSet(
 
     def _get_pdf_for_interpol_param_values(
         self,
-        interpol_param_values,
-    ):
+        interpol_param_values: np.ndarray,
+    ) -> MultiDimGridPDF:
         """Retrieves the PDF for the given set of interpolation parameter
         values.
 
         Parameters
         ----------
-        interpol_param_values : instance of numpy ndarray
+        interpol_param_values
             The (N_interpol_params,)-shaped numpy ndarray holding the values of
             the interpolation parameters.
 
         Returns
         -------
-        pdf : instance of MultiDimGridPDF
+        pdf
             The requested PDF instance.
         """
         gridparams = dict(zip(self._interpol_param_names, interpol_param_values, strict=True))
@@ -613,34 +641,34 @@ class SignalMultiDimGridPDFSet(
 
     def _evaluate_pdfs(
         self,
-        tdm,
-        eventdata,
-        gridparams_recarray,
-        n_values,
+        tdm: TrialDataManager,
+        eventdata: np.ndarray,
+        gridparams_recarray: np.ndarray,
+        n_values: int,
         tl=None,
-    ):
+    ) -> np.ndarray:
         """Evaluates the PDFs for the given event data. The particular PDF is
         selected based on the grid parameter values for each model.
         This method is called by the interpolation method.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data.
-        eventdata : instance of numpy ndarray
+        eventdata
             The (V,N_values)-shaped numpy ndarray holding the event data for
             the PDF evaluation.
-        gridparams_recarray : instance of numpy structured ndarray
+        gridparams_recarray
             The numpy structured ndarray of length N_sources with the
             parameter names and values needed for the interpolation on the grid
             for all sources. If the length of this structured array is
             1, the set of parameters will be used for all sources.
-        n_values : int
+        n_values
             The size of the output array.
 
         Returns
         -------
-        pd : instance of ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             values for each event.
         """
@@ -658,7 +686,9 @@ class SignalMultiDimGridPDFSet(
 
         pd = np.empty(n_values, dtype=np.float64)
 
-        (src_idxs, _) = tdm.src_evt_idxs
+        _src_evt_idxs = tdm.src_evt_idxs
+        assert _src_evt_idxs is not None
+        (src_idxs, _) = _src_evt_idxs
 
         v_start = 0
         for sidx, interpol_param_values in enumerate(gridparams_recarray):
@@ -679,8 +709,8 @@ class SignalMultiDimGridPDFSet(
 
     def assert_is_valid_for_trial_data(
         self,
-        tdm,
-        tl=None,
+        tdm: TrialDataManager,
+        tl: TimeLord | None = None,
         **kwargs,
     ):
         """Checks if the PDFs of this PDFSet instance are valid for all the
@@ -694,9 +724,9 @@ class SignalMultiDimGridPDFSet(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data events.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
 
         Raises
@@ -708,8 +738,8 @@ class SignalMultiDimGridPDFSet(
 
     def initialize_for_new_trial(
         self,
-        tdm,
-        tl=None,
+        tdm: TrialDataManager,
+        tl: TimeLord | None = None,
         **kwargs,
     ):
         """This method is called whenever a new trial data is initialized. It
@@ -720,9 +750,9 @@ class SignalMultiDimGridPDFSet(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the new trial data events.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
         """
         super().initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
@@ -744,33 +774,33 @@ class SignalMultiDimGridPDFSet(
                     logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
                     logger.info('Falling back to the slower photospline evaluation.')
 
-    def get_pd(
+    def get_pd(  # type: ignore[override]
         self,
-        tdm,
-        params_recarray,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        params_recarray: np.ndarray | None,
+        tl: TimeLord | None = None,
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the probability density for each event, given the given
         parameter values.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that will be used to get the data
             from the trial events.
-        params_recarray : instance of structured ndarray | None
+        params_recarray
             The numpy record ndarray holding the parameter name and values for
             each source model.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to use for measuring timing
             information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             value for each source and event.
-        grads : dict
+        grads
             The dictionary holding the PDF gradient value for each event w.r.t.
             each global fit parameter.
             The key of the dictionary is the ID of the global fit parameter.
@@ -779,6 +809,9 @@ class SignalMultiDimGridPDFSet(
         """
         logger = get_logger(f'{__name__}.{classname(self)}.get_pd')
 
+        assert params_recarray is not None
+        assert self._cache_eventdata is not None
+
         # Get the interpolated PDF values for the arbitrary parameter values.
         # The (D,N_events)-shaped grads_arr ndarray contains the gradient of the
         # probability density w.r.t. each of the D parameters, which are defined
@@ -786,6 +819,7 @@ class SignalMultiDimGridPDFSet(
         # the parameter grids.
         with TaskTimer(tl, 'Call interpolate method to get probability densities for all events.'):
             if self._cfg.is_tracing_enabled:
+                assert params_recarray.dtype.fields is not None
                 logger.debug(
                     'Call interpol_method with '
                     f'params_recarray={params_recarray} of fields '
@@ -849,10 +883,10 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
     def __init__(
         self,
-        shg_mgr,
-        pmm,
+        shg_mgr: SourceHypoGroupManager,
+        pmm: ParameterModelMapper,
         shgidxs_pdf_list,
-        use_same_photospline_bfi_for_all_pdfs=False,
+        use_same_photospline_bfi_for_all_pdfs: bool = False,
         **kwargs,
     ):
         """Creates a new SignalSHGMappedMultiDimGridPDFSet instance, which holds
@@ -861,16 +895,16 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
         Parameters
         ----------
-        shg_mgr : instance of SourceHypoGroupManager
+        shg_mgr
             The instance of SourceHypoGroupManager that defines the source
             hypothesis groups and their sources.
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper which defines the mapping of
             global parameters to local source parameters.
-        shgidxs_pdf_list : sequence of (shg_idxs, MultiDimGridPDF) tuples
+        shgidxs_pdf_list
             The sequence of 2-element tuples which define the mapping of the
             source hypothesis groups to a PDF instance.
-        use_same_photospline_bfi_for_all_pdfs : bool
+        use_same_photospline_bfi_for_all_pdfs
             Flag if the same basis function indices (bfi) should be used for
             all PDFs when photospline tables are used. Default is ``False``.
             This should be set to ``True`` if all photospline tables share the
@@ -911,8 +945,8 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
     def initialize_for_new_trial(
         self,
-        tdm,
-        tl=None,
+        tdm: TrialDataManager,
+        tl: TimeLord | None = None,
         **kwargs,
     ):
         """This method is called whenever a new trial data is initialized. It
@@ -923,9 +957,9 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the new trial data events.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
         """
         super().initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
@@ -949,33 +983,33 @@ class SignalSHGMappedMultiDimGridPDFSet(
                     logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
                     logger.info('Falling back to the slower photospline evaluation.')
 
-    def get_pd(
+    def get_pd(  # type: ignore[override]
         self,
-        tdm,
-        params_recarray,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        params_recarray: np.ndarray | None,
+        tl: TimeLord | None = None,
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the probability density for each event, given the given
         parameter values.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that will be used to get the data
             from the trial events.
-        params_recarray : instance of structured ndarray | None
+        params_recarray
             The numpy record ndarray holding the parameter name and values for
             each source model.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to use for measuring timing
             information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             value for each event.
-        grads : dict
+        grads
             The dictionary holding the PDF gradient value for each event w.r.t.
             each global fit parameter.
             The key of the dictionary is the ID of the global fit parameter.
@@ -986,7 +1020,9 @@ class SignalSHGMappedMultiDimGridPDFSet(
         """
         pd = np.zeros((tdm.get_n_values(),), dtype=np.float64)
 
-        src_idxs = tdm.src_evt_idxs[0]
+        _src_evt_idxs = tdm.src_evt_idxs
+        assert _src_evt_idxs is not None
+        src_idxs = _src_evt_idxs[0]
         src_idxs_arr = np.arange(self._shg_mgr.n_sources)
 
         # Loop over the individual PDFs (via their key).

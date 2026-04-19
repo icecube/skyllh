@@ -4,6 +4,9 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
 
+from skyllh.core.parameters import (
+    ParameterModelMapper,
+)
 from skyllh.core.pdf import (
     IsSignalPDF,
     SpatialPDF,
@@ -27,7 +30,7 @@ class SignalSpatialPDFPlotter:
 
     def __init__(
         self,
-        tdm,
+        tdm: TrialDataManager,
         pdf,
         **kwargs,
     ):
@@ -36,10 +39,10 @@ class SignalSpatialPDFPlotter:
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that provides the data for the
             PDF evaluation.
-        pdf : class instance derived from SpatialPDF and IsSignalPDF
+        pdf
             The PDF object to plot.
         """
         super().__init__(**kwargs)
@@ -72,10 +75,11 @@ class SignalSpatialPDFPlotter:
 
     def plot(
         self,
-        src_hypo_group_manager,
-        axes,
-        source_idx=None,
-        sin_dec=True,
+        src_hypo_group_manager: SourceHypoGroupManager,
+        pmm: ParameterModelMapper,
+        axes: Axes,
+        source_idx: int | None = None,
+        sin_dec: bool = True,
         log=True,
         **kwargs,
     ):
@@ -83,14 +87,14 @@ class SignalSpatialPDFPlotter:
 
         Parameters
         ----------
-        axes : mpl.axes.Axes
+        axes
             The matplotlib Axes object on which the PDF ratio should get drawn
             to.
-        source_idx : int | None
+        source_idx
             The index of the source for which the PDF ratio should get plotted.
             If set to None and the signal PDF depends on the source, index 0
             will be used.
-        sin_dec : bool
+        sin_dec
             Flag if the plot should be made in right-ascention vs. declination
             (False), or in right-ascention vs. sin(declination) (True).
 
@@ -101,7 +105,7 @@ class SignalSpatialPDFPlotter:
 
         Returns
         -------
-        img : instance of mpl.AxesImage
+        img
             The AxesImage instance showing the PDF ratio image.
         """
         if not isinstance(src_hypo_group_manager, SourceHypoGroupManager):
@@ -164,9 +168,9 @@ class SignalSpatialPDFPlotter:
                 events['dec'][i] = dec
             events['ang_err'][i] = np.deg2rad(sigma_deg)
 
-        self._tdm.initialize_for_new_trial(src_hypo_group_manager, events)
+        self._tdm.initialize_trial(shg_mgr=src_hypo_group_manager, pmm=pmm, events=events)
 
-        event_probs = self._pdf.get_prob(self._tdm)
+        (event_probs, _) = self._pdf.get_pd(self._tdm)
 
         # Select only the probabilities for the requested source.
         if event_probs.ndim == 2:

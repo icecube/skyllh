@@ -1,4 +1,6 @@
 import abc
+from collections.abc import Callable, Sequence
+from typing import cast
 
 import numpy as np
 from scipy.interpolate import (
@@ -27,6 +29,7 @@ from skyllh.core.logging import (
     get_logger,
 )
 from skyllh.core.parameters import (
+    Parameter,
     ParameterGrid,
     ParameterGridSet,
     ParameterModelMapper,
@@ -41,9 +44,8 @@ from skyllh.core.py import (
     issequenceof,
     make_dict_hash,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.timing import TaskTimer, TimeLord
+from skyllh.core.trialdata import TrialDataManager
 
 logger = get_logger(__name__)
 
@@ -54,16 +56,16 @@ class PDFAxis:
     plot a PDF or a PDF ratio.
     """
 
-    def __init__(self, name, vmin, vmax, *args, **kwargs):
+    def __init__(self, name: str, vmin: float, vmax: float, *args, **kwargs):
         """Creates a new axis for a PDF.
 
         Parameters
         ----------
-        name : str
+        name
             The name of the axis.
-        vmin : float
+        vmin
             The minimal value of the axis.
-        vmax : float
+        vmax
             The maximal value of the axis.
         """
         super().__init__(*args, **kwargs)
@@ -131,7 +133,7 @@ class PDFAxes(NamedObjectCollection):
     """
 
     @staticmethod
-    def union(*axeses):
+    def union(*axeses) -> 'PDFAxes':
         """Creates a PDFAxes instance that is the union of the given PDFAxes
         instances.
 
@@ -142,7 +144,7 @@ class PDFAxes(NamedObjectCollection):
 
         Returns
         -------
-        axes : PDFAxes instance
+        axes
             The newly created PDFAxes instance that holds the union of the
             PDFAxis instances provided by all the PDFAxes instances.
         """
@@ -159,12 +161,12 @@ class PDFAxes(NamedObjectCollection):
 
         return axes
 
-    def __init__(self, axes=None, **kwargs):
+    def __init__(self, axes: 'Sequence[PDFAxis] | None' = None, **kwargs):
         """Creates a new PDFAxes instance.
 
         Parameters
         ----------
-        axes : sequence of instance of PDFAxis | None
+        axes
             The sequence of instance of PDFAxis for this PDFAxes instance.
             If set to ``None``, the PDFAxes instance will be empty.
         """
@@ -174,19 +176,19 @@ class PDFAxes(NamedObjectCollection):
         """Pretty string implementation for the PDFAxes instance."""
         return '\n'.join(str(axis) for axis in self)
 
-    def is_same_as(self, axes):
+    def is_same_as(self, axes: 'PDFAxes | Sequence[PDFAxis]') -> bool:
         """Checks if this PDFAxes object has the same axes and range then the
         given PDFAxes object.
 
         Parameters
         ----------
-        axes : instance of PDFAxes | sequence of PDFAxis
+        axes
             The instance of PDFAxes or the sequence of instance of PDFAxis that
             should be compared to the axes of this PDFAxes instance.
 
         Returns
         -------
-        check : bool
+        check
             True, if this PDFAxes and the given PDFAxes have the same axes and
             ranges. False otherwise.
         """
@@ -210,19 +212,20 @@ class IsBackgroundPDF:
 
         super().__init__(*args, **kwargs)
 
-    def __mul__(self, other):
+    def __mul__(self, other: 'IsBackgroundPDF'):
         """Creates a BackgroundPDFProduct instance for the multiplication of
         this background PDF and another background PDF.
 
         Parameters
         ----------
-        other : instance of IsBackgroundPDF
+        other
             The instance of IsBackgroundPDF, which is the other background PDF.
         """
         if not isinstance(other, IsBackgroundPDF):
             raise TypeError('The other PDF must be an instance of IsBackgroundPDF!')
 
-        return BackgroundPDFProduct(self, other, cfg=self.cfg)
+        _self = cast('PDF', self)
+        return BackgroundPDFProduct(_self, cast('PDF', other), cfg=cast(HasConfig, self).cfg)
 
 
 class IsSignalPDF:
@@ -239,19 +242,19 @@ class IsSignalPDF:
 
         super().__init__(*args, **kwargs)
 
-    def __mul__(self, other):
+    def __mul__(self, other: 'IsSignalPDF'):
         """Creates a SignalPDFProduct instance for the multiplication of this
         signal PDF and another signal PDF.
 
         Parameters
         ----------
-        other : instance of IsSignalPDF
+        other
             The instance of IsSignalPDF, which is the other signal PDF.
         """
         if not isinstance(other, IsSignalPDF):
             raise TypeError('The other PDF must be an instance of IsSignalPDF!')
 
-        return SignalPDFProduct(self, other, cfg=self.cfg)
+        return SignalPDFProduct(cast('PDF', self), cast('PDF', other), cfg=cast(HasConfig, self).cfg)
 
 
 class PDF(
@@ -268,19 +271,19 @@ class PDF(
 
     def __init__(
         self,
-        pmm=None,
-        param_set=None,
+        pmm: ParameterModelMapper | None = None,
+        param_set: Parameter | Sequence[Parameter] | ParameterSet | None = None,
         **kwargs,
     ):
         """Creates a new PDF instance.
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper | None
+        pmm
             The instance of ParameterModelMapper defining the global parameters
             and their mapping to local model/source parameters.
             It can be ``None``, if the PDF does not depend on any parameters.
-        param_set : instance of Parameter | sequence of instance of Parameter | instance of ParameterSet | None
+        param_set
             If this PDF depends on parameters, this set of parameters
             defines them. If a single parameter instance is given a ParameterSet
             instance will be created holding this single parameter.
@@ -364,7 +367,7 @@ class PDF(
         self._axes += axis
 
     @abc.abstractmethod
-    def assert_is_valid_for_trial_data(self, tdm, tl=None, **kwargs):
+    def assert_is_valid_for_trial_data(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """This method is supposed to check if this PDF is valid for
         all the given trial data. This means, it needs to check if there
         is a PDF value for each trial data event that will be used in the
@@ -374,9 +377,9 @@ class PDF(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data events.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
 
         Raises
@@ -386,33 +389,35 @@ class PDF(
         """
         pass
 
-    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
+    def initialize_for_new_trial(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """This method is called when a new trial is initialized. Derived
         classes can use this call hook to pre-compute time-expensive data, which
         do not depend on any fit parameters.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the new trial data.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to measure timing information.
         """
         pass
 
     @abc.abstractmethod
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self, tdm: TrialDataManager, params_recarray: np.ndarray | None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """This abstract method is supposed to calculate the probability density
         for the specified events given the specified parameter values.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the data events for which
             the probability density should be calculated.
             What data fields are required is defined by the derived PDF class
             and depends on the application.
-        params_recarray : numpy record ndarray | None
+        params_recarray
             The (N_models,)-shaped numpy structured ndarray holding the local
             parameter names and values of the models.
             The models are defined by the ParameterModelMapper instance.
@@ -425,13 +430,13 @@ class PDF(
             source value. For values mapping to non-fit parameters, the index
             should be negative.
             This can be ``None`` for PDFs that do not depend on any parameters.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : instance of numpy ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             for each event. The length of this 1D array depends on the number
             of sources and the events belonging to those sources. In the worst
@@ -439,7 +444,7 @@ class PDF(
             The assignment of values to sources is given by the
             :py:attr:`~skyllh.core.trialdata.TrialDataManager.src_evt_idxs`
             property.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each global fit parameter. The key of the dictionary is the
             id of the global fit parameter. The value is a (N_values,)-shaped
@@ -455,16 +460,16 @@ class PDFProduct(
     ``pdf1 * pdf2``. It is derived from the PDF class and hence is a PDF itself.
     """
 
-    def __init__(self, pdf1, pdf2, **kwargs):
+    def __init__(self, pdf1: 'PDF', pdf2: 'PDF', **kwargs):
         """Creates a new PDFProduct instance, which implements the operation
         ``pdf1 * pdf2``.
         The axes of the two PDF instances will be merged.
 
         Parameters
         ----------
-        pdf1 : instance of PDF
+        pdf1
             The left-hand-side PDF in the operation ``pdf1 * pdf2``.
-        pdf2 : instance of PDF
+        pdf2
             The right-hand-side PDF in the operation ``pdf1 * pdf2``.
         """
         self.pdf1 = pdf1
@@ -509,16 +514,16 @@ class PDFProduct(
             raise TypeError('The pdf2 property must be an instance of PDF!')
         self._pdf2 = pdf
 
-    def assert_is_valid_for_trial_data(self, tdm, tl=None, **kwargs):
+    def assert_is_valid_for_trial_data(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Calls the :meth:`assert_is_valid_for_trial_data` method of ``pdf1``
         and ``pdf2``.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that should be used to get the
             trial data from.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
 
         Raises
@@ -532,8 +537,8 @@ class PDFProduct(
 
     def initialize_for_new_trial(
         self,
-        tdm,
-        tl=None,
+        tdm: TrialDataManager,
+        tl: TimeLord | None = None,
         **kwargs,
     ):
         """Calls the ``initialize_for_new_trial`` method of the two PDF
@@ -541,16 +546,18 @@ class PDFProduct(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the new trial event data.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to use for measuring timing
             information.
         """
         self._pdf1.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
         self._pdf2.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
 
-    def get_pd(self, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self, tdm: TrialDataManager, params_recarray: np.ndarray | None = None, tl: TimeLord | None = None
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the probability density for the trial events given the
         specified parameters by calling the `get_pd` method of `pdf1`
         and `pdf2` and combining the two property densities by multiplication.
@@ -559,25 +566,25 @@ class PDFProduct(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial event data for which
             the PDF values should get calculated.
-        params_recarray : instance of numpy.ndarray | None
+        params_recarray
             The (N_models,)-shaped structured numpy ndarray holding the
             parameter values of the models. The the documentation of the
             :meth:`~skyllh.core.pdf.PDF.get_pd` method of the
             :class:`~skyllh.core.pdf.PDF` class for further information.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord to use for measuring timing
             information.
 
         Returns
         -------
-        pd : instance of numpy.ndarray
+        pd
             The (N_events,)-shaped numpy ndarray holding the probability density
             for each event. In case of a signal PDF product the shape will be
             (N_sources,N_events).
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each fit parameter. The key of the dictionary is the id
             of the global fit parameter. The value is the (N_events,)-shaped
@@ -650,15 +657,15 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
     has two axes, right-ascension (ra) and declination (dec).
     """
 
-    def __init__(self, ra_range, dec_range, **kwargs):
+    def __init__(self, ra_range: tuple, dec_range: tuple, **kwargs):
         """Constructor of a spatial PDF. It adds the PDF axes "ra" and "dec"
         with the specified ranges of coverage.
 
         Parameters
         ----------
-        ra_range : 2-element tuple
+        ra_range
             The tuple specifying the right-ascension range this PDF covers.
-        dec_range : 2-element tuple
+        dec_range
             The tuple specifying the declination range this PDF covers.
         """
         super().__init__(**kwargs)
@@ -666,7 +673,7 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
         self.add_axis(PDFAxis(name='ra', vmin=ra_range[0], vmax=ra_range[1]))
         self.add_axis(PDFAxis(name='dec', vmin=dec_range[0], vmax=dec_range[1]))
 
-    def assert_is_valid_for_trial_data(self, tdm, tl=None, **kwargs):
+    def assert_is_valid_for_trial_data(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Checks if this spatial PDF is valid for all the given experimental
         data.
         It checks if all the data is within the right-ascension and declination
@@ -674,7 +681,7 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data.
             The following data fields must exist:
 
@@ -682,7 +689,7 @@ class SpatialPDF(PDF, metaclass=abc.ABCMeta):
                 The right-ascension of the data event.
             - 'dec' : float
                 The declination of the data event.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
 
         Raises
@@ -725,7 +732,7 @@ class TimePDF(PDF, metaclass=abc.ABCMeta):
 
     def __init__(
         self,
-        livetime,
+        livetime: Livetime,
         time_flux_profile,
         **kwargs,
     ):
@@ -734,10 +741,10 @@ class TimePDF(PDF, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        livetime : instance of Livetime
+        livetime
             An instance of Livetime, which provides the detector live-time
             information.
-        time_profile : instance of TimeFluxProfile
+        time_profile
             The signal's time flux profile.
         **kwargs
             Additional keyword arguments are passed to the constructor of the
@@ -797,13 +804,13 @@ class TimePDF(PDF, metaclass=abc.ABCMeta):
 
         return s
 
-    def _calculate_sum_of_ontime_time_flux_profile_integrals(self):
+    def _calculate_sum_of_ontime_time_flux_profile_integrals(self) -> float:
         """Calculates the sum, S, of the time flux profile integrals during the
         detector on-time intervals.
 
         Returns
         -------
-        S : float
+        S
             The sum of the time flux profile integrals during the detector
             on-time intervals.
         """
@@ -815,21 +822,21 @@ class TimePDF(PDF, metaclass=abc.ABCMeta):
 
         return S
 
-    def assert_is_valid_for_trial_data(self, tdm, tl=None, **kwargs):
+    def assert_is_valid_for_trial_data(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Checks if the time PDF is valid for all the given trial data.
         It checks if the time of all events is within the defined time axis of
         the PDF.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that holds the trial data.
             The following data fields must exist:
 
             ``'time'`` : float
                 The time of the data event.
 
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
 
         Raises
@@ -856,12 +863,12 @@ class MultiDimGridPDF(
 
     def __init__(
         self,
-        pmm,
-        axis_binnings,
-        path_to_pdf_splinetable=None,
-        pdf_grid_data=None,
-        norm_factor_func=None,
-        cache_pd_values=False,
+        pmm: ParameterModelMapper,
+        axis_binnings: BinningDefinition | Sequence[BinningDefinition],
+        path_to_pdf_splinetable: str | None = None,
+        pdf_grid_data: np.ndarray | None = None,
+        norm_factor_func: Callable | None = None,
+        cache_pd_values: bool = False,
         **kwargs,
     ):
         """Creates a new PDF instance for a multi-dimensional PDF given
@@ -880,23 +887,23 @@ class MultiDimGridPDF(
 
         Parameters
         ----------
-        pmm : instance of ParameterModelMapper
+        pmm
             The instance of ParameterModelMapper that defines the mapping of
             the global parameters to local model parameters.
-        axis_binnings : instance of BinningDefinition | sequence of instance of BinningDefinition
+        axis_binnings
             The sequence of BinningDefinition instances defining the binning of
             the PDF axes. The name of each instance of BinningDefinition defines
             the event field name that should be used for querying the PDF.
-        path_to_pdf_splinetable : str | None
+        path_to_pdf_splinetable
             The path to the file containing the spline table, which contains
             a pre-computed fit to the grid data.
             If specified, ``pdf_grid_data`` must be ``None``.
-        pdf_grid_data : instance of numpy ndarray | None
+        pdf_grid_data
             The n-dimensional numpy ndarray holding the PDF values at given grid
             points. The grid points must match the bin edges of the given
             BinningDefinition instances of the ``axis_binnings`` argument.
             If specified, ``path_to_pdf_splinetable`` must be ``None``.
-        norm_factor_func : callable | None
+        norm_factor_func
             The function that calculates a possible required normalization
             factor for the PDF value based on the event properties.
             The call signature of this function must be
@@ -912,7 +919,7 @@ class MultiDimGridPDF(
             (N_values,)-shaped numpy ndarray holding the mask for the events,
             i.e. rows in ``eventdata``, which should be considered. If ``None``,
             all events should be considered.
-        cache_pd_values : bool
+        cache_pd_values
             Flag if the probability density values should be cached.
             The evaluation of the photospline fit might be slow and caching the
             probability density values might increase performance.
@@ -1057,12 +1064,14 @@ class MultiDimGridPDF(
         if func is None:
             # Define a normalization function that just returns 1 for each
             # event.
-            def func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
+            def _unity_norm_func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
                 if evt_mask is None:  # noqa: SIM108
                     n_values = eventdata.shape[1]
                 else:
                     n_values = np.count_nonzero(evt_mask)
                 return np.ones((n_values,), dtype=np.float64)
+
+            func = _unity_norm_func
 
         if not callable(func):
             raise TypeError('The norm_factor_func property must be a callable object!')
@@ -1088,8 +1097,8 @@ class MultiDimGridPDF(
 
     def assert_is_valid_for_trial_data(
         self,
-        tdm,
-        tl=None,
+        tdm: TrialDataManager,
+        tl: TimeLord | None = None,
         **kwargs,
     ):
         """Checks if the PDF is valid for all values of the given evaluation
@@ -1098,10 +1107,10 @@ class MultiDimGridPDF(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that holds the trial data for which
             the PDF should be valid.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
 
         Raises
@@ -1132,13 +1141,13 @@ class MultiDimGridPDF(
 
     def _initialize_cache(
         self,
-        tdm,
+        tdm: TrialDataManager,
     ):
         """Initializes the cache variables.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that hold the trial data events.
         """
         self._cache_tdm_trial_data_state_id = None
@@ -1146,19 +1155,19 @@ class MultiDimGridPDF(
 
     def _store_pd_values_to_cache(
         self,
-        tdm,
-        pd,
-        evt_mask=None,
+        tdm: TrialDataManager,
+        pd: np.ndarray,
+        evt_mask: np.ndarray | None = None,
     ):
         """Stores the given pd values into the pd array cache.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that hold the trial data events.
-        pd : instance of numpy ndarray
+        pd
             The (N,)-shaped numpy ndarray holding the pd values to be stored.
-        evt_mask : instance of numpy ndarray | None
+        evt_mask
             The (N_values,)-shaped numpy ndarray defining the elements of the
             (N_values,)-shaped pd cache array where the given pd values should
             get stored. If set to ``None``, the the ``pd`` array must be of
@@ -1175,14 +1184,14 @@ class MultiDimGridPDF(
 
         self._cache_pd[evt_mask] = pd
 
-    def _get_cached_pd_values(self, tdm, evt_mask=None):
+    def _get_cached_pd_values(self, tdm: TrialDataManager, evt_mask: np.ndarray | None = None) -> np.ndarray | None:
         """Retrieves cached pd values for the given events.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that hold the trial data events.
-        evt_mask : instance of numpy ndarray | None
+        evt_mask
             The (N_values,)-shaped numpy ndarray defining the elements of the
             (N_values,)-shaped pd cache array for which pd values should get
             returned.
@@ -1190,7 +1199,7 @@ class MultiDimGridPDF(
 
         Returns
         -------
-        pd : instance of numpy ndarray | None
+        pd
             Returns ``None``, when no cached values are available.
             Otherwise the (N,)-shaped numpy ndarray holding the pd values where
             evt_mask evaluates to True.
@@ -1205,6 +1214,7 @@ class MultiDimGridPDF(
         if evt_mask is None:
             pd = self._cache_pd
         else:
+            assert self._cache_pd is not None
             pd = self._cache_pd[evt_mask]
             # If this PDF is evaluated for different sources, i.e. a subset of
             # pd values, those values could still be NaN and still need to be
@@ -1216,12 +1226,12 @@ class MultiDimGridPDF(
 
     def get_pd_with_eventdata(
         self,
-        tdm,
-        params_recarray,
-        eventdata,
-        evt_mask=None,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        params_recarray: np.ndarray | None,
+        eventdata: np.ndarray,
+        evt_mask: np.ndarray | None = None,
+        tl: TimeLord | None = None,
+    ) -> np.ndarray:
         """Calculates the probability density value for the given ``eventdata``.
 
         This method is useful when PDF values for the same trial data need to
@@ -1229,29 +1239,29 @@ class MultiDimGridPDF(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial event data for which
             the PDF values should get calculated.
-        params_recarray : instance of numpy structured ndarray | None
+        params_recarray
             The (N_models,)-shaped numpy structured ndarray holding the local
             parameter names and values of the models.
             By definition, this PDF does not depend on any parameters.
-        eventdata : instance of numpy.ndarray
+        eventdata
             The (V,N_values)-shaped numpy ndarray holding the V data attributes
             for each of the N_values events needed for the evaluation of the
             PDF.
-        evt_mask : instance of numpy ndarray | None
+        evt_mask
             The (N_values,)-shaped numpy ndarray defining the elements of the
             N_values pd array for which pd values should get calculated.
             This is needed to determine if the requested pd values are already
             cached.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : (N,)-shaped numpy ndarray
+        pd
             The (N,)-shaped numpy ndarray holding the probability density
             value for each model and event. The length of this array depends on
             the ``evt_mask`` argument. Only values are returned where
@@ -1321,27 +1331,28 @@ class MultiDimGridPDF(
 
     @staticmethod
     def create_eventdata_for_sigpdf(
-        tdm,
-        axes,
-    ):
+        tdm: TrialDataManager,
+        axes: 'PDFAxes',
+    ) -> np.ndarray:
         """Creates the (V,N_values)-shaped eventdata ndarray necessary for
         evaluating the signal PDF.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data.
-        axes : instance of PDFAxes
+        axes
             The instance of PDFAxes defining the data field names for the PDF.
 
         Returns
         -------
-        eventdata : instance of numpy.ndarray
+        eventdata
             The (V,N_values)-shaped numpy ndarray holding the event data for
             evaluating the signal PDF.
         """
         eventdata_fields = []
 
+        assert tdm.src_evt_idxs is not None
         (src_idxs, evt_idxs) = tdm.src_evt_idxs
         for axis in axes:
             name = axis.name
@@ -1361,17 +1372,17 @@ class MultiDimGridPDF(
 
     @staticmethod
     def create_eventdata_for_bkgpdf(
-        tdm,
-        axes,
+        tdm: TrialDataManager,
+        axes: 'PDFAxes',
     ):
         """Creates the (V,N_values)-shaped eventdata ndarray necessary for
         evaluating the background PDF.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data.
-        axes : instance of PDFAxes
+        axes
             The instance of PDFAxes defining the data field names for the PDF.
         """
         eventdata_fields = []
@@ -1385,32 +1396,32 @@ class MultiDimGridPDF(
 
     def get_pd(
         self,
-        tdm,
-        params_recarray=None,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        params_recarray: np.ndarray | None = None,
+        tl: TimeLord | None = None,
+    ) -> tuple[np.ndarray, dict]:
         """Calculates the probability density for the given trial events given
         the specified local parameters.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial event data for
             which the PDF values should get calculated.
-        params_recarray : instance of numpy structured ndarray | None
+        params_recarray
             The (N_models,)-shaped numpy structured ndarray holding the local
             parameter names and values of the models.
             By definition, this PDF does not depend on any parameters.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord that should be used to measure
             timing information.
 
         Returns
         -------
-        pd : (N_values,)-shaped numpy ndarray
+        pd
             The (N_values,)-shaped numpy ndarray holding the probability density
             value for each source and event.
-        grads : dict
+        grads
             The dictionary holding the gradients of the probability density
             w.r.t. each global fit parameter. Since this PDF does not depend on
             any fit parameter, this is an empty dictionary.
@@ -1421,10 +1432,11 @@ class MultiDimGridPDF(
                 return (pd, dict())
 
         with TaskTimer(tl, 'Get PDF eventdata.'):
+            _axes = cast('PDFAxes', self._axes)
             if self.is_signal_pdf:
-                eventdata = self.create_eventdata_for_sigpdf(tdm=tdm, axes=self._axes)
+                eventdata = self.create_eventdata_for_sigpdf(tdm=tdm, axes=_axes)
             elif self.is_background_pdf:
-                eventdata = self.create_eventdata_for_bkgpdf(tdm=tdm, axes=self._axes)
+                eventdata = self.create_eventdata_for_bkgpdf(tdm=tdm, axes=_axes)
             else:
                 raise TypeError('The PDF is neither a signal nor a background PDF!')
 
@@ -1449,13 +1461,12 @@ class PDFSet(
     method and can be retrieved via the :meth:`get_pdf` method.
     """
 
-    def __init__(self, param_grid_set, **kwargs):
+    def __init__(self, param_grid_set: ParameterGrid | ParameterGridSet, **kwargs):
         """Constructs a new PDFSet instance.
 
         Parameters
         ----------
-        param_grid_set : instance of ParameterGrid |
-                         instance of ParameterGridSet
+        param_grid_set
             The instance of ParameterGridSet with the parameter grids defining
             the discrete parameter values for which the PDFs of this PDF set
             are made for.
@@ -1502,12 +1513,12 @@ class PDFSet(
         key = next(iter(self._gridparams_hash_pdf_dict.keys()))
         return self._gridparams_hash_pdf_dict[key].axes
 
-    def __contains__(self, key):
+    def __contains__(self, key: dict | int):
         """Checks if the given key exists in this PDFSet instance.
 
         Parameters
         ----------
-        key : dict | int
+        key
             If a dictionary is provided, it must be the gridparams dictionary
             containing the grid parameter names and vales.
             If an integer is provided, it must be the hash of the gridparams
@@ -1539,31 +1550,31 @@ class PDFSet(
         """Returns an iterator over the PDF instances of the PDFSet instance."""
         return self._gridparams_hash_pdf_dict.values()
 
-    def make_key(self, gridparams):
+    def make_key(self, gridparams: dict) -> int:
         """Creates the key for the given grid parameter dictionary.
 
         Parameters
         ----------
-        gridparams : dict
+        gridparams
             The dictionary holding the grid parameter names and values.
 
         Returns
         -------
-        key : int
+        key
             The key for the given grid parameter dictionary.
         """
         return make_dict_hash(gridparams)
 
-    def add_pdf(self, pdf, gridparams):
+    def add_pdf(self, pdf: 'PDF', gridparams: dict):
         """Adds the given PDF object for the given parameters to the internal
         registry. If this PDF set is not empty, the to-be-added PDF must have
         the same axes than the already added PDFs.
 
         Parameters
         ----------
-        pdf : instance of PDF
+        pdf
             The PDF instance, that should be added
-        gridparams : dict
+        gridparams
             The dictionary with the grid parameter values, which identify
             the PDF object.
 
@@ -1591,7 +1602,7 @@ class PDFSet(
         # Check that the new PDF has the same axes than the already added PDFs.
         if len(self._gridparams_hash_pdf_dict) > 0:
             some_pdf = self._gridparams_hash_pdf_dict[next(iter(self._gridparams_hash_pdf_dict.keys()))]
-            if not pdf.axes.is_same_as(some_pdf.axes):
+            if not cast('PDFAxes', pdf.axes).is_same_as(cast('PDFAxes', some_pdf.axes)):
                 raise ValueError(
                     'The given PDF does not have the same axes than the '
                     'already added PDFs!\n'
@@ -1604,19 +1615,19 @@ class PDFSet(
 
         self._gridparams_hash_pdf_dict[gridparams_hash] = pdf
 
-    def get_pdf(self, gridparams):
+    def get_pdf(self, gridparams: dict | int):
         """Retrieves the PDF object for the given set of fit parameters.
 
         Parameters
         ----------
-        gridparams : dict | int
+        gridparams
             The dictionary with the grid parameter names and values for which
             the PDF object should get retrieved. If an integer is given, it is
             assumed to be the PDF key.
 
         Returns
         -------
-        pdf : instance if PDF
+        pdf
             The PDF instance for the given parameters.
 
         Raises
@@ -1638,22 +1649,22 @@ class PDFSet(
 
         return pdf
 
-    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
+    def initialize_for_new_trial(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """This method is called whenever a new trial data is available. It
         calls the :meth:`~skyllh.core.pdf.PDF.initialize_for_new_trial` method
         of each PDF.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the new trial data events.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
         """
         for pdf in self._gridparams_hash_pdf_dict.values():
             pdf.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
 
-    def assert_is_valid_for_trial_data(self, tdm, tl=None, **kwargs):
+    def assert_is_valid_for_trial_data(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Checks if the PDFs of this PDFSet instance are valid for all the
         given trial data events.
         Since all PDFs should have the same axes, only the first PDF will be
@@ -1663,9 +1674,9 @@ class PDFSet(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data events.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
 
         Raises
@@ -1677,35 +1688,39 @@ class PDFSet(
         pdf = self._gridparams_hash_pdf_dict[key]
         pdf.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
 
-    def get_pd(self, gridparams, tdm, params_recarray=None, tl=None):
+    def get_pd(
+        self, gridparams: dict, tdm: TrialDataManager, params_recarray: np.ndarray | None = None, tl=None
+    ) -> 'tuple[np.ndarray, dict]':
         """Calls the ``get_pd`` method of the PDF instance that belongs to the
         given grid parameter values ``gridparams``.
 
         Parameters
         ----------
-        gridparams : dict
+        gridparams
             The dictionary holding the parameter values, which define PDF
             instance within this PDFSet instance.
             Note, that the parameter values must match a set of parameter grid
             values for which a PDF instance has been created and added to this
             PDFSet instance.
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the data events for which the
             probability density of the events should be calculated.
-        params_recarray : instance of ndarray | None
+        params_recarray
             The numpy record ndarray holding the parameter name and values for
             each source model.
+        tl
+            The optional instance of TimeLord for measuring timing information.
 
         Returns
         -------
-        pd : numpy ndarray
+        pd
             The 1D numpy ndarray holding the probability density values for each
             event and source.
-            See :meth:`skyllh.core.pdf.PDF.get_pd` for further information.
-        grads : dict
+            See
+        grads
             The dictionary holding the gradient values for each global fit
             parameter.
-            See :meth:`skyllh.core.pdf.PDF.get_pd` for further information.
+            See
         """
         pdf = self.get_pdf(gridparams)
 

@@ -1,4 +1,6 @@
 import abc
+from collections.abc import Sequence
+from typing import cast
 
 import numpy as np
 
@@ -13,6 +15,7 @@ from skyllh.core.parameters import (
     ParameterModelMapper,
 )
 from skyllh.core.pdf import (
+    PDF,
     IsBackgroundPDF,
     IsSignalPDF,
     PDFSet,
@@ -27,9 +30,8 @@ from skyllh.core.py import (
 from skyllh.core.services import (
     SrcDetSigYieldWeightsService,
 )
-from skyllh.core.timing import (
-    TaskTimer,
-)
+from skyllh.core.timing import TaskTimer, TimeLord
+from skyllh.core.trialdata import TrialDataManager
 
 
 class PDFRatio(
@@ -40,20 +42,23 @@ class PDFRatio(
     It defines the interface of a signal over background PDF ratio class.
     """
 
+    _sig_param_names: list[str]
+    _bkg_param_names: list[str]
+
     def __init__(
         self,
-        sig_param_names=None,
-        bkg_param_names=None,
+        sig_param_names: Sequence[str] | str | None = None,
+        bkg_param_names: Sequence[str] | str | None = None,
         **kwargs,
     ):
         """Creates a new PDFRatio instance.
 
         Parameters
         ----------
-        sig_param_names : sequence of str | str | None
+        sig_param_names
             The sequence of signal parameter names this PDFRatio instance is a
             function of.
-        bkg_param_names : sequence of str | str | None
+        bkg_param_names
             The sequence of background parameter names this PDFRatio instance
             is a function of.
         """
@@ -92,7 +97,7 @@ class PDFRatio(
         return len(self._bkg_param_names)
 
     @property
-    def sig_param_names(self):
+    def sig_param_names(self) -> list[str]:
         """The list of signal parameter names this PDF ratio is a function of."""
         return self._sig_param_names
 
@@ -104,7 +109,7 @@ class PDFRatio(
             names = [names]
         if not issequenceof(names, str):
             raise TypeError('The sig_param_names property must be a sequence of str instances!')
-        self._sig_param_names = names
+        self._sig_param_names = cast(list[str], names)
 
     @property
     def bkg_param_names(self):
@@ -121,13 +126,13 @@ class PDFRatio(
             names = [names]
         if not issequenceof(names, str):
             raise TypeError('The bkg_param_names property must be a sequence of str instances!')
-        self._bkg_param_names = names
+        self._bkg_param_names = cast(list[str], names)
 
     @abc.abstractmethod
     def initialize_for_new_trial(
         self,
-        tdm,
-        tl=None,
+        tdm: TrialDataManager,
+        tl: TimeLord | None = None,
         **kwargs,
     ):
         """Initializes the PDFRatio instance for a new trial. This method can
@@ -136,9 +141,9 @@ class PDFRatio(
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that holds the trial data.
-        tl : instance of TimeLord
+        tl
             The optional instance of TimeLord to measure timing information.
         """
         pass
@@ -146,31 +151,31 @@ class PDFRatio(
     @abc.abstractmethod
     def get_ratio(
         self,
-        tdm,
-        src_params_recarray,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        src_params_recarray: np.ndarray,
+        tl: TimeLord | None = None,
+    ) -> np.ndarray:
         """Retrieves the PDF ratio value for each given trial data events (and
         sources), given the given set of parameters.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should get calculated.
-        src_params_recarray : instance of numpy record ndarray | None
+        src_params_recarray
             The (N_sources,)-shaped numpy record ndarray holding the parameter
             names and values of the sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratios : instance of ndarray
+        ratios
             The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
             ratio value for each trial event and source.
         """
@@ -179,36 +184,36 @@ class PDFRatio(
     @abc.abstractmethod
     def get_gradient(
         self,
-        tdm,
-        src_params_recarray,
-        fitparam_id,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        src_params_recarray: np.ndarray,
+        fitparam_id: int,
+        tl: TimeLord | None = None,
+    ) -> np.ndarray:
         """Retrieves the PDF ratio gradient for the global fit parameter
         ``fitparam_id`` for each trial data event and source, given the given
         set of parameters ``src_params_recarray`` for each source.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio gradient values should get calculated.
-        src_params_recarray : instance of numpy structured ndarray
+        src_params_recarray
             The (N_sources,)-shaped numpy structured ndarray holding the
             parameter names and values of the sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
-        fitparam_id : int
+        fitparam_id
             The ID of the global fit parameter for which the gradient should
             get calculated.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        gradient : instance of ndarray | 0
+        gradient
             The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
             ratio gradient value for each source and trial data event.
             If the PDF ratio does not depend on the given global fit parameter,
@@ -233,8 +238,8 @@ class PDFRatioProduct(
 
     def __init__(
         self,
-        pdfratio1,
-        pdfratio2,
+        pdfratio1: PDFRatio,
+        pdfratio2: PDFRatio,
         **kwargs,
     ):
         """Creates a new PDFRatioProduct instance representing the product of
@@ -243,8 +248,8 @@ class PDFRatioProduct(
         self.pdfratio1 = pdfratio1
         self.pdfratio2 = pdfratio2
 
-        sig_param_names = set(list(pdfratio1.sig_param_names) + list(pdfratio2.sig_param_names))
-        bkg_param_names = set(list(pdfratio1.bkg_param_names) + list(pdfratio2.bkg_param_names))
+        sig_param_names = list(set(list(pdfratio1.sig_param_names) + list(pdfratio2.sig_param_names)))
+        bkg_param_names = list(set(list(pdfratio1.bkg_param_names) + list(pdfratio2.bkg_param_names)))
 
         super().__init__(sig_param_names=sig_param_names, bkg_param_names=bkg_param_names, **kwargs)
 
@@ -274,42 +279,42 @@ class PDFRatioProduct(
             raise TypeError('The pdfratio2 property must be an instance of PDFRatio!')
         self._pdfratio2 = pdfratio
 
-    def initialize_for_new_trial(self, **kwargs):
+    def initialize_for_new_trial(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Initializes the PDFRatioProduct instance for a new trial.
         It calls the
         :meth:`~skyllh.core.pdfratio.PDFRatio.initialize_for_new_trial` method
         of each of the two :class:`~skyllh.core.pdfratio.PDFRatio` instances.
         """
-        self._pdfratio1.initialize_for_new_trial(**kwargs)
-        self._pdfratio2.initialize_for_new_trial(**kwargs)
+        self._pdfratio1.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        self._pdfratio2.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
 
     def get_ratio(
         self,
-        tdm,
-        src_params_recarray,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        src_params_recarray: np.ndarray,
+        tl: TimeLord | None = None,
+    ) -> np.ndarray:
         """Retrieves the PDF ratio product value for each trial data
         event and source, given the given set of parameters for all sources.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should get calculated.
-        src_params_recarray : instance of numpy record ndarray
+        src_params_recarray
             The (N_sources,)-shaped numpy record ndarray holding the parameter
             names and values of the sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
-        tl : TimeLord instance | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratios : instance of ndarray
+        ratios
             The (N_values,)-shaped 1d numpy ndarray of float holding the product
             of the PDF ratio values for each trial event and source.
             The PDF ratio product value for each trial event.
@@ -322,41 +327,42 @@ class PDFRatioProduct(
 
     def get_gradient(
         self,
-        tdm,
-        src_params_recarray,
-        fitparam_id,
-        tl=None,
-    ):
+        tdm: TrialDataManager,
+        src_params_recarray: np.ndarray | None,
+        fitparam_id: int,
+        tl: TimeLord | None = None,
+    ) -> np.ndarray:
         """Retrieves the PDF ratio product gradient for the global fit parameter
         with parameter ID ``fitparam_id`` for each trial data event and source,
         given the set of parameters ``src_params_recarray`` for all sources.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should get calculated.
-        src_params_recarray : instance of numpy record ndarray | None
+        src_params_recarray
             The (N_sources,)-shaped numpy record ndarray holding the parameter
             names and values of the sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
-        fitparam_id : int
+        fitparam_id
             The ID of the global fit parameter for which the gradient should
             get calculated.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        gradient : instance of ndarray | 0
+        gradient
             The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
             ratio gradient value for each trial event and source. If none of the
             two PDFRatio instances depend on the given global fit parameter, the
             scalar value ``0`` is returned.
         """
+        assert src_params_recarray is not None
         r1_depends_on_fitparam = ParameterModelMapper.is_global_fitparam_a_local_param(
             fitparam_id=fitparam_id, params_recarray=src_params_recarray, local_param_names=self._pdfratio1.param_names
         )
@@ -365,29 +371,30 @@ class PDFRatioProduct(
             fitparam_id=fitparam_id, params_recarray=src_params_recarray, local_param_names=self._pdfratio2.param_names
         )
 
-        if r1_depends_on_fitparam:
+        if r1_depends_on_fitparam and r2_depends_on_fitparam:
             r2 = self._pdfratio2.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
-
             r1_grad = self._pdfratio1.get_gradient(
                 tdm=tdm, src_params_recarray=src_params_recarray, fitparam_id=fitparam_id, tl=tl
             )
-
-        if r2_depends_on_fitparam:
             r1 = self._pdfratio1.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
-
             r2_grad = self._pdfratio2.get_gradient(
                 tdm=tdm, src_params_recarray=src_params_recarray, fitparam_id=fitparam_id, tl=tl
             )
-
-        if r1_depends_on_fitparam and r2_depends_on_fitparam:
-            gradient = r1 * r2_grad
-            gradient += r1_grad * r2
+            gradient: np.ndarray = r1 * r2_grad + r1_grad * r2
         elif r1_depends_on_fitparam:
+            r2 = self._pdfratio2.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
+            r1_grad = self._pdfratio1.get_gradient(
+                tdm=tdm, src_params_recarray=src_params_recarray, fitparam_id=fitparam_id, tl=tl
+            )
             gradient = r1_grad * r2
         elif r2_depends_on_fitparam:
+            r1 = self._pdfratio1.get_ratio(tdm=tdm, src_params_recarray=src_params_recarray, tl=tl)
+            r2_grad = self._pdfratio2.get_gradient(
+                tdm=tdm, src_params_recarray=src_params_recarray, fitparam_id=fitparam_id, tl=tl
+            )
             gradient = r1 * r2_grad
         else:
-            gradient = 0
+            gradient = np.zeros(tdm.n_selected_events, dtype=np.float64)
 
         return gradient
 
@@ -404,19 +411,25 @@ class SourceWeightedPDFRatio(PDFRatio):
 
     """
 
-    def __init__(self, dataset_idx, src_detsigyield_weights_service, pdfratio, **kwargs):
+    def __init__(
+        self,
+        dataset_idx: int,
+        src_detsigyield_weights_service: SrcDetSigYieldWeightsService,
+        pdfratio: 'PDFRatio',
+        **kwargs,
+    ):
         """Creates a new SourceWeightedPDFRatio instance.
 
         Parameters
         ----------
-        dataset_idx : int
+        dataset_idx
             The index of the dataset. It is used to access the source detector
             signal yield weight.
-        src_detsigyield_weights_service : instance of SrcDetSigYieldWeightsService
+        src_detsigyield_weights_service
             The instance of SrcDetSigYieldWeightsService providing the source
             detector signal yield weights, i.e. the product of the theoretical
             source weight with the detector signal yield.
-        pdfratio : instance of PDFRatio
+        pdfratio
             The instance of PDFRatio providing the PDF ratio values and
             derivatives.
         """
@@ -466,21 +479,23 @@ class SourceWeightedPDFRatio(PDFRatio):
         """
         return self._pdfratio
 
-    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
+    def initialize_for_new_trial(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Initializes the PDFRatio instance for a new trial. It calls the
         :meth:`~skyllh.core.pdfratio.PDFRatio.initialize_for_new_trial` method
         of the :class:`~skyllh.core.pdfratio.PDFRatio` instance.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager that holds the trial data.
-        tl : instance of TimeLord
+        tl
             The optional instance of TimeLord to measure timing information.
         """
         self._pdfratio.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
 
-    def get_ratio(self, tdm, src_params_recarray, tl=None):
+    def get_ratio(
+        self, tdm: TrialDataManager, src_params_recarray: np.ndarray, tl: TimeLord | None = None
+    ) -> np.ndarray:
         """Retrieves the PDF ratio value for each given trial data events (and
         sources), given the given set of parameters.
 
@@ -493,26 +508,27 @@ class SourceWeightedPDFRatio(PDFRatio):
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should get calculated.
-        src_params_recarray : instance of numpy record ndarray
+        src_params_recarray
             The (N_sources,)-shaped numpy record ndarray holding the parameter
             names and values of the sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratios : instance of ndarray
+        ratios
             The (N_selected_events,)-shaped 1d numpy ndarray of float holding
             the PDF ratio value for each selected trial data event.
         """
         (a_jk, _) = self._src_detsigyield_weights_service.get_weights()
+        assert a_jk is not None
         a_k = a_jk[self._dataset_idx]
 
         n_sources = len(a_k)
@@ -525,6 +541,7 @@ class SourceWeightedPDFRatio(PDFRatio):
 
         R_i = np.zeros((n_sel_events,), dtype=np.double)
 
+        assert tdm.src_evt_idxs is not None
         (src_idxs, evt_idxs) = tdm.src_evt_idxs
         for k in range(n_sources):
             src_mask = src_idxs == k
@@ -536,7 +553,9 @@ class SourceWeightedPDFRatio(PDFRatio):
 
         return R_i
 
-    def get_gradient(self, tdm, src_params_recarray, fitparam_id, tl=None):
+    def get_gradient(
+        self, tdm: TrialDataManager, src_params_recarray: np.ndarray, fitparam_id: int, tl: TimeLord | None = None
+    ) -> np.ndarray:
         """Retrieves the PDF ratio gradient for the parameter ``fitparam_id``
         for each trial data event, given the given set of parameters
         ``src_params_recarray`` for each source.
@@ -548,31 +567,34 @@ class SourceWeightedPDFRatio(PDFRatio):
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio gradient values should get calculated.
-        src_params_recarray : instance of numpy record ndarray
+        src_params_recarray
             The (N_sources,)-shaped numpy record ndarray holding the parameter
             names and values of the sources.
             See the documentation of the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
-        fitparam_id : int
+        fitparam_id
             The ID of the global fit parameter for which the gradient should
             get calculated.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        gradient : instance of ndarray | 0
+        gradient
             The (N_selected_events,)-shaped 1d numpy ndarray of float holding
             the PDF ratio gradient value for each trial data event. If the PDF
             ratio does not depend on the given global fit parameter, 0 will
             be returned.
         """
         (a_jk, a_jk_grads) = self._src_detsigyield_weights_service.get_weights()
+        assert a_jk is not None
+        assert a_jk_grads is not None
+        assert self._cache_R_i is not None
 
         a_k = a_jk[self._dataset_idx]
         A = np.sum(a_k)
@@ -593,17 +615,19 @@ class SourceWeightedPDFRatio(PDFRatio):
         # R_ik_grad is a (N_values,)-shaped ndarray or 0.
 
         if (isinstance(a_k_grad, int) and a_k_grad == 0) and (isinstance(R_ik_grad, int) and R_ik_grad == 0):
-            return 0
+            return np.zeros(n_sel_events, dtype=np.float64)
 
         R_i_grad = -self._cache_R_i * dAdp
 
         src_sum_i = np.zeros((n_sel_events,), dtype=np.double)
 
+        assert tdm.src_evt_idxs is not None
         (src_idxs, evt_idxs) = tdm.src_evt_idxs
         for k in range(n_sources):
             src_mask = src_idxs == k
             src_evt_idxs = evt_idxs[src_mask]
             if isinstance(a_k_grad, np.ndarray):
+                assert self._cache_R_ik is not None
                 src_sum_i[src_evt_idxs] += a_k_grad[k] * self._cache_R_ik[src_mask]
             if isinstance(R_ik_grad, np.ndarray):
                 src_sum_i[src_evt_idxs] += a_k[k] * R_ik_grad[src_mask]
@@ -621,19 +645,19 @@ class SigOverBkgPDFRatio(PDFRatio):
     *pdf_type* and calculates the PDF ratio.
     """
 
-    def __init__(self, sig_pdf, bkg_pdf, same_axes=True, zero_bkg_ratio_value=1.0, **kwargs):
+    def __init__(self, sig_pdf, bkg_pdf, same_axes: bool = True, zero_bkg_ratio_value: float = 1.0, **kwargs):
         """Creates a new signal-over-background PDF ratio instance.
 
         Parameters
         ----------
-        sig_pdf : class instance derived from `pdf_type`, IsSignalPDF
+        sig_pdf
             The instance of the signal PDF.
-        bkg_pdf : class instance derived from `pdf_type`, IsBackgroundPDF
+        bkg_pdf
             The instance of the background PDF.
-        same_axes : bool
+        same_axes
             Flag if the signal and background PDFs are supposed to have the
             same axes. Default is True.
-        zero_bkg_ratio_value : float
+        zero_bkg_ratio_value
             The value of the PDF ratio to take when the background PDF value
             is zero. This is to avoid division by zero. Default is 1.
         """
@@ -700,42 +724,46 @@ class SigOverBkgPDFRatio(PDFRatio):
         :meth:`~skyllh.core.pdf.PDF.assert_is_valid_for_trial_data` of the
         signal and background :class:`~skyllh.core.pdf.PDF` instances.
         """
-        self._sig_pdf.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
-        self._sig_pdf.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
+        cast(PDF, self._sig_pdf).initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        cast(PDF, self._sig_pdf).assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
 
-        self._bkg_pdf.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
-        self._bkg_pdf.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
+        cast(PDF, self._bkg_pdf).initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        cast(PDF, self._bkg_pdf).assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
 
-    def get_ratio(self, tdm, src_params_recarray, tl=None):
+    def get_ratio(
+        self, tdm: TrialDataManager, src_params_recarray: np.ndarray, tl: TimeLord | None = None
+    ) -> np.ndarray:
         """Calculates the PDF ratio for the given trial events.
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The TrialDataManager instance holding the trial data events for
             which the PDF ratio values should be calculated.
-        src_params_recarray : instance of numpy record ndarray
+        src_params_recarray
             The (N_sources,)-shaped numpy record ndarray holding the local
             parameter names and values of the sources.
             See the
             :meth:`skyllh.core.parameters.ParameterModelMapper.create_src_params_recarray`
             method for more information.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        ratios : instance of ndarray
+        ratios
             The (N_values,)-shaped numpy ndarray holding the probability density
             ratio for each event and source.
         """
         with TaskTimer(tl, 'Get sig probability densities and grads.'):
-            (self._cache_sig_pd, self._cache_sig_grads) = self._sig_pdf.get_pd(
+            (self._cache_sig_pd, self._cache_sig_grads) = cast(PDF, self._sig_pdf).get_pd(
                 tdm=tdm, params_recarray=src_params_recarray, tl=tl
             )
         with TaskTimer(tl, 'Get bkg probability densities and grads.'):
-            (self._cache_bkg_pd, self._cache_bkg_grads) = self._bkg_pdf.get_pd(tdm=tdm, params_recarray=None, tl=tl)
+            (self._cache_bkg_pd, self._cache_bkg_grads) = cast(PDF, self._bkg_pdf).get_pd(
+                tdm=tdm, params_recarray=None, tl=tl
+            )
 
         with TaskTimer(tl, 'Calculate PDF ratios.'):
             # Select only the events, where the background pdf is greater than
@@ -747,7 +775,13 @@ class SigOverBkgPDFRatio(PDFRatio):
 
         return ratios
 
-    def get_gradient(self, tdm, src_params_recarray, fitparam_id, tl=None):
+    def get_gradient(
+        self,
+        tdm: TrialDataManager,
+        src_params_recarray: np.ndarray | None,
+        fitparam_id: int,
+        tl: TimeLord | None = None,
+    ) -> np.ndarray:
         """Retrieves the gradient of the PDF ratio w.r.t. the given parameter.
 
         Note:
@@ -758,27 +792,32 @@ class SigOverBkgPDFRatio(PDFRatio):
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data.
-        src_params_recarray : instance of numpy record ndarray | None
+        src_params_recarray
             The (N_models,)-shaped numpy record ndarray holding the parameter
             names and values of the models.
-            See :meth:`skyllh.core.pdf.PDF.get_pd` for more information.
+            See
             This can be ``None``, if the signal and background PDFs do not
             depend on any parameters.
-        fitparam_id : int
+        fitparam_id
             The ID of the global fit parameter for which the gradient should
             get calculated.
-        tl : instance of TimeLord | None
+        tl
             The optional TimeLord instance that should be used to measure
             timing information.
 
         Returns
         -------
-        grad : instance of ndarray
+        grad
             The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
             ratio gradient value for each source and trial event.
         """
+        assert self._cache_sig_pd is not None
+        assert self._cache_sig_grads is not None
+        assert self._cache_bkg_pd is not None
+        assert self._cache_bkg_grads is not None
+
         # Create the 1D return array for the gradient.
         grad = np.zeros_like(self._cache_sig_pd, dtype=np.float64)
 
@@ -833,18 +872,20 @@ class SigSetOverBkgPDFRatio(PDFRatio):
     values.
     """
 
-    def __init__(self, sig_pdf_set, bkg_pdf, interpolmethod_cls=None, **kwargs):
+    def __init__(
+        self, sig_pdf_set, bkg_pdf, interpolmethod_cls: type[GridManifoldInterpolationMethod] | None = None, **kwargs
+    ):
         """Constructor called by creating an instance of a class which is
         derived from this PDFRatio class.
 
         Parameters
         ----------
-        sig_pdf_set : instance of PDFSet and instance of IsSignalPDF
+        sig_pdf_set
             The PDF set, which provides signal PDFs for a set of
             discrete signal parameter values.
-        bkg_pdf : instance of PDF and instance of IsBackgroundPDF
+        bkg_pdf
             The background PDF instance.
-        interpolmethod_cls : class of GridManifoldInterpolationMethod | None
+        interpolmethod_cls
             The class implementing the parameter interpolation method for
             the PDF ratio manifold grid. If set to ``None`` (default), the
             :class:`skyllh.core.interpolate.Parabola1DGridManifoldInterpolationMethod`
@@ -920,7 +961,7 @@ class SigSetOverBkgPDFRatio(PDFRatio):
             )
         self._interpolmethod_cls = cls
 
-    def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
+    def initialize_for_new_trial(self, tdm: TrialDataManager, tl: TimeLord | None = None, **kwargs):
         """Initializes the PDFRatio instance for a new trial. It calls the
         :meth:`~skyllh.core.pdf.PDF.assert_is_valid_for_trial_data` of the
         signal :class:`~skyllh.core.pdf.PDFSet` instance and the background
@@ -928,13 +969,13 @@ class SigSetOverBkgPDFRatio(PDFRatio):
 
         Parameters
         ----------
-        tdm : instance of TrialDataManager
+        tdm
             The instance of TrialDataManager holding the trial data.
-        tl : instance of TimeLord | None
+        tl
             The optional instance of TimeLord for measuring timing information.
         """
         self._sig_pdf_set.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
         self._sig_pdf_set.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
 
-        self._bkg_pdf.initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
-        self._bkg_pdf.assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)
+        cast(PDF, self._bkg_pdf).initialize_for_new_trial(tdm=tdm, tl=tl, **kwargs)
+        cast(PDF, self._bkg_pdf).assert_is_valid_for_trial_data(tdm=tdm, tl=tl, **kwargs)

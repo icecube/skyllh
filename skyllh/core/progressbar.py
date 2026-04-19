@@ -16,16 +16,16 @@ class ProgressBar:
     are updated.
     """
 
-    def __init__(self, maxval, startval=0, parent=None, **kwargs):
+    def __init__(self, maxval: int, startval: int = 0, parent: 'ProgressBar | None' = None, **kwargs):
         """Creates a new ProgressBar instance.
 
         Parameters
         ----------
-        maxval : int
+        maxval
             The maximal value the progress can reach.
-        startval : int
+        startval
             The progress value to start with. Must be smaller than `maxval`.
-        parent : instance of ProgressBar | False | None
+        parent
             The parent instance of ProgressBar if this progress bar is a sub
             progress bar.
             If set to ``False``, this progress bar is deactivated and the
@@ -129,12 +129,12 @@ class ProgressBar:
 
         self._sub_pbar_list = []
 
-    def get_progressbar_list(self):
+    def get_progressbar_list(self) -> 'list[ProgressBar]':
         """Retrieves the list of ProgressBar instances.
 
         Returns
         -------
-        pbar_list : list of instance of ProgressBar
+        pbar_list
             The list of ProgressBar instances, which are part of this
             ProgressBar instance.
         """
@@ -161,6 +161,7 @@ class ProgressBar:
             maxval += pbar.maxval
             val += pbar.val
 
+        assert self._tqdm is not None
         dval = val - self._tqdm.n
         self._tqdm.total = maxval
         self._tqdm.update(dval)
@@ -185,6 +186,7 @@ class ProgressBar:
         elif not self.is_shown:
             return self
         else:
+            assert self._tqdm is not None
             self._tqdm.initial = self._val
             self._tqdm.n = self._val
             self._tqdm.reset()
@@ -204,27 +206,28 @@ class ProgressBar:
         self.trigger_rerendering()
 
         if (self._parent is None) and self.is_shown:
+            assert self._tqdm is not None
             self._tqdm.close()
 
         self.remove_sub_progress_bars()
 
-    def increment(self, dval=1):
+    def increment(self, dval: int = 1):
         """Updates the progress bar by incrementing the progress by the given
         integral amount.
 
         Parameters
         ----------
-        dval : int
+        dval
             The amount of progress to increment the progress bar with.
         """
         self.update(self._val + dval)
 
-    def update(self, val):
+    def update(self, val: int):
         """Updates the progress value to the given value.
 
         Parameters
         ----------
-        val : int
+        val
             The new current progress value.
         """
         self._val = val
