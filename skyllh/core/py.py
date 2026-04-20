@@ -9,70 +9,6 @@ import numpy as np
 from skyllh.core.display import INDENTATION_WIDTH
 
 
-class PyQualifier:
-    """This is the abstract base class for any Python qualifier class.
-    An object can get qualified by calling a PyQualifier instance with that
-    object. The PyQualifier class will be added to the ``__pyqualifiers__``
-    attribute of the object.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def __call__(self, obj):
-        """Declares the given Python object to be qualified with the
-        PyQualifier class of `self`. It adds the class of `self` to the
-        `__pyqualifiers__` tuple of the given object.
-
-        Parameters
-        ----------
-        obj : object
-            The Python object that should get qualified.
-
-        Returns
-        -------
-        obj : object
-            The given object, but modified to be declared for this Python
-            qualifier.
-        """
-        if not hasattr(obj, '__pyqualifiers__'):
-            obj.__pyqualifiers__ = ()
-
-        obj.__pyqualifiers__ += (self.__class__,)
-
-        return obj
-
-    def check(self, obj):
-        """Checks if the given Python object is declared with the PyQualifier
-        class of the `self` object.
-
-        Parameters
-        ----------
-        obj : object
-            The Python object to check.
-
-        Returns
-        -------
-        check : bool
-            The check result. `True` if the object is declared for this Python
-            qualifier, and `False` otherwise.
-        """
-        if not hasattr(obj, '__pyqualifiers__'):
-            return False
-
-        return self.__class__ in obj.__pyqualifiers__
-
-
-class ConstPyQualifier(PyQualifier):
-    """This class defines a PyQualifier for constant Python objects."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-
-const = ConstPyQualifier()
-
-
 def get_class_of_func(f):
     """Determines the class object that defined the given method or function
     ``f``.
@@ -225,10 +161,9 @@ def issequence(obj):
     return True
 
 
-def issequenceof(obj, T, pyqualifiers=None):
+def issequenceof(obj, T):
     """Checks if the given object ``obj`` is a sequence with items being
-    instances of type ``T``, possibly qualified with the given Python
-    qualifiers.
+    instances of type ``T``.
 
     Parameters
     ----------
@@ -237,34 +172,16 @@ def issequenceof(obj, T, pyqualifiers=None):
     T : type | tuple of types
         The type each item of the sequence should be. If a tuple of types is
         given, each item can be one of the given types.
-    pyqualifiers : instance of PyQualifier |
-            sequence of instances of PyQualifier | None
-        One or more instances of PyQualifier. Each instance acts as a filter
-        for each item.
-        If any of the filters return `False` for any of the items, this check
-        returns `False`. If set to `Ǹone`, no filters are applied.
 
     Returns
     -------
     check : bool
         The result of the check.
     """
-    if pyqualifiers is None:
-        pyqualifiers = tuple()
-    elif not issequence(pyqualifiers):
-        pyqualifiers = (pyqualifiers,)
-
     if not issequence(obj):
         return False
 
-    for item in obj:
-        if not isinstance(item, T):
-            return False
-        for pyqualifier in pyqualifiers:
-            if not pyqualifier.check(item):
-                return False
-
-    return True
+    return all(isinstance(item, T) for item in obj)
 
 
 def issequenceofsubclass(obj, T):
