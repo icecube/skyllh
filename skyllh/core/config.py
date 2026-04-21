@@ -5,6 +5,7 @@ convenience utility functions to set different configuration settings.
 import copy
 import os.path
 import sys
+from pathlib import Path
 from typing import (
     Any,
 )
@@ -51,7 +52,7 @@ _BASECONFIG = {
     },
     'repository': {
         # A base path of repository datasets.
-        'base_path': None,
+        'base_path': Path('~/.cache/skyllh').expanduser(),
         'download_from_origin': True,
     },
     'units': {
