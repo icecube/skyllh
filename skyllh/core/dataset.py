@@ -802,8 +802,8 @@ class Dataset(
         base_path : str | None
             The user-defined base path of the data set.
             Usually, this is the path of the location of the data directory.
-            If set to ``None`` the configured repository base path
-            ``Config['repository']['base_path']`` is used.
+            If set to ``None``, the dataset configuration's repository ``base_path``
+            setting is used, which defaults to ``~/.cache/skyllh``.
         sub_path_fmt : str | None
             The user-defined format of the sub path of the data set.
             If set to ``None``, the ``default_sub_path_fmt`` will be used.
