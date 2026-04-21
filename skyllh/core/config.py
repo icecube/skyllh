@@ -52,7 +52,7 @@ _BASECONFIG = {
     },
     'repository': {
         # A base path of repository datasets.
-        'base_path': Path('~/.cache/skyllh').expanduser(),
+        'base_path': str(Path('~/.cache/skyllh').expanduser()),
         'download_from_origin': True,
     },
     'units': {
