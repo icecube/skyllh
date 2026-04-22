@@ -22,7 +22,6 @@ mathematical likelihood function.
     tutorials/index
     faq/index
     examples/index
-    reference/skyllh
     notes
 
 .. _dev-docs:
@@ -33,6 +32,7 @@ mathematical likelihood function.
 
     dev_docs/logging
     dev_docs/unit_tests
+    api_reference
 
 
 Indices and tables
