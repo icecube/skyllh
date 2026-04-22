@@ -1,0 +1,6 @@
+/* Force notebook output images to white background */
+.nbinput img,
+.nboutput img,
+.cell_output img {
+    background-color: white !important;
+}
