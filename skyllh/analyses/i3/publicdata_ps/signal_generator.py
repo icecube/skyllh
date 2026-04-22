@@ -218,7 +218,7 @@ class PDDatasetSignalGenerator(
     def _eval_spline(x, spl):
         """Evaluates the given spline at the given coordinates."""
         x = np.asarray(x)
-        if (x.any() < 0) or (x.any() > 1):
+        if np.any(x < 0) or np.any(x > 1):
             raise ValueError(f'{x} is outside of the valid spline range. The valid range is [0,1].')
 
         values = interpolate.splev(x, spl, ext=3)
