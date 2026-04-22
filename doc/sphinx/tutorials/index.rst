@@ -13,3 +13,5 @@ Tutorials
     p_value_method_comparison_tutorial
     smearing_matrix
     publicdata_ps_timedep
+    fixed_spectral_index
+    injecting_signal_events
