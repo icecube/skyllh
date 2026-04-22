@@ -19,6 +19,8 @@ The math formalism used in SkyLLH is described in the
 
 # Installation
 
+Python >= 3.11 is required.
+
 ## Using pip
 
 The latest `skyllh` release can be installed from
@@ -27,31 +29,28 @@ The latest `skyllh` release can be installed from
 pip install skyllh
 ```
 
+Optional dependency groups can be installed with extras:
+```bash
+pip install skyllh[extras]   # iminuit, pyarrow
+pip install skyllh[dev]      # pre-commit, pytest
+pip install skyllh[docs]     # sphinx and doc-build tools
+```
+
 The current development version can be installed using pip:
 ```bash
-pip install git+https://github.com/icecube/skyllh.git#egg=skyllh
+pip install git+https://github.com/icecube/skyllh.git
 ```
 
-Optionally, the editable package version with a specified reference can be
-installed by:
+Optionally, a specific reference can be installed by:
 ```bash
-pip install -e git+https://github.com/icecube/skyllh.git@[ref]#egg=skyllh
+pip install git+https://github.com/icecube/skyllh.git@[ref]
 ```
-where
-- `-e` is an editable flag
-- `[ref]` is an optional argument containing a specific commit hash, branch name
-  or tag
+where `[ref]` is a commit hash, branch name, or tag.
 
-## Cloning from GitHub
+## Using conda
 
-The `skyllh` (and an optional private [i3skyllh](#i3skyllh)) package can be
-installed by cloning the GitHub repository and adding it to the Python path:
-
-```python
-import sys
-
-sys.path.insert(0, '/path/to/skyllh')
-sys.path.insert(0, '/path/to/i3skyllh')  # optional
+```bash
+conda install -c conda-forge skyllh
 ```
 
 # Publications
