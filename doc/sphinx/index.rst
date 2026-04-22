@@ -19,10 +19,10 @@ math formalism `document <https://github.com/icecube/skyllh/blob/master/doc/user
     :caption: User Documentation
 
     installation
-    concepts/index
     tutorials/index
-    faq/index
     examples/index
+    concepts/index
+    faq/index
 
 .. _dev-docs:
 
