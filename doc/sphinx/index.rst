@@ -12,6 +12,8 @@ likelihood functions, rather than to entire abstract likelihood models.
 The math formalism used in SkyLLH is described in the
 math formalism `document <https://github.com/icecube/skyllh/blob/master/doc/user_manual.pdf>`_.
 
+See :ref:`tutorials_index` section for hands-on examples using IceCube's public datasets.
+
 .. _user-docs:
 
 .. toctree::
