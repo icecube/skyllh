@@ -17,4 +17,4 @@ covered by unit tests. SkyLLH uses the ``unittest`` package of Python.
 
 To run all test we can use following command::
 
-    python -m unittest discover
+    pytest
