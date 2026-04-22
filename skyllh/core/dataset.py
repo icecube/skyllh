@@ -107,7 +107,7 @@ class DatasetOrigin:
             host.
         post_transfer_func : callable | None
             The callable object that should be called after the dataset has been
-            transferred by the ``transfer_func``function. It can be used to
+            transferred by the ``transfer_func`` function. It can be used to
             extract an archive file.
             This function requires the following call signature::
 
