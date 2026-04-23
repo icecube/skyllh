@@ -7,7 +7,9 @@ Tutorials
 The tutorials below walk through common SkyLLH analysis tasks using IceCube public data.
 They progress from a basic steady-state point-source fit to more specialised techniques.
 
-The tutorials support both the `10-year <https://doi.org/10.7910/DVN/VKL316>`_ and 14-year (TODO: add link) IceCube public point-source datasets.
+The tutorials support both the `10-year <https://doi.org/10.7910/DVN/VKL316>`_ and 14-year (TODO: add link) IceCube public point-source datasets. They are
+automatically downloaded from `dataverse.harvard.edu <https://dataverse.harvard.edu>`_ to a local cache directory (``~/.skyllh/cache``). To use custom dataset locations, set the `cfg['repository']['base_path']` to the desired path.
+
 To load respective datasets, import the appropriate module and select the desired detector configurations:
 
 .. code-block:: python
@@ -33,6 +35,11 @@ To load respective datasets, import the appropriate module and select the desire
    Repeat the point-source fit with a fixed (non-free) spectral index.
    Also demonstrates converting between mean signal event counts and flux normalisations.
 
+:doc:`injecting_signal_events`
+   Generate synthetic signal events within a user-defined energy window.
+   Illustrates the distinction between the signal-injection energy range and the
+   likelihood hypothesis energy range.
+
 :doc:`sky_scan`
    Produce a 2-D test-statistic map by scanning source positions on a sky grid around a
    candidate source. Visualises best-fit position and confidence contours using Wilks' theorem.
@@ -45,10 +52,9 @@ To load respective datasets, import the appropriate module and select the desire
    Compare two methods for computing a local p-value from a test statistic: generating
    background-only trials versus fitting a truncated gamma distribution to the TS distribution.
 
-:doc:`injecting_signal_events`
-   Generate synthetic signal events within a user-defined energy window.
-   Illustrates the distinction between the signal-injection energy range and the
-   likelihood hypothesis energy range.
+:doc:`sensitivity_study`
+   Estimate sensitivity and discovery potential for a point source.
+   Demonstrates the analysis construction and how to convert signal counts to flux.
 
 :doc:`smearing_matrix`
    Access and visualise IceCube instrument response functions: the 5-D smearing matrix
@@ -65,9 +71,10 @@ To load respective datasets, import the appropriate module and select the desire
 
     fitting_a_source
     fixed_spectral_index
+    injecting_signal_events
     sky_scan
     likelihood_scan
     p_value_method_comparison
-    injecting_signal_events
+    sensitivity_study
     smearing_matrix
     time_dependent_point_source
