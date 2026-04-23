@@ -1,8 +1,8 @@
 .. _faq_index:
 
-******************************
-Frequently Ask Questions (FAQ)
-******************************
+********************************
+Frequently Asked Questions (FAQ)
+********************************
 
 .. toctree::
     :maxdepth: 3

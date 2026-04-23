@@ -52,6 +52,7 @@ docs = [
     "ipython",
     "sphinxcontrib-apidoc",
     "sphinx-multiversion",
+    "sphinx-copybutton",
 ]
 extras = [
     "iminuit",

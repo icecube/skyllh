@@ -2,7 +2,7 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    =
+SPHINXOPTS    = -jauto
 SPHINXBUILD   = sphinx-build
 SOURCEDIR     = ./
 BUILDDIR      = _build
@@ -19,7 +19,8 @@ html:
 
 # Build html documentation for each branch separately.
 html-multiversion:
-	sphinx-multiversion "$(SOURCEDIR)" "$(BUILDDIR)"
+	sphinx-multiversion "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)
+	@cp ../user_manual.pdf $(BUILDDIR)/
 
 # Prepend clean target to remove skyllh API reference.
 clean:
