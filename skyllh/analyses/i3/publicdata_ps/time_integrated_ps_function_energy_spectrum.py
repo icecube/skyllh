@@ -233,9 +233,8 @@ def create_analysis(
     e_peak_max : float
         Upper bound for energy peak fit,
     kde_smoothing : bool
-        .. deprecated::
-            Use of ``kde_smoothing=True`` is deprecated and will be removed
-            in a future version.
+        Deprecated: use of ``kde_smoothing=True`` is deprecated and will be
+            removed in a future version.
         Apply a KDE-based smoothing to the data-driven background pdf.
         Default: False.
     minimizer_impl : str
