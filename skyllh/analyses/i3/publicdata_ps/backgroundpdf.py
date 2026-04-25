@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from scipy.stats import (
     gaussian_kde,
@@ -83,6 +85,8 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         kde_smoothing : bool
+            Deprecated: use of ``kde_smoothing=True`` is deprecated and will be
+            removed in a future version.
             Apply a kde smoothing to the energy pdf for each bin in sin(dec).
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
@@ -152,6 +156,11 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
         self._hist_mask_mc_covered_zero_physics = h > 0
 
         if kde_smoothing:
+            warnings.warn(
+                'The kde_smoothing option is deprecated and will be removed in a future version',
+                FutureWarning,
+                stacklevel=2,
+            )
             # If a bandwidth is passed, apply a KDE-based smoothing with the
             # given bandwidth parameter as bandwidth for the fit.
             kde_pdf_list = []
@@ -374,6 +383,8 @@ class PDDataBackgroundI3EnergyPDF(PDBackgroundI3EnergyPDF):
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         kde_smoothing : bool
+            Deprecated: use of ``kde_smoothing=True`` is deprecated and will be
+            removed in a future version.
             Apply a kde smoothing to the energy pdf for each bin in sin(dec).
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
