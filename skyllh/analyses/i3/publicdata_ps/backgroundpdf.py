@@ -85,9 +85,8 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         kde_smoothing : bool
-            .. deprecated::
-                Use of ``kde_smoothing=True`` is deprecated and will be removed
-                in a future version.
+            Deprecated: use of ``kde_smoothing=True`` is deprecated and will be
+            removed in a future version.
             Apply a kde smoothing to the energy pdf for each bin in sin(dec).
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
@@ -384,9 +383,8 @@ class PDDataBackgroundI3EnergyPDF(PDBackgroundI3EnergyPDF):
             The smoothing filter to use for smoothing the energy histogram.
             If None, no smoothing will be applied.
         kde_smoothing : bool
-            .. deprecated::
-                Use of ``kde_smoothing=True`` is deprecated and will be removed
-                in a future version.
+            Deprecated: use of ``kde_smoothing=True`` is deprecated and will be
+            removed in a future version.
             Apply a kde smoothing to the energy pdf for each bin in sin(dec).
             This is useful for signal injections, because it ensures that the
             background is not zero when injecting high energy events.
