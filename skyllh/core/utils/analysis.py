@@ -703,8 +703,8 @@ def estimate_mean_nsignal_for_ts_quantile(
 
                     logger.debug(
                         'Scanned mu range: [%g , %g]\nPoints to fit: %g\n Doing a linear interpolation.',
-                        np.min(n_sig),
-                        np.max(n_sig),
+                        np.min(n_sig) if len(n_sig) > 0 else ns0,
+                        np.max(n_sig) if len(n_sig) > 0 else ns1,
                         len(n_sig),
                     )
 
@@ -870,13 +870,14 @@ def estimate_sensitivity(
     eps_p=0.005,
     mu_range=None,
     min_dmu=0.5,
+    critical_ts=None,
     bkg_kwargs=None,
     sig_kwargs=None,
     ppbar=None,
     tl=None,
     pathfilename=None,
 ):
-    """Estimates the mean number of signal events that whould have to be
+    """Estimates the mean number of signal events that would have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
     corresponds to the test-statistic value where h0_ts_quantile*100% of all
@@ -911,6 +912,10 @@ def estimate_sensitivity(
     min_dmu : float
         The minimum delta mu to use for calculating the derivative dmu/dp.
         The default is ``0.5``.
+    critical_ts : float | None
+        The critical test-statistic value that should be overcome by the signal
+        distribution. If set to None, the null-hypothesis test-statistic
+        distribution will be used to compute the critical TS value.
     bkg_kwargs : dict | None
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
@@ -949,6 +954,7 @@ def estimate_sensitivity(
         eps_p=eps_p,
         mu_range=mu_range,
         min_dmu=min_dmu,
+        critical_ts=critical_ts,
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
         ppbar=ppbar,
@@ -968,13 +974,14 @@ def estimate_discovery_potential(
     eps_p=0.005,
     mu_range=None,
     min_dmu=0.5,
+    critical_ts=None,
     bkg_kwargs=None,
     sig_kwargs=None,
     ppbar=None,
     tl=None,
     pathfilename=None,
 ):
-    """Estimates the mean number of signal events that whould have to be
+    """Estimates the mean number of signal events that would have to be
     injected into the data such that the test-statistic value of p*100% of all
     trials are larger than the critical test-statistic value c, which
     corresponds to the test-statistic value where h0_ts_quantile*100% of all
@@ -1008,6 +1015,10 @@ def estimate_discovery_potential(
     min_dmu : float
         The minimum delta mu to use for calculating the derivative dmu/dp.
         The default is ``0.5``.
+    critical_ts : float | None
+        The critical test-statistic value that should be overcome by the signal
+        distribution. If set to None, the null-hypothesis test-statistic
+        distribution will be used to compute the critical TS value.
     bkg_kwargs : dict | None
         Additional keyword arguments for the `generate_events` method of the
         background generation method class. An usual keyword argument is
@@ -1047,6 +1058,7 @@ def estimate_discovery_potential(
         h0_trials=h0_trials,
         h0_ts_quantile=h0_ts_quantile,
         min_dmu=min_dmu,
+        critical_ts=critical_ts,
         bkg_kwargs=bkg_kwargs,
         sig_kwargs=sig_kwargs,
         ppbar=ppbar,

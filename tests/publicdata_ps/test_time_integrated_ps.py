@@ -9,6 +9,7 @@ from skyllh.core.logging import setup_logging
 from skyllh.core.random import RandomStateService
 from skyllh.core.source_model import PointLikeSource
 from skyllh.core.timing import TimeLord
+from skyllh.core.utils.analysis import estimate_mean_nsignal_for_ts_quantile
 from skyllh.datasets.i3 import PublicData_10y_ps
 
 # Setup the logger for this Python module, which has to be done only once
@@ -68,6 +69,31 @@ class AnalysisTestCase(unittest.TestCase):
         np.testing.assert_allclose(TS, 13.408184, rtol=1e-5)
         np.testing.assert_allclose(params_dict['ns'], 12.879558, rtol=1e-5)
         np.testing.assert_allclose(params_dict['gamma'], 2.122526, rtol=1e-5)
+
+    @unittest.skipIf(os.getenv('GITHUB_ACTIONS') == 'true', 'Test designed to run locally, skipped in CI.')
+    def test_estimate_mean_nsignal_for_ts_quantile(self):
+        rss = RandomStateService(seed=1)
+        self.cfg['multiproc']['ncpu'] = 6
+
+        with self.tl.task_timer('Call estimate_sensitivity.'):
+            # Skip h0 trial generation entirely by setting critical_ts value and h0_ts_quantile to None.
+            (mu, mu_err) = estimate_mean_nsignal_for_ts_quantile(
+                ana=self.__class__.ana,
+                rss=rss,
+                critical_ts=10.0,
+                h0_ts_quantile=None,
+                p=0.5,
+                eps_p=0.1,
+                mu_range=(1, 2),
+                tl=self.tl,
+            )
+
+        self.cfg['multiproc']['ncpu'] = None
+        logger.info(f'{self.tl}')
+        logger.info(f'mu = {mu}')
+        logger.info(f'mu_err = {mu_err}')
+
+        np.testing.assert_allclose(mu, 6.44, rtol=1e-2)
 
     def test_do_trial(self):
         rss = RandomStateService(seed=1)
