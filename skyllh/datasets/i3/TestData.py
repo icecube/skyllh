@@ -5,6 +5,8 @@ from skyllh.i3.dataset import (
     I3Dataset,
 )
 
+DATASET_NAMES = ('TestData',)
+
 
 def create_dataset_collection(
     cfg,

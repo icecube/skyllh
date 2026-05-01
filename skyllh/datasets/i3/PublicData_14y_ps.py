@@ -9,6 +9,8 @@ from skyllh.i3.dataset import (
     I3Dataset,
 )
 
+DATASET_NAMES = ('IC40', 'IC59', 'IC79', 'IC86_I-XI')
+
 
 def create_dataset_collection(
     cfg,

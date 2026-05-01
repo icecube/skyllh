@@ -1,6 +1,12 @@
 import logging
 import multiprocessing as mp
 
+from skyllh.datasets import create_datasets
+
+__all__ = [
+    'create_datasets',
+]
+
 # Initialize top-level logger with a do-nothing NullHandler. It is required to
 # be able to log messages when user has not set up any handler for the logger.
 logging.getLogger(__name__).addHandler(logging.NullHandler())
