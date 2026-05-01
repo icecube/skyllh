@@ -31,4 +31,6 @@ def create_datasets(sample_name, cfg, names=None, base_path=None, sub_path_fmt=N
     dsc = module.create_dataset_collection(cfg=cfg, base_path=base_path, sub_path_fmt=sub_path_fmt)
     if names is None:
         names = module.DATASET_NAMES
+    elif isinstance(names, str):
+        names = (names,)
     return dsc[names]

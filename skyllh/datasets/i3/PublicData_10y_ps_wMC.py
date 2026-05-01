@@ -3,7 +3,8 @@ import numpy as np
 from skyllh.datasets.i3 import (
     PublicData_10y_ps,
 )
-from skyllh.datasets.i3.PublicData_10y_ps import DATASET_NAMES as DATASET_NAMES
+
+DATASET_NAMES = PublicData_10y_ps.DATASET_NAMES
 
 
 def create_dataset_collection(

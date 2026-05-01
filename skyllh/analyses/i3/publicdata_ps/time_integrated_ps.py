@@ -444,10 +444,10 @@ if __name__ == '__main__':
     logger = setup_logging(cfg=cfg, name=__name__, log_level='info', log_file=args.debug_logfile)
 
     sample_seasons = [
-        ('PublicData_14y_ps', 'IC40'),
-        ('PublicData_14y_ps', 'IC59'),
-        ('PublicData_14y_ps', 'IC79'),
-        ('PublicData_14y_ps', 'IC86_I-XI'),
+        ('IceTracks-DR2', 'IC40'),
+        ('IceTracks-DR2', 'IC59'),
+        ('IceTracks-DR2', 'IC79'),
+        ('IceTracks-DR2', 'IC86_I-XI'),
     ]
 
     datasets = []

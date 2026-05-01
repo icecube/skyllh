@@ -1045,7 +1045,7 @@ if __name__ == '__main__':
     logger = setup_logging(cfg=cfg, name=__name__, log_level='info', log_file=args.debug_logfile)
 
     sample_seasons = [
-        ('PublicData_10y_ps', 'IC86_II-VII'),
+        ('IceTracks-DR1', 'IC86_II-VII'),
     ]
 
     datasets = []
