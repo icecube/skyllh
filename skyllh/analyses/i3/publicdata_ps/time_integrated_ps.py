@@ -102,9 +102,7 @@ from skyllh.core.utils.analysis import (
 from skyllh.core.utils.tdm import (
     get_tdm_field_func_psi,
 )
-from skyllh.datasets.i3 import (
-    data_samples,
-)
+from skyllh.datasets import create_datasets
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
 )
@@ -443,18 +441,7 @@ if __name__ == '__main__':
 
     logger = setup_logging(cfg=cfg, name=__name__, log_level='info', log_file=args.debug_logfile)
 
-    sample_seasons = [
-        ('IceTracks-DR2', 'IC40'),
-        ('IceTracks-DR2', 'IC59'),
-        ('IceTracks-DR2', 'IC79'),
-        ('IceTracks-DR2', 'IC86_I-XI'),
-    ]
-
-    datasets = []
-    for sample, season in sample_seasons:
-        # Get the dataset from the correct dataset collection.
-        dsc = data_samples[sample].create_dataset_collection(cfg=cfg, base_path=args.data_basepath)
-        datasets.append(dsc.get_dataset(season))
+    datasets = create_datasets('IceTracks-DR2', cfg=cfg, base_path=args.data_basepath)
 
     # Define a random state service.
     rss = RandomStateService(args.seed)
