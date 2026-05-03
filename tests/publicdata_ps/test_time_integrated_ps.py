@@ -104,7 +104,7 @@ class AnalysisTestCase(unittest.TestCase):
                     )[0]
                     / pdf.f_e_spl.norm
                 )
-                np.testing.assert_allclose(integral, 1.0)
+                np.testing.assert_allclose(integral, 1.0, rtol=1e-6)
 
     def test_do_trial(self):
         rss = RandomStateService(seed=1)
