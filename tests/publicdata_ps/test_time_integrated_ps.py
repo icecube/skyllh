@@ -2,6 +2,7 @@ import os
 import unittest
 
 import numpy as np
+from scipy import integrate
 
 from skyllh.analyses.i3.publicdata_ps.time_integrated_ps import create_analysis
 from skyllh.core.config import Config
@@ -54,6 +55,26 @@ class AnalysisTestCase(unittest.TestCase):
     def setUp(self):
         self.tl = TimeLord()
 
+    def test_change_source_and_unblind(self):
+        source = PointLikeSource(name='NGC 1068', ra=np.radians(40.67), dec=np.radians(-0.01), weight=1)
+        self.ana.change_source(source)
+        try:
+            rss = RandomStateService(seed=1)
+            with self.tl.task_timer('Call unblind for NGC 1068.'):
+                (TS, params_dict, status) = self.ana.unblind(minimizer_rss=rss, tl=self.tl)
+
+            logger.info(f'{self.tl}')
+            logger.info(f'TS = {TS:.7f}')
+            logger.info(f'ns_fit = {params_dict["ns"]:.7f}')
+            logger.info(f'gamma_fit = {params_dict["gamma"]:.7f}')
+            logger.info(f'minimizer status = {status}')
+
+            np.testing.assert_allclose(TS, 19.5117469, rtol=1e-5)
+            np.testing.assert_allclose(params_dict['ns'], 54.9606574, rtol=1e-5)
+            np.testing.assert_allclose(params_dict['gamma'], 3.0884301, rtol=1e-5)
+        finally:
+            self.ana.change_source(self.__class__.source)
+
     def test_unblind(self):
         rss = RandomStateService(seed=1)
         with self.tl.task_timer('Call unblind.'):
@@ -68,6 +89,22 @@ class AnalysisTestCase(unittest.TestCase):
         np.testing.assert_allclose(TS, 13.408184, rtol=1e-5)
         np.testing.assert_allclose(params_dict['ns'], 12.879558, rtol=1e-5)
         np.testing.assert_allclose(params_dict['gamma'], 2.122526, rtol=1e-5)
+
+    def test_signal_energy_pdf_integral_normalization(self):
+        """Each PDSignalEnergyPDF spline integrates to 1 over its energy range."""
+        for pdfratio in self.ana._pdfratio_list:
+            for pdf in pdfratio.pdfratio2.sig_pdf_set.values():
+                integral = (
+                    integrate.quad(
+                        pdf.f_e_spl.evaluate,
+                        pdf.log10_reco_e_min,
+                        pdf.log10_reco_e_max,
+                        limit=200,
+                        full_output=1,
+                    )[0]
+                    / pdf.f_e_spl.norm
+                )
+                np.testing.assert_allclose(integral, 1.0, rtol=1e-6)
 
     def test_do_trial(self):
         rss = RandomStateService(seed=1)
