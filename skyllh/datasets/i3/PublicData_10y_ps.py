@@ -3,6 +3,7 @@ import numpy as np
 from skyllh.core.dataset import (
     DatasetCollection,
     DatasetOrigin,
+    DatasetTransfer,
     WGETDatasetTransfer,
 )
 from skyllh.i3.dataset import (
@@ -256,12 +257,12 @@ def create_dataset_collection(
 
     # Define the origin of the dataset.
     origin = DatasetOrigin(
-        base_path='data-releases',
-        sub_path='',
-        filename='20210126_PS-IC40-IC86_VII.zip',
-        host='icecube.wisc.edu',
-        transfer_func=WGETDatasetTransfer(protocol='http').transfer,
-        post_transfer_func=WGETDatasetTransfer.post_transfer_unzip,
+        url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/1.0?persistentId=doi:10.7910/DVN/VKL316',
+        base_path='',
+        sub_path='icecube_10year_ps',
+        filename='tmp.zip',
+        transfer_func=WGETDatasetTransfer(protocol='https').transfer,
+        post_transfer_func=DatasetTransfer.post_transfer_unzip,
     )
 
     # Define the common keyword arguments for all data sets.
@@ -348,7 +349,7 @@ def create_dataset_collection(
     # ---------- IC79 ----------------------------------------------------------
     IC79 = I3Dataset(
         name='IC79',
-        exp_pathfilenames='events/IC79_exp.csv',
+        exp_pathfilenames='events/IC79_exp-1.csv',
         mc_pathfilenames=None,
         grl_pathfilenames='uptime/IC79_exp.csv',
         **ds_kwargs,
@@ -502,7 +503,7 @@ def create_dataset_collection(
     # ---------- IC86-VII ------------------------------------------------------
     IC86_VII = I3Dataset(
         name='IC86_VII',
-        exp_pathfilenames='events/IC86_VII_exp.csv',
+        exp_pathfilenames='events/IC86_VII_exp-1.csv',
         mc_pathfilenames=None,
         grl_pathfilenames='uptime/IC86_VII_exp.csv',
         **ds_kwargs,
