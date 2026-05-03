@@ -387,7 +387,7 @@ if __name__ == '__main__':
 
     logger = setup_logging(cfg=cfg, name=__name__, log_level='info', log_file=args.debug_logfile)
 
-    datasets = create_datasets('IceTracks-DR1', cfg=cfg, base_path=args.data_base_path, names='IC86_II')
+    datasets = create_datasets('IceTracks-DR1', cfg=cfg, base_path=args.data_basepath, names='IC86_II')
 
     # Define a random state service.
     rss = RandomStateService(args.seed)
