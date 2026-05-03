@@ -24,7 +24,7 @@ To load respective datasets, import the appropriate module and select the desire
     from skyllh.datasets.i3.PublicData_10y_ps import create_dataset_collection
 
     dsc = create_dataset_collection(cfg=cfg)
-    datasets = dsc['IC40', 'IC59', 'IC79', 'IC86_I', 'IC86_II_VII']
+    datasets = dsc['IC40', 'IC59', 'IC79', 'IC86_I', 'IC86_II-VII']
 
 :doc:`fitting_a_source`
    Fit a steady point source (NGC 1068) using the IceCube 14-year public track data.
