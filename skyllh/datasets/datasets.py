@@ -1,7 +1,9 @@
-import warnings
-
 from .i3 import (
     _DEPRECATED_KEYS as _i3_DEPRECATED_KEYS,
+)
+from .i3 import (
+    _DataSamplesDict,
+    _warn_deprecated_key,
 )
 from .i3 import (
     data_samples as _i3_data_samples,
@@ -13,42 +15,13 @@ _DEPRECATED_KEYS = {
     **_i3_DEPRECATED_KEYS,
 }
 
-
-def _warn_deprecated_key(key, new_key, stacklevel):
-    warnings.warn(
-        f'Data sample name "{key}" is deprecated and will be removed in a future release. Use "{new_key}" instead.',
-        DeprecationWarning,
-        stacklevel=stacklevel,
-    )
-
-
-class _DataSamplesDict(dict):
-    """Dict subclass that emits DeprecationWarnings for renamed data sample keys."""
-
-    def _resolve_key(self, key):
-        if key in _DEPRECATED_KEYS:
-            new_key = _DEPRECATED_KEYS[key]
-            # stacklevel=4: _warn_deprecated_key → _resolve_key → __getitem__/get → caller
-            _warn_deprecated_key(key, new_key, stacklevel=4)
-            return new_key
-        return key
-
-    def __getitem__(self, key):
-        return super().__getitem__(self._resolve_key(key))
-
-    def get(self, key, default=None):
-        return super().get(self._resolve_key(key), default)
-
-    def __contains__(self, key):
-        return super().__contains__(_DEPRECATED_KEYS.get(key, key))
-
-
 # Merged global registry. When a new experiment package is added,
 # extend this dict with its own data_samples.
 data_samples = _DataSamplesDict(
     {
         **_i3_data_samples,
-    }
+    },
+    _DEPRECATED_KEYS,
 )
 
 
