@@ -195,6 +195,7 @@ class FctSpline2D:
     def __call__(self, x, y, oor_value=0, grid=False, renorm=True):
         """Evaluates the spline at the given coordinates. For coordinates
         outside the spline's range, the oor_value is returned.
+
         Parameters
         ----------
         x : (n_x,)-shaped 1D numpy ndarray

@@ -50,6 +50,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'nbsphinx',
+    'sphinx_copybutton',
     'sphinxcontrib.apidoc',
     'sphinx_multiversion',
 ]
@@ -74,6 +75,7 @@ autodoc_default_options = {
     'exclude-members': ','.join(
         [
             '__abstractmethods__',
+            '__annotate_func__',
             '__dict__',
             '__hash__',
             '__init__',
@@ -95,6 +97,9 @@ intersphinx_mapping = {
 }
 
 nbsphinx_execute = 'never'
+
+copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
+copybutton_prompt_is_regexp = True
 
 todo_include_todos = True
 
