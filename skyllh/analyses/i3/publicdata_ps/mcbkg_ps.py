@@ -401,7 +401,7 @@ if __name__ == '__main__':
     datasets = []
     for sample, season in sample_seasons:
         # Get the dataset from the correct dataset collection.
-        dsc = data_samples[sample].create_dataset_collection(args.data_base_path)
+        dsc = data_samples[sample].create_dataset_collection(cfg, args.data_base_path)
         datasets.append(dsc.get_dataset(season))
 
     # Define a random state service.
