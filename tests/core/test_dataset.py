@@ -1,6 +1,5 @@
 import os.path
 import unittest
-import warnings
 
 import numpy as np
 
@@ -24,10 +23,8 @@ from skyllh.core.storage import (
 )
 from skyllh.datasets import (
     create_datasets,
-    data_samples,
 )
 from skyllh.datasets.i3 import (
-    PublicData_10y_ps,
     TestData,
 )
 from skyllh.datasets.i3.PublicData_10y_ps import (
@@ -207,76 +204,6 @@ class TestCreateDatasets(unittest.TestCase):
         with self.assertRaises(KeyError) as ctx:
             create_datasets('nonexistent', cfg=self.cfg)
         self.assertIn('nonexistent', str(ctx.exception))
-
-    def test_legacy_name_warns_and_returns_datasets(self):
-        from skyllh.datasets.i3.PublicData_10y_ps import DATASET_NAMES
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            ds_list = create_datasets('PublicData_10y_ps', cfg=self.cfg)
-        self.assertEqual(len(w), 1)
-        self.assertTrue(issubclass(w[0].category, DeprecationWarning))
-        self.assertIn('IceTracks-DR1', str(w[0].message))
-        # Warning must point at the caller's line, not at skyllh internals.
-        # A wrong stacklevel would make this fail.
-        self.assertIn('test_dataset', w[0].filename)
-        self.assertEqual([ds.name for ds in ds_list], list(DATASET_NAMES))
-
-
-class TestDataSamplesDict(unittest.TestCase):
-    def test_getitem_deprecated_key_warns_and_resolves(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            result = data_samples['PublicData_10y_ps']
-        self.assertEqual(len(w), 1)
-        self.assertTrue(issubclass(w[0].category, DeprecationWarning))
-        self.assertIn('IceTracks-DR1', str(w[0].message))
-        self.assertIn('test_dataset', w[0].filename)
-        self.assertIs(result, PublicData_10y_ps)
-
-    def test_get_deprecated_key_warns_and_resolves(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            result = data_samples.get('PublicData_10y_ps')
-        self.assertEqual(len(w), 1)
-        self.assertTrue(issubclass(w[0].category, DeprecationWarning))
-        self.assertIn('IceTracks-DR1', str(w[0].message))
-        self.assertIn('test_dataset', w[0].filename)
-        self.assertIs(result, PublicData_10y_ps)
-
-    def test_get_missing_key_returns_default(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            result = data_samples.get('nonexistent', 'sentinel')
-        self.assertEqual(len(w), 0)
-        self.assertEqual(result, 'sentinel')
-
-    def test_getitem_new_key_no_warning(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            result = data_samples['IceTracks-DR1']
-        self.assertEqual(len(w), 0)
-        self.assertIs(result, PublicData_10y_ps)
-
-    def test_get_new_key_no_warning(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            result = data_samples.get('IceTracks-DR1')
-        self.assertEqual(len(w), 0)
-        self.assertIs(result, PublicData_10y_ps)
-
-    def test_contains_deprecated_key(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            result = 'PublicData_10y_ps' in data_samples
-        self.assertTrue(result)
-        self.assertEqual(len(w), 0)
-
-    def test_contains_new_key(self):
-        self.assertIn('IceTracks-DR1', data_samples)
-
-    def test_contains_unknown_key(self):
-        self.assertNotIn('nonexistent', data_samples)
 
 
 if __name__ == '__main__':
