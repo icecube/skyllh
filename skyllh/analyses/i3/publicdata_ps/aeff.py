@@ -1,8 +1,5 @@
 import numpy as np
-from scipy import (
-    integrate,
-    interpolate,
-)
+from scipy import interpolate
 
 from skyllh.analyses.i3.publicdata_ps.utils import (
     FctSpline2D,
@@ -326,18 +323,13 @@ class PDAeff:
 
         spl = interpolate.splrep(x, y, k=1, s=0)
 
-        def _eval_spl_func(x):
-            return interpolate.splev(x, spl, der=0, ext=1)
-
-        norm = integrate.quad(_eval_spl_func, enu_range_min, enu_range_max, limit=200, full_output=1)[0]
+        norm = interpolate.splint(enu_range_min, enu_range_max, spl)
 
         enu_min = np.atleast_1d(enu_min)
         enu_max = np.atleast_1d(enu_max)
 
         det_prob = np.empty((len(enu_min),), dtype=np.double)
         for i in range(len(enu_min)):
-            integral = integrate.quad(_eval_spl_func, enu_min[i], enu_max[i], limit=200, full_output=1)[0]
-
-            det_prob[i] = integral / norm
+            det_prob[i] = interpolate.splint(enu_min[i], enu_max[i], spl) / norm
 
         return det_prob
