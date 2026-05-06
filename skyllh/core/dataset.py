@@ -1523,10 +1523,6 @@ class Dataset(
             default_base_path=self._cfg['repository']['base_path'], base_path=self._base_path
         )
 
-        logger.debug(
-            f'Downloading dataset "{self.name}" from origin into base path "{base_path}". username="{username}".'
-        )
-
         # Check if the origin is a directory. If not we just transfer that one
         # file.
         if self.origin.is_directory:
@@ -1534,12 +1530,16 @@ class Dataset(
         else:
             file_list = [os.path.join(self.origin.sub_path, self.origin.filename)]
 
+        logger.info(f'Starting transfer of dataset "{self.name}" from origin into base path "{base_path}".')
+
         self.origin.transfer_func(
             origin=self.origin, file_list=file_list, dst_base_path=base_path, username=username, password=password
         )
 
         if self.origin.post_transfer_func is not None:
             self.origin.post_transfer_func(ds=self, dst_path=base_path)
+
+        logger.info(f'Transfer of dataset "{self.name}" completed successfully.')
 
         return True
 
