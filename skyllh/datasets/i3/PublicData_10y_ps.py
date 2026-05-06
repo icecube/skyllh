@@ -3,7 +3,8 @@ import numpy as np
 from skyllh.core.dataset import (
     DatasetCollection,
     DatasetOrigin,
-    WGETDatasetTransfer,
+    URLRetrieveDatasetTransfer,
+    post_transfer_unarchive,
 )
 from skyllh.i3.dataset import (
     I3Dataset,
@@ -261,8 +262,8 @@ def create_dataset_collection(
         sub_path='',
         filename='20210126_PS-IC40-IC86_VII.zip',
         host='icecube.wisc.edu',
-        transfer_func=WGETDatasetTransfer(protocol='http').transfer,
-        post_transfer_func=WGETDatasetTransfer.post_transfer_unzip,
+        transfer_func=URLRetrieveDatasetTransfer(protocol='https').transfer,
+        post_transfer_func=post_transfer_unarchive,
     )
 
     # Define the common keyword arguments for all data sets.

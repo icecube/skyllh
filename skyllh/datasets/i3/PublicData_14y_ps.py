@@ -3,7 +3,7 @@ import numpy as np
 from skyllh.core.dataset import (
     DatasetCollection,
     DatasetOrigin,
-    WGETDatasetTransfer,
+    URLRetrieveDatasetTransfer,
 )
 from skyllh.i3.dataset import (
     I3Dataset,
@@ -238,7 +238,7 @@ def create_dataset_collection(
         base_path='/data/user/tkontrimas/datarelease_2025/',
         sub_path='icecube_pstracks_v004p02/',
         host='convey.icecube.wisc.edu',
-        transfer_func=WGETDatasetTransfer(protocol='https').transfer,
+        transfer_func=URLRetrieveDatasetTransfer(protocol='https').transfer,
         username='icecube',
     )
 
