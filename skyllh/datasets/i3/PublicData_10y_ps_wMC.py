@@ -4,6 +4,8 @@ from skyllh.datasets.i3 import (
     PublicData_10y_ps,
 )
 
+DATASET_NAMES = PublicData_10y_ps.DATASET_NAMES
+
 
 def create_dataset_collection(
     cfg,

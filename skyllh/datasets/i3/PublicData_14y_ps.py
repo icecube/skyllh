@@ -9,6 +9,8 @@ from skyllh.i3.dataset import (
     I3Dataset,
 )
 
+DATASET_NAMES = ('IC40', 'IC59', 'IC79', 'IC86_I-XI')
+
 
 def create_dataset_collection(
     cfg,
@@ -30,8 +32,7 @@ def create_dataset_collection(
         If None, use the default path ``cfg['repository']['base_path']``.
     sub_path_fmt : str | None
         The sub path format of the data files of the public data sample.
-        If None, use the default sub path format
-        'icecube_10year_ps'.
+        If None, use the default sub path format '<TDB>'.
 
     Returns
     -------

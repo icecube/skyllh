@@ -21,6 +21,9 @@ from skyllh.core.livetime import (
 from skyllh.core.storage import (
     DataFieldRecordArray,
 )
+from skyllh.datasets import (
+    create_datasets,
+)
 from skyllh.datasets.i3 import (
     TestData,
 )
@@ -29,9 +32,7 @@ from skyllh.datasets.i3.PublicData_10y_ps import (
 )
 
 
-class TestRSYNCDatasetTransfer(
-    unittest.TestCase,
-):
+class TestRSYNCDatasetTransfer(unittest.TestCase):
     def setUp(self):
         self.cfg = Config()
         self.ds = TestData.create_dataset_collection(
@@ -62,9 +63,7 @@ class TestRSYNCDatasetTransfer(
         self.assertEqual(len(missing_files), 0)
 
 
-class TestWGETDatasetTransfer(
-    unittest.TestCase,
-):
+class TestWGETDatasetTransfer(unittest.TestCase):
     def setUp(self):
         self.cfg = Config()
         self.ds = TestData.create_dataset_collection(
@@ -99,9 +98,7 @@ class TestWGETDatasetTransfer(
         self.assertEqual(len(missing_files), 0)
 
 
-class TestDatasetFunctions(
-    unittest.TestCase,
-):
+class TestDatasetFunctions(unittest.TestCase):
     def setUp(self):
         path = os.path.abspath(os.path.dirname(__file__))
         self.exp_data = DataFieldRecordArray(np.load(os.path.join(path, 'testdata/exp_testdata.npy')))
@@ -160,9 +157,7 @@ class TestDatasetFunctions(
         self.assertAlmostEqual(livetime_subset.livetime, 0.75)
 
 
-class TestDatasetCollection(
-    unittest.TestCase,
-):
+class TestDatasetCollection(unittest.TestCase):
     def setUp(self) -> None:
         self.cfg = Config()
         self.dsc = create_dataset_collection(cfg=self.cfg)
@@ -180,6 +175,35 @@ class TestDatasetCollection(
         self.assertIsInstance(ds_list[1], Dataset)
         self.assertEqual(ds_list[0].name, 'IC59')
         self.assertEqual(ds_list[1].name, 'IC40')
+
+
+class TestCreateDatasets(unittest.TestCase):
+    def setUp(self):
+        self.cfg = Config()
+
+    def test_default_names_match_DATASET_NAMES(self):
+        from skyllh.datasets.i3.TestData import DATASET_NAMES
+
+        ds_list = create_datasets('TestData', cfg=self.cfg)
+        self.assertIsInstance(ds_list, list)
+        self.assertEqual([ds.name for ds in ds_list], list(DATASET_NAMES))
+
+    def test_single_name_string_coercion(self):
+        ds_list = create_datasets('TestData', cfg=self.cfg, names='TestData')
+        self.assertIsInstance(ds_list, list)
+        self.assertEqual(len(ds_list), 1)
+        self.assertEqual(ds_list[0].name, 'TestData')
+
+    def test_sequence_of_names(self):
+        ds_list = create_datasets('IceTracks-DR1', cfg=self.cfg, names=('IC40', 'IC59'))
+        self.assertIsInstance(ds_list, list)
+        self.assertEqual(len(ds_list), 2)
+        self.assertEqual([ds.name for ds in ds_list], ['IC40', 'IC59'])
+
+    def test_unknown_sample_raises_KeyError(self):
+        with self.assertRaises(KeyError) as ctx:
+            create_datasets('nonexistent', cfg=self.cfg)
+        self.assertIn('nonexistent', str(ctx.exception))
 
 
 if __name__ == '__main__':

@@ -5,6 +5,8 @@ from skyllh.i3.dataset import (
     I3Dataset,
 )
 
+DATASET_NAMES = ('TestData',)
+
 
 def create_dataset_collection(
     cfg,
@@ -36,7 +38,7 @@ def create_dataset_collection(
 
     default_sub_path_fmt = 'testdata'
 
-    dsc = DatasetCollection('Public Data 10-year point-source')
+    dsc = DatasetCollection('Test public data')
 
     dsc.description = r"""
     This dataset collection contains a test dataset which can be used for unit
