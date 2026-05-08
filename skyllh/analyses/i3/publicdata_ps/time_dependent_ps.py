@@ -4,6 +4,7 @@ dataset.
 
 import numpy as np
 
+import skyllh
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF,
 )
@@ -113,7 +114,6 @@ from skyllh.core.utils.analysis import (
 from skyllh.core.utils.tdm import (
     get_tdm_field_func_psi,
 )
-from skyllh.datasets import create_datasets
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
 )
@@ -1042,7 +1042,7 @@ if __name__ == '__main__':
 
     logger = setup_logging(cfg=cfg, name=__name__, log_level='info', log_file=args.debug_logfile)
 
-    datasets = create_datasets('IceTracks-DR1', cfg=cfg, base_path=args.data_basepath, names='IC86_II-VII')
+    datasets = skyllh.create_datasets('IceTracks-DR1', cfg=cfg, base_path=args.data_basepath, names='IC86_II-VII')
 
     # Define a random state service.
     rss = RandomStateService(args.seed)

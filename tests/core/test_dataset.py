@@ -4,6 +4,7 @@ import warnings
 
 import numpy as np
 
+import skyllh
 from skyllh.core.config import (
     Config,
 )
@@ -23,7 +24,6 @@ from skyllh.core.storage import (
     DataFieldRecordArray,
 )
 from skyllh.datasets import (
-    create_datasets,
     data_samples,
 )
 from skyllh.datasets.i3 import (
@@ -187,25 +187,25 @@ class TestCreateDatasets(unittest.TestCase):
     def test_default_names_match_DATASET_NAMES(self):
         from skyllh.datasets.i3.TestData import DATASET_NAMES
 
-        ds_list = create_datasets('TestData', cfg=self.cfg)
+        ds_list = skyllh.create_datasets('TestData', cfg=self.cfg)
         self.assertIsInstance(ds_list, list)
         self.assertEqual([ds.name for ds in ds_list], list(DATASET_NAMES))
 
     def test_single_name_string_coercion(self):
-        ds_list = create_datasets('TestData', cfg=self.cfg, names='TestData')
+        ds_list = skyllh.create_datasets('TestData', cfg=self.cfg, names='TestData')
         self.assertIsInstance(ds_list, list)
         self.assertEqual(len(ds_list), 1)
         self.assertEqual(ds_list[0].name, 'TestData')
 
     def test_sequence_of_names(self):
-        ds_list = create_datasets('IceTracks-DR1', cfg=self.cfg, names=('IC40', 'IC59'))
+        ds_list = skyllh.create_datasets('IceTracks-DR1', cfg=self.cfg, names=('IC40', 'IC59'))
         self.assertIsInstance(ds_list, list)
         self.assertEqual(len(ds_list), 2)
         self.assertEqual([ds.name for ds in ds_list], ['IC40', 'IC59'])
 
     def test_unknown_sample_raises_KeyError(self):
         with self.assertRaises(KeyError) as ctx:
-            create_datasets('nonexistent', cfg=self.cfg)
+            skyllh.create_datasets('nonexistent', cfg=self.cfg)
         self.assertIn('nonexistent', str(ctx.exception))
 
     def test_legacy_name_warns_and_returns_datasets(self):
@@ -213,7 +213,7 @@ class TestCreateDatasets(unittest.TestCase):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
-            ds_list = create_datasets('PublicData_10y_ps', cfg=self.cfg)
+            ds_list = skyllh.create_datasets('PublicData_10y_ps', cfg=self.cfg)
         self.assertEqual(len(w), 1)
         self.assertTrue(issubclass(w[0].category, DeprecationWarning))
         self.assertIn('IceTracks-DR1', str(w[0].message))
