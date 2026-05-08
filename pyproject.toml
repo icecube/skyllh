@@ -46,7 +46,7 @@ dev = [
 ]
 docs = [
     "sphinx<9.0.0",
-    "sphinx_rtd_theme",
+    "shibuya",
     "nbsphinx",
     "ipython",
     "sphinxcontrib-apidoc",
