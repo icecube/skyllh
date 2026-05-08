@@ -1,3 +1,5 @@
+from skyllh.core.logging import get_logger
+
 from .i3 import (
     _DEPRECATED_KEYS as _i3_DEPRECATED_KEYS,
 )
@@ -8,6 +10,8 @@ from .i3 import (
 from .i3 import (
     data_samples as _i3_data_samples,
 )
+
+logger = get_logger(__name__)
 
 # Merged deprecated-key registry. When a new experiment package is added,
 # extend this dict with its own _DEPRECATED_KEYS.
@@ -62,4 +66,5 @@ def create_datasets(sample_name, cfg, names=None, base_path=None, sub_path_fmt=N
         names = module.DATASET_NAMES
     elif isinstance(names, str):
         names = (names,)
+    logger.info('Loaded %d dataset(s) from sample "%s": %s', len(names), sample_name, ', '.join(names))
     return dsc[names]
