@@ -2707,9 +2707,7 @@ def assert_data_format(
         )
         if len(missing_exp_keys) != 0:
             raise KeyError(
-                f'The following data fields are missing for the experimental data of dataset "{dataset.name}": , '.join(
-                    missing_exp_keys
-                )
+                f'The following data fields are missing for the experimental data of dataset "{dataset.name}": {", ".join(missing_exp_keys)}'
             )
 
     if data.mc is not None:
@@ -2719,9 +2717,7 @@ def assert_data_format(
         )
         if len(missing_mc_keys) != 0:
             raise KeyError(
-                f'The following data fields are missing for the monte-carlo data of dataset "{dataset.name}": , '.join(
-                    missing_mc_keys
-                )
+                f'The following data fields are missing for the monte-carlo data of dataset "{dataset.name}": {", ".join(missing_mc_keys)}'
             )
 
     if data.livetime is None:
@@ -2892,8 +2888,8 @@ def get_data_subset(
         The Livetime object.
     t_start : float
         The MJD start time of the time range to consider.
-    t_end : float
-        The MJD end time of the time range to consider.
+    t_stop : float
+        The MJD stop time of the time range to consider.
 
     Returns
     -------
