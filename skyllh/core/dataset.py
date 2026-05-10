@@ -1697,7 +1697,7 @@ class Dataset(
                     return
             raise KeyError(f'The data preparation function "{key}" was not found in the dataset "{self._name}"!')
 
-        TypeError('The key argument must be an instance of int or str!')
+        raise TypeError('The key argument must be an instance of int or str!')
 
     def prepare_data(
         self,

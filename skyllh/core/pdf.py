@@ -1353,7 +1353,7 @@ class MultiDimGridPDF(
             elif tdm.is_srcevt_data_field(name):
                 eventdata_fields.append(data)
             else:
-                TypeError(f'Unable to determine the type of the data field {name}!')
+                raise TypeError(f'Unable to determine the type of the data field {name}!')
 
         eventdata = np.array(eventdata_fields)
 
