@@ -159,7 +159,7 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             warnings.warn(
                 'The kde_smoothing option is deprecated and will be removed in a future version',
                 DeprecationWarning,
-                stacklevel=2,
+                stacklevel=3,
             )
             # If a bandwidth is passed, apply a KDE-based smoothing with the
             # given bandwidth parameter as bandwidth for the fit.
