@@ -3,7 +3,7 @@ import numpy as np
 from skyllh.core.dataset import (
     DatasetCollection,
     DatasetOrigin,
-    WGETDatasetTransfer,
+    URLRetrieveDatasetTransfer,
 )
 from skyllh.i3.dataset import (
     I3Dataset,
@@ -29,7 +29,8 @@ def create_dataset_collection(
     base_path : str | None
         The base path of the data files. The actual path of a data file is
         assumed to be of the structure <base_path>/<sub_path>/<file_name>.
-        If None, use the default path ``cfg['repository']['base_path']``.
+        If ``None``, ``cfg['repository']['base_path']`` is used, which
+        defaults to ``~/.cache/skyllh``.
     sub_path_fmt : str | None
         The sub path format of the data files of the public data sample.
         If None, use the default sub path format '<TDB>'.
@@ -238,7 +239,7 @@ def create_dataset_collection(
         base_path='/data/user/tkontrimas/datarelease_2025/',
         sub_path='icecube_pstracks_v004p02/',
         host='convey.icecube.wisc.edu',
-        transfer_func=WGETDatasetTransfer(protocol='https').transfer,
+        transfer_func=URLRetrieveDatasetTransfer(protocol='https').transfer,
         username='icecube',
     )
 
