@@ -764,7 +764,6 @@ class URLRetrieveDatasetTransfer(
                 if path[0:1] != '/':
                     url += '/'
                 url += path
-                
                 transfer_args = [url, dst_pathfilename]
 
             if username is not None:
@@ -775,6 +774,7 @@ class URLRetrieveDatasetTransfer(
             else:
                 opener = urllib.request.build_opener()
 
+            opener.addheaders = [('User-Agent', 'Wget/1.25')]
             urllib.request.install_opener(opener)
             try:
                 urllib.request.urlretrieve(*transfer_args)
