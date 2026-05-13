@@ -5,6 +5,7 @@ energy event PDF.
 
 import numpy as np
 
+import skyllh
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF,
 )
@@ -102,9 +103,6 @@ from skyllh.core.utils.analysis import (
 from skyllh.core.utils.tdm import (
     get_tdm_field_func_psi,
 )
-from skyllh.datasets.i3 import (
-    data_samples,
-)
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
 )
@@ -179,13 +177,14 @@ def create_analysis(
     gamma_max : float
         Upper bound for gamma fit.
     kde_smoothing : bool
+        Deprecated: use of ``kde_smoothing=True`` is deprecated and will be
+            removed in a future version.
         Apply a KDE-based smoothing to the data-driven background pdf.
         Default: False.
     minimizer_impl : str
         Minimizer implementation to be used. Supported options are ``"LBFGS"``
         (L-BFG-S minimizer used from the :mod:`scipy.optimize` module),
-        ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module),
-        or ``"crs"`` (global CRS minimizer by nlopt, not gradient based).
+        or ``"minuit"`` (Minuit minimizer used by the :mod:`iminuit` module).
         Default: "LBFGS".
     minimizer_max_rep : int
         In case the minimization process did not converge at the first time
@@ -228,14 +227,10 @@ def create_analysis(
         minimizer = Minimizer(LBFGSMinimizerImpl(cfg=cfg), max_repetitions=minimizer_max_rep)
     elif minimizer_impl == 'minuit':
         minimizer = Minimizer(IMinuitMinimizerImpl(cfg=cfg, ftol=1e-8), max_repetitions=minimizer_max_rep)
-    elif minimizer_impl == 'crs':
-        from skyllh.core.minimizers.crs import (
-            CRSMinimizerImpl,
-        )
-
-        minimizer = Minimizer(CRSMinimizerImpl(cfg=cfg, ftol=1e-8), max_repetitions=minimizer_max_rep)
     else:
-        raise NameError(f'Minimizer implementation `{minimizer_impl}` is not supported Please use `LBFGS` or `minuit`.')
+        raise NameError(
+            f'Minimizer implementation `{minimizer_impl}` is not supported. Please use `LBFGS` or `minuit`.'
+        )
 
     dtc_dict = None
     dtc_except_fields = None
@@ -443,18 +438,7 @@ if __name__ == '__main__':
 
     logger = setup_logging(cfg=cfg, name=__name__, log_level='info', log_file=args.debug_logfile)
 
-    sample_seasons = [
-        ('PublicData_14y_ps', 'IC40'),
-        ('PublicData_14y_ps', 'IC59'),
-        ('PublicData_14y_ps', 'IC79'),
-        ('PublicData_14y_ps', 'IC86_I-XI'),
-    ]
-
-    datasets = []
-    for sample, season in sample_seasons:
-        # Get the dataset from the correct dataset collection.
-        dsc = data_samples[sample].create_dataset_collection(cfg=cfg, base_path=args.data_basepath)
-        datasets.append(dsc.get_dataset(season))
+    datasets = skyllh.create_datasets('IceTracks-DR2', cfg=cfg, base_path=args.data_basepath)
 
     # Define a random state service.
     rss = RandomStateService(args.seed)
