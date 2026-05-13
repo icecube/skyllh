@@ -44,8 +44,8 @@ We provide an incomplete list of tutorials below. They are meant to illustrate h
    Repeat the point-source fit with a fixed (non-free) spectral index.
    Also demonstrates converting between mean signal event counts and flux normalisations.
 
-:doc:`injecting_signal_events`
-   Generate synthetic signal events within a user-defined energy window.
+:doc:`setting_an_energy_range`
+   Set a user-defined energy range for the signal injection.
    Illustrates the distinction between the signal-injection energy range and the
    likelihood hypothesis energy range.
 
@@ -81,7 +81,7 @@ We provide an incomplete list of tutorials below. They are meant to illustrate h
     fitting_a_source
     dataset_collections
     fixed_spectral_index
-    injecting_signal_events
+    setting_an_energy_range
     sky_scan
     likelihood_scan
     p_value_method_comparison
