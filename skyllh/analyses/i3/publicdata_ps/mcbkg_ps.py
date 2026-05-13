@@ -8,6 +8,7 @@ import pickle
 
 import numpy as np
 
+import skyllh
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDMCBackgroundI3EnergyPDF,
 )
@@ -96,9 +97,6 @@ from skyllh.core.utils.analysis import (
 )
 from skyllh.core.utils.tdm import (
     get_tdm_field_func_psi,
-)
-from skyllh.datasets.i3 import (
-    data_samples,
 )
 from skyllh.i3.background_generation import (
     FixedScrambledExpDataI3BkgGenMethod,
@@ -389,20 +387,7 @@ if __name__ == '__main__':
 
     logger = setup_logging(cfg=cfg, name=__name__, log_level='info', log_file=args.debug_logfile)
 
-    sample_seasons = [
-        # ('PublicData_10y_ps', 'IC40'),
-        # ('PublicData_10y_ps', 'IC59'),
-        # ('PublicData_10y_ps', 'IC79'),
-        # ('PublicData_10y_ps', 'IC86_I'),
-        ('PublicData_10y_ps', 'IC86_II'),
-        # ('PublicData_10y_ps', 'IC86_II-VII')
-    ]
-
-    datasets = []
-    for sample, season in sample_seasons:
-        # Get the dataset from the correct dataset collection.
-        dsc = data_samples[sample].create_dataset_collection(args.data_base_path)
-        datasets.append(dsc.get_dataset(season))
+    datasets = skyllh.create_datasets('IceTracks-DR1', cfg=cfg, base_path=args.data_basepath, names='IC86_II')
 
     # Define a random state service.
     rss = RandomStateService(args.seed)
