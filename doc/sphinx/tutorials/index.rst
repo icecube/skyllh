@@ -7,7 +7,7 @@ Tutorials
 The tutorials below walk through common SkyLLH analysis tasks using IceCube public data.
 They progress from a basic steady-state point-source fit to more specialised techniques.
 
-The tutorials support both the `10-year <https://doi.org/10.7910/DVN/VKL316>`_ (IceTracks-DR1) and 14-year (TODO: add link) (IceTracks-DR2) IceCube public point-source datasets. They are automatically downloaded from `dataverse.harvard.edu <https://dataverse.harvard.edu>`_ to a local cache directory (``~/.skyllh/cache``). To use custom dataset locations, set the `cfg['repository']['base_path']` to the desired path.
+The tutorials support both the `10-year <https://doi.org/10.7910/DVN/VKL316>`_ (IceTracks-DR1) and 14-year (TODO: add link) (IceTracks-DR2) IceCube public point-source datasets. They are automatically downloaded from `dataverse.harvard.edu <https://dataverse.harvard.edu/dataverse/icecube>`_ to a local cache directory (``~/.skyllh/cache``). To use custom dataset locations, set the ``cfg['repository']['base_path']`` to the desired path.
 
 To load respective datasets:
 
