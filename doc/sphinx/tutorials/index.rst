@@ -26,7 +26,7 @@ To load respective datasets:
     datasets = skyllh.create_datasets('IceTracks-DR1', cfg=cfg)
 
 Additional information about the IceCube public datasets can be found in the following references:
-- IceTracks-DR1: `IceCube Collaboration, "IceCube Data for Neutrino Point-Source Searches Years 2008-2018", arXiv:2101.09836 (2021)<https://arxiv.org/abs/2101.09836>`_
+- IceTracks-DR1: `IceCube Collaboration, "IceCube Data for Neutrino Point-Source Searches Years 2008-2018", arXiv:2101.09836 (2021) <https://arxiv.org/abs/2101.09836>`_
 - IceTracks-DR2: TBD
 
 We provide an incomplete list of tutorials below. They are meant to illustrate how to perform a time-integrated point-source analysis using SkyLLH, but they are not exhaustive. We encourage users to explore the documentation and contribute additional tutorials covering other analysis types and techniques.
