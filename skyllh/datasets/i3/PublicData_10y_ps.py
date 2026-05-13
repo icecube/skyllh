@@ -3,12 +3,14 @@ import numpy as np
 from skyllh.core.dataset import (
     DatasetCollection,
     DatasetOrigin,
-    DatasetTransfer,
-    WGETDatasetTransfer,
+    URLRetrieveDatasetTransfer,
+    post_transfer_unarchive,
 )
 from skyllh.i3.dataset import (
     I3Dataset,
 )
+
+DATASET_NAMES = ('IC40', 'IC59', 'IC79', 'IC86_I', 'IC86_II-VII')
 
 
 def create_dataset_collection(
@@ -27,7 +29,8 @@ def create_dataset_collection(
     base_path : str | None
         The base path of the data files. The actual path of a data file is
         assumed to be of the structure <base_path>/<sub_path>/<file_name>.
-        If None, use the default path ``cfg['repository']['base_path']``.
+        If ``None``, ``cfg['repository']['base_path']`` is used, which
+        defaults to ``~/.cache/skyllh``.
     sub_path_fmt : str | None
         The sub path format of the data files of the public data sample.
         If None, use the default sub path format
@@ -261,8 +264,8 @@ def create_dataset_collection(
         base_path='',
         sub_path='icecube_10year_ps',
         filename='tmp.zip',
-        transfer_func=WGETDatasetTransfer(protocol='https').transfer,
-        post_transfer_func=DatasetTransfer.post_transfer_unzip,
+        transfer_func=URLRetrieveDatasetTransfer(protocol='https').transfer,
+        post_transfer_func=post_transfer_unarchive,
     )
 
     # Define the common keyword arguments for all data sets.
