@@ -7,29 +7,38 @@ Tutorials
 The tutorials below walk through common SkyLLH analysis tasks using IceCube public data.
 They progress from a basic steady-state point-source fit to more specialised techniques.
 
-The tutorials support both the `10-year <https://doi.org/10.7910/DVN/VKL316>`_ and 14-year (TODO: add link) IceCube public point-source datasets. They are
-automatically downloaded from `dataverse.harvard.edu <https://dataverse.harvard.edu>`_ to a local cache directory (``~/.skyllh/cache``). To use custom dataset locations, set the `cfg['repository']['base_path']` to the desired path.
+The tutorials support both the `10-year <https://doi.org/10.7910/DVN/VKL316>`_ (IceTracks-DR1) and 14-year (TODO: add link) (IceTracks-DR2) IceCube public point-source datasets. They are automatically downloaded from `dataverse.harvard.edu <https://dataverse.harvard.edu>`_ to a local cache directory (``~/.skyllh/cache``). To use custom dataset locations, set the `cfg['repository']['base_path']` to the desired path.
 
-To load respective datasets, import the appropriate module and select the desired detector configurations:
-
-.. code-block:: python
-
-    from skyllh.datasets.i3.PublicData_14y_ps import create_dataset_collection
-
-    dsc = create_dataset_collection(cfg=cfg)
-    datasets = dsc['IC40', 'IC59', 'IC79', 'IC86_I-XI']
+To load respective datasets:
 
 .. code-block:: python
 
-    from skyllh.datasets.i3.PublicData_10y_ps import create_dataset_collection
+    import skyllh
+    from skyllh.core.config import Config
+
+    cfg = Config()
 
     dsc = create_dataset_collection(cfg=cfg)
-    datasets = dsc['IC40', 'IC59', 'IC79', 'IC86_I', 'IC86_II-VII']
+    datasets = skyllh.create_datasets('IceTracks-DR2', cfg=cfg)
+
+.. code-block:: python
+
+    datasets = skyllh.create_datasets('IceTracks-DR1', cfg=cfg)
+
+Additional information about the IceCube public datasets can be found in the following references:
+- IceTracks-DR1: `IceCube Collaboration, "IceCube Data for Neutrino Point-Source Searches Years 2008-2018", arXiv:2101.09836 (2021)<https://arxiv.org/abs/2101.09836>`_
+- IceTracks-DR2: TBD
+
+We provide an incomplete list of tutorials below. They are meant to illustrate how to perform a time-integrated point-source analysis using SkyLLH, but they are not exhaustive. We encourage users to explore the documentation and contribute additional tutorials covering other analysis types and techniques.
 
 :doc:`fitting_a_source`
-   Fit a steady point source (NGC 1068) using the IceCube 14-year public track data.
+   Fit a steady point source (NGC 1068) using both the IceCube 10-year and 14-year public track data.
    Covers loading datasets, maximising the log-likelihood ratio, computing the test statistic,
    and deriving flux normalisations.
+
+:doc:`dataset_collections`
+   Introduces the concept of dataset collections, which are used to manage multiple datasets in a unified way.
+   Covers loading datasets, inspecting available datasets, and accessing individual datasets.
 
 :doc:`fixed_spectral_index`
    Repeat the point-source fit with a fixed (non-free) spectral index.
@@ -70,6 +79,7 @@ To load respective datasets, import the appropriate module and select the desire
     :hidden:
 
     fitting_a_source
+    dataset_collections
     fixed_spectral_index
     injecting_signal_events
     sky_scan
