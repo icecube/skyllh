@@ -3,9 +3,11 @@ import os
 import os.path
 import shutil
 import stat
-from copy import (
-    deepcopy,
-)
+import tarfile
+import urllib.error
+import urllib.request
+import zipfile
+from copy import deepcopy
 
 import numpy as np
 
@@ -438,34 +440,6 @@ class DatasetTransfer(
         """
         pass
 
-    @staticmethod
-    def post_transfer_unzip(
-        ds,
-        dst_path,
-    ):
-        """This is a post-transfer function. It will unzip the transferred file
-        into the dst_path if the origin path was a zip file.
-        """
-        if ds.origin.filename is None:
-            return
-
-        if not ds.origin.filename.lower().endswith('.zip'):
-            return
-
-        cls = get_class_of_func(DatasetTransfer.post_transfer_unzip)
-        logger = get_logger(f'{classname(cls)}.post_transfer_unzip')
-
-        # Unzip the dataset file.
-        zip_file = os.path.join(dst_path, ds.origin.filename)
-        cmd = f'unzip "{zip_file}" -d "{dst_path}"'
-        DatasetTransfer.execute_system_command(cmd, logger)
-
-        # Remove the zip file.
-        try:
-            os.remove(zip_file)
-        except Exception as exc:
-            logger.warning(str(exc))
-
 
 class RSYNCDatasetTransfer(
     DatasetTransfer,
@@ -674,7 +648,134 @@ class WGETDatasetTransfer(
             try:
                 DatasetTransfer.execute_system_command(cmd, logger)
             except SystemCommandError as err:
+                if os.path.exists(dst_pathfilename):
+                    os.remove(dst_pathfilename)
                 raise DatasetTransferError(str(err)) from err
+
+
+class URLRetrieveDatasetTransfer(
+    DatasetTransfer,
+):
+    def __init__(self, protocol, **kwargs):
+        super().__init__(**kwargs)
+
+        self.protocol = protocol
+
+    @property
+    def protocol(self):
+        """The protocol to use for the transfer."""
+        return self._protocol
+
+    @protocol.setter
+    def protocol(self, obj):
+        if not isinstance(obj, str):
+            raise TypeError(f'The property protocol must be an instance of str! Its current type is {classname(obj)}!')
+        self._protocol = obj
+
+    def transfer(
+        self,
+        origin,
+        file_list,
+        dst_base_path,
+        username=None,
+        password=None,
+    ):
+        """Transfers the given dataset to the given destination path using
+        ``urllib.request.urlretrieve``.
+
+        Parameters
+        ----------
+        origin : instance of DatasetOrigin
+            The instance of DatasetOrigin defining the origin of the dataset.
+        file_list : list of str
+            The list of files relative to the origin's base path, which
+            should be transferred.
+        dst_base_path : str
+            The destination base path into which the dataset will be
+            transferred.
+        username : str | None
+            The user name required to connect to the remote host.
+        password : str | None
+            The password for the user name required to connect to the remote
+            host.
+        """
+        cls = get_class_of_func(self.transfer)
+        logger = get_logger(f'{classname(cls)}.transfer')
+
+        host = origin.host
+        port = origin.port
+
+        for file in file_list:
+            dst_pathfilename = os.path.join(dst_base_path, file)
+            if os.path.exists(dst_pathfilename):
+                logger.debug(f'File "{dst_pathfilename}" already exists. Skipping.')
+                continue
+
+            path = os.path.join(origin.base_path, file)
+
+            dst_sub_path = os.path.dirname(file)
+            if dst_sub_path == '':  # noqa: SIM108
+                dst_path = dst_base_path
+            else:
+                dst_path = os.path.join(dst_base_path, dst_sub_path)
+            DatasetTransfer.ensure_dst_path(dst_path)
+
+            url = f'{self.protocol}://{host}'
+            if port is not None:
+                url += f':{port}'
+            if path[0:1] != '/':
+                url += '/'
+            url += path
+
+            if username is not None:
+                password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+                password_mgr.add_password(None, url, username, password or '')
+                auth_handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
+                opener = urllib.request.build_opener(auth_handler)
+            else:
+                opener = urllib.request.build_opener()
+
+            logger.debug(f'Downloading "{url}" to "{dst_pathfilename}"')
+
+            urllib.request.install_opener(opener)
+            try:
+                urllib.request.urlretrieve(url, dst_pathfilename)
+            except urllib.error.URLError as err:
+                if os.path.exists(dst_pathfilename):
+                    os.remove(dst_pathfilename)
+                raise DatasetTransferError(str(err)) from err
+            finally:
+                urllib.request.install_opener(urllib.request.build_opener())
+
+
+def post_transfer_unarchive(
+    ds,
+    dst_path,
+):
+    """Post-transfer function that extracts an archive file transferred into
+    ``dst_path``. Supports ``.zip``, ``.tar.gz``, ``.tgz``, ``.tar.bz2``,
+    and ``.tar.xz`` formats. The archive file is removed after extraction.
+    """
+    if ds.origin.filename is None:
+        return
+
+    filename_lower = ds.origin.filename.lower()
+    archive_path = os.path.join(dst_path, ds.origin.filename)
+
+    if filename_lower.endswith('.zip'):
+        with zipfile.ZipFile(archive_path) as zf:
+            zf.extractall(dst_path)
+    elif filename_lower.endswith(('.tar.gz', '.tgz', '.tar.bz2', '.tar.xz')):
+        with tarfile.open(archive_path) as tf:
+            tf.extractall(dst_path)
+    else:
+        return
+
+    try:
+        os.remove(archive_path)
+    except Exception as exc:
+        logger = get_logger(f'{__name__}.post_transfer_unarchive')
+        logger.warning(str(exc))
 
 
 class Dataset(
@@ -802,8 +903,8 @@ class Dataset(
         base_path : str | None
             The user-defined base path of the data set.
             Usually, this is the path of the location of the data directory.
-            If set to ``None`` the configured repository base path
-            ``Config['repository']['base_path']`` is used.
+            If set to ``None``, the dataset configuration's repository ``base_path``
+            setting is used, which defaults to ``~/.cache/skyllh``.
         sub_path_fmt : str | None
             The user-defined format of the sub path of the data set.
             If set to ``None``, the ``default_sub_path_fmt`` will be used.
@@ -1422,10 +1523,6 @@ class Dataset(
             default_base_path=self._cfg['repository']['base_path'], base_path=self._base_path
         )
 
-        logger.debug(
-            f'Downloading dataset "{self.name}" from origin into base path "{base_path}". username="{username}".'
-        )
-
         # Check if the origin is a directory. If not we just transfer that one
         # file.
         if self.origin.is_directory:
@@ -1433,12 +1530,16 @@ class Dataset(
         else:
             file_list = [os.path.join(self.origin.sub_path, self.origin.filename)]
 
+        logger.info(f'Starting transfer of dataset "{self.name}" from origin into base path "{base_path}".')
+
         self.origin.transfer_func(
             origin=self.origin, file_list=file_list, dst_base_path=base_path, username=username, password=password
         )
 
         if self.origin.post_transfer_func is not None:
             self.origin.post_transfer_func(ds=self, dst_path=base_path)
+
+        logger.info(f'Transfer of dataset "{self.name}" completed successfully.')
 
         return True
 

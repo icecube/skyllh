@@ -12,6 +12,7 @@ from skyllh.core.dataset import (
     DatasetOrigin,
     DatasetTransferError,
     RSYNCDatasetTransfer,
+    URLRetrieveDatasetTransfer,
     WGETDatasetTransfer,
     get_data_subset,
 )
@@ -82,6 +83,43 @@ class TestWGETDatasetTransfer(
             host='convey.icecube.wisc.edu',
             username='icecube',
             transfer_func=WGETDatasetTransfer(protocol='https').transfer,
+        )
+
+    def test_transfer(self):
+        password = os.environ.get('ICECUBE_PASSWORD', None)
+        if password is None:
+            self.skipTest(f'No password for username "{self.ds.origin.username}" provided via the environment!')
+
+        if not self.ds.make_data_available(
+            password=password,
+        ):
+            raise RuntimeError(f'The data of dataset {self.ds.name} could not be made available!')
+
+        # Check that there are no missing files.
+        missing_files = self.ds.get_missing_files()
+        self.assertEqual(len(missing_files), 0)
+
+
+class TestURLRetrieveDatasetTransfer(
+    unittest.TestCase,
+):
+    def setUp(self):
+        self.cfg = Config()
+        self.ds = TestData.create_dataset_collection(
+            cfg=self.cfg, base_path=os.path.join(os.getcwd(), '.repository')
+        ).get_dataset('TestData')
+
+        # Remove the dataset if it already exists.
+        if self.ds.exists:
+            self.ds.remove_data()
+
+        # Define the origin and transfer method of this dataset.
+        self.ds.origin = DatasetOrigin(
+            base_path='/data/user/mwolf/skyllh',
+            sub_path='testdata',
+            host='convey.icecube.wisc.edu',
+            username='icecube',
+            transfer_func=URLRetrieveDatasetTransfer(protocol='https').transfer,
         )
 
     def test_transfer(self):

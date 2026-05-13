@@ -22,7 +22,8 @@ def create_dataset_collection(
     base_path : str | None
         The base path of the data files. The actual path of a data file is
         assumed to be of the structure <base_path>/<sub_path>/<file_name>.
-        If None, use the default path ``cfg['repository']['base_path']``.
+        If ``None``, ``cfg['repository']['base_path']`` is used, which
+        defaults to ``~/.cache/skyllh``.
     sub_path_fmt : str | None
         The sub path format of the data files of the public data sample.
         If None, use the default sub path format
