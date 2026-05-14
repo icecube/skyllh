@@ -25,6 +25,7 @@ See :ref:`tutorials_index` section for hands-on examples using IceCube's public 
     examples/index
     concepts/index
     faq/index
+    contributing
 
 .. _dev-docs:
 
