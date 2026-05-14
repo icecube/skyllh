@@ -1713,7 +1713,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
 
         self.change_shg_mgr(shg_mgr=self._shg_mgr, update_detsigyield_service=update_detsigyield_service)
 
-    def calculate_fluxmodel_scaling_factor(self, per_source=False):
+    def calculate_fluxmodel_scaling_factor(self, fitparam_values=None, per_source=False):
         """Calculates the factor the source's fluxmodel has to be scaled in order to obtain one signal event in the
         detector.
 
@@ -1730,6 +1730,12 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
 
         Parameters
         ----------
+        fitparam_values : numpy ndarray | None
+            The (N_fitparam,)-shaped 1D ndarray holding the values of the global floating fit parameters at
+            which the scaling factor should be evaluated. The order must match the order in which parameters
+            were defined in the parameter model mapper.
+            If ``None``, the scaling factor is evaluated at the reference parameter values defined in the
+            flux model.
         per_source : bool
             Whether to return the scaling factor for each source separately. Default is False.
 
@@ -1746,15 +1752,33 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
                 'The configured signal generator does not implement the fluxmodel_scaling_factor interface!'
             )
 
-        return self._sig_generator.fluxmodel_scaling_factor(per_source=per_source)
+        if fitparam_values is not None and self.sig_gen_energy_range is not None:
+            raise NotImplementedError(
+                'The calculate_fluxmodel_scaling_factor does not support fitparam_values when an energy_range '
+                'is configured on the analysis. The energy range correction factors are precomputed at the '
+                'reference flux model parameters and are not updated for arbitrary fitparam_values.'
+            )
 
-    def mu2flux(self, mu, per_source=False):
+        src_params_recarray = None
+        if fitparam_values is not None:
+            src_params_recarray = self._pmm.create_src_params_recarray(gflp_values=fitparam_values)
+
+        return self._sig_generator.fluxmodel_scaling_factor(
+            per_source=per_source,
+            src_params_recarray=src_params_recarray,
+        )
+
+    def mu2flux(self, mu, fitparam_values=None, per_source=False):
         """Converts the given number of signal events in the detector to the corresponding flux model normalization.
 
         Parameters
         ----------
         mu : float
             The number of signal events in the detector to convert.
+        fitparam_values : numpy ndarray | None
+            The (N_fitparam,)-shaped 1D ndarray holding the values of the global floating fit parameters at
+            which the scaling factor should be evaluated. If ``None``, the reference flux model parameter
+            values are used.
         per_source : bool
             Whether to return the flux normalization for each source separately. Default is False.
 
@@ -1763,15 +1787,19 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
         float | (n_sources,)-shaped numpy ndarray
             The corresponding flux model normalization(s) for the given number of signal events in the detector.
         """
-        return self.calculate_fluxmodel_scaling_factor(per_source=per_source) * mu
+        return self.calculate_fluxmodel_scaling_factor(fitparam_values=fitparam_values, per_source=per_source) * mu
 
-    def flux2mu(self, flux_norm, per_source=False):
+    def flux2mu(self, flux_norm, fitparam_values=None, per_source=False):
         """Converts the given flux model normalization to the corresponding number of signal events in the detector.
 
         Parameters
         ----------
         flux_norm : float
             The flux model normalization to convert.
+        fitparam_values : numpy ndarray | None
+            The (N_fitparam,)-shaped 1D ndarray holding the values of the global floating fit parameters at
+            which the scaling factor should be evaluated. If ``None``, the reference flux model parameter
+            values are used.
         per_source : bool
             Whether to return the number of signal events for each source separately. Default is False.
 
@@ -1780,7 +1808,9 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
         float | (n_sources,)-shaped numpy ndarray
             The corresponding number of signal events in the detector for the given flux model normalization.
         """
-        return flux_norm / self.calculate_fluxmodel_scaling_factor(per_source=per_source)
+        return flux_norm / self.calculate_fluxmodel_scaling_factor(
+            fitparam_values=fitparam_values, per_source=per_source
+        )
 
 
 class MultiSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):

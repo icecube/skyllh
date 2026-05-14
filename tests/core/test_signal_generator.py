@@ -43,6 +43,8 @@ from skyllh.i3.signal_generation import (
 
 DATA_SAMPLES_IMPORTED = tool.is_available('i3skyllh')
 
+_GAMMA_RECARRAY_DTYPE = [('gamma', np.float64), ('gamma:gpidx', np.int32)]
+
 
 def create_signal_generator(
     cfg,
@@ -236,7 +238,7 @@ class TestMultiDatasetSignalGeneratorEnergyRangeConsistency(unittest.TestCase):
     def _make_sig_gen(configured_ranges):
         sig_gen = MultiDatasetSignalGenerator.__new__(MultiDatasetSignalGenerator)
         sig_gen._shg_mgr = _DummyShgMgr(n_sources=2)
-        sig_gen._src_params_recarray = np.zeros((2,), dtype=[('gamma', np.float64), ('gamma:gpidx', np.int32)])
+        sig_gen._src_params_recarray = np.zeros((2,), dtype=_GAMMA_RECARRAY_DTYPE)
         src_service = _DummySrcDetSigYieldWeightsService(a_jk=np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64))
         sig_gen._ds_sig_weight_factors_service = _DummyDatasetSignalWeightFactorsService(src_service=src_service)
         sig_gen._sig_generator_list = [
@@ -275,7 +277,7 @@ class TestMultiDatasetSignalGeneratorEnergyRangeConsistency(unittest.TestCase):
 class TestMultiDatasetSignalGeneratorKwargPolicy(unittest.TestCase):
     def test_generate_signal_events_rejects_energy_range_kwarg(self):
         sig_gen = MultiDatasetSignalGenerator.__new__(MultiDatasetSignalGenerator)
-        sig_gen._src_params_recarray = np.zeros((1,), dtype=[('gamma', np.float64), ('gamma:gpidx', np.int32)])
+        sig_gen._src_params_recarray = np.zeros((1,), dtype=_GAMMA_RECARRAY_DTYPE)
 
         src_service = _DummySrcDetSigYieldWeightsService(a_jk=np.array([[1.0], [1.0]], dtype=np.float64))
         sig_gen._ds_sig_weight_factors_service = _DummyDatasetSignalWeightFactorsService(
@@ -304,6 +306,29 @@ class TestMultiDatasetSignalGeneratorKwargPolicy(unittest.TestCase):
 
         self.assertIsNone(ds_gen_0.last_generate_kwargs)
         self.assertIsNone(ds_gen_1.last_generate_kwargs)
+
+
+class TestMCMultiDatasetSignalGeneratorSrcParamsRecarrayParam(unittest.TestCase):
+    """Unit tests for the src_params_recarray guard in MCMultiDatasetSignalGenerator."""
+
+    def test_raises_not_implemented_when_src_params_recarray_provided(self):
+        """Providing a non-None src_params_recarray raises NotImplementedError."""
+        sig_gen = MCMultiDatasetSignalGenerator.__new__(MCMultiDatasetSignalGenerator)
+        recarray = np.zeros((1,), dtype=_GAMMA_RECARRAY_DTYPE)
+
+        with self.assertRaises(NotImplementedError):
+            sig_gen.fluxmodel_scaling_factor(src_params_recarray=recarray)
+
+    def test_none_src_params_recarray_does_not_raise_not_implemented(self):
+        """src_params_recarray=None (default) must not raise NotImplementedError."""
+        sig_gen = MCMultiDatasetSignalGenerator.__new__(MCMultiDatasetSignalGenerator)
+
+        try:
+            sig_gen.fluxmodel_scaling_factor(src_params_recarray=None)
+        except NotImplementedError:
+            self.fail('fluxmodel_scaling_factor raised NotImplementedError with src_params_recarray=None')
+        except Exception:
+            pass  # Other errors are expected since the generator is uninitialized.
 
 
 if __name__ == '__main__':
