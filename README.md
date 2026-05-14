@@ -6,16 +6,19 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/skyllh)](https://pypi.org/project/skyllh/)
 [![conda-forge](https://anaconda.org/conda-forge/skyllh/badges/version.svg)](https://anaconda.org/conda-forge/skyllh)
 
-[[Full documentation]](https://icecube.github.io/skyllh/).
+## Quick links
+
+- 📚 [Full documentation](https://icecube.github.io/skyllh/)
+- 🎓 [IceCube public data tutorials](https://icecube.github.io/skyllh/master/html/tutorials/index.html)
+- 📄 [Math formalism document](https://github.com/icecube/skyllh/blob/master/doc/user_manual.pdf)
+
+## Description
 
 The SkyLLH framework is an open-source Python-based package licensed under the
 GPLv3 license. It provides a modular framework for implementing custom
 likelihood functions and executing log-likelihood ratio hypothesis tests.
 The idea is to provide a class structure tied to the mathematical objects of the
 likelihood functions, rather than to entire abstract likelihood models.
-
-The math formalism used in SkyLLH is described in the math formalism
-[[document]](https://github.com/icecube/skyllh/blob/master/doc/user_manual.pdf).
 
 # Installation
 
