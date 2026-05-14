@@ -14,10 +14,9 @@ math formalism `document <https://icecube.github.io/skyllh/user_manual.pdf>`_.
 
 See :ref:`tutorials_index` section for hands-on examples using IceCube's public datasets.
 
-.. _user-docs:
-
 .. toctree::
     :maxdepth: 3
+    :hidden:
     :caption: Getting started
 
     installation
@@ -27,10 +26,9 @@ See :ref:`tutorials_index` section for hands-on examples using IceCube's public 
     faq/index
     contributing
 
-.. _dev-docs:
-
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 3
+    :hidden:
     :caption: Development
 
     dev_docs/logging
