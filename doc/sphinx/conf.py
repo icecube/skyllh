@@ -51,6 +51,8 @@ extensions = [
     'sphinx.ext.intersphinx',
     'nbsphinx',
     'sphinx_copybutton',
+    'sphinx_design',
+    'sphinx_iconify',
     'sphinxcontrib.apidoc',
     'sphinx_multiversion',
 ]

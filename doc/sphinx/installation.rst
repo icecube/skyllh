@@ -7,15 +7,31 @@ Installation
 Python >= 3.11 is required.
 
 
-Using pip
-=========
+Package install
+===============
 
-The latest `skyllh` release can be installed from the
-`PyPI <https://pypi.org/project/skyllh/>`_ repository:
+The `skyllh` package is available on `PyPI <https://pypi.org/project/skyllh/>`_ and `conda-forge <https://anaconda.org/channels/conda-forge/packages/skyllh/overview>`_ repositories, and can be installed with pip, uv, or conda:
 
-.. code:: bash
+.. tab-set::
+    :class: outline
 
-    pip install skyllh
+    .. tab-item:: :iconify:`devicon:pypi` pip
+
+        .. code-block:: bash
+
+            pip install skyllh
+
+    .. tab-item:: :iconify:`material-icon-theme:uv` uv
+
+        .. code-block:: bash
+
+            uv pip install skyllh
+
+    .. tab-item:: :iconify:`devicon:anaconda` conda
+
+        .. code-block:: bash
+
+            conda install -c conda-forge skyllh
 
 Optional dependency groups can be installed with extras:
 
@@ -25,7 +41,7 @@ Optional dependency groups can be installed with extras:
     pip install skyllh[dev]      # pre-commit, pytest
     pip install skyllh[docs]     # sphinx and doc-build tools
 
-The current development version can be installed using pip:
+The current development version can be installed from GitHub:
 
 .. code:: bash
 
@@ -38,14 +54,6 @@ Optionally, a specific reference can be installed by:
     pip install git+https://github.com/icecube/skyllh.git@[ref]
 
 where ``[ref]`` is a commit hash, branch name, or tag.
-
-
-Using conda
-===========
-
-.. code:: bash
-
-    conda install -c conda-forge skyllh
 
 
 i3skyllh
