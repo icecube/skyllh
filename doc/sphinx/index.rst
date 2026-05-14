@@ -18,7 +18,7 @@ See :ref:`tutorials_index` section for hands-on examples using IceCube's public 
 
 .. toctree::
     :maxdepth: 3
-    :caption: User Documentation
+    :caption: Getting started
 
     installation
     tutorials/index
@@ -31,7 +31,7 @@ See :ref:`tutorials_index` section for hands-on examples using IceCube's public 
 
 .. toctree::
     :maxdepth: 1
-    :caption: Developer Documentation
+    :caption: Development
 
     dev_docs/logging
     dev_docs/unit_tests
