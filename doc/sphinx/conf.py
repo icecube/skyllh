@@ -145,6 +145,9 @@ html_theme = 'shibuya'
 html_theme_options = {
     'accent_color': 'blue',
     'github_url': 'https://github.com/icecube/skyllh',
+    'nav_links': [
+        {'title': 'Tutorials', 'url': 'tutorials/index'},
+    ],
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
