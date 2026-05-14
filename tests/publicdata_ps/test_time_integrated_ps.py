@@ -379,8 +379,6 @@ class FitparamValuesTestCase(unittest.TestCase):
 
     def test_ana_with_fitparam_values_matches_ana_ref(self):
         """Using fitparam_values with ana should match the reference analysis without fitparam_values."""
-        print(self.ana.sig_gen_energy_range)
-        print(self.ana.sig_gen_energy_range_is_set)
         flux1 = self.ana.mu2flux(10, fitparam_values=self._fitparam_values(2.122526))
         flux2 = self.ana_ref.mu2flux(10)
         np.testing.assert_allclose(flux1, flux2, rtol=1e-10)
