@@ -63,15 +63,15 @@ merging, so please check back after submission.
 Contributing to tutorials
 =========================
 
-Tutorials are Jupyter notebooks stored under ``doc/sphinx/tutorials/`` and
+Tutorials are Jupyter notebooks stored under ``docs/sphinx/tutorials/`` and
 rendered into the documentation with `nbsphinx <https://nbsphinx.readthedocs.io>`_.
 
 To add a new tutorial:
 
 1. Place your notebook in the appropriate subdirectory under
-   ``doc/sphinx/tutorials/``.
+   ``docs/sphinx/tutorials/``.
 2. Add the notebook path (without the ``.ipynb`` extension) to
-   ``doc/sphinx/tutorials/index.rst``.
+   ``docs/sphinx/tutorials/index.rst``.
 3. Ensure the notebook can be read without execution (``nbsphinx_execute = 'never'``
    is the project default), so all output cells should be pre-computed and saved
    before committing.
