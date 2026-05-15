@@ -113,7 +113,7 @@ pre-commit run --all-files
   Example: `v23.2.0.rc1`
 
 - Before creating the release on github, the version number needs to be updated
-  in the Sphinx documentation: `docs/sphinx/conf.py`.
+  in the Sphinx documentation: `doc/sphinx/conf.py`.
 
 # i3skyllh
 

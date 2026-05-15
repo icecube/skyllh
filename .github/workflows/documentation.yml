@@ -53,14 +53,14 @@ jobs:
 
       - name: Build documentation
         run: |
-          cd ./docs/sphinx
+          cd ./doc/sphinx
           make html-multiversion
           cp _assets/gh-pages-redirect.html _build/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: ./docs/sphinx/_build
+          path: ./doc/sphinx/_build
 
   deploy:
     needs: build
