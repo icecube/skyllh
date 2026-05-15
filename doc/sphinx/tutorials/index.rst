@@ -34,7 +34,7 @@ Additional information about the IceCube public datasets can be found in the fol
 We provide an incomplete list of tutorials below. They are meant to illustrate how to perform a time-integrated point-source analysis using SkyLLH, but they are not exhaustive. We encourage users to explore the documentation and contribute additional tutorials covering other analysis types and techniques.
 
 :doc:`fitting_a_source`
-   Fit a steady point source (NGC 1068) using both the IceCube 10-year and 14-year public track data.
+   Fit a steady point source (NGC 1068) using IceCube 14-year (IceTracks-DR2) public track data.
    Covers loading datasets, maximising the log-likelihood ratio, computing the test statistic,
    and deriving flux normalisations.
 
