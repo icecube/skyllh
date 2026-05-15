@@ -380,6 +380,22 @@ class Analysis(
         for component in self._iter_energy_range_capable():
             component.energy_range = value
 
+    def _has_explicit_energy_range_cut(self):
+        """Returns True if an explicit energy range cut is configured at the
+        analysis level or directly on any energy-range-capable component."""
+        if self.sig_gen_energy_range_is_set:
+            return True
+        for component in self._iter_energy_range_capable():
+            # PDDatasetSignalGenerator uses _input_range to distinguish an
+            # explicit cut from the full-range default. Mirror the same pattern
+            # used in MultiDatasetSignalGenerator.fluxmodel_scaling_factor.
+            if hasattr(component, '_input_range'):
+                if component._input_range is not None:
+                    return True
+            elif component.energy_range is not None:
+                return True
+        return False
+
     @property
     def energy_range(self):
         """Configured true-energy range for signal generation in GeV.
@@ -411,7 +427,7 @@ class Analysis(
     @energy_range.setter
     def energy_range(self, value):
         self.sig_gen_energy_range = value
-        self.sig_gen_energy_range_is_set = True
+        self.sig_gen_energy_range_is_set = value is not None
         self._apply_energy_range(value)
 
     @property
@@ -1752,7 +1768,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
                 'The configured signal generator does not implement the fluxmodel_scaling_factor interface!'
             )
 
-        if fitparam_values is not None and self.sig_gen_energy_range is not None:
+        if fitparam_values is not None and self._has_explicit_energy_range_cut():
             raise NotImplementedError(
                 'The calculate_fluxmodel_scaling_factor does not support fitparam_values when an energy_range '
                 'is configured on the analysis. The energy range correction factors are precomputed at the '
