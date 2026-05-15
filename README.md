@@ -10,7 +10,7 @@
 
 - 📚 [Full documentation](https://icecube.github.io/skyllh/)
 - 🎓 [IceCube public data tutorials](https://icecube.github.io/skyllh/master/html/tutorials/index.html)
-- 📄 [Math formalism document](https://github.com/icecube/skyllh/blob/master/doc/user_manual.pdf)
+- 📄 [Math formalism document](https://icecube.github.io/skyllh/user_manual.pdf)
 
 ## Description
 
