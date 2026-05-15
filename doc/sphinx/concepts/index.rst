@@ -3,7 +3,7 @@
 Concepts
 ========
 
-This section covers a few concepts SkyLLH is persuing.
+This section covers a few concepts SkyLLH is pursuing.
 
 .. toctree::
     :maxdepth: 1

@@ -9,7 +9,7 @@ Frequently Asked Questions (FAQ)
 
     When SkyLLH generates pseudo data for an analysis, it will generate background
     and signal events. It might be desired to change the flux model of the sources 
-    to generate signal events following a different flux model as originally choosen
+    to generate signal events following a different flux model as originally chosen
     when the analysis was created.
 
     The most general procedure to change the flux model(s) of the source(s) of 
