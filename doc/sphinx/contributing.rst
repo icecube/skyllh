@@ -18,7 +18,7 @@ Bug reports and feature requests are tracked on the
 When reporting a bug, please include:
 
 - A short, self-contained code snippet that reproduces the problem.
-- The SkyLLH version (``python -c "import skyllh; print(skyllh.__version__)"``).
+- The SkyLLH version (``python -c "import skyllh; from importlib.metadata import version; print(version('skyllh'))"``).
 - The Python version and operating system.
 
 For feature requests, describe the use case and why the feature would be
