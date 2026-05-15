@@ -18,7 +18,6 @@ To load respective datasets:
 
     cfg = Config()
 
-    dsc = create_dataset_collection(cfg=cfg)
     datasets = skyllh.create_datasets('IceTracks-DR2', cfg=cfg)
 
 or
