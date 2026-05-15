@@ -37,9 +37,9 @@ Optional dependency groups can be installed with extras:
 
 .. code:: bash
 
-    pip install skyllh[extras]   # iminuit, pyarrow
-    pip install skyllh[dev]      # pre-commit, pytest
-    pip install skyllh[docs]     # sphinx and doc-build tools
+    pip install "skyllh[extras]"   # iminuit, pyarrow
+    pip install "skyllh[dev]"      # pre-commit, pytest
+    pip install "skyllh[docs]"     # sphinx and doc-build tools
 
 The current development version can be installed from GitHub:
 
