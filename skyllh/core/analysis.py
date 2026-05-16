@@ -1770,9 +1770,10 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
 
         if fitparam_values is not None and self._has_explicit_energy_range_cut():
             raise NotImplementedError(
-                'The calculate_fluxmodel_scaling_factor does not support fitparam_values when an energy_range '
-                'is configured on the analysis. The energy range correction factors are precomputed at the '
-                'reference flux model parameters and are not updated for arbitrary fitparam_values.'
+                'The calculate_fluxmodel_scaling_factor does not support fitparam_values when an explicit '
+                'energy_range is configured either on the analysis or on a signal-generation component. '
+                'The energy range correction factors are precomputed at the reference flux model parameters '
+                'and are not updated for arbitrary fitparam_values.'
             )
 
         src_params_recarray = None
