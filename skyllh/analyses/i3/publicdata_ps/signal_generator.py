@@ -58,6 +58,7 @@ class PDDatasetSignalGenerator(
         energy_cut_spline=None,
         cut_sindec=None,
         energy_range=None,
+        sm=None,
         **kwargs,
     ):
         """Creates a new instance of the signal generator for generating
@@ -82,6 +83,9 @@ class PDDatasetSignalGenerator(
         energy_range : 2-element tuple of float | None
             The energy range in which signal events should be generated.
             If set to None, the full energy range (1e2 - 1e9 GeV) is used.
+        sm : instance of PDSmearingMatrix | None
+            A pre-loaded smearing matrix to reuse. If ``None``, the matrix is
+            loaded from the dataset's auxiliary data files.
         """
         super().__init__(shg_mgr=shg_mgr, **kwargs)
 
@@ -91,9 +95,12 @@ class PDDatasetSignalGenerator(
         self.ds_idx = ds_idx
         self.energy_cut_spline = energy_cut_spline
         self.cut_sindec = cut_sindec
-        self.sm = PDSmearingMatrix(
-            pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
-        )
+        if sm is None:
+            # Load the smearing matrix.
+            sm = PDSmearingMatrix(
+                pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
+            )
+        self.sm = sm
 
         # Cache effective-area data reused for correction-factor calculations.
         self._aeff_pathfilenames = ds.get_abs_pathfilename_list(ds.get_aux_data_definition('eff_area_datafile'))
