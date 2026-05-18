@@ -20,6 +20,9 @@ from skyllh.analyses.i3.publicdata_ps.signal_generator import (
 from skyllh.analyses.i3.publicdata_ps.signalpdf import (
     PDSignalEnergyPDFSet,
 )
+from skyllh.analyses.i3.publicdata_ps.smearing_matrix import (
+    PDSmearingMatrix,
+)
 from skyllh.analyses.i3.publicdata_ps.utils import (
     clip_grl_start_times,
     create_energy_cut_spline,
@@ -921,9 +924,13 @@ def create_analysis(
         spatial_bkgpdf = DataBackgroundI3SpatialPDF(cfg=cfg, data_exp=data.exp, sin_dec_binning=sin_dec_binning)
         spatial_pdfratio = SigOverBkgPDFRatio(cfg=cfg, sig_pdf=spatial_sigpdf, bkg_pdf=spatial_bkgpdf)
 
+        sm = PDSmearingMatrix(
+            pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
+        )
+
         # Create the energy PDF ratio instance for this dataset.
         energy_sigpdfset = PDSignalEnergyPDFSet(
-            cfg=cfg, ds=ds, src_dec=source.dec, fluxmodel=fluxmodel, param_grid_set=gamma_grid, ppbar=ppbar
+            cfg=cfg, ds=ds, src_dec=source.dec, fluxmodel=fluxmodel, param_grid_set=gamma_grid, ppbar=ppbar, sm=sm
         )
         smoothing_filter = BlockSmoothingFilter(nbins=1)
         energy_bkgpdf = PDDataBackgroundI3EnergyPDF(
@@ -988,6 +995,7 @@ def create_analysis(
             livetime=livetime,
             time_flux_profile=time_flux_profile,
             energy_cut_spline=energy_cut_spline,
+            sm=sm,
         )
 
         ana.add_dataset(
