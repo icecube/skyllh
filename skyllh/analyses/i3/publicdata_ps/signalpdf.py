@@ -175,6 +175,7 @@ class PDSignalEnergyPDFSet(
         param_grid_set,
         ncpu=None,
         ppbar=None,
+        sm=None,
         **kwargs,
     ):
         """Creates a new PDSignalEnergyPDFSet instance for the public data.
@@ -196,6 +197,9 @@ class PDSignalEnergyPDFSet(
             not specified, i.e. set to None.
         ppbar : instance of ProgressBar | None
             The instance of ProgressBar for the optional parent progress bar.
+        sm : instance of PDSmearingMatrix | None
+            A pre-loaded smearing matrix to reuse. If ``None``, the matrix is
+            loaded from the dataset's auxiliary data files.
         """
         self._logger = get_logger(module_classname(self))
 
@@ -224,10 +228,11 @@ class PDSignalEnergyPDFSet(
 
         super().__init__(param_grid_set=param_grid_set, ncpu=ncpu, **kwargs)
 
-        # Load the smearing matrix.
-        sm = PDSmearingMatrix(
-            pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
-        )
+        if sm is None:
+            # Load the smearing matrix.
+            sm = PDSmearingMatrix(
+                pathfilenames=ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
+            )
 
         # Select the slice of the smearing matrix corresponding to the
         # source declination band.
