@@ -36,7 +36,7 @@ We provide an incomplete list of tutorials below. They are meant to illustrate h
 :doc:`fitting_a_source`
    Fit a steady point source (NGC 1068) using IceCube 14-year (IceTracks-DR2) public track data.
    Covers loading datasets, maximising the log-likelihood ratio, computing the test statistic,
-   and deriving flux normalisations.
+   and deriving flux normalisations. Also demonstrates converting between mean signal event counts and flux normalisations.
 
 :doc:`dataset_collections`
    Introduces the concept of dataset collections, which are used to manage multiple datasets in a unified way.
@@ -44,7 +44,6 @@ We provide an incomplete list of tutorials below. They are meant to illustrate h
 
 :doc:`fixed_spectral_index`
    Repeat the point-source fit with a fixed (non-free) spectral index.
-   Also demonstrates converting between mean signal event counts and flux normalisations.
 
 :doc:`setting_an_energy_range`
    Set a user-defined energy range for the signal injection.
