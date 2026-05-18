@@ -298,7 +298,7 @@ class MultiDatasetSignalGenerator(
         for sig_generator in filter(None, self.sig_generator_list):
             sig_generator.change_shg_mgr(shg_mgr=shg_mgr)
 
-    def fluxmodel_scaling_factor(self, per_source=False):
+    def fluxmodel_scaling_factor(self, src_params_recarray=None, per_source=False):
         """Returns the scaling factor to convert a mean number of detected
         signal events into a flux normalization::
 
@@ -308,6 +308,11 @@ class MultiDatasetSignalGenerator(
 
         Parameters
         ----------
+        src_params_recarray : numpy structured ndarray | None
+            The (N_sources,)-shaped structured ndarray holding the local source parameter values to use for
+            the detector signal yield calculation. When provided, this overrides the internally cached
+            reference parameter array for this call only (the cache is not updated).
+            If ``None``, the cached reference parameter values built from the flux model defaults are used.
         per_source : bool
             If set to True, return per-source scaling factors that sum to the global scaling factor. If set to False,
             return the global scaling factor.
@@ -320,12 +325,14 @@ class MultiDatasetSignalGenerator(
         """
         src_detsigyield_weights_service = self.ds_sig_weight_factors_service.src_detsigyield_weights_service
 
-        if self._src_params_recarray is None:
-            self._src_params_recarray = self.create_src_params_recarray(
-                src_detsigyield_weights_service=src_detsigyield_weights_service
-            )
+        if src_params_recarray is None:
+            if self._src_params_recarray is None:
+                self._src_params_recarray = self.create_src_params_recarray(
+                    src_detsigyield_weights_service=src_detsigyield_weights_service
+                )
+            src_params_recarray = self._src_params_recarray
 
-        src_detsigyield_weights_service.calculate(src_params_recarray=self._src_params_recarray)
+        src_detsigyield_weights_service.calculate(src_params_recarray=src_params_recarray)
         (a_jk, _) = src_detsigyield_weights_service.get_weights()
 
         # Apply optional per-dataset/source correction factors for specialized generators.
@@ -746,7 +753,7 @@ class MCMultiDatasetSignalGenerator(
 
         self._construct_signal_candidates()
 
-    def fluxmodel_scaling_factor(self, per_source=False):
+    def fluxmodel_scaling_factor(self, src_params_recarray=None, per_source=False):
         """Scaling factor to convert a mean number of signal events (mu) into a flux normalization as per the
         definition of the flux models of the source hypothesis groups::
 
@@ -756,6 +763,11 @@ class MCMultiDatasetSignalGenerator(
 
         Parameters
         ----------
+        src_params_recarray : numpy structured ndarray | None
+            Must be ``None``. Providing a non-``None`` value raises :class:`NotImplementedError` because this
+            generator derives its scaling factor from precomputed MC signal candidates rather than from a
+            detector signal yield calculation and therefore cannot be re-evaluated at arbitrary parameter values
+            without regenerating those candidates.
         per_source : bool
             Flag if the scaling factors should be returned for each source individually (True), or as the sum of all
             these factors (False). The default is False.
@@ -767,6 +779,13 @@ class MCMultiDatasetSignalGenerator(
             signal event into a flux normalization for the given signal hypothesis. If `per_source` is set to True,
             a numpy ndarray is returned that contains the flux for each individual source.
         """
+        if src_params_recarray is not None:
+            raise NotImplementedError(
+                'MCMultiDatasetSignalGenerator.fluxmodel_scaling_factor does not support src_params_recarray '
+                '/ fitparam_values. The scaling factor is derived from precomputed MC signal candidates and '
+                'cannot be re-evaluated at arbitrary parameter values without regenerating those candidates.'
+            )
+
         logger.warning(
             'The fluxmodel_scaling_factor method of the MCMultiDatasetSignalGenerator class is currently only '
             'implemented for the case of a single source or for multiple sources with the same flux model. '
