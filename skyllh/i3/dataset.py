@@ -393,9 +393,16 @@ class I3Dataset(
                     f'"{self.name}".'
                 )
                 with TaskTimer(tl, task):
-                    mask = np.zeros((len(data.exp),), dtype=np.bool_)
-                    for start, stop in zip(data.grl['start'], data.grl['stop'], strict=True):
-                        mask |= (data.exp['time'] >= start) & (data.exp['time'] <= stop)
+                    grl_start = data.grl['start']  # sorted ascending by load_grl
+                    grl_stop = data.grl['stop']
+                    t = data.exp['time']
+                    # Binary-search each event time into the sorted GRL windows.
+                    # idx[i] is the index of the last window whose start <= t[i],
+                    # or -1 when t[i] precedes all windows.
+                    idx = np.searchsorted(grl_start, t, side='right') - 1
+                    in_window = idx >= 0
+                    mask = np.zeros(len(t), dtype=np.bool_)
+                    mask[in_window] = t[in_window] <= grl_stop[idx[in_window]]
 
                     if np.any(~mask):
                         n_cut_evts = np.count_nonzero(~mask)
