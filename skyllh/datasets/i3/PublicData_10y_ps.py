@@ -20,7 +20,8 @@ def create_dataset_collection(
 ):
     """Defines the dataset collection for IceCube's 10-year
     point-source public data, which is available at
-    http://icecube.wisc.edu/data-releases/20210126_PS-IC40-IC86_VII.zip
+    https://doi.org/10.7910/DVN/VKL316.
+    Version 2.0 renames two event files (IC79_exp.csv and IC86_VII_exp.csv) so that they have a naming scheme consistent with the rest of the data files.
 
     Parameters
     ----------
@@ -260,10 +261,10 @@ def create_dataset_collection(
 
     # Define the origin of the dataset.
     origin = DatasetOrigin(
-        base_path='data-releases',
-        sub_path='',
-        filename='20210126_PS-IC40-IC86_VII.zip',
-        host='icecube.wisc.edu',
+        url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/2.0?persistentId=doi:10.7910/DVN/VKL316',
+        base_path='',
+        sub_path='icecube_10year_ps',
+        filename='tmp.zip',
         transfer_func=URLRetrieveDatasetTransfer(protocol='https').transfer,
         post_transfer_func=post_transfer_unarchive,
     )
