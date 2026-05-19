@@ -145,3 +145,5 @@ profile.html
 .repository
 
 uv.lock
+.DS_Store
+

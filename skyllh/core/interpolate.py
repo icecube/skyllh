@@ -55,7 +55,7 @@ class GridManifoldInterpolationMethod(
                     sources.
                 n_values : int
                     The length of the output numpy ndarray of shape (n_values,).
-                **kwargs
+                ``**kwargs``
                     Additional keyword arguments required by ``func``.
 
             The return value of ``func`` should be the (n_values,)-shaped

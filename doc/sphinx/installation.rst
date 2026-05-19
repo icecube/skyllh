@@ -4,96 +4,62 @@
 Installation
 ************
 
-
-Prerequisites
-=============
-
-The SkyLLH framework has several dependencies. They are listed in `requirements.txt <https://github.com/icecube/skyllh/blob/master/requirements.txt>`_ file:
-
-::
-
-    astropy
-    numpy
-    scipy
-    iminuit
-    matplotlib
-
-They can be installed from `skyllh` directory with:
-
-.. code:: bash
-
-    pip install -r requirements.txt
-
-On cobalt and NPX servers we can use CVMFS Python 3 virtual environment with all necessary packages already installed. In order to activate it run:
-
-.. code:: bash
-
-    eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.1/setup.sh`
+Python >= 3.11 is required.
 
 
-Setup
-=====
+Package install
+===============
 
-Using pip
----------
+The `skyllh` package is available on `PyPI <https://pypi.org/project/skyllh/>`_ and `conda-forge <https://anaconda.org/channels/conda-forge/packages/skyllh/overview>`_ repositories, and can be installed with pip, uv, or conda:
 
-The latest `skyllh` release can be installed from the
-`PyPI <https://pypi.org/project/skyllh/>`_ repository:
+.. tab-set::
+    :class: outline
+
+    .. tab-item:: :iconify:`devicon:pypi` pip
+
+        .. code-block:: bash
+
+            pip install skyllh
+
+    .. tab-item:: :iconify:`material-icon-theme:uv` uv
+
+        .. code-block:: bash
+
+            uv pip install skyllh
+
+    .. tab-item:: :iconify:`devicon:anaconda` conda
+
+        .. code-block:: bash
+
+            conda install -c conda-forge skyllh
+
+Optional dependency groups can be installed with extras:
 
 .. code:: bash
 
-    pip install skyllh
+    pip install "skyllh[extras]"   # iminuit, pyarrow
+    pip install "skyllh[dev]"      # pre-commit, pytest
+    pip install "skyllh[docs]"     # sphinx and doc-build tools
 
-The current development version can be installed using pip:
-
-.. code:: bash
-
-    pip install git+https://github.com/icecube/skyllh.git#egg=skyllh
-
-Optionally, the editable package version with a specified reference can be
-installed by:
+The current development version can be installed from GitHub:
 
 .. code:: bash
 
-    pip install -e git+https://github.com/icecube/skyllh.git@[ref]#egg=skyllh
+    pip install git+https://github.com/icecube/skyllh.git
 
-where
-
-* `-e` is the editable flag
-* `[ref]` is an optional argument containing a specific commit hash, branch name
-  or tag
-
-Cloning from GitHub
--------------------
-
-The framework is split into two packages:
-
-1. `github.com/icecube/skyllh <https://github.com/icecube/skyllh>`_
-
-  * Contains open source code with classes defining the detector independent
-    likelihood framework.
-
-2. `github.com/icecube/i3skyllh <https://github.com/icecube/i3skyllh>`_
-
-  * Contains collections of pre-defined SkyLLH IceCube analyses and pre-defined
-    IceCube datasets.
-
-In order to set it up, we have to clone git repositories and add them to the
-`PYTHONPATH`:
+Optionally, a specific reference can be installed by:
 
 .. code:: bash
 
-    git clone git@github.com:icecube/skyllh.git /path/to/skyllh
-    git clone git@github.com:icecube/i3skyllh.git /path/to/i3skyllh
-    export PYTHONPATH=$PYTHONPATH:/path/to/skyllh
-    export PYTHONPATH=$PYTHONPATH:/path/to/i3skyllh
+    pip install git+https://github.com/icecube/skyllh.git@[ref]
 
-Alternatively, we can add them inside the python script:
+where ``[ref]`` is a commit hash, branch name, or tag.
 
-.. code:: python
 
-    import sys
+i3skyllh
+========
 
-    # Add the skyllh and i3skyllh packages to the PYTHONPATH.
-    sys.path.insert(0, '/path/to/skyllh')
-    sys.path.insert(0, '/path/to/i3skyllh')
+The `i3skyllh <https://github.com/icecube/i3skyllh>`_ package provides
+complementary pre-defined common analyses and datasets for the
+`IceCube Neutrino Observatory <https://icecube.wisc.edu>`_ detector in a private
+`repository <https://github.com/icecube/i3skyllh>`_.

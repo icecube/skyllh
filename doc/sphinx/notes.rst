@@ -7,14 +7,14 @@ Notes
 Docstrings
 ==========
 
-To generate consistent reference documentantion NumPy
+To generate consistent reference documentation NumPy
 `docstring convention <https://www.numpy.org/devdocs/docs/howto_document.html>`_
 should be followed.
 
 Some important notes:
 
 * Use double back-ticks for code samples, e.g. (\``print("a text")\``), hence
-  Variable, module, function, and class names should be written between double
+  variable, module, function, and class names should be written between double
   back-ticks (\``numpy\``).
 
 * See the list of available

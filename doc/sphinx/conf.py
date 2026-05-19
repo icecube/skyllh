@@ -50,6 +50,9 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'nbsphinx',
+    'sphinx_copybutton',
+    'sphinx_design',
+    'sphinx_iconify',
     'sphinxcontrib.apidoc',
     'sphinx_multiversion',
 ]
@@ -74,6 +77,7 @@ autodoc_default_options = {
     'exclude-members': ','.join(
         [
             '__abstractmethods__',
+            '__annotate_func__',
             '__dict__',
             '__hash__',
             '__init__',
@@ -95,6 +99,9 @@ intersphinx_mapping = {
 }
 
 nbsphinx_execute = 'never'
+
+copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
+copybutton_prompt_is_regexp = True
 
 todo_include_todos = True
 
@@ -140,6 +147,9 @@ html_theme = 'shibuya'
 html_theme_options = {
     'accent_color': 'blue',
     'github_url': 'https://github.com/icecube/skyllh',
+    'nav_links': [
+        {'title': 'Tutorials', 'url': 'tutorials/index'},
+    ],
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

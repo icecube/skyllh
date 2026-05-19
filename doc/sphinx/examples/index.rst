@@ -7,4 +7,6 @@ Examples
 .. toctree::
     :maxdepth: 3
 
+    multiproc
+    scrambling
     timepdf
