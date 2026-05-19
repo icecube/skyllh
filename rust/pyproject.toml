@@ -1,0 +1,22 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "skyllh-rs"
+version = "0.1.0"
+requires-python = ">=3.11"
+license = {text = "GPL-3+"}
+description = "Rust-accelerated kernels for the skyllh analysis framework"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "skyllh_rs"
+
+[tool.maturin.env]
+PYO3_USE_ABI3_FORWARD_COMPATIBILITY = "1"
