@@ -66,10 +66,6 @@ We provide an incomplete list of tutorials below. They are meant to illustrate h
    Estimate sensitivity and discovery potential for a point source.
    Demonstrates the analysis construction and how to convert signal counts to flux.
 
-:doc:`smearing_matrix`
-   Access and visualise IceCube instrument response functions: the 5-D smearing matrix
-   and the effective area as a function of energy and declination.
-
 :doc:`time_dependent_point_source`
    Perform a time-dependent point-source analysis.
    Uses the Expectation-Maximisation (EM) algorithm to fit the timing and duration of a
@@ -87,5 +83,4 @@ We provide an incomplete list of tutorials below. They are meant to illustrate h
     likelihood_scan
     p_value_method_comparison
     sensitivity_study
-    smearing_matrix
     time_dependent_point_source
