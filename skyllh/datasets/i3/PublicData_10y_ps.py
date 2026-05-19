@@ -20,7 +20,8 @@ def create_dataset_collection(
 ):
     """Defines the dataset collection for IceCube's 10-year
     point-source public data, which is available at
-    http://icecube.wisc.edu/data-releases/20210126_PS-IC40-IC86_VII.zip
+    https://doi.org/10.7910/DVN/VKL316.
+    Version 2.0 renames two event files (IC79_exp.csv and IC86_VII_exp.csv) so that they have a naming scheme consistent with the rest of the data files.
 
     Parameters
     ----------
@@ -260,7 +261,7 @@ def create_dataset_collection(
 
     # Define the origin of the dataset.
     origin = DatasetOrigin(
-        url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/1.0?persistentId=doi:10.7910/DVN/VKL316',
+        url='https://dataverse.harvard.edu/api/access/dataset/:persistentId/versions/2.0?persistentId=doi:10.7910/DVN/VKL316',
         base_path='',
         sub_path='icecube_10year_ps',
         filename='tmp.zip',
@@ -352,7 +353,7 @@ def create_dataset_collection(
     # ---------- IC79 ----------------------------------------------------------
     IC79 = I3Dataset(
         name='IC79',
-        exp_pathfilenames='events/IC79_exp-1.csv',
+        exp_pathfilenames='events/IC79_exp.csv',
         mc_pathfilenames=None,
         grl_pathfilenames='uptime/IC79_exp.csv',
         **ds_kwargs,
@@ -506,7 +507,7 @@ def create_dataset_collection(
     # ---------- IC86-VII ------------------------------------------------------
     IC86_VII = I3Dataset(
         name='IC86_VII',
-        exp_pathfilenames='events/IC86_VII_exp-1.csv',
+        exp_pathfilenames='events/IC86_VII_exp.csv',
         mc_pathfilenames=None,
         grl_pathfilenames='uptime/IC86_VII_exp.csv',
         **ds_kwargs,
