@@ -70,6 +70,8 @@ def get_bin_indices_from_lower_and_upper_binedges(le, ue, values):
     if len(le) != len(ue):
         raise ValueError(f'The lower {len(le)} and upper {len(ue)} edge arrays must be of the same size!')
 
+    values = np.atleast_1d(values)
+
     if np.any(values < le[0]):
         invalid_values = values[values < le[0]]
         raise ValueError(

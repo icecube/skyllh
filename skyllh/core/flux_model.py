@@ -960,6 +960,13 @@ class FunctionEnergyFluxProfile(EnergyFluxProfile):
 
         return value
 
+    @property
+    def math_function_str(self):
+        """(read-only) The string representation of the mathematical function of
+        this energy flux profile.
+        """
+        return 'An arbitrary energy flux profile function'
+
 
 class EpeakFunctionEnergyProfile(FunctionEnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument where
