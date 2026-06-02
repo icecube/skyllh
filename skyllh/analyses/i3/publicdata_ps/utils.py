@@ -4,6 +4,7 @@ from scipy import interpolate
 from skyllh.core.binning import (
     get_bincenters_from_binedges,
 )
+from skyllh.core.flux_model import EnergyFluxProfile
 
 
 class FctSpline1D:
@@ -386,7 +387,7 @@ def create_energy_cut_spline(ds, exp_data, spl_smooth, cumulative_thr=0):
     return spline
 
 
-def reco_energy_counts_per_second_per_ds(ds, flux, dec, Phi0, energy_range=None):
+def _reco_energy_counts_per_ds(ds, sm, flux, dec, reco_e_edges, Phi0, energy_range=None):
     """Return the expected event counts per second in reconstructed energy for a given dataset, flux, and declination.
 
     Folds a differential neutrino flux through the smearing matrix and effective area of one IceCube dataset,
@@ -402,6 +403,8 @@ def reco_energy_counts_per_second_per_ds(ds, flux, dec, Phi0, energy_range=None)
         Differential neutrino flux Phi(E_GeV) [GeV^-1 cm^-2 s^-1 sr^-1].
     dec : float
         Source declination in radians.
+    reco_e_edges : 1D array of float
+        Bin edges of the output reconstructed log10(E/GeV) axis.
     Phi0 : float
         The flux normalization factor.
     energy_range : 2-element tuple of float | None
@@ -419,18 +422,13 @@ def reco_energy_counts_per_second_per_ds(ds, flux, dec, Phi0, energy_range=None)
     from scipy.integrate import quad
 
     from skyllh.analyses.i3.publicdata_ps.aeff import PDAeff
-    from skyllh.analyses.i3.publicdata_ps.smearing_matrix import PDSmearingMatrix
     from skyllh.core.binning import (
         get_bin_indices_from_lower_and_upper_binedges,
         get_bincenters_from_binedges,
     )
-    from skyllh.core.flux_model import EnergyFluxProfile
-
-    # IRFs paths
-    smearing_paths = ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
-    aeff_paths = ds.get_abs_pathfilename_list(ds.get_aux_data_definition('eff_area_datafile'))
 
     # Effective area object.
+    aeff_paths = ds.get_abs_pathfilename_list(ds.get_aux_data_definition('eff_area_datafile'))
     aeff = PDAeff(pathfilenames=aeff_paths)
     # Effective area lower and upper true-energy bin edges.
     aeff_e_bins_lo = aeff.log10_enu_binedges_lower
@@ -439,17 +437,15 @@ def reco_energy_counts_per_second_per_ds(ds, flux, dec, Phi0, energy_range=None)
     aeff_dec = aeff.get_aeff_for_decnu(dec)
 
     # Smearing matrix object.
-    sm = PDSmearingMatrix(smearing_paths)
     true_e_edges = sm.log10_true_enu_binedges
     # Smearing matrix per declination bin.
     sm_dec_idx = sm.get_true_dec_idx(dec)
     # smearing matrix lower and upper reco-energy bin edges.
     reco_e_lo = sm.log10_reco_e_binedges_lower
     reco_e_hi = sm.log10_reco_e_binedges_upper
-    # Build a uniform 0.1-step grid in log10(E/GeV) covering all valid reco-E bins.
-    reco_e_edges = np.arange(0.0, 9.0 + 0.05, 0.1)
+    # reco-energy edges for the output grid.
     reco_e_centers = get_bincenters_from_binedges(reco_e_edges)
-    out_bin_width = reco_e_edges[1] - reco_e_edges[0]
+    out_bin_width = reco_e_edges[1:] - reco_e_edges[:-1]  # In case they are not uniform bins.
 
     # Resolve energy range limits (in GeV).
     E_min = energy_range[0] if energy_range is not None else 10.0 ** true_e_edges[0]
@@ -481,7 +477,7 @@ def reco_energy_counts_per_second_per_ds(ds, flux, dec, Phi0, energy_range=None)
         flux_int *= Phi0  # Apply normalization factor.
 
         # Effective area for this (E_nu, dec) bin [cm^2].
-        log10_E_centre = 0.5 * (log10_E1 + log10_E2)
+        log10_E_centre = 0.5 * (np.log10(E1) + np.log10(E2))
         aeff_e_idx = get_bin_indices_from_lower_and_upper_binedges(aeff_e_bins_lo, aeff_e_bins_hi, log10_E_centre)[0]
         A_eff = aeff_dec[aeff_e_idx]  # cm^2
 
@@ -495,37 +491,44 @@ def reco_energy_counts_per_second_per_ds(ds, flux, dec, Phi0, energy_range=None)
             continue
 
         # Convert probability to probability density in log10(E_reco) space.
+        # Only bins with non-zero width contribute.
         bw = reco_e_hi[i, sm_dec_idx, :] - reco_e_lo[i, sm_dec_idx, :]  # bin widths
+        valid = bw > 0
         pdf = np.where(bw > 0, p_reco / bw, 0.0)  # (n_reco_e,)
 
         # Original reco-energy bin edges for this (true_e_i, dec) slice.
-        # Note: this might break for zero-binwidth bins, but they should never happen for the reco energies.
-        original_edges = np.append(reco_e_lo[i, sm_dec_idx, :], reco_e_hi[i, sm_dec_idx, -1])
+        pdf = pdf[valid]
+        original_edges = np.append(reco_e_lo[i, sm_dec_idx, valid], reco_e_hi[i, sm_dec_idx, np.where(valid)[0][-1]])
 
         # 1D spline interpolation of the PDF onto the uniform output grid.
         spl = FctSpline1D(pdf, original_edges)
         counts_per_sec += weight * spl(reco_e_centers) * out_bin_width
 
-    return reco_e_edges, counts_per_sec
+    return counts_per_sec
 
 
-def compute_expected_reco_energy_counts(datasets, flux, dec, Phi0, livetimes=None, energy_range=None):
+def compute_expected_reco_energy_counts(
+    datasets, flux, dec, Phi0, time_integral=False, livetimes=None, energy_range=None
+):
     """Returns the expected distribution of events in reconstructed energy for a given flux and declination.
-    It integrates over all seasons in the dataset collection, summing the contributions.
+    If a list of datasets is provided, it returns the sum of all datasets contributions.
 
     Parameters
     ----------
-    datasets : list of I3Dataset
-        The list of SkyLLH datasets loaded from the 'IceTracks-DR2' collection
-        (e.g. IC86_I-XI) for which the expected counts should be calculated.
+    datasets : list of I3Dataset | I3Dataset
+        The (list of) SkyLLH dataset(s) for which the expected counts should be calculated.
     flux : callable | EnergyFluxProfile
         Differential neutrino flux Phi(E_GeV) [GeV^-1 cm^-2 s^-1 sr^-1].
     dec : float
         The declination in radians.
     Phi0 : float
         The flux normalization factor.
+    time_integral : bool
+        Whether to return the total expected counts (True) or the expected counts per second (False).
+        Default is False (counts per second).
     livetimes : (len(datasets),)-iterable of float and None | None
-        The livetimes for each dataset in days.
+        The livetimes for each dataset in days. Only applied if time_integral is True.
+        If None, it uses the default livetimes from the datasets.
     energy_range : 2-element tuple of float | None
         (E_min, E_max) in GeV.  Only true-energy bins that overlap this interval contribute.
         Bins that partially overlap are clipped to the interval boundary before integration.
@@ -535,28 +538,64 @@ def compute_expected_reco_energy_counts(datasets, flux, dec, Phi0, livetimes=Non
     -------
     reco_e_edges : ndarray, shape (n_bins + 1,)
         Bin edges of the output reconstructed log10(E/GeV) axis.
-    counts_per_sec : ndarray, shape (n_bins,)
-        Expected counts per second in each reco-energy bin.
+    counts : ndarray, shape (n_bins,)
+        Expected counts in each reco-energy bin (after applying dataset livetimes).
     """
+    from collections.abc import Callable
+
+    from skyllh.analyses.i3.publicdata_ps.smearing_matrix import PDSmearingMatrix
+    from skyllh.i3.dataset import I3Dataset
+
+    if isinstance(datasets, list) and len(datasets) == 0:
+        raise ValueError('datasets must be a non-empty list of I3Dataset or a single I3Dataset.')
+
+    if isinstance(datasets, I3Dataset) and not isinstance(datasets, list):
+        datasets = [datasets]
+
     if livetimes is not None and len(livetimes) != len(datasets):
         raise ValueError('Length of livetimes must match the number of datasets.')
 
-    counts_total = 0
+    if not isinstance(flux, (EnergyFluxProfile, Callable)):
+        raise ValueError('`flux` must be a callable or an instance of EnergyFluxProfile.')
+
+    if energy_range is not None:
+        if len(energy_range) != 2:
+            raise ValueError('`energy_range` must be a 2-element tuple (E_min, E_max).')
+        if energy_range[0] >= energy_range[1]:
+            raise ValueError('`energy_range` must satisfy E_min < E_max.')
+
+    # Get the min and max reco energy bin edges across all datasets to define the output binning.
+    # Done per dec at the moment. If needed, can be modified to look for the overall min and max across all dec bins.
+    reco_e_lo, reco_e_hi = [], []
+    smearing_matrices = []
+    for ds in datasets:
+        smearing_paths = ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
+        sm = PDSmearingMatrix(smearing_paths)
+        smearing_matrices.append(sm)
+        reco_e_lo.append(np.min(sm.log10_reco_e_binedges_lower[:, sm.get_true_dec_idx(dec), :]))
+        reco_e_hi.append(np.max(sm.log10_reco_e_binedges_upper[:, sm.get_true_dec_idx(dec), :]))
+    reco_e_min = min(reco_e_lo)
+    reco_e_max = max(reco_e_hi)
+    reco_e_edges = np.arange(reco_e_min, reco_e_max + 0.1, 0.1)
 
     # Loop over datasets and sum contributions accounting for livetimes.
+    counts_total = np.zeros(len(reco_e_edges) - 1)
     for i, ds in enumerate(datasets):
-        if livetimes is not None:
-            if livetimes[i] is None:
+        counts_per_sec = _reco_energy_counts_per_ds(
+            ds, smearing_matrices[i], flux, dec, reco_e_edges, Phi0=Phi0, energy_range=energy_range
+        )
+
+        if time_integral:
+            if livetimes is not None:
+                if livetimes[i] is None:
+                    data = ds.load_data()
+                    livetime = data.livetime
+                else:
+                    livetime = livetimes[i]
+            else:
                 data = ds.load_data()
                 livetime = data.livetime
-            else:
-                livetime = livetimes[i]
+            counts_total += counts_per_sec * livetime * 24 * 3600  # Convert days to seconds
         else:
-            data = ds.load_data()
-            livetime = data.livetime
-
-        reco_e_edges, counts_per_sec = reco_energy_counts_per_second_per_ds(
-            ds, flux, dec, Phi0=Phi0, energy_range=energy_range
-        )
-        counts_total += counts_per_sec * livetime * 24 * 3600  # Convert days to seconds
+            counts_total += counts_per_sec
     return reco_e_edges, counts_total
