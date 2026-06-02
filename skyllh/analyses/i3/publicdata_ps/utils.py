@@ -566,14 +566,14 @@ def compute_expected_reco_energy_counts(
 
     # Get the min and max reco energy bin edges across all datasets to define the output binning.
     # Done per dec at the moment. If needed, can be modified to look for the overall min and max across all dec bins.
-    reco_e_lo, reco_e_hi = [], []
+    reco_e_lo, reco_e_hi = np.empty(len(datasets), dtype=float), np.empty(len(datasets), dtype=float)
     smearing_matrices = np.empty(len(datasets), dtype=object)
     for i, ds in enumerate(datasets):
         smearing_paths = ds.get_abs_pathfilename_list(ds.get_aux_data_definition('smearing_datafile'))
         sm = PDSmearingMatrix(smearing_paths)
         smearing_matrices[i] = sm
-        reco_e_lo.append(np.min(sm.log10_reco_e_binedges_lower[:, sm.get_true_dec_idx(dec), :]))
-        reco_e_hi.append(np.max(sm.log10_reco_e_binedges_upper[:, sm.get_true_dec_idx(dec), :]))
+        reco_e_lo[i] = np.min(sm.log10_reco_e_binedges_lower[:, sm.get_true_dec_idx(dec), :])
+        reco_e_hi[i] = np.max(sm.log10_reco_e_binedges_upper[:, sm.get_true_dec_idx(dec), :])
     reco_e_min = min(reco_e_lo)
     reco_e_max = max(reco_e_hi)
     reco_e_edges = np.arange(reco_e_min, reco_e_max + 0.1, 0.1)
