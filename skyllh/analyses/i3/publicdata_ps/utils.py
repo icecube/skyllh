@@ -539,7 +539,7 @@ def compute_expected_reco_energy_counts(
     reco_e_edges : ndarray, shape (n_bins + 1,)
         Bin edges of the output reconstructed log10(E/GeV) axis.
     counts : ndarray, shape (n_bins,)
-        Expected counts in each reco-energy bin (after applying dataset livetimes).
+        Expected counts in each reco-energy bin.
     """
     from collections.abc import Callable
 
