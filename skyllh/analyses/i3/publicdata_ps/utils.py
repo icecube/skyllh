@@ -399,6 +399,8 @@ def _reco_energy_counts_per_ds(ds, sm, flux, dec, reco_e_edges, Phi0, energy_ran
     ds : I3Dataset
         One SkyLLH dataset loaded from the 'IceTracks-DR2' collection
         (e.g. IC86_I-XI).
+    sm : PDSmearingMatrix
+        The smearing matrix object for the same dataset `ds`.
     flux : callable | EnergyFluxProfile
         Differential neutrino flux Phi(E_GeV) [GeV^-1 cm^-2 s^-1 sr^-1].
     dec : float
