@@ -85,10 +85,14 @@ def create_dataset_collection(
     IC86_II_VII.mc_pathfilename_list = IC86_II.mc_pathfilename_list
 
     def add_time(data):
+        """Adds a zero-valued ``time`` data field to the monte-carlo data."""
         mc = data.mc
         mc.append_field('time', np.repeat(0, len(mc)))
 
     def add_azimuth_and_zenith(data):
+        """Adds zero-valued ``azi`` and ``zen`` data fields to the monte-carlo
+        data.
+        """
         mc = data.mc
         mc.append_field('azi', np.repeat(0, len(mc)))
         mc.append_field('zen', np.repeat(0, len(mc)))

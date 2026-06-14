@@ -319,6 +319,9 @@ def float_cast(v, errmsg: str, allow_None: bool = False) -> float | list[float] 
 
     # Define cast function for a single object.
     def _obj_float_cast(v, errmsg, allow_None):
+        """Casts a single object ``v`` to a float. If ``allow_None`` is set to
+        ``True`` and ``v`` is ``None``, ``None`` is returned.
+        """
         if allow_None and v is None:
             return v
 

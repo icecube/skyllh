@@ -67,6 +67,10 @@ class DataFieldStages:
 
 
 class DataFields:
+    """This class provides utility methods for selecting data field names based
+    on their assigned processing stages.
+    """
+
     @staticmethod
     def get_joint_names(
         datafields: dict,

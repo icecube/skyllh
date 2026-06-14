@@ -12,6 +12,7 @@ class TimeGenerationMethod(
     """Base class (type) for implementing a method to generate times."""
 
     def __init__(self, **kwargs):
+        """Creates a new instance of TimeGenerationMethod."""
         super().__init__(**kwargs)
 
     @abc.abstractmethod
@@ -99,6 +100,10 @@ class LivetimeTimeGenerationMethod(
 
 
 class TimeGenerator:
+    """This class provides a time generator that generates times according to a
+    defined time generation method.
+    """
+
     def __init__(self, method: 'TimeGenerationMethod'):
         """Creates a time generator instance with a given defined time
         generation method.

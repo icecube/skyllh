@@ -1173,12 +1173,6 @@ class AngErrOfPsiEventSelectionMethod(SpatialEventSelectionMethod):
         shg_mgr
             The instance of SourceHypoGroupManager that defines the list of
             sources, i.e. the list of SourceModel instances.
-        delta_angle
-            The half-opening angle around the source for which events should
-            get selected.
-        psi_name
-            The name of the data field that provides the psi value of the event.
-            If set to ``None``, the psi value will be calculated automatically.
         func
             The function that should get evaluated for each event. The call
             signature must be

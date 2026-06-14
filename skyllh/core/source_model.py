@@ -264,15 +264,19 @@ class PointLikeSource(SourceModel, IsPointlike):
         self.dec = dec
 
     def _get_ra(self):
+        """Returns the right-ascention of the source in radians."""
         return self._ra
 
     def _set_ra(self, ra):
+        """Sets the right-ascention of the source in radians."""
         self._ra = ra
 
     def _get_dec(self):
+        """Returns the declination of the source in radians."""
         return self._dec
 
     def _set_dec(self, dec):
+        """Sets the declination of the source in radians."""
         self._dec = dec
 
     def __str__(self):

@@ -21,6 +21,7 @@ class PDFRatioFillMethod(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, *args, **kwargs):
+        """Creates a new instance of PDFRatioFillMethod."""
         super().__init__(*args, **kwargs)
 
     @abc.abstractmethod
@@ -88,6 +89,7 @@ class Skylab2SkylabPDFRatioFillMethod(PDFRatioFillMethod):
     """
 
     def __init__(self, **kwargs):
+        """Creates a new instance of Skylab2SkylabPDFRatioFillMethod."""
         super().__init__(**kwargs)
 
         self.signallike_percentile = 99.0

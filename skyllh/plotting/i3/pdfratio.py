@@ -74,11 +74,15 @@ class SplinedI3EnergySigSetOverBkgPDFRatioPlotter:
         src_hypo_group_manager
             The instance of SourceHypoGroupManager that defines the source
             hypotheses.
+        pmm
+            The instance of ParameterModelMapper that maps the global parameters
+            to the local model parameters.
+        src_params_recarray
+            The numpy record ndarray holding the parameter names and values of
+            all sources.
         axes
             The matplotlib Axes object on which the PDF ratio should get drawn
             to.
-        fitparams
-            The dictionary with the set of fit paramater values.
 
         Additional Keyword Arguments
         ----------------------------

@@ -128,6 +128,9 @@ class FctSpline2D:
         self._prepare_quadrature()
 
     def _prepare_quadrature(self, n=128):
+        """Pre-computes the Gauss-Legendre quadrature nodes and weights used for
+        renormalizing the spline evaluation.
+        """
         gx, gw = np.polynomial.legendre.leggauss(n)
         self._qx = 0.5 * (self.x_max - self.x_min) * gx + 0.5 * (self.x_max + self.x_min)
         self._qw = 0.5 * (self.x_max - self.x_min) * gw
@@ -136,10 +139,16 @@ class FctSpline2D:
 
     @staticmethod
     def _pow10(arr):
+        """Computes ``10 ** arr`` using an optimized exp-based version that is
+        about 3x faster than ``np.power(10, arr)``.
+        """
         # Alternative optimized version of np.power(10, arr), ~3x faster.
         return np.exp(FctSpline2D._LOG10 * arr)
 
     def _mask_oor_axes(self, x, y):
+        """Returns the masks selecting the ``x`` and ``y`` values that are out of
+        range of the spline's x- and y-axis, respectively.
+        """
         m_x = (x < self.x_min) | (x > self.x_max)
         m_y = (y < self.y_min) | (y > self.y_max)
         return m_x, m_y

@@ -42,6 +42,10 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
         norm = 1 / tot_integral
 
     class rv_continuous_from_TimeFluxProfile(rv_continuous):
+        """This class provides a scipy ``rv_continuous`` random variable whose
+        probability density is given by a time flux profile instance.
+        """
+
         def __init__(self, *args, **kwargs):
             """Creates a new instance of the subclass of rv_continuous using
             the time flux profile.

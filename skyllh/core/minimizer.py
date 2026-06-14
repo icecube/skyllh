@@ -35,6 +35,7 @@ class MinimizerImpl(
     """
 
     def __init__(self, **kwargs):
+        """Creates a new instance of MinimizerImpl."""
         super().__init__(**kwargs)
 
     @abc.abstractmethod

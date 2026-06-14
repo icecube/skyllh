@@ -323,8 +323,6 @@ class Config(
 
         Parameters
         ----------
-        cfg
-            The instance of Config holding the local configuration.
         path
             The path of the project's working directory. This can be a path
             relative to the path given by ``os.path.getcwd``, the current

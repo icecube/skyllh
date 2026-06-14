@@ -17,6 +17,7 @@ class DataScramblingMethod(
     """Base class for implementing a data scrambling method."""
 
     def __init__(self, **kwargs):
+        """Creates a new instance of DataScramblingMethod."""
         super().__init__(**kwargs)
 
     @abc.abstractmethod
@@ -229,6 +230,10 @@ class TimeScramblingMethod(DataScramblingMethod):
 
 
 class DataScrambler:
+    """This class provides a data scrambler that scrambles data using a defined
+    data scrambling method.
+    """
+
     def __init__(
         self,
         method: 'DataScramblingMethod',

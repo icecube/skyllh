@@ -17,6 +17,10 @@ DATASET_NAMES = ('IC40', 'IC59', 'IC79', 'IC86_I', 'IC86_II-VII')
 
 
 class _DsKwargs(TypedDict):
+    """Typed dictionary of the keyword arguments passed to each dataset
+    definition in this collection.
+    """
+
     cfg: Config
     version: int
     verqualifiers: dict[str, int] | None
@@ -592,6 +596,9 @@ def create_dataset_collection(
     )
 
     def convert_deg2rad(data):
+        """Converts the angular experimental data fields from degrees to
+        radians.
+        """
         exp = data.exp
         exp['ang_err'] = np.deg2rad(exp['ang_err'])
         exp['ra'] = np.deg2rad(exp['ra'])

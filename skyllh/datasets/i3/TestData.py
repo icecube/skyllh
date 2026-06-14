@@ -12,6 +12,10 @@ DATASET_NAMES = ('TestData',)
 
 
 class _DsKwargs(TypedDict):
+    """Typed dictionary of the keyword arguments passed to each dataset
+    definition in this collection.
+    """
+
     cfg: Config
     version: int
     verqualifiers: dict[str, int] | None

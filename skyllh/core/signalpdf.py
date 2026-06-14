@@ -441,6 +441,18 @@ class SignalTimePDF(
         tl=None,
         **kwargs,
     ):
+        """Initializes this time PDF for a new trial. If the time PDF does not
+        depend on any global floating parameters, the PDF values are
+        pre-calculated for the trial data.
+
+        Parameters
+        ----------
+        tdm
+            The instance of TrialDataManager holding the trial event data.
+        tl
+            The optional instance of TimeLord that should be used to collect
+            timing information about this method.
+        """
         # Check if this time PDF is not constant and does depend on any global
         # floating parameters. If that's not the case we can pre-calculate the
         # PDF values.

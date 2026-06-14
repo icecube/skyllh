@@ -23,6 +23,7 @@ class MathFunction(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, **kwargs):
+        """Creates a new instance of MathFunction."""
         super().__init__(**kwargs)
 
         self.param_names = ()

@@ -77,11 +77,11 @@ class I3EnergyPDFPlotter:
         src_hypo_group_manager
             The instance of SourceHypoGroupManager that defines the source
             hypotheses.
+        pmm
+            The instance of ParameterModelMapper that maps the global parameters
+            to the local model parameters.
         axes
-            The matplotlib Axes object on which the PDF ratio should get drawn
-            to.
-        fitparams
-            The dictionary with the set of fit paramater values.
+            The matplotlib Axes object on which the PDF should get drawn to.
 
         Additional Keyword Arguments
         ----------------------------

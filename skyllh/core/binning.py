@@ -276,6 +276,9 @@ class UsesBinning:
     """
 
     def __init__(self, *args, **kwargs):
+        """Creates a new instance of UsesBinning and initializes the empty list
+        of binning definitions.
+        """
         super().__init__(*args, **kwargs)
 
         # Define the list of binning definition objects and a name->list_index

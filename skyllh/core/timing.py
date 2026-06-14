@@ -17,6 +17,10 @@ from skyllh.core.py import (
 
 
 class TaskRecord:
+    """This class provides a record of a named task, holding the start and end
+    times of one or more executions of that task.
+    """
+
     def __init__(self, name: str, start_times: list[float], end_times: list[float]):
         """Creates a new TaskRecord instance.
 
@@ -91,7 +95,14 @@ class TaskRecord:
 
 
 class TimeLord:
+    """This class provides a manager for keeping track of the execution times of
+    named tasks via :class:`TaskRecord` instances.
+    """
+
     def __init__(self):
+        """Creates a new instance of TimeLord with an empty list of task
+        records.
+        """
         self._task_records = []
         self._task_records_name_idx_map = {}
 
@@ -198,8 +209,13 @@ class TimeLord:
 
 
 class TaskTimer:
+    """This class provides a context manager for timing the execution of a task
+    and recording it with a :class:`TimeLord` instance.
+    """
+
     def __init__(self, time_lord: 'TimeLord | None', name: str):
-        """
+        """Creates a new TaskTimer instance.
+
         Parameters
         ----------
         time_lord

@@ -34,7 +34,9 @@ def get_kde_pdf_sig_spatial_norm_factor_func(log10_psi_name: str = 'log10_psi'):
     """
 
     def kde_pdf_sig_spatial_norm_factor_func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
-
+        """Calculates the normalization factor for the signal spatial KDE PDF for
+        each event from its log10(psi) value.
+        """
         log10_psi_idx = pdf._axes.get_index_by_name(log10_psi_name)
 
         if evt_mask is None:  # noqa: SIM108
@@ -58,7 +60,9 @@ def get_kde_pdf_bkg_norm_factor_func():
     """
 
     def kde_pdf_bkg_norm_factor_func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
-
+        """Returns the constant normalization factor for the background KDE
+        PDF.
+        """
         return 1.0 / (2 * np.pi)
 
     return kde_pdf_bkg_norm_factor_func

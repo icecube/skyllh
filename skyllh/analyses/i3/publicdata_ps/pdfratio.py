@@ -20,6 +20,10 @@ from skyllh.core.trialdata import TrialDataManager
 
 
 class PDSigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio):
+    """This class provides the signal-over-background PDF ratio for the public
+    data, using a signal energy PDF set defined for discrete gamma values.
+    """
+
     def __init__(
         self,
         sig_pdf_set: PDSignalEnergyPDFSet,

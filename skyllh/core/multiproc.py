@@ -396,6 +396,14 @@ class IsParallelizable:
         ncpu=None,
         **kwargs,
     ):
+        """Creates a new instance of IsParallelizable.
+
+        Parameters
+        ----------
+        ncpu
+            The number of CPUs to utilize. If set to ``None``, the global
+            setting will be used.
+        """
         super().__init__(*args, **kwargs)
 
         if not isinstance(self, HasConfig):

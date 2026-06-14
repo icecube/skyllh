@@ -66,6 +66,9 @@ class FuncWithGradsFunctor(
         self._cache_grads = None
 
     def get_f(self, x):
+        """Returns the function value at the given parameter values ``x``, using
+        a cached value if ``x`` matches the last evaluation.
+        """
         tracing = self._tracing
 
         if self._cache_x is None:
@@ -85,6 +88,9 @@ class FuncWithGradsFunctor(
         return self._cache_f
 
     def get_grads(self, x):
+        """Returns the function gradients at the given parameter values ``x``,
+        using cached values if ``x`` matches the last evaluation.
+        """
         tracing = self._tracing
 
         if self._cache_x is None:

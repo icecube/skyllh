@@ -864,9 +864,9 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             The order of the spline function for the logarithmic values of the
             detector signal yield along the sin(dec) axis.
             The default is 2.
-        spline_order_gamma
+        spline_order_param
             The order of the spline function for the logarithmic values of the
-            detector signal yield along the gamma axis.
+            detector signal yield along the parameter axis.
             The default is 2.
         ncpu
             The number of CPUs to utilize. If set to ``None``, global setting

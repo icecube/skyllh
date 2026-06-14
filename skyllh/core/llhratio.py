@@ -174,6 +174,10 @@ class LLHRatio(
         self_evaluate = self.evaluate
 
         def negative_llhratio_func(fitparam_values, func_stats, tl=None):
+            """Evaluates the log-likelihood ratio function for the given fit
+            parameter values and returns the negative value and its negative
+            gradients, suitable for minimization.
+            """
             src_params_recarray = self._pmm.create_src_params_recarray(fitparam_values)
 
             func_stats['n_calls'] += 1
@@ -249,9 +253,8 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        fitparam_values
-            The (N_fitparams,)-shaped 1D numpy ndarray holding the current
-            values of the global fit parameters.
+        ns
+            The value of the global fit parameter ns.
         ns_pidx
             The index of the global ns fit parameter.
         src_params_recarray
@@ -308,6 +311,10 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
         ns_pidx = self._pmm.get_gflp_idx(name='ns')
 
         def negative_llhratio_func_nr1d_ns(fitparam_values, tl):
+            """Evaluates the log-likelihood ratio function for the given fit
+            parameter values and returns the negative first and second
+            derivatives w.r.t. ns, suitable for the 1D Newton-Rapson minimizer.
+            """
             ns = fitparam_values[ns_pidx]
             src_params_recarray = self._pmm.create_src_params_recarray(fitparam_values)
             with TaskTimer(tl, 'Evaluate llh-ratio function.'):
@@ -542,13 +549,6 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
         Parameters
         ----------
-        fitparam_values
-            The (N_fitparams,)-shaped ndarray holding the current values of the
-            global fit parameters.
-            These numbers are used as cache key to validate the ``nsgrad_i``
-            values for the given fit parameter values for a possible later
-            calculation of the second derivative w.r.t. ns of the log-likelihood
-            ratio function.
         N
             The total number of events.
         ns
@@ -661,9 +661,6 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
         Parameters
         ----------
-        fitparam_values
-            The ndarray holding the current values of the global fit
-            parameters.
         ns
             The value of the global fit parameter ns.
         ns_pidx
@@ -1073,9 +1070,6 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
 
         Parameters
         ----------
-        fitparam_values
-            The (N_fitparams,)-shaped 1D ndarray holding the current values of
-            the global fit parameters.
         ns
             The value of the global fit parameter ns.
         ns_pidx

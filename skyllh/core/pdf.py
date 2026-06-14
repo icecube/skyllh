@@ -716,6 +716,7 @@ class EnergyPDF(PDF, metaclass=abc.ABCMeta):
     """This is the abstract base class for an energy PDF."""
 
     def __init__(self, *args, **kwargs):
+        """Creates a new instance of EnergyPDF."""
         super().__init__(*args, **kwargs)
 
 
@@ -741,7 +742,7 @@ class TimePDF(PDF, metaclass=abc.ABCMeta):
         livetime
             An instance of Livetime, which provides the detector live-time
             information.
-        time_profile
+        time_flux_profile
             The signal's time flux profile.
         **kwargs
             Additional keyword arguments are passed to the constructor of the
@@ -1062,6 +1063,7 @@ class MultiDimGridPDF(
             # Define a normalization function that just returns 1 for each
             # event.
             def _unity_norm_func(pdf, tdm, params_recarray, eventdata, evt_mask=None):
+                """Returns a normalization factor of 1 for each event."""
                 if evt_mask is None:  # noqa: SIM108
                     n_values = eventdata.shape[1]
                 else:

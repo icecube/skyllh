@@ -18,6 +18,7 @@ class HistSmoothingMethod(
     """Abstract base class for implementing a histogram smoothing method."""
 
     def __init__(self, **kwargs):
+        """Creates a new instance of HistSmoothingMethod."""
         super().__init__(**kwargs)
 
     @abc.abstractmethod
@@ -42,6 +43,7 @@ class NoHistSmoothingMethod(
     """This class implements a no-shoothing histogram method."""
 
     def __init__(self, **kwargs):
+        """Creates a new instance of NoHistSmoothingMethod."""
         super().__init__(**kwargs)
 
     def smooth(self, h: np.ndarray) -> np.ndarray:
@@ -142,6 +144,14 @@ class SmoothingFilter:
     """
 
     def __init__(self, axis_kernel_array, **kwargs):
+        """Creates a new instance of SmoothingFilter.
+
+        Parameters
+        ----------
+        axis_kernel_array
+            The kernel array defining how many neighboring bins of a histogram
+            bin should be used to smooth that histogram bin.
+        """
         super().__init__(**kwargs)
 
         self.axis_kernel_array = axis_kernel_array

@@ -348,6 +348,17 @@ class TemporaryTextFile:
         text,
         mode=stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH,
     ):
+        """Creates a new instance of TemporaryTextFile.
+
+        Parameters
+        ----------
+        pathfilename
+            The path and file name of the temporary text file.
+        text
+            The text that should be written into the file.
+        mode
+            The file access mode that should be set for the created file.
+        """
         self.pathfilename = pathfilename
         self.text = text
         self.mode = mode
@@ -381,6 +392,7 @@ class DatasetTransfer(
     """Base class for a dataset transfer mechanism."""
 
     def __init__(self, **kwargs):
+        """Creates a new instance of DatasetTransfer."""
         super().__init__(**kwargs)
 
     @staticmethod
@@ -464,7 +476,12 @@ class DatasetTransfer(
 class RSYNCDatasetTransfer(
     DatasetTransfer,
 ):
+    """This class provides a dataset transfer mechanism using the ``rsync``
+    program.
+    """
+
     def __init__(self, **kwargs):
+        """Creates a new instance of RSYNCDatasetTransfer."""
         super().__init__(**kwargs)
 
     def transfer(
@@ -480,9 +497,8 @@ class RSYNCDatasetTransfer(
 
         Parameters
         ----------
-        ds
-            The instance of Dataset containing the origin property specifying
-            the origin of the dataset.
+        origin
+            The instance of DatasetOrigin specifying the origin of the dataset.
         file_list
             The list of files, relative to the origin base path, which should be
             transferred.
@@ -585,7 +601,18 @@ class RSYNCDatasetTransfer(
 class WGETDatasetTransfer(
     DatasetTransfer,
 ):
+    """This class provides a dataset transfer mechanism using the ``wget``
+    program.
+    """
+
     def __init__(self, protocol, **kwargs):
+        """Creates a new instance of WGETDatasetTransfer.
+
+        Parameters
+        ----------
+        protocol
+            The protocol to use for the transfer, e.g. ``"http"`` or ``"https"``.
+        """
         super().__init__(**kwargs)
 
         self.protocol = protocol
@@ -682,7 +709,18 @@ class WGETDatasetTransfer(
 class URLRetrieveDatasetTransfer(
     DatasetTransfer,
 ):
+    """This class provides a dataset transfer mechanism using Python's
+    :func:`urllib.request.urlretrieve` function.
+    """
+
     def __init__(self, protocol, **kwargs):
+        """Creates a new instance of URLRetrieveDatasetTransfer.
+
+        Parameters
+        ----------
+        protocol
+            The protocol to use for the transfer, e.g. ``"http"`` or ``"https"``.
+        """
         super().__init__(**kwargs)
 
         self.protocol = protocol
@@ -2874,6 +2912,9 @@ def assert_data_format(
     cfg = dataset.cfg
 
     def _get_missing_keys(keys, required_keys):
+        """Returns the list of required keys that are not present in the given
+        list of keys.
+        """
         missing_keys = []
         for reqkey in required_keys:
             if reqkey not in keys:

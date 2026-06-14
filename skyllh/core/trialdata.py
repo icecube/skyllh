@@ -813,6 +813,9 @@ class TrialDataManager:
         values_mask = np.zeros((self.get_n_values(),), dtype=np.bool_)
 
         def make_values_mask(src_idx):
+            """Updates the values mask in-place to also select the values
+            belonging to the source with the given index.
+            """
             nonlocal values_mask
             values_mask |= tdm_src_idxs == src_idx
 

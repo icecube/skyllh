@@ -190,7 +190,12 @@ def requires(*tools):
     """
 
     def decorator(f):
+        """Wraps the decorated function ``f`` with the tool availability check."""
+
         def wrapper(*args, **kwargs):
+            """Checks the availability of all required tools and then calls the
+            decorated function ``f``.
+            """
             for tool in tools:
                 (tool, version) = _get_tool_and_version(tool)
                 if not is_available(tool):

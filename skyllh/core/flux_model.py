@@ -1320,6 +1320,9 @@ class UnityTimeFluxProfile(
 
     @property
     def math_function_str(self):
+        """The string representation of the mathematical function of this time
+        flux profile.
+        """
         return '1'
 
     def __call__(
@@ -1714,6 +1717,9 @@ class GaussianTimeFluxProfile(
 
     @property
     def math_function_str(self):
+        """The string representation of the mathematical function of this time
+        flux profile.
+        """
         return 'exp(-(t-t0)^2/(2 sigma_t^2))'
 
     @property

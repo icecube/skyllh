@@ -738,6 +738,7 @@ class DataTableAccessor(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, **kwargs):
+        """Creates a new instance of DataTableAccessor."""
         super().__init__(**kwargs)
 
     @abc.abstractmethod
@@ -779,6 +780,7 @@ class NDArrayDataTableAccessor(DataTableAccessor):
     """
 
     def __init__(self, **kwargs):
+        """Creates a new instance of NDArrayDataTableAccessor."""
         super().__init__(**kwargs)
 
     def get_column(self, data: np.ndarray, name: str):
@@ -794,6 +796,7 @@ class NDArrayDataTableAccessor(DataTableAccessor):
         return data[name]
 
     def get_field_names(self, data):
+        """Returns the list of field names of the data table."""
         return data.dtype.names
 
     def get_field_name_to_dtype_dict(self, data):
@@ -815,6 +818,7 @@ class DictDataTableAccessor(DataTableAccessor):
     """
 
     def __init__(self, **kwargs):
+        """Creates a new instance of DictDataTableAccessor."""
         super().__init__(**kwargs)
 
     def get_column(self, data: dict, name: str):
@@ -830,6 +834,7 @@ class DictDataTableAccessor(DataTableAccessor):
         return data[name]
 
     def get_field_names(self, data):
+        """Returns the list of field names of the data table."""
         return list(data.keys())
 
     def get_field_name_to_dtype_dict(self, data):
@@ -853,6 +858,7 @@ class ParquetDataTableAccessor(DataTableAccessor):
     """
 
     def __init__(self, **kwargs):
+        """Creates a new instance of ParquetDataTableAccessor."""
         super().__init__(**kwargs)
 
     def get_column(self, data, name: str):
@@ -868,6 +874,7 @@ class ParquetDataTableAccessor(DataTableAccessor):
         return data[name].to_numpy()
 
     def get_field_names(self, data):
+        """Returns the list of field names of the data table."""
         return data.column_names
 
     def get_field_name_to_dtype_dict(self, data):
@@ -883,7 +890,12 @@ class ParquetDataTableAccessor(DataTableAccessor):
 
 
 class DataFieldRecordArrayDataTableAccessor(DataTableAccessor):
+    """This class provides an accessor for table data stored as an instance of
+    :class:`~skyllh.core.storage.DataFieldRecordArray`.
+    """
+
     def __init__(self, **kwargs):
+        """Creates a new instance of DataFieldRecordArrayDataTableAccessor."""
         super().__init__(**kwargs)
 
     def get_column(self, data, name: str):
@@ -899,6 +911,7 @@ class DataFieldRecordArrayDataTableAccessor(DataTableAccessor):
         return data[name]
 
     def get_field_names(self, data):
+        """Returns the list of field names of the data table."""
         return data.field_name_list
 
     def get_field_name_to_dtype_dict(self, data):
@@ -1177,6 +1190,9 @@ class DataFieldRecordArray:
 
         # Generates a pretty string representation of the given field name.
         def _pretty_str_field(name):
+            """Creates a pretty string representation of the data field with the
+            given name.
+            """
             field = self._data_fields[name]
             s = (
                 f'{name.ljust(max_field_name_len)}: '

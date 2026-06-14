@@ -84,6 +84,9 @@ class PDSignalEnergyPDF(
         self.add_axis(PDFAxis(name='log_energy', vmin=self.log10_reco_e_min, vmax=self.log10_reco_e_max))
 
     def assert_is_valid_for_trial_data(self, tdm, tl=None, **kwargs):
+        """Checks if this PDF is valid for the given trial data. This PDF is
+        always valid by construction, hence this method does nothing.
+        """
         pass
 
     def get_pd_by_log10_reco_e(self, log10_reco_e: np.ndarray, tl: TimeLord | None = None) -> np.ndarray:

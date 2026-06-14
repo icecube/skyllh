@@ -41,9 +41,9 @@ class BackgroundGenerator(
 
         Parameters
         ----------
-        bkg_gen_method
-            The optional background event generation method, which should be
-            used to generate events.
+        **kwargs
+            Additional keyword arguments are passed to the constructor of the
+            base class, :class:`~skyllh.core.config.HasConfig`.
         """
         super().__init__(**kwargs)
 
@@ -104,11 +104,28 @@ class DatasetBackgroundGenerator(
 
     def __init__(
         self,
-        dataset,
-        data,
-        bkg_gen_method,
+        dataset: Dataset,
+        data: DatasetData,
+        bkg_gen_method: BackgroundGenerationMethod | None,
         **kwargs,
     ):
+        """Constructs a new instance of DatasetBackgroundGenerator.
+
+        Parameters
+        ----------
+        dataset
+            The instance of Dataset for which background events should get
+            generated.
+        data
+            The instance of DatasetData holding the experimental and simulation
+            data of the dataset.
+        bkg_gen_method
+            The instance of BackgroundGenerationMethod which should be used to
+            generate background events. This can be ``None``.
+        **kwargs
+            Additional keyword arguments are passed to the constructor of the
+            base class, :class:`~skyllh.core.background_generator.BackgroundGenerator`.
+        """
         super().__init__(**kwargs)
 
         self.dataset = dataset

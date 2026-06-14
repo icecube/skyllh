@@ -308,6 +308,9 @@ def fit_truncated_gamma(vals: np.ndarray, eta: float) -> tuple[np.ndarray, float
     alpha = N_prime / Ntot
 
     def obj(x):
+        """The objective function passed to the minimizer, evaluating the
+        truncated gamma log-pdf for the parameter vector ``x`` = (a, scale).
+        """
         return truncated_gamma_logpdf(x[0], x[1], eta=eta, ts_above_eta=vals_eta, N_above_eta=N_prime)
 
     x0 = [0.75, 1.8]  # Initial values of function parameters.

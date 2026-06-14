@@ -110,6 +110,9 @@ from skyllh.i3.backgroundpdf import (
 
 
 def TXS_location():
+    """Returns the right-ascention and declination of the blazar TXS 0506+056
+    in radians.
+    """
     src_ra = np.radians(77.358)
     src_dec = np.radians(5.693)
     return (src_ra, src_dec)

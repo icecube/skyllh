@@ -387,6 +387,9 @@ class Analysis(
                     yield generator
 
     def _apply_energy_range(self, value):
+        """Applies the given energy range to all energy-range-capable components
+        of the analysis.
+        """
         for component in self._iter_energy_range_capable():
             component.energy_range = value
 
