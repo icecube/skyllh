@@ -33,7 +33,6 @@ jobs:
       run: pip install ".[dev]"
     - name: Run pyright
       run: pyright
-      continue-on-error: true
 
   pytest:
     runs-on: ubuntu-latest
