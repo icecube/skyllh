@@ -774,7 +774,7 @@ class SignalMultiDimGridPDFSet(
                     logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
                     logger.info('Falling back to the slower photospline evaluation.')
 
-    def get_pd(  # type: ignore[override]
+    def get_pd(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         tdm: TrialDataManager,
         params_recarray: np.ndarray | None,
@@ -984,7 +984,7 @@ class SignalSHGMappedMultiDimGridPDFSet(
                     logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
                     logger.info('Falling back to the slower photospline evaluation.')
 
-    def get_pd(  # type: ignore[override]
+    def get_pd(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         tdm: TrialDataManager,
         params_recarray: np.ndarray | None,

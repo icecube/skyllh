@@ -504,7 +504,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
     @SingleDatasetTCLLHRatio.mean_n_sig_0.setter
     def mean_n_sig_0(self, v):
-        SingleDatasetTCLLHRatio.mean_n_sig_0.fset(self, v)  # type: ignore[misc]
+        SingleDatasetTCLLHRatio.mean_n_sig_0.fset(self, v)  # pyright: ignore[reportOptionalCall]
         if self._mean_n_sig_0 != 0:
             raise ValueError(f'The {classname(self)} class is only valid for mean_n_sig_0 = 0!')
 
@@ -644,7 +644,7 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
 
         return (log_lambda, grads)
 
-    def calculate_ns_grad2(  # type: ignore[override]
+    def calculate_ns_grad2(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         ns: float,
         ns_pidx: int | None = None,
@@ -916,7 +916,7 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
 
     @TCLLHRatio.mean_n_sig_0.setter
     def mean_n_sig_0(self, v):
-        TCLLHRatio.mean_n_sig_0.fset(self, v)  # type: ignore[misc]
+        TCLLHRatio.mean_n_sig_0.fset(self, v)  # pyright: ignore[reportOptionalCall]
         for llhratio in self._llhratio_list:
             llhratio.mean_n_sig_0 = self._mean_n_sig_0
 
@@ -1059,7 +1059,7 @@ class MultiDatasetTCLLHRatio(TCLLHRatio):
 
         return (log_lambda, grads)
 
-    def calculate_ns_grad2(  # type: ignore[override]
+    def calculate_ns_grad2(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, ns: float, ns_pidx: int, src_params_recarray: np.ndarray, tl: TimeLord | None = None
     ) -> float:
         """Calculates the second derivative w.r.t. ns of the log-likelihood
@@ -1259,7 +1259,7 @@ class NsProfileMultiDatasetTCLLHRatio(TCLLHRatio):
 
         return (log_lambda, grads)
 
-    def calculate_ns_grad2(  # type: ignore[override]
+    def calculate_ns_grad2(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, ns: float, ns_pidx: int, src_params_recarray: np.ndarray, tl: TimeLord | None = None
     ) -> float:
         """Calculates the second derivative w.r.t. ns of the log-likelihood

@@ -16,9 +16,9 @@ from scipy.stats import (
 )
 
 try:
-    from iminuit import minimize  # type: ignore[import-untyped]
+    from iminuit import minimize
 except ImportError:
-    minimize = None  # type: ignore[assignment]
+    minimize = None
     IMINUIT_LOADED = False
 else:
     IMINUIT_LOADED = True
@@ -1304,7 +1304,7 @@ def create_trial_data_file(
             mean_n_sig_max = mean_n_sig
             mean_n_sig_step = 1
         else:
-            _mean_n_sig_list: list[float] = float_cast(  # type: ignore[assignment]
+            _mean_n_sig_list: list[float] = float_cast(  # pyright: ignore[reportAssignmentType]
                 mean_n_sig, 'The sequence elements of the mean_n_sig argument must be castable to float values!'
             )
             if len(_mean_n_sig_list) == 2:
@@ -1327,7 +1327,7 @@ def create_trial_data_file(
             mean_n_sig_null_max = mean_n_sig_null
             mean_n_sig_null_step = 1
         else:
-            _mean_n_sig_null_list: list[float] = float_cast(  # type: ignore[assignment]
+            _mean_n_sig_null_list: list[float] = float_cast(  # pyright: ignore[reportAssignmentType]
                 mean_n_sig_null,
                 'The sequence elements of the mean_n_sig_null argument must be castable to float values!',
             )

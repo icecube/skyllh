@@ -41,13 +41,13 @@ class SimpleDetSigYieldWithoutGrads(DetSigYield):
     def __init__(self, scale=1, **kwargs):
         self._scale = scale
 
-    def sources_to_recarray(self, sources):  # type: ignore[override]
-        recarr = np.empty((len(sources),), dtype=[('dec', np.double)])  # type: ignore[arg-type]
-        for i, src in enumerate(sources):  # type: ignore[arg-type]
+    def sources_to_recarray(self, sources):  # pyright: ignore[reportIncompatibleMethodOverride]
+        recarr = np.empty((len(sources),), dtype=[('dec', np.double)])  # pyright: ignore[reportArgumentType]
+        for i, src in enumerate(sources):  # pyright: ignore[reportArgumentType]
             recarr[i]['dec'] = src.dec
         return recarr
 
-    def __call__(self, src_recarray, src_params_recarray):  # type: ignore[override]
+    def __call__(self, src_recarray, src_params_recarray):  # pyright: ignore[reportIncompatibleMethodOverride]
         """
         Parameters
         ----------
@@ -162,7 +162,7 @@ class NoDetSigYieldBuilder(DetSigYieldBuilder):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def construct_detsigyield(self, **kwargs):  # type: ignore[override]
+    def construct_detsigyield(self, **kwargs):  # pyright: ignore[reportIncompatibleMethodOverride]
         pass
 
 
@@ -207,7 +207,7 @@ def create_DetSigYieldService(shg_mgr, detsigyield_arr):
         ]
     )
 
-    detsigyield_service.__class__ = DetSigYieldService  # type: ignore[assignment]
+    detsigyield_service.__class__ = DetSigYieldService  # pyright: ignore[reportAttributeAccessIssue]
     detsigyield_service.arr = detsigyield_arr
     detsigyield_service.shg_mgr = shg_mgr
     detsigyield_service.n_datasets = detsigyield_arr.shape[0]

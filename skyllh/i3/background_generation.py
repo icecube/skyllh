@@ -55,7 +55,7 @@ class FixedScrambledExpDataI3BkgGenMethod(
             )
         self._data_scrambler = scrambler
 
-    def generate_events(  # type: ignore[override]
+    def generate_events(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         rss: RandomStateService,
         dataset: Dataset,

@@ -220,7 +220,7 @@ def change_signal_time_pdf_of_llhratio_function(
     # pdfratio is an instance of PDFRatioProduct.
     # The first item is the PDF ratio product of the spatial and energy PDF
     # ratios. The second item is the time PDF ratio.
-    pdfratio.pdfratio2.sig_pdf = time_sigpdf  # type: ignore[attr-defined]
+    pdfratio.pdfratio2.sig_pdf = time_sigpdf  # pyright: ignore[reportAttributeAccessIssue]
 
     # TODO: Change detector signal yield with flare livetime in sample
     # (1 / grl_norm in pdf), rebuild the histograms if it is changed.
@@ -258,7 +258,7 @@ def get_energy_spatial_signal_over_background(
     # pdfratio is an instance of PDFRatioProduct.
     # The first item is the PDF ratio product of the spatial and energy PDF
     # ratios. The second item is the time PDF ratio.
-    pdfratio = pdfratio.pdfratio1  # type: ignore[attr-defined]
+    pdfratio = pdfratio.pdfratio1  # pyright: ignore[reportAttributeAccessIssue]
 
     src_params_recarray = ana.pmm.create_src_params_recarray(gflp_values=fitparam_values)
 

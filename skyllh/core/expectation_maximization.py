@@ -43,7 +43,7 @@ def em_expectation_step(
     N = len(t)
     e_sig = np.empty((n_flares, N), dtype=np.float64)
     for i in range(n_flares):
-        e_sig[i] = norm(loc=mu[i], scale=sigma[i]).pdf(t)  # type: ignore[attr-defined]
+        e_sig[i] = norm(loc=mu[i], scale=sigma[i]).pdf(t)  # pyright: ignore[reportAttributeAccessIssue]
         e_sig[i] *= sob
         e_sig[i] *= ns[i]
     e_bkg = (N - np.sum(ns)) / (np.max(t) - np.min(t)) / b_term

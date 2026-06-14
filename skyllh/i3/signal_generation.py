@@ -215,7 +215,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         return (src_sin_dec_band_min, src_sin_dec_band_max, src_dec_band_omega)
 
-    def calc_source_signal_mc_event_flux(  # type: ignore[override]
+    def calc_source_signal_mc_event_flux(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, data_mc: np.ndarray, shg: SourceHypoGroup
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculates the signal flux of each given MC event for each source
@@ -315,7 +315,7 @@ class PointLikeSourceI3SignalGenerationMethod(SignalGenerationMethod):
 
         return (ev_idx_arr, shg_src_idx_arr, flux_arr)
 
-    def signal_event_post_sampling_processing(  # type: ignore[override]
+    def signal_event_post_sampling_processing(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         shg: SourceHypoGroup,
         shg_sig_events_meta: np.ndarray,

@@ -1417,7 +1417,7 @@ class LLHRatioAnalysis(Analysis, metaclass=abc.ABCMeta):
             log-likelihood-ratio function of this LLH ratio analysis.
         """
 
-    def add_dataset(  # type: ignore[override]
+    def add_dataset(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         dataset: Dataset,
         data: DatasetData,
@@ -1495,7 +1495,7 @@ class LLHRatioAnalysis(Analysis, metaclass=abc.ABCMeta):
         # instance.
         cast(MultiDatasetTCLLHRatio, self._llhratio).change_shg_mgr(shg_mgr=shg_mgr)
 
-    def initialize_trial(  # type: ignore[override]
+    def initialize_trial(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         events_list: list[DataFieldRecordArray],
         n_events_list: list[int | None] | None = None,
@@ -1572,7 +1572,7 @@ class LLHRatioAnalysis(Analysis, metaclass=abc.ABCMeta):
 
         return (TS, global_params_dict, status)
 
-    def do_trial_with_given_pseudo_data(  # type: ignore[override]
+    def do_trial_with_given_pseudo_data(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         seed: int,
         mean_n_sig: float,
@@ -1860,18 +1860,20 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
             src_params_recarray=src_params_recarray,
         )
 
-    def mu2flux(self, mu, fitparam_values=None, per_source=False):
+    def mu2flux(
+        self, mu: float | np.ndarray, fitparam_values: np.ndarray | None = None, per_source: bool = False
+    ) -> float | np.ndarray:
         """Converts the given number of signal events in the detector to the corresponding flux model normalization.
 
         Parameters
         ----------
-        mu : float
+        mu
             The number of signal events in the detector to convert.
-        fitparam_values : numpy ndarray | None
+        fitparam_values
             The (N_fitparam,)-shaped 1D ndarray holding the values of the global floating fit parameters at
             which the scaling factor should be evaluated. If ``None``, the reference flux model parameter
             values are used.
-        per_source : bool
+        per_source
             Whether to return the flux normalization for each source separately. Default is False.
 
         Returns
@@ -1881,18 +1883,20 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
         """
         return self.calculate_fluxmodel_scaling_factor(fitparam_values=fitparam_values, per_source=per_source) * mu
 
-    def flux2mu(self, flux_norm, fitparam_values=None, per_source=False):
+    def flux2mu(
+        self, flux_norm: float | np.ndarray, fitparam_values: np.ndarray | None = None, per_source: bool = False
+    ) -> float | np.ndarray:
         """Converts the given flux model normalization to the corresponding number of signal events in the detector.
 
         Parameters
         ----------
-        flux_norm : float
+        flux_norm
             The flux model normalization to convert.
-        fitparam_values : numpy ndarray | None
+        fitparam_values
             The (N_fitparam,)-shaped 1D ndarray holding the values of the global floating fit parameters at
             which the scaling factor should be evaluated. If ``None``, the reference flux model parameter
             values are used.
-        per_source : bool
+        per_source
             Whether to return the number of signal events for each source separately. Default is False.
 
         Returns

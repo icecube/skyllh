@@ -270,7 +270,7 @@ def bool_cast(v, errmsg):
 def int_cast(v, errmsg: str, allow_None: Literal[False] = ...) -> int: ...
 @overload
 def int_cast(v, errmsg: str, allow_None: Literal[True]) -> int | None: ...
-def int_cast(v, errmsg, allow_None=False) -> int | None:
+def int_cast(v, errmsg, allow_None: bool = False) -> int | None:
     """Casts the given value to an integer value. If the cast is impossible, a
     TypeError is raised with the given error message. If `allow_None` is set to
     `True` the value `v` can also be `None`.
@@ -346,7 +346,7 @@ def str_cast(v, errmsg, allow_None: Literal[False] = ...) -> str: ...
 def str_cast(v, errmsg, allow_None: Literal[True]) -> str | None: ...
 
 
-def str_cast(v, errmsg, allow_None=False):
+def str_cast(v, errmsg, allow_None: bool = False):
     """Casts the given value to a str object.
     If the cast is impossible, a TypeError is raised with the given error
     message.

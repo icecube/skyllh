@@ -168,7 +168,7 @@ class FctSpline2D:
             f_sorted = f_sorted[:, np.argsort(iy)]
         return f_sorted
 
-    def _renorm_per_y_grid(self, f2d, y, *, in_user_order=True):
+    def _renorm_per_y_grid(self, f2d, y, *, in_user_order: bool = True):
         """Renormalize columns so ∫_x f(x, y) dx = 1 (grid=True)."""
         y = np.asarray(y)
         # For renorm we can evaluate on (qx, y) with grid=True (expects sorted y).
@@ -517,7 +517,7 @@ def _reco_energy_counts_per_ds(ds, sm, flux, dec, reco_e_edges, Phi0, energy_ran
 
 
 def compute_expected_reco_energy_counts(
-    datasets, flux, dec, Phi0, time_integral=False, livetimes=None, energy_range=None
+    datasets, flux, dec, Phi0, time_integral: bool = False, livetimes=None, energy_range=None
 ):
     """Returns the expected distribution of events in reconstructed energy for a given flux and declination.
     If a list of datasets is provided, it returns the sum of all datasets contributions.
@@ -532,7 +532,7 @@ def compute_expected_reco_energy_counts(
         The declination in radians.
     Phi0 : float
         The flux normalization factor.
-    time_integral : bool
+    time_integral
         Whether to return the total expected counts (True) or the expected counts per second (False).
         Default is False (counts per second).
     livetimes : (len(datasets),)-iterable of float and None | None

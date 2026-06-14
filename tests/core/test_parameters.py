@@ -103,11 +103,11 @@ class Parameter_TestCase(unittest.TestCase):
 
     def test_valmin(self):
         self.assertEqual(self.fixed_param.valmin, None)
-        np.testing.assert_almost_equal(self.floating_param.valmin, self.floating_param_valmin)  # type: ignore[arg-type]
+        np.testing.assert_almost_equal(self.floating_param.valmin, self.floating_param_valmin)  # pyright: ignore[reportArgumentType]
 
     def test_valmax(self):
         self.assertEqual(self.fixed_param.valmax, None)
-        np.testing.assert_almost_equal(self.floating_param.valmax, self.floating_param_valmax)  # type: ignore[arg-type]
+        np.testing.assert_almost_equal(self.floating_param.valmax, self.floating_param_valmax)  # pyright: ignore[reportArgumentType]
 
     def test_value(self):
         np.testing.assert_almost_equal(self.fixed_param.value, self.fixed_param_initial)
@@ -164,8 +164,8 @@ class Parameter_TestCase(unittest.TestCase):
         )
         np.testing.assert_almost_equal(self.fixed_param.initial, self.floating_param_initial)
         np.testing.assert_almost_equal(self.fixed_param.value, self.floating_param_initial)
-        np.testing.assert_almost_equal(self.fixed_param.valmin, self.floating_param_valmin)  # type: ignore[arg-type]
-        np.testing.assert_almost_equal(self.fixed_param.valmax, self.floating_param_valmax)  # type: ignore[arg-type]
+        np.testing.assert_almost_equal(self.fixed_param.valmin, self.floating_param_valmin)  # pyright: ignore[reportArgumentType]
+        np.testing.assert_almost_equal(self.fixed_param.valmax, self.floating_param_valmax)  # pyright: ignore[reportArgumentType]
 
 
 class ParameterSet_TestCase(unittest.TestCase):
@@ -351,7 +351,7 @@ class ParameterSet_TestCase(unittest.TestCase):
 
     def test_add_param(self):
         with self.assertRaises(TypeError):
-            self.paramset.add_param('p2')  # type: ignore[arg-type]
+            self.paramset.add_param('p2')  # pyright: ignore[reportArgumentType]
         with self.assertRaises(KeyError):
             param = Parameter('p0', 42.0)
             self.paramset.add_param(param)

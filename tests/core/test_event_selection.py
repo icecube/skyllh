@@ -35,7 +35,7 @@ def shgm_setup(n_sources=1):
     # Mock SourceHypoGroupManager class in order to pass isinstance checks and
     # set its properties used by event selection methods.
     shgm = Mock(spec_set=['__class__', 'source_list', 'n_sources'])
-    shgm.__class__ = SourceHypoGroupManager  # type: ignore[assignment]
+    shgm.__class__ = SourceHypoGroupManager  # pyright: ignore[reportAttributeAccessIssue]
 
     rng = np.random.default_rng(0)
     x = rng.random((n_sources, 2))
@@ -74,12 +74,13 @@ class AllEventSelectionMethod_TestCase(unittest.TestCase):
         shg_mgr = shgm_setup(n_sources=n_sources)
         evt_sel_method = AllEventSelectionMethod(shg_mgr)
 
+        assert evt_sel_method.shg_mgr is not None
         self.assertEqual(
-            evt_sel_method.shg_mgr.source_list,  # type: ignore[union-attr]
+            evt_sel_method.shg_mgr.source_list,
             shg_mgr.source_list,
         )
         self.assertEqual(
-            evt_sel_method.shg_mgr.n_sources,  # type: ignore[union-attr]
+            evt_sel_method.shg_mgr.n_sources,
             shg_mgr.n_sources,
         )
 
@@ -88,12 +89,13 @@ class AllEventSelectionMethod_TestCase(unittest.TestCase):
         shg_mgr_new = shgm_setup(n_sources=n_sources)
         evt_sel_method.change_shg_mgr(shg_mgr_new)
 
+        assert evt_sel_method.shg_mgr is not None
         self.assertEqual(
-            evt_sel_method.shg_mgr.source_list,  # type: ignore[union-attr]
+            evt_sel_method.shg_mgr.source_list,
             shg_mgr_new.source_list,
         )
         self.assertEqual(
-            evt_sel_method.shg_mgr.n_sources,  # type: ignore[union-attr]
+            evt_sel_method.shg_mgr.n_sources,
             shg_mgr_new.n_sources,
         )
 
@@ -102,7 +104,7 @@ class AllEventSelectionMethod_TestCase(unittest.TestCase):
         shg_mgr = shgm_setup(n_sources=n_sources)
         evt_sel_method = AllEventSelectionMethod(shg_mgr)
 
-        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(events=self.test_events)
 
         np.testing.assert_array_equal(events, self.test_events)
         self.assertEqual(len(src_idxs), n_sources * len(self.test_events))
@@ -115,7 +117,7 @@ class AllEventSelectionMethod_TestCase(unittest.TestCase):
         shg_mgr = shgm_setup(n_sources=n_sources)
         evt_sel_method = AllEventSelectionMethod(shg_mgr)
 
-        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(self.test_events)
 
         np.testing.assert_array_equal(events, self.test_events)
         self.assertEqual(len(src_idxs), n_sources * len(self.test_events))
@@ -167,7 +169,7 @@ class DecBandEventSectionMethod_TestCase(unittest.TestCase):
 
         evt_sel_method = DecBandEventSectionMethod(shg_mgr=shg_mgr, delta_angle=delta_angle)
 
-        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)
 
         self.assertTrue(
             np.all(events['dec'] > dec_min),
@@ -195,7 +197,7 @@ class DecBandEventSectionMethod_TestCase(unittest.TestCase):
         dec_min = np.min(src_decs) - delta_angle
         dec_max = np.max(src_decs) + delta_angle
 
-        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(self.test_events)
 
         self.assertTrue(
             np.all(events['dec'] > dec_min),
@@ -254,7 +256,7 @@ class RABandEventSectionMethod_TestCase(unittest.TestCase):
             axis=0,
         )
 
-        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, ev_idxs)) = evt_sel_method.select_events(events=self.test_events)
 
         for i in range(n_sources):
             events_mask = src_idxs == i
@@ -299,7 +301,7 @@ class RABandEventSectionMethod_TestCase(unittest.TestCase):
             axis=0,
         )
 
-        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)
 
         for i in range(n_sources):
             events_mask = src_idxs == i
@@ -345,7 +347,7 @@ class SpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
             axis=0,
         )
 
-        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)
 
         for i in range(n_sources):
             events_mask = src_idxs == i
@@ -402,7 +404,7 @@ class SpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
             axis=0,
         )
 
-        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)
 
         for i in range(n_sources):
             events_mask = src_idxs == i
@@ -448,8 +450,8 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
 
         evt_sel_method = evt_sel_method_sb & evt_sel_method_angerr
 
-        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
-        (events_sb, (src_idxs_sb, ev_idxs_sb)) = evt_sel_method_sb.select_events(events=self.test_events)  # type: ignore[misc]
+        (events, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)
+        (events_sb, (src_idxs_sb, ev_idxs_sb)) = evt_sel_method_sb.select_events(events=self.test_events)
 
         np.testing.assert_array_equal(
             events.as_numpy_record_array(),
@@ -475,8 +477,8 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
 
         evt_sel_method = evt_sel_method_sb & evt_sel_method_angerr
 
-        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
-        (evts_sb, (src_idxs_sb, evt_idxs_sb)) = evt_sel_method_sb.select_events(events=self.test_events)  # type: ignore[misc]
+        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)
+        (evts_sb, (src_idxs_sb, evt_idxs_sb)) = evt_sel_method_sb.select_events(events=self.test_events)
 
         np.testing.assert_array_equal(evts.as_numpy_record_array(), evts_sb.as_numpy_record_array())
         np.testing.assert_array_equal(src_idxs, src_idxs_sb)
@@ -497,8 +499,8 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
 
         evt_sel_method = evt_sel_method_sb & evt_sel_method_angerr
 
-        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
-        (evts_sb, (_src_idxs_sb, _evt_idxs_sb)) = evt_sel_method_sb.select_events(events=self.test_events)  # type: ignore[misc]
+        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)
+        (evts_sb, (_src_idxs_sb, _evt_idxs_sb)) = evt_sel_method_sb.select_events(events=self.test_events)
 
         mask_psi_cut = evts_sb['ang_err'] > ang_err
 
@@ -522,8 +524,8 @@ class AngErrOfPsiAndSpatialBoxEventSelectionMethod_TestCase(unittest.TestCase):
 
         evt_sel_method = evt_sel_method_sb & evt_sel_method_angerr
 
-        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)  # type: ignore[misc]
-        (evts_sb, (src_idxs_sb, evt_idxs_sb)) = evt_sel_method_sb.select_events(events=self.test_events)  # type: ignore[misc]
+        (evts, (src_idxs, evt_idxs)) = evt_sel_method.select_events(events=self.test_events)
+        (evts_sb, (src_idxs_sb, evt_idxs_sb)) = evt_sel_method_sb.select_events(events=self.test_events)
 
         for i in range(n_sources):
             evts_mask = src_idxs == i

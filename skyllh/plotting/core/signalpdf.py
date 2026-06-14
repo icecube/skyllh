@@ -80,7 +80,7 @@ class SignalSpatialPDFPlotter:
         axes: Axes,
         source_idx: int | None = None,
         sin_dec: bool = True,
-        log=True,
+        log: bool = True,
         **kwargs,
     ):
         """Plots the signal spatial PDF for the specified source.
@@ -97,6 +97,8 @@ class SignalSpatialPDFPlotter:
         sin_dec
             Flag if the plot should be made in right-ascention vs. declination
             (False), or in right-ascention vs. sin(declination) (True).
+        log
+            Flag if it should be plotted in logarithmic color scale.
 
         Additional Keyword Arguments
         ----------------------------

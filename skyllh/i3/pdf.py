@@ -252,7 +252,7 @@ class I3EnergyPDF(
                 f'The following data values are out of range: {oor_data}'
             )
 
-    def get_pd(  # type: ignore[override]
+    def get_pd(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, tdm: TrialDataManager, params_recarray: None = None, tl: TimeLord | None = None
     ) -> tuple[np.ndarray, dict]:
         """Calculates the energy probability density of each event.

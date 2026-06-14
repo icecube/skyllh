@@ -175,14 +175,19 @@ class TimeScramblingMethod(DataScramblingMethod):
         self._timegen = timegen
 
     @property
-    def hor_to_equ_transform(self):
+    def hor_to_equ_transform(
+        self,
+    ) -> Callable[[np.ndarray, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
         """The transformation function to transform coordinates from the
         horizontal system into the equatorial system.
         """
         return self._hor_to_equ_transform
 
     @hor_to_equ_transform.setter
-    def hor_to_equ_transform(self, transform):
+    def hor_to_equ_transform(
+        self,
+        transform: Callable[[np.ndarray, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]],
+    ):
         if not callable(transform):
             raise TypeError('The hor_to_equ_transform property must be a callable object!')
         self._hor_to_equ_transform = transform
@@ -218,7 +223,7 @@ class TimeScramblingMethod(DataScramblingMethod):
 
         data['time'] = mjds
 
-        (data['ra'], data['dec']) = self.hor_to_equ_transform(data['azi'], data['zen'], mjds)  # type: ignore[misc]
+        (data['ra'], data['dec']) = self.hor_to_equ_transform(data['azi'], data['zen'], mjds)
 
         return data
 

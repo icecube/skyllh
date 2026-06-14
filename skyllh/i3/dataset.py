@@ -322,7 +322,7 @@ class I3Dataset(
 
         return data
 
-    def prepare_data(  # type: ignore[override]
+    def prepare_data(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         data: 'I3DatasetData',
         tl: TimeLord | None = None,

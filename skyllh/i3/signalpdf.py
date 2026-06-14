@@ -33,7 +33,7 @@ from skyllh.i3.pdf import (
 )
 
 
-class SignalI3EnergyPDFSet(  # type: ignore[misc]
+class SignalI3EnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
     PDFSet,
     IsSignalPDF,
     PDF,

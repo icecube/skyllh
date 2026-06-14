@@ -1,8 +1,16 @@
 """IceCube specific coordinate utility functions."""
 
+from typing import overload
+
 import numpy as np
 
 
+@overload
+def azi_to_ra_transform(azi: np.ndarray, mjd: float | np.ndarray) -> np.ndarray: ...
+@overload
+def azi_to_ra_transform(azi: float, mjd: float) -> float: ...
+@overload
+def azi_to_ra_transform(azi: float | np.ndarray, mjd: float | np.ndarray) -> float | np.ndarray: ...
 def azi_to_ra_transform(azi: float | np.ndarray, mjd: float | np.ndarray) -> float | np.ndarray:
     """Rotates the given IceCube azimuth angles into right-ascention angles for
     the given MJD times. This function is IceCube specific and assumes that the
@@ -52,6 +60,16 @@ def ra_to_azi_transform(ra: float | np.ndarray, mjd: float | np.ndarray) -> floa
     return azi
 
 
+@overload
+def hor_to_equ_transform(
+    azi: np.ndarray, zen: np.ndarray, mjd: float | np.ndarray
+) -> tuple[np.ndarray, np.ndarray]: ...
+@overload
+def hor_to_equ_transform(azi: float, zen: float, mjd: float) -> tuple[float, float]: ...
+@overload
+def hor_to_equ_transform(
+    azi: float | np.ndarray, zen: float | np.ndarray, mjd: float | np.ndarray
+) -> tuple[float | np.ndarray, float | np.ndarray]: ...
 def hor_to_equ_transform(
     azi: float | np.ndarray, zen: float | np.ndarray, mjd: float | np.ndarray
 ) -> tuple[float | np.ndarray, float | np.ndarray]:

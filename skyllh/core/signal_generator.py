@@ -305,7 +305,7 @@ class MultiDatasetSignalGenerator(
         for sig_generator in filter(None, self.sig_generator_list):
             sig_generator.change_shg_mgr(shg_mgr=shg_mgr)
 
-    def fluxmodel_scaling_factor(self, src_params_recarray=None, per_source=False):
+    def fluxmodel_scaling_factor(self, src_params_recarray=None, per_source: bool = False):
         """Returns the scaling factor to convert a mean number of detected
         signal events into a flux normalization::
 
@@ -320,7 +320,7 @@ class MultiDatasetSignalGenerator(
             the detector signal yield calculation. When provided, this overrides the internally cached
             reference parameter array for this call only (the cache is not updated).
             If ``None``, the cached reference parameter values built from the flux model defaults are used.
-        per_source : bool
+        per_source
             If set to True, return per-source scaling factors that sum to the global scaling factor. If set to False,
             return the global scaling factor.
 
@@ -848,7 +848,6 @@ class MCMultiDatasetSignalGenerator(
         mean: float | int,
         poisson: bool = True,
         src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
-        **kwargs,
     ) -> tuple[int, dict[int, DataFieldRecordArray]]:
         """Generates a given number of signal events from the signal candidate
         monte-carlo events.

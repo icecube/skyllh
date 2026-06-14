@@ -160,7 +160,7 @@ class BackgroundI3SpatialPDF(
 
         self._pd = 0.5 / np.pi * np.exp(log_spline_val)
 
-    def get_pd(  # type: ignore[override]
+    def get_pd(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, tdm: TrialDataManager, params_recarray: None = None, tl: TimeLord | None = None
     ) -> tuple[np.ndarray, dict]:
         """Calculates the spatial background probability on the sphere of each
@@ -293,7 +293,7 @@ class MCBackgroundI3SpatialPDF(
             )
 
         if not issequence(physics_weight_field_names):
-            physics_weight_field_names = [physics_weight_field_names]  # type: ignore[assignment]
+            physics_weight_field_names = [physics_weight_field_names]  # pyright: ignore[reportAssignmentType]
         if not issequenceof(physics_weight_field_names, str):
             raise TypeError(
                 'The physics_weight_field_names argument must be of type str '
@@ -442,7 +442,7 @@ class MCBackgroundI3EnergyPDF(
             )
 
         if not issequence(physics_weight_field_names):
-            physics_weight_field_names = [physics_weight_field_names]  # type: ignore[assignment]
+            physics_weight_field_names = [physics_weight_field_names]  # pyright: ignore[reportAssignmentType]
         if not issequenceof(physics_weight_field_names, str):
             raise TypeError(
                 'The physics_weight_field_names argument must be '

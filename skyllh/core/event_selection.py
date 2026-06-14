@@ -1,7 +1,7 @@
 import abc
 import inspect
 from collections.abc import Callable, Sequence
-from typing import cast
+from typing import Literal, cast, overload
 
 import numpy as np
 import scipy.sparse
@@ -25,10 +25,9 @@ from skyllh.core.utils.coords import (
 )
 
 # Return type for select_events: always a 2-tuple, optionally 3-tuple with original indices.
-_SelectEventsReturn = (
-    tuple[DataFieldRecordArray, tuple[np.ndarray, np.ndarray]]
-    | tuple[DataFieldRecordArray, tuple[np.ndarray, np.ndarray], np.ndarray]
-)
+_SelectEventsReturn2 = tuple[DataFieldRecordArray, tuple[np.ndarray, np.ndarray]]
+_SelectEventsReturn3 = tuple[DataFieldRecordArray, tuple[np.ndarray, np.ndarray], np.ndarray]
+_SelectEventsReturn = _SelectEventsReturn2 | _SelectEventsReturn3
 
 
 class EventSelectionMethod(metaclass=abc.ABCMeta):
@@ -139,6 +138,23 @@ class EventSelectionMethod(metaclass=abc.ABCMeta):
         """
         return
 
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        ret_original_evt_idxs: Literal[False] = False,
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn2: ...
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        *,
+        ret_original_evt_idxs: Literal[True],
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn3: ...
     @abc.abstractmethod
     def select_events(
         self,
@@ -255,6 +271,23 @@ class IntersectionEventSelectionMethod(EventSelectionMethod):
         self._evt_sel_method1.change_shg_mgr(shg_mgr=shg_mgr)
         self._evt_sel_method2.change_shg_mgr(shg_mgr=shg_mgr)
 
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        ret_original_evt_idxs: Literal[False] = False,
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn2: ...
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        *,
+        ret_original_evt_idxs: Literal[True],
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn3: ...
     def select_events(
         self,
         events: DataFieldRecordArray,
@@ -353,6 +386,23 @@ class AllEventSelectionMethod(EventSelectionMethod):
         """
         return
 
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        ret_original_evt_idxs: Literal[False] = False,
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn2: ...
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        *,
+        ret_original_evt_idxs: Literal[True],
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn3: ...
     def select_events(
         self,
         events: DataFieldRecordArray,
@@ -489,6 +539,23 @@ class DecBandEventSectionMethod(SpatialEventSelectionMethod):
         angle = float_cast(angle, 'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        ret_original_evt_idxs: Literal[False] = False,
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn2: ...
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        *,
+        ret_original_evt_idxs: Literal[True],
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn3: ...
     def select_events(
         self,
         events: DataFieldRecordArray,
@@ -602,6 +669,23 @@ class RABandEventSectionMethod(SpatialEventSelectionMethod):
         angle = float_cast(angle, 'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        ret_original_evt_idxs: Literal[False] = False,
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn2: ...
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        *,
+        ret_original_evt_idxs: Literal[True],
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn3: ...
     def select_events(
         self,
         events: DataFieldRecordArray,
@@ -737,6 +821,23 @@ class SpatialBoxEventSelectionMethod(SpatialEventSelectionMethod):
         angle = float_cast(angle, 'The delta_angle property must be castable to type float!')
         self._delta_angle = angle
 
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        ret_original_evt_idxs: Literal[False] = False,
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn2: ...
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        *,
+        ret_original_evt_idxs: Literal[True],
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn3: ...
     def select_events(
         self,
         events: DataFieldRecordArray,
@@ -967,6 +1068,23 @@ class PsiFuncEventSelectionMethod(EventSelectionMethod):
             )
         self._axis_name_list = list(names)
 
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        ret_original_evt_idxs: Literal[False] = False,
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn2: ...
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        *,
+        ret_original_evt_idxs: Literal[True],
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn3: ...
     def select_events(
         self,
         events: DataFieldRecordArray,
@@ -1107,6 +1225,23 @@ class AngErrOfPsiEventSelectionMethod(SpatialEventSelectionMethod):
         psi = float_cast(psi, 'The psi_floor property must be castable to type float!')
         self._psi_floor = psi
 
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        ret_original_evt_idxs: Literal[False] = False,
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn2: ...
+    @overload
+    def select_events(
+        self,
+        events: DataFieldRecordArray,
+        src_evt_idxs: tuple | None = None,
+        *,
+        ret_original_evt_idxs: Literal[True],
+        tl: TimeLord | None = None,
+    ) -> _SelectEventsReturn3: ...
     def select_events(
         self,
         events: DataFieldRecordArray,

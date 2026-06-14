@@ -321,7 +321,7 @@ class MultiDatasetBackgroundGenerator(
         for bkg_generator in self._bkg_generator_list:
             bkg_generator.change_shg_mgr(shg_mgr=shg_mgr)
 
-    def generate_background_events(  # type: ignore[override]
+    def generate_background_events(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         rss: RandomStateService,
         mean_n_bkg_list: list[float | None] | None = None,

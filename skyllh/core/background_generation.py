@@ -323,7 +323,7 @@ class MCDataSamplingBkgGenMethod(
         # Invalidate the data cache.
         self._cache_data_id = None
 
-    def generate_events(  # type: ignore[override]
+    def generate_events(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         rss: RandomStateService,
         dataset: Dataset,
@@ -622,7 +622,7 @@ class CompositeMCDataSamplingBkgGenMethod(
                 raise TypeError(f'The function provided for the background component "{name}"  must have 3 arguments!')
         self._bkg_component_rate_calc_func_dict = d
 
-    def generate_events(  # type: ignore[override]
+    def generate_events(
         self,
         rss: RandomStateService,
         dataset: Dataset,

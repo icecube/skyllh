@@ -78,7 +78,7 @@ class SourceModelCollection(
     """
 
     @staticmethod
-    def cast(  # type: ignore[override]
+    def cast(  # pyright: ignore[reportIncompatibleMethodOverride]
         obj: 'SourceModel | Sequence[SourceModel] | SourceModelCollection | None', errmsg: str | None = None, **kwargs
     ) -> 'SourceModelCollection':
         """Casts the given object to a SourceModelCollection object. If the cast

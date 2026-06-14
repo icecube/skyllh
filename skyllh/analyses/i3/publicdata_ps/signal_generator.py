@@ -521,7 +521,6 @@ class PDDatasetSignalGenerator(
         mean: int | float,
         poisson: bool = True,
         src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
-        **kwargs,
     ) -> tuple[int, dict[int, DataFieldRecordArray]]:
         """Generates ``mean`` number of signal events.
 
@@ -789,7 +788,6 @@ class TimeDependentPDDatasetSignalGenerator(
         mean: int | float,
         poisson: bool = True,
         src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
-        **kwargs,
     ) -> tuple[int, dict[int, DataFieldRecordArray]]:
         """Generates ``mean`` number of signal events with times.
 
@@ -827,7 +825,6 @@ class TimeDependentPDDatasetSignalGenerator(
             mean=mean,
             poisson=poisson,
             src_detsigyield_weights_service=src_detsigyield_weights_service,
-            **kwargs,
         )
 
         # Create a scipy.stats.rv_continuous instance for the time flux profile.

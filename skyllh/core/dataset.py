@@ -2255,7 +2255,7 @@ class Dataset(
     def get_aux_data(
         self,
         name: str,
-        default: Any | None = None,
+        default: Any = None,
     ):
         """Retrieves the auxiliary data that is stored in this data set under
         the given name.

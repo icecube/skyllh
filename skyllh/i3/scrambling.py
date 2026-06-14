@@ -39,7 +39,7 @@ class I3TimeScramblingMethod(
 
     # We override the scramble method because for IceCube we only need to change
     # the ``ra`` field.
-    def scramble(  # type: ignore[override]
+    def scramble(
         self,
         rss: RandomStateService,
         dataset: Dataset,
@@ -68,7 +68,7 @@ class I3TimeScramblingMethod(
         mjds = self._timegen.generate_times(rss, len(data))
 
         data['time'] = mjds
-        data['ra'] = azi_to_ra_transform(data['azi'], mjds)  # type: ignore[call-overload]
+        data['ra'] = azi_to_ra_transform(data['azi'], mjds)
 
         return data
 
@@ -145,6 +145,6 @@ class I3SeasonalVariationTimeScramblingMethod(
 
         # Get the correct right ascension.
         data['time'] = times
-        data['ra'] = azi_to_ra_transform(azi=data['azi'], mjd=times)  # type: ignore[call-overload]
+        data['ra'] = azi_to_ra_transform(azi=data['azi'], mjd=times)
 
         return data

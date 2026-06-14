@@ -317,7 +317,7 @@ def create_analysis(
 
     energy_spectrum_spline = splrep(source_energies, source_energy_spectrum / source_energies / source_energies, k=1)
 
-    spline_eval = BSpline(*energy_spectrum_spline)  # type: ignore[arg-type]
+    spline_eval = BSpline(*energy_spectrum_spline)  # pyright: ignore[reportArgumentType]
 
     e_peak = np.log10(source_energies[np.argmax(source_energy_spectrum)])
 

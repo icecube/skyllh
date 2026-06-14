@@ -240,7 +240,7 @@ class NPYFileLoader(FileLoader):
 
         return data
 
-    def load_data(  # type: ignore[override]
+    def load_data(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         keep_fields: str | Sequence[str] | None = None,
         dtype_conversions: dict | None = None,
@@ -922,7 +922,7 @@ class DataFieldRecordArray:
 
     def __init__(
         self,
-        data: Any | None,
+        data: Any,
         data_table_accessor: 'DataTableAccessor | None' = None,
         keep_fields: str | Sequence[str] | None = None,
         dtype_conversions: dict | None = None,

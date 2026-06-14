@@ -187,7 +187,7 @@ class PointLikeSourceI3DetSigYield(I3DetSigYield):
             **kwargs,
         )
 
-    def sources_to_recarray(self, sources: SourceModel | Sequence[SourceModel]) -> np.ndarray:  # type: ignore[override]
+    def sources_to_recarray(self, sources: SourceModel | Sequence[SourceModel]) -> np.ndarray:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Converts the sequence of PointLikeSource sources into a numpy record
         array holding the information of the sources needed for the
         detector signal yield calculation.
@@ -308,7 +308,7 @@ class FixedFluxPointLikeSourceI3DetSigYield(PointLikeSourceI3DetSigYield):
             )
         self._log_spl_sinDec = spl
 
-    def __call__(  # type: ignore[override]
+    def __call__(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, src_recarray: np.ndarray, src_params_recarray: None = None
     ) -> tuple[np.ndarray, dict]:
         """Retrieves the detector signal yield for the list of given sources.
@@ -600,7 +600,7 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
 
         return detsigyields
 
-    def construct_detsigyield(  # type: ignore[override]
+    def construct_detsigyield(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         dataset: Dataset,
         data: DatasetData,
@@ -729,7 +729,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(PointLikeSourceI3DetSigYield):
             )
         self._log_spl_sinDec_param = spl
 
-    def __call__(  # type: ignore[override]
+    def __call__(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, src_recarray: np.ndarray, src_params_recarray: np.ndarray
     ) -> tuple[np.ndarray, dict]:
         """Retrieves the detector signal yield for the given list of
@@ -923,7 +923,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYieldBuilder(
             )
         self._spline_order_param = order
 
-    def construct_detsigyield(  # type: ignore[override]
+    def construct_detsigyield(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         dataset: Dataset,
         data: DatasetData,

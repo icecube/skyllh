@@ -163,7 +163,7 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(TestStatistic):
         """
         return self._ns_param_name
 
-    def __call__(  # type: ignore[override]
+    def __call__(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         pmm: ParameterModelMapper,
         log_lambda: float,
@@ -208,7 +208,7 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(TestStatistic):
 
         if ns == 0:
             nsgrad = grads[ns_pidx]
-            nsgrad2 = llhratio.calculate_ns_grad2(ns=float(ns), src_params_recarray=np.empty(0), ns_pidx=ns_pidx, tl=tl)  # type: ignore[call-arg]
+            nsgrad2 = llhratio.calculate_ns_grad2(ns=float(ns), src_params_recarray=np.empty(0), ns_pidx=ns_pidx, tl=tl)
 
             TS = -2 * nsgrad**2 / (4 * nsgrad2)
 

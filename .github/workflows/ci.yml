@@ -30,7 +30,7 @@ jobs:
       with:
         python-version: "3.11"
     - name: Install pyright
-      run: pip install ".[dev]"
+      run: pip install ".[dev,extras]"
     - name: Run pyright
       run: pyright
 

@@ -153,7 +153,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
             self._gridparams_hash_log_ratio_spline_dict[gridparams_hash] = log_ratio_spline
 
         # Save the list of data field names.
-        self._data_field_names = [binning.name for binning in self._bkg_pdf.binnings]  # type: ignore[attr-defined]
+        self._data_field_names = [binning.name for binning in self._bkg_pdf.binnings]  # pyright: ignore[reportAttributeAccessIssue]
 
         # Construct the instance for the parameter interpolation method.
         self._interpolmethod = self._interpolmethod_cls(

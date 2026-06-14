@@ -163,7 +163,7 @@ class PDSignalEnergyPDF(
         return (pd, grads)
 
 
-class PDSignalEnergyPDFSet(  # type: ignore[misc]
+class PDSignalEnergyPDFSet(  # pyright: ignore[reportIncompatibleMethodOverride]
     PDFSet,
     IsSignalPDF,
     PDF,

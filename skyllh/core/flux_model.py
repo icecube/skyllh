@@ -45,7 +45,7 @@ from skyllh.core.source_model import (
 
 # numpy deprecated the np.trapz function in favor of np.trapezoid, but to maintain compatibility with older numpy
 # versions, we define _trapezoid as np.trapz if np.trapezoid is not available.
-_trapezoid = np.trapezoid if hasattr(np, 'trapezoid') else np.trapz  # type: ignore
+_trapezoid = np.trapezoid if hasattr(np, 'trapezoid') else np.trapz  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class FluxProfile(MathFunction, HasConfig, metaclass=abc.ABCMeta):
@@ -1394,7 +1394,7 @@ class UnityTimeFluxProfile(
             set time unit of this TimeFluxProfile instance.
         """
         if (unit is not None) and (unit != self._time_unit):
-            time_unit_conv_factor = float(unit.to(self._time_unit))  # type: ignore[arg-type]
+            time_unit_conv_factor = float(unit.to(self._time_unit))  # pyright: ignore[reportArgumentType]
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
 
@@ -1614,7 +1614,7 @@ class BoxTimeFluxProfile(
             instance is assumed.
         """
         if (unit is not None) and (unit != self._time_unit):
-            dt = dt * unit.to(self._time_unit)  # type: ignore[assignment]
+            dt = dt * unit.to(self._time_unit)  # pyright: ignore[reportAssignmentType]
 
         self._t_start += dt
         self._t_stop += dt
@@ -1843,7 +1843,7 @@ class GaussianTimeFluxProfile(
             assumed.
         """
         if (unit is not None) and (unit != self._time_unit):
-            dt = dt * unit.to(self._time_unit)  # type: ignore[assignment]
+            dt = dt * unit.to(self._time_unit)  # pyright: ignore[reportAssignmentType]
 
         self._t_start += dt
         self._t_stop += dt
@@ -1875,7 +1875,7 @@ class GaussianTimeFluxProfile(
             this TimeFluxProfile instance.
         """
         if (unit is not None) and (unit != self._time_unit):
-            time_unit_conv_factor = float(unit.to(self._time_unit))  # type: ignore[arg-type]
+            time_unit_conv_factor = float(unit.to(self._time_unit))  # pyright: ignore[reportArgumentType]
             t1 = t1 * time_unit_conv_factor
             t2 = t2 * time_unit_conv_factor
 
@@ -2118,7 +2118,7 @@ class FluxModel(
             * internal_units['time']
         )
 
-        factor = (self_flux_unit).to(internal_flux_unit).value  # type: ignore[union-attr]
+        factor = (self_flux_unit).to(internal_flux_unit).value  # pyright: ignore[reportAttributeAccessIssue]
 
         return factor
 
@@ -2368,7 +2368,7 @@ class FactorizedFluxModel(
 
     @param_names.setter
     def param_names(self, names):
-        super(FactorizedFluxModel, type(self)).param_names.fset(self, names)  # type: ignore[union-attr]
+        super(FactorizedFluxModel, type(self)).param_names.fset(self, names)  # pyright: ignore[reportAttributeAccessIssue]
 
     def __call__(
         self,

@@ -51,7 +51,7 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
 
             super().__init__(*args, **kwargs)
 
-        def _pdf(self, x, *args):  # type: ignore[override]
+        def _pdf(self, x, *args):
             """Calculates the probability density of the time flux profile
             function for given time values.
             """
@@ -59,7 +59,7 @@ def create_scipy_stats_rv_continuous_from_TimeFluxProfile(
 
             return pd
 
-        def _cdf(self, x, *args):  # type: ignore[override]
+        def _cdf(self, x, *args):
             """Calculates the cumulative distribution function values for rhe
             given time values. If the time flux profile instance provides a
             ``cdf`` method, it will be used. Otherwise the generic ``_cdf``
