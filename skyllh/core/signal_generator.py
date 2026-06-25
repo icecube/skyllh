@@ -786,7 +786,7 @@ class MCMultiDatasetSignalGenerator(
                 mu_flux_k = (
                     (mu / ref_N) *
                     (ref_N_k / ref_N) *
-                    fluxmodel.Phi0 * to_internal_flux_unit)
+                    1. * to_internal_flux_unit) #fluxmodel.Phi0
                 mu_fluxes[mu_fluxes_idx_offset + k] = mu_flux_k
             mu_fluxes_idx_offset += shg.n_sources
 
@@ -856,6 +856,7 @@ class MCMultiDatasetSignalGenerator(
         #       the signal event post processing for all datasets at once.
         signal_events_dict = dict()
         ds_idxs = np.unique(sig_events_meta['ds_idx'])
+        print('signal_generator.py : ds_idxs',ds_idxs )
         for ds_idx in ds_idxs:
             valid_event_field_ranges_dict =\
                 self.valid_event_field_ranges_dict_list[ds_idx]

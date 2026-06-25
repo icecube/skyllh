@@ -1186,7 +1186,8 @@ class MultiDatasetTCLLHRatio(
             if len(grads) > 1:
                 ns_summand = grads_j[ns_pidx] * ns * f_grads[j][pmask]
                 grads[pmask] += ns_summand + grads_j[pmask]
-
+        
+        print("In llhratio.py log_lambda",log_lambda,"grads",grads)
         return (log_lambda, grads)
 
     def calculate_ns_grad2(

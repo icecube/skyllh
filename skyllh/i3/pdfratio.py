@@ -279,8 +279,10 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(
         """
         gridparams = dict(
             zip(self._interpol_param_names, interpol_param_values))
+        print("i3/pdfratio gridparams:", gridparams)
         gridparams_hash = make_dict_hash(gridparams)
-
+        print("i3/pdfratio gridparams_hash:", gridparams_hash)
+        print("i3/pdfratio gridparams_hash_log_ratio_spline_dict:",self._gridparams_hash_log_ratio_spline_dict )
         spline = self._gridparams_hash_log_ratio_spline_dict[gridparams_hash]
 
         return spline

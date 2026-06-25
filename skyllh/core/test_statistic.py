@@ -111,12 +111,16 @@ class WilksTestStatistic(
             name=self._ns_param_name)
 
         ns = fitparam_values[ns_pidx]
+        print('ns in test_statistic.py', ns)
 
         # We need to distinguish between ns=0 and ns!=0, because the np.sign(ns)
         # function returns 0 for ns=0, but we want it to be 1 in such cases.
+        
         sgn_ns = np.where(ns == 0, 1., np.sign(ns))
 
         TS = 2 * sgn_ns * log_lambda
+        print('log_lambda in test_statistic.py', log_lambda)
+        
 
         return TS
 
@@ -231,5 +235,7 @@ class LLHRatioZeroNsTaylorWilksTestStatistic(
             return TS
 
         TS = 2 * np.sign(ns) * log_lambda
+        
+        #print('TS in test_statistic.py 2', TS)
 
         return TS
