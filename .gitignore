@@ -143,3 +143,4 @@ profile.html
 
 # Local temporary data repositories
 .repository
+/public_data/
