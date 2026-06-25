@@ -6,6 +6,7 @@ energy event PDF.
 """
 
 import numpy as np
+import photospline as psp
 
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF,
@@ -45,6 +46,8 @@ from skyllh.core.event_selection import (
 from skyllh.core.flux_model import (
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
+    FactorizedFluxModel,
+    PhotosplineDMEnergyFluxProfile
 )
 from skyllh.core.minimizer import (
     Minimizer,
@@ -127,11 +130,68 @@ from skyllh.scripting.logging import (
     setup_logging,
 )
 
+class DMFlux():
+    def __init__(self, channel, dm_mass,
+                 path_to_splinetables ='/data/user/liruohan/model_spline/photospline_tables/',
+                 interaction="ann", position="Earth",production='numu'):
+        """
+        available mass: [100,1000,10000]GeV
+        available channel: WW,bb
+        available production: numu and numu bar
+        """
+        
+        self._path_to_splinetables=path_to_splinetables
+        self._channel= channel
+        self._dm_mass= dm_mass
+        self._interaction= interaction
+        self._position= position
+        self._production= production
+        self._spline = self._load_spline_cases()
+
+
+    def _load_spline_cases(self):
+        if self._interaction == 'ann' and self._position == "Earth":
+            return self._select_spline()
+        else:
+            print('exception case, make sure the decay and propagation are implemented')
+            return None
+
+    def _select_spline(self):         
+        #initialize parameters
+        if ((self._dm_mass in [100,1000,10000]) and (self._channel in ['WW','bb'])):
+            fits_path=self._path_to_splinetables+'splinefit_{}_earth_{}_ann.fits'.format(self._channel,str(self._dm_mass))
+            self.spline = psp.SplineTable(fits_path)
+            return self.spline
+        else:
+            print("this annihilation channel/mass is not supported")  
+            return None
+        
+    
+    def get_channel(self):
+        return self._channel
+    
+    def get_dm_mass(self):
+        return self._dm_mass
+
+    def get_interaction(self):
+        return self._interaction
+
+    def get_production(self):
+        return self._production
+
+    def get_position(self):
+        return self._position
+    
+    def get_splinetable(self):
+        return self._spline
+
 
 def create_analysis(
         cfg,
         datasets,
         source,
+        channel=None,
+        mass=None,
         refplflux_Phi0=1,
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
@@ -273,14 +333,29 @@ def create_analysis(
         dtc_except_fields = ['mcweight']
 
     # Define the flux model.
-    fluxmodel = SteadyPointlikeFFM(
-        Phi0=refplflux_Phi0,
-        energy_profile=PowerLawEnergyFluxProfile(
-            E0=refplflux_E0,
-            gamma=refplflux_gamma,
-            cfg=cfg,
-        ),
-        cfg=cfg,
+    # fluxmodel = SteadyPointlikeFFM(
+    #     Phi0=refplflux_Phi0,
+    #     energy_profile=PowerLawEnergyFluxProfile(
+    #         E0=refplflux_E0,
+    #         gamma=refplflux_gamma,
+    #         cfg=cfg,
+    #     ),
+    #     cfg=cfg,
+    # )
+    # Define the flux model.
+    fluxmodel = FactorizedFluxModel(
+    Phi0=1.0,
+    spatial_profile=None,       # defaults to UnitySpatialFluxProfile
+    energy_profile=PhotosplineDMEnergyFluxProfile(
+        channel=channel,
+        mass=mass,
+        splinetable=DMFlux(channel,mass).get_splinetable(),
+        crit_log10_energy_lower=7, #1e1 GeV
+        crit_log10_energy_upper=10,  #1e4 GeV
+        energy_unit=None,
+        cfg=cfg),
+    time_profile=None,          # defaults to UnityTimeFluxProfile
+    cfg=cfg                     # only if your code needs a cfg
     )
 
     # Define the fit parameter ns.

@@ -976,6 +976,200 @@ class PhotosplineEnergyFluxProfile(
         self._crit_log10_energy_upper = v
 
 
+
+class PhotosplineDMEnergyFluxProfile(
+        PhotosplineEnergyFluxProfile,
+):
+    """The abstract base class for an energy flux profile based on Pythia simulated dm 
+    spectrum photospline.
+    """
+    @tool.requires('photospline')
+    def __init__(
+            self,
+            channel,
+            mass,
+            splinetable,
+            crit_log10_energy_lower,
+            crit_log10_energy_upper,
+            energy_unit=None,
+            **kwargs,
+    ):
+        """Creates a new instance of PhotosplineEnergyFluxProfile.
+        Parameters
+        ----------
+        channel : str
+            annihilation channel of DM particle, could be "WW","bb", "nuenue" or "nutaunutau".
+        mass : float
+            mass of DM particle in GeV (1f. precision).
+        energy_unit : instance of astropy.units.UnitBase | None
+            The used unit for energy.
+            If set to ``None``, the configured default energy unit for fluxes is
+            used.
+        """
+        super().__init__(
+            splinetable = splinetable,
+            crit_log10_energy_lower = crit_log10_energy_lower,
+            crit_log10_energy_upper = crit_log10_energy_upper,
+            energy_unit=energy_unit,
+            **kwargs)
+
+        self.channel = channel
+        self.mass = mass
+        self.cfg = kwargs.get('cfg')
+
+
+    @property
+    def channel(self):
+        """DM annihilation channel"""
+        return self._channel
+
+    @channel.setter
+    def channel(self,value):
+        if not value in ["WW","bb", '\[Nu]\[Mu]', '\[Nu]e']:
+            raise ValueError( 'not an available annahilation channel!')
+        self._channel = value
+
+    @property
+    def mass(self):
+        """mass of DM particle in GeV"""
+        return self._mass
+
+    @channel.setter
+    def mass(self,value):
+#         d = decimal.Decimal(str(value))
+#         abs(d.as_tuple().exponent)
+#         if d != 1: 
+#             raise ValueError('the precision of mass float number does not fulfill requirement')
+        self._mass = value
+
+    def to_internal_flux_unit(self):
+        """Calculates the conversion factor to convert the flux unit of this
+        flux model instance to the SkyLLH internally used flux unit.
+        Returns
+        -------
+        factor : float
+            The conversion factor.
+        """
+
+        return 1.
+
+
+    def __call__(
+            self,
+            E,
+            unit=None):
+        """Returns the power law values for the given energies as numpy ndarray
+        in same shape as E.
+        Parameters
+        ----------
+        E : float | 1D numpy ndarray of float
+            The energy value for which to retrieve the energy profile value.
+        unit : instance of astropy.units.UnitBase | None
+            The unit of the given energies.
+            If set to ``None``, the set energy unit of this EnergyFluxProfile
+            instance is assumed.
+        Returns
+        -------
+        values : 1D numpy ndarray of float
+            The energy profile values for the given energies.
+        """
+        E = np.atleast_1d(E)
+
+        if (unit is not None) and (unit != self._energy_unit):
+            E = E * unit.to(self._energy_unit)
+
+        #print("test E range", np.min(E), np.max(E))
+        #print("test E:", E)
+        value = self.splinetable.evaluate_simple([E])
+        #print("test value:", value)
+        return value
+        
+
+    def get_integral(
+            self,
+            E1,
+            E2,
+            unit=None):
+        """Robust integral for photospline-based energy profiles.
+    
+        Tries to use the photospline SplineTable native integrator (if present
+        and returns a finite value). Otherwise falls back to a log-space
+        trapezoidal integration with NaN/Inf protection and support clipping.
+        """
+        E1 = np.atleast_1d(E1).astype(np.float64)
+        E2 = np.atleast_1d(E2).astype(np.float64)
+        # print('E1',E1)
+        # print('E2',E2)
+    
+        if E1.shape != E2.shape:
+            raise ValueError('E1 and E2 must have the same shape.')
+    
+        # Unit conversion (if requested)
+        if (unit is not None) and (unit != self._energy_unit):
+            conv = unit.to(self._energy_unit)
+            E1 = E1 * conv
+            E2 = E2 * conv
+        
+        integral_list = []
+    
+        # # Spline support in linear energy units (crit_* are log10(E))
+        # emin = 10.0 ** float(self._crit_log10_energy_lower)
+        # emax = 10.0 ** float(self._crit_log10_energy_upper)
+    
+        # If your table ends at E = 1e4 (in the same energy unit), enforce that.
+        # Change TABLE_E_MAX if the true table end is different or read from splinetable.
+        spline_upper_limit = 9000
+        spline_lower_limit = 100
+        num_points=100
+
+        for e_lo, e_hi in zip(E1, E2):
+            actual_lo = max(e_lo, spline_lower_limit)
+            actual_hi = min(e_hi, spline_upper_limit)
+            if actual_lo < actual_hi:
+                # Create the energy grid for this specific bin
+                energies = np.linspace(actual_lo, actual_hi, num_points)
+                
+                # 3. Evaluate the spline at these energies
+                flux = []
+                for e in energies:
+                    # evaluate_simple returns the value at coordinate [e]
+                    val = self.splinetable.evaluate_simple([e])
+                    flux.append(val)
+            
+            # Convert flux to array and integrate
+                flux = np.array(flux)
+                bin_integral = np.trapz(flux, energies)
+                integral_list.append(bin_integral)
+            else:
+                # If the requested range (e_lo, e_hi) is entirely outside [100, 9000]
+                # (e.g., integrating from 10,000 to 1e9), the integral is 0
+                integral_list.append(0.0)
+                    
+        # Convert the final result to a numpy array
+        integral = np.array(integral_list, dtype=np.float64)   
+        #print('in flux_model integral',integral)
+        
+        return integral
+
+
+
+    def math_function_str(self):
+        """(read-only) The string representation of this energy flux profile
+        instance.
+        """
+        s = f'channel: {self._channel}, mass: {self._mass}'
+
+        return s
+
+    def __deepcopy__(self,memo):
+        """The photospline.SplineTable objects are strictly immutable.
+           Hence no copy should be required, ever!
+        """
+        return PhotosplineDMEnergyFluxProfile(
+            self.channel, self.mass, self.splinetable, self.crit_log10_energy_lower,
+            self.crit_log10_energy_upper,energy_unit=None, cfg=self.cfg)
+
+
 class FunctionEnergyFluxProfile(
         EnergyFluxProfile):
     r"""Energy flux profile for a callable function with energy as argument.
