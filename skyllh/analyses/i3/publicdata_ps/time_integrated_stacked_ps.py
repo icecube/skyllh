@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
-import photospline as psp
 
 from skyllh.analyses.i3.publicdata_ps.backgroundpdf import (
     PDDataBackgroundI3EnergyPDF,
@@ -20,6 +21,9 @@ from skyllh.analyses.i3.publicdata_ps.utils import (
     create_energy_cut_spline,
 )
 
+from skyllh.core import (
+    tool,
+)
 # CHANGE: Now we need the Multisource analysis instance
 # In the ps analaysis, we used the SingleSource class
 from skyllh.core.analysis import (
@@ -41,11 +45,10 @@ from skyllh.core.event_selection import (
     SpatialBoxEventSelectionMethod,
 )
 from skyllh.core.flux_model import (
+    FactorizedFluxModel,
+    PhotosplineDMEnergyFluxProfile,
     PowerLawEnergyFluxProfile,
     SteadyPointlikeFFM,
-    PhotosplineEnergyFluxProfile,
-    PhotosplineDMEnergyFluxProfile,
-    FactorizedFluxModel
 )
 from skyllh.core.minimizer import (
     Minimizer,
@@ -136,69 +139,60 @@ energy event PDF.
 which will contribute with a certain relative weight to the analysis.
 """
 
-class DMFlux():
-    def __init__(self, channel, dm_mass,
-                 path_to_splinetables ='/data/user/liruohan/model_spline/photospline_tables/',
-                 interaction="ann", position="Earth",production='numu'):
-        """
-        available mass: [100,1000,10000]GeV
-        available channel: WW,bb
-        available production: numu and numu bar
-        """
-        
-        self._path_to_splinetables=path_to_splinetables
-        self._channel= channel
-        self._dm_mass= dm_mass
-        self._interaction= interaction
-        self._position= position
-        self._production= production
-        self._spline = self._load_spline_cases()
+
+def create_dm_fluxmodel(
+        cfg,
+        channel,
+        mass,
+        splinetable=None,
+        spline_path=None,
+        Phi0=1.,
+        crit_log10_energy_lower=0.,
+        crit_log10_energy_upper=None,
+):
+    """Creates a steady point-like flux model for a fixed DM spectrum.
+
+    Either an already loaded photospline table or its path must be supplied.
+    By default, the upper support is set to the DM particle mass in GeV.
+    """
+    if splinetable is None:
+        if spline_path is None:
+            raise ValueError(
+                'Either splinetable or spline_path must be provided.')
+        photospline = tool.get('photospline')
+        splinetable = photospline.SplineTable(spline_path)
+    elif spline_path is not None:
+        raise ValueError(
+            'Only one of splinetable and spline_path can be provided.')
+
+    mass = float(mass)
+    if mass <= 0:
+        raise ValueError('The DM particle mass must be greater than zero.')
+    if crit_log10_energy_upper is None:
+        crit_log10_energy_upper = np.log10(mass)
+    if crit_log10_energy_lower >= crit_log10_energy_upper:
+        raise ValueError(
+            'crit_log10_energy_lower must be smaller than '
+            'crit_log10_energy_upper.')
+
+    return SteadyPointlikeFFM(
+        Phi0=Phi0,
+        energy_profile=PhotosplineDMEnergyFluxProfile(
+            channel=channel,
+            mass=mass,
+            splinetable=splinetable,
+            crit_log10_energy_lower=crit_log10_energy_lower,
+            crit_log10_energy_upper=crit_log10_energy_upper,
+            cfg=cfg,
+        ),
+        cfg=cfg,
+    )
 
 
-    def _load_spline_cases(self):
-        if self._interaction == 'ann' and self._position == "Earth":
-            return self._select_spline()
-        else:
-            print('exception case, make sure the decay and propagation are implemented')
-            return None
-
-    def _select_spline(self):         
-        #initialize parameters
-        if ((self._dm_mass in [100,1000,10000]) and (self._channel in ['WW','bb'])):
-            fits_path=self._path_to_splinetables+'splinefit_{}_earth_{}_ann.fits'.format(self._channel,str(self._dm_mass))
-            print(fits_path)
-            self.spline = psp.SplineTable(fits_path)
-            return self.spline
-        else:
-            print("this annihilation channel/mass is not supported")  
-            return None
-        
-    
-    def get_channel(self):
-        return self._channel
-    
-    def get_dm_mass(self):
-        return self._dm_mass
-
-    def get_interaction(self):
-        return self._interaction
-
-    def get_production(self):
-        return self._production
-
-    def get_position(self):
-        return self._position
-    
-    def get_splinetable(self):
-        return self._spline
-
-
-def create_analysis(  # noqa: C901
+def create_analysis(
         cfg,
         datasets,
-        catalog,
-        channel=None,
-        mass=None,
+        catalog,            # Change wrt to time integrated ps
         refplflux_Phi0=1,
         refplflux_E0=1e3,
         refplflux_gamma=2.0,
@@ -222,8 +216,9 @@ def create_analysis(  # noqa: C901
         tl=None,
         ppbar=None,
         logger_name=None,
-        
-): 
+        fluxmodel=None,
+        fit_gamma=True,
+):
     """Creates the Analysis instance for this particular analysis.
 
     Parameters
@@ -235,6 +230,12 @@ def create_analysis(  # noqa: C901
         analysis.
     catalog : Catalog instance
         The Catalog instance defining the point sources and their weigths.
+    fluxmodel : instance of FactorizedFluxModel | None
+        The flux model shared by all catalog sources. If set to ``None``, the
+        reference power-law flux model is created.
+    fit_gamma : bool
+        Whether gamma is a floating fit parameter. Set this to ``False`` for a
+        fixed spectrum such as a photospline DM model.
     refplflux_Phi0 : float
         The flux normalization to use for the reference power law flux model.
     refplflux_E0 : float
@@ -345,21 +346,28 @@ def create_analysis(  # noqa: C901
 # PHYSICS IS THE LIMIT :)
 
     # Define the flux model.
-    fluxmodel = FactorizedFluxModel(
-    Phi0=1.0,
-    spatial_profile=None,       # defaults to UnitySpatialFluxProfile
-    energy_profile=PhotosplineDMEnergyFluxProfile(
-        channel=channel,
-        mass=mass,
-        splinetable=DMFlux(channel,mass).get_splinetable(),
-        crit_log10_energy_lower=7, #1e1 GeV
-        crit_log10_energy_upper=10,  #1e4 GeV
-        energy_unit=None,
-        cfg=cfg),
-    time_profile=None,          # defaults to UnityTimeFluxProfile
-    cfg=cfg                     # only if your code needs a cfg
-    )
-    
+    if fluxmodel is None:
+        fluxmodel = SteadyPointlikeFFM(
+            Phi0=refplflux_Phi0,
+            energy_profile=PowerLawEnergyFluxProfile(
+                E0=refplflux_E0,
+                gamma=refplflux_gamma,
+                cfg=cfg,
+            ),
+            cfg=cfg,
+        )
+    if not isinstance(fluxmodel, FactorizedFluxModel):
+        raise TypeError(
+            'The fluxmodel argument must be an instance of '
+            'FactorizedFluxModel.')
+    fluxmodel_gamma = fluxmodel.get_param('gamma')
+    if fit_gamma and np.isnan(fluxmodel_gamma):
+        raise ValueError(
+            'fit_gamma can only be enabled for a flux model with a gamma '
+            'parameter.')
+    if not fit_gamma and not np.isnan(fluxmodel_gamma):
+        gamma_seed = fluxmodel_gamma
+
     # Define the fit parameter ns.
     param_ns = Parameter(
         name='ns',
@@ -372,7 +380,8 @@ def create_analysis(  # noqa: C901
         name='gamma',
         initial=gamma_seed,
         valmin=gamma_min,
-        valmax=gamma_max)
+        valmax=gamma_max,
+        isfixed=not fit_gamma)
     
 #==============================================================================
 # I HAVE TO CAREFULLY CHECK ALL THIS PART. IN PARTICULAR
@@ -604,6 +613,44 @@ def create_analysis(  # noqa: C901
         ana.construct_signal_generator()
 
     return ana
+
+
+def create_dm_analysis(
+        cfg,
+        datasets,
+        catalog,
+        channel,
+        mass,
+        splinetable=None,
+        spline_path=None,
+        dm_flux_Phi0=1.,
+        crit_log10_energy_lower=0.,
+        crit_log10_energy_upper=None,
+        **kwargs,
+):
+    """Creates the public-data stacking analysis for a fixed DM spectrum."""
+    fluxmodel = create_dm_fluxmodel(
+        cfg=cfg,
+        channel=channel,
+        mass=mass,
+        splinetable=splinetable,
+        spline_path=spline_path,
+        Phi0=dm_flux_Phi0,
+        crit_log10_energy_lower=crit_log10_energy_lower,
+        crit_log10_energy_upper=crit_log10_energy_upper,
+    )
+
+    kwargs['fit_gamma'] = False
+    kwargs.setdefault('gamma_seed', 0.)
+
+    return create_analysis(
+        cfg=cfg,
+        datasets=datasets,
+        catalog=catalog,
+        fluxmodel=fluxmodel,
+        **kwargs,
+    )
+
 
 # Test analysis
 

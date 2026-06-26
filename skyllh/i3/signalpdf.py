@@ -7,7 +7,6 @@ from skyllh.core.binning import (
 )
 from skyllh.core.flux_model import (
     FluxModel,
-    FluxProfile,
 )
 from skyllh.core.multiproc import (
     IsParallelizable,
@@ -134,7 +133,7 @@ class SignalI3EnergyPDFSet(
                 'The sin_dec_binning argument must be an instance '
                 'of BinningDefinition! '
                 f'Its type is {classname(sin_dec_binning)}!')
-        if not isinstance(fluxmodel, FluxModel) and not isinstance(fluxmodel, FluxProfile):
+        if not isinstance(fluxmodel, FluxModel):
             raise TypeError(
                 'The fluxmodel argument must be an instance of FluxModel! '
                 f'Its type is {classname(fluxmodel)}!')
@@ -198,8 +197,7 @@ class SignalI3EnergyPDFSet(
             """
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
-            myfluxmodel = fluxmodel.copy()
-            #myfluxmodel = fluxmodel.copy(newparams=gridparams)
+            myfluxmodel = fluxmodel.copy(newparams=gridparams)
 
             # Calculate the signal energy weight of the event. Note, that
             # because we create a normalized PDF, we can ignore all constants.
@@ -226,9 +224,8 @@ class SignalI3EnergyPDFSet(
         data_mcweight = data_mc['mcweight']
         data_true_energy = data_mc['true_energy']
 
-        flux_unit_conv_factor = 1.
-        # flux_unit_conv_factor =\
-        #     fluxmodel.to_internal_flux_unit()
+        flux_unit_conv_factor =\
+            fluxmodel.to_internal_flux_unit()
 
         args_list = [
             (

@@ -20,9 +20,7 @@ from skyllh.core.debugging import (
     get_logger,
 )
 from skyllh.core.flux_model import (
-    FluxModel,
     FactorizedFluxModel,
-    FluxProfile,
 )
 from skyllh.core.multiproc import (
     IsParallelizable,
@@ -249,7 +247,7 @@ class PDSignalEnergyPDFSet(
             raise TypeError(
                 'The ds argument must be an instance of I3Dataset!')
 
-        if not isinstance(fluxmodel, FactorizedFluxModel) and not isinstance(fluxmodel, FluxProfile):
+        if not isinstance(fluxmodel, FactorizedFluxModel):
             raise TypeError(
                 'The fluxmodel argument must be an instance of '
                 'FactorizedFluxModel! '
@@ -342,8 +340,7 @@ class PDSignalEnergyPDFSet(
             """
             # Create a copy of the FluxModel with the given flux parameters.
             # The copy is needed to not interfer with other CPU processes.
-            my_fluxmodel = fluxmodel.copy() #only for dm case
-            #my_fluxmodel = fluxmodel.copy(newparams=gridparams)
+            my_fluxmodel = fluxmodel.copy(newparams=gridparams)
 
             self._logger.debug(
                 f'Generate signal energy PDF for parameters {gridparams} in '
@@ -712,7 +709,7 @@ class PDSignalEnergyPDFSetMultiSource(
             raise TypeError(
                 'The ds argument must be an instance of I3Dataset!')
 
-        if not isinstance(fluxmodel, FluxModel) and not isinstance(fluxmodel, FluxProfile):
+        if not isinstance(fluxmodel, FactorizedFluxModel):
             raise TypeError(
                 'The fluxmodel argument must be an instance of '
                 'FactorizedFluxModel! '
@@ -855,16 +852,15 @@ class PDSignalEnergyPDFSetMultiSource(
             # sm.n_true_dec_bins.
             for dec_bin in stored_sm_data:
                 # Calculate the flux probability p(E_nu|gamma).
-                
                 flux_prob = (
                     my_fluxmodel.energy_profile.get_integral(
                         stored_sm_data[dec_bin]['true_enu_binedges_lower'],
                         stored_sm_data[dec_bin]['true_enu_binedges_upper']
-                    ) / 1.0
-                    # my_fluxmodel.energy_profile.get_integral(
-                    #     stored_sm_data[dec_bin]['true_enu_binedges'][0],
-                    #     stored_sm_data[dec_bin]['true_enu_binedges'][-1]
-                    # )
+                    ) /
+                    my_fluxmodel.energy_profile.get_integral(
+                        stored_sm_data[dec_bin]['true_enu_binedges'][0],
+                        stored_sm_data[dec_bin]['true_enu_binedges'][-1]
+                    )
                 )
                 if not np.isclose(np.sum(flux_prob), 1):
                     self._logger.warn(
@@ -937,12 +933,7 @@ class PDSignalEnergyPDFSetMultiSource(
                         """
                         # New version, it uses pre stored data for efficiency
                         p = f_e_list[idx] * true_e_prob[idx]
-
-                        try:
-                            spline = FctSpline1D(p, log10_reco_e_binedges_list[idx])
-                        except ValueError as X:
-                            print('reco_e',np.isinf(log10_reco_e_binedges_list[idx]),log10_reco_e_binedges_list[idx])
-                        
+                       
                         spline = FctSpline1D(p, log10_reco_e_binedges_list[idx])
 
                         return spline(xvals)

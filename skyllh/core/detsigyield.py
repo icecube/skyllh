@@ -12,7 +12,6 @@ from skyllh.core.dataset import (
 )
 from skyllh.core.flux_model import (
     FluxModel,
-    FluxProfile,
 )
 from skyllh.core.livetime import (
     Livetime,
@@ -122,7 +121,7 @@ class DetSigYield(
 
     @fluxmodel.setter
     def fluxmodel(self, model):
-        if not isinstance(model, FluxModel) and not isinstance(model, FluxProfile):
+        if not isinstance(model, FluxModel):
             raise TypeError(
                 'The fluxmodel property must be an instance of FluxModel! '
                 f'Its current type is {classname(model)}.')
