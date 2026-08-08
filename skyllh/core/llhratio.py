@@ -7,6 +7,10 @@ import abc
 
 import numpy as np
 
+from skyllh._rs import (
+    RUST_AVAILABLE,
+    _rs,
+)
 from skyllh.core.config import (
     HasConfig,
 )
@@ -554,6 +558,18 @@ class ZeroSigH0SingleDatasetTCLLHRatio(SingleDatasetTCLLHRatio):
             The (N_fitparams,)-shaped numpy ndarray holding the gradient value
             of log_lambda for each fit parameter.
         """
+        if RUST_AVAILABLE:
+            log_lambda, grads, nsgrad_i = _rs.log_lambda_and_grads(
+                N,
+                ns,
+                ns_pidx,
+                p_mask,
+                np.ascontiguousarray(Xi, dtype=np.float64),
+                np.ascontiguousarray(dXi_dp, dtype=np.float64),
+            )
+            self._cache_nsgrad_i = nsgrad_i
+            return (log_lambda, grads)
+
         tracing = self._cfg['logging']['enable_tracing']
 
         # Get the number of selected events.

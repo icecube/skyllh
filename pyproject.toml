@@ -40,6 +40,9 @@ Documentation = "https://icecube.github.io/skyllh"
 Issues = "https://github.com/icecube/skyllh/issues"
 
 [project.optional-dependencies]
+rust = [
+    "skyllh-rs>=0.1",
+]
 dev = [
     "pre-commit",
     "pytest>=9.0.0",
