@@ -335,7 +335,7 @@ class PDDatasetSignalGenerator(
             ('run', int),
         ]
 
-        data = dict([(out_dt[0], np.empty((n_events,), dtype=out_dt[1])) for out_dt in out_dtype])
+        data = {out_dt[0]: np.empty((n_events,), dtype=out_dt[1]) for out_dt in out_dtype}
 
         events = DataFieldRecordArray(data, copy=False)
 

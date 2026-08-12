@@ -366,8 +366,6 @@ class SystemCommandError(
 ):
     """This custom exception will be raised when a system command failed."""
 
-    pass
-
 
 class DatasetTransferError(
     Exception,
@@ -375,8 +373,6 @@ class DatasetTransferError(
     """This custom exception defines an error that should be raised when the
     actual transfer of the dataset files failed.
     """
-
-    pass
 
 
 class DatasetTransfer(
@@ -463,7 +459,6 @@ class DatasetTransfer(
         DatasetTransferError
             If the actual transfer of the dataset files failed.
         """
-        pass
 
 
 class RSYNCDatasetTransfer(
@@ -816,14 +811,14 @@ def post_transfer_unarchive(
         )
         try:
             os.remove(archive_path)
-        except Exception as exc:
+        except OSError as exc:
             logger = get_logger(f'{__name__}.post_transfer_unarchive')
             logger.warning(str(exc))
         raise
 
     try:
         os.remove(archive_path)
-    except Exception as exc:
+    except OSError as exc:
         logger = get_logger(f'{__name__}.post_transfer_unarchive')
         logger.warning(str(exc))
 
@@ -978,15 +973,15 @@ class Dataset(
 
         self.description = ''
 
-        self._datafields = dict()
+        self._datafields = {}
 
-        self._exp_field_name_renaming_dict = dict()
-        self._mc_field_name_renaming_dict = dict()
+        self._exp_field_name_renaming_dict = {}
+        self._mc_field_name_renaming_dict = {}
 
-        self._data_preparation_functions = list()
-        self._binning_definitions = dict()
-        self._aux_data_definitions = dict()
-        self._aux_data = dict()
+        self._data_preparation_functions = []
+        self._binning_definitions = {}
+        self._aux_data_definitions = {}
+        self._aux_data = {}
 
     @property
     def name(self):
@@ -1110,7 +1105,7 @@ class Dataset(
     @verqualifiers.setter
     def verqualifiers(self, verqualifiers):
         if verqualifiers is None:
-            verqualifiers = dict()
+            verqualifiers = {}
         if not isinstance(verqualifiers, dict):
             raise TypeError('The version qualifiers must be of type dict!')
         # Check if the dictionary has format str:int.
@@ -1933,7 +1928,7 @@ class Dataset(
             data.
         """
         if keep_fields is None:
-            keep_fields = list()
+            keep_fields = []
         elif not issequenceof(keep_fields, str):
             raise TypeError('The keep_fields argument must be None, or a sequence of str!')
         keep_fields = list(keep_fields)
@@ -2317,7 +2312,7 @@ class DatasetCollection:
         self.name = name
         self.description = description
 
-        self._datasets = dict()
+        self._datasets = {}
 
     @property
     def name(self):
@@ -2571,7 +2566,7 @@ class DatasetCollection:
             The dictionary with the old field names as keys and the new field
             names as values.
         """
-        for _, dataset in self._datasets.items():
+        for dataset in self._datasets.values():
             dataset.exp_field_name_renaming_dict = d
 
     def set_mc_field_name_renaming_dict(
@@ -2588,7 +2583,7 @@ class DatasetCollection:
             The dictionary with the old field names as keys and the new field
             names as values.
         """
-        for _, dataset in self._datasets.items():
+        for dataset in self._datasets.values():
             dataset.mc_field_name_renaming_dict = d
 
     def set_dataset_prop(
@@ -2720,8 +2715,8 @@ class DatasetCollection:
             an individual data set as value and the data set's name as key.
         """
         if not isinstance(livetime, dict):
-            livetime_dict = dict()
-            for dsname, _ in self._datasets.items():
+            livetime_dict = {}
+            for dsname in self._datasets:
                 livetime_dict[dsname] = livetime
             livetime = livetime_dict
 
@@ -2733,7 +2728,7 @@ class DatasetCollection:
             )
 
         pbar = ProgressBar(len(self._datasets), parent=ppbar).start()
-        data_dict = dict()
+        data_dict = {}
         for dsname, dataset in self._datasets.items():
             data_dict[dsname] = dataset.load_data(livetime=livetime[dsname], tl=tl, **kwargs)
             pbar.increment()

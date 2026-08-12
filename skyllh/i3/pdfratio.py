@@ -143,7 +143,7 @@ class SplinedI3EnergySigSetOverBkgPDFRatio(SigSetOverBkgPDFRatio, IsParallelizab
         )
 
         # Save all the log_ratio splines in a dictionary.
-        self._gridparams_hash_log_ratio_spline_dict = dict()
+        self._gridparams_hash_log_ratio_spline_dict = {}
         for gridparams, log_ratio_spline in zip(gridparams_list, log_ratio_spline_list, strict=True):
             gridparams_hash = make_dict_hash(gridparams)
             self._gridparams_hash_log_ratio_spline_dict[gridparams_hash] = log_ratio_spline

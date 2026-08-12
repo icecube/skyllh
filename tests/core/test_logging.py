@@ -1,3 +1,4 @@
+import contextlib
 import io
 import logging
 import os
@@ -38,10 +39,8 @@ class SetupLoggingTestCase(unittest.TestCase):
     def _flush_handlers(self, logger_name):
         logger = logging.getLogger(logger_name)
         for handler in logger.handlers:
-            try:  # noqa: SIM105
+            with contextlib.suppress(OSError, ValueError):
                 handler.flush()
-            except Exception:
-                pass
 
     def test_console_handlers(self):
         stream = io.StringIO()

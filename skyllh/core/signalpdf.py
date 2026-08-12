@@ -208,11 +208,11 @@ class GaussianPSFPointLikeSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
                     f'data field "{self._pd_event_data_field_name}"'
                 )
             pd = tdm[self._pd_event_data_field_name]
-            return (pd, dict())
+            return (pd, {})
 
         pd = self.calculate_pd(tdm)
 
-        return (pd, dict())
+        return (pd, {})
 
 
 class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
@@ -309,7 +309,7 @@ class RayleighPSFPointSourceSignalSpatialPDF(SpatialPDF, IsSignalPDF):
         if self._pd is None:
             raise ValueError('The PDF has not been initialized with trial data!')
 
-        grads = dict()
+        grads = {}
 
         return (self._pd, grads)
 
@@ -477,11 +477,11 @@ class SignalTimePDF(
         """
         # Check if we have pre-calculated PDF values.
         if self._pd is not None:
-            return (self._pd, dict())
+            return (self._pd, {})
 
         pd = self._calculate_pd(tdm=tdm, params_recarray=params_recarray, tl=tl)
 
-        return (pd, dict())
+        return (pd, {})
 
 
 class SignalMultiDimGridPDF(MultiDimGridPDF, IsSignalPDF):
@@ -737,8 +737,8 @@ class SignalMultiDimGridPDFSet(
             with TaskTimer(tl, 'Get and set basis function indices for all PDFs.'):
                 V = self._cache_eventdata.shape[0]
                 try:
-                    bfi = pdf.pdf.search_centers([self._cache_eventdata[i] for i in range(0, V)])
-                    for _, pdf in self.items():
+                    bfi = pdf.pdf.search_centers([self._cache_eventdata[i] for i in range(V)])
+                    for pdf in self.values():
                         pdf.basis_function_indices = bfi
                 except ValueError:
                     logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
@@ -800,7 +800,7 @@ class SignalMultiDimGridPDFSet(
 
         # Construct the gradients dictionary with all the fit parameters, that
         # contribute to the local interpolation parameters.
-        grads = dict()
+        grads = {}
 
         tdm_n_sources = tdm.n_sources
         for fitparam_id in range(self.pmm.n_global_floating_params):
@@ -942,8 +942,8 @@ class SignalSHGMappedMultiDimGridPDFSet(
             with TaskTimer(tl, 'Get and set basis function indices for all PDFs.'):
                 V = self._cache_eventdata.shape[0]
                 try:
-                    bfi = pdf.pdf.search_centers([self._cache_eventdata[i] for i in range(0, V)])
-                    for _, pdf in self.items():
+                    bfi = pdf.pdf.search_centers([self._cache_eventdata[i] for i in range(V)])
+                    for pdf in self.values():
                         pdf.basis_function_indices = bfi
                 except ValueError:
                     logger = get_logger(f'{__name__}.{classname(self)}.initialize_for_new_trial')
@@ -1007,4 +1007,4 @@ class SignalSHGMappedMultiDimGridPDFSet(
 
             pd[values_mask] = pd_pdf
 
-        return (pd, dict())
+        return (pd, {})

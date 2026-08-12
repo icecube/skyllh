@@ -107,7 +107,6 @@ class SpatialFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         values : 1D numpy ndarray
             The spatial profile values.
         """
-        pass
 
 
 class UnitySpatialFluxProfile(SpatialFluxProfile):
@@ -326,7 +325,6 @@ class EnergyFluxProfile(FluxProfile, metaclass=abc.ABCMeta):
         values : 1D numpy ndarray of float
             The energy profile values for the given energies.
         """
-        pass
 
     def get_integral(
         self,
@@ -1103,7 +1101,7 @@ class EpeakFunctionEnergyProfile(FunctionEnergyFluxProfile):
 
             # make sure it is always positive (probably not an issue any more with np.trapz.
             # used to be an issue using the spline integrate self.function.integrate)
-            integral[i] = tmp_int if tmp_int >= 0.0 else 0.0
+            integral[i] = max(tmp_int, 0.0)
 
         return integral
 
@@ -1231,7 +1229,6 @@ class TimeFluxProfile(
         values : 1D numpy ndarray of float
             The time profile values.
         """
-        pass
 
     @abc.abstractmethod
     def move(
@@ -1251,7 +1248,6 @@ class TimeFluxProfile(
             If set to ``Ǹone``, the set time unit of this TimeFluxProfile
             instance is assumed.
         """
-        pass
 
     @abc.abstractmethod
     def get_integral(
@@ -1280,7 +1276,6 @@ class TimeFluxProfile(
             The integral value(s) of the time profile. The values are in the
             set time unit of this TimeFluxProfile instance.
         """
-        pass
 
 
 class UnityTimeFluxProfile(
@@ -1353,7 +1348,6 @@ class UnityTimeFluxProfile(
             If set to ``None``, the set time unit of this TimeFluxProfile
             instance is assumed.
         """
-        pass
 
     def get_integral(
         self,
@@ -2067,7 +2061,6 @@ class FluxModel(
             The flux values are in unit of the set flux model units
             [energy]^{-1} [angle]^{-2} [length]^{-2} [time]^{-1}.
         """
-        pass
 
     def to_internal_flux_unit(self):
         """Calculates the conversion factor to convert the flux unit of this

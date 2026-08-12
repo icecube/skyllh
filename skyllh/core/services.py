@@ -555,7 +555,7 @@ class DatasetSignalWeightFactorsService:
 
         # Calculate the derivative of f_j w.r.t. all floating parameters present
         # in the a_jk_grads using the quotient rule of differentiation.
-        self._f_j_grads = dict()
+        self._f_j_grads = {}
         for gpidx in a_jk_grads:
             # a is a scalar.
             # a_j is a (N_datasets)-shaped ndarray.

@@ -11,7 +11,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         self.field1 = np.array([1.4, 1.3, 1.5, 1.1, 1.2], dtype=np.float64)
         self.field2 = np.array([2.5, 2.1, 2.3, 2.4, 2.2], dtype=np.float64)
         self.field3 = np.array([3.2, 3.5, 3.1, 3.3, 3.4], dtype=np.float64)
-        data = dict(field1=self.field1, field2=self.field2, field3=self.field3)
+        data = {'field1': self.field1, 'field2': self.field2, 'field3': self.field3}
         self.arr = DataFieldRecordArray(data)
         self.arr_len = 5
 
@@ -61,7 +61,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
 
         # Set selected rows with new values by indices.
         idx = np.array([1, 4, 2])
-        new_data = dict(field1=self.field1[idx], field2=new_field2[idx], field3=self.field3[idx])
+        new_data = {'field1': self.field1[idx], 'field2': new_field2[idx], 'field3': self.field3[idx]}
         new_arr = DataFieldRecordArray(new_data)
         self.arr[idx] = new_arr
         assert_array_almost_equal(self.arr['field1'], self.field1)
@@ -73,7 +73,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
 
         # Set selected rows with new values by mask.
         mask = np.array([True, True, False, True, False])
-        new_data = dict(field1=self.field1[mask], field2=new_field2[mask], field3=self.field3[mask])
+        new_data = {'field1': self.field1[mask], 'field2': new_field2[mask], 'field3': self.field3[mask]}
         new_arr = DataFieldRecordArray(new_data)
         self.arr[mask] = new_arr
         assert_array_almost_equal(self.arr['field1'], self.field1)
@@ -91,10 +91,7 @@ class DataFieldRecordArray_TestCase(unittest.TestCase):
         assert_array_almost_equal(self.arr['field4'], new_field)
 
     def test__str__(self):
-        try:
-            str(self.arr)
-        except Exception:
-            self.fail('The __str__ method raised an exception!')
+        str(self.arr)
 
     def test_field_name_list(self):
         self.assertEqual(len(self.arr.field_name_list), 3)

@@ -141,7 +141,6 @@ class PDFRatio(
         tl : instance of TimeLord
             The optional instance of TimeLord to measure timing information.
         """
-        pass
 
     @abc.abstractmethod
     def get_ratio(
@@ -174,7 +173,6 @@ class PDFRatio(
             The (N_values,)-shaped 1d numpy ndarray of float holding the PDF
             ratio value for each trial event and source.
         """
-        pass
 
     @abc.abstractmethod
     def get_gradient(
@@ -214,7 +212,6 @@ class PDFRatio(
             If the PDF ratio does not depend on the given global fit parameter,
             0 should be returned.
         """
-        pass
 
     def __mul__(self, other):
         """Implements the mathematical operation ``new = self * other``, where

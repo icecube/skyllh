@@ -33,7 +33,6 @@ class TimeGenerationMethod(
         times : ndarray
             The 1d numpy ndarray holding the generated times.
         """
-        pass
 
 
 class LivetimeTimeGenerationMethod(

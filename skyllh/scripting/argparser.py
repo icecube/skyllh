@@ -23,7 +23,7 @@ def create_argparser(description=None, options=True):
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
 
     if options is True:
-        options = dict()
+        options = {}
 
     if isinstance(options, dict):
         add_argparser_options(parser=parser, **options)

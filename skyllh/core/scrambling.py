@@ -41,7 +41,6 @@ class DataScramblingMethod(
         data : instance of DataFieldRecordArray
             The given DataFieldRecordArray holding the scrambled data.
         """
-        pass
 
 
 class UniformRAScramblingMethod(

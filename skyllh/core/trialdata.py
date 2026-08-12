@@ -887,7 +887,7 @@ class TrialDataManager:
         if len(self._source_data_fields_dict) == 0:
             return
 
-        for _, dfield in self._source_data_fields_dict.items():
+        for dfield in self._source_data_fields_dict.values():
             dfield.calculate(tdm=self, shg_mgr=shg_mgr, pmm=pmm)
 
         self._trial_data_state_id += 1
@@ -909,7 +909,7 @@ class TrialDataManager:
         if len(self._pre_evt_sel_static_data_fields_dict) == 0:
             return
 
-        for _, dfield in self._pre_evt_sel_static_data_fields_dict.items():
+        for dfield in self._pre_evt_sel_static_data_fields_dict.values():
             dfield.calculate(tdm=self, shg_mgr=shg_mgr, pmm=pmm)
 
         self._trial_data_state_id += 1
@@ -930,7 +930,7 @@ class TrialDataManager:
         if len(self._static_data_fields_dict) == 0:
             return
 
-        for _, dfield in self._static_data_fields_dict.items():
+        for dfield in self._static_data_fields_dict.values():
             dfield.calculate(tdm=self, shg_mgr=shg_mgr, pmm=pmm)
 
         self._trial_data_state_id += 1
@@ -954,7 +954,7 @@ class TrialDataManager:
         if len(self._global_fitparam_data_fields_dict) == 0:
             return
 
-        for _, dfield in self._global_fitparam_data_fields_dict.items():
+        for dfield in self._global_fitparam_data_fields_dict.values():
             dfield.calculate(tdm=self, shg_mgr=shg_mgr, pmm=pmm, global_fitparams_dict=global_fitparams_dict)
 
         self._trial_data_state_id += 1

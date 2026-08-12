@@ -384,7 +384,6 @@ class PDF(
         ValueError
             If some of the trial data is outside the PDF's value space.
         """
-        pass
 
     def initialize_for_new_trial(self, tdm, tl=None, **kwargs):
         """This method is called when a new trial is initialized. Derived
@@ -398,7 +397,6 @@ class PDF(
         tl : instance of TimeLord | None
             The optional instance of TimeLord to measure timing information.
         """
-        pass
 
     @abc.abstractmethod
     def get_pd(self, tdm, params_recarray=None, tl=None):
@@ -445,7 +443,6 @@ class PDF(
             id of the global fit parameter. The value is a (N_values,)-shaped
             numpy ndarray.
         """
-        pass
 
 
 class PDFProduct(
@@ -594,7 +591,7 @@ class PDFProduct(
         pd = pd1 * pd2
 
         # Loop over the set of global fit parameter gradients.
-        grads = dict()
+        grads = {}
         for gpid in set(list(grads1.keys()) + list(grads2.keys())):
             # Calculate the gradient w.r.t. the fit parameter of id ``pgid``.
 
@@ -1277,7 +1274,7 @@ class MultiDimGridPDF(
             if self.basis_function_indices is None:
                 with TaskTimer(tl, 'Get basis function indices from photospline.'):
                     try:
-                        self.basis_function_indices = self._pdf.search_centers([eventdata[i] for i in range(0, V)])
+                        self.basis_function_indices = self._pdf.search_centers([eventdata[i] for i in range(V)])
                     except ValueError:
                         # In case the photospline `search_centers` call fails
                         # (when `eventdata` is outside photospline boundaries)
@@ -1288,23 +1285,23 @@ class MultiDimGridPDF(
                 if self.basis_function_indices is not None:
                     if evt_mask is None:
                         pd = self._pdf.evaluate(
-                            [eventdata[i] for i in range(0, V)],
-                            [self.basis_function_indices[i] for i in range(0, V)],
+                            [eventdata[i] for i in range(V)],
+                            [self.basis_function_indices[i] for i in range(V)],
                         )
                     else:
                         pd = self._pdf.evaluate(
-                            [eventdata[i][evt_mask] for i in range(0, V)],
-                            [self.basis_function_indices[i][evt_mask] for i in range(0, V)],
+                            [eventdata[i][evt_mask] for i in range(V)],
+                            [self.basis_function_indices[i][evt_mask] for i in range(V)],
                         )
                 else:
                     # Falling back to the slower photospline evaluation.
                     if evt_mask is None:
                         pd = self._pdf.evaluate_simple(
-                            [eventdata[i] for i in range(0, V)],
+                            [eventdata[i] for i in range(V)],
                         )
                     else:
                         pd = self._pdf.evaluate_simple(
-                            [eventdata[i][evt_mask] for i in range(0, V)],
+                            [eventdata[i][evt_mask] for i in range(V)],
                         )
 
         with TaskTimer(tl, 'Normalize MultiDimGridPDF with norm factor.'):
@@ -1418,7 +1415,7 @@ class MultiDimGridPDF(
         if self._cache_pd_values:
             pd = self._get_cached_pd_values(tdm=tdm)
             if pd is not None:
-                return (pd, dict())
+                return (pd, {})
 
         with TaskTimer(tl, 'Get PDF eventdata.'):
             if self.is_signal_pdf:
@@ -1432,7 +1429,7 @@ class MultiDimGridPDF(
             # The call to get_pd_with_eventdata will cache the pd values.
             pd = self.get_pd_with_eventdata(tdm=tdm, params_recarray=params_recarray, eventdata=eventdata, tl=tl)
 
-        return (pd, dict())
+        return (pd, {})
 
 
 class PDFSet(
@@ -1465,7 +1462,7 @@ class PDFSet(
 
         self.param_grid_set = param_grid_set
 
-        self._gridparams_hash_pdf_dict = dict()
+        self._gridparams_hash_pdf_dict = {}
 
     @property
     def param_grid_set(self):

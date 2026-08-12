@@ -21,10 +21,10 @@ def __getattr__(name):
 # Change macOS default multiprocessing start method 'spawn' to 'fork'.
 try:
     mp.set_start_method('fork')
-except Exception:
+except RuntimeError:
     # It could be already set by another package.
     if mp.get_start_method() != 'fork':
-        logging.warning(
+        logging.getLogger(__name__).warning(
             "Couldn't set the multiprocessing start method to 'fork'. "
             "Parallel calculations using 'ncpu' argument != 1 may break."
         )

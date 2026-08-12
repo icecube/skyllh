@@ -51,7 +51,7 @@ class FuncWithGradsFunctor(
         super().__init__(**kwargs)
 
         if func_args is None:
-            func_args = tuple()
+            func_args = ()
 
         self._func = func
         self._func_args = func_args
@@ -181,9 +181,9 @@ class IMinuitMinimizerImpl(
             The iminuit OptimizeResult dictionary with additional information.
         """
         if func_args is None:
-            func_args = tuple()
+            func_args = ()
         if kwargs is None:
-            kwargs = dict()
+            kwargs = {}
 
         iminuit = tool.get('iminuit')
 

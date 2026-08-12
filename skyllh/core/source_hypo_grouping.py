@@ -207,7 +207,7 @@ class SourceHypoGroupManager:
         """
         super().__init__(**kwargs)
 
-        self._shg_list = list()
+        self._shg_list = []
         # Define a 2D numpy array of shape (N_sources,2) that maps the source
         # index (0 to N_sources-1) to the index of the group and the source
         # index within the group for fast access.

@@ -52,7 +52,6 @@ class MathFunction(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def math_function_str(self):
         """The string showing the mathematical function of this MathFunction."""
-        pass
 
     def __str__(self):
         """Pretty string representation of this MathFunction instance."""

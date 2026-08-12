@@ -166,7 +166,6 @@ class DetSigYield(
             The generated (N_sources,)-shaped 1D numpy record ndarray holding
             the information for each source.
         """
-        pass
 
     @abc.abstractmethod
     def __call__(
@@ -206,7 +205,6 @@ class DetSigYield(
             is the (N_sources,)-shaped numpy ndarray holding the gradient value
             dY_k/dp_s.
         """
-        pass
 
 
 class DetSigYieldBuilder(
@@ -281,7 +279,7 @@ class DetSigYieldBuilder(
             This default implementation returns ``None``, indicating that a
             factory is not supported by this builder.
         """
-        return None
+        return
 
     @abc.abstractmethod
     def construct_detsigyield(
@@ -313,7 +311,6 @@ class DetSigYieldBuilder(
         detsigyield : instance of DetSigYield
             An instance derived from DetSigYield.
         """
-        pass
 
 
 class NullDetSigYieldBuilder(DetSigYieldBuilder):

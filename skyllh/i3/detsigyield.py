@@ -534,14 +534,14 @@ class FixedFluxPointLikeSourceI3DetSigYieldBuilder(
         args_list = [
             (
                 (),
-                dict(
-                    data_sin_true_dec=data_sin_true_dec,
-                    data_true_energy=data_true_energy,
-                    sin_dec_binning=sin_dec_binning,
-                    weights=weights,
-                    fluxmodel=shg.fluxmodel,
-                    to_internal_flux_unit_factor=to_internal_flux_unit_factor,
-                ),
+                {
+                    'data_sin_true_dec': data_sin_true_dec,
+                    'data_true_energy': data_true_energy,
+                    'sin_dec_binning': sin_dec_binning,
+                    'weights': weights,
+                    'fluxmodel': shg.fluxmodel,
+                    'to_internal_flux_unit_factor': to_internal_flux_unit_factor,
+                },
             )
             for (shg, to_internal_flux_unit_factor) in zip(shgs, to_internal_flux_unit_factors, strict=True)
         ]
@@ -750,7 +750,7 @@ class SingleParamFluxPointLikeSourceI3DetSigYield(PointLikeSourceI3DetSigYield):
         gfp_idxs = gfp_idxs[gfp_idxs > 0] - 1
 
         # Calculate the gradients for each global fit parameter.
-        grads = dict()
+        grads = {}
         for gfp_idx in gfp_idxs:
             # Create the gradient array of shape (n_sources,). This could be
             # a masked array to save memory, when there are many sources and

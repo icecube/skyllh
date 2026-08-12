@@ -117,7 +117,7 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             )
 
         if not isinstance(kde_smoothing, bool):
-            raise ValueError(
+            raise TypeError(
                 'The kde_smoothing argument must be an instance of bool! '
                 f'Its current type is {classname(kde_smoothing)}!'
             )
@@ -252,7 +252,7 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
         return self._hist_mask_mc_covered & ~self._hist_mask_mc_covered_zero_physics
 
     def _construct_conditional_pdf_spline(self):
-        """ """
+        """Constructs the 2D spline of the log10(E)-sin(dec) histogram."""
         spline = FctSpline2D(self._hist_logE_sinDec, self.binnings[0].binedges, self.binnings[1].binedges)
 
         return spline
@@ -349,7 +349,7 @@ class PDBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
             w.r.t. each global fit parameter. By definition this PDF does not
             depend on any fit parameter, hence, this dictionary is empty.
         """
-        grads = dict()
+        grads = {}
 
         return (self._pd, grads)
 
@@ -559,6 +559,6 @@ class PDMCBackgroundI3EnergyPDF(EnergyPDF, IsBackgroundPDF, UsesBinning):
         with TaskTimer(tl, 'Evaluating sindecmu-log10emu PDF.'):
             pd = self._hist_logE_sinDec[(log10emu_idxs, sindecmu_idxs)]
 
-        grads = dict()
+        grads = {}
 
         return (pd, grads)

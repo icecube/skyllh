@@ -14,14 +14,15 @@
 import os
 import sys
 from datetime import (
-    date,
+    UTC,
+    datetime,
 )
 
 sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
 
-year = date.today().year
+year = datetime.now(tz=UTC).date().year
 
 project = 'SkyLLH'
 copyright = f'{year}, The IceCube Collaboration, C. Bellenghi, T. Kontrimas, M. Wolf'
@@ -74,18 +75,7 @@ autodoc_default_options = {
     'member-order': 'bysource',
     'special-members': True,
     'undoc-members': True,
-    'exclude-members': ','.join(
-        [
-            '__abstractmethods__',
-            '__annotate_func__',
-            '__dict__',
-            '__hash__',
-            '__init__',
-            '__module__',
-            '__str__',
-            '__weakref__',
-        ]
-    ),
+    'exclude-members': '__abstractmethods__,__annotate_func__,__dict__,__hash__,__init__,__module__,__str__,__weakref__',
     'show-inheritance': True,
 }
 

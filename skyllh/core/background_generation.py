@@ -61,7 +61,6 @@ class BackgroundGenerationMethod(
         shg_mgr : instance of SourceHypoGroupManager
             The new instance of SourceHypoGroupManager.
         """
-        pass
 
     @abc.abstractmethod
     def generate_events(
@@ -108,7 +107,6 @@ class BackgroundGenerationMethod(
             then the number of pure background events in the generated
             background event sample.
         """
-        pass
 
 
 class MCDataSamplingBkgGenMethod(

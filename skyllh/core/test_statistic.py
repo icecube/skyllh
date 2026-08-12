@@ -36,7 +36,6 @@ class TestStatistic(metaclass=abc.ABCMeta):
         TS : float
             The calculated test-statistic value.
         """
-        pass
 
 
 class WilksTestStatistic(TestStatistic):

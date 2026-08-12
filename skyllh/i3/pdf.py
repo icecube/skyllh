@@ -295,4 +295,4 @@ class I3EnergyPDF(
         with TaskTimer(tl, 'Evaluating log10_energy-sin_dec histogram.'):
             pd = self._hist_log10_energy_sin_dec[(log10_energy_idx, sin_dec_idx)]
 
-        return (pd, dict())
+        return (pd, {})

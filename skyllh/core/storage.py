@@ -22,7 +22,7 @@ from skyllh.core.py import (
 
 # Define a file loader registry that holds the FileLoader classes for different
 # file formats.
-_FILE_LOADER_REG = dict()
+_FILE_LOADER_REG = {}
 
 
 def register_FileLoader(formats, fileloader_cls):
@@ -129,7 +129,6 @@ class FileLoader(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def load_data(self, **kwargs):
         """This method is supposed to load the data from the file."""
-        pass
 
 
 class NPYFileLoader(FileLoader):
@@ -173,11 +172,11 @@ class NPYFileLoader(FileLoader):
         # accessing the data.
         mmap_ndarray = np.load(pathfilename, mmap_mode='r')
         field_names = mmap_ndarray.dtype.names
-        fname_to_fidx = dict([(fname, idx) for (idx, fname) in enumerate(field_names)])
+        fname_to_fidx = {fname: idx for (idx, fname) in enumerate(field_names)}
         dt_fields = mmap_ndarray.dtype.fields
         n_rows = mmap_ndarray.shape[0]
 
-        data = dict()
+        data = {}
 
         # Create empty arrays for each column of length n_rows.
         for fname in field_names:
@@ -195,11 +194,11 @@ class NPYFileLoader(FileLoader):
 
         # Loop through the rows of the recarray.
         bs = 4096
-        for ridx in range(0, n_rows):
+        for ridx in range(n_rows):
             row = mmap_ndarray[ridx]
-            for fname in data:
+            for fname, fdata in data.items():
                 fidx = fname_to_fidx[fname]
-                data[fname][ridx] = row[fidx]
+                fdata[ridx] = row[fidx]
 
             # Reopen the data file after each given blocksize.
             if ridx % bs == 0:
@@ -292,7 +291,7 @@ class NPYFileLoader(FileLoader):
                 )
 
         if dtype_conversions is None:
-            dtype_conversions = dict()
+            dtype_conversions = {}
         elif not isinstance(dtype_conversions, dict):
             raise TypeError('The dtype_conversions argument must be None, or an instance of dict!')
 
@@ -676,7 +675,7 @@ class TextFileLoader(FileLoader):
                 )
 
         if dtype_conversions is None:
-            dtype_conversions = dict()
+            dtype_conversions = {}
         elif not isinstance(dtype_conversions, dict):
             raise TypeError('The dtype_conversions argument must be None, or an instance of dict!')
 
@@ -736,24 +735,20 @@ class DataTableAccessor(
         arr : instance of numpy.ndarray
             The column data as numpy ndarray.
         """
-        pass
 
     @abc.abstractmethod
     def get_field_names(self, data):
         """This method is supposed to return a list of field names."""
-        pass
 
     @abc.abstractmethod
     def get_field_name_to_dtype_dict(self, data):
         """This method is supposed to return a dictionary with field name and
         numpy dtype instance for each field.
         """
-        pass
 
     @abc.abstractmethod
     def get_length(self, data):
         """This method is supposed to return the length of the data table."""
-        pass
 
 
 class NDArrayDataTableAccessor(
@@ -785,7 +780,7 @@ class NDArrayDataTableAccessor(
         """Returns the dictionary with field name and numpy dtype instance for
         each field.
         """
-        fname_to_dtype_dict = dict([(k, v[0]) for (k, v) in data.dtype.fields.items()])
+        fname_to_dtype_dict = {k: v[0] for (k, v) in data.dtype.fields.items()}
         return fname_to_dtype_dict
 
     def get_length(self, data):
@@ -823,7 +818,7 @@ class DictDataTableAccessor(
         """Returns the dictionary with field name and numpy dtype instance for
         each field.
         """
-        fname_to_dtype_dict = dict([(fname, data[fname].dtype) for fname in data])
+        fname_to_dtype_dict = {fname: data[fname].dtype for fname in data}
         return fname_to_dtype_dict
 
     def get_length(self, data):
@@ -863,7 +858,7 @@ class ParquetDataTableAccessor(
         """Returns the dictionary with field name and numpy dtype instance for
         each field.
         """
-        fname_to_dtype_dict = dict([(fname, data.field(fname).type.to_pandas_dtype()) for fname in data.column_names])
+        fname_to_dtype_dict = {fname: data.field(fname).type.to_pandas_dtype() for fname in data.column_names}
         return fname_to_dtype_dict
 
     def get_length(self, data):
@@ -896,7 +891,7 @@ class DataFieldRecordArrayDataTableAccessor(
         """Returns the dictionary with field name and numpy dtype instance for
         each field.
         """
-        fname_to_dtype_dict = dict([(fname, data[fname].dtype) for fname in data.field_name_list])
+        fname_to_dtype_dict = {fname: data[fname].dtype for fname in data.field_name_list}
         return fname_to_dtype_dict
 
     def get_length(self, data):
@@ -960,11 +955,11 @@ class DataFieldRecordArray:
             DataFieldRecordArray instance is provided, this option is set to
             ``True`` automatically.
         """
-        self._data_fields = dict()
+        self._data_fields = {}
         self._len = None
 
         if data is None:
-            data = dict()
+            data = {}
 
         if keep_fields is not None:
             if isinstance(keep_fields, str):
@@ -976,7 +971,7 @@ class DataFieldRecordArray:
                 )
 
         if dtype_conversions is None:
-            dtype_conversions = dict()
+            dtype_conversions = {}
         elif not isinstance(dtype_conversions, dict):
             raise TypeError('The dtype_conversions argument must be None, or an instance of dict!')
 
@@ -1361,7 +1356,7 @@ class DataFieldRecordArray:
             original DataFieldRecordArray. The selection data is a copy of the
             original data.
         """
-        data = dict()
+        data = {}
         for fname in self._field_name_list:
             # Get the data selection from the original data. This creates a
             # copy.

@@ -17,7 +17,7 @@ from scipy.stats import (
 
 try:
     from iminuit import minimize
-except Exception:
+except ImportError:
     IMINUIT_LOADED = False
 else:
     IMINUIT_LOADED = True
@@ -568,10 +568,8 @@ def estimate_mean_nsignal_for_ts_quantile(
     # Define the range of p-values that will be possible to fit with a
     # polynomial function of order not larger than 2.
     min_fit_p, max_fit_p = p - 0.35, p + 0.35
-    if min_fit_p < 0.5:
-        min_fit_p = 0.5
-    if max_fit_p > 0.985:
-        max_fit_p = 0.985
+    min_fit_p = max(min_fit_p, 0.5)
+    max_fit_p = min(max_fit_p, 0.985)
 
     (n_sig, p_vals, p_val_weights) = ([], [], [])
 

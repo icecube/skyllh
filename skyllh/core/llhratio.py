@@ -112,7 +112,6 @@ class LLHRatio(
         tl : instance of TimeLord | None
             The optional instance of TimeLord to use for timing measurements.
         """
-        pass
 
     @abc.abstractmethod
     def evaluate(self, fitparam_values, src_params_recarray=None, tl=None):
@@ -142,7 +141,6 @@ class LLHRatio(
             The (N_fitparams,)-shaped 1D numpy ndarray holding the gradient
             value for each global fit parameter.
         """
-        pass
 
     def maximize(self, rss, tl=None):
         """Maximize the log-likelihood ratio function, by using the ``evaluate``
@@ -269,7 +267,6 @@ class TCLLHRatio(LLHRatio, metaclass=abc.ABCMeta):
             The second derivative w.r.t. ns of the log-likelihood ratio function
             for the given fit parameter values.
         """
-        pass
 
     def maximize_with_1d_newton_rapson_minimizer(self, rss, tl=None):
         """Maximizes this log-likelihood ratio function, by minimizing its

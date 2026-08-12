@@ -84,7 +84,7 @@ class I3Dataset(
 
         self.grl_pathfilename_list = grl_pathfilenames
 
-        self.grl_field_name_renaming_dict = dict()
+        self.grl_field_name_renaming_dict = {}
 
     @property
     def grl_pathfilename_list(self):

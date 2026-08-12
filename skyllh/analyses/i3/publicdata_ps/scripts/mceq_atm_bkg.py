@@ -55,7 +55,7 @@ def create_flux_file(save_path, ds):
     theta_angles = 0.5 * (theta_angles_binedges[:-1] + theta_angles_binedges[1:])
     print(f'Theta angles = {theta_angles}')
 
-    flux_def = dict()
+    flux_def = {}
 
     all_component_names = [
         'numu_conv',

@@ -473,8 +473,8 @@ class ParameterSet:
 
         # Define dictionaries to map parameter names to storage index of the
         # parameter for fixed and floating parameters.
-        self._fixed_param_name_to_idx = dict()
-        self._floating_param_name_to_idx = dict()
+        self._fixed_param_name_to_idx = {}
+        self._floating_param_name_to_idx = {}
 
         # Define a (n_fixed_params,)-shaped ndarray holding the values of the
         # fixed parameters. This is for optimization purpose only.
@@ -766,8 +766,8 @@ class ParameterSet:
         fix_params_keys = fix_params.keys()
         self._fixed_param_name_list = []
         self._floating_param_name_list = []
-        self._fixed_param_name_to_idx = dict()
-        self._floating_param_name_to_idx = dict()
+        self._fixed_param_name_to_idx = {}
+        self._floating_param_name_to_idx = {}
         self._fixed_param_values = np.empty((0,), dtype=np.float64)
         for pidx, param in enumerate(self._params):
             pname = param.name
@@ -833,8 +833,8 @@ class ParameterSet:
         float_params_keys = float_params.keys()
         self._fixed_param_name_list = []
         self._floating_param_name_list = []
-        self._fixed_param_name_to_idx = dict()
-        self._floating_param_name_to_idx = dict()
+        self._fixed_param_name_to_idx = {}
+        self._floating_param_name_to_idx = {}
         self._fixed_param_values = np.empty((0,), dtype=np.float64)
         for pidx, param in enumerate(self._params):
             pname = param.name
@@ -918,14 +918,12 @@ class ParameterSet:
                 self._fixed_param_name_list = [param.name, *self._fixed_param_name_list]
                 self._fixed_param_values = np.concatenate(([param.value], self._fixed_param_values))
                 # Shift the index of all fixed parameters.
-                self._fixed_param_name_to_idx = dict([(k, v + 1) for (k, v) in self._fixed_param_name_to_idx.items()])
+                self._fixed_param_name_to_idx = {k: v + 1 for (k, v) in self._fixed_param_name_to_idx.items()}
                 self._fixed_param_name_to_idx[param.name] = 0
             else:
                 self._floating_param_name_list = [param.name, *self._floating_param_name_list]
                 # Shift the index of all floating parameters.
-                self._floating_param_name_to_idx = dict(
-                    [(k, v + 1) for (k, v) in self._floating_param_name_to_idx.items()]
-                )
+                self._floating_param_name_to_idx = {k: v + 1 for (k, v) in self._floating_param_name_to_idx.items()}
                 self._floating_param_name_to_idx[param.name] = 0
         else:
             # Add parameter at back of parameter list.
@@ -1506,7 +1504,7 @@ class ParameterGridSet(NamedObjectCollection):
         param_grids = [paramgrid.grid for paramgrid in self.objects]
 
         dict_list = [
-            dict([(p_i, t_i) for (p_i, t_i) in zip(self.name_list, tup, strict=True)])
+            {p_i: t_i for (p_i, t_i) in zip(self.name_list, tup, strict=True)}
             for tup in itertools.product(*param_grids)
         ]
 

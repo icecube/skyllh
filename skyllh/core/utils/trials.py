@@ -50,17 +50,17 @@ def create_pseudo_data_file(
         rss=rss, mean_n_sig=mean_n_sig, sig_kwargs=sig_kwargs, tl=tl
     )
 
-    trial_data = dict(
-        mean_n_bkg_list=mean_n_bkg_list,
-        mean_n_sig=mean_n_sig,
-        bkg_kwargs=bkg_kwargs,
-        sig_kwargs=sig_kwargs,
-        n_sig=n_sig,
-        n_bkg_events_list=n_bkg_events_list,
-        n_sig_events_list=n_sig_events_list,
-        bkg_events_list=bkg_events_list,
-        sig_events_list=sig_events_list,
-    )
+    trial_data = {
+        'mean_n_bkg_list': mean_n_bkg_list,
+        'mean_n_sig': mean_n_sig,
+        'bkg_kwargs': bkg_kwargs,
+        'sig_kwargs': sig_kwargs,
+        'n_sig': n_sig,
+        'n_bkg_events_list': n_bkg_events_list,
+        'n_sig_events_list': n_sig_events_list,
+        'bkg_events_list': bkg_events_list,
+        'sig_events_list': sig_events_list,
+    }
 
     with TaskTimer(tl, 'Writing pseudo data to file.'), open(filename, 'wb') as fp:
         pickle.dump(trial_data, fp)

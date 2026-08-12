@@ -53,7 +53,6 @@ class BackgroundGenerator(
         shg_mgr : instance of SourceHypoGroupManager
             The new instance of SourceHypoGroupManager.
         """
-        pass
 
     @abc.abstractmethod
     def generate_background_events(
@@ -90,7 +89,6 @@ class BackgroundGenerator(
             background events. The number of events can be less than stated in
             `n_bkg_list` if an event selection method is used.
         """
-        pass
 
 
 class DatasetBackgroundGenerator(
@@ -371,7 +369,7 @@ class MultiDatasetBackgroundGenerator(
             )
 
         if kwargs is None:
-            kwargs = dict()
+            kwargs = {}
 
         n_bkg_events_list = []
         bkg_events_list = []
