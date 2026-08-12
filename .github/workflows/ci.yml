@@ -37,7 +37,7 @@ jobs:
       uses: actions/cache@v6
       with:
         path: .repository
-        key: repository-v1
+        key: repository-v2
         restore-keys: repository-
     - name: Install dependencies
       run: pip install ".[dev]"

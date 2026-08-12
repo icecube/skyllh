@@ -100,7 +100,7 @@ class AnalysisTestCase(unittest.TestCase):
                         pdf.log10_reco_e_min,
                         pdf.log10_reco_e_max,
                         limit=200,
-                        full_output=1,
+                        full_output=True,
                     )[0]
                     / pdf.f_e_spl.norm
                 )
