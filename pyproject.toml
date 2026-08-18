@@ -43,6 +43,7 @@ Issues = "https://github.com/icecube/skyllh/issues"
 dev = [
     "pre-commit",
     "pytest>=9.0.0",
+    "ruff>=0.16",
 ]
 docs = [
     "sphinx<9.0.0",
