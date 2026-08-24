@@ -9,6 +9,27 @@ They progress from a basic steady-state point-source fit to more specialised tec
 
 The tutorials support both the `10-year <https://doi.org/10.7910/DVN/VKL316>`_ (IceTracks-DR1) and the `14-year <https://doi.org/10.7910/DVN/MMIIZA>`_ (IceTracks-DR2) IceCube public point-source datasets. They are automatically downloaded from `dataverse.harvard.edu <https://dataverse.harvard.edu/dataverse/icecube>`_ to a local cache directory (``~/.cache/skyllh``). To use custom dataset locations, set the ``cfg['repository']['base_path']`` to the desired path.
 
+.. note::
+
+    As of this release, ``'IceTracks-DR2'`` refers to version 2.0 of the 14-year
+    dataset, which fixes two binning issues identified in version 1.0:
+
+    1. The IC86 Monte Carlo simulations extend only up to a true energy of
+       log10(E/GeV) = 8.7, which falls inside the last true-energy bin,
+       log10(E/GeV) = [8.6, 8.8). The resulting lack of simulated events
+       artificially reduced the effective area in that bin at all
+       declinations. Version 2.0 sets the range of this bin to
+       log10(E/GeV) = [8.6, 8.7), matching the simulation boundary.
+    2. The sin(declination) binning of the smearing matrices was set to
+       IceCube's internal IC40 binning for all detector configurations
+       (IC40, IC59, IC79, and IC86), rather than to the per-season internal
+       binning described in the accompanying paper. Version 2.0 uses the
+       corresponding binning for each season.
+
+    Version 1.0 remains available under the explicit name
+    ``'IceTracks-DR2-v1'``, while ``'IceTracks-DR2-v2'`` is an explicit alias
+    for the current default.
+
 To load respective datasets:
 
 .. code-block:: python

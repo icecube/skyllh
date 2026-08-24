@@ -82,6 +82,7 @@ known-first-party = ["skyllh"]
 "skyllh/datasets/i3/PublicData_10y_ps.py" = ["N999"]
 "skyllh/datasets/i3/PublicData_10y_ps_wMC.py" = ["N999"]
 "skyllh/datasets/i3/PublicData_14y_ps.py" = ["N999"]
+"skyllh/datasets/i3/PublicData_14y_ps_v2.py" = ["N999"]
 "skyllh/datasets/i3/TestData.py" = ["N999"]
 
 [tool.ruff.lint.pydocstyle]
