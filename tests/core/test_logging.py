@@ -57,7 +57,7 @@ class SetupLoggingTestCase(unittest.TestCase):
         self.assertEqual(logging.getLogger('skyllh').level, logging.INFO)
         self.assertEqual(logging.getLogger(self.user_logger_name).level, logging.INFO)
 
-        # Redirect current console stderr stream to test stream.
+        # Redirect current console stream to test stream.
         for logger_name in ('skyllh', self.user_logger_name):
             lg = logging.getLogger(logger_name)
             for handler in lg.handlers:
