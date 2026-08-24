@@ -1516,10 +1516,10 @@ class Dataset(
             got_new_verqualifiers = True
 
         existing_verqualifiers_incremented = False
-        for q in verqualifiers:
-            if (q in self._verqualifiers) and (verqualifiers[q] > self._verqualifiers[q]):
+        for q, value in verqualifiers.items():
+            if (q in self._verqualifiers) and (value > self._verqualifiers[q]):
                 existing_verqualifiers_incremented = True
-            self._verqualifiers[q] = verqualifiers[q]
+            self._verqualifiers[q] = value
 
         if not (got_new_verqualifiers or existing_verqualifiers_incremented):
             raise ValueError('Version qualifier values did not increment and no new version qualifiers were added!')

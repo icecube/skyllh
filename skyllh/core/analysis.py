@@ -1842,7 +1842,7 @@ class SingleSourceMultiDatasetLLHRatioAnalysis(LLHRatioAnalysis):
         assert self._sig_generator is not None
 
         if not isinstance(self._sig_generator, MultiDatasetSignalGenerator):
-            raise RuntimeError(
+            raise TypeError(
                 'The configured signal generator does not implement the fluxmodel_scaling_factor interface!'
             )
 

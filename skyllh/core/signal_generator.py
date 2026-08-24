@@ -134,7 +134,7 @@ class SignalGenerator(
     def generate_signal_events(
         self,
         rss: RandomStateService,
-        mean: int | float,
+        mean: float,
         poisson: bool = True,
         src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
     ) -> tuple[int, dict[int, DataFieldRecordArray]]:
@@ -403,7 +403,7 @@ class MultiDatasetSignalGenerator(
     def generate_signal_events(
         self,
         rss: RandomStateService,
-        mean: float | int,
+        mean: float,
         poisson: bool = True,
         src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
     ) -> tuple[int, dict[int, DataFieldRecordArray]]:
@@ -845,7 +845,7 @@ class MCMultiDatasetSignalGenerator(
     def generate_signal_events(
         self,
         rss: RandomStateService,
-        mean: float | int,
+        mean: float,
         poisson: bool = True,
         src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
     ) -> tuple[int, dict[int, DataFieldRecordArray]]:

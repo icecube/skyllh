@@ -518,7 +518,7 @@ class PDDatasetSignalGenerator(
     def generate_signal_events(
         self,
         rss: RandomStateService,
-        mean: int | float,
+        mean: float,
         poisson: bool = True,
         src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
     ) -> tuple[int, dict[int, DataFieldRecordArray]]:
@@ -785,7 +785,7 @@ class TimeDependentPDDatasetSignalGenerator(
     def generate_signal_events(
         self,
         rss: RandomStateService,
-        mean: int | float,
+        mean: float,
         poisson: bool = True,
         src_detsigyield_weights_service: SrcDetSigYieldWeightsService | None = None,
     ) -> tuple[int, dict[int, DataFieldRecordArray]]:
