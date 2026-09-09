@@ -169,7 +169,6 @@ class SignalGenerator(
             generated signal events. Each key of this dictionary represents the
             dataset index for which the signal events have been generated.
         """
-        pass
 
 
 class MultiDatasetSignalGenerator(
@@ -524,7 +523,7 @@ class MCMultiDatasetSignalGenerator(
         super().__init__(shg_mgr=shg_mgr, dataset_list=dataset_list, data_list=data_list, **kwargs)
 
         if valid_event_field_ranges_dict_list is None:
-            valid_event_field_ranges_dict_list = [dict()] * len(self.dataset_list)
+            valid_event_field_ranges_dict_list = [{}] * len(self.dataset_list)
         if not isinstance(valid_event_field_ranges_dict_list, list):
             raise TypeError('The `valid_event_field_ranges_dict_list` argument must be a list.')
         if len(valid_event_field_ranges_dict_list) != len(self.dataset_list):
@@ -869,7 +868,7 @@ class MCMultiDatasetSignalGenerator(
         #       If one could assume the same MC dataset format, one
         #       could gather all the MC events of all the datasets first and do
         #       the signal event post processing for all datasets at once.
-        signal_events_dict = dict()
+        signal_events_dict = {}
         ds_idxs = np.unique(sig_events_meta['ds_idx'])
         for ds_idx in ds_idxs:
             valid_event_field_ranges_dict = self.valid_event_field_ranges_dict_list[ds_idx]
@@ -877,9 +876,9 @@ class MCMultiDatasetSignalGenerator(
             ds_mask = sig_events_meta['ds_idx'] == ds_idx
             n_sig_events_ds = np.count_nonzero(ds_mask)
 
-            data = dict(
-                [(fname, np.empty((n_sig_events_ds,), dtype=mc.get_field_dtype(fname))) for fname in mc.field_name_list]
-            )
+            data = {
+                fname: np.empty((n_sig_events_ds,), dtype=mc.get_field_dtype(fname)) for fname in mc.field_name_list
+            }
             sig_events = DataFieldRecordArray(data, copy=False)
 
             fill_start_idx = 0

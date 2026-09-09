@@ -192,7 +192,7 @@ class BackgroundI3SpatialPDF(
             The background PDF does not depend on any global fit parameter,
             hence, this is an empty dictionary.
         """
-        return (self._pd, dict())
+        return (self._pd, {})
 
 
 class DataBackgroundI3SpatialPDF(

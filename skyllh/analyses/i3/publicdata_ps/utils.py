@@ -558,7 +558,7 @@ def compute_expected_reco_energy_counts(
         raise ValueError('Length of livetimes must match the number of datasets.')
 
     if not isinstance(flux, (EnergyFluxProfile, Callable)):
-        raise ValueError('`flux` must be a callable or an instance of EnergyFluxProfile.')
+        raise TypeError('`flux` must be a callable or an instance of EnergyFluxProfile.')
 
     if energy_range is not None:
         if len(energy_range) != 2:

@@ -327,8 +327,8 @@ class TestMCMultiDatasetSignalGeneratorSrcParamsRecarrayParam(unittest.TestCase)
             sig_gen.fluxmodel_scaling_factor(src_params_recarray=None)
         except NotImplementedError:
             self.fail('fluxmodel_scaling_factor raised NotImplementedError with src_params_recarray=None')
-        except Exception:
-            pass  # Other errors are expected since the generator is uninitialized.
+        except AttributeError:
+            pass  # Expected since the generator is uninitialized.
 
 
 if __name__ == '__main__':

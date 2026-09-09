@@ -151,7 +151,7 @@ class PDSignalEnergyPDF(
 
         pd = self.get_pd_by_log10_reco_e(log10_reco_e=log10_reco_e, tl=tl)
 
-        grads = dict()
+        grads = {}
 
         return (pd, grads)
 

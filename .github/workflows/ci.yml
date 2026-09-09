@@ -17,7 +17,7 @@ jobs:
         python-version: "3.14"
     - name: Lint with ruff
       run: |
-        pip install ruff
+        pip install "ruff>=0.16"
         ruff check .
         ruff format --check .
 
@@ -37,7 +37,7 @@ jobs:
       uses: actions/cache@v6
       with:
         path: .repository
-        key: repository-v1
+        key: repository-v2
         restore-keys: repository-
     - name: Install dependencies
       run: pip install ".[dev]"

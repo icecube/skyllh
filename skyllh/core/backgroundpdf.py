@@ -111,6 +111,6 @@ class BackgroundTimePDF(TimePDF, IsBackgroundPDF):
         if self._pd is None:
             raise RuntimeError(f'The {classname(self)} was not initialized with trial data!')
 
-        grads = dict()
+        grads = {}
 
         return (self._pd, grads)

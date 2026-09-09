@@ -49,7 +49,7 @@ def create_dataset_collection(
         I3Dataset objects.
     """
     # Define the version of the data sample (collection).
-    (version, verqualifiers) = (1, dict(p=0))
+    (version, verqualifiers) = (1, {'p': 0})
 
     # Define the default sub path format.
     default_sub_path_fmt = 'icecube_14year_ps'
@@ -238,16 +238,16 @@ def create_dataset_collection(
     )
 
     # Define the common keyword arguments for all data sets.
-    ds_kwargs = dict(
-        cfg=cfg,
-        livetime=None,
-        version=version,
-        verqualifiers=verqualifiers,
-        base_path=base_path,
-        default_sub_path_fmt=default_sub_path_fmt,
-        sub_path_fmt=sub_path_fmt,
-        origin=origin,
-    )
+    ds_kwargs = {
+        'cfg': cfg,
+        'livetime': None,
+        'version': version,
+        'verqualifiers': verqualifiers,
+        'base_path': base_path,
+        'default_sub_path_fmt': default_sub_path_fmt,
+        'sub_path_fmt': sub_path_fmt,
+        'origin': origin,
+    }
 
     grl_field_name_renaming_dict = {
         'MJD_start[days]': 'start',

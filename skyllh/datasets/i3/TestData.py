@@ -35,7 +35,7 @@ def create_dataset_collection(
         The dataset collection containing all the seasons as individual
         I3Dataset objects.
     """
-    (version, verqualifiers) = (1, dict(p=0))
+    (version, verqualifiers) = (1, {'p': 0})
 
     default_sub_path_fmt = 'testdata'
 
@@ -47,15 +47,15 @@ def create_dataset_collection(
     """
 
     # Define the common keyword arguments for all data sets.
-    ds_kwargs = dict(
-        cfg=cfg,
-        livetime=None,
-        version=version,
-        verqualifiers=verqualifiers,
-        base_path=base_path,
-        default_sub_path_fmt=default_sub_path_fmt,
-        sub_path_fmt=sub_path_fmt,
-    )
+    ds_kwargs = {
+        'cfg': cfg,
+        'livetime': None,
+        'version': version,
+        'verqualifiers': verqualifiers,
+        'base_path': base_path,
+        'default_sub_path_fmt': default_sub_path_fmt,
+        'sub_path_fmt': sub_path_fmt,
+    }
 
     TestData = I3Dataset(
         name='TestData',

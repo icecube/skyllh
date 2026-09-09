@@ -13,7 +13,6 @@ class HasEnergyRange(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def energy_range(self):
         """Configured true-energy range as a 2-element tuple in GeV, or None."""
-        pass
 
     @energy_range.setter
     @abc.abstractmethod
@@ -100,7 +99,6 @@ class SignalGenerationMethod(HasEnergyRange, metaclass=abc.ABCMeta):
             The (N_selected_signal_events,)-shaped 1D ndarray holding the flux
             value of each signal candidate event.
         """
-        pass
 
     def signal_event_post_sampling_processing(
         self,

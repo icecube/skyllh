@@ -684,7 +684,6 @@ class Analysis(
             If set to None, the number of events is taken from the given
             `events_list` argument.
         """
-        pass
 
     @abc.abstractmethod
     def unblind(self, minimizer_rss, tl=None):
@@ -711,7 +710,6 @@ class Analysis(
             The status dictionary with information about the performed
             minimization process of the analysis.
         """
-        pass
 
     @abc.abstractmethod
     def do_trial_with_given_pseudo_data(
@@ -774,7 +772,6 @@ class Analysis(
             [<global_param_name> : float ]
                 Any additional parameters of the analysis.
         """
-        pass
 
     def change_shg_mgr(self, shg_mgr, update_detsigyield_service=True):
         """If the SourceHypoGroupManager instance changed, this method needs to
@@ -944,7 +941,7 @@ class Analysis(
             when generating background events.
         """
         if bkg_kwargs is None:
-            bkg_kwargs = dict()
+            bkg_kwargs = {}
 
         if self._bkg_generator is None:
             self.construct_background_generator()
@@ -1034,7 +1031,7 @@ class Analysis(
             events were generated for this particular data set.
         """
         if sig_kwargs is None:
-            sig_kwargs = dict()
+            sig_kwargs = {}
 
         if n_events_list is None:
             n_events_list = [0] * self.n_datasets
@@ -1366,7 +1363,6 @@ class LLHRatioAnalysis(Analysis, metaclass=abc.ABCMeta):
             The instance of LLHRatio that implements the
             log-likelihood-ratio function of this LLH ratio analysis.
         """
-        pass
 
     def add_dataset(
         self, dataset, data, pdfratio, tdm=None, event_selection_method=None, bkg_generator=None, sig_generator=None

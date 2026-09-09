@@ -129,7 +129,7 @@ class EventSelectionMethod(metaclass=abc.ABCMeta):
             for each source.
             By default ``None`` is returned.
         """
-        return None
+        return
 
     @abc.abstractmethod
     def select_events(self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None):
@@ -165,7 +165,6 @@ class EventSelectionMethod(metaclass=abc.ABCMeta):
             indices of the selected events, if ``ret_original_evt_idxs`` is set
             to ``True``.
         """
-        pass
 
 
 class IntersectionEventSelectionMethod(EventSelectionMethod):
@@ -320,7 +319,7 @@ class AllEventSelectionMethod(EventSelectionMethod):
             for each source. Since this event selection method does not depend
             on any source, ``None`` is returned.
         """
-        return None
+        return
 
     def select_events(self, events, src_evt_idxs=None, ret_original_evt_idxs=False, tl=None):
         """Selects all of the given events. Hence, the returned event array is

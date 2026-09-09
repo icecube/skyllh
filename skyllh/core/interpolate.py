@@ -143,7 +143,6 @@ class GridManifoldInterpolationMethod(
             that has been provided at construction time of this interpolation
             method object.
         """
-        pass
 
 
 class NullGridManifoldInterpolationMethod(

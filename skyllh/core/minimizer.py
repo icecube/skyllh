@@ -80,7 +80,6 @@ class MinimizerImpl(
             The status dictionary with information about the minimization
             process.
         """
-        pass
 
     @abc.abstractmethod
     def get_niter(self, status):
@@ -98,7 +97,6 @@ class MinimizerImpl(
         niter : int
             The number of iterations needed to find the minimum.
         """
-        pass
 
     @abc.abstractmethod
     def has_converged(self, status):
@@ -116,7 +114,6 @@ class MinimizerImpl(
         converged : bool
             The flag if the minimization has converged (True), or not (False).
         """
-        pass
 
     @abc.abstractmethod
     def is_repeatable(self, status):
@@ -136,7 +133,6 @@ class MinimizerImpl(
             The flag if the minimization process can be repeated to obtain a
             better minimum.
         """
-        pass
 
 
 class ScipyMinimizerImpl(MinimizerImpl):
@@ -245,7 +241,7 @@ class ScipyMinimizerImpl(MinimizerImpl):
             bounds = None
 
         if func_args is None:
-            func_args = tuple()
+            func_args = ()
         if kwargs is None:
             kwargs = {}
 
@@ -410,7 +406,7 @@ class LBFGSMinimizerImpl(MinimizerImpl):
                     0: The minimization converged.
         """
         if func_args is None:
-            func_args = tuple()
+            func_args = ()
         if kwargs is None:
             kwargs = {}
 
@@ -604,7 +600,7 @@ class NR1dNsMinimizerImpl(MinimizerImpl):
 
         """
         if func_args is None:
-            func_args = tuple()
+            func_args = ()
 
         (ns_min, ns_max) = bounds[0]
         if ns_min > initials[0]:
@@ -969,7 +965,7 @@ class Minimizer:
             raise TypeError('The paramset argument must be an instance of ParameterSet!')
 
         if kwargs is None:
-            kwargs = dict()
+            kwargs = {}
 
         bounds = paramset.floating_param_bounds
         initials = paramset.floating_param_initials
@@ -1018,7 +1014,7 @@ class Minimizer:
             xmin = np.where(condmin, bounds[:, 0], xmin)
             xmin = np.where(condmax, bounds[:, 1], xmin)
             if args is None:
-                args = tuple()
+                args = ()
             (fmin, _) = func(xmin, *args)
 
         logger.debug(

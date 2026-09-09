@@ -79,7 +79,7 @@ class SimpleDetSigYieldWithoutGrads(DetSigYield):
             dY_k/dp_s.
         """
         values = self._scale * np.rad2deg(src_recarray['dec'])
-        grads = dict()
+        grads = {}
 
         return (values, grads)
 
@@ -144,7 +144,7 @@ class SimpleDetSigYieldWithGrads(SimpleDetSigYieldWithoutGrads):
         gfp_idxs = np.unique(src_param_gp_idxs)
         gfp_idxs = gfp_idxs[gfp_idxs > 0] - 1
 
-        grads = dict()
+        grads = {}
         for gfp_idx in gfp_idxs:
             grads[gfp_idx] = np.zeros((n_sources,), dtype=np.double)
 

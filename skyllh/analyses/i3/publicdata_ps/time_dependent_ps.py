@@ -665,18 +665,18 @@ def do_trials_with_em(
 
     args_list = [
         (
-            tuple(),
-            dict(
-                ana=ana,
-                mean_n_sig=mean_n_sig,
-                gamma_src=gamma_src,
-                gamma_min=gamma_min,
-                gamma_max=gamma_max,
-                n_gamma=n_gamma,
-                gauss=gauss,
-                box=box,
-                ppbar=False,
-            ),
+            (),
+            {
+                'ana': ana,
+                'mean_n_sig': mean_n_sig,
+                'gamma_src': gamma_src,
+                'gamma_min': gamma_min,
+                'gamma_max': gamma_max,
+                'n_gamma': n_gamma,
+                'gauss': gauss,
+                'box': box,
+                'ppbar': False,
+            },
         )
         for i in range(n)
     ]

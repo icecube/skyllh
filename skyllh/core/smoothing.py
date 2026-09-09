@@ -33,7 +33,6 @@ class HistSmoothingMethod(
         smoothed_h : N-dimensional ndarray
             The array holding the smoothed histogram bin values.
         """
-        pass
 
 
 class NoHistSmoothingMethod(
