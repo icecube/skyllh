@@ -32,7 +32,7 @@ class NGC1068UnblindingDR2TestCase(unittest.TestCase):
         cls.cfg['repository']['base_path'] = os.path.join(os.getcwd(), '.repository')
 
         cls.datasets = skyllh.create_datasets(
-            'IceTracks-DR2',
+            'IceTracks-DR2-v1',
             cfg=cls.cfg,
         )
 
