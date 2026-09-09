@@ -89,7 +89,7 @@ def setup_logger(
         The log level of the console handler. If None, it uses `log_level`.
     stream : data stream | None
         The stream to which the console handler will write.
-        If None, it defaults to `sys.stderr`.
+        If None, it defaults to `sys.stdout`.
     log_file : str | None
         If not ``None``, file handlers for DEBUG messages will be installed
         and those messages will be stored in the given file.
@@ -131,7 +131,7 @@ def setup_logger(
         else:
             console_level = _resolve_log_level(console_level)
         if stream is None:
-            stream = sys.stderr
+            stream = sys.stdout
 
         # deduplicate StreamHandler targeting same stream
         exists = any(
